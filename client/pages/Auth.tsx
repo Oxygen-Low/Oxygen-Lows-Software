@@ -56,7 +56,7 @@ export default function Auth() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2">
-            Oxygen Low's Software Web
+            Oxygen Low's Software
           </h1>
           <p className="text-slate-400 text-sm">
             {mode === "signin" ? "Welcome back" : "Create your account"}
