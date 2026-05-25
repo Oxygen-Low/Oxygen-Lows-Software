@@ -100,5 +100,11 @@
     "scripts": [
       "dist/server/**/*.js"
     ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild"
+    ]
   }
 }
