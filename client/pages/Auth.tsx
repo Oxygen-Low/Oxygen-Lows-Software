@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
-type AuthMode = "signin" | "signup" | "magic";
+type AuthMode = "signin" | "signup";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -42,10 +42,6 @@ export default function Auth() {
         await signUp(email, password);
         setSuccessMessage("Account created! Check your email to verify.");
         setTimeout(() => setMode("signin"), 2000);
-      } else if (mode === "magic") {
-        await signInWithMagicLink(email);
-        setSuccessMessage("Check your email for a magic link!");
-        setEmail("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -63,11 +59,7 @@ export default function Auth() {
             Oxygen Low's Software Web
           </h1>
           <p className="text-slate-400 text-sm">
-            {mode === "signin"
-              ? "Welcome back"
-              : mode === "signup"
-                ? "Create your account"
-                : "Sign in with magic link"}
+            {mode === "signin" ? "Welcome back" : "Create your account"}
           </p>
         </div>
 
@@ -148,10 +140,8 @@ export default function Auth() {
                 </>
               ) : mode === "signin" ? (
                 "Sign In"
-              ) : mode === "signup" ? (
-                "Create Account"
               ) : (
-                "Send Magic Link"
+                "Create Account"
               )}
             </button>
           </form>
@@ -185,20 +175,6 @@ export default function Auth() {
               }`}
             >
               Sign Up
-            </button>
-            <button
-              onClick={() => {
-                setMode("magic");
-                setError(null);
-                setSuccessMessage(null);
-              }}
-              className={`w-full py-2 px-4 rounded-lg transition duration-200 text-sm font-medium ${
-                mode === "magic"
-                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
-                  : "bg-slate-800/50 text-slate-400 hover:text-slate-300 border border-slate-700 hover:border-slate-600"
-              }`}
-            >
-              Magic Link
             </button>
           </div>
         </div>
