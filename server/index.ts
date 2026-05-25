@@ -8,7 +8,18 @@ export function createServer() {
   const app = express();
 
   // Middleware
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co"],
+          "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
+          "font-src": ["'self'", "https://fonts.gstatic.com"],
+        },
+      },
+    }),
+  );
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
