@@ -70,7 +70,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",
-    "globals": "^16.3.0",
+    "globals": "^17.6.0",
     "input-otp": "^1.4.2",
     "jsdom": "^29.1.1",
     "lucide-react": "^0.539.0",
