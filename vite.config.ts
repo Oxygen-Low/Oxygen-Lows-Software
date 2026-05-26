@@ -16,6 +16,25 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/react-router-dom")) {
+            return "vendor-react";
+          }
+          if (id.includes("node_modules/@radix-ui")) {
+            return "vendor-radix";
+          }
+          if (id.includes("node_modules/recharts")) {
+            return "vendor-charts";
+          }
+          if (id.includes("node_modules/three") || id.includes("node_modules/@react-three")) {
+            return "vendor-three";
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
   plugins: [react(), tailwindcss(), expressPlugin()],
   resolve: {
