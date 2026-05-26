@@ -59,7 +59,7 @@ export default function Auth() {
             Oxygen Low's Software
           </h1>
           <p className="text-slate-400 text-sm">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+            {mode === "signin" ? "" : ""}
           </p>
         </div>
 
@@ -196,11 +196,6 @@ export default function Auth() {
             </button>
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-6">
-          Powered by Supabase Authentication
-        </p>
       </div>
     </div>
   );
