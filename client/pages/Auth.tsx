@@ -12,6 +12,7 @@ export default function Auth() {
   const [mode, setMode] = useState<AuthMode>("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading_submit, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +60,7 @@ export default function Auth() {
         await signIn(email, password);
         navigate("/");
       } else if (mode === "signup") {
-        await signUp(email, password);
+        await signUp(email, password, username);
         setSuccessMessage("Account created! Check your email to verify.");
         setTimeout(() => setMode("signin"), 2000);
       }
@@ -107,6 +108,24 @@ export default function Auth() {
 
             {/* Password Input */}
             {(mode === "signin" || mode === "signup") && (
+              <>
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-2">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  placeholder="your_username"
+                  pattern="[a-z0-9_-]+"
+                  title="Lowercase letters, numbers, hyphens, and underscores only"
+                  required={mode === "signup"}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                />
+              </div>
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
                   Password
@@ -131,6 +150,7 @@ export default function Auth() {
                   </button>
                 </div>
               </div>
+              </>
             )}
 
             {/* Error Message */}
