@@ -59,7 +59,7 @@ export default function Auth() {
             Oxygen Low's Software
           </h1>
           <p className="text-slate-400 text-sm">
-            {mode === "signin" ? "" : "Create your account"}
+            {mode === "signin" ? "" : ""}
           </p>
         </div>
 
