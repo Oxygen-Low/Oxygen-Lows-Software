@@ -8,7 +8,7 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Trash2,
-  ExternalLink,
+  ExternalLink, Download,
   Plus,
   Loader2,
   HardDrive,

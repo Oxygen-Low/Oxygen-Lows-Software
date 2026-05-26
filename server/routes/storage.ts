@@ -96,7 +96,7 @@ storageRouter.get("/files", authenticate, (req, res) => {
 // Serve/Download a local file
 storageRouter.get("/files/:filename", authenticate, (req, res) => {
   const userId = (req as any).user.id;
-  const { filename } = req.params;
+  const { filename } = req.params as { filename: string };
   const filePath = path.join(UPLOADS_DIR, userId, filename);
 
   if (!fs.existsSync(filePath)) {
@@ -109,7 +109,7 @@ storageRouter.get("/files/:filename", authenticate, (req, res) => {
 // Delete a local file
 storageRouter.delete("/files/:filename", authenticate, (req, res) => {
   const userId = (req as any).user.id;
-  const { filename } = req.params;
+  const { filename } = req.params as { filename: string };
   const filePath = path.join(UPLOADS_DIR, userId, filename);
 
   if (!fs.existsSync(filePath)) {
