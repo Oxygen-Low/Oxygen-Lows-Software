@@ -11,7 +11,7 @@ Oxygen Low's Software app is work in progress.
 
 Here's the roadmap:
 
---Oauth (current priority)
+## Oauth (current priority)
 - [X] Discord
 - [X] Github
 - [ ] Gitlab
