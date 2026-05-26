@@ -32,12 +32,15 @@ export const useAuth = () => {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, username: string) => {
     try {
       setError(null);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: { username },
+        },
       });
       if (error) throw error;
       return data;

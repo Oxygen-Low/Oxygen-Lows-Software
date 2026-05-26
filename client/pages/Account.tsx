@@ -6,6 +6,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import Cropper, { Area } from "react-easy-crop";
 
+interface UserProfile {
+  user_id: string;
+  username: string;
+  display_name: string;
+  username_updated_at: string;
+  display_name_updated_at: string;
+}
+
 interface ProfilePicture {
   id: string;
   user_id?: string;
@@ -25,6 +33,10 @@ export default function Account() {
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [identities, setIdentities] = useState<any[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [displayNameInput, setDisplayNameInput] = useState("");
+  const [isSavingNames, setIsSavingNames] = useState(false);
 
   useEffect(() => {
     const fetchProfilePicture = async () => {
@@ -40,6 +52,21 @@ export default function Account() {
       }
     };
 
+    const fetchProfile = async () => {
+      if (!session?.user?.id) return;
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (data && !error) {
+        setProfile(data);
+        setUsernameInput(data.username);
+        setDisplayNameInput(data.display_name);
+      }
+    };
+
     const fetchIdentities = async () => {
       const { data, error } = await supabase.auth.getUserIdentities();
       if (data && !error) {
@@ -48,6 +75,7 @@ export default function Account() {
     };
 
     fetchProfilePicture();
+    fetchProfile();
     fetchIdentities();
   }, [session]);
 
@@ -223,6 +251,26 @@ export default function Account() {
     }
   };
 
+  const handleSaveNames = async () => {
+    setIsSavingNames(true);
+    try {
+      const { data, error } = await supabase.rpc("update_user_profile_names", {
+        p_username: usernameInput,
+        p_display_name: displayNameInput,
+      });
+
+      if (error) throw error;
+
+      setProfile(data);
+      toast({ title: "Success", description: "Profile names updated" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update profile names";
+      toast({ title: "Error", description: message });
+    } finally {
+      setIsSavingNames(false);
+    }
+  };
+
   const isLinked = (provider: string) => {
     return identities.some(id => id.provider === provider);
   };
@@ -336,6 +384,45 @@ export default function Account() {
                 />
               </div>
             )}
+          </div>
+
+          {/* Username and Display Name Section */}
+          <div className="border-t border-slate-800 pt-8 space-y-4">
+            <label className="block text-sm font-medium text-slate-300">Identity</label>
+            <p className="text-sm text-slate-400">
+              Usernames must be unique and can only use lowercase letters, numbers, hyphens, and underscores.
+              Username and display name each have separate 15-minute change cooldowns.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Username</label>
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
+                  maxLength={64}
+                  pattern="[a-z0-9_-]+"
+                  className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Display Name</label>
+                <input
+                  type="text"
+                  value={displayNameInput}
+                  onChange={(e) => setDisplayNameInput(e.target.value)}
+                  maxLength={128}
+                  className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                />
+              </div>
+              <button
+                onClick={handleSaveNames}
+                disabled={isSavingNames || !profile}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white rounded-lg border border-cyan-500/30 transition duration-200 text-sm font-medium"
+              >
+                {isSavingNames ? "Saving..." : "Save Username & Display Name"}
+              </button>
+            </div>
           </div>
 
           {/* Social Accounts Section */}
