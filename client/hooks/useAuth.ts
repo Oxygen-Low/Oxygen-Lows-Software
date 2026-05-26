@@ -96,6 +96,24 @@ export const useAuth = () => {
     }
   };
 
+  const linkIdentity = async (provider: 'github' | 'discord') => {
+    try {
+      setError(null);
+      const { data, error } = await supabase.auth.linkIdentity({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/account`,
+        },
+      });
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : `${provider} linking failed`;
+      setError(message);
+      throw err;
+    }
+  };
+
   const signOut = async () => {
     try {
       setError(null);
@@ -116,6 +134,7 @@ export const useAuth = () => {
     signIn,
     signInWithMagicLink,
     signInWithOAuth,
+    linkIdentity,
     signOut,
   };
 };

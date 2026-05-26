@@ -1,98 +1,84 @@
-import { useState, useRef, useEffect } from "react";
-import { Layout } from "@/components/Layout";
+import { useState, useEffect, useRef, useCallback } from "react";
+import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import { Lock, Upload, Share2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { toast } from "@/hooks/use-toast";
-import { Lock, Upload } from "lucide-react";
-import Cropper from "react-easy-crop";
-import "react-easy-crop/react-easy-crop.css";
-
-interface CropData {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+import Cropper, { Area } from "react-easy-crop";
 
 interface ProfilePicture {
   id: string;
+  user_id?: string;
   image_url: string;
-  crop_data: CropData | null;
+  crop_data: Area;
 }
 
 export default function Account() {
-  const { session } = useAuth();
+  const { session, linkIdentity } = useAuth();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [profilePicture, setProfilePicture] = useState<ProfilePicture | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedArea, setCroppedArea] = useState<CropData | null>(null);
+  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [identities, setIdentities] = useState<any[]>([]);
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchProfilePicture();
-    }
-  }, [session?.user?.id]);
-
-  const fetchProfilePicture = async () => {
-    try {
+    const fetchProfilePicture = async () => {
+      if (!session?.user?.id) return;
       const { data, error } = await supabase
         .from("profile_pictures")
         .select("*")
-        .eq("user_id", session?.user?.id)
+        .eq("user_id", session.user.id)
         .single();
 
-      if (data) {
+      if (data && !error) {
         setProfilePicture(data);
-      } else if (error?.code !== "PGRST116") {
-        console.error("Error fetching profile picture:", error);
       }
-    } catch (err) {
-      console.error("Failed to fetch profile picture:", err);
+    };
+
+    const fetchIdentities = async () => {
+      const { data, error } = await supabase.auth.getUserIdentities();
+      if (data && !error) {
+        setIdentities(data.identities);
+      }
+    };
+
+    fetchProfilePicture();
+    fetchIdentities();
+  }, [session]);
+
+  const onCropComplete = useCallback((_sharedArea: Area, _croppedAreaPixels: Area) => {
+    setCroppedArea(_croppedAreaPixels);
+  }, []);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(e.target.files[0]);
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setSelectedImage(event.target?.result as string);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const onCropComplete = (_croppedArea: any, croppedAreaPixels: CropData) => {
-    setCroppedArea(croppedAreaPixels);
-  };
-
-  const createCircleImage = async (
-    imageSrc: string,
-    cropData: CropData,
-    imageElement: HTMLImageElement
-  ): Promise<Blob> => {
+  const createCircleImage = async (imageSrc: string, pixelCrop: Area, imageElement: HTMLImageElement): Promise<Blob> => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Could not get canvas context");
+    if (!ctx) return new Blob();
 
-    const diameter = Math.min(cropData.width, cropData.height);
-    canvas.width = diameter;
-    canvas.height = diameter;
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
 
     ctx.beginPath();
-    ctx.arc(diameter / 2, diameter / 2, diameter / 2, 0, Math.PI * 2);
+    ctx.arc(pixelCrop.width / 2, pixelCrop.height / 2, pixelCrop.width / 2, 0, Math.PI * 2);
     ctx.clip();
 
-    const x = Math.round(cropData.x);
-    const y = Math.round(cropData.y);
-    const imgX = -x;
-    const imgY = -y;
+    const imgX = -pixelCrop.x;
+    const imgY = -pixelCrop.y;
 
     ctx.drawImage(imageElement, imgX, imgY);
 
@@ -216,6 +202,22 @@ export default function Account() {
     }
   };
 
+  const handleLinkIdentity = async (provider: 'github' | 'discord') => {
+    try {
+      await linkIdentity(provider);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : `Failed to link ${provider}`;
+      toast({
+        title: "Error",
+        description: message,
+      });
+    }
+  };
+
+  const isLinked = (provider: string) => {
+    return identities.some(id => id.provider === provider);
+  };
+
   return (
     <Layout>
       <div className="max-w-2xl">
@@ -325,6 +327,40 @@ export default function Account() {
                 />
               </div>
             )}
+          </div>
+
+          {/* Social Accounts Section */}
+          <div className="border-t border-slate-800 pt-8 space-y-4">
+            <label className="block text-sm font-medium text-slate-300">Social Accounts</label>
+            <p className="text-sm text-slate-400 mb-4">
+              Link your social accounts to sign in more easily. Automatic linking is disabled for your security.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={() => handleLinkIdentity('github')}
+                disabled={isLinked('github')}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
+                  isLinked('github')
+                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
+                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
+                }`}
+              >
+                <Share2 className="w-4 h-4" />
+                {isLinked('github') ? "GitHub Linked" : "Link GitHub"}
+              </button>
+              <button
+                onClick={() => handleLinkIdentity('discord')}
+                disabled={isLinked('discord')}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
+                  isLinked('discord')
+                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
+                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
+                }`}
+              >
+                <Share2 className="w-4 h-4" />
+                {isLinked('discord') ? "Discord Linked" : "Link Discord"}
+              </button>
+            </div>
           </div>
 
           {/* Email Section */}
