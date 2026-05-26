@@ -340,9 +340,9 @@ export default function Account() {
 
           {/* Social Accounts Section */}
           <div className="border-t border-slate-800 pt-8 space-y-4">
-            <label className="block text-sm font-medium text-slate-300">Social Accounts</label>
+            <label className="block text-sm font-medium text-slate-300">Oauth Providers</label>
             <p className="text-sm text-slate-400 mb-4">
-              Link your social accounts to sign in more easily. Automatic linking is disabled for your security.
+              Link Oauth providers to sign in with one click.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
