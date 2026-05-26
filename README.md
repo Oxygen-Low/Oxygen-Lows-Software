@@ -8,11 +8,3 @@ you've got the entire website hosted with all of your data available.
 You also get 10MB of image and document storage on the cloud at no cost alongside the capability of storing data on the server.
 
 Oxygen Low's Software app is work in progress.
-
-Here's the roadmap:
-
-## Oauth (current priority)
-- [X] Discord
-- [X] Github
-- [ ] Gitlab
-- [ ] Google
