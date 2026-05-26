@@ -13,6 +13,8 @@ interface UserProfile {
   username_updated_at: string;
   display_name_updated_at: string;
   bio: string;
+  email: string | null;
+  show_email: boolean;
 }
 
 interface ProfilePicture {
@@ -39,6 +41,7 @@ export default function Account() {
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [bioInput, setBioInput] = useState("");
   const [isSavingNames, setIsSavingNames] = useState(false);
+  const [isSavingEmailVisibility, setIsSavingEmailVisibility] = useState(false);
 
   useEffect(() => {
     const fetchProfilePicture = async () => {
@@ -275,6 +278,30 @@ export default function Account() {
     }
   };
 
+
+  const handleToggleEmailVisibility = async (value: boolean) => {
+    if (!session?.user?.id || !profile) return;
+    setIsSavingEmailVisibility(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .update({ show_email: value })
+        .eq("user_id", session.user.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      setProfile(data);
+      toast({ title: "Success", description: "Email visibility updated" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update email visibility";
+      toast({ title: "Error", description: message });
+    } finally {
+      setIsSavingEmailVisibility(false);
+    }
+  };
+
   const isLinked = (provider: string) => {
     return identities.some(id => id.provider === provider);
   };
@@ -504,6 +531,23 @@ export default function Account() {
             <label className="block text-sm font-medium text-slate-300">Email Address</label>
             <div className="bg-slate-950 rounded-lg border border-slate-700 px-4 py-3">
               <p className="text-slate-200">{session?.user?.email || "Loading..."}</p>
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-slate-300">Show email on public profile</p>
+                <p className="text-xs text-slate-500">When enabled, your email appears on /users/{usernameInput || "username"}.</p>
+              </div>
+              <button
+                onClick={() => handleToggleEmailVisibility(!(profile?.show_email ?? false))}
+                disabled={!profile || isSavingEmailVisibility}
+                className={`px-3 py-1.5 rounded-lg border text-sm transition duration-200 ${
+                  profile?.show_email
+                    ? "bg-cyan-600 text-white border-cyan-500/30"
+                    : "bg-slate-900 text-slate-200 border-slate-700"
+                } disabled:opacity-50`}
+              >
+                {isSavingEmailVisibility ? "Saving..." : profile?.show_email ? "Visible" : "Hidden"}
+              </button>
+            </div>
             </div>
           </div>
 

@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import Storage from "./pages/Storage";
 import NotFound from "./pages/NotFound";
+import UserProfile from "./pages/UserProfile";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -79,6 +80,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Account />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/:username"
+            element={
+              <ProtectedRoute>
+                <UserProfile />
               </ProtectedRoute>
             }
           />
