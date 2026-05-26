@@ -106,6 +106,7 @@ describe("useAuth", () => {
       provider: "github",
       options: {
         redirectTo: "http://localhost:3000",
+        scopes: undefined,
       },
     });
   });
@@ -129,6 +130,7 @@ describe("useAuth", () => {
       provider: "gitlab",
       options: {
         redirectTo: "http://localhost:3000",
+        scopes: "read_user",
       },
     });
   });
@@ -152,6 +154,7 @@ describe("useAuth", () => {
       provider: "github",
       options: {
         redirectTo: "http://localhost:3000/account",
+        scopes: undefined,
       },
     });
   });
@@ -175,6 +178,7 @@ describe("useAuth", () => {
       provider: "google",
       options: {
         redirectTo: "http://localhost:3000/account",
+        scopes: "email profile openid",
       },
     });
   });

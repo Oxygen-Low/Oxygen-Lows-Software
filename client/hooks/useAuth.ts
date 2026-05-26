@@ -86,6 +86,7 @@ export const useAuth = () => {
         provider,
         options: {
           redirectTo: window.location.origin,
+          scopes: provider === "gitlab" ? "read_user" : provider === "google" ? "email profile openid" : undefined,
         },
       });
       if (error) throw error;
@@ -103,6 +104,7 @@ export const useAuth = () => {
         provider,
         options: {
           redirectTo: `${window.location.origin}/account`,
+          scopes: provider === "gitlab" ? "read_user" : provider === "google" ? "email profile openid" : undefined,
         },
       });
       if (error) throw error;
