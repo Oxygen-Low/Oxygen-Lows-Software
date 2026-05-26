@@ -110,6 +110,29 @@ describe("useAuth", () => {
     });
   });
 
+  it("should handle GitLab OAuth sign in", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: null },
+    });
+    (supabase.auth.signInWithOAuth as any).mockResolvedValue({
+      data: { provider: "gitlab", url: "http://localhost" },
+      error: null,
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await result.current.signInWithOAuth("gitlab");
+    });
+
+    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "gitlab",
+      options: {
+        redirectTo: "http://localhost:3000",
+      },
+    });
+  });
+
   it("should handle identity linking", async () => {
     (supabase.auth.getSession as any).mockResolvedValue({
       data: { session: { user: { id: "123" } } },
@@ -127,6 +150,29 @@ describe("useAuth", () => {
 
     expect(supabase.auth.linkIdentity).toHaveBeenCalledWith({
       provider: "github",
+      options: {
+        redirectTo: "http://localhost:3000/account",
+      },
+    });
+  });
+
+  it("should handle Google identity linking", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: { user: { id: "123" } } },
+    });
+    (supabase.auth.linkIdentity as any).mockResolvedValue({
+      data: { provider: "google", url: "http://localhost" },
+      error: null,
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await result.current.linkIdentity("google");
+    });
+
+    expect(supabase.auth.linkIdentity).toHaveBeenCalledWith({
+      provider: "google",
       options: {
         redirectTo: "http://localhost:3000/account",
       },
