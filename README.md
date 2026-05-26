@@ -16,5 +16,3 @@ Here's the roadmap:
 - [X] Github
 - [ ] Gitlab
 - [ ] Google
-- [ ] Azure/Microsoft
-- [ ] X/Twitter
