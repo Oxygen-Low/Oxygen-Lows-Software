@@ -103,6 +103,33 @@ export default function Account() {
     });
   };
 
+  const handleDeleteProfilePicture = async () => {
+    if (!profilePicture) return;
+
+    setIsUploading(true);
+    try {
+      const fileName = profilePicture.image_url.split("/").pop();
+      if (fileName) {
+        await supabase.storage.from("Storage").remove([fileName]);
+      }
+
+      const { error } = await supabase
+        .from("profile_pictures")
+        .delete()
+        .eq("user_id", session?.user?.id);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Profile picture deleted" });
+      setProfilePicture(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete profile picture";
+      toast({ title: "Error", description: message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSaveProfilePicture = async () => {
     if (!selectedImage || !croppedArea) {
       toast({ title: "Error", description: "Please crop an image first" });
@@ -111,6 +138,8 @@ export default function Account() {
 
     setIsUploading(true);
     try {
+      const oldFileName = profilePicture?.image_url.split("/").pop();
+
       const img = new Image();
       img.onload = async () => {
         const circleBlob = await createCircleImage(selectedImage, croppedArea, img);
@@ -121,6 +150,10 @@ export default function Account() {
           .upload(fileName, circleBlob, { upsert: true });
 
         if (uploadError) throw uploadError;
+
+        if (oldFileName) {
+          await supabase.storage.from("Storage").remove([oldFileName]);
+        }
 
         const publicUrl = supabase.storage.from("Storage").getPublicUrl(fileName).data
           .publicUrl;
@@ -253,16 +286,36 @@ export default function Account() {
                       />
                     </div>
                     <p className="text-sm text-slate-400">Current profile picture</p>
+                    <div className="flex gap-3 w-full">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 px-4 py-2 bg-slate-950 hover:bg-slate-900 text-slate-200 rounded-lg border border-dashed border-slate-700 transition duration-200 text-sm font-medium flex items-center justify-center gap-2"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Replace
+                      </button>
+                      <button
+                        onClick={handleDeleteProfilePicture}
+                        disabled={isUploading}
+                        className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed text-red-400 rounded-lg border border-red-600/30 transition duration-200 text-sm font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full px-4 py-3 bg-slate-950 hover:bg-slate-900 text-slate-200 rounded-lg border border-dashed border-slate-700 transition duration-200 text-sm font-medium flex items-center justify-center gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  Choose Image
-                </button>
+                {!profilePicture?.image_url && (
+                  <>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full px-4 py-3 bg-slate-950 hover:bg-slate-900 text-slate-200 rounded-lg border border-dashed border-slate-700 transition duration-200 text-sm font-medium flex items-center justify-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Choose Image
+                    </button>
+                  </>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"
