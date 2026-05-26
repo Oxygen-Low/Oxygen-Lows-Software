@@ -79,6 +79,23 @@ export const useAuth = () => {
     }
   };
 
+  const signInWithOAuth = async (provider: 'github' | 'discord') => {
+    try {
+      setError(null);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : `${provider} sign in failed`;
+      setError(message);
+      throw err;
+    }
+  };
+
   const signOut = async () => {
     try {
       setError(null);
@@ -98,6 +115,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signInWithMagicLink,
+    signInWithOAuth,
     signOut,
   };
 };

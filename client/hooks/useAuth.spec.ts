@@ -15,6 +15,7 @@ vi.mock("@/lib/supabase", () => ({
       signInWithPassword: vi.fn(),
       signUp: vi.fn(),
       signOut: vi.fn(),
+      signInWithOAuth: vi.fn(),
     },
   },
 }));
@@ -83,6 +84,29 @@ describe("useAuth", () => {
     });
 
     expect(supabase.auth.signOut).toHaveBeenCalled();
+  });
+
+  it("should handle OAuth sign in", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: null },
+    });
+    (supabase.auth.signInWithOAuth as any).mockResolvedValue({
+      data: { provider: "github", url: "http://localhost" },
+      error: null,
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await result.current.signInWithOAuth("github");
+    });
+
+    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "github",
+      options: {
+        redirectTo: "http://localhost:3000",
+      },
+    });
   });
 
   it("should handle errors", async () => {
