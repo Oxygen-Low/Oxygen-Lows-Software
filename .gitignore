@@ -25,3 +25,6 @@ dist-ssr
 
 .config/
 !.env
+
+# Local uploads
+uploads

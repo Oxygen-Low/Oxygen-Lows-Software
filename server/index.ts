@@ -3,6 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { storageRouter } from "./routes/storage";
 
 export function createServer() {
   const app = express();
@@ -16,6 +17,7 @@ export function createServer() {
           "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co"],
           "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
+          "img-src": ["'self'", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "*"],
         },
       },
     }),
@@ -31,6 +33,9 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+
+  // Storage routes
+  app.use("/api/storage", storageRouter);
 
   return app;
 }

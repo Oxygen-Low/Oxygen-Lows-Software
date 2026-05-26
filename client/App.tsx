@@ -13,6 +13,7 @@ import Download from "./pages/Download";
 import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
+import Storage from "./pages/Storage";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -38,6 +39,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Apps />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/storage"
+            element={
+              <ProtectedRoute>
+                <Storage />
               </ProtectedRoute>
             }
           />

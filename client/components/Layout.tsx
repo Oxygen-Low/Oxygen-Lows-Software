@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, Package, Download, Zap, Settings, User } from "lucide-react";
+import { LogOut, Package, Download, Zap, Settings, User, HardDrive } from "lucide-react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,6 +9,7 @@ interface LayoutProps {
 
 const navItems = [
   { label: "Apps", href: "/apps", icon: Package },
+  { label: "Storage", href: "/storage", icon: HardDrive },
   { label: "Download Desktop App", href: "/download", icon: Download },
   { label: "Server Integrations", href: "/integrations", icon: Zap },
   { label: "Server Settings", href: "/settings", icon: Settings },
@@ -29,7 +30,7 @@ export const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200">
       {/* Header */}
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
