@@ -12,6 +12,7 @@ interface UserProfile {
   display_name: string;
   username_updated_at: string;
   display_name_updated_at: string;
+  bio: string;
 }
 
 interface ProfilePicture {
@@ -36,6 +37,7 @@ export default function Account() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
   const [displayNameInput, setDisplayNameInput] = useState("");
+  const [bioInput, setBioInput] = useState("");
   const [isSavingNames, setIsSavingNames] = useState(false);
 
   useEffect(() => {
@@ -64,6 +66,7 @@ export default function Account() {
         setProfile(data);
         setUsernameInput(data.username);
         setDisplayNameInput(data.display_name);
+        setBioInput(data.bio ?? "");
       }
     };
 
@@ -257,12 +260,13 @@ export default function Account() {
       const { data, error } = await supabase.rpc("update_user_profile_names", {
         p_username: usernameInput,
         p_display_name: displayNameInput,
+        p_bio: bioInput,
       });
 
       if (error) throw error;
 
       setProfile(data);
-      toast({ title: "Success", description: "Profile names updated" });
+      toast({ title: "Success", description: "Profile updated" });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update profile names";
       toast({ title: "Error", description: message });
@@ -415,12 +419,24 @@ export default function Account() {
                   className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
                 />
               </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Bio</label>
+                <textarea
+                  value={bioInput}
+                  onChange={(e) => setBioInput(e.target.value)}
+                  maxLength={1500}
+                  rows={5}
+                  className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  placeholder="Tell people a bit about yourself"
+                />
+                <p className="mt-1 text-xs text-slate-500 text-right">{bioInput.length}/1500</p>
+              </div>
               <button
                 onClick={handleSaveNames}
                 disabled={isSavingNames || !profile}
                 className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white rounded-lg border border-cyan-500/30 transition duration-200 text-sm font-medium"
               >
-                {isSavingNames ? "Saving..." : "Save Username & Display Name"}
+                {isSavingNames ? "Saving..." : "Save Profile"}
               </button>
             </div>
           </div>
