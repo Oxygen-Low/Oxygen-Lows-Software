@@ -7,7 +7,7 @@ type AuthMode = "signin" | "signup";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { session, loading, error: authError, signUp, signIn, signInWithMagicLink } = useAuth();
+  const { session, loading, error: authError, signUp, signIn, signInWithMagicLink, signInWithOAuth } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -145,6 +145,24 @@ export default function Auth() {
               )}
             </button>
           </form>
+
+          {/* OAuth Buttons */}
+          <div className="mt-6 pt-6 border-t border-slate-800 space-y-3">
+            <button
+              type="button"
+              onClick={() => signInWithOAuth("github")}
+              className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
+            >
+              Sign in with GitHub
+            </button>
+            <button
+              type="button"
+              onClick={() => signInWithOAuth("discord")}
+              className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
+            >
+              Sign in with Discord
+            </button>
+          </div>
 
           {/* Mode Toggle Buttons */}
           <div className="mt-6 space-y-2 border-t border-slate-800 pt-6">
