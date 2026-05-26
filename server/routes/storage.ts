@@ -7,6 +7,26 @@ import { createClient } from "@supabase/supabase-js";
 
 const UPLOADS_DIR = path.resolve("uploads");
 
+const getSafeUserFilePath = (userId: string, filename: string): string | null => {
+  if (!filename || filename.includes("\\0")) {
+    return null;
+  }
+
+  if (path.basename(filename) !== filename) {
+    return null;
+  }
+
+  const userDir = path.resolve(UPLOADS_DIR, userId);
+  const resolvedPath = path.resolve(userDir, filename);
+  const relativePath = path.relative(userDir, resolvedPath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    return null;
+  }
+
+  return resolvedPath;
+};
+
 // Authentication middleware to verify Supabase JWT
 const authenticate: RequestHandler = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -97,7 +117,11 @@ storageRouter.get("/files", authenticate, (req, res) => {
 storageRouter.get("/files/:filename", authenticate, (req, res) => {
   const userId = (req as any).user.id;
   const { filename } = req.params as { filename: string };
-  const filePath = path.join(UPLOADS_DIR, userId, filename);
+  const filePath = getSafeUserFilePath(userId, filename);
+
+  if (!filePath) {
+    return res.status(400).json({ message: "Invalid filename" });
+  }
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ message: "File not found" });
@@ -110,7 +134,11 @@ storageRouter.get("/files/:filename", authenticate, (req, res) => {
 storageRouter.delete("/files/:filename", authenticate, (req, res) => {
   const userId = (req as any).user.id;
   const { filename } = req.params as { filename: string };
-  const filePath = path.join(UPLOADS_DIR, userId, filename);
+  const filePath = getSafeUserFilePath(userId, filename);
+
+  if (!filePath) {
+    return res.status(400).json({ message: "Invalid filename" });
+  }
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ message: "File not found" });
