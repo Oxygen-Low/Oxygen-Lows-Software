@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
@@ -7,7 +7,8 @@ type AuthMode = "signin" | "signup";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { session, loading, error: authError, signUp, signIn, signInWithMagicLink, signInWithOAuth } = useAuth();
+  const location = useLocation();
+  const { session, loading, signUp, signIn, signInWithOAuth } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +16,25 @@ export default function Auth() {
   const [loading_submit, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check for error in hash fragment (common for OAuth redirects)
+    const hash = window.location.hash;
+    if (hash && hash.includes("error_description")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const errorDescription = params.get("error_description");
+      if (errorDescription) {
+        setError(decodeURIComponent(errorDescription.replace(/\+/g, " ")));
+      }
+    }
+
+    // Also check query parameters
+    const queryParams = new URLSearchParams(location.search);
+    const queryError = queryParams.get("error_description");
+    if (queryError) {
+      setError(queryError);
+    }
+  }, [location]);
 
   if (loading) {
     return (
@@ -85,7 +105,7 @@ export default function Auth() {
               </div>
             </div>
 
-            {/* Password Input (hidden for magic link mode) */}
+            {/* Password Input */}
             {(mode === "signin" || mode === "signup") && (
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">

@@ -16,6 +16,7 @@ vi.mock("@/lib/supabase", () => ({
       signUp: vi.fn(),
       signOut: vi.fn(),
       signInWithOAuth: vi.fn(),
+      linkIdentity: vi.fn(),
     },
   },
 }));
@@ -105,6 +106,29 @@ describe("useAuth", () => {
       provider: "github",
       options: {
         redirectTo: "http://localhost:3000",
+      },
+    });
+  });
+
+  it("should handle identity linking", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: { user: { id: "123" } } },
+    });
+    (supabase.auth.linkIdentity as any).mockResolvedValue({
+      data: { provider: "github", url: "http://localhost" },
+      error: null,
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await result.current.linkIdentity("github");
+    });
+
+    expect(supabase.auth.linkIdentity).toHaveBeenCalledWith({
+      provider: "github",
+      options: {
+        redirectTo: "http://localhost:3000/account",
       },
     });
   });
