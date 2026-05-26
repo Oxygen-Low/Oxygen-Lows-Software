@@ -64,6 +64,20 @@ export const useAuth = () => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      setError(null);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?type=recovery`,
+      });
+      if (error) throw error;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Password reset failed";
+      setError(message);
+      throw err;
+    }
+  };
+
   const signInWithMagicLink = async (email: string) => {
     try {
       setError(null);
@@ -132,6 +146,7 @@ export const useAuth = () => {
     error,
     signUp,
     signIn,
+    resetPassword,
     signInWithMagicLink,
     signInWithOAuth,
     linkIdentity,
