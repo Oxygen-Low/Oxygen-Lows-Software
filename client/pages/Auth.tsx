@@ -9,7 +9,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, loading, signUp, signIn, signInWithOAuth } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("signin");
+  const [mode, setMode] = useState<AuthMode>("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -167,7 +167,8 @@ export default function Auth() {
           </form>
 
           {/* OAuth Buttons */}
-          <div className="mt-6 pt-6 border-t border-slate-800 space-y-3">
+          {mode === "signin" && (
+            <div className="mt-6 pt-6 border-t border-slate-800 space-y-3">
             <button
               type="button"
               onClick={() => signInWithOAuth("github")}
@@ -197,6 +198,7 @@ export default function Auth() {
               Sign in with Google
             </button>
           </div>
+          )}
 
           {/* Mode Toggle Buttons */}
           <div className="mt-6 space-y-2 border-t border-slate-800 pt-6">
