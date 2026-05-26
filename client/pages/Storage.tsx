@@ -181,6 +181,20 @@ export default function Storage() {
     setUploading(false);
   };
 
+  const handleCloudDownload = async (name: string) => {
+    const { data, error } = await supabase.storage.from("Storage").download(name);
+    if (error) {
+      toast({ title: "Download failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    const url = window.URL.createObjectURL(data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleAddLink = async () => {
     if (!newLinkUrl) return;
 
@@ -340,6 +354,15 @@ export default function Storage() {
                             <ExternalLink className="w-4 h-4 mr-2" />
                             View
                           </a>
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
+                          onClick={() => handleCloudDownload(file.name)}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
                         </Button>
                         <Button
                           variant="destructive"
