@@ -202,7 +202,7 @@ export default function Account() {
     }
   };
 
-  const handleLinkIdentity = async (provider: "github" | "discord") => {
+  const handleLinkIdentity = async (provider: "github" | "discord" | "gitlab" | "google") => {
     try {
       // Set a flag in user metadata to allow the upcoming manual link
       // even if another account with the same email already exists.
@@ -368,6 +368,30 @@ export default function Account() {
               >
                 <Share2 className="w-4 h-4" />
                 {isLinked('discord') ? "Discord Linked" : "Link Discord"}
+              </button>
+              <button
+                onClick={() => handleLinkIdentity('gitlab')}
+                disabled={isLinked('gitlab')}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
+                  isLinked('gitlab')
+                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
+                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
+                }`}
+              >
+                <Share2 className="w-4 h-4" />
+                {isLinked('gitlab') ? "GitLab Linked" : "Link GitLab"}
+              </button>
+              <button
+                onClick={() => handleLinkIdentity('google')}
+                disabled={isLinked('google')}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
+                  isLinked('google')
+                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
+                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
+                }`}
+              >
+                <Share2 className="w-4 h-4" />
+                {isLinked('google') ? "Google Linked" : "Link Google"}
               </button>
             </div>
           </div>

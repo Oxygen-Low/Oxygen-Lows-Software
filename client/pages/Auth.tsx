@@ -182,6 +182,20 @@ export default function Auth() {
             >
               Sign in with Discord
             </button>
+            <button
+              type="button"
+              onClick={() => signInWithOAuth("gitlab")}
+              className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
+            >
+              Sign in with GitLab
+            </button>
+            <button
+              type="button"
+              onClick={() => signInWithOAuth("google")}
+              className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
+            >
+              Sign in with Google
+            </button>
           </div>
 
           {/* Mode Toggle Buttons */}

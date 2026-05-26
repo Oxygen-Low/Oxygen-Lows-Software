@@ -74,6 +74,46 @@ describe('Account Component', () => {
     });
   });
 
+  it('sets manual_link_allowed flag before linking GitLab identity', async () => {
+    mockUpdateUser.mockResolvedValue({ data: {}, error: null });
+    mockLinkIdentity.mockResolvedValue({});
+
+    render(<Account />);
+
+    const gitlabButtons = await screen.findAllByText(/Link GitLab/i);
+    fireEvent.click(gitlabButtons[0]);
+
+    await waitFor(() => {
+      expect(mockUpdateUser).toHaveBeenCalledWith({
+        data: { manual_link_allowed: true },
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockLinkIdentity).toHaveBeenCalledWith('gitlab');
+    });
+  });
+
+  it('sets manual_link_allowed flag before linking Google identity', async () => {
+    mockUpdateUser.mockResolvedValue({ data: {}, error: null });
+    mockLinkIdentity.mockResolvedValue({});
+
+    render(<Account />);
+
+    const googleButtons = await screen.findAllByText(/Link Google/i);
+    fireEvent.click(googleButtons[0]);
+
+    await waitFor(() => {
+      expect(mockUpdateUser).toHaveBeenCalledWith({
+        data: { manual_link_allowed: true },
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockLinkIdentity).toHaveBeenCalledWith('google');
+    });
+  });
+
   it('shows error toast if updateUser fails', async () => {
     mockUpdateUser.mockResolvedValue({ data: null, error: new Error('Update failed') });
 

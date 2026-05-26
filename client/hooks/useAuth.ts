@@ -79,7 +79,7 @@ export const useAuth = () => {
     }
   };
 
-  const signInWithOAuth = async (provider: 'github' | 'discord') => {
+  const signInWithOAuth = async (provider: 'github' | 'discord' | 'gitlab' | 'google') => {
     try {
       setError(null);
       const { error } = await supabase.auth.signInWithOAuth({
@@ -96,7 +96,7 @@ export const useAuth = () => {
     }
   };
 
-  const linkIdentity = async (provider: 'github' | 'discord') => {
+  const linkIdentity = async (provider: 'github' | 'discord' | 'gitlab' | 'google') => {
     try {
       setError(null);
       const { data, error } = await supabase.auth.linkIdentity({
