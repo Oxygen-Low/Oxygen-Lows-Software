@@ -202,11 +202,20 @@ export default function Account() {
     }
   };
 
-  const handleLinkIdentity = async (provider: 'github' | 'discord') => {
+  const handleLinkIdentity = async (provider: "github" | "discord") => {
     try {
+      // Set a flag in user metadata to allow the upcoming manual link
+      // even if another account with the same email already exists.
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { manual_link_allowed: true },
+      });
+
+      if (updateError) throw updateError;
+
       await linkIdentity(provider);
     } catch (err) {
-      const message = err instanceof Error ? err.message : `Failed to link ${provider}`;
+      const message =
+        err instanceof Error ? err.message : `Failed to link ${provider}`;
       toast({
         title: "Error",
         description: message,
