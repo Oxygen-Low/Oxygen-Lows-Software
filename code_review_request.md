@@ -1,3 +1,5 @@
+# Music Context
+
 I have globalized the music state by creating a `MusicContext`.
 This allows the music to keep playing even when the user navigates between pages.
 I've also fixed the audio players in the Storage page to correctly handle local file previews by creating blob URLs for them.

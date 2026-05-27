@@ -1,5 +1,5 @@
 import * as mmb from "music-metadata-browser";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -39,6 +39,34 @@ export default function Storage() {
 
   const cloudInputRef = useRef<HTMLInputElement>(null);
   const localInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to get or create blob URL for a local track
+  const getBlobUrlForTrack = useCallback(async (file: LocalFile) => {
+    if (localBlobUrls[file.name]) {
+      return localBlobUrls[file.name];
+    }
+
+    try {
+      const res = await fetch(file.url, {
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      setLocalBlobUrls(prev => ({ ...prev, [file.name]: url }));
+      return url;
+    } catch (error) {
+      console.error("Failed to fetch blob for track:", error);
+      return null;
+    }
+  }, [session?.access_token, localBlobUrls]);
+
+  // Revoke all local blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(localBlobUrls).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [localBlobUrls]);
 
   useEffect(() => {
     if (session) {
@@ -107,6 +135,8 @@ export default function Storage() {
       });
       const data = await response.json();
       setLocalFiles(data.files || []);
+
+      // Only extract metadata, defer fetching blobs
       data.files?.forEach((file: LocalFile) => {
         if (file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i)) {
           fetch(file.url, {
@@ -114,8 +144,6 @@ export default function Storage() {
           }).then(res => res.blob()).then(blob => {
             if (blob) {
               extractAudioMetadata(blob, file.name);
-              const url = URL.createObjectURL(blob);
-              setLocalBlobUrls(prev => ({ ...prev, [file.name]: url }));
             }
           });
         }
@@ -261,6 +289,12 @@ export default function Storage() {
   };
 
   const deleteLocalFile = async (name: string) => {
+    const showFailToast = () => toast({
+      title: "Delete failed",
+      description: "Failed to delete local file.",
+      variant: "destructive"
+    });
+
     try {
       const response = await fetch(`/api/storage/files/${name}`, {
         method: "DELETE",
@@ -269,12 +303,23 @@ export default function Storage() {
         }
       });
       if (response.ok) {
+        if (localBlobUrls[name]) {
+          URL.revokeObjectURL(localBlobUrls[name]);
+          setLocalBlobUrls(prev => {
+            const next = { ...prev };
+            delete next[name];
+            return next;
+          });
+        }
         fetchLocalFiles();
       } else {
-        toast({ title: "Delete failed", variant: "destructive" });
+        showFailToast();
       }
     } catch (error) {
       console.error("Delete local file error:", error);
+      showFailToast();
+      // Even on error, we might want to refresh to ensure UI is in sync
+      fetchLocalFiles();
     }
   };
 
@@ -467,7 +512,16 @@ export default function Storage() {
                             <audio
                               controls
                               className="w-full h-8"
-                              src={localBlobUrls[file.name] || ""}
+                              onPlay={async (e) => {
+                                const audio = e.target as HTMLAudioElement;
+                                if (!audio.src || audio.src === window.location.href) {
+                                  const url = await getBlobUrlForTrack(file);
+                                  if (url) {
+                                    audio.src = url;
+                                    audio.play();
+                                  }
+                                }
+                              }}
                             >
                               Your browser does not support the audio element.
                             </audio>
@@ -491,16 +545,14 @@ export default function Storage() {
                           variant="secondary"
                           size="sm"
                           className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
-                          onClick={() => {
-                            fetch(file.url, {
-                              headers: { Authorization: `Bearer ${session?.access_token}` }
-                            }).then(res => res.blob()).then(blob => {
-                              const url = window.URL.createObjectURL(blob);
+                          onClick={async () => {
+                            const url = await getBlobUrlForTrack(file);
+                            if (url) {
                               const a = document.createElement('a');
                               a.href = url;
                               a.download = file.name;
                               a.click();
-                            });
+                            }
                           }}
                         >
                           <Download className="w-4 h-4 mr-2" />

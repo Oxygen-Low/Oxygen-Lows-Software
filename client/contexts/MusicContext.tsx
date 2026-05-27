@@ -6,6 +6,7 @@ export interface PlaylistTrack {
   id: string;
   fileName: string;
   name: string;
+  playbackUrl?: string;
 }
 
 interface MusicContextType {
@@ -18,7 +19,7 @@ interface MusicContextType {
   audioRef: React.RefObject<HTMLAudioElement | null>;
   play: () => Promise<void>;
   pause: () => void;
-  playTrack: (track: PlaylistTrack) => Promise<void>;
+  playTrack: (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => Promise<void>;
   playNext: () => Promise<void>;
   playPrev: () => Promise<void>;
   addTrack: (track: PlaylistTrack) => Promise<void>;
@@ -40,7 +41,39 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const currentPositionRef = useRef<number>(0);
+  const playlistRef = useRef<PlaylistTrack[]>([]);
+  const currentTrackRef = useRef<PlaylistTrack | null>(null);
+  const shuffleRef = useRef<boolean>(false);
+
+  // Sync refs with state to keep callbacks stable
+  useEffect(() => { playlistRef.current = playlist; }, [playlist]);
+  useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
+  useEffect(() => { shuffleRef.current = shuffle; }, [shuffle]);
+
+  const resolvePlaybackUrl = useCallback(async (fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .createSignedUrl(fileName, 3600);
+
+      if (error) throw error;
+      return data.signedUrl;
+    } catch (error) {
+      console.warn("Failed to create signed URL, falling back to blob:", error);
+      try {
+        const { data: blob, error: downloadError } = await supabase.storage
+          .from("Storage")
+          .download(fileName);
+
+        if (downloadError) throw downloadError;
+        if (blob) return URL.createObjectURL(blob);
+      } catch (blobError) {
+        console.error("Failed to resolve playback URL:", blobError);
+      }
+    }
+    return null;
+  }, []);
 
   const savePreferences = useCallback(async (overrides?: Partial<{
     playlist: PlaylistTrack[],
@@ -50,10 +83,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }>) => {
     if (!session?.user?.id) return;
 
-    const p_playlist = overrides?.playlist ?? playlist;
-    const p_track = overrides?.hasOwnProperty('currentTrack') ? overrides.currentTrack : currentTrack;
-    const p_pos = overrides?.currentPosition ?? currentPosition;
-    const p_shuffle = overrides?.shuffle ?? shuffle;
+    const p_playlist = overrides?.playlist ?? playlistRef.current;
+    const p_track = overrides?.hasOwnProperty('currentTrack') ? overrides.currentTrack : currentTrackRef.current;
+    const p_pos = overrides?.currentPosition ?? currentPositionRef.current;
+    const p_shuffle = overrides?.shuffle ?? shuffleRef.current;
 
     try {
       await supabase.rpc("upsert_user_preferences", {
@@ -66,16 +99,27 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Failed to save music preferences:", error);
     }
-  }, [session?.user?.id, playlist, currentTrack, currentPosition, shuffle]);
+  }, [session?.user?.id]); // Stable: only depends on session.user.id
 
-  // Load music preferences from Supabase
+  // Load music preferences from Supabase and handle cleanup on sign-out
   useEffect(() => {
     if (!session?.user?.id) {
+      // Cleanup on sign-out as requested in feedback
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+      setPlaylistState([]);
+      setCurrentTrackState(null);
+      setCurrentPositionState(0);
+      currentPositionRef.current = 0;
+      setIsPlayingState(false);
       setIsLoading(false);
       return;
     }
 
     const loadMusicPreferences = async () => {
+      setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from("user_preferences")
@@ -97,6 +141,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         setPlaylistState(loadedPlaylist);
         setShuffleState(shuffleEnabled);
         setCurrentPositionState(savedPosition);
+        currentPositionRef.current = savedPosition;
 
         if (currentTrackName && loadedPlaylist.length > 0) {
           const track = loadedPlaylist.find(
@@ -104,13 +149,12 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
           );
           if (track) {
             setCurrentTrackState(track);
-            // Don't auto-play on load, just set the source
             if (audioRef.current) {
-               const url = supabase.storage
-                .from("Storage")
-                .getPublicUrl(track.fileName).data.publicUrl;
-               audioRef.current.src = url;
-               audioRef.current.currentTime = savedPosition / 1000;
+              const url = await resolvePlaybackUrl(track.fileName);
+              if (url) {
+                audioRef.current.src = url;
+                audioRef.current.currentTime = savedPosition / 1000;
+              }
             }
           }
         }
@@ -122,7 +166,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     };
 
     loadMusicPreferences();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, resolvePlaybackUrl]);
 
   // Setup audio element and event listeners
   useEffect(() => {
@@ -130,7 +174,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     if (!audio) return;
 
     const handleTimeUpdate = () => {
-      setCurrentPositionState(audio.currentTime * 1000);
+      const pos = audio.currentTime * 1000;
+      setCurrentPositionState(pos);
+      currentPositionRef.current = pos;
     };
 
     const handleEnded = () => {
@@ -144,7 +190,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, [playlist, currentTrack, shuffle]); // Re-bind if these change so playNext has fresh refs if needed, although useCallback handles it
+  }, []); // Re-bind not needed as refs are used for playNext
 
   // Auto-save position periodically
   useEffect(() => {
@@ -175,15 +221,15 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }, [savePreferences]);
 
   const playTrack = useCallback(
-    async (track: PlaylistTrack) => {
+    async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
       if (!audioRef.current) return;
 
       setCurrentTrackState(track);
       setCurrentPositionState(0);
+      currentPositionRef.current = 0;
 
-      const url = supabase.storage
-        .from("Storage")
-        .getPublicUrl(track.fileName).data.publicUrl;
+      const url = await resolvePlaybackUrl(track.fileName);
+      if (!url) return;
 
       audioRef.current.src = url;
       audioRef.current.currentTime = 0;
@@ -191,44 +237,56 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       try {
         await audioRef.current.play();
         setIsPlayingState(true);
-        savePreferences({ currentTrack: track, currentPosition: 0 });
+        // Using overridePlaylist to avoid race condition with state updates
+        savePreferences({
+          currentTrack: track,
+          currentPosition: 0,
+          playlist: overridePlaylist || playlistRef.current
+        });
       } catch (error) {
         console.error("Failed to play track:", error);
       }
     },
-    [savePreferences]
+    [resolvePlaybackUrl, savePreferences]
   );
 
   const playNext = useCallback(async () => {
-    if (!currentTrack || playlist.length === 0) return;
+    const currentT = currentTrackRef.current;
+    const playlistArr = playlistRef.current;
+    const isShuffle = shuffleRef.current;
+
+    if (!currentT || playlistArr.length === 0) return;
 
     let nextTrack: PlaylistTrack;
 
-    if (shuffle) {
-      const randomIndex = Math.floor(Math.random() * playlist.length);
-      nextTrack = playlist[randomIndex];
+    if (isShuffle) {
+      const randomIndex = Math.floor(Math.random() * playlistArr.length);
+      nextTrack = playlistArr[randomIndex];
     } else {
-      const currentIndex = playlist.findIndex(
-        (t) => t.fileName === currentTrack.fileName
+      const currentIndex = playlistArr.findIndex(
+        (t) => t.fileName === currentT.fileName
       );
-      const nextIndex = (currentIndex + 1) % playlist.length;
-      nextTrack = playlist[nextIndex];
+      const nextIndex = (currentIndex + 1) % playlistArr.length;
+      nextTrack = playlistArr[nextIndex];
     }
 
     await playTrack(nextTrack);
-  }, [currentTrack, playlist, shuffle, playTrack]);
+  }, [playTrack]);
 
   const playPrev = useCallback(async () => {
-    if (!currentTrack || playlist.length === 0) return;
+    const currentT = currentTrackRef.current;
+    const playlistArr = playlistRef.current;
 
-    const currentIndex = playlist.findIndex(
-      (t) => t.fileName === currentTrack.fileName
+    if (!currentT || playlistArr.length === 0) return;
+
+    const currentIndex = playlistArr.findIndex(
+      (t) => t.fileName === currentT.fileName
     );
-    const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-    const prevTrack = playlist[prevIndex];
+    const prevIndex = (currentIndex - 1 + playlistArr.length) % playlistArr.length;
+    const prevTrack = playlistArr[prevIndex];
 
     await playTrack(prevTrack);
-  }, [currentTrack, playlist, playTrack]);
+  }, [playTrack]);
 
   const addTrack = useCallback(
     async (track: PlaylistTrack) => {
@@ -251,25 +309,49 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       setPlaylistState(updatedPlaylist);
 
       let nextTrack = currentTrack;
-      let nextIsPlaying = isPlaying;
+      const wasPlaying = isPlaying;
 
-      // If removed track is currently playing, play next
+      // Logic updated to prevent race conditions and ensure correct state as per PR feedback
       if (currentTrack?.fileName === trackFileName) {
         if (updatedPlaylist.length > 0) {
           nextTrack = updatedPlaylist[0];
-          await playTrack(nextTrack);
+          // Update current track and audio source inline
+          setCurrentTrackState(nextTrack);
+          setCurrentPositionState(0);
+          currentPositionRef.current = 0;
+
+          const url = await resolvePlaybackUrl(nextTrack.fileName);
+          if (url && audioRef.current) {
+            audioRef.current.src = url;
+            audioRef.current.currentTime = 0;
+            // Only start playback if previous isPlaying flag was true
+            if (wasPlaying) {
+              try {
+                // Call playTrack to handle playback and avoid repeated logic
+                await playTrack(nextTrack, updatedPlaylist);
+              } catch (err) {
+                console.error("Failed to resume playback after remove:", err);
+                setIsPlayingState(false);
+              }
+            } else {
+              setIsPlayingState(false);
+            }
+          }
         } else {
           nextTrack = null;
           setCurrentTrackState(null);
           setIsPlayingState(false);
-          nextIsPlaying = false;
-          if (audioRef.current) audioRef.current.src = "";
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = "";
+          }
         }
       }
 
+      // Perform a single savePreferences call with the updatedPlaylist and nextTrack
       savePreferences({ playlist: updatedPlaylist, currentTrack: nextTrack });
     },
-    [session?.user?.id, playlist, currentTrack, isPlaying, playTrack, savePreferences]
+    [session?.user?.id, playlist, currentTrack, isPlaying, resolvePlaybackUrl, savePreferences, playTrack]
   );
 
   const toggleShuffle = useCallback(
