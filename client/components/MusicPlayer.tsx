@@ -53,8 +53,6 @@ export const MusicPlayer = () => {
 
   return (
     <div className="p-4 bg-card rounded-lg border border-border space-y-4">
-      <audio ref={audioRef} crossOrigin="anonymous" />
-
       <div>
         <p className="font-medium text-foreground">{currentTrack.name}</p>
         <p className="text-sm text-muted-foreground">{currentTrack.fileName}</p>
