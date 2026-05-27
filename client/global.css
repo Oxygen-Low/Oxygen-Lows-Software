@@ -96,53 +96,44 @@
    * Tailwind CSS theme
    * global.css defines these as HSL values.
   */
-  :root {
-    --theme-gradient: linear-gradient(135deg, #083344 0%, #0e7490 50%, #083344 100%);
-    --background: 220 30% 14%;
-    --foreground: 210 30% 92%;
+    :root {
+    --theme-gradient: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
+    --background: 218 21% 7%;
+    --foreground: 210 40% 98%;
 
-    --card: 222 28% 18%;
-    --card-foreground: 210 30% 92%;
+    --card: 218 21% 12%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 222 28% 18%;
-    --popover-foreground: 210 30% 92%;
+    --popover: 218 21% 12%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 224 52% 42%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 186 100% 50%;
+    --primary-foreground: 218 21% 7%;
 
-    --secondary: 223 24% 26%;
-    --secondary-foreground: 210 30% 92%;
+    --secondary: 210 45% 22%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 20% 24%;
-    --muted-foreground: 218 18% 72%;
+    --muted: 217 20% 20%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 226 35% 34%;
-    --accent-foreground: 210 30% 92%;
+    --accent: 186 100% 50%;
+    --accent-foreground: 218 21% 7%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 222 20% 30%;
-    --input: 222 20% 28%;
-    --ring: 224 52% 54%;
-
+    --border: 217 20% 20%;
+    --input: 217 20% 16%;
+    --ring: 186 100% 50%;
+    --sidebar-background: 218 21% 7%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 186 100% 50%;
+    --sidebar-primary-foreground: 218 21% 7%;
+    --sidebar-accent: 210 45% 22%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 20% 20%;
+    --sidebar-ring: 186 100% 50%;
     --radius: 0.5rem;
-
-    --sidebar-background: 222 28% 16%;
-
-    --sidebar-foreground: 210 30% 92%;
-
-    --sidebar-primary: 224 52% 42%;
-
-    --sidebar-primary-foreground: 210 40% 98%;
-
-    --sidebar-accent: 223 24% 24%;
-
-    --sidebar-accent-foreground: 210 30% 92%;
-
-    --sidebar-border: 222 20% 28%;
-
-    --sidebar-ring: 224 52% 54%;
   }
 
   .dark {

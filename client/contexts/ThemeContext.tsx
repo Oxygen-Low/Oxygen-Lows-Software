@@ -31,12 +31,18 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       "theme-yellow",
       "theme-black",
       "theme-white",
-      "use-gradient"
+      "use-gradient",
+      "dark"
     );
 
     // Add the new theme class if not default
     if (newTheme !== "default") {
       document.documentElement.classList.add(`theme-${newTheme}`);
+    }
+
+    // Add dark class for all themes except white
+    if (newTheme !== "white") {
+      document.documentElement.classList.add("dark");
     }
 
     if (gradient) {
