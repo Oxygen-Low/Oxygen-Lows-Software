@@ -97,51 +97,51 @@
    * global.css defines these as HSL values.
   */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 30% 14%;
+    --foreground: 210 30% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 222 28% 18%;
+    --card-foreground: 210 30% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 222 28% 18%;
+    --popover-foreground: 210 30% 92%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 224 52% 42%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 223 24% 26%;
+    --secondary-foreground: 210 30% 92%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 222 20% 24%;
+    --muted-foreground: 218 18% 72%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 226 35% 34%;
+    --accent-foreground: 210 30% 92%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 222 20% 30%;
+    --input: 222 20% 28%;
+    --ring: 224 52% 54%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 222 28% 16%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 210 30% 92%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 224 52% 42%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary-foreground: 210 40% 98%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 223 24% 24%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 210 30% 92%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 222 20% 28%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 224 52% 54%;
   }
 
   .dark {
