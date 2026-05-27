@@ -97,6 +97,7 @@
    * global.css defines these as HSL values.
   */
   :root {
+    --theme-gradient: linear-gradient(135deg, #083344 0%, #0e7490 50%, #083344 100%);
     --background: 220 30% 14%;
     --foreground: 210 30% 92%;
 
@@ -145,6 +146,7 @@
   }
 
   .dark {
+    --theme-gradient: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
     --background: 218 21% 7%;
     --foreground: 210 40% 98%;
 
@@ -184,6 +186,7 @@
 
   /* Red Theme */
   .theme-red {
+    --theme-gradient: linear-gradient(135deg, #450a0a 0%, #7f1d1d 50%, #450a0a 100%);
     --background: 0 0% 7%;
     --foreground: 0 0% 98%;
 
@@ -223,6 +226,7 @@
 
   /* Yellow Theme */
   .theme-yellow {
+    --theme-gradient: linear-gradient(135deg, #422006 0%, #713f12 50%, #422006 100%);
     --background: 45 100% 6%;
     --foreground: 45 100% 98%;
 
@@ -262,6 +266,7 @@
 
   /* Black Theme */
   .theme-black {
+    --theme-gradient: linear-gradient(135deg, #000000 0%, #111111 50%, #000000 100%);
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
@@ -301,6 +306,7 @@
 
   /* White Theme */
   .theme-white {
+    --theme-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f8fafc 100%);
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
 
