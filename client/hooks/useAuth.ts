@@ -43,6 +43,19 @@ export const useAuth = () => {
         },
       });
       if (error) throw error;
+
+      // Initialize user preferences after signup
+      if (data.user?.id) {
+        try {
+          await supabase.rpc("upsert_user_preferences", {
+            p_user_id: data.user.id,
+          });
+        } catch (prefsError) {
+          console.error("Failed to initialize user preferences:", prefsError);
+          // Don't throw, as signup was successful
+        }
+      }
+
       return data;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sign up failed";
