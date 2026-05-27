@@ -1,3 +1,4 @@
+import * as mmb from "music-metadata-browser";
 import { useState, useEffect, useRef } from "react";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,7 +12,7 @@ import {
   ExternalLink, Download,
   Plus,
   Loader2,
-  HardDrive,
+  HardDrive, Music,
   Cloud
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,12 +23,13 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { LocalFile } from "@shared/api";
 
-const MAX_CLOUD_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_CLOUD_SIZE = 30 * 1024 * 1024; // 10MB
 
 export default function Storage() {
   const { session } = useAuth();
   const { toast } = useToast();
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
+  const [audioMetadata, setAudioMetadata] = useState<Record<string, { title?: string; artist?: string }>>({});
   const [localFiles, setLocalFiles] = useState<LocalFile[]>([]);
   const [linkedImages, setLinkedImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +72,13 @@ export default function Storage() {
     }
 
     setCloudFiles(data || []);
+    data?.forEach(file => {
+      if (file.metadata?.mimetype?.startsWith("audio/")) {
+        supabase.storage.from("Storage").download(file.name).then(({ data: blob }) => {
+          if (blob) extractAudioMetadata(blob, file.id);
+        });
+      }
+    });
     const total = data?.reduce((acc, file) => acc + (file.metadata?.size || 0), 0) || 0;
     setTotalCloudSize(total);
   };
@@ -83,6 +92,15 @@ export default function Storage() {
       });
       const data = await response.json();
       setLocalFiles(data.files || []);
+      data.files?.forEach((file: LocalFile) => {
+        if (file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i)) {
+          fetch(file.url, {
+            headers: { Authorization: `Bearer ${session?.access_token}` }
+          }).then(res => res.blob()).then(blob => {
+            if (blob) extractAudioMetadata(blob, file.name);
+          });
+        }
+      });
     } catch (error) {
       console.error("Local storage error:", error);
     }
@@ -107,20 +125,20 @@ export default function Storage() {
     if (!file) return;
 
     // Client-side validation (matching server-side enforcement)
-    const allowedTypes = ["text/plain", "text/markdown", "image/png", "image/jpeg"];
+    const allowedTypes = ["text/plain", "text/markdown", "image/png", "image/jpeg", "audio/mpeg", "audio/wav", "audio/ogg", "audio/x-wav", "audio/x-pn-wav"];
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: "Invalid file type",
-        description: "Only .txt, .md, .png, and .jpg are allowed on cloud storage.",
+        description: "Only .txt, .md, .png, .jpg, .mp3, .wav, and .ogg are allowed on cloud storage.",
         variant: "destructive"
       });
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 30 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Maximum file size is 10MB.",
+        description: "Maximum file size is 30MB.",
         variant: "destructive"
       });
       return;
@@ -251,6 +269,23 @@ export default function Storage() {
     }
   };
 
+  const extractAudioMetadata = async (file: File | Blob, id: string) => {
+    try {
+      const metadata = await mmb.parseBlob(file);
+      if (metadata.common.title || metadata.common.artist) {
+        setAudioMetadata(prev => ({
+          ...prev,
+          [id]: {
+            title: metadata.common.title,
+            artist: metadata.common.artist
+          }
+        }));
+      }
+    } catch (error) {
+      console.error("Error parsing audio metadata:", error);
+    }
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -294,7 +329,7 @@ export default function Storage() {
                   <div>
                     <CardTitle className="text-white">Cloud Storage Usage</CardTitle>
                     <CardDescription className="text-slate-400">
-                      Maximum total storage: 10MB (.txt, .md, .png, .jpg)
+                      Maximum total storage: 30MB (.txt, .md, .png, .jpg, .mp3, .wav, .ogg)
                     </CardDescription>
                   </div>
                   <Button
@@ -310,7 +345,7 @@ export default function Storage() {
                     className="hidden"
                     ref={cloudInputRef}
                     onChange={handleCloudUpload}
-                    accept=".txt,.md,.png,.jpg,.jpeg"
+                    accept=".txt,.md,.png,.jpg,.jpeg,.mp3,.wav,.ogg"
                   />
                 </div>
               </CardHeader>
@@ -318,7 +353,7 @@ export default function Storage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">{formatSize(totalCloudSize)} used</span>
-                    <span className="text-slate-400">10MB limit</span>
+                    <span className="text-slate-400">30MB limit</span>
                   </div>
                   <Progress value={(totalCloudSize / MAX_CLOUD_SIZE) * 100} className="h-2 bg-slate-800" />
                 </div>
@@ -333,12 +368,27 @@ export default function Storage() {
                             alt={file.name}
                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
                           />
+                        ) : file.metadata?.mimetype?.startsWith("audio/") ? (
+                          <div className="flex flex-col items-center gap-4 w-full p-4">
+                            <Music className="w-12 h-12 text-cyan-500" />
+                            <audio
+                              controls
+                              className="w-full h-8"
+                              src={getCloudPublicUrl(file.name)}
+                            >
+                              Your browser does not support the audio element.
+                            </audio>
+                          </div>
                         ) : (
                           <File className="w-12 h-12 text-slate-700" />
                         )}
                       </div>
                       <CardHeader className="p-4">
-                        <CardTitle className="text-sm text-white truncate">{file.name}</CardTitle>
+                        <CardTitle className="text-sm text-white truncate" title={file.name}>
+                          {audioMetadata[file.id]
+                            ? `${audioMetadata[file.id].title || 'Unknown Title'} - ${audioMetadata[file.id].artist || 'Unknown Artist'}`
+                            : file.name}
+                        </CardTitle>
                         <CardDescription className="text-xs text-slate-500">
                           {formatSize(file.metadata?.size || 0)} • {new Date(file.created_at).toLocaleDateString()}
                         </CardDescription>
@@ -415,11 +465,41 @@ export default function Storage() {
                   {localFiles.map((file) => (
                     <Card key={file.name} className="bg-slate-950 border-slate-800 overflow-hidden group">
                       <div className="aspect-video bg-slate-900 flex items-center justify-center">
-                        <File className="w-12 h-12 text-slate-700" />
+                        {file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i) ? (
+                          <div className="flex flex-col items-center gap-4 w-full p-4">
+                            <Music className="w-12 h-12 text-cyan-500" />
+                            <audio
+                              controls
+                              className="w-full h-8"
+                              onPlay={(e) => {
+                                // For local files, we might need the token if it's served via /api/storage/files/:filename
+                                // But <audio> tag doesn't easily support custom headers for the src.
+                                // However, many browsers will work if the session cookie is set,
+                                // but here we use Bearer token.
+                                // We can use a blob URL instead.
+                                if (!(e.target as HTMLAudioElement).src.startsWith('blob:')) {
+                                  fetch(file.url, {
+                                    headers: { Authorization: `Bearer ${session?.access_token}` }
+                                  }).then(res => res.blob()).then(blob => {
+                                    const url = URL.createObjectURL(blob);
+                                    (e.target as HTMLAudioElement).src = url;
+                                    (e.target as HTMLAudioElement).play();
+                                  });
+                                }
+                              }}
+                            >
+                              Your browser does not support the audio element.
+                            </audio>
+                          </div>
+                        ) : (
+                          <File className="w-12 h-12 text-slate-700" />
+                        )}
                       </div>
                       <CardHeader className="p-4">
                         <CardTitle className="text-sm text-white truncate" title={file.name}>
-                          {file.name}
+                          {audioMetadata[file.name]
+                            ? `${audioMetadata[file.name].title || 'Unknown Title'} - ${audioMetadata[file.name].artist || 'Unknown Artist'}`
+                            : file.name}
                         </CardTitle>
                         <CardDescription className="text-xs text-slate-500">
                           {formatSize(file.size)} • {new Date(file.createdAt).toLocaleDateString()}
