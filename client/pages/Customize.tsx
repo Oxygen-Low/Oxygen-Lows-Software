@@ -27,7 +27,7 @@ const FONTS: { label: string; value: FontOption }[] = [
 ];
 
 export default function Customize() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, useGradient, setUseGradient } = useTheme();
   const { font, setFont } = useFont();
   const { session } = useAuth();
   const { toast } = useToast();
@@ -115,8 +115,27 @@ export default function Customize() {
         {/* Theme Section */}
         <div className="mb-12">
           <h2 className="text-xl font-semibold mb-4 text-foreground">
-            Theme
+            Appearance
           </h2>
+
+          <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
+            <div>
+              <label className="text-foreground font-medium block">Use gradient</label>
+              <p className="text-sm text-muted-foreground">Apply a gradient background based on your theme</p>
+            </div>
+            <button
+              onClick={() => setUseGradient(!useGradient)}
+              className={`px-4 py-2 rounded-lg border-2 transition-all font-medium ${
+                useGradient
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card text-foreground hover:border-primary/50"
+              }`}
+            >
+              {useGradient ? "Enabled" : "Disabled"}
+            </button>
+          </div>
+
+          <h3 className="text-lg font-medium mb-3 text-foreground">Theme Color</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {THEMES.map((themeOption) => (
               <button

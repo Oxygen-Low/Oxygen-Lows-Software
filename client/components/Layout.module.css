@@ -45,3 +45,36 @@
 .sign-out-button:hover {
   background-color: hsl(var(--destructive) / 0.2);
 }
+
+.background-gradient {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  display: none;
+  background: var(--theme-gradient);
+}
+
+:global(.use-gradient) .background-gradient {
+  display: block;
+}
+
+:global(.use-gradient) .layout-wrapper {
+  background-color: transparent;
+}
+
+:global(.use-gradient) .sidebar {
+  background-color: hsl(var(--background) / 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right-color: hsl(var(--border) / 0.5);
+}
+
+:global(.use-gradient) .header {
+  background-color: hsl(var(--background) / 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom-color: hsl(var(--border) / 0.5);
+}
