@@ -31,7 +31,7 @@ BEGIN
   v_new_size := (p_metadata->>'size')::BIGINT;
 
   -- Calculate existing size for the user in the bucket
-  SELECT pg_catalog.COALESCE(pg_catalog.SUM((metadata->>'size')::BIGINT), 0)
+  SELECT COALESCE(pg_catalog.SUM((metadata->>'size')::BIGINT), 0)
   INTO v_total_size
   FROM storage.objects
   WHERE bucket_id = p_bucketid
