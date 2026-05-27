@@ -1,19 +1,18 @@
 import * as mmb from "music-metadata-browser";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
   Upload,
   File,
-  Image as ImageIcon,
-  Link as LinkIcon,
   Trash2,
   ExternalLink, Download,
   Plus,
   Loader2,
   HardDrive, Music,
-  Cloud
+  Cloud,
+  Link as LinkIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { LocalFile } from "@shared/api";
 
-const MAX_CLOUD_SIZE = 30 * 1024 * 1024; // 10MB
+const MAX_CLOUD_SIZE = 30 * 1024 * 1024;
 
 export default function Storage() {
   const { session } = useAuth();
@@ -36,9 +35,45 @@ export default function Storage() {
   const [uploading, setUploading] = useState(false);
   const [totalCloudSize, setTotalCloudSize] = useState(0);
   const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [localBlobUrls, setLocalBlobUrls] = useState<Record<string, string>>({});
+
+  const localBlobUrlsRef = useRef<Record<string, string>>({});
 
   const cloudInputRef = useRef<HTMLInputElement>(null);
   const localInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync ref with state whenever localBlobUrls changes
+  useEffect(() => {
+    localBlobUrlsRef.current = localBlobUrls;
+  }, [localBlobUrls]);
+
+  // Helper to get or create blob URL for a local track
+  const getBlobUrlForTrack = useCallback(async (file: LocalFile) => {
+    if (localBlobUrls[file.name]) {
+      return localBlobUrls[file.name];
+    }
+
+    try {
+      const res = await fetch(file.url, {
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      setLocalBlobUrls(prev => ({ ...prev, [file.name]: url }));
+      return url;
+    } catch (error) {
+      console.error("Failed to fetch blob for track:", error);
+      return null;
+    }
+  }, [session?.access_token, localBlobUrls]);
+
+  // Unmount-only cleanup using ref as requested in feedback
+  useEffect(() => {
+    return () => {
+      Object.values(localBlobUrlsRef.current).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   useEffect(() => {
     if (session) {
@@ -58,6 +93,21 @@ export default function Storage() {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const extractAudioMetadata = async (blob: Blob, id: string) => {
+    try {
+      const metadata = await mmb.parseBlob(blob);
+      setAudioMetadata(prev => ({
+        ...prev,
+        [id]: {
+          title: metadata.common.title,
+          artist: metadata.common.artist
+        }
+      }));
+    } catch (error) {
+      console.error("Error extracting metadata:", error);
     }
   };
 
@@ -92,12 +142,15 @@ export default function Storage() {
       });
       const data = await response.json();
       setLocalFiles(data.files || []);
+
       data.files?.forEach((file: LocalFile) => {
         if (file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i)) {
           fetch(file.url, {
             headers: { Authorization: `Bearer ${session?.access_token}` }
           }).then(res => res.blob()).then(blob => {
-            if (blob) extractAudioMetadata(blob, file.name);
+            if (blob) {
+              extractAudioMetadata(blob, file.name);
+            }
           });
         }
       });
@@ -124,7 +177,6 @@ export default function Storage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Client-side validation (matching server-side enforcement)
     const allowedTypes = ["text/plain", "text/markdown", "image/png", "image/jpeg", "audio/mpeg", "audio/wav", "audio/ogg", "audio/x-wav", "audio/x-pn-wav"];
     if (!allowedTypes.includes(file.type)) {
       toast({
@@ -243,6 +295,12 @@ export default function Storage() {
   };
 
   const deleteLocalFile = async (name: string) => {
+    const showFailToast = () => toast({
+      title: "Delete failed",
+      description: "Failed to delete local file.",
+      variant: "destructive"
+    });
+
     try {
       const response = await fetch(`/api/storage/files/${name}`, {
         method: "DELETE",
@@ -251,12 +309,22 @@ export default function Storage() {
         }
       });
       if (response.ok) {
+        if (localBlobUrls[name]) {
+          URL.revokeObjectURL(localBlobUrls[name]);
+          setLocalBlobUrls(prev => {
+            const next = { ...prev };
+            delete next[name];
+            return next;
+          });
+        }
         fetchLocalFiles();
       } else {
-        toast({ title: "Delete failed", variant: "destructive" });
+        showFailToast();
       }
     } catch (error) {
-      toast({ title: "Delete failed", variant: "destructive" });
+      console.error("Delete local file error:", error);
+      showFailToast();
+      fetchLocalFiles();
     }
   };
 
@@ -266,23 +334,6 @@ export default function Storage() {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
       fetchLinkedImages();
-    }
-  };
-
-  const extractAudioMetadata = async (file: File | Blob, id: string) => {
-    try {
-      const metadata = await mmb.parseBlob(file);
-      if (metadata.common.title || metadata.common.artist) {
-        setAudioMetadata(prev => ({
-          ...prev,
-          [id]: {
-            title: metadata.common.title,
-            artist: metadata.common.artist
-          }
-        }));
-      }
-    } catch (error) {
-      console.error("Error parsing audio metadata:", error);
     }
   };
 
@@ -424,11 +475,6 @@ export default function Storage() {
                       </CardContent>
                     </Card>
                   ))}
-                  {cloudFiles.length === 0 && !loading && (
-                    <div className="col-span-full text-center py-12 text-slate-500">
-                      No files uploaded to cloud storage yet.
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -471,20 +517,14 @@ export default function Storage() {
                             <audio
                               controls
                               className="w-full h-8"
-                              onPlay={(e) => {
-                                // For local files, we might need the token if it's served via /api/storage/files/:filename
-                                // But <audio> tag doesn't easily support custom headers for the src.
-                                // However, many browsers will work if the session cookie is set,
-                                // but here we use Bearer token.
-                                // We can use a blob URL instead.
-                                if (!(e.target as HTMLAudioElement).src.startsWith('blob:')) {
-                                  fetch(file.url, {
-                                    headers: { Authorization: `Bearer ${session?.access_token}` }
-                                  }).then(res => res.blob()).then(blob => {
-                                    const url = URL.createObjectURL(blob);
-                                    (e.target as HTMLAudioElement).src = url;
-                                    (e.target as HTMLAudioElement).play();
-                                  });
+                              onPlay={async (e) => {
+                                const audio = e.target as HTMLAudioElement;
+                                if (!audio.src || audio.src === window.location.href) {
+                                  const url = await getBlobUrlForTrack(file);
+                                  if (url) {
+                                    audio.src = url;
+                                    audio.play();
+                                  }
                                 }
                               }}
                             >
@@ -510,16 +550,14 @@ export default function Storage() {
                           variant="secondary"
                           size="sm"
                           className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
-                          onClick={() => {
-                            fetch(file.url, {
-                              headers: { Authorization: `Bearer ${session?.access_token}` }
-                            }).then(res => res.blob()).then(blob => {
-                              const url = window.URL.createObjectURL(blob);
+                          onClick={async () => {
+                            const url = await getBlobUrlForTrack(file);
+                            if (url) {
                               const a = document.createElement('a');
                               a.href = url;
                               a.download = file.name;
                               a.click();
-                            });
+                            }
                           }}
                         >
                           <Download className="w-4 h-4 mr-2" />
@@ -535,11 +573,6 @@ export default function Storage() {
                       </CardContent>
                     </Card>
                   ))}
-                  {localFiles.length === 0 && !loading && (
-                    <div className="col-span-full text-center py-12 text-slate-500">
-                      No files in local storage yet.
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -606,11 +639,6 @@ export default function Storage() {
                       </div>
                     </Card>
                   ))}
-                  {linkedImages.length === 0 && !loading && (
-                    <div className="col-span-full text-center py-12 text-slate-500">
-                      No linked images yet.
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
