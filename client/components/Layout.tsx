@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, Package, Download, Zap, Settings, User, HardDrive } from "lucide-react";
+import { LogOut, Package, Download, Zap, Settings, User, HardDrive, Palette } from "lucide-react";
+import styles from "./Layout.module.css";
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ const navItems = [
   { label: "Server Integrations", href: "/integrations", icon: Zap },
   { label: "Server Settings", href: "/settings", icon: Settings },
   { label: "Account", href: "/account", icon: User },
+  { label: "Customize", href: "/customize", icon: Palette },
 ];
 
 export const Layout = ({ children }: LayoutProps) => {
@@ -30,18 +32,18 @@ export const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200">
+    <div className={styles["layout-wrapper"]}>
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
+      <header className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-10`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          <h1 className={`${styles["logo"]} text-2xl font-bold`}>
             Oxygen Low's Software
           </h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-400">{session?.user?.email}</span>
+            <span className={`${styles["user-email"]} text-sm`}>{session?.user?.email}</span>
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 transition duration-200 text-sm font-medium"
+              className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium`}
             >
               <LogOut className="w-4 h-4" />
               Sign Out
@@ -53,7 +55,7 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* Main Layout */}
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-slate-800 bg-slate-900/30 min-h-[calc(100vh-73px)]">
+        <aside className={`${styles["sidebar"]} w-64 border-r min-h-[calc(100vh-73px)]`}>
           <nav className="p-4 space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -61,7 +63,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-cyan-400 transition duration-200 font-medium"
+                  className={`${styles["nav-link"]} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
                 >
                   <Icon className="w-5 h-5" />
                   {item.label}

@@ -1,0 +1,47 @@
+.layout-wrapper {
+  min-height: 100vh;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.header {
+  border-bottom-color: hsl(var(--border));
+  background-color: hsl(var(--background) / 0.5);
+}
+
+.logo {
+  background: linear-gradient(to right, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.user-email {
+  color: hsl(var(--muted-foreground));
+}
+
+.sidebar {
+  border-right-color: hsl(var(--border));
+  background-color: hsl(var(--background) / 0.3);
+}
+
+.nav-link {
+  color: hsl(var(--foreground) / 0.8);
+  transition: all 200ms;
+}
+
+.nav-link:hover {
+  background-color: hsl(var(--muted) / 0.5);
+  color: hsl(var(--primary));
+}
+
+.sign-out-button {
+  background-color: hsl(var(--destructive) / 0.1);
+  border-color: hsl(var(--destructive) / 0.3);
+  color: hsl(var(--destructive));
+  transition: background-color 200ms;
+}
+
+.sign-out-button:hover {
+  background-color: hsl(var(--destructive) / 0.2);
+}
