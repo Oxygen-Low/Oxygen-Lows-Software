@@ -116,6 +116,9 @@
     "onlyBuiltDependencies": [
       "@swc/core",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "zod@<=4.4.0": "4.4.0"
+    }
   }
 }
