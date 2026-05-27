@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Loader2, Eye, EyeOff, Wand2 } from "lucide-react";
 
 type AuthMode = "signin" | "signup";
 
@@ -48,6 +48,41 @@ export default function Auth() {
   if (session) {
     return <Navigate to="/" replace />;
   }
+
+
+
+  const generatePassword = async () => {
+    const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowercase = "abcdefghijkmnopqrstuvwxyz";
+    const numbers = "23456789";
+    const symbols = "!@#$%^&*()_+-=";
+    const allChars = `${uppercase}${lowercase}${numbers}${symbols}`;
+
+    const pick = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
+    const generatedChars = [
+      pick(uppercase),
+      pick(lowercase),
+      pick(numbers),
+      pick(symbols),
+      ...Array.from({ length: 12 }, () => pick(allChars)),
+    ];
+
+    for (let i = generatedChars.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [generatedChars[i], generatedChars[j]] = [generatedChars[j], generatedChars[i]];
+    }
+
+    const generated = generatedChars.join("");
+    setPassword(generated);
+
+    try {
+      await navigator.clipboard.writeText(generated);
+      setSuccessMessage("Generated complex password copied to clipboard.");
+      setError(null);
+    } catch {
+      setSuccessMessage("Generated complex password, but couldn't copy automatically. Please copy it manually.");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +184,16 @@ export default function Auth() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                {mode === "signup" && (
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="mt-2 w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    Generate & Copy Password
+                  </button>
+                )}
               </div>
               </>
             )}
