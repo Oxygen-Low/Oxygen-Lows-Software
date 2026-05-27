@@ -162,7 +162,7 @@ export const useMusic = () => {
     []
   );
 
-  const playNext = useCallback(() => {
+  const playNext = useCallback(async () => {
     if (!currentTrack || playlist.length === 0) return;
 
     let nextTrack: PlaylistTrack;
@@ -178,10 +178,10 @@ export const useMusic = () => {
       nextTrack = playlist[nextIndex];
     }
 
-    playTrack(nextTrack);
+    await playTrack(nextTrack);
   }, [currentTrack, playlist, shuffle, playTrack]);
 
-  const playPrev = useCallback(() => {
+  const playPrev = useCallback(async () => {
     if (!currentTrack || playlist.length === 0) return;
 
     const currentIndex = playlist.findIndex(
@@ -190,7 +190,7 @@ export const useMusic = () => {
     const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
     const prevTrack = playlist[prevIndex];
 
-    playTrack(prevTrack);
+    await playTrack(prevTrack);
   }, [currentTrack, playlist, playTrack]);
 
   const addTrack = useCallback(
@@ -225,7 +225,7 @@ export const useMusic = () => {
       // If removed track is currently playing, play next
       if (currentTrack?.fileName === trackFileName) {
         if (updatedPlaylist.length > 0) {
-          playTrack(updatedPlaylist[0]);
+          await playTrack(updatedPlaylist[0]);
         } else {
           setCurrentTrackState(null);
           setIsPlayingState(false);

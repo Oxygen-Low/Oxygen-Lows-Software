@@ -6,7 +6,7 @@ import { useMusic, PlaylistTrack } from "@/hooks/useMusic";
 import { useAuth } from "@/hooks/useAuth";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { supabase } from "@/lib/supabase";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,6 +38,7 @@ export default function Customize() {
     addTrack,
     removeTrack,
     toggleShuffle,
+    playTrack,
   } = useMusic();
 
   const [availableAudioFiles, setAvailableAudioFiles] = useState<
@@ -232,6 +233,7 @@ export default function Customize() {
                         {track.fileName}
                       </p>
                     </div>
+                    <button onClick={() => playTrack(track)} className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2"><Play className="w-4 h-4" /></button>
                     <button
                       onClick={() => handleRemoveTrack(track.fileName)}
                       className="p-2 hover:bg-destructive/20 rounded-lg text-destructive transition-colors"
@@ -275,6 +277,7 @@ export default function Customize() {
                           {track.fileName}
                         </p>
                       </div>
+                      <Button onClick={() => playTrack(track)} variant="ghost" size="sm" className="mr-2 text-primary hover:text-primary/80"><Play className="w-4 h-4 mr-1" />Play</Button>
                       <Button
                         onClick={() => handleAddTrack(track)}
                         disabled={isInPlaylist}

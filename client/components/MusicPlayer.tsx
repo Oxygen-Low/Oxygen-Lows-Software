@@ -14,6 +14,8 @@ export const MusicPlayer = () => {
     playNext,
     playPrev,
     toggleShuffle,
+    playlist,
+    playTrack,
   } = useMusic();
 
   const formatTime = (milliseconds: number) => {
@@ -33,8 +35,18 @@ export const MusicPlayer = () => {
 
   if (!currentTrack) {
     return (
-      <div className="p-4 bg-card rounded-lg border border-border">
+      <div className="p-4 bg-card rounded-lg border border-border flex items-center justify-between">
         <p className="text-muted-foreground text-sm">No track playing</p>
+        {playlist.length > 0 && (
+          <Button
+            size="sm"
+            onClick={() => playTrack(playlist[0])}
+            className="bg-primary hover:bg-primary/90"
+          >
+            <Play className="w-4 h-4 mr-2" />
+            Start Playlist
+          </Button>
+        )}
       </div>
     );
   }
