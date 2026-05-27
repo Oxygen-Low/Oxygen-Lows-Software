@@ -146,7 +146,7 @@ export const useMusic = () => {
       setCurrentPositionState(0);
 
       const url = supabase.storage
-        .from("audio")
+        .from("Storage")
         .getPublicUrl(track.fileName).data.publicUrl;
 
       audioRef.current.src = url;

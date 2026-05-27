@@ -53,17 +53,22 @@ export default function Customize() {
       setIsLoadingAudio(true);
       try {
         const { data, error } = await supabase.storage
-          .from("audio")
-          .list(session.user.id);
+          .from("Storage")
+          .list("");
 
         if (error) throw error;
 
         const audioFiles =
-          data?.map((file) => ({
-            id: file.id,
-            fileName: file.name,
-            name: file.name.replace(/\.[^/.]+$/, ""),
-          })) || [];
+          data
+            ?.filter((file) =>
+              file.name.match(/\.(mp3|wav|ogg)$/i) ||
+              file.metadata?.mimetype?.startsWith("audio/")
+            )
+            .map((file) => ({
+              id: file.id,
+              fileName: file.name,
+              name: file.name.replace(/\.[^/.]+$/, ""),
+            })) || [];
 
         setAvailableAudioFiles(audioFiles);
       } catch (error) {
