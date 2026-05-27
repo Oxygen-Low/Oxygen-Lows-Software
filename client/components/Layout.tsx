@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, Package, Download, Zap, Settings, User, HardDrive } from "lucide-react";
+import { LogOut, Package, Download, Zap, Settings, User, HardDrive, Palette } from "lucide-react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,6 +14,7 @@ const navItems = [
   { label: "Server Integrations", href: "/integrations", icon: Zap },
   { label: "Server Settings", href: "/settings", icon: Settings },
   { label: "Account", href: "/account", icon: User },
+  { label: "Customize", href: "/customize", icon: Palette },
 ];
 
 export const Layout = ({ children }: LayoutProps) => {
