@@ -45,6 +45,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const playlistRef = useRef<PlaylistTrack[]>([]);
   const currentTrackRef = useRef<PlaylistTrack | null>(null);
   const shuffleRef = useRef<boolean>(false);
+  const playNextRef = useRef<() => Promise<void>>();
 
   // Sync refs with state to keep callbacks stable
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
@@ -99,12 +100,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Failed to save music preferences:", error);
     }
-  }, [session?.user?.id]); // Stable: only depends on session.user.id
+  }, [session?.user?.id]);
 
   // Load music preferences from Supabase and handle cleanup on sign-out
   useEffect(() => {
     if (!session?.user?.id) {
-      // Cleanup on sign-out as requested in feedback
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
@@ -168,58 +168,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     loadMusicPreferences();
   }, [session?.user?.id, resolvePlaybackUrl]);
 
-  // Setup audio element and event listeners
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleTimeUpdate = () => {
-      const pos = audio.currentTime * 1000;
-      setCurrentPositionState(pos);
-      currentPositionRef.current = pos;
-    };
-
-    const handleEnded = () => {
-      playNext();
-    };
-
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("ended", handleEnded);
-
-    return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("ended", handleEnded);
-    };
-  }, []); // Re-bind not needed as refs are used for playNext
-
-  // Auto-save position periodically
-  useEffect(() => {
-    if (!isPlaying || !session?.user?.id) return;
-
-    const interval = setInterval(() => {
-      savePreferences();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, session?.user?.id, savePreferences]);
-
-  const play = useCallback(async () => {
-    if (!audioRef.current || !currentTrack) return;
-    try {
-      await audioRef.current.play();
-      setIsPlayingState(true);
-    } catch (error) {
-      console.error("Failed to play audio:", error);
-    }
-  }, [currentTrack]);
-
-  const pause = useCallback(() => {
-    if (!audioRef.current) return;
-    audioRef.current.pause();
-    setIsPlayingState(false);
-    savePreferences();
-  }, [savePreferences]);
-
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
       if (!audioRef.current) return;
@@ -237,7 +185,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       try {
         await audioRef.current.play();
         setIsPlayingState(true);
-        // Using overridePlaylist to avoid race condition with state updates
         savePreferences({
           currentTrack: track,
           currentPosition: 0,
@@ -272,6 +219,63 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
     await playTrack(nextTrack);
   }, [playTrack]);
+
+  // Sync playNextRef with playNext
+  useEffect(() => {
+    playNextRef.current = playNext;
+  }, [playNext]);
+
+  // Setup audio element and event listeners
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      const pos = audio.currentTime * 1000;
+      setCurrentPositionState(pos);
+      currentPositionRef.current = pos;
+    };
+
+    const handleEnded = () => {
+      playNextRef.current?.();
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, []);
+
+  // Auto-save position periodically
+  useEffect(() => {
+    if (!isPlaying || !session?.user?.id) return;
+
+    const interval = setInterval(() => {
+      savePreferences();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, session?.user?.id, savePreferences]);
+
+  const play = useCallback(async () => {
+    if (!audioRef.current || !currentTrack) return;
+    try {
+      await audioRef.current.play();
+      setIsPlayingState(true);
+    } catch (error) {
+      console.error("Failed to play audio:", error);
+    }
+  }, [currentTrack]);
+
+  const pause = useCallback(() => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    setIsPlayingState(false);
+    savePreferences();
+  }, [savePreferences]);
 
   const playPrev = useCallback(async () => {
     const currentT = currentTrackRef.current;
@@ -311,31 +315,23 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       let nextTrack = currentTrack;
       const wasPlaying = isPlaying;
 
-      // Logic updated to prevent race conditions and ensure correct state as per PR feedback
       if (currentTrack?.fileName === trackFileName) {
         if (updatedPlaylist.length > 0) {
           nextTrack = updatedPlaylist[0];
-          // Update current track and audio source inline
-          setCurrentTrackState(nextTrack);
-          setCurrentPositionState(0);
-          currentPositionRef.current = 0;
-
-          const url = await resolvePlaybackUrl(nextTrack.fileName);
-          if (url && audioRef.current) {
-            audioRef.current.src = url;
-            audioRef.current.currentTime = 0;
-            // Only start playback if previous isPlaying flag was true
-            if (wasPlaying) {
-              try {
-                // Call playTrack to handle playback and avoid repeated logic
-                await playTrack(nextTrack, updatedPlaylist);
-              } catch (err) {
-                console.error("Failed to resume playback after remove:", err);
-                setIsPlayingState(false);
-              }
-            } else {
-              setIsPlayingState(false);
+          // playTrack handles resolution, setup, and persistence as requested in feedback
+          if (wasPlaying) {
+            await playTrack(nextTrack, updatedPlaylist);
+          } else {
+            setCurrentTrackState(nextTrack);
+            setCurrentPositionState(0);
+            currentPositionRef.current = 0;
+            setIsPlayingState(false);
+            const url = await resolvePlaybackUrl(nextTrack.fileName);
+            if (url && audioRef.current) {
+              audioRef.current.src = url;
+              audioRef.current.currentTime = 0;
             }
+            savePreferences({ playlist: updatedPlaylist, currentTrack: nextTrack });
           }
         } else {
           nextTrack = null;
@@ -345,13 +341,14 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             audioRef.current.pause();
             audioRef.current.src = "";
           }
+          savePreferences({ playlist: updatedPlaylist, currentTrack: nextTrack });
         }
+      } else {
+        // If the removed track is not the current one, just save the updated playlist
+        savePreferences({ playlist: updatedPlaylist });
       }
-
-      // Perform a single savePreferences call with the updatedPlaylist and nextTrack
-      savePreferences({ playlist: updatedPlaylist, currentTrack: nextTrack });
     },
-    [session?.user?.id, playlist, currentTrack, isPlaying, resolvePlaybackUrl, savePreferences, playTrack]
+    [session?.user?.id, playlist, currentTrack, isPlaying, playTrack, resolvePlaybackUrl, savePreferences]
   );
 
   const toggleShuffle = useCallback(

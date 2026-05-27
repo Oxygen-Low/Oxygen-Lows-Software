@@ -37,8 +37,15 @@ export default function Storage() {
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [localBlobUrls, setLocalBlobUrls] = useState<Record<string, string>>({});
 
+  const localBlobUrlsRef = useRef<Record<string, string>>({});
+
   const cloudInputRef = useRef<HTMLInputElement>(null);
   const localInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync ref with state whenever localBlobUrls changes
+  useEffect(() => {
+    localBlobUrlsRef.current = localBlobUrls;
+  }, [localBlobUrls]);
 
   // Helper to get or create blob URL for a local track
   const getBlobUrlForTrack = useCallback(async (file: LocalFile) => {
@@ -61,12 +68,12 @@ export default function Storage() {
     }
   }, [session?.access_token, localBlobUrls]);
 
-  // Revoke all local blob URLs on unmount
+  // Unmount-only cleanup using ref as requested in feedback
   useEffect(() => {
     return () => {
-      Object.values(localBlobUrls).forEach(url => URL.revokeObjectURL(url));
+      Object.values(localBlobUrlsRef.current).forEach(url => URL.revokeObjectURL(url));
     };
-  }, [localBlobUrls]);
+  }, []);
 
   useEffect(() => {
     if (session) {
@@ -136,7 +143,6 @@ export default function Storage() {
       const data = await response.json();
       setLocalFiles(data.files || []);
 
-      // Only extract metadata, defer fetching blobs
       data.files?.forEach((file: LocalFile) => {
         if (file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i)) {
           fetch(file.url, {
@@ -318,7 +324,6 @@ export default function Storage() {
     } catch (error) {
       console.error("Delete local file error:", error);
       showFailToast();
-      // Even on error, we might want to refresh to ensure UI is in sync
       fetchLocalFiles();
     }
   };
