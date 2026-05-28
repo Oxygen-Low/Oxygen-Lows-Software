@@ -18,6 +18,7 @@ export function createServer() {
           "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
           "img-src": ["'self'", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "*"],
+          "media-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "blob:"],
         },
       },
     }),
