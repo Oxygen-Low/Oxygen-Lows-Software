@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { LogOut, Package, Zap, Settings, User, HardDrive, Palette } from "lucide-react";
 import styles from "./Layout.module.css";
 
@@ -20,6 +21,8 @@ const navItems = [
 export const Layout = ({ children }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const isPublicMode = import.meta.env.VITE_PUBLIC_MODE === "true";
 
   const handleSignOut = async () => {
     try {
@@ -28,6 +31,18 @@ export const Layout = ({ children }: LayoutProps) => {
     } catch (error) {
       console.error("Sign out error:", error);
     }
+  };
+
+  const isRestricted = (href: string) => {
+    return isPublicMode && (href === "/settings" || href === "/integrations");
+  };
+
+  const handleRestrictedClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toast({
+      title: "Unable to access in public servers",
+      variant: "destructive",
+    });
   };
 
   return (
@@ -59,11 +74,14 @@ export const Layout = ({ children }: LayoutProps) => {
           <nav className="p-4 space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon;
+              const restricted = isRestricted(item.href);
+
               return (
                 <Link
                   key={item.href}
-                  to={item.href}
-                  className={`${styles["nav-link"]} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
+                  to={restricted ? "#" : item.href}
+                  onClick={restricted ? handleRestrictedClick : undefined}
+                  className={`${styles["nav-link"]} ${restricted ? styles["nav-link-disabled"] : ""} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
                 >
                   <Icon className="w-5 h-5" />
                   {item.label}
