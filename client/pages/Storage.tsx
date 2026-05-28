@@ -1,4 +1,4 @@
-import * as mmb from "music-metadata-browser";
+import { Buffer } from "buffer";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { LocalFile } from "@shared/api";
+
+if (typeof globalThis.Buffer === "undefined") {
+  globalThis.Buffer = Buffer;
+}
 
 const MAX_CLOUD_SIZE = 30 * 1024 * 1024;
 
@@ -55,15 +59,17 @@ function StorageCloudAudioDisplay({ file, audioUrl, getCloudAudioUrl }: { file: 
       <Music className="w-12 h-12 text-cyan-500" />
       {error ? (
         <p className="text-xs text-red-500 text-center">{error}</p>
-      ) : (
+      ) : url ? (
         <audio
           controls
           className="w-full h-8"
-          src={url || ""}
+          src={url}
           crossOrigin="anonymous"
         >
           Your browser does not support the audio element.
         </audio>
+      ) : (
+        <p className="text-xs text-slate-500 text-center">Preparing audio...</p>
       )}
     </div>
   );
@@ -102,15 +108,17 @@ function StorageLocalAudioDisplay({ file, blobUrl, getBlobUrlForTrack }: { file:
       <Music className="w-12 h-12 text-cyan-500" />
       {error ? (
         <p className="text-xs text-red-500 text-center">{error}</p>
-      ) : (
+      ) : url ? (
         <audio
           controls
           className="w-full h-8"
-          src={url || ""}
+          src={url}
           crossOrigin="anonymous"
         >
           Your browser does not support the audio element.
         </audio>
+      ) : (
+        <p className="text-xs text-slate-500 text-center">Preparing audio...</p>
       )}
     </div>
   );
@@ -198,6 +206,7 @@ export default function Storage() {
 
   const extractAudioMetadata = async (blob: Blob, id: string) => {
     try {
+      const mmb = await import("music-metadata-browser");
       const metadata = await mmb.parseBlob(blob);
       setAudioMetadata(prev => ({
         ...prev,
