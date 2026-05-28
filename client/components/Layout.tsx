@@ -23,6 +23,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isPublicMode = import.meta.env.VITE_PUBLIC_MODE === "true";
+  const isAdmin = session?.user?.email === "info@danielward.xyz" && session?.user?.user_metadata?.username === "oxygen-low";
 
   const handleSignOut = async () => {
     try {
@@ -34,6 +35,7 @@ export const Layout = ({ children }: LayoutProps) => {
   };
 
   const isRestricted = (href: string) => {
+    if (isAdmin) return false;
     return isPublicMode && (href === "/settings" || href === "/integrations");
   };
 
