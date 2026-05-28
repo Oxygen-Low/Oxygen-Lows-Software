@@ -11,7 +11,6 @@ import { MusicProvider } from "@/contexts/MusicContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Apps from "./pages/Apps";
-import Download from "./pages/Download";
 import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
@@ -53,14 +52,6 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Storage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/download"
-                element={
-                  <ProtectedRoute>
-                    <Download />
                   </ProtectedRoute>
                 }
               />
