@@ -24,6 +24,98 @@ import { LocalFile } from "@shared/api";
 
 const MAX_CLOUD_SIZE = 30 * 1024 * 1024;
 
+function StorageCloudAudioDisplay({ file, audioUrl, getCloudAudioUrl }: { file: any; audioUrl?: string; getCloudAudioUrl: (file: any) => Promise<string> }) {
+  const [url, setUrl] = useState<string | null>(audioUrl || null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (audioUrl) {
+      setUrl(audioUrl);
+      return;
+    }
+
+    const resolveUrl = async () => {
+      try {
+        const resolvedUrl = await getCloudAudioUrl(file);
+        if (resolvedUrl) {
+          setUrl(resolvedUrl);
+          setError(null);
+        }
+      } catch (err) {
+        console.error("Error resolving cloud audio URL:", err);
+        setError("Failed to load");
+      }
+    };
+
+    resolveUrl();
+  }, [file, audioUrl, getCloudAudioUrl]);
+
+  return (
+    <div className="flex flex-col items-center gap-4 w-full p-4">
+      <Music className="w-12 h-12 text-cyan-500" />
+      {error ? (
+        <p className="text-xs text-red-500 text-center">{error}</p>
+      ) : (
+        <audio
+          controls
+          className="w-full h-8"
+          src={url || ""}
+          crossOrigin="anonymous"
+        >
+          Your browser does not support the audio element.
+        </audio>
+      )}
+    </div>
+  );
+}
+
+function StorageLocalAudioDisplay({ file, blobUrl, getBlobUrlForTrack }: { file: LocalFile; blobUrl?: string; getBlobUrlForTrack: (file: LocalFile) => Promise<string | null> }) {
+  const [url, setUrl] = useState<string | null>(blobUrl || null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (blobUrl) {
+      setUrl(blobUrl);
+      return;
+    }
+
+    const resolveUrl = async () => {
+      try {
+        const resolvedUrl = await getBlobUrlForTrack(file);
+        if (resolvedUrl) {
+          setUrl(resolvedUrl);
+          setError(null);
+        } else {
+          setError("Unable to load");
+        }
+      } catch (err) {
+        console.error("Error resolving audio URL:", err);
+        setError("Failed to load");
+      }
+    };
+
+    resolveUrl();
+  }, [file, blobUrl, getBlobUrlForTrack]);
+
+  return (
+    <div className="flex flex-col items-center gap-4 w-full p-4">
+      <Music className="w-12 h-12 text-cyan-500" />
+      {error ? (
+        <p className="text-xs text-red-500 text-center">{error}</p>
+      ) : (
+        <audio
+          controls
+          className="w-full h-8"
+          src={url || ""}
+          crossOrigin="anonymous"
+        >
+          Your browser does not support the audio element.
+        </audio>
+      )}
+    </div>
+  );
+}
+
 export default function Storage() {
   const { session } = useAuth();
   const { toast } = useToast();
@@ -36,18 +128,22 @@ export default function Storage() {
   const [totalCloudSize, setTotalCloudSize] = useState(0);
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [localBlobUrls, setLocalBlobUrls] = useState<Record<string, string>>({});
+  const [cloudAudioUrls, setCloudAudioUrls] = useState<Record<string, string>>({});
 
   const localBlobUrlsRef = useRef<Record<string, string>>({});
+  const cloudAudioUrlsRef = useRef<Record<string, string>>({});
 
   const cloudInputRef = useRef<HTMLInputElement>(null);
   const localInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync ref with state whenever localBlobUrls changes
   useEffect(() => {
     localBlobUrlsRef.current = localBlobUrls;
   }, [localBlobUrls]);
 
-  // Helper to get or create blob URL for a local track
+  useEffect(() => {
+    cloudAudioUrlsRef.current = cloudAudioUrls;
+  }, [cloudAudioUrls]);
+
   const getBlobUrlForTrack = useCallback(async (file: LocalFile) => {
     if (localBlobUrls[file.name]) {
       return localBlobUrls[file.name];
@@ -68,10 +164,14 @@ export default function Storage() {
     }
   }, [session?.access_token, localBlobUrls]);
 
-  // Unmount-only cleanup using ref as requested in feedback
   useEffect(() => {
     return () => {
       Object.values(localBlobUrlsRef.current).forEach(url => URL.revokeObjectURL(url));
+      Object.values(cloudAudioUrlsRef.current).forEach(url => {
+        if (url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
     };
   }, []);
 
@@ -346,8 +446,36 @@ export default function Storage() {
   };
 
   const getCloudPublicUrl = (name: string) => {
-    return supabase.storage.from("Storage").getPublicUrl(name).data.publicUrl;
+    const { data } = supabase.storage.from("Storage").getPublicUrl(name);
+    return data?.publicUrl || "";
   };
+
+  const getCloudAudioUrl = useCallback(async (file: any) => {
+    if (cloudAudioUrls[file.id]) {
+      return cloudAudioUrls[file.id];
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .download(file.name);
+
+      if (error || !data) {
+        console.error("Failed to download cloud audio:", error);
+        const publicUrl = getCloudPublicUrl(file.name);
+        setCloudAudioUrls(prev => ({ ...prev, [file.id]: publicUrl }));
+        return publicUrl;
+      }
+
+      const blobUrl = URL.createObjectURL(data);
+      setCloudAudioUrls(prev => ({ ...prev, [file.id]: blobUrl }));
+      return blobUrl;
+    } catch (error) {
+      console.error("Error resolving cloud audio URL:", error);
+      const publicUrl = getCloudPublicUrl(file.name);
+      return publicUrl;
+    }
+  }, [cloudAudioUrls]);
 
   return (
     <Layout>
@@ -420,16 +548,7 @@ export default function Storage() {
                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
                           />
                         ) : file.metadata?.mimetype?.startsWith("audio/") ? (
-                          <div className="flex flex-col items-center gap-4 w-full p-4">
-                            <Music className="w-12 h-12 text-cyan-500" />
-                            <audio
-                              controls
-                              className="w-full h-8"
-                              src={getCloudPublicUrl(file.name)}
-                            >
-                              Your browser does not support the audio element.
-                            </audio>
-                          </div>
+                          <StorageCloudAudioDisplay file={file} audioUrl={cloudAudioUrls[file.id]} getCloudAudioUrl={getCloudAudioUrl} />
                         ) : (
                           <File className="w-12 h-12 text-slate-700" />
                         )}
@@ -512,25 +631,7 @@ export default function Storage() {
                     <Card key={file.name} className="bg-slate-950 border-slate-800 overflow-hidden group">
                       <div className="aspect-video bg-slate-900 flex items-center justify-center">
                         {file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i) ? (
-                          <div className="flex flex-col items-center gap-4 w-full p-4">
-                            <Music className="w-12 h-12 text-cyan-500" />
-                            <audio
-                              controls
-                              className="w-full h-8"
-                              onPlay={async (e) => {
-                                const audio = e.target as HTMLAudioElement;
-                                if (!audio.src || audio.src === window.location.href) {
-                                  const url = await getBlobUrlForTrack(file);
-                                  if (url) {
-                                    audio.src = url;
-                                    audio.play();
-                                  }
-                                }
-                              }}
-                            >
-                              Your browser does not support the audio element.
-                            </audio>
-                          </div>
+                          <StorageLocalAudioDisplay file={file} blobUrl={localBlobUrls[file.name]} getBlobUrlForTrack={getBlobUrlForTrack} />
                         ) : (
                           <File className="w-12 h-12 text-slate-700" />
                         )}
