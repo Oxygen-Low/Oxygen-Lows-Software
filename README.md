@@ -7,4 +7,6 @@ you've got the entire website hosted with all of your data available.
 
 You also get 30MB of image, document, and audio storage on the cloud at no cost alongside the capability of storing data on the server.
 
+Don't want to self-host it? You can access it via [Render](https://oxygen-lows-software.onrender.com) (though you won't have access to server settings and you won't have access to integrations). Render may take up to 10 minutes to load.
+
 Oxygen Low's Software app is work in progress.
