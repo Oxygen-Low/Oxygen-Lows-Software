@@ -19,6 +19,7 @@ import Customize from "./pages/Customize";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { PublicModeAccess } from "./components/PublicModeAccess";
 
 const queryClient = new QueryClient();
 
@@ -59,7 +60,9 @@ const App = () => (
                 path="/integrations"
                 element={
                   <ProtectedRoute>
-                    <Integrations />
+                    <PublicModeAccess>
+                      <Integrations />
+                    </PublicModeAccess>
                   </ProtectedRoute>
                 }
               />
@@ -67,7 +70,9 @@ const App = () => (
                 path="/settings"
                 element={
                   <ProtectedRoute>
-                    <Settings />
+                    <PublicModeAccess>
+                      <Settings />
+                    </PublicModeAccess>
                   </ProtectedRoute>
                 }
               />

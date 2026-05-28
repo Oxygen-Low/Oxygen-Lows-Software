@@ -78,3 +78,14 @@
   -webkit-backdrop-filter: blur(12px);
   border-bottom-color: hsl(var(--border) / 0.5);
 }
+
+.nav-link-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.nav-link-disabled:hover {
+  background-color: transparent;
+  color: hsl(var(--foreground) / 0.8);
+}
