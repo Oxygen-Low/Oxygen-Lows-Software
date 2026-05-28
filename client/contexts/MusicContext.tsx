@@ -54,23 +54,45 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const resolvePlaybackUrl = useCallback(async (fileName: string) => {
     try {
+      console.log(`Resolving playback URL for: ${fileName}`);
       const { data, error } = await supabase.storage
         .from("Storage")
         .createSignedUrl(fileName, 3600);
 
-      if (error) throw error;
+      if (error) {
+        console.warn(`Failed to create signed URL for ${fileName}:`, error);
+        throw error;
+      }
+
+      if (!data?.signedUrl) {
+        console.warn(`No signed URL returned for ${fileName}`);
+        throw new Error("No signed URL returned");
+      }
+
+      console.log(`Successfully created signed URL for ${fileName}`);
       return data.signedUrl;
     } catch (error) {
-      console.warn("Failed to create signed URL, falling back to blob:", error);
+      console.warn(`Signed URL creation failed for ${fileName}, attempting blob fallback:`, error);
       try {
         const { data: blob, error: downloadError } = await supabase.storage
           .from("Storage")
           .download(fileName);
 
-        if (downloadError) throw downloadError;
-        if (blob) return URL.createObjectURL(blob);
+        if (downloadError) {
+          console.error(`Blob download failed for ${fileName}:`, downloadError);
+          throw downloadError;
+        }
+
+        if (!blob) {
+          console.error(`No blob data returned for ${fileName}`);
+          throw new Error("No blob data returned");
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+        console.log(`Successfully created blob URL for ${fileName}`);
+        return blobUrl;
       } catch (blobError) {
-        console.error("Failed to resolve playback URL:", blobError);
+        console.error(`Failed to resolve playback URL for ${fileName}:`, blobError);
       }
     }
     return null;
@@ -150,10 +172,17 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
           if (track) {
             setCurrentTrackState(track);
             if (audioRef.current) {
-              const url = await resolvePlaybackUrl(track.fileName);
-              if (url) {
-                audioRef.current.src = url;
-                audioRef.current.currentTime = savedPosition / 1000;
+              try {
+                const url = await resolvePlaybackUrl(track.fileName);
+                if (url) {
+                  audioRef.current.src = url;
+                  audioRef.current.currentTime = savedPosition / 1000;
+                  console.log(`Loaded track ${track.name} with saved position ${savedPosition}ms`);
+                } else {
+                  console.warn(`Could not resolve URL for saved track: ${track.fileName}`);
+                }
+              } catch (error) {
+                console.error(`Failed to load saved track:`, error);
               }
             }
           }
@@ -170,19 +199,27 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
-      if (!audioRef.current) return;
+      if (!audioRef.current) {
+        console.error("Audio ref is not available");
+        return;
+      }
 
+      console.log(`Playing track: ${track.name} (${track.fileName})`);
       setCurrentTrackState(track);
       setCurrentPositionState(0);
       currentPositionRef.current = 0;
 
       const url = await resolvePlaybackUrl(track.fileName);
-      if (!url) return;
+      if (!url) {
+        console.error(`Failed to resolve URL for track: ${track.fileName}`);
+        return;
+      }
 
       audioRef.current.src = url;
       audioRef.current.currentTime = 0;
 
       try {
+        console.log(`Starting playback for: ${track.name}`);
         await audioRef.current.play();
         setIsPlayingState(true);
         savePreferences({
@@ -191,7 +228,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
           playlist: overridePlaylist || playlistRef.current
         });
       } catch (error) {
-        console.error("Failed to play track:", error);
+        console.error(`Failed to play track ${track.name}:`, error);
+        setIsPlayingState(false);
       }
     },
     [resolvePlaybackUrl, savePreferences]
