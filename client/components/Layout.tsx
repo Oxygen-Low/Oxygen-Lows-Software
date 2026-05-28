@@ -79,7 +79,7 @@ export const Layout = ({ children }: LayoutProps) => {
               return (
                 <Link
                   key={item.href}
-                  to={restricted ? "#" : item.href}
+                  to={item.href}
                   onClick={restricted ? handleRestrictedClick : undefined}
                   className={`${styles["nav-link"]} ${restricted ? styles["nav-link-disabled"] : ""} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
                 >
