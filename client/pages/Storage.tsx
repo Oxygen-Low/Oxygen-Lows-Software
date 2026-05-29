@@ -81,7 +81,7 @@ export default function Storage() {
   const [uploading, setUploading] = useState(false);
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
   const [cloudAudioUrls, setCloudAudioUrls] = useState<Record<string, string>>({});
-  const [cloudImageUrls, setCloudImageUrls] = useState<Record<string, string>>({});
+  const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
   const [totalSize, setTotalSize] = useState(0);
   const cloudInputRef = useRef<HTMLInputElement>(null);
   const [newLinkUrl, setNewLinkUrl] = useState("");
@@ -142,9 +142,9 @@ export default function Storage() {
     };
   }, []);
 
-  const getCloudImageUrl = useCallback(async (file: any) => {
-    if (cloudImageUrls[file.id]) {
-      return cloudImageUrls[file.id];
+  const getCloudFileSignedUrl = useCallback(async (file: any) => {
+    if (cloudFileSignedUrls[file.id]) {
+      return cloudFileSignedUrls[file.id];
     }
 
     try {
@@ -155,13 +155,13 @@ export default function Storage() {
       if (error) throw error;
       if (!data?.signedUrl) throw new Error("No signed URL returned");
 
-      setCloudImageUrls(prev => ({ ...prev, [file.id]: data.signedUrl }));
+      setCloudFileSignedUrls(prev => ({ ...prev, [file.id]: data.signedUrl }));
       return data.signedUrl;
     } catch (err) {
-      console.error("Error getting cloud image URL:", err);
+      console.error("Error getting cloud signed URL:", err);
       throw err;
     }
-  }, [cloudImageUrls]);
+  }, [cloudFileSignedUrls]);
 
   const fetchCloudFiles = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -169,7 +169,7 @@ export default function Storage() {
     try {
       const { data, error } = await supabase.storage
         .from("Storage")
-        .list("", {
+        .list(session.user.id, {
           sortBy: { column: "created_at", order: "desc" },
         });
 
@@ -177,9 +177,9 @@ export default function Storage() {
 
       // Filter for specific allowed file types as per memory
       const allowedExtensions = [".txt", ".md", ".png", ".jpg", ".mp3", ".wav", ".ogg"];
-      const filteredFiles = (data || []).filter(file =>
+            const filteredFiles = (data || []).filter(file =>
         allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
-      );
+      ).map(file => ({ ...file, name: `${session.user.id}/${file.name}` }));
 
       setCloudFiles(filteredFiles);
 
@@ -215,19 +215,19 @@ export default function Storage() {
   }, [session?.user?.id, fetchCloudFiles, fetchLinkedImages]);
 
   useEffect(() => {
-    const resolveImageUrls = async () => {
+    const resolveSignedUrls = async () => {
       for (const file of cloudFiles) {
-        if (file.metadata?.mimetype?.startsWith("image/") && !cloudImageUrls[file.id]) {
+        if (!cloudFileSignedUrls[file.id]) {
           try {
-            await getCloudImageUrl(file);
+            await getCloudFileSignedUrl(file);
           } catch (err) {
             // Ignore individual failures
           }
         }
       }
     };
-    resolveImageUrls();
-  }, [cloudFiles, getCloudImageUrl, cloudImageUrls]);
+    resolveSignedUrls();
+  }, [cloudFiles, getCloudFileSignedUrl, cloudFileSignedUrls]);
 
 
   const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -435,7 +435,7 @@ export default function Storage() {
                       <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
                         {file.metadata?.mimetype?.startsWith("image/") ? (
                           <img
-                            src={cloudImageUrls[file.id]}
+                            src={cloudFileSignedUrls[file.id]}
                             alt={file.name}
                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
                           />
@@ -462,7 +462,7 @@ export default function Storage() {
                           className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
                           asChild
                         >
-                          <a href={cloudImageUrls[file.id]} target="_blank" rel="noreferrer">
+                          <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
                             <ExternalLink className="w-4 h-4 mr-2" />
                             View
                           </a>

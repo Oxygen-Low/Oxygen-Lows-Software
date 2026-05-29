@@ -1,6 +1,9 @@
 -- Add use_gradient column to user_preferences
 ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS use_gradient BOOLEAN DEFAULT TRUE;
 
+-- Drop the existing function to avoid ambiguity with the new signature
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(UUID, TEXT, TEXT, JSONB, TEXT, BIGINT, BOOLEAN);
+
 -- Update the upsert_user_preferences function to include p_use_gradient
 CREATE OR REPLACE FUNCTION upsert_user_preferences(
   p_user_id UUID,
