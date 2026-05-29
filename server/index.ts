@@ -3,7 +3,6 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
-import { storageRouter } from "./routes/storage";
 
 export function createServer() {
   const app = express();
@@ -38,9 +37,6 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
-
-  // Storage routes
-  app.use("/api/storage", storageRouter);
 
   return app;
 }
