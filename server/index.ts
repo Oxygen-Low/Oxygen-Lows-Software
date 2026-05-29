@@ -11,14 +11,18 @@ export function createServer() {
   // Middleware
   app.use(
     helmet({
+      crossOriginOpenerPolicy: { policy: "same-origin" },
+      crossOriginEmbedderPolicy: { policy: "require-corp" },
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "https://api.pwnedpasswords.com"],
+          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "https://api.pwnedpasswords.com", "https://unpkg.com"],
           "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
           "img-src": ["'self'", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "*"],
           "media-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "blob:"],
+          "script-src": ["'self'", "https://unpkg.com", "'unsafe-eval'", "'unsafe-inline'"],
+          "worker-src": ["'self'", "blob:"],
         },
       },
     }),
