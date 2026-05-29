@@ -100,7 +100,7 @@ export function FriendsApp() {
       `);
 
     if (error) {
-      toast.error("Failed to fetch friends");
+      toast.error("Failed to fetch friends: " + error.message);
       return;
     }
 
@@ -110,10 +110,7 @@ export function FriendsApp() {
 
     (data || []).forEach((f: any) => {
       const isSender = f.user_id === userId;
-      const senderProfile = Array.isArray(f.sender) ? f.sender[0] : f.sender;
-      const receiverProfile = Array.isArray(f.receiver) ? f.receiver[0] : f.receiver;
-
-      const profileData = isSender ? receiverProfile : senderProfile;
+      const profileData = isSender ? f.receiver : f.sender;
 
       if (!profileData) return;
 
@@ -144,7 +141,7 @@ export function FriendsApp() {
   };
 
   const fetchFollows = async (userId: string) => {
-    const { data: followingData } = await supabase
+    const { data: followingData, error: followingError } = await supabase
       .from("follows")
       .select(`
         id,
@@ -154,7 +151,11 @@ export function FriendsApp() {
       `)
       .eq("follower_id", userId);
 
-    const { data: followersData } = await supabase
+    if (followingError) {
+      toast.error("Failed to fetch following: " + followingError.message);
+    }
+
+    const { data: followersData, error: followersError } = await supabase
       .from("follows")
       .select(`
         id,
@@ -164,6 +165,10 @@ export function FriendsApp() {
       `)
       .eq("following_id", userId);
 
+    if (followersError) {
+      toast.error("Failed to fetch followers: " + followersError.message);
+    }
+
     const mapFollow = (f: any): Follow => ({
       id: f.id,
       follower_id: f.follower_id,
@@ -171,12 +176,12 @@ export function FriendsApp() {
       profile: Array.isArray(f.profile) ? f.profile[0] : f.profile
     });
 
-    setFollowing((followingData || []).map(mapFollow));
-    setFollowers((followersData || []).map(mapFollow));
+    if (!followingError) setFollowing((followingData || []).map(mapFollow));
+    if (!followersError) setFollowers((followersData || []).map(mapFollow));
   };
 
   const fetchBlocked = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("blocks")
       .select(`
         blocked_id,
@@ -184,10 +189,19 @@ export function FriendsApp() {
       `)
       .eq("blocker_id", userId);
 
-    setBlocked((data || []).map(b => Array.isArray(b.profile) ? b.profile[0] : b.profile));
+    if (error) {
+      toast.error("Failed to fetch blocked users: " + error.message);
+    } else {
+      setBlocked((data || []).map(b => Array.isArray(b.profile) ? b.profile[0] : b.profile));
+    }
   };
 
   const handleSendRequest = async () => {
+    if (!currentUser) {
+      toast.error("You must be signed in to add friends");
+      return;
+    }
+
     if (!searchQuery.trim()) return;
 
     const { data: profile, error: searchError } = await supabase
@@ -215,7 +229,7 @@ export function FriendsApp() {
       });
 
     if (error) {
-      toast.error(error.message.includes("unique") ? "Request already exists" : "Failed to send request");
+      toast.error(error.message.includes("unique") ? "Request already exists" : "Failed to send request: " + error.message);
     } else {
       toast.success("Friend request sent!");
       setSearchQuery("");
@@ -230,7 +244,7 @@ export function FriendsApp() {
       .eq("id", friendshipId);
 
     if (error) {
-      toast.error("Failed to accept request");
+      toast.error("Failed to accept request: " + error.message);
     } else {
       toast.success("Friend request accepted!");
       fetchFriends(currentUser.id);
@@ -244,7 +258,7 @@ export function FriendsApp() {
       .eq("id", friendshipId);
 
     if (error) {
-      toast.error("Operation failed");
+      toast.error("Operation failed: " + error.message);
     } else {
       toast.success("Friendship/Request removed");
       fetchFriends(currentUser.id);
@@ -258,7 +272,7 @@ export function FriendsApp() {
       .eq("id", followId);
 
     if (error) {
-      toast.error("Failed to unfollow");
+      toast.error("Failed to unfollow: " + error.message);
     } else {
       toast.success("Unfollowed user");
       fetchFollows(currentUser.id);
@@ -273,7 +287,7 @@ export function FriendsApp() {
       .eq("blocked_id", blockedId);
 
     if (error) {
-      toast.error("Failed to unblock");
+      toast.error("Failed to unblock: " + error.message);
     } else {
       toast.success("User unblocked");
       fetchBlocked(currentUser.id);

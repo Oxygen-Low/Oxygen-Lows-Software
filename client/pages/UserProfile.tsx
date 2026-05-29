@@ -63,7 +63,8 @@ export default function UserProfile() {
         .from("user_profiles")
         .select("user_id, username, display_name, bio, email, show_email")
         .eq("username", username)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (signal.aborted) return;
 
@@ -80,7 +81,8 @@ export default function UserProfile() {
         .from("profile_pictures")
         .select("image_url")
         .eq("user_id", data.user_id)
-        .single<ProfilePicture>();
+        .limit(1)
+        .maybeSingle<ProfilePicture>();
 
       if (signal.aborted) return;
       setProfilePicture(pictureData?.image_url ?? null);
@@ -91,17 +93,20 @@ export default function UserProfile() {
           supabase.from("friendships")
             .select("*")
             .or(`and(user_id.eq.${user.id},friend_id.eq.${data.user_id}),and(user_id.eq.${data.user_id},friend_id.eq.${user.id})`)
-            .single(),
+            .limit(1)
+            .maybeSingle(),
           supabase.from("follows")
             .select("*")
             .eq("follower_id", user.id)
             .eq("following_id", data.user_id)
-            .single(),
+            .limit(1)
+            .maybeSingle(),
           supabase.from("blocks")
             .select("*")
             .eq("blocker_id", user.id)
             .eq("blocked_id", data.user_id)
-            .single()
+            .limit(1)
+            .maybeSingle()
         ]);
 
         if (signal.aborted) return;
@@ -111,18 +116,17 @@ export default function UserProfile() {
       }
 
       // Fetch stats
-      const [followersCount, followingCount, friendsCount] = await Promise.all([
+      const [followersCount, followingCount, friendsRpc] = await Promise.all([
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", data.user_id),
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", data.user_id),
-        supabase.from("friendships").select("*", { count: "exact", head: true }).eq("status", "accepted")
-          .or(`user_id.eq.${data.user_id},friend_id.eq.${data.user_id}`)
+        supabase.rpc("count_accepted_friends", { p_target_user_id: data.user_id })
       ]);
 
       if (signal.aborted) return;
       setStats({
         followers: followersCount.count || 0,
         following: followingCount.count || 0,
-        friends: friendsCount.count || 0
+        friends: Number(friendsRpc.data) || 0
       });
     } catch (e) {
       if (!signal.aborted) {
@@ -146,7 +150,8 @@ export default function UserProfile() {
           .from("friendships")
           .insert({ user_id: currentUser.id, friend_id: profile.user_id, status: 'pending' })
           .select()
-          .single();
+          .limit(1)
+          .maybeSingle();
         if (error) {
           toast.error("Failed to send friend request: " + error.message);
           return;
@@ -159,7 +164,8 @@ export default function UserProfile() {
           .update({ status: 'accepted' })
           .eq("id", friendship.id)
           .select()
-          .single();
+          .limit(1)
+          .maybeSingle();
         if (error) {
           toast.error("Failed to accept friend request: " + error.message);
           return;
@@ -183,7 +189,6 @@ export default function UserProfile() {
       }
     } catch (e: any) {
       toast.error("An unexpected error occurred: " + e.message);
-      throw e;
     } finally {
       setActionLoading(false);
     }
@@ -254,14 +259,16 @@ export default function UserProfile() {
           return;
         }
 
-        // Also unfollow and unfriend if blocking - do these concurrently
-        await Promise.all([
-          supabase.from("follows").delete().eq("follower_id", currentUser.id).eq("following_id", profile.user_id),
-          supabase.from("follows").delete().eq("follower_id", profile.user_id).eq("following_id", currentUser.id),
-          supabase.from("friendships")
-            .delete()
-            .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${profile.user_id}),and(user_id.eq.${profile.user_id},friend_id.eq.${currentUser.id})`)
-        ]);
+        // Use RPC for privileged cleanup of relations
+        const { error: cleanupError } = await supabase.rpc("handle_block_cleanup", {
+           p_blocker_id: currentUser.id,
+           p_blocked_id: profile.user_id
+        });
+
+        if (cleanupError) {
+           toast.error("Failed to cleanup relations after block: " + cleanupError.message);
+           return;
+        }
 
         setIsBlocked(true);
         setIsFollowing(false);
