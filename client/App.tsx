@@ -11,15 +11,12 @@ import { MusicProvider } from "@/contexts/MusicContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Apps from "./pages/Apps";
-import Integrations from "./pages/Integrations";
-import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import Storage from "./pages/Storage";
 import Customize from "./pages/Customize";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { PublicModeAccess } from "./components/PublicModeAccess";
 
 const queryClient = new QueryClient();
 
@@ -53,26 +50,6 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Storage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/integrations"
-                element={
-                  <ProtectedRoute>
-                    <PublicModeAccess>
-                      <Integrations />
-                    </PublicModeAccess>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <PublicModeAccess>
-                      <Settings />
-                    </PublicModeAccess>
                   </ProtectedRoute>
                 }
               />
