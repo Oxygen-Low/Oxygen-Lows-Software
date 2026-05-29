@@ -2,8 +2,7 @@ Oxygen Low's Software is a self-hostable website with many different features an
 
 Most user-data is stored on the cloud, so there's almost no need to transfer data between servers.
 
-It's easy to setup, either run a docker container, or just run pnpm install, pnpm build, then pnpm start, then
-you've got the entire website hosted with all of your data available.
+It's easy to set up, just run pnpm install, pnpm build, then pnpm start, then you've got the entire website hosted with all of your data available.
 
 You also get 30MB of image, document, and audio storage on the cloud at no cost.
 
