@@ -58,7 +58,7 @@ describe('FriendsApp', () => {
     });
   });
 
-  it('sends a friend request', async () => {
+  it('sends a friend request with correct payload', async () => {
     (supabase.from as any)().single.mockResolvedValue({
       data: { user_id: 'other-user-id', username: 'otheruser' },
       error: null
@@ -77,9 +77,12 @@ describe('FriendsApp', () => {
     fireEvent.click(addButtons[0]);
 
     await waitFor(() => {
-      expect(supabase.from).toHaveBeenCalledWith('user_profiles');
       expect(supabase.from).toHaveBeenCalledWith('friendships');
-      expect((supabase.from as any)().insert).toHaveBeenCalled();
+      expect((supabase.from as any)().insert).toHaveBeenCalledWith({
+        user_id: 'test-user-id',
+        friend_id: 'other-user-id',
+        status: 'pending'
+      });
     });
   });
 });

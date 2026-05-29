@@ -44,177 +44,235 @@ export default function UserProfile() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
+    const controller = new AbortController();
+    fetchProfile(controller.signal);
+    return () => controller.abort();
   }, [username]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (signal: AbortSignal) => {
     if (!username) return;
     setIsLoading(true);
     setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUser(user);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (signal.aborted) return;
+      setCurrentUser(user);
 
-    const { data, error: profileError } = await supabase
-      .from("user_profiles")
-      .select("user_id, username, display_name, bio, email, show_email")
-      .eq("username", username)
-      .single();
+      const { data, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("user_id, username, display_name, bio, email, show_email")
+        .eq("username", username)
+        .single();
 
-    if (profileError || !data) {
-      setError("User not found");
-      setIsLoading(false);
-      return;
-    }
+      if (signal.aborted) return;
 
-    setProfile(data);
+      if (profileError || !data) {
+        setError("User not found");
+        setIsLoading(false);
+        return;
+      }
 
-    // Fetch profile picture
-    const { data: pictureData } = await supabase
-      .from("profile_pictures")
-      .select("image_url")
-      .eq("user_id", data.user_id)
-      .single<ProfilePicture>();
+      setProfile(data);
 
-    setProfilePicture(pictureData?.image_url ?? null);
+      // Fetch profile picture
+      const { data: pictureData } = await supabase
+        .from("profile_pictures")
+        .select("image_url")
+        .eq("user_id", data.user_id)
+        .single<ProfilePicture>();
 
-    if (user && user.id !== data.user_id) {
-      // Fetch relationship status
-      const [friendData, followData, blockData] = await Promise.all([
-        supabase.from("friendships")
-          .select("*")
-          .or(`and(user_id.eq.${user.id},friend_id.eq.${data.user_id}),and(user_id.eq.${data.user_id},friend_id.eq.${user.id})`)
-          .single(),
-        supabase.from("follows")
-          .select("*")
-          .eq("follower_id", user.id)
-          .eq("following_id", data.user_id)
-          .single(),
-        supabase.from("blocks")
-          .select("*")
-          .eq("blocker_id", user.id)
-          .eq("blocked_id", data.user_id)
-          .single()
+      if (signal.aborted) return;
+      setProfilePicture(pictureData?.image_url ?? null);
+
+      if (user && user.id !== data.user_id) {
+        // Fetch relationship status
+        const [friendData, followData, blockData] = await Promise.all([
+          supabase.from("friendships")
+            .select("*")
+            .or(`and(user_id.eq.${user.id},friend_id.eq.${data.user_id}),and(user_id.eq.${data.user_id},friend_id.eq.${user.id})`)
+            .single(),
+          supabase.from("follows")
+            .select("*")
+            .eq("follower_id", user.id)
+            .eq("following_id", data.user_id)
+            .single(),
+          supabase.from("blocks")
+            .select("*")
+            .eq("blocker_id", user.id)
+            .eq("blocked_id", data.user_id)
+            .single()
+        ]);
+
+        if (signal.aborted) return;
+        setFriendship(friendData.data);
+        setIsFollowing(!!followData.data);
+        setIsBlocked(!!blockData.data);
+      }
+
+      // Fetch stats
+      const [followersCount, followingCount, friendsCount] = await Promise.all([
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", data.user_id),
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", data.user_id),
+        supabase.from("friendships").select("*", { count: "exact", head: true }).eq("status", "accepted")
+          .or(`user_id.eq.${data.user_id},friend_id.eq.${data.user_id}`)
       ]);
 
-      setFriendship(friendData.data);
-      setIsFollowing(!!followData.data);
-      setIsBlocked(!!blockData.data);
+      if (signal.aborted) return;
+      setStats({
+        followers: followersCount.count || 0,
+        following: followingCount.count || 0,
+        friends: friendsCount.count || 0
+      });
+    } catch (e) {
+      if (!signal.aborted) {
+        console.error("Error fetching profile:", e);
+        setError("Failed to load profile");
+      }
+    } finally {
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
-
-    // Fetch stats
-    const [followersCount, followingCount, friendsCount] = await Promise.all([
-      supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", data.user_id),
-      supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", data.user_id),
-      supabase.from("friendships").select("*", { count: "exact", head: true }).eq("status", "accepted")
-        .or(`user_id.eq.${data.user_id},friend_id.eq.${data.user_id}`)
-    ]);
-
-    setStats({
-      followers: followersCount.count || 0,
-      following: followingCount.count || 0,
-      friends: friendsCount.count || 0
-    });
-
-    setIsLoading(false);
   };
 
   const handleFriendAction = async () => {
     if (!currentUser || !profile) return;
     setActionLoading(true);
 
-    if (!friendship) {
-      const { data, error } = await supabase
-        .from("friendships")
-        .insert({ user_id: currentUser.id, friend_id: profile.user_id, status: 'pending' })
-        .select()
-        .single();
-      if (!error) {
+    try {
+      if (!friendship) {
+        const { data, error } = await supabase
+          .from("friendships")
+          .insert({ user_id: currentUser.id, friend_id: profile.user_id, status: 'pending' })
+          .select()
+          .single();
+        if (error) {
+          toast.error("Failed to send friend request: " + error.message);
+          return;
+        }
         setFriendship(data);
         toast.success("Friend request sent!");
-      }
-    } else if (friendship.status === 'pending' && friendship.friend_id === currentUser.id) {
-      const { data, error } = await supabase
-        .from("friendships")
-        .update({ status: 'accepted' })
-        .eq("id", friendship.id)
-        .select()
-        .single();
-      if (!error) {
+      } else if (friendship.status === 'pending' && friendship.friend_id === currentUser.id) {
+        const { data, error } = await supabase
+          .from("friendships")
+          .update({ status: 'accepted' })
+          .eq("id", friendship.id)
+          .select()
+          .single();
+        if (error) {
+          toast.error("Failed to accept friend request: " + error.message);
+          return;
+        }
         setFriendship(data);
         toast.success("Friend request accepted!");
         setStats(s => ({ ...s, friends: s.friends + 1 }));
-      }
-    } else {
-      const { error } = await supabase
-        .from("friendships")
-        .delete()
-        .eq("id", friendship.id);
-      if (!error) {
+      } else {
+        const { error } = await supabase
+          .from("friendships")
+          .delete()
+          .eq("id", friendship.id);
+        if (error) {
+          toast.error("Failed to remove friendship: " + error.message);
+          return;
+        }
         const wasAccepted = friendship.status === 'accepted';
         setFriendship(null);
         toast.success(wasAccepted ? "Unfriended user" : "Request cancelled");
         if (wasAccepted) setStats(s => ({ ...s, friends: Math.max(0, s.friends - 1) }));
       }
+    } catch (e: any) {
+      toast.error("An unexpected error occurred: " + e.message);
+      throw e;
+    } finally {
+      setActionLoading(false);
     }
-    setActionLoading(false);
   };
 
   const handleFollowAction = async () => {
     if (!currentUser || !profile) return;
     setActionLoading(true);
 
-    if (isFollowing) {
-      const { error } = await supabase
-        .from("follows")
-        .delete()
-        .eq("follower_id", currentUser.id)
-        .eq("following_id", profile.user_id);
-      if (!error) {
+    try {
+      if (isFollowing) {
+        const { error } = await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", currentUser.id)
+          .eq("following_id", profile.user_id);
+        if (error) {
+          toast.error("Failed to unfollow: " + error.message);
+          return;
+        }
         setIsFollowing(false);
         setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
         toast.success("Unfollowed user");
-      }
-    } else {
-      const { error } = await supabase
-        .from("follows")
-        .insert({ follower_id: currentUser.id, following_id: profile.user_id });
-      if (!error) {
+      } else {
+        const { error } = await supabase
+          .from("follows")
+          .insert({ follower_id: currentUser.id, following_id: profile.user_id });
+        if (error) {
+          toast.error("Failed to follow: " + error.message);
+          return;
+        }
         setIsFollowing(true);
         setStats(s => ({ ...s, followers: s.followers + 1 }));
         toast.success("Following user");
       }
+    } catch (e: any) {
+      toast.error("An unexpected error occurred: " + e.message);
+    } finally {
+      setActionLoading(false);
     }
-    setActionLoading(false);
   };
 
   const handleBlockAction = async () => {
     if (!currentUser || !profile) return;
     setActionLoading(true);
 
-    if (isBlocked) {
-      const { error } = await supabase
-        .from("blocks")
-        .delete()
-        .eq("blocker_id", currentUser.id)
-        .eq("blocked_id", profile.user_id);
-      if (!error) {
+    try {
+      if (isBlocked) {
+        const { error } = await supabase
+          .from("blocks")
+          .delete()
+          .eq("blocker_id", currentUser.id)
+          .eq("blocked_id", profile.user_id);
+        if (error) {
+          toast.error("Failed to unblock: " + error.message);
+          return;
+        }
         setIsBlocked(false);
         toast.success("User unblocked");
-      }
-    } else {
-      const { error } = await supabase
-        .from("blocks")
-        .insert({ blocker_id: currentUser.id, blocked_id: profile.user_id });
-      if (!error) {
+      } else {
+        // Start block transaction
+        const { error: blockError } = await supabase
+          .from("blocks")
+          .insert({ blocker_id: currentUser.id, blocked_id: profile.user_id });
+
+        if (blockError) {
+          toast.error("Failed to block user: " + blockError.message);
+          return;
+        }
+
+        // Also unfollow and unfriend if blocking - do these concurrently
+        await Promise.all([
+          supabase.from("follows").delete().eq("follower_id", currentUser.id).eq("following_id", profile.user_id),
+          supabase.from("follows").delete().eq("follower_id", profile.user_id).eq("following_id", currentUser.id),
+          supabase.from("friendships")
+            .delete()
+            .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${profile.user_id}),and(user_id.eq.${profile.user_id},friend_id.eq.${currentUser.id})`)
+        ]);
+
         setIsBlocked(true);
-        // Also unfollow and unfriend if blocking
         setIsFollowing(false);
         setFriendship(null);
         toast.success("User blocked");
       }
+    } catch (e: any) {
+      toast.error("An unexpected error occurred: " + e.message);
+    } finally {
+      setActionLoading(false);
     }
-    setActionLoading(false);
   };
 
   return (
