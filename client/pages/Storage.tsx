@@ -81,16 +81,13 @@ export default function Storage() {
   const [uploading, setUploading] = useState(false);
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
   const [cloudAudioUrls, setCloudAudioUrls] = useState<Record<string, string>>({});
-  const cloudAudioUrlsRef = useRef<Record<string, string>>({});
+  const [cloudImageUrls, setCloudImageUrls] = useState<Record<string, string>>({});
   const [totalSize, setTotalSize] = useState(0);
   const cloudInputRef = useRef<HTMLInputElement>(null);
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [linkedImages, setLinkedImages] = useState<any[]>([]);
   const [audioMetadata, setAudioMetadata] = useState<Record<string, { title?: string; artist?: string }>>({});
 
-  useEffect(() => {
-    cloudAudioUrlsRef.current = cloudAudioUrls;
-  }, [cloudAudioUrls]);
 
   const extractMetadata = useCallback(async (file: File | Blob, id: string) => {
     try {
@@ -120,23 +117,23 @@ export default function Storage() {
         .createSignedUrl(file.name, 3600);
 
       if (error) throw error;
-      if (data?.signedUrl) {
-        setCloudAudioUrls(prev => ({ ...prev, [file.id]: data.signedUrl }));
+      if (!data?.signedUrl) throw new Error("No signed URL returned");
 
-        // Also extract metadata if we haven't yet
-        if (!audioMetadata[file.id]) {
-          const { data: blob } = await supabase.storage
-            .from("Storage")
-            .download(file.name);
-          if (blob) extractMetadata(blob, file.id);
-        }
+      setCloudAudioUrls(prev => ({ ...prev, [file.id]: data.signedUrl }));
 
-        return data.signedUrl;
+      // Also extract metadata if we haven't yet
+      if (!audioMetadata[file.id]) {
+        const { data: blob } = await supabase.storage
+          .from("Storage")
+          .download(file.name);
+        if (blob) extractMetadata(blob, file.id);
       }
+
+      return data.signedUrl;
     } catch (err) {
       console.error("Error getting cloud URL:", err);
+      throw err;
     }
-    return "";
   }, [cloudAudioUrls, audioMetadata, extractMetadata]);
 
   useEffect(() => {
@@ -144,6 +141,27 @@ export default function Storage() {
       // No object URLs to revoke for cloud (they are signed URLs)
     };
   }, []);
+
+  const getCloudImageUrl = useCallback(async (file: any) => {
+    if (cloudImageUrls[file.id]) {
+      return cloudImageUrls[file.id];
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .createSignedUrl(file.name, 3600);
+
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("No signed URL returned");
+
+      setCloudImageUrls(prev => ({ ...prev, [file.id]: data.signedUrl }));
+      return data.signedUrl;
+    } catch (err) {
+      console.error("Error getting cloud image URL:", err);
+      throw err;
+    }
+  }, [cloudImageUrls]);
 
   const fetchCloudFiles = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -165,8 +183,8 @@ export default function Storage() {
 
       setCloudFiles(filteredFiles);
 
-      const total = filteredFiles.reduce((acc, file) => acc + (file.metadata?.size || 0), 0);
-      setTotalSize(total);
+      const totalFromData = (data || []).reduce((acc, file) => acc + (file.metadata?.size || 0), 0);
+      setTotalSize(totalFromData);
     } catch (error) {
       console.error("Cloud storage error:", error);
     }
@@ -177,8 +195,9 @@ export default function Storage() {
 
     try {
       const { data, error } = await supabase
-        .from("linked_images")
+        .from("image_links")
         .select("*")
+        .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -195,9 +214,37 @@ export default function Storage() {
     }
   }, [session?.user?.id, fetchCloudFiles, fetchLinkedImages]);
 
+  useEffect(() => {
+    const resolveImageUrls = async () => {
+      for (const file of cloudFiles) {
+        if (file.metadata?.mimetype?.startsWith("image/") && !cloudImageUrls[file.id]) {
+          try {
+            await getCloudImageUrl(file);
+          } catch (err) {
+            // Ignore individual failures
+          }
+        }
+      }
+    };
+    resolveImageUrls();
+  }, [cloudFiles, getCloudImageUrl, cloudImageUrls]);
+
+
   const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
+
+    const allowedExtensions = [".txt", ".md", ".png", ".jpg", ".mp3", ".wav", ".ogg"];
+    const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+
+    if (!allowedExtensions.includes(fileExtension)) {
+      toast({
+        title: "Invalid file type",
+        description: `Only ${allowedExtensions.join(", ")} files are allowed.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (totalSize + file.size > MAX_CLOUD_SIZE) {
       toast({
@@ -210,9 +257,11 @@ export default function Storage() {
 
     setUploading(true);
     try {
+      // Use unique key: userId/timestamp-filename
+      const fileKey = `${session.user.id}/${Date.now()}-${file.name}`;
       const { error } = await supabase.storage
         .from("Storage")
-        .upload(file.name, file, { upsert: true });
+        .upload(fileKey, file, { upsert: false });
 
       if (error) throw error;
 
@@ -257,8 +306,12 @@ export default function Storage() {
       const a = document.createElement("a");
       a.href = url;
       a.download = name;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     } catch (error) {
       toast({
         title: "Download failed",
@@ -273,7 +326,7 @@ export default function Storage() {
 
     try {
       const { error } = await supabase
-        .from("linked_images")
+        .from("image_links")
         .insert([{ url: newLinkUrl, user_id: session.user.id }]);
 
       if (error) throw error;
@@ -293,9 +346,10 @@ export default function Storage() {
   const deleteLink = async (id: string) => {
     try {
       const { error } = await supabase
-        .from("linked_images")
+        .from("image_links")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("user_id", session.user.id);
 
       if (error) throw error;
       toast({ title: "Success", description: "Link removed." });
@@ -317,10 +371,7 @@ export default function Storage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const getCloudPublicUrl = (name: string) => {
-    const { data } = supabase.storage.from("Storage").getPublicUrl(name);
-    return data.publicUrl;
-  };
+
 
   return (
     <Layout>
@@ -365,6 +416,7 @@ export default function Storage() {
                     className="hidden"
                     ref={cloudInputRef}
                     onChange={handleCloudUpload}
+                    accept=".txt,.md,.png,.jpg,.mp3,.wav,.ogg"
                   />
                 </div>
               </CardHeader>
@@ -383,7 +435,7 @@ export default function Storage() {
                       <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
                         {file.metadata?.mimetype?.startsWith("image/") ? (
                           <img
-                            src={getCloudPublicUrl(file.name)}
+                            src={cloudImageUrls[file.id]}
                             alt={file.name}
                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
                           />
@@ -410,7 +462,7 @@ export default function Storage() {
                           className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
                           asChild
                         >
-                          <a href={getCloudPublicUrl(file.name)} target="_blank" rel="noreferrer">
+                          <a href={cloudImageUrls[file.id]} target="_blank" rel="noreferrer">
                             <ExternalLink className="w-4 h-4 mr-2" />
                             View
                           </a>
