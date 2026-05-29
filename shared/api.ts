@@ -10,20 +10,3 @@
 export interface DemoResponse {
   message: string;
 }
-
-export interface LocalFile {
-  name: string;
-  size: number;
-  type: string;
-  createdAt: string;
-  url: string;
-}
-
-export interface LocalFilesResponse {
-  files: LocalFile[];
-}
-
-export interface UploadResponse {
-  message: string;
-  file?: LocalFile;
-}

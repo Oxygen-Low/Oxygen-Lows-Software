@@ -10,7 +10,7 @@ import {
   ExternalLink, Download,
   Plus,
   Loader2,
-  HardDrive, Music,
+  Music,
   Cloud,
   Link as LinkIcon
 } from "lucide-react";
@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { LocalFile } from "@shared/api";
+import * as mm from "music-metadata-browser";
 
 if (typeof globalThis.Buffer === "undefined") {
   globalThis.Buffer = Buffer;
@@ -75,374 +75,237 @@ function StorageCloudAudioDisplay({ file, audioUrl, getCloudAudioUrl }: { file: 
   );
 }
 
-function StorageLocalAudioDisplay({ file, blobUrl, getBlobUrlForTrack }: { file: LocalFile; blobUrl?: string; getBlobUrlForTrack: (file: LocalFile) => Promise<string | null> }) {
-  const [url, setUrl] = useState<string | null>(blobUrl || null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (blobUrl) {
-      setUrl(blobUrl);
-      return;
-    }
-
-    const resolveUrl = async () => {
-      try {
-        const resolvedUrl = await getBlobUrlForTrack(file);
-        if (resolvedUrl) {
-          setUrl(resolvedUrl);
-          setError(null);
-        } else {
-          setError("Unable to load");
-        }
-      } catch (err) {
-        console.error("Error resolving audio URL:", err);
-        setError("Failed to load");
-      }
-    };
-
-    resolveUrl();
-  }, [file, blobUrl, getBlobUrlForTrack]);
-
-  return (
-    <div className="flex flex-col items-center gap-4 w-full p-4">
-      <Music className="w-12 h-12 text-cyan-500" />
-      {error ? (
-        <p className="text-xs text-red-500 text-center">{error}</p>
-      ) : url ? (
-        <audio
-          controls
-          className="w-full h-8"
-          src={url}
-          crossOrigin="anonymous"
-        >
-          Your browser does not support the audio element.
-        </audio>
-      ) : (
-        <p className="text-xs text-slate-500 text-center">Preparing audio...</p>
-      )}
-    </div>
-  );
-}
-
 export default function Storage() {
   const { session } = useAuth();
   const { toast } = useToast();
-  const [cloudFiles, setCloudFiles] = useState<any[]>([]);
-  const [audioMetadata, setAudioMetadata] = useState<Record<string, { title?: string; artist?: string }>>({});
-  const [localFiles, setLocalFiles] = useState<LocalFile[]>([]);
-  const [linkedImages, setLinkedImages] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [totalCloudSize, setTotalCloudSize] = useState(0);
-  const [newLinkUrl, setNewLinkUrl] = useState("");
-  const [localBlobUrls, setLocalBlobUrls] = useState<Record<string, string>>({});
+  const [cloudFiles, setCloudFiles] = useState<any[]>([]);
   const [cloudAudioUrls, setCloudAudioUrls] = useState<Record<string, string>>({});
-
-  const localBlobUrlsRef = useRef<Record<string, string>>({});
   const cloudAudioUrlsRef = useRef<Record<string, string>>({});
-
+  const [totalSize, setTotalSize] = useState(0);
   const cloudInputRef = useRef<HTMLInputElement>(null);
-  const localInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    localBlobUrlsRef.current = localBlobUrls;
-  }, [localBlobUrls]);
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [linkedImages, setLinkedImages] = useState<any[]>([]);
+  const [audioMetadata, setAudioMetadata] = useState<Record<string, { title?: string; artist?: string }>>({});
 
   useEffect(() => {
     cloudAudioUrlsRef.current = cloudAudioUrls;
   }, [cloudAudioUrls]);
 
-  const getBlobUrlForTrack = useCallback(async (file: LocalFile) => {
-    if (localBlobUrls[file.name]) {
-      return localBlobUrls[file.name];
+  const extractMetadata = useCallback(async (file: File | Blob, id: string) => {
+    try {
+      const metadata = await mm.parseBlob(file);
+      if (metadata.common.title || metadata.common.artist) {
+        setAudioMetadata(prev => ({
+          ...prev,
+          [id]: {
+            title: metadata.common.title,
+            artist: metadata.common.artist
+          }
+        }));
+      }
+    } catch (err) {
+      console.warn("Failed to extract metadata:", err);
+    }
+  }, []);
+
+  const getCloudAudioUrl = useCallback(async (file: any) => {
+    if (cloudAudioUrls[file.id]) {
+      return cloudAudioUrls[file.id];
     }
 
     try {
-      const res = await fetch(file.url, {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .createSignedUrl(file.name, 3600);
 
-      setLocalBlobUrls(prev => ({ ...prev, [file.name]: url }));
-      return url;
-    } catch (error) {
-      console.error("Failed to fetch blob for track:", error);
-      return null;
+      if (error) throw error;
+      if (data?.signedUrl) {
+        setCloudAudioUrls(prev => ({ ...prev, [file.id]: data.signedUrl }));
+
+        // Also extract metadata if we haven't yet
+        if (!audioMetadata[file.id]) {
+          const { data: blob } = await supabase.storage
+            .from("Storage")
+            .download(file.name);
+          if (blob) extractMetadata(blob, file.id);
+        }
+
+        return data.signedUrl;
+      }
+    } catch (err) {
+      console.error("Error getting cloud URL:", err);
     }
-  }, [session?.access_token, localBlobUrls]);
+    return "";
+  }, [cloudAudioUrls, audioMetadata, extractMetadata]);
 
   useEffect(() => {
     return () => {
-      Object.values(localBlobUrlsRef.current).forEach(url => URL.revokeObjectURL(url));
-      Object.values(cloudAudioUrlsRef.current).forEach(url => {
-        if (url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
+      // No object URLs to revoke for cloud (they are signed URLs)
     };
   }, []);
 
-  useEffect(() => {
-    if (session) {
-      fetchData();
-    }
-  }, [session]);
+  const fetchCloudFiles = useCallback(async () => {
+    if (!session?.user?.id) return;
 
-  const fetchData = async () => {
-    setLoading(true);
     try {
-      await Promise.all([
-        fetchCloudFiles(),
-        fetchLocalFiles(),
-        fetchLinkedImages()
-      ]);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const extractAudioMetadata = async (blob: Blob, id: string) => {
-    try {
-      const mmb = await import("music-metadata-browser");
-      const metadata = await mmb.parseBlob(blob);
-      setAudioMetadata(prev => ({
-        ...prev,
-        [id]: {
-          title: metadata.common.title,
-          artist: metadata.common.artist
-        }
-      }));
-    } catch (error) {
-      console.error("Error extracting metadata:", error);
-    }
-  };
-
-  const fetchCloudFiles = async () => {
-    const { data, error } = await supabase.storage.from("Storage").list("", {
-      sortBy: { column: "created_at", order: "desc" }
-    });
-
-    if (error) {
-      console.error("Cloud storage error:", error);
-      return;
-    }
-
-    setCloudFiles(data || []);
-    data?.forEach(file => {
-      if (file.metadata?.mimetype?.startsWith("audio/")) {
-        supabase.storage.from("Storage").download(file.name).then(({ data: blob }) => {
-          if (blob) extractAudioMetadata(blob, file.id);
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .list("", {
+          sortBy: { column: "created_at", order: "desc" },
         });
-      }
-    });
-    const total = data?.reduce((acc, file) => acc + (file.metadata?.size || 0), 0) || 0;
-    setTotalCloudSize(total);
-  };
 
-  const fetchLocalFiles = async () => {
-    try {
-      const response = await fetch("/api/storage/files", {
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
-      });
-      const data = await response.json();
-      setLocalFiles(data.files || []);
+      if (error) throw error;
 
-      data.files?.forEach((file: LocalFile) => {
-        if (file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i)) {
-          fetch(file.url, {
-            headers: { Authorization: `Bearer ${session?.access_token}` }
-          }).then(res => res.blob()).then(blob => {
-            if (blob) {
-              extractAudioMetadata(blob, file.name);
-            }
-          });
-        }
-      });
+      // Filter for specific allowed file types as per memory
+      const allowedExtensions = [".txt", ".md", ".png", ".jpg", ".mp3", ".wav", ".ogg"];
+      const filteredFiles = (data || []).filter(file =>
+        allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+      );
+
+      setCloudFiles(filteredFiles);
+
+      const total = filteredFiles.reduce((acc, file) => acc + (file.metadata?.size || 0), 0);
+      setTotalSize(total);
     } catch (error) {
-      console.error("Local storage error:", error);
+      console.error("Cloud storage error:", error);
     }
-  };
+  }, [session?.user?.id]);
 
-  const fetchLinkedImages = async () => {
-    const { data, error } = await supabase
-      .from("image_links")
-      .select("*")
-      .order("created_at", { ascending: false });
+  const fetchLinkedImages = useCallback(async () => {
+    if (!session?.user?.id) return;
 
-    if (error) {
-      console.error("Image links error:", error);
-      return;
+    try {
+      const { data, error } = await supabase
+        .from("linked_images")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setLinkedImages(data || []);
+    } catch (error) {
+      console.error("Linked images error:", error);
     }
+  }, [session?.user?.id]);
 
-    setLinkedImages(data || []);
-  };
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchCloudFiles();
+      fetchLinkedImages();
+    }
+  }, [session?.user?.id, fetchCloudFiles, fetchLinkedImages]);
 
   const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !session?.user?.id) return;
 
-    const allowedTypes = ["text/plain", "text/markdown", "image/png", "image/jpeg", "audio/mpeg", "audio/wav", "audio/ogg", "audio/x-wav", "audio/x-pn-wav"];
-    if (!allowedTypes.includes(file.type)) {
+    if (totalSize + file.size > MAX_CLOUD_SIZE) {
       toast({
-        title: "Invalid file type",
-        description: "Only .txt, .md, .png, .jpg, .mp3, .wav, and .ogg are allowed on cloud storage.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (file.size > 30 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Maximum file size is 30MB.",
-        variant: "destructive"
+        title: "Limit exceeded",
+        description: "Cloud storage limit is 30MB.",
+        variant: "destructive",
       });
       return;
     }
 
     setUploading(true);
-    const fileName = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("Storage").upload(fileName, file);
+    try {
+      const { error } = await supabase.storage
+        .from("Storage")
+        .upload(file.name, file, { upsert: true });
 
-    if (error) {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
+      if (error) throw error;
+
       toast({ title: "Success", description: "File uploaded to cloud storage." });
       fetchCloudFiles();
-    }
-    setUploading(false);
-  };
-
-  const handleLocalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("/api/storage/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        toast({ title: "Success", description: "File uploaded to local storage." });
-        fetchLocalFiles();
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Upload failed",
-          description: errorData.message,
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Upload failed",
-        description: "Server error occurred.",
-        variant: "destructive"
+        description: error.message || "An error occurred during upload.",
+        variant: "destructive",
       });
-    }
-    setUploading(false);
-  };
-
-  const handleCloudDownload = async (name: string) => {
-    const { data, error } = await supabase.storage.from("Storage").download(name);
-    if (error) {
-      toast({ title: "Download failed", description: error.message, variant: "destructive" });
-      return;
-    }
-    const url = window.URL.createObjectURL(data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  const handleAddLink = async () => {
-    if (!newLinkUrl) return;
-
-    const { error } = await supabase
-      .from("image_links")
-      .insert([{ url: newLinkUrl, user_id: session?.user.id }]);
-
-    if (error) {
-      toast({
-        title: "Failed to add link",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      toast({ title: "Success", description: "Image link added." });
-      setNewLinkUrl("");
-      fetchLinkedImages();
+    } finally {
+      setUploading(false);
+      if (cloudInputRef.current) cloudInputRef.current.value = "";
     }
   };
 
   const deleteCloudFile = async (name: string) => {
-    const { error } = await supabase.storage.from("Storage").remove([name]);
-    if (error) {
-      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      const { error } = await supabase.storage.from("Storage").remove([name]);
+      if (error) throw error;
+      toast({ title: "Success", description: "File deleted from cloud storage." });
       fetchCloudFiles();
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete cloud file.",
+        variant: "destructive",
+      });
     }
   };
 
-  const deleteLocalFile = async (name: string) => {
-    const showFailToast = () => toast({
-      title: "Delete failed",
-      description: "Failed to delete local file.",
-      variant: "destructive"
-    });
+  const handleCloudDownload = async (name: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .download(name);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download cloud file.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddLink = async () => {
+    if (!newLinkUrl || !session?.user?.id) return;
 
     try {
-      const response = await fetch(`/api/storage/files/${name}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
+      const { error } = await supabase
+        .from("linked_images")
+        .insert([{ url: newLinkUrl, user_id: session.user.id }]);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Link added." });
+      setNewLinkUrl("");
+      fetchLinkedImages();
+    } catch (error: any) {
+      toast({
+        title: "Failed to add link",
+        description: error.message,
+        variant: "destructive",
       });
-      if (response.ok) {
-        if (localBlobUrls[name]) {
-          URL.revokeObjectURL(localBlobUrls[name]);
-          setLocalBlobUrls(prev => {
-            const next = { ...prev };
-            delete next[name];
-            return next;
-          });
-        }
-        fetchLocalFiles();
-      } else {
-        showFailToast();
-      }
-    } catch (error) {
-      console.error("Delete local file error:", error);
-      showFailToast();
-      fetchLocalFiles();
     }
   };
 
   const deleteLink = async (id: string) => {
-    const { error } = await supabase.from("image_links").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      const { error } = await supabase
+        .from("linked_images")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast({ title: "Success", description: "Link removed." });
       fetchLinkedImages();
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete link.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -456,42 +319,15 @@ export default function Storage() {
 
   const getCloudPublicUrl = (name: string) => {
     const { data } = supabase.storage.from("Storage").getPublicUrl(name);
-    return data?.publicUrl || "";
+    return data.publicUrl;
   };
-
-  const getCloudAudioUrl = useCallback(async (file: any) => {
-    if (cloudAudioUrls[file.id]) {
-      return cloudAudioUrls[file.id];
-    }
-
-    try {
-      const { data, error } = await supabase.storage
-        .from("Storage")
-        .download(file.name);
-
-      if (error || !data) {
-        console.error("Failed to download cloud audio:", error);
-        const publicUrl = getCloudPublicUrl(file.name);
-        setCloudAudioUrls(prev => ({ ...prev, [file.id]: publicUrl }));
-        return publicUrl;
-      }
-
-      const blobUrl = URL.createObjectURL(data);
-      setCloudAudioUrls(prev => ({ ...prev, [file.id]: blobUrl }));
-      return blobUrl;
-    } catch (error) {
-      console.error("Error resolving cloud audio URL:", error);
-      const publicUrl = getCloudPublicUrl(file.name);
-      return publicUrl;
-    }
-  }, [cloudAudioUrls]);
 
   return (
     <Layout>
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-bold tracking-tight text-white">Storage</h2>
-          <p className="text-slate-400">Manage your files in cloud and local storage.</p>
+          <p className="text-slate-400">Manage your files in cloud storage.</p>
         </div>
 
         <Tabs defaultValue="cloud" className="w-full">
@@ -499,10 +335,6 @@ export default function Storage() {
             <TabsTrigger value="cloud" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-400">
               <Cloud className="w-4 h-4 mr-2" />
               Cloud Storage
-            </TabsTrigger>
-            <TabsTrigger value="local" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-400">
-              <HardDrive className="w-4 h-4 mr-2" />
-              Local Storage
             </TabsTrigger>
             <TabsTrigger value="links" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-400">
               <LinkIcon className="w-4 h-4 mr-2" />
@@ -533,17 +365,16 @@ export default function Storage() {
                     className="hidden"
                     ref={cloudInputRef}
                     onChange={handleCloudUpload}
-                    accept=".txt,.md,.png,.jpg,.jpeg,.mp3,.wav,.ogg"
                   />
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">{formatSize(totalCloudSize)} used</span>
-                    <span className="text-slate-400">30MB limit</span>
+                  <div className="flex justify-between text-sm text-slate-400">
+                    <span>{formatSize(totalSize)} of 30MB used</span>
+                    <span>{Math.round((totalSize / MAX_CLOUD_SIZE) * 100)}%</span>
                   </div>
-                  <Progress value={(totalCloudSize / MAX_CLOUD_SIZE) * 100} className="h-2 bg-slate-800" />
+                  <Progress value={(totalSize / MAX_CLOUD_SIZE) * 100} className="bg-slate-800" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -597,86 +428,6 @@ export default function Storage() {
                           variant="destructive"
                           size="sm"
                           onClick={() => deleteCloudFile(file.name)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="local" className="space-y-6">
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle className="text-white">Local Storage</CardTitle>
-                    <CardDescription className="text-slate-400">
-                      No size limits, all file types accepted. Stored on the server.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    onClick={() => localInputRef.current?.click()}
-                    disabled={uploading}
-                    className="bg-cyan-500 hover:bg-cyan-600 text-white"
-                  >
-                    {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-                    Upload Locally
-                  </Button>
-                  <input
-                    type="file"
-                    className="hidden"
-                    ref={localInputRef}
-                    onChange={handleLocalUpload}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {localFiles.map((file) => (
-                    <Card key={file.name} className="bg-slate-950 border-slate-800 overflow-hidden group">
-                      <div className="aspect-video bg-slate-900 flex items-center justify-center">
-                        {file.type?.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg)$/i) ? (
-                          <StorageLocalAudioDisplay file={file} blobUrl={localBlobUrls[file.name]} getBlobUrlForTrack={getBlobUrlForTrack} />
-                        ) : (
-                          <File className="w-12 h-12 text-slate-700" />
-                        )}
-                      </div>
-                      <CardHeader className="p-4">
-                        <CardTitle className="text-sm text-white truncate" title={file.name}>
-                          {audioMetadata[file.name]
-                            ? `${audioMetadata[file.name].title || 'Unknown Title'} - ${audioMetadata[file.name].artist || 'Unknown Artist'}`
-                            : file.name}
-                        </CardTitle>
-                        <CardDescription className="text-xs text-slate-500">
-                          {formatSize(file.size)} • {new Date(file.createdAt).toLocaleDateString()}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0 flex gap-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
-                          onClick={async () => {
-                            const url = await getBlobUrlForTrack(file);
-                            if (url) {
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = file.name;
-                              a.click();
-                            }
-                          }}
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteLocalFile(file.name)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

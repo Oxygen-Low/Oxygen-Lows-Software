@@ -54,12 +54,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   useEffect(() => {
     const loadPreferences = async () => {
       if (!session?.user?.id) {
-        // Load from localStorage as fallback or for non-auth
-        const savedTheme = localStorage.getItem("theme") as Theme | null;
-        const savedGradient = localStorage.getItem("useGradient");
-
-        const initialTheme = savedTheme || "default";
-        const initialGradient = savedGradient === null ? true : savedGradient === "true";
+        // Use defaults for non-auth
+        const initialTheme = "default";
+        const initialGradient = true;
 
         setThemeState(initialTheme);
         setUseGradientState(initialGradient);
@@ -88,10 +85,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         applyTheme(loadedTheme, loadedGradient);
       } catch (error) {
         console.error("Failed to load preferences:", error);
-        // Fallback to local storage if available
-        const savedTheme = (localStorage.getItem("theme") as Theme) || "default";
-        const savedGradient = localStorage.getItem("useGradient") !== "false";
-        applyTheme(savedTheme, savedGradient);
+        // Keep defaults on error
       } finally {
         setIsLoading(false);
       }
@@ -102,7 +96,6 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
   const setTheme = useCallback(async (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem("theme", newTheme);
     applyTheme(newTheme, useGradient);
 
     if (session?.user?.id) {
@@ -120,7 +113,6 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
   const setUseGradient = useCallback(async (newGradient: boolean) => {
     setUseGradientState(newGradient);
-    localStorage.setItem("useGradient", String(newGradient));
     applyTheme(theme, newGradient);
 
     if (session?.user?.id) {
