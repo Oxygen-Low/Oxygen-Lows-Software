@@ -34,12 +34,16 @@ export function FileCompressorApp() {
 
   const ffmpegRef = useRef(new FFmpeg());
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const loadingPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     loadFFmpeg();
   }, []);
 
   const loadFFmpeg = async () => {
+    if (ffmpegLoaded) return;
+    if (loadingPromiseRef.current) return loadingPromiseRef.current;
+
     const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
     const ffmpeg = ffmpegRef.current;
 
@@ -51,16 +55,21 @@ export function FileCompressorApp() {
       setProgress(Math.round(progress * 100));
     });
 
-    try {
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-      });
-      setFfmpegLoaded(true);
-    } catch (error) {
-      console.error("FFmpeg load error:", error);
-      // Don't toast here as it might be annoying if it fails on initial load but user hasn't tried to compress audio yet
-    }
+    loadingPromiseRef.current = (async () => {
+      try {
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+        });
+        setFfmpegLoaded(true);
+      } catch (error) {
+        console.error("FFmpeg load error:", error);
+        loadingPromiseRef.current = null;
+        throw error;
+      }
+    })();
+
+    return loadingPromiseRef.current;
   };
 
   const formatSize = (bytes: number) => {
@@ -97,9 +106,10 @@ export function FileCompressorApp() {
         };
         compressedBlob = await imageCompression(fileBlob as any, options);
       } else if (mimetype.startsWith("audio/")) {
-        if (!ffmpegLoaded) {
-           await loadFFmpeg();
-           if (!ffmpegLoaded) throw new Error("FFmpeg not loaded yet");
+        try {
+          await loadFFmpeg();
+        } catch (error) {
+          throw new Error("Failed to load FFmpeg. Please check your internet connection and CSP settings.");
         }
 
         const ffmpeg = ffmpegRef.current;
