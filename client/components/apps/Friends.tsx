@@ -110,7 +110,10 @@ export function FriendsApp() {
 
     (data || []).forEach((f: any) => {
       const isSender = f.user_id === userId;
-      const profileData = isSender ? f.receiver : f.sender;
+      const senderProfile = Array.isArray(f.sender) ? f.sender[0] : f.sender;
+      const receiverProfile = Array.isArray(f.receiver) ? f.receiver[0] : f.receiver;
+
+      const profileData = isSender ? receiverProfile : senderProfile;
 
       if (!profileData) return;
 
@@ -165,7 +168,7 @@ export function FriendsApp() {
       id: f.id,
       follower_id: f.follower_id,
       following_id: f.following_id,
-      profile: f.profile
+      profile: Array.isArray(f.profile) ? f.profile[0] : f.profile
     });
 
     setFollowing((followingData || []).map(mapFollow));
@@ -181,7 +184,7 @@ export function FriendsApp() {
       `)
       .eq("blocker_id", userId);
 
-    setBlocked((data || []).map(b => b.profile));
+    setBlocked((data || []).map(b => Array.isArray(b.profile) ? b.profile[0] : b.profile));
   };
 
   const handleSendRequest = async () => {
