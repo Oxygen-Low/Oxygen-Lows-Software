@@ -11,12 +11,7 @@ Don't want to self-host it? You can access it via the Render servers:
 
 [EU (Main Server)](https://oxygen-lows-software.onrender.com)
 
-[US East](https://oxygen-lows-software-us-east.onrender.com)
+[US](https://oxygen-lows-software-us.onrender.com)
 
-[US West](https://oxygen-lows-software-us-west.onrender.com)
+[Asia](https://oxygen-lows-software-asia.onrender.com)
 
-[Southeast Asia](https://oxygen-lows-software-southeast-asia.onrender.com)
-
-Don't try to host your own public server with pnpm run public (unless you somehow have multiple people on your computer
-
-Oxygen Low's Software app is work in progress.
