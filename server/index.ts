@@ -21,7 +21,7 @@ export function createServer() {
           "font-src": ["'self'", "https://fonts.gstatic.com"],
           "img-src": ["'self'", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "*"],
           "media-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "blob:"],
-          "script-src": ["'self'", "https://unpkg.com", "'unsafe-eval'", "'unsafe-inline'"],
+          "script-src": ["'self'", "https://unpkg.com", "'unsafe-eval'", "'unsafe-inline'", "blob:"],
           "worker-src": ["'self'", "blob:"],
         },
       },
