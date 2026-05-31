@@ -19,7 +19,7 @@ max_rows = 1000
 
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.
-enabled = false
+enabled = true
 # Paths to self-signed certificate pair.
 # cert_path = "../certs/my-cert.pem"
 # key_path = "../certs/my-key.pem"
@@ -36,7 +36,7 @@ health_timeout = "2m"
 major_version = 17
 
 [db.pooler]
-enabled = false
+enabled = true
 # Port to use for the local connection pooler.
 port = 54329
 # Specifies when a server connection can be reused by other clients.
@@ -66,7 +66,7 @@ sql_paths = ["./seed.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
-enabled = false
+enabled = true
 # List of IPv4 CIDR blocks allowed to connect to the database.
 # Defaults to allow all IPv4 connections. Set empty array to block all IPs.
 allowed_cidrs = ["0.0.0.0/0"]
@@ -129,7 +129,7 @@ enabled = true
 # Store analytical data in S3 for running ETL jobs over Iceberg Catalog
 # This feature is only available on the hosted platform.
 [storage.analytics]
-enabled = false
+enabled = true
 max_namespaces = 5
 max_tables = 10
 max_catalogs = 2
@@ -140,7 +140,7 @@ max_catalogs = 2
 # Store vector embeddings in S3 for large and durable datasets
 # This feature is only available on the hosted platform.
 [storage.vector]
-enabled = false
+enabled = true
 max_buckets = 10
 max_indexes = 5
 
@@ -181,7 +181,7 @@ password_requirements = ""
 
 # Configure passkey sign-ins.
 # [auth.passkey]
-# enabled = false
+# enabled = true
 
 # Configure WebAuthn relying party settings (required when passkey is enabled).
 # [auth.webauthn]
@@ -282,7 +282,7 @@ max_frequency = "5s"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
-enabled = false
+enabled = true
 account_sid = ""
 message_service_sid = ""
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
@@ -295,13 +295,13 @@ max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 otp_length = 6
 template = "Your code is {{ .Code }}"
 max_frequency = "5s"
@@ -315,21 +315,21 @@ max_frequency = "5s"
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.gitlab]
-enabled = false
+enabled = true
 client_id = ""
 secret = "env(SUPABASE_AUTH_EXTERNAL_GITLAB_SECRET)"
 redirect_uri = ""
 url = ""
 
 [auth.external.google]
-enabled = false
+enabled = true
 client_id = ""
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 redirect_uri = ""
 skip_nonce_check = false
 
 [auth.external.apple]
-enabled = false
+enabled = true
 client_id = ""
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
@@ -346,35 +346,35 @@ email_optional = false
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]
-enabled = false
+enabled = true
 
 # Use Firebase Auth as a third-party provider alongside Supabase Auth.
 [auth.third_party.firebase]
-enabled = false
+enabled = true
 # project_id = "my-firebase-project"
 
 # Use Auth0 as a third-party provider alongside Supabase Auth.
 [auth.third_party.auth0]
-enabled = false
+enabled = true
 # tenant = "my-auth0-tenant"
 # tenant_region = "us"
 
 # Use AWS Cognito (Amplify) as a third-party provider alongside Supabase Auth.
 [auth.third_party.aws_cognito]
-enabled = false
+enabled = true
 # user_pool_id = "my-user-pool-id"
 # user_pool_region = "us-east-1"
 
 # Use Clerk as a third-party provider alongside Supabase Auth.
 [auth.third_party.clerk]
-enabled = false
+enabled = true
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
 # OAuth server configuration
 [auth.oauth_server]
 # Enable OAuth server functionality
-enabled = false
+enabled = true
 # Path for OAuth consent flow UI
 authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
@@ -415,7 +415,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 # [experimental.pgdelta]
 # When enabled, pg-delta becomes the active engine for supported schema flows.
-# enabled = false
+# enabled = true
 # Directory under `supabase/` where declarative files are written.
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
