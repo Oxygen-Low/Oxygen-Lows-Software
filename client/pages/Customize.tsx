@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import { useTheme, Theme } from "@/hooks/useTheme";
 import { useFont, FontOption } from "@/hooks/useFont";
 import { useMusic, PlaylistTrack } from "@/hooks/useMusic";
 import { useAuth } from "@/hooks/useAuth";
 import { MusicPlayer } from "@/components/MusicPlayer";
-import { supabase } from "@/lib/supabase";
-import { Trash2, Plus, Play } from "lucide-react";
+import { Trash2, Plus, Play, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { StorageFileSelector } from "@/components/StorageFileSelector";
 
 const THEMES: { label: string; value: Theme }[] = [
   { label: "Default/Oxygen", value: "default" },
@@ -19,11 +19,11 @@ const THEMES: { label: string; value: Theme }[] = [
 ];
 
 const FONTS: { label: string; value: FontOption }[] = [
-  { label: "Default", value: "default" },
+  { label: "Indie Flower", value: "default" },
   { label: "Poppins", value: "poppins" },
   { label: "Roboto", value: "roboto" },
   { label: "Playfair Display", value: "playfair-display" },
-  { label: "IBM Plex Mono", value: "ibm-plex-mono" },
+  { label: "Plex Mono", value: "ibm-plex-mono" },
 ];
 
 export default function Customize() {
@@ -40,52 +40,6 @@ export default function Customize() {
     toggleShuffle,
     playTrack,
   } = useMusic();
-
-  const [availableAudioFiles, setAvailableAudioFiles] = useState<
-    PlaylistTrack[]
-  >([]);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
-
-  // Load available audio files from storage
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const loadAudioFiles = async () => {
-      setIsLoadingAudio(true);
-      try {
-        const { data, error } = await supabase.storage
-          .from("Storage")
-          .list("");
-
-        if (error) throw error;
-
-        const audioFiles =
-          data
-            ?.filter((file) =>
-              file.name.match(/\.(mp3|wav|ogg)$/i) ||
-              file.metadata?.mimetype?.startsWith("audio/")
-            )
-            .map((file) => ({
-              id: file.id,
-              fileName: file.name,
-              name: file.name.replace(/\.[^/.]+$/, ""),
-            })) || [];
-
-        setAvailableAudioFiles(audioFiles);
-      } catch (error) {
-        console.error("Failed to load audio files:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load audio files",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingAudio(false);
-      }
-    };
-
-    loadAudioFiles();
-  }, [session?.user?.id]);
 
   const handleAddTrack = (track: PlaylistTrack) => {
     const alreadyInPlaylist = playlist.some(
@@ -251,50 +205,23 @@ export default function Customize() {
             <h3 className="text-lg font-semibold mb-3 text-foreground">
               Add Tracks from Storage
             </h3>
-            {isLoadingAudio ? (
-              <p className="text-muted-foreground">Loading audio files...</p>
-            ) : availableAudioFiles.length === 0 ? (
-              <p className="text-muted-foreground">
-                No audio files found in your storage. Upload audio files to get
-                started.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {availableAudioFiles.map((track) => {
-                  const isInPlaylist = playlist.some(
-                    (t) => t.fileName === track.fileName
-                  );
-                  return (
-                    <div
-                      key={track.fileName}
-                      className="flex items-center justify-between p-3 bg-card rounded-lg border border-border hover:bg-muted transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">
-                          {track.name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {track.fileName}
-                        </p>
-                      </div>
-                      <Button onClick={() => playTrack(track)} variant="ghost" size="sm" className="mr-2 text-primary hover:text-primary/80"><Play className="w-4 h-4 mr-1" />Play</Button>
-                      <Button
-                        onClick={() => handleAddTrack(track)}
-                        disabled={isInPlaylist}
-                        variant={isInPlaylist ? "ghost" : "default"}
-                        size="sm"
-                        className={
-                          isInPlaylist ? "opacity-50 cursor-not-allowed" : ""
-                        }
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        {isInPlaylist ? "Added" : "Add"}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <StorageFileSelector
+              allowedTypes={["audio"]}
+              onSelect={(file) => {
+                const track: PlaylistTrack = {
+                  id: file.id,
+                  fileName: file.name,
+                  name: file.name.split('/').pop()?.replace(/\.[^/.]+$/, "") || file.name,
+                };
+                handleAddTrack(track);
+              }}
+              trigger={
+                <Button className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2">
+                  <Music className="w-8 h-8 opacity-50" />
+                  <span>Select Audio from Storage</span>
+                </Button>
+              }
+            />
           </div>
         </div>
       </div>
