@@ -1,3 +1,4 @@
+import { OauthApp } from "@/components/apps/Oauth";
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,8 @@ import {
   Code,
   BrainCircuit,
   Box,
-  Users
+  Users,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -55,6 +57,14 @@ export default function Apps() {
       categories: ["All", "Utility"],
       icon: <Box className="w-8 h-8 text-cyan-500" />,
       component: FileCompressorApp,
+    },
+    {
+      id: "oauth",
+      name: "OAuth",
+      description: "Add OAuth to your applications via Oxygen Low's Software Accounts.",
+      categories: ["All", "Development"],
+      icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
+      component: OauthApp,
     },
   ];
 

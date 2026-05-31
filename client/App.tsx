@@ -16,6 +16,7 @@ import Storage from "./pages/Storage";
 import Customize from "./pages/Customize";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
+import OauthConsent from "./pages/OauthConsent";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,7 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route path="/oauth/consent" element={<OauthConsent />} />
               <Route path="/auth" element={<Auth />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
