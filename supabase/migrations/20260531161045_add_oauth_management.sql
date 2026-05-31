@@ -8,10 +8,19 @@ CREATE TABLE IF NOT EXISTS public.user_oauth_clients (
 
 ALTER TABLE public.user_oauth_clients ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own oauth client links"
-    ON public.user_oauth_clients FOR SELECT
-    TO authenticated
-    USING (auth.uid() = user_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE tablename = 'user_oauth_clients'
+        AND policyname = 'Users can view their own oauth client links'
+    ) THEN
+        CREATE POLICY "Users can view their own oauth client links"
+            ON public.user_oauth_clients FOR SELECT
+            TO authenticated
+            USING (auth.uid() = user_id);
+    END IF;
+END $$;
 
 -- RPC to create client
 CREATE OR REPLACE FUNCTION public.create_oauth_client(
@@ -126,11 +135,17 @@ BEGIN
         RAISE EXCEPTION 'Unauthorized or client not found';
     END IF;
 
+    IF EXISTS (
+        SELECT 1 FROM auth.oauth_clients
+        WHERE id = p_client_id AND client_type != p_client_type
+    ) THEN
+        RAISE EXCEPTION 'Changing client_type is not supported in this update function. Please delete and recreate the client if you need to change its type.';
+    END IF;
+
     UPDATE auth.oauth_clients
     SET
         client_name = p_name,
         redirect_uris = p_redirect_uris,
-        client_type = p_client_type,
         token_endpoint_auth_method = CASE WHEN p_client_type = 'confidential' THEN 'client_secret_post' ELSE 'none' END,
         updated_at = now()
     WHERE id = p_client_id;

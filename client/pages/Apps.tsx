@@ -60,8 +60,8 @@ export default function Apps() {
     },
     {
       id: "oauth",
-      name: "Oauth",
-      description: "Add oauth to your applications via Oxygen Low's Software Accounts.",
+      name: "OAuth",
+      description: "Add OAuth to your applications via Oxygen Low's Software Accounts.",
       categories: ["All", "Development"],
       icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
       component: OauthApp,

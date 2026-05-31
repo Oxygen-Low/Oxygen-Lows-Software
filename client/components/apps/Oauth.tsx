@@ -66,6 +66,7 @@ export function OauthApp() {
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [grants, setGrants] = useState<OAuthGrant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New client form state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -104,6 +105,8 @@ export function OauthApp() {
   };
 
   const handleCreateClient = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const { data, error } = await supabase.rpc("create_oauth_client", {
         p_name: newName,
@@ -118,7 +121,11 @@ export function OauthApp() {
         description: "Please save your client secret if applicable.",
       });
 
-      setCreatedSecret(data.client_secret);
+      if (newType === "public") {
+        setIsCreateOpen(false);
+      } else {
+        setCreatedSecret(data.client_secret);
+      }
       fetchData();
     } catch (error: any) {
       toast({
@@ -126,11 +133,15 @@ export function OauthApp() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteClient = async (id: string) => {
+    if (isSubmitting) return;
     if (!confirm("Are you sure you want to delete this OAuth client? This action cannot be undone.")) return;
+    setIsSubmitting(true);
     try {
       const { error } = await supabase.rpc("delete_oauth_client", { p_client_id: id });
       if (error) throw error;
@@ -142,10 +153,14 @@ export function OauthApp() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleRevokeGrant = async (id: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const { error } = await supabase.rpc("revoke_oauth_grant", { p_grant_id: id });
       if (error) throw error;
@@ -157,6 +172,8 @@ export function OauthApp() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -278,7 +295,7 @@ export function OauthApp() {
                   {!createdSecret ? (
                     <Button
                       onClick={handleCreateClient}
-                      disabled={!newName || !newRedirectUris}
+                      disabled={!newName || !newRedirectUris || isSubmitting}
                       className="bg-cyan-600 hover:bg-cyan-700"
                     >
                       Create
@@ -326,6 +343,7 @@ export function OauthApp() {
                           size="icon"
                           className="text-slate-400 hover:text-red-400 hover:bg-red-400/10"
                           onClick={() => handleDeleteClient(client.id)}
+                          disabled={isSubmitting}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -408,6 +426,7 @@ export function OauthApp() {
                       size="sm"
                       className="text-red-400 border-red-400/20 hover:bg-red-400/10"
                       onClick={() => handleRevokeGrant(grant.id)}
+                      disabled={isSubmitting}
                     >
                       Revoke
                     </Button>
