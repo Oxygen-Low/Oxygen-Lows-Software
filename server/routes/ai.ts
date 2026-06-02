@@ -95,6 +95,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       body = { model, messages, stream };
       break;
     case "custom":
+      if (!integration.base_url.startsWith("http")) return res.status(400).json({ error: "Invalid base URL" });
       url = `${integration.base_url}/chat/completions`;
       if (integration.api_key) headers["Authorization"] = `Bearer ${integration.api_key}`;
       body = { model, messages, stream };

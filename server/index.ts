@@ -1,3 +1,4 @@
+import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
@@ -7,6 +8,12 @@ import { handleProxyAiRequest, handleGetLocalProviders, handleGetChatStyles } fr
 
 export function createServer() {
   const app = express();
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
   // Middleware
   app.use(
@@ -38,9 +45,9 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
-  app.post("/api/ai/proxy", handleProxyAiRequest);
-  app.get("/api/ai/local-providers", handleGetLocalProviders);
-  app.get("/api/ai/styles", handleGetChatStyles);
+  app.post("/api/ai/proxy", apiLimiter, handleProxyAiRequest);
+  app.get("/api/ai/local-providers", apiLimiter, handleGetLocalProviders);
+  app.get("/api/ai/styles", apiLimiter, handleGetChatStyles);
 
   return app;
 }

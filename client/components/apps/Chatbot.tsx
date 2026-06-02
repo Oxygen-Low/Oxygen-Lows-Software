@@ -60,7 +60,7 @@ export function ChatbotApp() {
   const [styles, setStyles] = useState<Style[]>([]);
   const [selectedStyle, setSelectedStyle] = useState<string>("GeneralAssistant");
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchChats();
@@ -77,8 +77,8 @@ export function ChatbotApp() {
   }, [currentChatId]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (messagesEndRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
@@ -351,7 +351,7 @@ export function ChatbotApp() {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 pr-4" viewportRef={scrollRef}>
+            <ScrollArea className="flex-1 pr-4"  >
               <div className="space-y-6 py-4">
                 {messages.map((m, idx) => (
                   <div key={idx} className={cn(
@@ -374,6 +374,7 @@ export function ChatbotApp() {
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
                 {isTyping && (
                   <div className="flex gap-4">
                     <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
