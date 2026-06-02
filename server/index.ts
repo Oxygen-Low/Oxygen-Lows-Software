@@ -1,13 +1,25 @@
+import ws from "ws";
+import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { handleProxyAiRequest, handleGetLocalProviders, handleGetChatStyles } from "./routes/ai";
+
+if (typeof global !== "undefined" && !global.WebSocket) {
+  (global as any).WebSocket = ws;
+}
 
 export function createServer() {
   const app = express();
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
-  // Middleware
   app.use(
     helmet({
       crossOriginOpenerPolicy: { policy: "same-origin" },
@@ -15,7 +27,7 @@ export function createServer() {
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "https://api.pwnedpasswords.com", "https://unpkg.com"],
+          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "https://api.pwnedpasswords.com", "https://unpkg.com", "https://api.openai.com", "https://api.anthropic.com", "https://generativelanguage.googleapis.com", "https://openrouter.ai", "https://api.x.ai"],
           "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
           "img-src": ["'self'", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "*"],
@@ -30,13 +42,15 @@ export function createServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Example API routes
   app.get("/api/ping", (_req, res) => {
     const ping = process.env.PING_MESSAGE ?? "ping";
     res.json({ message: ping });
   });
 
   app.get("/api/demo", handleDemo);
+  app.post("/api/ai/proxy", apiLimiter, handleProxyAiRequest);
+  app.get("/api/ai/local-providers", apiLimiter, handleGetLocalProviders);
+  app.get("/api/ai/styles", apiLimiter, handleGetChatStyles);
 
   return app;
 }

@@ -1,38 +1,35 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { Lock, Upload, Share2 } from "lucide-react";
+import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import Cropper, { Area } from "react-easy-crop";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface UserProfile {
-  user_id: string;
-  username: string;
-  display_name: string;
-  username_updated_at: string;
-  display_name_updated_at: string;
-  bio: string;
-  email: string | null;
-  show_email: boolean;
-}
+interface UserProfile { user_id: string; username: string; display_name: string; bio: string; email: string | null; show_email: boolean; }
+interface ProfilePicture { id: string; user_id?: string; image_url: string; crop_data: Area; }
+interface Integration { provider: string; base_url?: string; has_key: boolean; }
+interface UserModel { provider: string; model_id: string; }
 
-interface ProfilePicture {
-  id: string;
-  user_id?: string;
-  image_url: string;
-  crop_data: Area;
-}
+const PROVIDERS = [
+  { id: "openrouter", name: "OpenRouter" },
+  { id: "openai", name: "ChatGPT/OpenAI" },
+  { id: "google", name: "Gemini/Google" },
+  { id: "grok", name: "Grok" },
+  { id: "anthropic", name: "Claude/Anthropic" },
+  { id: "stablehorde", name: "Stable Horde" },
+  { id: "custom", name: "Custom/OpenAI-Like", hasUrl: true },
+];
 
 export default function Account() {
   const { session, linkIdentity } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [profilePicture, setProfilePicture] = useState<ProfilePicture | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [identities, setIdentities] = useState<any[]>([]);
@@ -40,536 +37,152 @@ export default function Account() {
   const [usernameInput, setUsernameInput] = useState("");
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [bioInput, setBioInput] = useState("");
-  const [isSavingNames, setIsSavingNames] = useState(false);
-  const [isSavingEmailVisibility, setIsSavingEmailVisibility] = useState(false);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [userModels, setUserModels] = useState<UserModel[]>([]);
+  const [apiKeyInputs, setApiKeyInputs] = useState<Record<string, string>>({});
+  const [baseUrlInputs, setBaseUrlInputs] = useState<Record<string, string>>({});
+  const [newModelInput, setNewModelInput] = useState("");
+  const [selectedProviderForModel, setSelectedProviderForModel] = useState("openai");
 
   useEffect(() => {
-    const fetchProfilePicture = async () => {
-      if (!session?.user?.id) return;
-      const { data, error } = await supabase
-        .from("profile_pictures")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .single();
-
-      if (data && !error) {
-        setProfilePicture(data);
-      }
+    if (!session?.user?.id) return;
+    const fetchAll = async () => {
+      const { data: pic } = await supabase.from("profile_pictures").select("*").eq("user_id", session.user.id).single();
+      if (pic) setProfilePicture(pic);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.identities) setIdentities(user.identities);
+      const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", session.user.id).single();
+      if (prof) { setProfile(prof); setUsernameInput(prof.username || ""); setDisplayNameInput(prof.display_name || ""); setBioInput(prof.bio || ""); }
+      const { data: ints } = await supabase.rpc("get_my_integrations");
+      if (ints) setIntegrations(ints);
+      const { data: mods } = await supabase.from("user_models").select("*");
+      if (mods) setUserModels(mods);
     };
-
-    const fetchProfile = async () => {
-      if (!session?.user?.id) return;
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .single();
-
-      if (data && !error) {
-        setProfile(data);
-        setUsernameInput(data.username);
-        setDisplayNameInput(data.display_name);
-        setBioInput(data.bio ?? "");
-      }
-    };
-
-    const fetchIdentities = async () => {
-      const { data, error } = await supabase.auth.getUserIdentities();
-      if (data && !error) {
-        setIdentities(data.identities);
-      }
-    };
-
-    fetchProfilePicture();
-    fetchProfile();
-    fetchIdentities();
+    fetchAll();
   }, [session]);
 
-  const onCropComplete = useCallback((_sharedArea: Area, _croppedAreaPixels: Area) => {
-    setCroppedArea(_croppedAreaPixels);
-  }, []);
-
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(e.target.files[0]);
+    if (e.target.files?.[0]) {
+      const r = new FileReader(); r.onload = () => setSelectedImage(r.result as string); r.readAsDataURL(e.target.files[0]);
     }
   };
 
-  const createCircleImage = async (imageSrc: string, pixelCrop: Area, imageElement: HTMLImageElement): Promise<Blob> => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new Blob();
-
-    canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
-
-    ctx.beginPath();
-    ctx.arc(pixelCrop.width / 2, pixelCrop.height / 2, pixelCrop.width / 2, 0, Math.PI * 2);
-    ctx.clip();
-
-    const imgX = -pixelCrop.x;
-    const imgY = -pixelCrop.y;
-
-    ctx.drawImage(imageElement, imgX, imgY);
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob || new Blob());
-      }, "image/png");
-    });
-  };
-
-  const handleDeleteProfilePicture = async () => {
-    if (!profilePicture) return;
-
-    setIsUploading(true);
+  const handleUpload = async () => {
+    if (!selectedImage || !croppedArea || !session?.user?.id) return;
     try {
-      const fileName = profilePicture.image_url.split("/").pop();
-      if (fileName) {
-        await supabase.storage.from("Storage").remove([fileName]);
-      }
-
-      const { error } = await supabase
-        .from("profile_pictures")
-        .delete()
-        .eq("user_id", session?.user?.id);
-
-      if (error) throw error;
-
-      toast({ title: "Success", description: "Profile picture deleted" });
-      setProfilePicture(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete profile picture";
-      toast({ title: "Error", description: message });
-    } finally {
-      setIsUploading(false);
-    }
+      const canvas = document.createElement("canvas");
+      const img = new Image(); img.src = selectedImage; await new Promise(r => img.onload = r);
+      canvas.width = croppedArea.width; canvas.height = croppedArea.height;
+      canvas.getContext("2d")?.drawImage(img, croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height, 0, 0, croppedArea.width, croppedArea.height);
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), "image/jpeg", 0.9));
+      const { data: old } = await supabase.from("profile_pictures").select("image_url").eq("user_id", session.user.id).single();
+      const { data: up, error: err } = await supabase.storage.from("Storage").upload(`profiles/${session.user.id}_${Date.now()}.jpg`, blob);
+      if (err) throw err;
+      const { data: { publicUrl } } = supabase.storage.from("Storage").getPublicUrl(up.path);
+      await supabase.from("profile_pictures").upsert({ user_id: session.user.id, image_url: publicUrl, crop_data: croppedArea });
+      if (old?.image_url) { const p = old.image_url.split('/public/Storage/')[1]; if (p) await supabase.storage.from("Storage").remove([p]); }
+      setProfilePicture({ id: "", image_url: publicUrl, crop_data: croppedArea }); setSelectedImage(null);
+      toast({ title: "Success" });
+    } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
   };
 
-  const handleSaveProfilePicture = async () => {
-    if (!selectedImage || !croppedArea) {
-      toast({ title: "Error", description: "Please crop an image first" });
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const oldFileName = profilePicture?.image_url.split("/").pop();
-
-      const img = new Image();
-      img.onload = async () => {
-        const circleBlob = await createCircleImage(selectedImage, croppedArea, img);
-        const fileName = `profile-${session?.user?.id}-${Date.now()}.png`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("Storage")
-          .upload(fileName, circleBlob, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        if (oldFileName) {
-          await supabase.storage.from("Storage").remove([oldFileName]);
-        }
-
-        const publicUrl = supabase.storage.from("Storage").getPublicUrl(fileName).data
-          .publicUrl;
-
-        const { error: dbError } = await supabase
-          .from("profile_pictures")
-          .upsert(
-            {
-              user_id: session?.user?.id,
-              image_url: publicUrl,
-              crop_data: croppedArea,
-            },
-            { onConflict: "user_id" }
-          );
-
-        if (dbError) throw dbError;
-
-        toast({ title: "Success", description: "Profile picture updated" });
-        setSelectedImage(null);
-        setProfilePicture({ id: session?.user?.id || "", image_url: publicUrl, crop_data: croppedArea });
-      };
-      img.src = selectedImage;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save profile picture";
-      toast({ title: "Error", description: message });
-    } finally {
-      setIsUploading(false);
-    }
+  const handleToggleEmailVisibility = async (visible: boolean) => {
+    if (!session?.user?.id) return;
+    const { data, error } = await supabase.from("profiles").upsert({ user_id: session.user.id, show_email: visible }).select().single();
+    if (!error && data) { setProfile(data); toast({ title: "Success" }); }
   };
 
-  const handleResetPassword = async () => {
-    if (!session?.user?.email) {
-      toast({
-        title: "Error",
-        description: "No email found in session",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(session.user.email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Password reset link sent to your email",
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send reset link";
-      toast({
-        title: "Error",
-        description: message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleLinkIdentity = async (provider: string) => {
+    await supabase.auth.updateUser({ data: { manual_link_allowed: true } });
+    await linkIdentity(provider as any);
   };
 
-  const handleLinkIdentity = async (provider: "github" | "discord" | "gitlab" | "google") => {
-    try {
-      // Set a flag in user metadata to allow the upcoming manual link
-      // even if another account with the same email already exists.
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { manual_link_allowed: true },
-      });
-
-      if (updateError) throw updateError;
-
-      await linkIdentity(provider);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : `Failed to link ${provider}`;
-      toast({
-        title: "Error",
-        description: message,
-      });
-    }
+  const handleSaveIntegration = async (id: string) => {
+    await supabase.rpc("upsert_user_integration", { p_provider: id, p_api_key: apiKeyInputs[id], p_base_url: baseUrlInputs[id] });
+    const { data } = await supabase.rpc("get_my_integrations"); if (data) setIntegrations(data);
+    toast({ title: "Success" });
   };
 
-  const handleSaveNames = async () => {
-    setIsSavingNames(true);
-    try {
-      const { data, error } = await supabase.rpc("update_user_profile_names", {
-        p_username: usernameInput,
-        p_display_name: displayNameInput,
-        p_bio: bioInput,
-      });
-
-      if (error) throw error;
-
-      setProfile(data);
-      toast({ title: "Success", description: "Profile updated" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update profile names";
-      toast({ title: "Error", description: message });
-    } finally {
-      setIsSavingNames(false);
-    }
-  };
-
-
-  const handleToggleEmailVisibility = async (value: boolean) => {
-    if (!session?.user?.id || !profile) return;
-    setIsSavingEmailVisibility(true);
-    try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .update({ show_email: value })
-        .eq("user_id", session.user.id)
-        .select("*")
-        .single();
-
-      if (error) throw error;
-
-      setProfile(data);
-      toast({ title: "Success", description: "Email visibility updated" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update email visibility";
-      toast({ title: "Error", description: message });
-    } finally {
-      setIsSavingEmailVisibility(false);
-    }
-  };
-
-  const isLinked = (provider: string) => {
-    return identities.some(id => id.provider === provider);
-  };
+  const isLinked = (p: string) => identities.some(id => id.provider === p);
 
   return (
     <Layout>
-      <div className="max-w-2xl">
-        <h2 className="text-2xl font-bold text-slate-100 mb-8">Account Settings</h2>
-
-        <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-6 space-y-8">
-          {/* Profile Picture Section */}
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-slate-300">Profile Picture</label>
-
-            {selectedImage ? (
-              <div className="space-y-4">
-                <div className="bg-slate-950 rounded-lg border border-slate-700 p-4">
-                  <div className="relative w-full h-96 bg-slate-950">
-                    <Cropper
-                      image={selectedImage}
-                      crop={crop}
-                      zoom={zoom}
-                      aspect={1}
-                      cropShape="round"
-                      showGrid={false}
-                      onCropChange={setCrop}
-                      onCropComplete={onCropComplete}
-                      onZoomChange={setZoom}
-                    />
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold text-white mb-8">Account Settings</h1>
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="bg-slate-900 border border-slate-800 p-1">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            <TabsTrigger value="models">Models</TabsTrigger>
+          </TabsList>
+          <TabsContent value="profile" className="space-y-6">
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardContent className="pt-6">
+                <div className="flex gap-6 items-start">
+                  <div className="relative group">
+                    <div className="w-24 h-24 rounded-2xl bg-slate-800 overflow-hidden ring-4 ring-slate-800">
+                      {profilePicture?.image_url ? <img src={profilePicture.image_url} alt="Profile" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-500"><Upload className="w-8 h-8" /></div>}
+                    </div>
+                    <button onClick={() => fileInputRef.current?.click()} aria-label="Upload profile image" className="absolute -bottom-2 -right-2 p-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl shadow-lg"><Upload className="w-4 h-4" /></button>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <Input value={usernameInput} onChange={e => setUsernameInput(e.target.value.toLowerCase())} placeholder="Username" className="bg-slate-950" />
+                    <Input value={displayNameInput} onChange={e => setDisplayNameInput(e.target.value)} placeholder="Display Name" className="bg-slate-950" />
+                    <textarea value={bioInput} onChange={e => setBioInput(e.target.value)} className="w-full min-h-[100px] bg-slate-950 border-slate-800 rounded-lg p-3 text-sm text-white" />
+                    <Button onClick={() => supabase.from("profiles").upsert({ user_id: session?.user?.id, username: usernameInput, display_name: displayNameInput, bio: bioInput }).then(() => toast({ title: "Success" }))} className="bg-cyan-600">Save</Button>
                   </div>
                 </div>
-
-                <div className="space-y-3">
-                  <label className="block text-xs text-slate-400">Zoom</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.1"
-                    value={zoom}
-                    onChange={(e) => setZoom(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="integrations" className="space-y-6">
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardContent className="pt-6 space-y-4">
+                {PROVIDERS.map(p => (
+                  <div key={p.id} className="p-4 rounded-xl bg-slate-950/50 border border-slate-800/50 space-y-4">
+                    <h3 className="font-semibold text-white">{p.name}</h3>
+                    <div className="flex gap-3">
+                      {p.hasUrl && <Input placeholder="Base URL" value={baseUrlInputs[p.id] ?? integrations.find(i => i.provider === p.id)?.base_url ?? ""} onChange={e => setBaseUrlInputs({...baseUrlInputs, [p.id]: e.target.value})} className="bg-slate-900 flex-[2]" />}
+                      <Input type="password" placeholder="API Key" value={apiKeyInputs[p.id] || ""} onChange={e => setApiKeyInputs({...apiKeyInputs, [p.id]: e.target.value})} className="bg-slate-900 flex-[3]" />
+                      <Button onClick={() => handleSaveIntegration(p.id)} variant="secondary">Save</Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {['github', 'gitlab', 'google', 'discord'].map(p => (
+                  <Button key={p} variant={isLinked(p) ? "secondary" : "outline"} onClick={() => handleLinkIdentity(p)} disabled={isLinked(p)} className={`h-12 justify-start gap-3 ${isLinked(p) ? 'bg-green-500/10 text-green-400' : 'bg-slate-950'}`}>
+                    <Share2 className="w-4 h-4" /> Link {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="models" className="space-y-6">
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardContent className="pt-6 space-y-6">
                 <div className="flex gap-3">
-                  <button
-                    onClick={handleSaveProfilePicture}
-                    disabled={isUploading}
-                    className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg border border-cyan-500/30 transition duration-200 text-sm font-medium"
-                  >
-                    {isUploading ? "Saving..." : "Save Profile Picture"}
-                  </button>
-                  <button
-                    onClick={() => setSelectedImage(null)}
-                    disabled={isUploading}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 rounded-lg border border-slate-700 transition duration-200 text-sm font-medium"
-                  >
-                    Cancel
-                  </button>
+                  <select value={selectedProviderForModel} onChange={e => setSelectedProviderForModel(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm">{PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                  <Input placeholder="Model ID" value={newModelInput} onChange={e => setNewModelInput(e.target.value)} className="bg-slate-950" />
+                  <Button onClick={() => supabase.rpc("upsert_user_model", { p_provider: selectedProviderForModel, p_model_id: newModelInput }).then(() => { setNewModelInput(""); supabase.from("user_models").select("*").then(({data}) => data && setUserModels(data)); toast({title: "Added"}); })} className="bg-cyan-600">Add</Button>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {profilePicture?.image_url && (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-700 bg-slate-950">
-                      <img
-                        src={profilePicture.image_url}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {userModels.map((m, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-950/50 border border-slate-800/50 group">
+                      <div className="flex flex-col"><span className="text-xs text-slate-500 font-mono uppercase">{m.provider}</span><span className="text-sm text-white font-medium">{m.model_id}</span></div>
+                      <button onClick={() => supabase.rpc("remove_user_model", { p_provider: m.provider, p_model_id: m.model_id }).then(() => setUserModels(userModels.filter(x => x !== m)))} aria-label={`Remove ${m.model_id} (${m.provider})`} className="p-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <p className="text-sm text-slate-400">Current profile picture</p>
-                    <div className="flex gap-3 w-full">
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex-1 px-4 py-2 bg-slate-950 hover:bg-slate-900 text-slate-200 rounded-lg border border-dashed border-slate-700 transition duration-200 text-sm font-medium flex items-center justify-center gap-2"
-                      >
-                        <Upload className="w-4 h-4" />
-                        Replace
-                      </button>
-                      <button
-                        onClick={handleDeleteProfilePicture}
-                        disabled={isUploading}
-                        className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed text-red-400 rounded-lg border border-red-600/30 transition duration-200 text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {!profilePicture?.image_url && (
-                  <>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full px-4 py-3 bg-slate-950 hover:bg-slate-900 text-slate-200 rounded-lg border border-dashed border-slate-700 transition duration-200 text-sm font-medium flex items-center justify-center gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Choose Image
-                    </button>
-                  </>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Username and Display Name Section */}
-          <div className="border-t border-slate-800 pt-8 space-y-4">
-            <label className="block text-sm font-medium text-slate-300">Identity</label>
-            <p className="text-sm text-slate-400">
-              Usernames must be unique and can only use lowercase letters, numbers, hyphens, and underscores.
-              Username and display name each have separate 15-minute change cooldowns.
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Username</label>
-                <input
-                  type="text"
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
-                  maxLength={64}
-                  pattern="[a-z0-9_-]+"
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Display Name</label>
-                <input
-                  type="text"
-                  value={displayNameInput}
-                  onChange={(e) => setDisplayNameInput(e.target.value)}
-                  maxLength={128}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Bio</label>
-                <textarea
-                  value={bioInput}
-                  onChange={(e) => setBioInput(e.target.value)}
-                  maxLength={1500}
-                  rows={5}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                  placeholder="Tell people a bit about yourself"
-                />
-                <p className="mt-1 text-xs text-slate-500 text-right">{bioInput.length}/1500</p>
-              </div>
-              <button
-                onClick={handleSaveNames}
-                disabled={isSavingNames || !profile}
-                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white rounded-lg border border-cyan-500/30 transition duration-200 text-sm font-medium"
-              >
-                {isSavingNames ? "Saving..." : "Save Profile"}
-              </button>
-            </div>
-          </div>
-
-          {/* Social Accounts Section */}
-          <div className="border-t border-slate-800 pt-8 space-y-4">
-            <label className="block text-sm font-medium text-slate-300">Oauth Providers</label>
-            <p className="text-sm text-slate-400 mb-4">
-              Link Oauth providers to sign in with one click.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                onClick={() => handleLinkIdentity('github')}
-                disabled={isLinked('github')}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
-                  isLinked('github')
-                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
-                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
-                }`}
-              >
-                <Share2 className="w-4 h-4" />
-                {isLinked('github') ? "GitHub Linked" : "Link GitHub"}
-              </button>
-              <button
-                onClick={() => handleLinkIdentity('discord')}
-                disabled={isLinked('discord')}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
-                  isLinked('discord')
-                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
-                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
-                }`}
-              >
-                <Share2 className="w-4 h-4" />
-                {isLinked('discord') ? "Discord Linked" : "Link Discord"}
-              </button>
-              <button
-                onClick={() => handleLinkIdentity('gitlab')}
-                disabled={isLinked('gitlab')}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
-                  isLinked('gitlab')
-                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
-                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
-                }`}
-              >
-                <Share2 className="w-4 h-4" />
-                {isLinked('gitlab') ? "GitLab Linked" : "Link GitLab"}
-              </button>
-              <button
-                onClick={() => handleLinkIdentity('google')}
-                disabled={isLinked('google')}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition duration-200 text-sm font-medium ${
-                  isLinked('google')
-                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default"
-                    : "bg-slate-950 hover:bg-slate-900 border-slate-700 text-slate-200"
-                }`}
-              >
-                <Share2 className="w-4 h-4" />
-                {isLinked('google') ? "Google Linked" : "Link Google"}
-              </button>
-            </div>
-          </div>
-
-          {/* Email Section */}
-          <div className="border-t border-slate-800 pt-8 space-y-3">
-            <label className="block text-sm font-medium text-slate-300">Email Address</label>
-            <div className="bg-slate-950 rounded-lg border border-slate-700 px-4 py-3">
-              <p className="text-slate-200">{session?.user?.email || "Loading..."}</p>
-            <div className="mt-4 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-slate-300">Show email on public profile</p>
-                <p className="text-xs text-slate-500">When enabled, your email appears on /users/{usernameInput || "username"}.</p>
-              </div>
-              <button
-                onClick={() => handleToggleEmailVisibility(!(profile?.show_email ?? false))}
-                disabled={!profile || isSavingEmailVisibility}
-                className={`px-3 py-1.5 rounded-lg border text-sm transition duration-200 ${
-                  profile?.show_email
-                    ? "bg-cyan-600 text-white border-cyan-500/30"
-                    : "bg-slate-900 text-slate-200 border-slate-700"
-                } disabled:opacity-50`}
-              >
-                {isSavingEmailVisibility ? "Saving..." : profile?.show_email ? "Visible" : "Hidden"}
-              </button>
-            </div>
-            </div>
-          </div>
-
-          {/* Password Reset Section */}
-          <div className="border-t border-slate-800 pt-8">
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-slate-300">Password</label>
-              <p className="text-sm text-slate-400">
-                Update your password to keep your account secure.
-              </p>
-              <button
-                onClick={handleResetPassword}
-                disabled={isLoading}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg border border-blue-500/30 transition duration-200 text-sm font-medium"
-              >
-                <Lock className="w-4 h-4" />
-                {isLoading ? "Sending..." : "Reset Password"}
-              </button>
-            </div>
-          </div>
-        </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
+      {selectedImage && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"><Card className="w-full max-w-2xl bg-slate-900 border-slate-800"><CardHeader><CardTitle className="text-white">Crop Image</CardTitle></CardHeader><CardContent className="space-y-6"><div className="relative h-96 w-full bg-black"><Cropper image={selectedImage} crop={{x:0,y:0}} zoom={1} aspect={1} onCropChange={()=>{}} onZoomChange={()=>{}} onCropComplete={(_, p)=>setCroppedArea(p)} /></div><div className="flex gap-3 justify-end"><Button variant="ghost" onClick={() => setSelectedImage(null)}>Cancel</Button><Button onClick={handleUpload} className="bg-cyan-600 text-white">Save</Button></div></CardContent></Card></div>}
     </Layout>
   );
 }

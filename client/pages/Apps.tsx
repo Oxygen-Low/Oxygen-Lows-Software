@@ -11,11 +11,13 @@ import {
   BrainCircuit,
   Box,
   Users,
-  ShieldCheck
+  ShieldCheck,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { FriendsApp } from "@/components/apps/Friends";
+import { ChatbotApp } from "@/components/apps/Chatbot";
 
 type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
@@ -42,6 +44,14 @@ export default function Apps() {
   const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
 
   const apps: AppMetadata[] = [
+    {
+      id: "chatbot",
+      name: "Chatbot",
+      description: "Chat with state-of-the-art LLMs with memory and custom styles.",
+      categories: ["All", "LLM/AI"],
+      icon: <Bot className="w-8 h-8 text-cyan-500" />,
+      component: ChatbotApp,
+    },
     {
       id: "friends",
       name: "Friends",
@@ -71,7 +81,7 @@ export default function Apps() {
   const filteredApps = useMemo(() => {
     if (selectedCategory === "All") return apps;
     return apps.filter((app) => app.categories.includes(selectedCategory));
-  }, [selectedCategory]);
+  }, [selectedCategory, apps]);
 
   const categoryAppCounts = useMemo(() => {
     const counts: Record<Category, number> = {
