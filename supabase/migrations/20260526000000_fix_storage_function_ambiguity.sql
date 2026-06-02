@@ -1,9 +1,18 @@
 -- Fix the ambiguous column error by renaming function parameters
 -- This migration was applied via Management API but included here for local consistency
 
-DROP POLICY IF EXISTS "User Storage Insert Policy" ON storage.objects;
+-- Using DO block to safely drop policy and function if they exist without noisy notices
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'User Storage Insert Policy' AND tablename = 'objects' AND schemaname = 'storage') THEN
+        DROP POLICY "User Storage Insert Policy" ON storage.objects;
+    END IF;
 
-DROP FUNCTION IF EXISTS public.check_user_total_storage_limit(text, text, uuid, jsonb);
+    IF EXISTS (SELECT 1 FROM pg_proc JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid WHERE proname = 'check_user_total_storage_limit' AND nspname = 'public') THEN
+        DROP FUNCTION public.check_user_total_storage_limit(text, text, uuid, jsonb);
+    END IF;
+END
+$$;
 
 CREATE OR REPLACE FUNCTION public.check_user_total_storage_limit(p_bucketid text, p_name text, p_owner uuid, p_metadata jsonb)
  RETURNS boolean

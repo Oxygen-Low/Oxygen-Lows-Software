@@ -70,10 +70,15 @@ begin
 end;
 $$;
 
-drop trigger if exists on_auth_user_created_profile on auth.users;
-create trigger on_auth_user_created_profile
-after insert on auth.users
-for each row execute function public.handle_new_user_profile();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_created_profile') THEN
+        create trigger on_auth_user_created_profile
+        after insert on auth.users
+        for each row execute function public.handle_new_user_profile();
+    END IF;
+END
+$$;
 
 create or replace function public.update_user_profile_names(p_username text default null, p_display_name text default null)
 returns public.user_profiles
