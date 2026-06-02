@@ -1,6 +1,14 @@
 -- Drop existing triggers first to ensure clean state
-DROP TRIGGER IF EXISTS block_automatic_linking_trigger ON auth.identities;
-DROP TRIGGER IF EXISTS on_auth_identity_insert ON auth.identities;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'block_automatic_linking_trigger') THEN
+        DROP TRIGGER block_automatic_linking_trigger ON auth.identities;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_identity_insert') THEN
+        DROP TRIGGER on_auth_identity_insert ON auth.identities;
+    END IF;
+END
+$$;
 
 -- Update the function to support manual linking authorized by the user
 CREATE OR REPLACE FUNCTION public.block_automatic_linking()
