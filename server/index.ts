@@ -3,6 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { handleProxyAiRequest, handleGetLocalProviders, handleGetChatStyles } from "./routes/ai";
 
 export function createServer() {
   const app = express();
@@ -15,7 +16,7 @@ export function createServer() {
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "https://api.pwnedpasswords.com", "https://unpkg.com"],
+          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "https://api.pwnedpasswords.com", "https://unpkg.com", "https://api.openai.com", "https://api.anthropic.com", "https://generativelanguage.googleapis.com", "https://openrouter.ai", "https://api.x.ai"],
           "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
           "img-src": ["'self'", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "*"],
@@ -37,6 +38,9 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+  app.post("/api/ai/proxy", handleProxyAiRequest);
+  app.get("/api/ai/local-providers", handleGetLocalProviders);
+  app.get("/api/ai/styles", handleGetChatStyles);
 
   return app;
 }
