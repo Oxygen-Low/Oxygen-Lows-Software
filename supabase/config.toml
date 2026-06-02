@@ -350,7 +350,7 @@ enabled = true
 
 # Use Firebase Auth as a third-party provider alongside Supabase Auth.
 [auth.third_party.firebase]
-enabled = true
+enabled = false
 # project_id = "my-firebase-project"
 
 # Use Auth0 as a third-party provider alongside Supabase Auth.
