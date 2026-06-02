@@ -2,6 +2,8 @@ import { RequestHandler } from "express";
 import { supabase } from "../../client/lib/supabase";
 import axios from "axios";
 import net from "net";
+import fs from "fs";
+import path from "path";
 
 const checkPort = (port: number, host: string = "127.0.0.1"): Promise<boolean> => {
   return new Promise((resolve) => {
@@ -61,7 +63,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     .single();
 
   if (dbError || (!integration?.api_key && provider !== "ollama" && provider !== "kobold")) {
-    return res.status(400).json({ error: "Provider not configured" });
+    if (provider !== "ollama" && provider !== "kobold") {
+        return res.status(400).json({ error: "Provider not configured" });
+    }
   }
 
   let url = "";
@@ -95,18 +99,26 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       body = { model, messages, stream };
       break;
     case "custom":
-      if (!integration.base_url.startsWith("http")) return res.status(400).json({ error: "Invalid base URL" });
-      url = `${integration.base_url}/chat/completions`;
+      if (!integration?.base_url) return res.status(400).json({ error: "Base URL required for custom provider" });
+      try {
+        const validatedUrl = new URL(integration.base_url);
+        if (validatedUrl.protocol !== "http:" && validatedUrl.protocol !== "https:") {
+            throw new Error("Invalid protocol");
+        }
+        url = validatedUrl.toString().replace(/\/+$/, "") + "/chat/completions";
+      } catch (e) {
+        return res.status(400).json({ error: "Invalid base URL" });
+      }
       if (integration.api_key) headers["Authorization"] = `Bearer ${integration.api_key}`;
       body = { model, messages, stream };
       break;
     case "ollama":
       url = "http://127.0.0.1:11434/api/chat";
-      body = { model, messages, stream: false }; // Keeping it simple for now
+      body = { model, messages, stream: false };
       break;
     case "kobold":
       url = "http://127.0.0.1:5001/api/v1/generate";
-      body = { prompt: messages[messages.length - 1].content }; // Kobold simple API
+      body = { prompt: messages[messages.length - 1].content };
       break;
     default:
       return res.status(400).json({ error: "Unsupported provider" });
@@ -120,9 +132,6 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     res.status(error.response?.status || 500).json(error.response?.data || { error: error.message });
   }
 };
-
-import fs from "fs";
-import path from "path";
 
 export const handleGetChatStyles: RequestHandler = async (_req, res) => {
   const stylesDir = path.join(process.cwd(), "prompts", "chat");
