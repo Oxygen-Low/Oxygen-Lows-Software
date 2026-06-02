@@ -1,5 +1,4 @@
 const { chromium } = require('playwright');
-const fs = require('fs');
 
 (async () => {
   const browser = await chromium.launch();
@@ -8,18 +7,19 @@ const fs = require('fs');
   });
   const page = await context.newPage();
 
-  // Set up local storage for mock auth if needed, or just visit the pages
-  // Since we are in a dev environment without a real supabase backend running,
-  // we might just see the login page.
-
   try {
     await page.goto('http://localhost:8080/apps');
+    // Assertion before screenshot
+    await page.waitForSelector('h2:has-text("Apps")');
     await page.screenshot({ path: 'apps_page.png' });
 
     await page.goto('http://localhost:8080/account');
+    // Assertion before screenshot
+    await page.waitForSelector('h1:has-text("Account Settings")');
     await page.screenshot({ path: 'account_page.png' });
   } catch (e) {
-    console.log("Could not connect to dev server, skipping screenshots");
+    console.error("Navigation or screenshot failed:", e);
+    process.exit(1);
   }
 
   await browser.close();

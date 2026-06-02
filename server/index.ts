@@ -1,3 +1,4 @@
+import ws from "ws";
 import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import express from "express";
@@ -6,16 +7,19 @@ import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { handleProxyAiRequest, handleGetLocalProviders, handleGetChatStyles } from "./routes/ai";
 
+if (typeof global !== "undefined" && !global.WebSocket) {
+  (global as any).WebSocket = ws;
+}
+
 export function createServer() {
   const app = express();
   const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
   });
 
-  // Middleware
   app.use(
     helmet({
       crossOriginOpenerPolicy: { policy: "same-origin" },
@@ -38,7 +42,6 @@ export function createServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Example API routes
   app.get("/api/ping", (_req, res) => {
     const ping = process.env.PING_MESSAGE ?? "ping";
     res.json({ message: ping });
