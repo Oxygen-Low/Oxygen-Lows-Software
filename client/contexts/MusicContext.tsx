@@ -55,6 +55,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const resolvePlaybackUrl = useCallback(async (fileName: string) => {
     try {
       console.log(`Resolving playback URL for: ${fileName}`);
+      if (fileName.includes('..')) {
+        throw new Error("Invalid file name");
+      }
       const { data, error } = await supabase.storage
         .from("Storage")
         .createSignedUrl(fileName, 3600);
@@ -74,6 +77,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.warn(`Signed URL creation failed for ${fileName}, attempting blob fallback:`, error);
       try {
+        if (fileName.includes('..')) {
+          throw new Error("Invalid file name");
+        }
         const { data: blob, error: downloadError } = await supabase.storage
           .from("Storage")
           .download(fileName);
