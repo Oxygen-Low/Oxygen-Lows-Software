@@ -20,26 +20,19 @@ vi.mock('@/lib/supabase', () => ({
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'test-user' } }, error: null }),
       getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-token' } }, error: null }),
     },
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn().mockResolvedValue({ data: [], error: null }),
-          single: vi.fn().mockResolvedValue({ data: null, error: null }),
-        })),
-        order: vi.fn().mockResolvedValue({ data: [], error: null }),
-      })),
-      insert: vi.fn(() => ({
-        select: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({ data: { id: 'chat-1', title: 'New Chat' }, error: null }),
-        })),
-      })),
-      update: vi.fn(() => ({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      })),
-      delete: vi.fn(() => ({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      })),
-    })),
+    from: vi.fn(() => {
+      const builder: any = {
+        select: vi.fn(() => builder),
+        insert: vi.fn(() => builder),
+        update: vi.fn(() => builder),
+        delete: vi.fn(() => builder),
+        eq: vi.fn(() => builder),
+        order: vi.fn(() => builder),
+        single: vi.fn(() => Promise.resolve({ data: { id: "chat-1", title: "New Chat" }, error: null })),
+        then: vi.fn((onFulfilled) => Promise.resolve({ data: [], error: null }).then(onFulfilled)),
+      };
+      return builder;
+    }),
   },
 }));
 
@@ -77,7 +70,7 @@ describe('ChatbotApp', () => {
   it('renders the chatbot app', async () => {
     render(<ChatbotApp />);
     expect(screen.getAllByText('New Chat')).toBeDefined();
-    expect(screen.getByText('No active chat')).toBeDefined();
+    expect(screen.getByText('Select a chat to start')).toBeDefined();
   });
 
   it('creates a new chat and sends a message', async () => {
