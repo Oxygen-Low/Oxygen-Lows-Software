@@ -123,6 +123,7 @@ export default function Storage() {
 
       // Also extract metadata if we haven't yet
       if (!audioMetadata[file.id]) {
+        if (file.name.includes('..')) throw new Error("Invalid file name");
         const { data: blob } = await supabase.storage
           .from("Storage")
           .download(file.name);
@@ -148,6 +149,9 @@ export default function Storage() {
     }
 
     try {
+      if (file.name.includes('..')) {
+        throw new Error("Invalid file name");
+      }
       const { data, error } = await supabase.storage
         .from("Storage")
         .createSignedUrl(file.name, 3600);
@@ -259,6 +263,9 @@ export default function Storage() {
     try {
       // Use unique key: userId/timestamp-filename
       const fileKey = `${session.user.id}/${Date.now()}-${file.name}`;
+      if (fileKey.includes('..')) {
+        throw new Error('Invalid file name');
+      }
       const { error } = await supabase.storage
         .from("Storage")
         .upload(fileKey, file, { upsert: false });
@@ -281,6 +288,7 @@ export default function Storage() {
 
   const deleteCloudFile = async (name: string) => {
     try {
+      if (name.includes('..')) throw new Error('Invalid file name');
       const { error } = await supabase.storage.from("Storage").remove([name]);
       if (error) throw error;
       toast({ title: "Success", description: "File deleted from cloud storage." });
@@ -296,6 +304,9 @@ export default function Storage() {
 
   const handleCloudDownload = async (name: string) => {
     try {
+      if (name.includes('..')) {
+        throw new Error('Invalid file name');
+      }
       const { data, error } = await supabase.storage
         .from("Storage")
         .download(name);
