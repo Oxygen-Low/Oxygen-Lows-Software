@@ -30,6 +30,11 @@ export const isPrivateIP = (ip: string): boolean => {
     const expanded = ip.toLowerCase();
     // ::1/128
     if (expanded === "::1" || expanded === "0:0:0:0:0:0:0:1") return true;
+    // IPv4-mapped IPv6 (::ffff:x.x.x.x)
+    const v4MappedMatch = expanded.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+    if (v4MappedMatch) {
+      return isPrivateIP(v4MappedMatch[1]);
+    }
     // fc00::/7
     if (expanded.startsWith("fc") || expanded.startsWith("fd")) return true;
     // fe80::/10
