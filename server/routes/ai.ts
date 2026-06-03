@@ -15,6 +15,8 @@ const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 export const isPrivateIP = (ip: string): boolean => {
   if (net.isIPv4(ip)) {
     const parts = ip.split(".").map(Number);
+    // 0.0.0.0/8 (current network)
+    if (parts[0] === 0) return true;
     // 127.0.0.0/8
     if (parts[0] === 127) return true;
     // 10.0.0.0/8
