@@ -23,6 +23,10 @@ describe("SSRF Validation", () => {
       expect(isPrivateIP("fc00::1")).toBe(true);
       expect(isPrivateIP("fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")).toBe(true);
       expect(isPrivateIP("fe80::1")).toBe(true);
+      // IPv4-mapped IPv6 addresses
+      expect(isPrivateIP("::ffff:127.0.0.1")).toBe(true);
+      expect(isPrivateIP("::ffff:10.0.0.1")).toBe(true);
+      expect(isPrivateIP("::ffff:192.168.1.1")).toBe(true);
     });
 
     it("should identify public IPv6 addresses", () => {
