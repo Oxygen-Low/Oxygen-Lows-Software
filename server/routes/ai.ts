@@ -3,9 +3,67 @@ import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
 import fs from "fs";
 import path from "path";
+import dns from "dns";
+import net from "net";
+import { promisify } from "util";
+
+const lookup = promisify(dns.lookup);
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+
+export const isPrivateIP = (ip: string): boolean => {
+  if (net.isIPv4(ip)) {
+    const parts = ip.split(".").map(Number);
+    // 127.0.0.0/8
+    if (parts[0] === 127) return true;
+    // 10.0.0.0/8
+    if (parts[0] === 10) return true;
+    // 172.16.0.0/12
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    // 192.168.0.0/16
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    // 169.254.0.0/16
+    if (parts[0] === 169 && parts[1] === 254) return true;
+    return false;
+  } else if (net.isIPv6(ip)) {
+    const expanded = ip.toLowerCase();
+    // ::1/128
+    if (expanded === "::1" || expanded === "0:0:0:0:0:0:0:1") return true;
+    // fc00::/7
+    if (expanded.startsWith("fc") || expanded.startsWith("fd")) return true;
+    // fe80::/10
+    if (expanded.startsWith("fe8") || expanded.startsWith("fe9") || expanded.startsWith("fea") || expanded.startsWith("feb")) return true;
+    return false;
+  }
+  // Not an IP address
+  return false;
+};
+
+export const validateAiUrl = async (baseUrl: string): Promise<void> => {
+  const u = new URL(baseUrl);
+  if (u.protocol !== "https:") throw new Error("HTTPS required");
+
+  // If the hostname itself is a private IP
+  if (isPrivateIP(u.hostname)) {
+    throw new Error("Public origin required");
+  }
+
+  // Also catch "localhost" etc. even if they are not IPs
+  if (["localhost", "127.0.0.1", "::1"].includes(u.hostname.toLowerCase())) {
+    throw new Error("Public origin required");
+  }
+
+  try {
+    const { address } = await lookup(u.hostname);
+    if (isPrivateIP(address)) {
+      throw new Error("Public origin required");
+    }
+  } catch (e: any) {
+    if (e.message === "Public origin required") throw e;
+    // If DNS fails, we'll let axios handle the connectivity error.
+  }
+};
 
 export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
   res.json([]);
@@ -81,11 +139,8 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     case "custom":
       if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
       try {
+        await validateAiUrl(integration.base_url);
         const u = new URL(integration.base_url);
-        if (u.protocol !== 'https:') throw new Error("HTTPS required");
-        if (/^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(u.hostname)) {
-            return res.status(400).json({ error: "Public origin required" });
-        }
         finalUrl = new URL("/chat/completions", u.origin + u.pathname.replace(/\/+$/, "")).href;
       } catch (e: any) {
         return res.status(400).json({ error: e.message || "Invalid base URL" });
