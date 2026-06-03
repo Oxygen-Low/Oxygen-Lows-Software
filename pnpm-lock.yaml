@@ -47,6 +47,9 @@ importers:
       helmet:
         specifier: ^8.2.0
         version: 8.2.0
+      midi-parser-js:
+        specifier: ^4.0.4
+        version: 4.0.4
       multer:
         specifier: ^2.1.1
         version: 2.1.1
@@ -2615,6 +2618,9 @@ packages:
   methods@1.1.2:
     resolution: {integrity: sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==}
     engines: {node: '>= 0.6'}
+
+  midi-parser-js@4.0.4:
+    resolution: {integrity: sha512-yCCUNemjDET40SPslUbAyi7lClSS+ttcBAWNY337kJouRFsEtIql38Fp4p5xfODkltFvuqHJL9JytnZIrzpJbw==}
 
   mime-db@1.52.0:
     resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
@@ -5610,6 +5616,8 @@ snapshots:
   meshoptimizer@1.1.1: {}
 
   methods@1.1.2: {}
+
+  midi-parser-js@4.0.4: {}
 
   mime-db@1.52.0: {}
 

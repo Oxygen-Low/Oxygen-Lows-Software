@@ -12,12 +12,14 @@ import {
   Box,
   Users,
   ShieldCheck,
-  Bot
+  Bot,
+  Music
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { FriendsApp } from "@/components/apps/Friends";
 import { ChatbotApp } from "@/components/apps/Chatbot";
+import { JJSSkillBuilderApp } from "@/components/apps/JJSSkillBuilder";
 
 type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
@@ -44,6 +46,14 @@ export default function Apps() {
   const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
 
   const apps: AppMetadata[] = [
+    {
+      id: "jjs-skill-builder",
+      name: "JJS Skill Builder Utils",
+      description: "Convert MIDI files to JJS Skill Builder blocks.",
+      categories: ["All", "Games"],
+      icon: <Music className="w-8 h-8 text-cyan-500" />,
+      component: JJSSkillBuilderApp,
+    },
     {
       id: "chatbot",
       name: "Chatbot",
