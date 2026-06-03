@@ -20,7 +20,7 @@
     "@ffmpeg/util": "^0.12.2",
     "@supabase/supabase-js": "^2.107.0",
     "@types/multer": "^2.1.0",
-    "axios": "^1.16.1",
+    "axios": "^1.17.0",
     "browser-image-compression": "^2.0.2",
     "buffer": "^6.0.3",
     "dotenv": "^17.4.2",
