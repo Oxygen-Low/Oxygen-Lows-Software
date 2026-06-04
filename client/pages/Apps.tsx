@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
-import { FriendsApp } from "@/components/apps/Friends";
+
 import { ChatbotApp } from "@/components/apps/Chatbot";
 
 type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
@@ -52,14 +52,7 @@ export default function Apps() {
       icon: <Bot className="w-8 h-8 text-cyan-500" />,
       component: ChatbotApp,
     },
-    {
-      id: "friends",
-      name: "Friends",
-      description: "Manage your friends, followers, and social connections.",
-      categories: ["All", "Social"],
-      icon: <Users className="w-8 h-8 text-cyan-500" />,
-      component: FriendsApp,
-    },
+
     {
       id: "file-compressor",
       name: "File Compressor",
