@@ -11,6 +11,7 @@ import { MusicProvider } from "@/contexts/MusicContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Apps from "./pages/Apps";
+import Friends from "./pages/Friends";
 import Account from "./pages/Account";
 import Storage from "./pages/Storage";
 import Customize from "./pages/Customize";
@@ -51,6 +52,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Storage />
+                  </ProtectedRoute>
+                }
+              />
+                            <Route
+                path="/friends"
+                element={
+                  <ProtectedRoute>
+                    <Friends />
                   </ProtectedRoute>
                 }
               />
