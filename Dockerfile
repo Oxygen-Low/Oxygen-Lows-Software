@@ -1,5 +1,5 @@
-# Use the latest Node.js LTS version
-FROM 	node:26-slim
+# Use a lightweight Node.js Alpine image
+FROM node:22-alpine
 
 # Install pnpm
 RUN npm install -g pnpm@10.14.0
@@ -7,20 +7,15 @@ RUN npm install -g pnpm@10.14.0
 # Set the working directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# Set the PORT environment variable
+ENV PORT=3000
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copy the rest of the application code
+# Copy all application code
+# We don't install or build here to keep the image small
 COPY . .
-
-# Build the application
-RUN pnpm build
 
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Start the application
-CMD ["pnpm", "start"]
+# Install dependencies, build, and start the application at runtime
+CMD ["sh", "-c", "pnpm install && pnpm build && pnpm start"]
