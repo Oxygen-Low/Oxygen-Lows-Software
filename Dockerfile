@@ -1,5 +1,5 @@
 # Use the latest Node.js LTS version
-FROM node:22-slim
+FROM 	node:26-slim
 
 # Install pnpm
 RUN npm install -g pnpm@10.14.0
