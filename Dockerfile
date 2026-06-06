@@ -1,6 +1,4 @@
-FROM node:26-bookworm-slim
-
-RUN apt-get update && apt-get upgrade -y && apt-get clean
+FROM node:26-slim
 
 RUN npm install -g pnpm@11.5.2
 
