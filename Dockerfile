@@ -1,6 +1,8 @@
 FROM ubuntu:latest
 
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash && \. "$HOME/.nvm/nvm.sh" && nvm install 26
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash 
+
+RUN nvm install 26
 
 RUN npm install -g pnpm@11.5.2
 
