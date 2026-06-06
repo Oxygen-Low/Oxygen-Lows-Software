@@ -1,5 +1,5 @@
 # Use a lightweight Node.js Alpine image
-FROM node:22-alpine
+FROM node:22-slim
 
 # Install pnpm
 RUN npm install -g pnpm@10.14.0
