@@ -36,7 +36,7 @@ jobs:
         with:
           images: |
             ${{ secrets.DOCKERHUB_USERNAME }}/oxygen-lows-software
-            ghcr.io/${{ github.repository }}
+            ghcr.io/oxygen-low/oxygen-lows-software
           tags: |
             type=raw,value=latest
             type=sha,format=short
