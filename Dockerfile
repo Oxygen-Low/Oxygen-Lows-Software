@@ -2,7 +2,7 @@
 FROM node:26-slim
 
 # Install pnpm
-RUN npm install -g pnpm@10.14.0
+RUN npm install -g pnpm@11.5.2
 
 # Set the working directory
 WORKDIR /app
