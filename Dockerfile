@@ -1,8 +1,6 @@
-FROM ubuntu:latest
+FROM node:26-bookworm-slim
 
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash 
-
-RUN nvm install 26
+RUN apt-get update && apt-get upgrade -y && apt-get clean
 
 RUN npm install -g pnpm@11.5.2
 
