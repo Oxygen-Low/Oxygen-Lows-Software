@@ -30,6 +30,7 @@ export function ChatbotApp() {
   const [selectedStyle, setSelectedStyle] = useState("GeneralAssistant");
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastParsedLengthRef = useRef(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,20 +66,10 @@ export function ChatbotApp() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleCreateChat = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase.from("chats").insert({ user_id: user.id, title: "New Chat", style: selectedStyle }).select().single();
-    if (data) {
-      setChats([data, ...chats]);
-      setCurrentChatId(data.id);
-    }
-  };
-
   const parseArtifacts = (content: string): Artifact[] => {
     if (!content) return [];
     const artifacts: Artifact[] = [];
-    // Flexible regex for artifacts: `/[lang]//[file]/` \n //// content \\\\
+    // Updated regex to match format: `/[lang]//[file]/` followed by //// then Terminated by \\\\
     const regex = /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\\\\\|$)/g;
     let match;
     while ((match = regex.exec(content)) !== null) {
@@ -91,15 +82,32 @@ export function ChatbotApp() {
     return artifacts;
   };
 
+  const handleCreateChat = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data, error } = await supabase.from("chats").insert({ user_id: user.id, title: "New Chat", style: selectedStyle }).select().single();
+    if (error) {
+      toast.error("Failed to create chat: " + error.message);
+      return;
+    }
+    if (data) {
+      setChats([data, ...chats]);
+      setCurrentChatId(data.id);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || !currentChatId || isTyping) return;
     const userMsg: Message = { role: "user", content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
+    lastParsedLengthRef.current = 0;
 
     try {
-      await supabase.from("chat_messages").insert({ chat_id: currentChatId, ...userMsg });
+      const { error: insertError } = await supabase.from("chat_messages").insert({ chat_id: currentChatId, ...userMsg });
+      if (insertError) throw new Error("Failed to save message: " + insertError.message);
+
       const { data: { session } } = await supabase.auth.getSession();
 
       const response = await fetch("/api/ai/proxy", {
@@ -114,10 +122,10 @@ export function ChatbotApp() {
         })
       });
 
-      if (!response.ok) throw new Error("Failed to fetch");
+      if (!response.ok) throw new Error("Failed to fetch from AI");
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error("No reader");
+      if (!reader) throw new Error("No reader from stream");
 
       const decoder = new TextDecoder();
       let fullContent = "";
@@ -144,6 +152,12 @@ export function ChatbotApp() {
                 delta = data.choices?.[0]?.delta?.content || "";
               } else if (selectedProvider === "anthropic") {
                 delta = data.delta?.text || "";
+              } else if (selectedProvider === "ollama") {
+                delta = data.message?.content || data.output?.content || data.output?.text || "";
+              } else if (selectedProvider === "kobold") {
+                delta = data.text || data.result?.content || "";
+              } else if (selectedProvider === "google") {
+                delta = data.delta?.content || data.message?.content?.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "";
               }
 
               if (delta) {
@@ -153,22 +167,32 @@ export function ChatbotApp() {
                   return [...prev.slice(0, -1), { ...last, content: fullContent }];
                 });
 
-                const arts = parseArtifacts(fullContent);
-                if (arts.length > 0) {
-                  setActiveArtifact(arts[arts.length - 1]);
+                // Incremental parsing
+                if (fullContent.length - lastParsedLengthRef.current > 50 || fullContent.includes("\\\\")) {
+                  const arts = parseArtifacts(fullContent);
+                  if (arts.length > 0) {
+                    setActiveArtifact(arts[arts.length - 1]);
+                  }
+                  lastParsedLengthRef.current = fullContent.length;
                 }
               }
-            } catch (e) {}
+            } catch (e) {
+              console.error("Failed to parse SSE chunk:", e, { chunk: dataStr, provider: selectedProvider });
+            }
           }
         }
       }
 
       const assistantMsg: Message = { role: "assistant", content: fullContent };
-      await supabase.from("chat_messages").insert({ chat_id: currentChatId, ...assistantMsg });
-      await supabase.from("chats").update({ updated_at: new Date().toISOString() }).eq("id", currentChatId);
+      const { error: assistantInsertError } = await supabase.from("chat_messages").insert({ chat_id: currentChatId, ...assistantMsg });
+      if (assistantInsertError) throw new Error("Failed to persist assistant message: " + assistantInsertError.message);
+
+      const { error: chatUpdateError } = await supabase.from("chats").update({ updated_at: new Date().toISOString() }).eq("id", currentChatId);
+      if (chatUpdateError) console.error("Failed to update chat timestamp:", chatUpdateError);
 
     } catch (e: any) {
       toast.error(e.message);
+      console.error("Chat error:", e);
     } finally {
       setIsTyping(false);
     }

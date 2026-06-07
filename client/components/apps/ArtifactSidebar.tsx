@@ -27,10 +27,10 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const blob = new Blob([artifact.content], { type: "text/plain" });
-      const file = new File([blob], `${artifact.filename}.artifact`, { type: "text/plain" });
+      // Construct file directly from content
+      const file = new File([artifact.content], artifact.filename, { type: "text/plain" });
 
-      const filePath = `${user.id}/${Date.now()}_${artifact.filename}.artifact`;
+      const filePath = `${user.id}/${Date.now()}_${artifact.filename}`;
       const { error } = await supabase.storage.from("Storage").upload(filePath, file);
 
       if (error) throw error;
@@ -47,7 +47,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${artifact.filename.replace(/\.[^/.]+$/, "")}.txt`;
+    a.download = artifact.filename; // Use identical filename/extension as save
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -62,7 +62,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
           <span className="text-sm font-medium text-slate-200 truncate">{artifact.filename}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title="Download as .txt">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title={`Download as ${artifact.filename.split(".").pop()}`}>
             <Download className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveToCloud} disabled={saving} title="Save to Cloud">

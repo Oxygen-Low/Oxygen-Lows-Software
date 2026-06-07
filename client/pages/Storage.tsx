@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Cloud, Upload, Trash2, Download, ExternalLink, Loader2, File, FileText, ImageIcon, Music, Database, Plus, Link as LinkIcon } from "lucide-react";
+import { Cloud, Upload, Trash2, Download, ExternalLink, Loader2, FileText, ImageIcon, Music, Database, Plus, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
-import * as musicMetadata from "music-metadata-browser";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -32,10 +31,7 @@ export default function Storage() {
   const [uploading, setUploading] = useState(false);
   const [totalSize, setTotalSize] = useState(0);
   const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
-  const [cloudAudioUrls, setCloudAudioUrls] = useState<Record<string, string>>({});
-  const [audioMetadata, setAudioMetadata] = useState<Record<string, any>>({});
   const [linkedImages, setLinkedImages] = useState<any[]>([]);
-  const [newLinkUrl, setNewLinkUrl] = useState("");
   const [dbStats, setDbStats] = useState<any[]>([]);
   const cloudInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,18 +58,16 @@ export default function Storage() {
       const total = data.reduce((acc, file) => acc + (file.metadata?.size || 0), 0);
       setTotalSize(total);
 
-      // Fetch signed URLs for previews
       const urls: Record<string, string> = {};
       for (const file of filesWithIds) {
-        if (file.metadata?.mimetype?.startsWith("image/")) {
-          const { data: signedData } = await supabase.storage
-            .from("Storage")
-            .createSignedUrl(`${session?.user.id}/${file.name}`, 3600);
-          if (signedData) urls[file.id] = signedData.signedUrl;
-        }
+        const { data: signedData } = await supabase.storage
+          .from("Storage")
+          .createSignedUrl(`${session?.user.id}/${file.name}`, 3600);
+        if (signedData) urls[file.id] = signedData.signedUrl;
       }
       setCloudFileSignedUrls(urls);
     } catch (error: any) {
+      console.error("Storage load failed:", error);
       toast.error("Failed to fetch cloud files");
     }
   };
@@ -84,7 +78,6 @@ export default function Storage() {
   };
 
   const fetchDbStats = async () => {
-    // Estimations for data usage
     const stats = [
       { name: "Chatbot Chats", count: 0, size: 0, tables: ["chats", "chat_messages"] },
       { name: "User Profiles", count: 1, size: 1024, tables: ["profiles"] },
@@ -93,17 +86,28 @@ export default function Storage() {
     ];
 
     try {
+      const { data: userChats } = await supabase.from("chats").select("id").eq("user_id", session?.user.id);
+      const chatIds = userChats?.map(c => c.id) || [];
+
       const { count: chatsCount } = await supabase.from("chats").select("*", { count: "exact", head: true }).eq("user_id", session?.user.id);
-      const { count: msgsCount } = await supabase.from("chat_messages").select("*", { count: "exact", head: true }); // In real app, filter by chat_id
+
+      let msgsCount = 0;
+      if (chatIds.length > 0) {
+        const { count } = await supabase.from("chat_messages").select("*", { count: "exact", head: true }).in("chat_id", chatIds);
+        msgsCount = count || 0;
+      }
+
       const { count: integCount } = await supabase.from("user_integrations").select("*", { count: "exact", head: true }).eq("user_id", session?.user.id);
 
-      stats[0].count = (chatsCount || 0) + (msgsCount || 0);
-      stats[0].size = stats[0].count * 500; // Estimate 500 bytes per record
+      stats[0].count = (chatsCount || 0) + msgsCount;
+      stats[0].size = stats[0].count * 500;
       stats[2].count = integCount || 0;
       stats[2].size = (integCount || 0) * 256;
 
       setDbStats(stats);
-    } catch (e) {}
+    } catch (e) {
+      console.error("Failed to fetch DB stats:", e);
+    }
   };
 
   const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -277,7 +281,7 @@ export default function Storage() {
               {cloudFiles.map((file) => (
                 <Card key={file.id} className="bg-slate-950 border-slate-800 overflow-hidden group">
                   <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
-                    {file.metadata?.mimetype?.startsWith("image/") ? (
+                    {file.metadata?.mimetype?.startsWith("image/") && cloudFileSignedUrls[file.id] ? (
                       <img src={cloudFileSignedUrls[file.id]} alt={file.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                     ) : file.metadata?.mimetype?.startsWith("audio/") ? (
                       <Music className="w-12 h-12 text-blue-500" />
@@ -292,12 +296,19 @@ export default function Storage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 pt-0 flex gap-2">
-                    <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" asChild>
-                      <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
+                    {cloudFileSignedUrls[file.id] ? (
+                      <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" asChild>
+                        <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          View
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed" disabled>
                         <ExternalLink className="w-4 h-4 mr-2" />
                         View
-                      </a>
-                    </Button>
+                      </Button>
+                    )}
                     <Button variant="destructive" size="icon" onClick={() => deleteCloudFile(file.name)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -308,7 +319,13 @@ export default function Storage() {
           </TabsContent>
 
           <TabsContent value="links" className="space-y-6">
-            {/* Linked images logic... */}
+             <div className="p-12 text-center border-2 border-dashed border-slate-800 rounded-xl">
+                <LinkIcon className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-white mb-2">Linked Images Coming Soon</h3>
+                <p className="text-slate-500 max-w-sm mx-auto text-sm">
+                  We are working on a way to let you manage external image links directly from this tab. Stay tuned!
+                </p>
+             </div>
           </TabsContent>
         </Tabs>
       </div>
