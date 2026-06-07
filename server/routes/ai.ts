@@ -67,13 +67,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     return res.status(400).json({ error: "Provider not configured" });
   }
 
-  let finalUrl = "";
-  const headers: any = { "Content-Type": "application/json" };
-  let body: any = {};
-
   const processedMessages = (messages || []).slice(-11);
-
-  // Base prompt for artifacts
   const basePromptFile = path.join(process.cwd(), "prompts", "chat", "base_artifacts.prompt.yml");
   if (fs.existsSync(basePromptFile)) {
     try {
@@ -94,114 +88,63 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     }
   }
 
-  const VALID_PROVIDERS = ["openai", "anthropic", "google", "openrouter", "grok", "custom", "ollama", "kobold"];
-  if (!VALID_PROVIDERS.includes(provider)) {
-    return res.status(400).json({ error: "Unsupported provider" });
-  }
+  const axiosOptions: any = { headers: { "Content-Type": "application/json" }, timeout: 30000, validateStatus: () => true };
+  if (stream) axiosOptions.responseType = "stream";
 
-  switch (provider) {
-    case "openai":
-      finalUrl = "https://api.openai.com/v1/chat/completions";
-      headers["Authorization"] = `Bearer ${integration?.api_key}`;
-      body = { model, messages: processedMessages, stream };
-      break;
-    case "anthropic":
-      finalUrl = "https://api.anthropic.com/v1/messages";
-      headers["x-api-key"] = integration?.api_key;
-      headers["anthropic-version"] = "2023-06-01";
-      body = {
-        model,
-        messages: processedMessages.filter((m: any) => m.role !== "system"),
-        max_tokens: 4096,
-        stream
-      };
-      const s = processedMessages.find((m: any) => m.role === "system");
-      if (s) body.system = s.content;
-      break;
-    case "google":
-      finalUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${integration?.api_key}`;
-      body = {
-        contents: processedMessages.map((m: any) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }]
-        }))
-      };
-      break;
-    case "openrouter":
-      finalUrl = "https://openrouter.ai/api/v1/chat/completions";
-      headers["Authorization"] = `Bearer ${integration?.api_key}`;
-      body = { model, messages: processedMessages, stream };
-      break;
-    case "grok":
-      finalUrl = "https://api.x.ai/v1/chat/completions";
-      headers["Authorization"] = `Bearer ${integration?.api_key}`;
-      body = { model, messages: processedMessages, stream };
-      break;
-    case "custom":
-      if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
-      try {
-        await validateAiUrl(integration.base_url);
-        const u = new URL(integration.base_url);
-        finalUrl = new URL("/chat/completions", u.origin + u.pathname.replace(/\/+$/, "")).href;
-      } catch (e: any) {
-        return res.status(400).json({ error: e.message || "Invalid base URL" });
-      }
-      if (integration?.api_key) headers["Authorization"] = `Bearer ${integration.api_key}`;
-      body = { model, messages: processedMessages, stream };
-      break;
-    case "ollama":
-      finalUrl = "http://127.0.0.1:11434/api/chat";
-      body = { model, messages: processedMessages, stream };
-      break;
-    case "kobold":
-      finalUrl = "http://127.0.0.1:5001/api/v1/generate";
-      body = { prompt: processedMessages[processedMessages.length - 1]?.content || "" };
-      break;
-  }
-
-  // CodeQL: Ensure finalUrl is valid and not pointing to dangerous internal resources.
-  // We already have validateAiUrl for 'custom' and hardcoded for others.
-  // To be super safe and satisfy CodeQL, we check if it starts with allowed prefixes.
-  const ALLOWED_PREFIXES = [
-    "https://api.openai.com/",
-    "https://api.anthropic.com/",
-    "https://generativelanguage.googleapis.com/",
-    "https://openrouter.ai/",
-    "https://api.x.ai/",
-    "http://127.0.0.1:11434/",
-    "http://127.0.0.1:5001/"
-  ];
-
-  const isAllowed = ALLOWED_PREFIXES.some(p => finalUrl.startsWith(p)) || provider === "custom";
-  if (!isAllowed) {
-    return res.status(400).json({ error: "Invalid destination URL" });
-  }
-
-  if (stream) {
-    try {
-      const response = await axios.post(finalUrl, body, {
-        headers,
-        responseType: "stream",
-        timeout: 30000,
-        validateStatus: () => true
-      });
-
+  const pipeRes = (response: any) => {
+    if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
-
       response.data.pipe(res);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  } else {
-    try {
-      const response = await axios.post(finalUrl, body, { headers, timeout: 30000, validateStatus: () => true });
+    } else {
       res.status(response.status).json(response.data);
-    } catch (error: any) {
-      if (error.code === "ECONNABORTED") return res.status(504).json({ error: "Upstream request timed out" });
-      res.status(500).json({ error: error.message });
     }
+  };
+
+  try {
+    if (provider === "openai") {
+      pipeRes(await axios.post("https://api.openai.com/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
+    } else if (provider === "anthropic") {
+      const s = processedMessages.find((m: any) => m.role === "system");
+      pipeRes(await axios.post("https://api.anthropic.com/v1/messages", {
+        model,
+        messages: processedMessages.filter((m: any) => m.role !== "system"),
+        max_tokens: 4096,
+        stream,
+        system: s?.content
+      }, { ...axiosOptions, headers: { ...axiosOptions.headers, "x-api-key": integration?.api_key, "anthropic-version": "2023-06-01" } }));
+    } else if (provider === "google") {
+      const safeModel = String(model || "").replace(/[^a-zA-Z0-9\-_]/g, "");
+      const googleUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + safeModel + ":generateContent";
+      pipeRes(await axios.post(googleUrl, {
+        contents: processedMessages.map((m: any) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }))
+      }, { ...axiosOptions, params: { key: integration?.api_key } }));
+    } else if (provider === "openrouter") {
+      pipeRes(await axios.post("https://openrouter.ai/api/v1/chat/completions", { model, messages: processedMessages, stream }, {
+        ...axiosOptions, headers: { ...axiosOptions.headers, "Authorization": `Bearer ${integration?.api_key}` }
+      }));
+    } else if (provider === "grok") {
+      pipeRes(await axios.post("https://api.x.ai/v1/chat/completions", { model, messages: processedMessages, stream }, {
+        ...axiosOptions, headers: { ...axiosOptions.headers, "Authorization": `Bearer ${integration?.api_key}` }
+      }));
+    } else if (provider === "ollama") {
+      pipeRes(await axios.post("http://127.0.0.1:11434/api/chat", { model, messages: processedMessages, stream }, axiosOptions));
+    } else if (provider === "kobold") {
+      pipeRes(await axios.post("http://127.0.0.1:5001/api/v1/generate", { prompt: processedMessages[processedMessages.length - 1]?.content || "" }, axiosOptions));
+    } else if (provider === "custom") {
+      if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
+      await validateAiUrl(integration.base_url);
+      const u = new URL(integration.base_url);
+      const finalUrl = u.origin + u.pathname.replace(/\/+$/, "") + "/chat/completions";
+      const customHeaders = integration?.api_key ? { ...axiosOptions.headers, "Authorization": `Bearer ${integration.api_key}` } : axiosOptions.headers;
+      pipeRes(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
+    } else {
+      res.status(400).json({ error: "Unsupported provider" });
+    }
+  } catch (error: any) {
+    if (error.code === 'ECONNABORTED') return res.status(504).json({ error: "Upstream request timed out" });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -215,8 +158,7 @@ export const handleGetChatStyles: RequestHandler = async (_req, res) => {
       if (file.endsWith(".prompt.yml") && file !== "base_artifacts.prompt.yml") {
         const id = file.replace(".prompt.yml", "");
         const descFile = path.join(stylesDir, `${id}.description`);
-        let title = id;
-        let description = "";
+        let title = id, description = "";
         if (fs.existsSync(descFile)) {
           const content = fs.readFileSync(descFile, "utf-8");
           const lines = content.split("\n");
