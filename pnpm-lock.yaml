@@ -6,8 +6,8 @@ settings:
 
 overrides:
   zod@<=4.4.0: 4.4.0
-  file-type@<=21.3.1: 21.3.1
   music-metadata@<=11.12.3: 11.12.3
+  file-type@<=21.3.3: 21.3.3
 
 importers:
 
@@ -2384,8 +2384,8 @@ packages:
   fflate@0.8.3:
     resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
-  file-type@21.3.1:
-    resolution: {integrity: sha512-SrzXX46I/zsRDjTb82eucsGg0ODq2NpGDp4HcsFKApPy8P8vACjpJRDoGGMfEzhFC0ry61ajd7f72J3603anBA==}
+  file-type@21.3.3:
+    resolution: {integrity: sha512-pNwbwz8c3aZ+GvbJnIsCnDjKvgCZLHxkFWLEFxU3RMa+Ey++ZSEfisvsWQMcdys6PpxQjWUOIDi1fifXsW3YRg==}
     engines: {node: '>=20'}
 
   finalhandler@2.1.1:
@@ -5702,7 +5702,7 @@ snapshots:
 
   fflate@0.8.3: {}
 
-  file-type@21.3.1:
+  file-type@21.3.3:
     dependencies:
       '@tokenizer/inflate': 0.4.1
       strtok3: 10.3.5
@@ -6316,7 +6316,7 @@ snapshots:
       '@tokenizer/token': 0.3.0
       content-type: 1.0.5
       debug: 4.4.3
-      file-type: 21.3.1
+      file-type: 21.3.3
       media-typer: 1.1.0
       strtok3: 10.3.5
       token-types: 6.1.2
