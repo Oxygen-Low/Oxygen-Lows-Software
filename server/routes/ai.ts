@@ -65,6 +65,9 @@ function buildValidatedCustomUrl(baseUrl: string): string {
 
 const getSystemContentFromYaml = (filePath: string): string | null => {
   try {
+    if (filePath.includes('..') || path.isAbsolute(filePath)) {
+      return null;
+    }
     const content = fs.readFileSync(filePath, "utf-8");
     // Bounded regex to capture system content without over-capturing trailing keys
     // Stops at the next top-level key (word starting a line followed by colon)
@@ -108,8 +111,13 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   if (baseContent) processedMessages.unshift({ role: "system", content: baseContent });
 
   if (style) {
-    const promptFile = path.join(process.cwd(), "prompts", "chat", `${style}.prompt.yml`);
-    const styleContent = getSystemContentFromYaml(promptFile);
+    const base = path.resolve(process.cwd(), "prompts", "chat");
+    const target = path.resolve(base, `${style}.prompt.yml`);
+    const relative = path.relative(base, target);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      throw new Error('Invalid file path');
+    }
+    const styleContent = getSystemContentFromYaml(target);
     if (styleContent) processedMessages.unshift({ role: "system", content: styleContent });
   }
 

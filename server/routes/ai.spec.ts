@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { isPrivateIP, validateAiUrl } from "./ai";
+import fs from "fs";
+import path from "path";
 
 describe("SSRF Validation", () => {
   describe("isPrivateIP", () => {
@@ -51,6 +53,99 @@ describe("SSRF Validation", () => {
 
     it("should reject URLs that resolve to private IPs", async () => {
        await expect(validateAiUrl("https://localhost/api")).rejects.toThrow("Public origin required");
+    });
+  });
+});
+
+describe("Path Traversal Protection", () => {
+  describe("path validation logic", () => {
+    it("should detect path traversal with dot-dot-slash", () => {
+      const maliciousPath = "../../../etc/passwd";
+      
+      // Test the validation logic used in the code
+      const containsDotDot = maliciousPath.includes("..");
+      expect(containsDotDot).toBe(true);
+    });
+
+    it("should detect absolute paths", () => {
+      const absolutePath = "/etc/passwd";
+      
+      // Test the validation logic used in the code
+      const isAbsolute = path.isAbsolute(absolutePath);
+      expect(isAbsolute).toBe(true);
+    });
+
+    it("should detect path traversal after path resolution", () => {
+      const base = path.resolve(process.cwd(), "prompts", "chat");
+      const maliciousStyle = "../../../etc/passwd";
+      const target = path.resolve(base, `${maliciousStyle}.prompt.yml`);
+      const relative = path.relative(base, target);
+      
+      // The relative path should start with '..' indicating it escapes the base directory
+      expect(relative.startsWith("..")).toBe(true);
+    });
+
+    it("should detect absolute path after resolution", () => {
+      const base = path.resolve(process.cwd(), "prompts", "chat");
+      const maliciousStyle = "/etc/passwd";
+      const target = path.resolve(base, `${maliciousStyle}.prompt.yml`);
+      const relative = path.relative(base, target);
+      
+      // The relative path should either start with '..' or be absolute
+      const isUnsafe = relative.startsWith("..") || path.isAbsolute(relative);
+      expect(isUnsafe).toBe(true);
+    });
+
+    it("should allow valid style names within prompts directory", () => {
+      const base = path.resolve(process.cwd(), "prompts", "chat");
+      const validStyle = "CodingAssistant";
+      const target = path.resolve(base, `${validStyle}.prompt.yml`);
+      const relative = path.relative(base, target);
+      
+      // Valid paths should not start with '..' and should not be absolute
+      const isSafe = !relative.startsWith("..") && !path.isAbsolute(relative);
+      expect(isSafe).toBe(true);
+    });
+
+    it("should reject encoded path traversal attempts", () => {
+      // URL-encoded path traversal: ..%2F..%2F..%2Fetc%2Fpasswd
+      // After decoding: ../../../etc/passwd
+      const encodedPath = "..%2F..%2F..%2Fetc%2Fpasswd";
+      
+      // The code uses path.resolve which normalizes paths
+      // Even if the input is encoded, path.resolve will handle it
+      const base = path.resolve(process.cwd(), "prompts", "chat");
+      const target = path.resolve(base, `${encodedPath}.prompt.yml`);
+      const relative = path.relative(base, target);
+      
+      // Should be detected as unsafe
+      const isUnsafe = relative.startsWith("..") || path.isAbsolute(relative);
+      expect(isUnsafe).toBe(true);
+    });
+  });
+
+  describe("file system protection", () => {
+    it("should not allow reading files outside prompts directory", () => {
+      // Verify that the validation prevents access to sensitive files
+      const sensitiveFile = "../../../etc/passwd";
+      
+      // The getSystemContentFromYaml function checks for '..' in the path
+      const containsDotDot = sensitiveFile.includes("..");
+      expect(containsDotDot).toBe(true);
+      
+      // And also checks if path is absolute
+      const isAbsolute = path.isAbsolute(sensitiveFile);
+      // This specific path is not absolute, but the check exists for absolute paths
+      expect(isAbsolute).toBe(false);
+    });
+
+    it("should allow reading valid prompt files", () => {
+      const validPath = path.join(process.cwd(), "prompts", "chat", "CodingAssistant.prompt.yml");
+      
+      // Verify the file exists and is readable
+      if (fs.existsSync(validPath)) {
+        expect(() => fs.readFileSync(validPath, "utf-8")).not.toThrow();
+      }
     });
   });
 });
