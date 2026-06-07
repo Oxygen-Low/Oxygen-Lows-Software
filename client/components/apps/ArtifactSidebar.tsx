@@ -31,6 +31,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
       const file = new File([artifact.content], artifact.filename, { type: "text/plain" });
 
       const filePath = `${user.id}/${Date.now()}_${artifact.filename}`;
+      if (filePath.includes('..')) throw new Error("Invalid file path");
       const { error } = await supabase.storage.from("Storage").upload(filePath, file);
 
       if (error) throw error;
