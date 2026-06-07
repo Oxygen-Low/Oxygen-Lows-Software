@@ -94,6 +94,11 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     }
   }
 
+  const VALID_PROVIDERS = ["openai", "anthropic", "google", "openrouter", "grok", "custom", "ollama", "kobold"];
+  if (!VALID_PROVIDERS.includes(provider)) {
+    return res.status(400).json({ error: "Unsupported provider" });
+  }
+
   switch (provider) {
     case "openai":
       finalUrl = "https://api.openai.com/v1/chat/completions";
@@ -104,14 +109,23 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       finalUrl = "https://api.anthropic.com/v1/messages";
       headers["x-api-key"] = integration?.api_key;
       headers["anthropic-version"] = "2023-06-01";
-      body = { model, messages: processedMessages.filter((m: any) => m.role !== 'system'), max_tokens: 4096, stream };
-      const s = processedMessages.find((m: any) => m.role === 'system');
+      body = {
+        model,
+        messages: processedMessages.filter((m: any) => m.role !== "system"),
+        max_tokens: 4096,
+        stream
+      };
+      const s = processedMessages.find((m: any) => m.role === "system");
       if (s) body.system = s.content;
       break;
     case "google":
       finalUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${integration?.api_key}`;
-      // Google doesn't follow OpenAI format, this is a simplified proxy
-      body = { contents: processedMessages.map((m: any) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) };
+      body = {
+        contents: processedMessages.map((m: any) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }]
+        }))
+      };
       break;
     case "openrouter":
       finalUrl = "https://openrouter.ai/api/v1/chat/completions";
@@ -143,8 +157,24 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       finalUrl = "http://127.0.0.1:5001/api/v1/generate";
       body = { prompt: processedMessages[processedMessages.length - 1]?.content || "" };
       break;
-    default:
-      return res.status(400).json({ error: "Unsupported provider" });
+  }
+
+  // CodeQL: Ensure finalUrl is valid and not pointing to dangerous internal resources.
+  // We already have validateAiUrl for 'custom' and hardcoded for others.
+  // To be super safe and satisfy CodeQL, we check if it starts with allowed prefixes.
+  const ALLOWED_PREFIXES = [
+    "https://api.openai.com/",
+    "https://api.anthropic.com/",
+    "https://generativelanguage.googleapis.com/",
+    "https://openrouter.ai/",
+    "https://api.x.ai/",
+    "http://127.0.0.1:11434/",
+    "http://127.0.0.1:5001/"
+  ];
+
+  const isAllowed = ALLOWED_PREFIXES.some(p => finalUrl.startsWith(p)) || provider === "custom";
+  if (!isAllowed) {
+    return res.status(400).json({ error: "Invalid destination URL" });
   }
 
   if (stream) {
@@ -169,7 +199,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       const response = await axios.post(finalUrl, body, { headers, timeout: 30000, validateStatus: () => true });
       res.status(response.status).json(response.data);
     } catch (error: any) {
-      if (error.code === 'ECONNABORTED') return res.status(504).json({ error: "Upstream request timed out" });
+      if (error.code === "ECONNABORTED") return res.status(504).json({ error: "Upstream request timed out" });
       res.status(500).json({ error: error.message });
     }
   }
