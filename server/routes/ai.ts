@@ -15,60 +15,28 @@ const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 export const isPrivateIP = (ip: string): boolean => {
   if (net.isIPv4(ip)) {
     const parts = ip.split(".").map(Number);
-    // 0.0.0.0/8 (current network)
-    if (parts[0] === 0) return true;
-    // 127.0.0.0/8
-    if (parts[0] === 127) return true;
-    // 10.0.0.0/8
-    if (parts[0] === 10) return true;
-    // 172.16.0.0/12
-    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-    // 192.168.0.0/16
-    if (parts[0] === 192 && parts[1] === 168) return true;
-    // 169.254.0.0/16
-    if (parts[0] === 169 && parts[1] === 254) return true;
+    if (parts[0] === 0 || parts[0] === 127 || parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168) || (parts[0] === 169 && parts[1] === 254)) return true;
     return false;
   } else if (net.isIPv6(ip)) {
     const expanded = ip.toLowerCase();
-    // ::1/128
     if (expanded === "::1" || expanded === "0:0:0:0:0:0:0:1") return true;
-    // IPv4-mapped IPv6 (::ffff:x.x.x.x)
     const v4MappedMatch = expanded.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
-    if (v4MappedMatch) {
-      return isPrivateIP(v4MappedMatch[1]);
-    }
-    // fc00::/7
-    if (expanded.startsWith("fc") || expanded.startsWith("fd")) return true;
-    // fe80::/10
-    if (expanded.startsWith("fe8") || expanded.startsWith("fe9") || expanded.startsWith("fea") || expanded.startsWith("feb")) return true;
+    if (v4MappedMatch) return isPrivateIP(v4MappedMatch[1]);
+    if (expanded.startsWith("fc") || expanded.startsWith("fd") || expanded.startsWith("fe8") || expanded.startsWith("fe9") || expanded.startsWith("fea") || expanded.startsWith("feb")) return true;
     return false;
   }
-  // Not an IP address
   return false;
 };
 
 export const validateAiUrl = async (baseUrl: string): Promise<void> => {
   const u = new URL(baseUrl);
   if (u.protocol !== "https:") throw new Error("HTTPS required");
-
-  // If the hostname itself is a private IP
-  if (isPrivateIP(u.hostname)) {
-    throw new Error("Public origin required");
-  }
-
-  // Also catch "localhost" etc. even if they are not IPs
-  if (["localhost", "127.0.0.1", "::1"].includes(u.hostname.toLowerCase())) {
-    throw new Error("Public origin required");
-  }
-
+  if (isPrivateIP(u.hostname) || ["localhost", "127.0.0.1", "::1"].includes(u.hostname.toLowerCase())) throw new Error("Public origin required");
   try {
     const { address } = await lookup(u.hostname);
-    if (isPrivateIP(address)) {
-      throw new Error("Public origin required");
-    }
+    if (isPrivateIP(address)) throw new Error("Public origin required");
   } catch (e: any) {
     if (e.message === "Public origin required") throw e;
-    // If DNS fails, we'll let axios handle the connectivity error.
   }
 };
 
@@ -104,12 +72,23 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   let body: any = {};
 
   const processedMessages = (messages || []).slice(-11);
+
+  // Base prompt for artifacts
+  const basePromptFile = path.join(process.cwd(), "prompts", "chat", "base_artifacts.prompt.yml");
+  if (fs.existsSync(basePromptFile)) {
+    try {
+      const content = fs.readFileSync(basePromptFile, "utf-8");
+      const match = content.match(/role: system\s+content: \|?\s+([\s\S]*)/);
+      if (match) processedMessages.unshift({ role: "system", content: match[1].trim() });
+    } catch (e) {}
+  }
+
   if (style) {
     const promptFile = path.join(process.cwd(), "prompts", "chat", `${style}.prompt.yml`);
     if (fs.existsSync(promptFile)) {
       try {
         const content = fs.readFileSync(promptFile, "utf-8");
-        const match = content.match(/role: system\s+content: (.*)/);
+        const match = content.match(/role: system\s+content: \|?\s+([\s\S]*)/);
         if (match) processedMessages.unshift({ role: "system", content: match[1].trim() });
       } catch (e) {}
     }
@@ -131,6 +110,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       break;
     case "google":
       finalUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${integration?.api_key}`;
+      // Google doesn't follow OpenAI format, this is a simplified proxy
       body = { contents: processedMessages.map((m: any) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) };
       break;
     case "openrouter":
@@ -157,7 +137,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       break;
     case "ollama":
       finalUrl = "http://127.0.0.1:11434/api/chat";
-      body = { model, messages: processedMessages, stream: false };
+      body = { model, messages: processedMessages, stream };
       break;
     case "kobold":
       finalUrl = "http://127.0.0.1:5001/api/v1/generate";
@@ -167,12 +147,31 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: "Unsupported provider" });
   }
 
-  try {
-    const response = await axios.post(finalUrl, body, { headers, timeout: 15000, validateStatus: () => true });
-    res.status(response.status).json(response.data);
-  } catch (error: any) {
-    if (error.code === 'ECONNABORTED') return res.status(504).json({ error: "Upstream request timed out" });
-    res.status(500).json({ error: error.message });
+  if (stream) {
+    try {
+      const response = await axios.post(finalUrl, body, {
+        headers,
+        responseType: "stream",
+        timeout: 30000,
+        validateStatus: () => true
+      });
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      response.data.pipe(res);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  } else {
+    try {
+      const response = await axios.post(finalUrl, body, { headers, timeout: 30000, validateStatus: () => true });
+      res.status(response.status).json(response.data);
+    } catch (error: any) {
+      if (error.code === 'ECONNABORTED') return res.status(504).json({ error: "Upstream request timed out" });
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 
@@ -183,7 +182,7 @@ export const handleGetChatStyles: RequestHandler = async (_req, res) => {
     const files = fs.readdirSync(stylesDir);
     const styles = [];
     for (const file of files) {
-      if (file.endsWith(".prompt.yml")) {
+      if (file.endsWith(".prompt.yml") && file !== "base_artifacts.prompt.yml") {
         const id = file.replace(".prompt.yml", "");
         const descFile = path.join(stylesDir, `${id}.description`);
         let title = id;

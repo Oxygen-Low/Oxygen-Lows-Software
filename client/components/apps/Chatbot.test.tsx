@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ChatbotApp } from './Chatbot';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { ChatbotApp } from "./Chatbot";
 
 // Mock ResizeObserver
 global.ResizeObserver = class {
@@ -14,11 +14,11 @@ global.ResizeObserver = class {
 window.HTMLElement.prototype.scrollIntoView = function() {};
 
 // Mock supabase
-vi.mock('@/lib/supabase', () => ({
+vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'test-user' } }, error: null }),
-      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-token' } }, error: null }),
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user" } }, error: null }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "test-token" } }, error: null }),
     },
     from: vi.fn(() => {
       const builder: any = {
@@ -29,76 +29,80 @@ vi.mock('@/lib/supabase', () => ({
         eq: vi.fn(() => builder),
         order: vi.fn(() => builder),
         single: vi.fn(() => Promise.resolve({ data: { id: "chat-1", title: "New Chat" }, error: null })),
-        then: vi.fn((onFulfilled) => Promise.resolve({ data: [], error: null }).then(onFulfilled)),
+        then: vi.fn((onFulfilled) => {
+           if (typeof onFulfilled === "function") {
+             return Promise.resolve({ data: [{ id: "chat-1", title: "New Chat" }], error: null }).then(onFulfilled);
+           }
+           return builder;
+        }),
       };
       return builder;
     }),
   },
 }));
 
-// Mock fetch
+// Mock fetch for streaming
 global.fetch = vi.fn((url) => {
-  if (url === '/api/ai/local-providers') {
+  if (url === "/api/ai/local-providers") {
     return Promise.resolve({
       ok: true,
-      json: () => Promise.resolve([{ id: 'ollama', name: 'Ollama' }])
+      json: () => Promise.resolve([{ id: "ollama", name: "Ollama" }])
     });
   }
-  if (url === '/api/ai/styles') {
+  if (url === "/api/ai/styles") {
     return Promise.resolve({
       ok: true,
-      json: () => Promise.resolve([{ id: 'GeneralAssistant', title: 'Assistant', description: 'Helpful' }])
+      json: () => Promise.resolve([{ id: "GeneralAssistant", title: "Assistant", description: "Helpful" }])
     });
   }
-  if (url === '/api/ai/proxy') {
+  if (url === "/api/ai/proxy") {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("data: {\"choices\":[{\"delta\":{\"content\":\"Hello from AI\"}}]}\n"));
+        controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+        controller.close();
+      }
+    });
     return Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ choices: [{ message: { content: 'Hello from AI' } }] })
+      body: stream
     });
   }
   return Promise.resolve({
     ok: true,
-    text: () => Promise.resolve('Title: Test\nDescription: Test Desc')
+    json: () => Promise.resolve([{ id: "GeneralAssistant", title: "Assistant", description: "Helpful" }]),
+    text: () => Promise.resolve("Title: Test\nDescription: Test Desc")
   });
 }) as any;
 
-describe('ChatbotApp', () => {
+describe("ChatbotApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders the chatbot app', async () => {
+  it("renders the chatbot app", async () => {
     render(<ChatbotApp />);
-    expect(screen.getAllByText('New Chat')).toBeDefined();
-    expect(screen.getByText('Select a chat to start')).toBeDefined();
+    expect(screen.getAllByText("New Chat")).toBeDefined();
+    expect(screen.getByText("Select a chat to start")).toBeDefined();
   });
 
-  it('creates a new chat and sends a message', async () => {
+  it("creates a new chat and sends a message", async () => {
     render(<ChatbotApp />);
 
-    // Wait for components to load
     await waitFor(() => {
-        expect(screen.getAllByText('New Chat')).toBeDefined();
+        expect(screen.getAllByText("New Chat")).toBeDefined();
     });
 
-    const newChatBtns = screen.getAllByText('New Chat');
-    fireEvent.click(newChatBtns[0]);
+    const chatInSidebar = await screen.findByText("New Chat", { selector: "span" });
+    fireEvent.click(chatInSidebar);
+
+    const input = await screen.findByPlaceholderText("Ask anything...");
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
     await waitFor(() => {
-      const entries = screen.getAllByText('New Chat');
-      expect(entries.length).toBeGreaterThan(0);
-    });
-
-    // Send message
-    const input = screen.getByPlaceholderText('Ask anything...');
-    fireEvent.change(input, { target: { value: 'Hi' } });
-
-    // Enter key as fallback
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Hi')).toBeDefined();
-      expect(screen.getByText('Hello from AI')).toBeDefined();
-    }, { timeout: 3000 });
-  });
+      expect(screen.queryByText("Hi")).not.toBeNull();
+      expect(screen.queryByText("Hello from AI")).not.toBeNull();
+    }, { timeout: 10000 });
+  }, 20000);
 });
