@@ -122,6 +122,7 @@ export default function Storage() {
     setUploading(true);
     try {
       const filePath = `${session?.user.id}/${Date.now()}_${file.name}`;
+      if (filePath.includes('..')) throw new Error("Invalid file path");
       const { error } = await supabase.storage.from("Storage").upload(filePath, file);
       if (error) throw error;
       toast.success("File uploaded");
@@ -135,6 +136,7 @@ export default function Storage() {
 
   const deleteCloudFile = async (name: string) => {
     try {
+      if (name.includes('..')) throw new Error('Invalid file name');
       const { error } = await supabase.storage.from("Storage").remove([`${session?.user.id}/${name}`]);
       if (error) throw error;
       toast.success("File deleted");
