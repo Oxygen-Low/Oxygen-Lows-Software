@@ -40,6 +40,29 @@ export const validateAiUrl = async (baseUrl: string): Promise<void> => {
   }
 };
 
+function buildValidatedCustomUrl(baseUrl: string): string {
+  try {
+    // Minimal path validation
+    if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
+      throw new Error('Invalid path');
+    }
+    
+    const url = new URL(baseUrl);
+    
+    // Protocol check
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('Invalid protocol');
+    }
+    
+    // Build the path with fixed literal
+    url.pathname = url.pathname.replace(/\/+$/, "") + "/chat/completions";
+    
+    return url.href;
+  } catch {
+    throw new Error('Invalid URL');
+  }
+}
+
 const getSystemContentFromYaml = (filePath: string): string | null => {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
@@ -172,8 +195,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         // Any future changes to validateAiUrl or finalUrl construction must preserve these checks.
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
         await validateAiUrl(integration.base_url);
-        const u = new URL(integration.base_url);
-        const finalUrl = u.origin + u.pathname.replace(/\/+$/, "") + "/chat/completions";
+        const finalUrl = buildValidatedCustomUrl(integration.base_url);
         const customHeaders = integration?.api_key ? { ...axiosOptions.headers, "Authorization": `Bearer ${integration.api_key}` } : axiosOptions.headers;
         handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
         break;
