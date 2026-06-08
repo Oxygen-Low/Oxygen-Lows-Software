@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, Package, User, Users, HardDrive, Palette } from "lucide-react";
+import { LogOut, Package, User, Users, HardDrive, Palette, Contact } from "lucide-react";
 import styles from "./Layout.module.css";
 
 interface LayoutProps {
@@ -14,6 +14,7 @@ const navItems = [
   { label: "Account", href: "/account", icon: User },
   { label: "Friends", href: "/friends", icon: Users },
   { label: "Customize", href: "/customize", icon: Palette },
+  { label: "Characters", href: "/characters", icon: Contact },
 ];
 
 export const Layout = ({ children }: LayoutProps) => {

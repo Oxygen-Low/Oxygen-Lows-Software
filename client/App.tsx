@@ -15,6 +15,7 @@ import Friends from "./pages/Friends";
 import Account from "./pages/Account";
 import Storage from "./pages/Storage";
 import Customize from "./pages/Customize";
+import Characters from "./pages/Characters";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import OauthConsent from "./pages/OauthConsent";
