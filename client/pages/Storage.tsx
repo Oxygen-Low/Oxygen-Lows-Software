@@ -118,7 +118,8 @@ export default function Storage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (totalSize + file.size > MAX_CLOUD_SIZE) {
+    const combinedUsage = totalSize + totalDataSize;
+    if (combinedUsage + file.size > MAX_CLOUD_SIZE) {
       toast.error("Storage limit exceeded");
       return;
     }

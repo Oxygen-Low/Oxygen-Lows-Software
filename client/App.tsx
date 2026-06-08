@@ -56,7 +56,7 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-                            <Route
+              <Route
                 path="/friends"
                 element={
                   <ProtectedRoute>
@@ -77,6 +77,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Customize />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/characters"
+                element={
+                  <ProtectedRoute>
+                    <Characters />
                   </ProtectedRoute>
                 }
               />
