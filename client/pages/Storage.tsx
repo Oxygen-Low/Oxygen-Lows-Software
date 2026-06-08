@@ -82,7 +82,8 @@ export default function Storage() {
       { name: "Chatbot Chats", count: 0, size: 0, tables: ["chats", "chat_messages"] },
       { name: "User Profiles", count: 1, size: 1024, tables: ["profiles"] },
       { name: "OAuth & Integrations", count: 0, size: 0, tables: ["user_integrations"] },
-      { name: "Settings", count: 1, size: 512, tables: ["user_preferences"] }
+      { name: "Settings", count: 1, size: 512, tables: ["user_preferences"] } ,
+      { name: "Characters", count: 0, size: 0, tables: ["characters"] }
     ];
 
     try {
@@ -98,8 +99,11 @@ export default function Storage() {
       }
 
       const { count: integCount } = await supabase.from("user_integrations").select("*", { count: "exact", head: true }).eq("user_id", session?.user.id);
+      const { count: charCount } = await supabase.from("characters").select("*", { count: "exact", head: true }).eq("user_id", session?.user.id);
 
       stats[0].count = (chatsCount || 0) + msgsCount;
+      stats[4].count = charCount || 0;
+      stats[4].size = (charCount || 0) * 2048;
       stats[0].size = stats[0].count * 500;
       stats[2].count = integCount || 0;
       stats[2].size = (integCount || 0) * 256;

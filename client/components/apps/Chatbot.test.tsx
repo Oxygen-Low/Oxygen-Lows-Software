@@ -54,7 +54,7 @@ global.fetch = vi.fn((url) => {
       json: () => Promise.resolve([{ id: "GeneralAssistant", title: "Assistant", description: "Helpful" }])
     });
   }
-  if (url === "/api/ai/proxy") {
+  if (url === "/api/ai/chat") {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(new TextEncoder().encode("data: {\"choices\":[{\"delta\":{\"content\":\"Hello from AI\"}}]}\n"));
