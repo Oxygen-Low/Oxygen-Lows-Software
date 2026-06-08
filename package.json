@@ -18,7 +18,7 @@
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "@supabase/supabase-js": "^2.107.0",
+    "@supabase/supabase-js": "^2.108.0",
     "@types/multer": "^2.1.0",
     "axios": "^1.17.0",
     "browser-image-compression": "^2.0.2",
