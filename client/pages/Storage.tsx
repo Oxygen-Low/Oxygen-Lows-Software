@@ -118,8 +118,9 @@ export default function Storage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const combinedUsage = totalSize + totalDataSize;
-    if (combinedUsage + file.size > MAX_CLOUD_SIZE) {
+    const charCount = dbStats.find(s => s.name === "Characters")?.count || 0;
+    const currentStorage = totalSize + (charCount * 2048);
+    if (currentStorage + file.size > MAX_CLOUD_SIZE) {
       toast.error("Storage limit exceeded");
       return;
     }

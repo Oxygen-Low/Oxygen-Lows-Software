@@ -22,7 +22,7 @@ const { chromium } = require('playwright');
     console.log('Took characters_page.png');
 
     await page.click('text=New Character');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
     await page.screenshot({ path: 'new_character_dialog.png' });
     console.log('Took new_character_dialog.png');
 
@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
     await page.waitForLoadState('networkidle');
     // Assuming Chatbot is one of the apps
     await page.click('text=Chatbot');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
     await page.screenshot({ path: 'chatbot_with_characters.png' });
     console.log('Took chatbot_with_characters.png');
 

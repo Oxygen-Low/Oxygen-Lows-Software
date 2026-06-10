@@ -70,6 +70,7 @@ export const ChatbotApp = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastParsedLengthRef = useRef(0);
   const streamBufferRef = useRef("");
+  const isTypingRef = useRef(false);
 
   useEffect(() => {
     fetchChats();
@@ -136,12 +137,13 @@ export const ChatbotApp = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim() || !currentChatId || isTyping) return;
+    if (!input.trim() || !currentChatId || isTypingRef.current) return;
 
     const userMsg: Message = { role: "user", content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
+    isTypingRef.current = true;
     lastParsedLengthRef.current = 0;
 
     try {
@@ -203,7 +205,8 @@ Backstory: ${userChar.backstory || ""}`;
       streamBufferRef.current = "";
       setMessages(prev => [...prev, { role: "assistant", content: "" }]);
 
-      while (true) {
+      let streamDone = false;
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -217,7 +220,7 @@ Backstory: ${userChar.backstory || ""}`;
           if (!trimmedLine.startsWith("data: ")) continue;
 
           const dataStr = trimmedLine.replace("data: ", "");
-          if (dataStr === "[DONE]") break;
+          if (dataStr === "[DONE]") { streamDone = true; break; }
 
           try {
             const data = JSON.parse(dataStr);
@@ -263,6 +266,7 @@ Backstory: ${userChar.backstory || ""}`;
       toast.error(e.message);
     } finally {
       setIsTyping(false);
+      isTypingRef.current = false;
     }
   };
 
