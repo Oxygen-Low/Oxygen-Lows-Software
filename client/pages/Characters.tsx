@@ -14,6 +14,7 @@ interface Character {
   id: string;
   name: string;
   image_url: string | null;
+  image_path: string | null;
   short_description: string | null;
   appearance: string | null;
   personality: string | null;
@@ -89,6 +90,22 @@ export default function Characters() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this character?")) return;
     try {
+      // Get character first to get image_path
+      const { data: char, error: fetchError } = await supabase
+        .from("characters")
+        .select("image_path")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (char?.image_path) {
+        const { error: storageError } = await supabase.storage
+          .from("Storage")
+          .remove([char.image_path]);
+        if (storageError) console.error("Failed to delete character image:", storageError);
+      }
+
       const { error } = await supabase.from("characters").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Success", description: "Character deleted" });
@@ -118,7 +135,12 @@ export default function Characters() {
         .from("Storage")
         .getPublicUrl(filePath);
 
-      setCurrentCharacter(prev => ({ ...prev, image_url: publicUrl }));
+      // Clean up old image if replacing
+      if (currentCharacter.image_path) {
+        await supabase.storage.from("Storage").remove([currentCharacter.image_path]);
+      }
+
+      setCurrentCharacter(prev => ({ ...prev, image_url: publicUrl, image_path: filePath }));
       toast({ title: "Success", description: "Image uploaded" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

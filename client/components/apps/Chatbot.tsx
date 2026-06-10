@@ -69,6 +69,8 @@ export const ChatbotApp = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastParsedLengthRef = useRef(0);
+  const streamBufferRef = useRef("");
+  const isTypingRef = useRef(false);
 
   useEffect(() => {
     fetchChats();
@@ -135,12 +137,13 @@ export const ChatbotApp = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim() || !currentChatId) return;
+    if (!input.trim() || !currentChatId || isTypingRef.current) return;
 
     const userMsg: Message = { role: "user", content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
+    isTypingRef.current = true;
     lastParsedLengthRef.current = 0;
 
     try {
@@ -175,9 +178,16 @@ Backstory: ${userChar.backstory || ""}`;
       const history = [...messages, userMsg];
       const chatContext = systemPrompt ? [{ role: "system", content: systemPrompt }, ...history] : history;
 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       const response = await fetch("/api/ai/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+
         body: JSON.stringify({
           messages: chatContext,
           provider: selectedProvider,
@@ -192,21 +202,29 @@ Backstory: ${userChar.backstory || ""}`;
       if (!reader) throw new Error("No reader");
 
       let fullContent = "";
+      streamBufferRef.current = "";
       setMessages(prev => [...prev, { role: "assistant", content: "" }]);
 
-      while (true) {
+      let streamDone = false;
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = new TextDecoder().decode(value);
-        const lines = chunk.split("\n").filter(l => l.trim().startsWith("data: "));
+        streamBufferRef.current += chunk;
+        const lines = streamBufferRef.current.split("\n");
+        streamBufferRef.current = lines.pop() || "";
 
         for (const line of lines) {
-          const dataStr = line.replace("data: ", "");
-          if (dataStr === "[DONE]") break;
+          const trimmedLine = line.trim();
+          if (!trimmedLine.startsWith("data: ")) continue;
+
+          const dataStr = trimmedLine.replace("data: ", "");
+          if (dataStr === "[DONE]") { streamDone = true; break; }
 
           try {
             const data = JSON.parse(dataStr);
+
             let delta = "";
             if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom") {
               delta = data.choices?.[0]?.delta?.content || "";
@@ -239,13 +257,16 @@ Backstory: ${userChar.backstory || ""}`;
         }
       }
 
-      await supabase.from("chat_messages").insert({ chat_id: currentChatId, role: "assistant", content: fullContent });
-      await supabase.from("chats").update({ updated_at: new Date().toISOString() }).eq("id", currentChatId);
+      const { error: assistantInsertError } = await supabase.from("chat_messages").insert({ chat_id: currentChatId, role: "assistant", content: fullContent });
+      if (assistantInsertError) throw assistantInsertError;
+      const { error: chatUpdateError } = await supabase.from("chats").update({ updated_at: new Date().toISOString() }).eq("id", currentChatId);
+      if (chatUpdateError) throw chatUpdateError;
 
     } catch (e: any) {
       toast.error(e.message);
     } finally {
       setIsTyping(false);
+      isTypingRef.current = false;
     }
   };
 
@@ -352,7 +373,7 @@ Backstory: ${userChar.backstory || ""}`;
               </div>
             </ScrollArea>
             <div className="pt-6 border-t border-slate-800 relative">
-              <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSendMessage()} placeholder="Ask anything..." className="w-full bg-slate-900/50 pl-4 pr-12 py-6 border-slate-700 text-white" />
+              <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !isTyping && handleSendMessage()} placeholder="Ask anything..." className="w-full bg-slate-900/50 pl-4 pr-12 py-6 border-slate-700 text-white" />
               <Button onClick={handleSendMessage} disabled={!input.trim() || isTyping} className="absolute right-2 top-1/2 -translate-y-1/2 bg-cyan-600 h-10 w-10 p-0 hover:bg-cyan-700" aria-label="Send message"><Send className="w-4 h-4" /></Button>
             </div>
           </>

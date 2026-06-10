@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS public.characters (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   image_url TEXT,
+  image_path TEXT,
   short_description TEXT,
   appearance TEXT,
   personality TEXT,
@@ -95,4 +96,41 @@ BEGIN
 END;
 $function$;
 
+
+-- Revoke PUBLIC and grant to authenticated
+REVOKE EXECUTE ON FUNCTION public.check_user_total_storage_limit(text, text, uuid, jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.check_user_total_storage_limit(text, text, uuid, jsonb) TO authenticated;
+
+
+-- Add index for user_id
+CREATE INDEX IF NOT EXISTS idx_characters_user_id ON public.characters(user_id);
+
+-- Enforce chat character ownership
+CREATE OR REPLACE FUNCTION public.fn_check_chat_character_owner()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.llm_character_id IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM public.characters WHERE id = NEW.llm_character_id AND user_id = NEW.user_id) THEN
+      RAISE EXCEPTION 'llm_character_id does not belong to the chat owner';
+    END IF;
+  END IF;
+
+  IF NEW.user_character_id IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM public.characters WHERE id = NEW.user_character_id AND user_id = NEW.user_id) THEN
+      RAISE EXCEPTION 'user_character_id does not belong to the chat owner';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_chat_character_owner') THEN
+        CREATE TRIGGER trg_chat_character_owner
+        BEFORE INSERT OR UPDATE ON public.chats
+        FOR EACH ROW EXECUTE FUNCTION public.fn_check_chat_character_owner();
+    END IF;
+END
+$$;
