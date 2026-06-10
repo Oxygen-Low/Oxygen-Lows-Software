@@ -19,7 +19,7 @@ interface Character {
   appearance: string | null;
   personality: string | null;
   hidden_description: string | null;
-  hidden_short_description: string | null;
+  display_name: string | null;
   backstory: string | null;
 }
 
@@ -43,7 +43,7 @@ export default function Characters() {
       const { data, error } = await supabase
         .from("characters")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("display_name", { nullsFirst: false }).order("name");
 
       if (error) throw error;
       setCharacters(data || []);
@@ -198,8 +198,8 @@ export default function Characters() {
                     <Input value={currentCharacter.short_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, short_description: e.target.value }))} placeholder="A one-line hook" className="bg-slate-800 border-slate-700" />
                   </div>
                   <div className="space-y-2 text-cyan-400">
-                    <label className="text-sm font-medium">Hidden Short Description (Private)</label>
-                    <Input value={currentCharacter.hidden_short_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, hidden_short_description: e.target.value }))} placeholder="Secret details..." className="bg-slate-800 border-cyan-900" />
+                    <label className="text-sm font-medium">Display Name</label>
+                    <Input value={currentCharacter.display_name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, display_name: e.target.value }))} placeholder="For organizing characters..." className="bg-slate-800 border-cyan-900" />
                   </div>
                 </div>
 
@@ -219,8 +219,8 @@ export default function Characters() {
                 </div>
 
                 <div className="space-y-2 text-cyan-400">
-                  <label className="text-sm font-medium">Hidden Description (Private)</label>
-                  <Textarea value={currentCharacter.hidden_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, hidden_description: e.target.value }))} placeholder="Inner secrets not shared with LLM..." className="bg-slate-800 border-cyan-900 h-32" />
+                  <label className="text-sm font-medium">Private Notes</label>
+                  <Textarea value={currentCharacter.hidden_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, hidden_description: e.target.value }))} placeholder="Write notes for yourself here (not shared with LLM)..." className="bg-slate-800 border-cyan-900 h-32" />
                 </div>
               </div>
               <DialogFooter>
@@ -245,7 +245,7 @@ export default function Characters() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
-                    <h3 className="text-xl font-bold text-white truncate">{char.name}</h3>
+                    <h3 className="text-xl font-bold text-white truncate">{char.display_name || char.name}</h3>
                     <p className="text-sm text-slate-300 truncate">{char.short_description || "No description"}</p>
                   </div>
                 </div>
