@@ -12,10 +12,12 @@ import {
   Box,
   Users,
   ShieldCheck,
-  Bot
+  Bot,
+  Monitor
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
+import { AiScreenshareApp } from "@/components/apps/AiScreenshare";
 
 import { ChatbotApp } from "@/components/apps/Chatbot";
 
@@ -51,6 +53,14 @@ export default function Apps() {
       categories: ["All", "LLM/AI"],
       icon: <Bot className="w-8 h-8 text-cyan-500" />,
       component: ChatbotApp,
+    },
+    {
+      id: "ai-screenshare",
+      name: "AI Screenshare",
+      description: "Let AI watch your screen and react to what you are doing in real-time.",
+      categories: ["All", "LLM/AI"],
+      icon: <Monitor className="w-8 h-8 text-cyan-500" />,
+      component: AiScreenshareApp,
     },
 
     {
