@@ -79,7 +79,7 @@ export const ChatbotApp = () => {
   }, []);
 
   const fetchCharacters = async () => {
-    const { data } = await supabase.from("characters").select("*").order("name");
+    const { data } = await supabase.from("characters").select("*").order("display_name", { nullsFirst: false }).order("name");
     if (data) setAvailableCharacters(data);
   };
 
@@ -161,7 +161,6 @@ export const ChatbotApp = () => {
 
       if (llmChar) {
         systemPrompt += `\nYou are playing the character: ${llmChar.name}.
-Description: ${llmChar.short_description || ""}
 Appearance: ${llmChar.appearance || ""}
 Personality: ${llmChar.personality || ""}
 Backstory: ${llmChar.backstory || ""}`;
@@ -169,7 +168,6 @@ Backstory: ${llmChar.backstory || ""}`;
 
       if (userChar) {
         systemPrompt += `\nThe person you are talking to is: ${userChar.name}.
-Description: ${userChar.short_description || ""}
 Appearance: ${userChar.appearance || ""}
 Personality: ${userChar.personality || ""}
 Backstory: ${userChar.backstory || ""}`;
@@ -307,13 +305,13 @@ Backstory: ${userChar.backstory || ""}`;
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">LLM Character</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1" value={selectedLlmCharacter || ""} onChange={e => { const val = e.target.value || null; setSelectedLlmCharacter(val); updateChatSetting({ llm_character_id: val }); }}>
               <option value="">None</option>
-              {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.display_name || c.name}</option>)}
             </select>
           </div>
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">User Character</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1" value={selectedUserCharacter || ""} onChange={e => { const val = e.target.value || null; setSelectedUserCharacter(val); updateChatSetting({ user_character_id: val }); }}>
               <option value="">None</option>
-              {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.display_name || c.name}</option>)}
             </select>
           </div>
         </div>
