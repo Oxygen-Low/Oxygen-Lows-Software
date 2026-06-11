@@ -7,8 +7,11 @@ export type Theme = "default" | "red" | "yellow" | "black" | "white";
 interface ThemeContextType {
   theme: Theme;
   useGradient: boolean;
+  lastModelId: string | null;
+  lastProvider: string | null;
   setTheme: (theme: Theme) => Promise<void>;
   setUseGradient: (useGradient: boolean) => Promise<void>;
+  setModelPreference: (modelId: string, provider: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -22,6 +25,8 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const { session } = useAuth();
   const [theme, setThemeState] = useState<Theme>("default");
   const [useGradient, setUseGradientState] = useState<boolean>(true);
+  const [lastModelId, setLastModelId] = useState<string | null>(null);
+  const [lastProvider, setLastProvider] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const applyTheme = useCallback((newTheme: Theme, gradient: boolean) => {
@@ -60,6 +65,8 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
         setThemeState(initialTheme);
         setUseGradientState(initialGradient);
+        setLastModelId(null);
+        setLastProvider(null);
         applyTheme(initialTheme, initialGradient);
         setIsLoading(false);
         return;
@@ -69,7 +76,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       try {
         const { data, error } = await supabase
           .from("user_preferences")
-          .select("theme, use_gradient")
+          .select("theme, use_gradient, last_model_id, last_provider")
           .eq("user_id", session.user.id)
           .single();
 
@@ -79,9 +86,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
         const loadedTheme = (data?.theme as Theme) || "default";
         const loadedGradient = data?.use_gradient ?? true;
+        const loadedModelId = data?.last_model_id || null;
+        const loadedProvider = data?.last_provider || null;
 
         setThemeState(loadedTheme);
         setUseGradientState(loadedGradient);
+        setLastModelId(loadedModelId);
+        setLastProvider(loadedProvider);
         applyTheme(loadedTheme, loadedGradient);
       } catch (error) {
         console.error("Failed to load preferences:", error);
@@ -103,13 +114,15 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         await supabase.rpc("upsert_user_preferences", {
           p_user_id: session.user.id,
           p_theme: newTheme,
-          p_use_gradient: useGradient
+          p_use_gradient: useGradient,
+          p_last_model_id: lastModelId,
+          p_last_provider: lastProvider
         });
       } catch (error) {
         console.error("Failed to save theme:", error);
       }
     }
-  }, [session?.user?.id, useGradient, applyTheme]);
+  }, [session?.user?.id, useGradient, applyTheme, lastModelId, lastProvider]);
 
   const setUseGradient = useCallback(async (newGradient: boolean) => {
     setUseGradientState(newGradient);
@@ -120,16 +133,46 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         await supabase.rpc("upsert_user_preferences", {
           p_user_id: session.user.id,
           p_theme: theme,
-          p_use_gradient: newGradient
+          p_use_gradient: newGradient,
+          p_last_model_id: lastModelId,
+          p_last_provider: lastProvider
         });
       } catch (error) {
         console.error("Failed to save gradient preference:", error);
       }
     }
-  }, [session?.user?.id, theme, applyTheme]);
+  }, [session?.user?.id, theme, applyTheme, lastModelId, lastProvider]);
+
+  const setModelPreference = useCallback(async (modelId: string, provider: string) => {
+    setLastModelId(modelId);
+    setLastProvider(provider);
+
+    if (session?.user?.id) {
+      try {
+        await supabase.rpc("upsert_user_preferences", {
+          p_user_id: session.user.id,
+          p_theme: theme,
+          p_use_gradient: useGradient,
+          p_last_model_id: modelId,
+          p_last_provider: provider
+        });
+      } catch (error) {
+        console.error("Failed to save model preference:", error);
+      }
+    }
+  }, [session?.user?.id, theme, useGradient]);
 
   return (
-    <ThemeContext.Provider value={{ theme, useGradient, setTheme, setUseGradient, isLoading }}>
+    <ThemeContext.Provider value={{
+      theme,
+      useGradient,
+      lastModelId,
+      lastProvider,
+      setTheme,
+      setUseGradient,
+      setModelPreference,
+      isLoading
+    }}>
       {children}
     </ThemeContext.Provider>
   );

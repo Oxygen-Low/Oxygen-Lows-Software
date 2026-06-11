@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { ChatbotApp } from "./Chatbot";
 
@@ -36,6 +37,7 @@ vi.mock("@/lib/supabase", () => ({
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user" } }, error: null }),
       getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "test-token" } }, error: null }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
     },
     from: vi.fn((table) => {
       if (table === "chats") return mockSupabaseChain([{ id: "chat-1", title: "New Chat", style: "GeneralAssistant", updated_at: new Date().toISOString() }]);
@@ -80,7 +82,7 @@ describe("ChatbotApp", () => {
   });
 
   it("renders the chatbot app", async () => {
-    render(<ChatbotApp />);
+    render(<ThemeProvider><ChatbotApp /></ThemeProvider>);
     await waitFor(() => {
       expect(screen.queryByText("New Chat", { selector: "button" })).not.toBeNull();
     });
@@ -88,7 +90,7 @@ describe("ChatbotApp", () => {
   });
 
   it("creates a new chat and sends a message", async () => {
-    render(<ChatbotApp />);
+    render(<ThemeProvider><ChatbotApp /></ThemeProvider>);
 
     // Wait for initial load
     const chatItem = await screen.findByText("New Chat", { selector: "span" });

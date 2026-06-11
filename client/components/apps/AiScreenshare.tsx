@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useAiModels } from "@/hooks/useAiModels";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,11 +30,12 @@ interface Style {
 export function AiScreenshareApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [models, setModels] = useState<Model[]>([]);
-  const [selectedModel, setSelectedModel] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState("");
+
+
+
   const [styles, setStyles] = useState<Style[]>([]);
   const [selectedStyle, setSelectedStyle] = useState("gaming_coach");
+  const { models, selectedModel, selectedProvider, setSelection } = useAiModels("gemini-1.5-flash", "google");
   const [isTyping, setIsTyping] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,17 +53,7 @@ export function AiScreenshareApp() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: dbModels } = await supabase.from("user_models").select("*").order("provider");
-        const localResponse = await fetch("/api/ai/local-providers");
-        const localModels = localResponse.ok ? await localResponse.json() : [];
 
-        const allModels = [...(dbModels || []), ...localModels];
-        setModels(allModels);
-
-        if (allModels.length > 0) {
-          setSelectedProvider(allModels[0].provider);
-          setSelectedModel(allModels[0].model_id);
-        }
       } catch (e) {
         console.error("Failed to fetch models", e);
       }
@@ -271,8 +263,7 @@ export function AiScreenshareApp() {
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={e => {
                   const [p, m] = e.target.value.split(":");
-                  setSelectedProvider(p);
-                  setSelectedModel(m);
+                  setSelection(m, p);
                 }}
                 disabled={isAnalyzing}
               >
