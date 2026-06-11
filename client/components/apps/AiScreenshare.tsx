@@ -50,13 +50,20 @@ export function AiScreenshareApp() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: modelData } = await supabase.from("user_models").select("*").order("provider");
-      if (modelData) {
-        setModels(modelData);
-        if (modelData.length > 0) {
-          setSelectedProvider(modelData[0].provider);
-          setSelectedModel(modelData[0].model_id);
+      try {
+        const { data: dbModels } = await supabase.from("user_models").select("*").order("provider");
+        const localResponse = await fetch("/api/ai/local-providers");
+        const localModels = localResponse.ok ? await localResponse.json() : [];
+
+        const allModels = [...(dbModels || []), ...localModels];
+        setModels(allModels);
+
+        if (allModels.length > 0) {
+          setSelectedProvider(allModels[0].provider);
+          setSelectedModel(allModels[0].model_id);
         }
+      } catch (e) {
+        console.error("Failed to fetch models", e);
       }
 
       try {
@@ -271,7 +278,7 @@ export function AiScreenshareApp() {
               >
                 {models.map((m, i) => (
                   <option key={i} value={`${m.provider}:${m.model_id}`}>
-                    {m.provider} - {m.model_id}
+                    {m.provider === "ollama" ? "ollama/" + m.model_id : m.provider + " - " + m.model_id}
                   </option>
                 ))}
               </select>

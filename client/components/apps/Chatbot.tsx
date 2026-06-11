@@ -89,11 +89,20 @@ export const ChatbotApp = () => {
   };
 
   const fetchModels = async () => {
-    const { data } = await supabase.from("user_models").select("*").order("provider");
-    if (data && data.length > 0) {
-      setModels(data);
-      setSelectedProvider(data[0].provider);
-      setSelectedModel(data[0].model_id);
+    try {
+      const { data: dbModels } = await supabase.from("user_models").select("*").order("provider");
+      const localResponse = await fetch("/api/ai/local-providers");
+      const localModels = localResponse.ok ? await localResponse.json() : [];
+
+      const allModels = [...(dbModels || []), ...localModels];
+      setModels(allModels);
+
+      if (allModels.length > 0) {
+        setSelectedProvider(allModels[0].provider);
+        setSelectedModel(allModels[0].model_id);
+      }
+    } catch (e) {
+      console.error("Failed to fetch models", e);
     }
   };
 
@@ -300,7 +309,7 @@ Backstory: ${userChar.backstory || ""}`;
         <div className="pt-4 border-t border-slate-800 space-y-4 overflow-y-auto">
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">Model</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded" value={`${selectedProvider}:${selectedModel}`} onChange={e => { const [p, m] = e.target.value.split(":"); setSelectedProvider(p); setSelectedModel(m); }}>
-              {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{m.provider} - {m.model_id}</option>)}
+              {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{m.provider === "ollama" ? "ollama/" + m.model_id : m.provider + " - " + m.model_id}</option>)}
             </select>
           </div>
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">Style</label>
