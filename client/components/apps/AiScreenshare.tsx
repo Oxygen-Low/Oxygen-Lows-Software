@@ -141,7 +141,17 @@ export function AiScreenshareApp() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.7);
+    // Compress further if image is too large (though 0.7 jpeg is usually small)
+    let quality = 0.7;
+    let dataUrl = canvas.toDataURL("image/jpeg", quality);
+
+    // 50MB is huge for a screenshot, but let s handle extreme cases
+    // if dataUrl is roughly > 50MB (base64 is ~1.33x original size)
+    while (dataUrl.length > 50 * 1024 * 1024 * 1.33 && quality > 0.1) {
+      quality -= 0.1;
+      dataUrl = canvas.toDataURL("image/jpeg", quality);
+    }
+    return dataUrl;
   };
 
   const analyzeFrame = async () => {
@@ -190,8 +200,17 @@ export function AiScreenshareApp() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "AI request failed");
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const error = await response.json();
+          throw new Error(error.error || `AI request failed with status ${response.status}`);
+        } else {
+          const errorText = await response.text();
+          if (response.status === 413) {
+            throw new Error("Payload too large. The screenshot or chat history exceeds the server limit.");
+          }
+          throw new Error(`Server error (${response.status}): ${errorText.substring(0, 100)}...`);
+        }
       }
 
       const data = await response.json();
