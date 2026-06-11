@@ -1,16 +1,13 @@
 import { RequestHandler } from "express";
 import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
-import fs from "fs";
 import path from "path";
-import dns from "dns";
+import fs from "fs";
 import net from "net";
-import { promisify } from "util";
+import { lookup } from "dns/promises";
 
-const lookup = promisify(dns.lookup);
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 
 export const isPrivateIP = (ip: string): boolean => {
   if (net.isIPv4(ip)) {
@@ -42,21 +39,14 @@ export const validateAiUrl = async (baseUrl: string): Promise<void> => {
 
 function buildValidatedCustomUrl(baseUrl: string): string {
   try {
-    // Minimal path validation (Do this before new URL(baseUrl), as URL() resolves dot-segments.)
     if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
       throw new Error('Invalid path');
     }
-    
     const url = new URL(baseUrl);
-    
-    // Protocol check
     if (!['http:', 'https:'].includes(url.protocol)) {
       throw new Error('Invalid protocol');
     }
-    
-    // Build the path with fixed literal
     url.pathname = url.pathname.replace(/\/+$/, "") + "/chat/completions";
-    
     return url.href;
   } catch {
     throw new Error('Invalid URL');
@@ -69,8 +59,6 @@ const getSystemContentFromYaml = (filePath: string): string | null => {
       return null;
     }
     const content = fs.readFileSync(filePath, "utf-8");
-    // Bounded regex to capture system content without over-capturing trailing keys
-    // Stops at the next top-level key (word starting a line followed by colon)
     const match = content.match(/role:\s*system\s+content:\s*\|?\s*([\s\S]*?)(?=\n[a-z]+:|$)/i);
     return match ? match[1].trim() : null;
   } catch (e) {
@@ -130,7 +118,6 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   };
   if (stream) axiosOptions.responseType = "stream";
 
-  // Leak prevention: abort upstream request when client disconnects
   req.on("close", () => {
     abortController.abort();
   });
@@ -163,20 +150,24 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               content: m.content.map((part: any) => {
                 if (part.type === "text") return { type: "text", text: part.text };
                 if (part.type === "image_url") {
-                  const url = part.image_url.url || part.image_url;
-                  const [header, base64Data] = url.split(",");
-                  const mimeType = header.split(";")[0].split(":")[1] || "image/jpeg";
-                  return {
-                    type: "image",
-                    source: {
-                      type: "base64",
-                      media_type: mimeType,
-                      data: base64Data
+                  const url = part.image_url?.url || part.image_url;
+                  if (typeof url === "string" && url.includes(",")) {
+                    const [header, base64Data] = url.split(",");
+                    const mimeType = header.split(";")[0].split(":")[1] || "image/jpeg";
+                    if (base64Data) {
+                      return {
+                        type: "image",
+                        source: {
+                          type: "base64",
+                          media_type: mimeType,
+                          data: base64Data
+                        }
+                      };
                     }
-                  };
+                  }
                 }
-                return part;
-              })
+                return null;
+              }).filter(Boolean)
             };
           }
           return m;
@@ -191,7 +182,6 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       }
       case "google": {
-        // CodeQL mitigation: Use baseURL and relative path for construction
         const safeModel = String(model || "").replace(/[^a-zA-Z0-9\-_]/g, "");
         handleResponse(await axios({
           method: "post",
@@ -205,13 +195,17 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                 parts = m.content.map((part: any) => {
                   if (part.type === "text") return { text: part.text };
                   if (part.type === "image_url") {
-                    const url = part.image_url.url || part.image_url;
-                    const base64Data = url.split(",")[1];
-                    const mimeType = url.split(";")[0].split(":")[1] || "image/jpeg";
-                    return { inline_data: { mime_type: mimeType, data: base64Data } };
+                    const url = part.image_url?.url || part.image_url;
+                    if (typeof url === "string" && url.includes(",")) {
+                      const [header, base64Data] = url.split(",");
+                      const mimeType = header.split(";")[0].split(":")[1] || "image/jpeg";
+                      if (base64Data) {
+                        return { inline_data: { mime_type: mimeType, data: base64Data } };
+                      }
+                    }
                   }
-                  return {};
-                });
+                  return null;
+                }).filter(Boolean);
               } else {
                 parts = [{ text: m.content }];
               }
@@ -234,16 +228,12 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         }));
         break;
       case "ollama":
-        // Ollama and Kobold providers intentionally target localhost for local inference.
-        // trust boundary: strict hardcoded literals for local endpoints.
         handleResponse(await axios.post("http://127.0.0.1:11434/api/chat", { model, messages: processedMessages, stream }, axiosOptions));
         break;
       case "kobold":
         handleResponse(await axios.post("http://127.0.0.1:5001/api/v1/generate", { prompt: processedMessages[processedMessages.length - 1]?.content || "" }, axiosOptions));
         break;
       case "custom": {
-        // SSRF trust boundary: validateAiUrl enforces HTTPS and blocks private IP ranges for user-supplied base_url.
-        // Any future changes to validateAiUrl or finalUrl construction must preserve these checks.
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
         await validateAiUrl(integration.base_url);
         const finalUrl = buildValidatedCustomUrl(integration.base_url);

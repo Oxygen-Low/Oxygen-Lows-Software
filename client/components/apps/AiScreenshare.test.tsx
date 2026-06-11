@@ -3,15 +3,22 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { AiScreenshareApp } from "./AiScreenshare";
 
+// Mock scrollIntoView before anything else
+if (!window.HTMLElement.prototype.scrollIntoView) {
+  window.HTMLElement.prototype.scrollIntoView = vi.fn();
+}
+
 // Mock ResizeObserver
-global.ResizeObserver = class {
+if (!global.ResizeObserver) {
+  global.ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
-};
+  } as any;
+}
 
-// Mock scrollIntoView
-window.HTMLElement.prototype.scrollIntoView = function() {};
+// Save originals
+const origFetch = global.fetch;
 
 // Mock supabase
 const mockSupabaseChain = (data: any) => {
@@ -39,7 +46,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 // Mock fetch
-global.fetch = vi.fn((url) => {
+const fetchSpy = vi.fn((url, options) => {
   if (url === "/api/ai/styles") {
     return Promise.resolve({
       ok: true,
@@ -52,12 +59,14 @@ global.fetch = vi.fn((url) => {
   }
   return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
 }) as any;
+global.fetch = fetchSpy;
 
 // Mock MediaDevices
 Object.defineProperty(navigator, 'mediaDevices', {
   value: {
     getDisplayMedia: vi.fn()
   },
+  configurable: true,
   writable: true
 });
 
@@ -70,13 +79,24 @@ describe("AiScreenshareApp", () => {
     cleanup();
   });
 
-  it("renders the AI Screenshare app with settings", async () => {
+  it("renders the AI Screenshare app with settings and authorization", async () => {
     render(<AiScreenshareApp />);
 
+    // Assert Styles API called with Auth header
     await waitFor(() => {
-      expect(screen.getByText("Gaming Coach")).toBeDefined();
+      expect(fetchSpy).toHaveBeenCalledWith("/api/ai/styles", expect.objectContaining({
+        headers: {
+          "Authorization": "Bearer test-token"
+        }
+      }));
     });
 
+    // Assert UI population
+    await waitFor(() => {
+      expect(screen.getByText("openai - gpt-4-vision")).toBeDefined();
+    });
+
+    expect(screen.getByText("Gaming Coach")).toBeDefined();
     expect(screen.getByText("Video React")).toBeDefined();
     expect(screen.getByText("Viewer")).toBeDefined();
     expect(screen.getByText("Start AI Screenshare")).toBeDefined();

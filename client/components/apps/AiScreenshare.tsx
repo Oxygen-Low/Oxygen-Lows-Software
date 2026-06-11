@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,6 +42,12 @@ export function AiScreenshareApp() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const analysisTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Use a ref for messages to avoid stale closures in the analysis loop
+  const messagesRef = useRef<Message[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: modelData } = await supabase.from("user_models").select("*").order("provider");
@@ -54,9 +60,10 @@ export function AiScreenshareApp() {
       }
 
       try {
+        const session = await supabase.auth.getSession();
         const res = await fetch("/api/ai/styles", {
           headers: {
-            "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            "Authorization": `Bearer ${session.data.session?.access_token}`
           }
         });
         const styleData = await res.json();
@@ -76,6 +83,28 @@ export function AiScreenshareApp() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
+
+  const stopSharing = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    if (analysisTimeoutRef.current) {
+      clearTimeout(analysisTimeoutRef.current);
+      analysisTimeoutRef.current = null;
+    }
+    setIsAnalyzing(false);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopSharing();
+    };
+  }, [stopSharing]);
 
   const startSharing = async () => {
     try {
@@ -101,24 +130,12 @@ export function AiScreenshareApp() {
     }
   };
 
-  const stopSharing = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    if (analysisTimeoutRef.current) {
-      clearTimeout(analysisTimeoutRef.current);
-    }
-    setIsAnalyzing(false);
-  };
-
   const captureFrame = (): string | null => {
     if (!videoRef.current || !streamRef.current) return null;
     const canvas = canvasRef.current;
     const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return null;
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
@@ -130,11 +147,12 @@ export function AiScreenshareApp() {
   const analyzeFrame = async () => {
     if (!streamRef.current) return;
 
-    const frame = captureFrame();
-    if (!frame) return;
-
-    setIsTyping(true);
+    let success = false;
     try {
+      const frame = captureFrame();
+      if (!frame) return; // Will be rescheduled by finally
+
+      setIsTyping(true);
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
@@ -147,9 +165,8 @@ export function AiScreenshareApp() {
         ]
       };
 
-      // We only send the text history to keep context, but latest frame only.
-      // Filter out previous images to save tokens.
-      const historyForAi = messages.map(m => {
+      // Use messagesRef to get the latest state
+      const historyForAi = messagesRef.current.map(m => {
         if (Array.isArray(m.content)) {
           const textPart = m.content.find(p => p.type === "text");
           return { role: m.role, content: textPart?.text || "" };
@@ -191,7 +208,10 @@ export function AiScreenshareApp() {
         assistantContent = data.message?.content || data.response || "";
       }
 
-      setMessages(prev => [...prev, { role: "assistant", content: assistantContent }]);
+      if (assistantContent) {
+        setMessages(prev => [...prev, { role: "assistant", content: assistantContent }]);
+      }
+      success = true;
 
     } catch (err: any) {
       console.error("Analysis error:", err);
@@ -199,7 +219,7 @@ export function AiScreenshareApp() {
       stopSharing();
     } finally {
       setIsTyping(false);
-      // Wait 5 seconds before next analysis if still sharing
+      // ALWAYS reschedule the loop if still sharing, even on capture failure
       if (streamRef.current) {
         analysisTimeoutRef.current = setTimeout(analyzeFrame, 5000);
       }
