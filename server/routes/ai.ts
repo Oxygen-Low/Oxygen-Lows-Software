@@ -67,7 +67,16 @@ const getSystemContentFromYaml = (filePath: string): string | null => {
 };
 
 export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
-  res.json([]);
+  try {
+    const response = await axios.get("http://127.0.0.1:11434/api/tags", { timeout: 2000 });
+    const models = (response.data.models || []).map((m: any) => ({
+      provider: "ollama",
+      model_id: m.name
+    }));
+    res.json(models);
+  } catch (error) {
+    res.json([]);
+  }
 };
 
 export const handleProxyAiRequest: RequestHandler = async (req, res) => {
