@@ -100,6 +100,9 @@ export default function Characters() {
       if (fetchError) throw fetchError;
 
       if (char?.image_path) {
+        if (char.image_path.includes('..')) {
+          throw new Error("Invalid file path");
+        }
         const { error: storageError } = await supabase.storage
           .from("Storage")
           .remove([char.image_path]);
