@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useAiModels } from "@/hooks/useAiModels";
 import { Send, Plus, Trash2, Bot, User, Loader2, FileCode, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,13 +60,14 @@ export const ChatbotApp = () => {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState("general");
-  const [selectedProvider, setSelectedProvider] = useState("openai");
-  const [selectedModel, setSelectedModel] = useState("gpt-4o");
-  const [models, setModels] = useState<any[]>([]);
+
+
+
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const [selectedLlmCharacter, setSelectedLlmCharacter] = useState<string | null>(null);
   const [selectedUserCharacter, setSelectedUserCharacter] = useState<string | null>(null);
   const [availableCharacters, setAvailableCharacters] = useState<any[]>([]);
+  const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastParsedLengthRef = useRef(0);
@@ -74,7 +76,7 @@ export const ChatbotApp = () => {
 
   useEffect(() => {
     fetchChats();
-    fetchModels();
+
     fetchCharacters();
   }, []);
 
@@ -88,23 +90,7 @@ export const ChatbotApp = () => {
     if (data) setChats(data);
   };
 
-  const fetchModels = async () => {
-    try {
-      const { data: dbModels } = await supabase.from("user_models").select("*").order("provider");
-      const localResponse = await fetch("/api/ai/local-providers");
-      const localModels = localResponse.ok ? await localResponse.json() : [];
 
-      const allModels = [...(dbModels || []), ...localModels];
-      setModels(allModels);
-
-      if (allModels.length > 0) {
-        setSelectedProvider(allModels[0].provider);
-        setSelectedModel(allModels[0].model_id);
-      }
-    } catch (e) {
-      console.error("Failed to fetch models", e);
-    }
-  };
 
   useEffect(() => {
     if (currentChatId) {
@@ -308,7 +294,7 @@ Backstory: ${userChar.backstory || ""}`;
         </ScrollArea>
         <div className="pt-4 border-t border-slate-800 space-y-4 overflow-y-auto">
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">Model</label>
-            <select className="w-full bg-slate-900 text-xs text-white p-2 rounded" value={`${selectedProvider}:${selectedModel}`} onChange={e => { const [p, m] = e.target.value.split(":"); setSelectedProvider(p); setSelectedModel(m); }}>
+            <select className="w-full bg-slate-900 text-xs text-white p-2 rounded" value={`${selectedProvider}:${selectedModel}`} onChange={e => { const [p, m] = e.target.value.split(":"); setSelection(m, p); }}>
               {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{m.provider === "ollama" ? "ollama/" + m.model_id : m.provider + " - " + m.model_id}</option>)}
             </select>
           </div>

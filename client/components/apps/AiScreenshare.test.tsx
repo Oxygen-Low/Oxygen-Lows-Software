@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { AiScreenshareApp } from "./AiScreenshare";
 
@@ -37,6 +38,7 @@ vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "test-token" } }, error: null }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
     },
     from: vi.fn((table) => {
       if (table === "user_models") return mockSupabaseChain([{ provider: "openai", model_id: "gpt-4-vision" }]);
@@ -80,7 +82,7 @@ describe("AiScreenshareApp", () => {
   });
 
   it("renders the AI Screenshare app with settings and authorization", async () => {
-    render(<AiScreenshareApp />);
+    render(<ThemeProvider><AiScreenshareApp /></ThemeProvider>);
 
     // Assert Styles API called with Auth header
     await waitFor(() => {
@@ -103,7 +105,7 @@ describe("AiScreenshareApp", () => {
   });
 
   it("shows preview area", async () => {
-    render(<AiScreenshareApp />);
+    render(<ThemeProvider><AiScreenshareApp /></ThemeProvider>);
     expect(screen.getByText("Capture a window or screen to begin the AI reaction loop.")).toBeDefined();
   });
 });
