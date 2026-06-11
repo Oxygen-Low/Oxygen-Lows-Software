@@ -122,7 +122,11 @@ export const ChatbotApp = () => {
 
   const handleCreateChat = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       const { data, error } = await supabase.from("chats").insert({
+        user_id: session.user.id,
         title: "New Chat",
         style: selectedStyle,
         llm_character_id: selectedLlmCharacter,
