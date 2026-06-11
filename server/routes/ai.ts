@@ -156,9 +156,34 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       case "anthropic": {
         const s = processedMessages.find((m: any) => m.role === "system");
+        const transformedMessages = processedMessages.filter((m: any) => m.role !== "system").map((m: any) => {
+          if (Array.isArray(m.content)) {
+            return {
+              role: m.role,
+              content: m.content.map((part: any) => {
+                if (part.type === "text") return { type: "text", text: part.text };
+                if (part.type === "image_url") {
+                  const url = part.image_url.url || part.image_url;
+                  const [header, base64Data] = url.split(",");
+                  const mimeType = header.split(";")[0].split(":")[1] || "image/jpeg";
+                  return {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: mimeType,
+                      data: base64Data
+                    }
+                  };
+                }
+                return part;
+              })
+            };
+          }
+          return m;
+        });
         handleResponse(await axios.post("https://api.anthropic.com/v1/messages", {
           model,
-          messages: processedMessages.filter((m: any) => m.role !== "system"),
+          messages: transformedMessages,
           max_tokens: 4096,
           stream,
           system: s?.content
@@ -173,7 +198,25 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           baseURL: "https://generativelanguage.googleapis.com",
           url: "/v1beta/models/" + safeModel + ":generateContent",
           data: {
-            contents: processedMessages.map((m: any) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }))
+            contents: processedMessages.map((m: any) => {
+              const role = m.role === "assistant" ? "model" : "user";
+              let parts = [];
+              if (Array.isArray(m.content)) {
+                parts = m.content.map((part: any) => {
+                  if (part.type === "text") return { text: part.text };
+                  if (part.type === "image_url") {
+                    const url = part.image_url.url || part.image_url;
+                    const base64Data = url.split(",")[1];
+                    const mimeType = url.split(";")[0].split(":")[1] || "image/jpeg";
+                    return { inline_data: { mime_type: mimeType, data: base64Data } };
+                  }
+                  return {};
+                });
+              } else {
+                parts = [{ text: m.content }];
+              }
+              return { role, parts };
+            })
           },
           params: { key: integration?.api_key },
           ...axiosOptions
