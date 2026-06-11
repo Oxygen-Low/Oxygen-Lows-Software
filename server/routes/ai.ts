@@ -42,7 +42,7 @@ export const validateAiUrl = async (baseUrl: string): Promise<void> => {
 
 function buildValidatedCustomUrl(baseUrl: string): string {
   try {
-    // Minimal path validation
+    // Minimal path validation (Do this before new URL(baseUrl), as URL() resolves dot-segments.)
     if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
       throw new Error('Invalid path');
     }
