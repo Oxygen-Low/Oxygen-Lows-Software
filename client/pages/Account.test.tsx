@@ -2,8 +2,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Account from './Account';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+
+// Mock i18next
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: {
+      changeLanguage: () => Promise.resolve(),
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  }
+}));
 
 // Full mock of Supabase
 vi.mock('@/lib/supabase', () => ({
@@ -11,15 +25,28 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u', identities: [] } } }),
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'u' }, access_token: 't' } }, error: null }),
       onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
     },
-    from: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: null, error: null }),
-    rpc: vi.fn().mockResolvedValue({ data: [] }),
+    from: vi.fn((table) => {
+      const builder: any = {
+        select: vi.fn(() => builder),
+        eq: vi.fn(() => builder),
+        order: vi.fn(() => builder),
+        single: vi.fn(() => {
+          if (table === 'user_preferences') return Promise.resolve({ data: { theme: 'default', use_gradient: true, language: 'English', sub_language: 'GB' }, error: null });
+          return Promise.resolve({ data: null, error: null });
+        }),
+        upsert: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        delete: vi.fn(() => Promise.resolve({ data: null, error: null })),
+      };
+      return builder;
+    }),
+    rpc: vi.fn((name) => {
+      if (name === "get_my_integrations") return Promise.resolve({ data: [], error: null });
+      if (name === "upsert_user_preferences") return Promise.resolve({ data: null, error: null });
+      return Promise.resolve({ data: [], error: null });
+    }),
     storage: {
       from: vi.fn().mockReturnThis(),
       getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: '' } }),
@@ -48,12 +75,13 @@ describe('Account Component', () => {
   });
 
   it('links identities correctly', async () => {
-    render(<Account />);
-    const githubBtn = await screen.findByText(/Link GitHub/i);
+    render(<ThemeProvider><Account /></ThemeProvider>);
+    // Look for the translation key since we mocked t to return the key
+    const githubBtn = await screen.findByText(/github/i);
     fireEvent.click(githubBtn);
     await waitFor(() => expect(mockLinkIdentity).toHaveBeenCalledWith('github'));
 
-    const gitlabBtn = await screen.findByText(/Link GitLab/i);
+    const gitlabBtn = await screen.findByText(/gitlab/i);
     fireEvent.click(gitlabBtn);
     await waitFor(() => expect(mockLinkIdentity).toHaveBeenCalledWith('gitlab'));
   });

@@ -1,24 +1,28 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useAiModels } from "@/hooks/useAiModels";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Loader2, Monitor, StopCircle, Play, Info } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+import {
+  Monitor,
+  Play,
+  StopCircle,
+  Loader2,
+  Bot,
+  Info
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useAiModels } from "@/hooks/useAiModels";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface Message {
-  role: "user" | "assistant" | "system";
-  content: string | any[];
-}
-
-interface Model {
-  provider: string;
-  model_id: string;
+  role: "user" | "assistant";
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
 interface Style {
@@ -28,82 +32,39 @@ interface Style {
 }
 
 export function AiScreenshareApp() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { t } = useTranslation();
+  const { session } = useAuth();
+  const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-
-
-  const [styles, setStyles] = useState<Style[]>([]);
-  const [selectedStyle, setSelectedStyle] = useState("gaming_coach");
-  const { models, selectedModel, selectedProvider, setSelection } = useAiModels("gemini-1.5-flash", "google");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState("GeneralAssistant");
+  const [styles, setStyles] = useState<Style[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(document.createElement("canvas"));
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const analysisTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Use a ref for messages to avoid stale closures in the analysis loop
   const messagesRef = useRef<Message[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-
-      } catch (e) {
-        console.error("Failed to fetch models", e);
-      }
-
-      try {
-        const session = await supabase.auth.getSession();
-        const res = await fetch("/api/ai/styles", {
-          headers: {
-            "Authorization": `Bearer ${session.data.session?.access_token}`
-          }
-        });
-        const styleData = await res.json();
-        if (Array.isArray(styleData)) {
-          const screenshareStyles = styleData.filter(s =>
-            ["gaming_coach", "video_react", "viewer"].includes(s.id)
-          );
-          setStyles(screenshareStyles);
-        }
-      } catch (e) {
-        console.error("Failed to fetch styles", e);
-      }
-    };
-    fetchData();
-  }, []);
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const stopSharing = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    if (analysisTimeoutRef.current) {
-      clearTimeout(analysisTimeoutRef.current);
-      analysisTimeoutRef.current = null;
-    }
-    setIsAnalyzing(false);
-  }, []);
-
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      stopSharing();
+    const fetchStyles = async () => {
+      const { data } = await supabase.rpc('get_chat_styles');
+      if (data) setStyles(data);
     };
-  }, [stopSharing]);
+    fetchStyles();
+
+    return () => stopSharing();
+  }, []);
 
   const startSharing = async () => {
     try {
@@ -111,45 +72,59 @@ export function AiScreenshareApp() {
         video: { cursor: "always" } as any,
         audio: false
       });
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-      setIsAnalyzing(true);
 
-      // Start loop
+      setIsAnalyzing(true);
       analyzeFrame();
 
       stream.getVideoTracks()[0].onended = () => {
         stopSharing();
       };
-    } catch (err) {
-      console.error("Error starting screenshare:", err);
-      toast.error("Failed to start screenshare");
+    } catch (err: any) {
+      console.error("Error accessing screen:", err);
+      toast.error(`Could not share screen: ${err.message}`);
     }
+  };
+
+  const stopSharing = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (analysisTimeoutRef.current) {
+      clearTimeout(analysisTimeoutRef.current);
+      analysisTimeoutRef.current = null;
+    }
+    setIsAnalyzing(false);
+    setIsTyping(false);
   };
 
   const captureFrame = (): string | null => {
     if (!videoRef.current || !streamRef.current) return null;
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    if (video.videoWidth === 0 || video.videoHeight === 0) return null;
 
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
+
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    // Compress further if image is too large (though 0.7 jpeg is usually small)
-    let quality = 0.7;
+
+    // Convert to JPEG with quality reduction if needed
+    let quality = 0.8;
     let dataUrl = canvas.toDataURL("image/jpeg", quality);
 
-    // 50MB is huge for a screenshot, but let s handle extreme cases
-    // if dataUrl is roughly > 50MB (base64 is ~1.33x original size)
-    while (dataUrl.length > 50 * 1024 * 1024 * 1.33 && quality > 0.1) {
+    // Server limit check (e.g. 50MB payload limit mentioned in memory)
+    while (dataUrl.length > 50 * 1024 * 1024 && quality > 0.1) {
       quality -= 0.1;
       dataUrl = canvas.toDataURL("image/jpeg", quality);
     }
+
     return dataUrl;
   };
 
@@ -251,13 +226,13 @@ export function AiScreenshareApp() {
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Monitor className="w-5 h-5 text-cyan-500" />
-              Settings
+              {t('screenshare.settings')}
             </CardTitle>
-            <CardDescription>Configure your AI Screen Companion</CardDescription>
+            <CardDescription>{t('screenshare.configDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">Vision Model</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">{t('screenshare.visionModel')}</label>
               <select
                 className="w-full bg-slate-950 text-sm text-white p-2 rounded border border-slate-800"
                 value={`${selectedProvider}:${selectedModel}`}
@@ -274,12 +249,12 @@ export function AiScreenshareApp() {
                 ))}
               </select>
               <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                <Info className="w-3 h-3" /> Note: Only vision-capable models will work.
+                <Info className="w-3 h-3" /> {t('screenshare.visionNote')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">Style</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">{t('chatbot.style')}</label>
               <div className="grid grid-cols-1 gap-2">
                 {styles.map(s => (
                   <div
@@ -310,9 +285,9 @@ export function AiScreenshareApp() {
               )}
             >
               {isAnalyzing ? (
-                <><StopCircle className="w-6 h-6 mr-2" /> Stop Analysis</>
+                <><StopCircle className="w-6 h-6 mr-2" /> {t('screenshare.stopAnalysis')}</>
               ) : (
-                <><Play className="w-6 h-6 mr-2" /> Start AI Screenshare</>
+                <><Play className="w-6 h-6 mr-2" /> {t('screenshare.startScreenshare')}</>
               )}
             </Button>
           </CardContent>
@@ -329,7 +304,7 @@ export function AiScreenshareApp() {
           {!isAnalyzing && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 p-6 text-center">
               <Monitor className="w-12 h-12 mb-4 opacity-20" />
-              <p className="text-sm">Capture a window or screen to begin the AI reaction loop.</p>
+              <p className="text-sm">{t('screenshare.captureDesc')}</p>
             </div>
           )}
         </div>
@@ -341,7 +316,7 @@ export function AiScreenshareApp() {
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 py-20">
                 <Bot className="w-16 h-16 mb-4 opacity-10" />
-                <p>Waiting for analysis to start...</p>
+                <p>{t('screenshare.waiting')}</p>
               </div>
             )}
             {messages.map((m, i) => (
@@ -365,7 +340,7 @@ export function AiScreenshareApp() {
                         }
                       }}
                     >
-                      {typeof m.content === "string" ? m.content : "Capturing screen..."}
+                      {typeof m.content === "string" ? m.content : t('screenshare.capturing')}
                     </ReactMarkdown>
                   </div>
                 </div>
@@ -377,7 +352,7 @@ export function AiScreenshareApp() {
                   <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <span className="animate-pulse">Thinking...</span>
+                  <span className="animate-pulse">{t('chatbot.thinking')}</span>
                 </div>
               </div>
             )}
@@ -386,10 +361,12 @@ export function AiScreenshareApp() {
         </ScrollArea>
         <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <p className="text-[10px] text-slate-500 uppercase font-bold text-center">
-            {isAnalyzing ? "AI is watching and reacting every 5 seconds" : "Analysis is currently inactive"}
+            {isAnalyzing ? t('screenshare.active') : t('screenshare.inactive')}
           </p>
         </div>
       </div>
     </div>
   );
 }
+
+export default AiScreenshareApp;

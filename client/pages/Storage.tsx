@@ -1,137 +1,102 @@
 import { useState, useEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
-import { Layout } from "@/components/Layout";
-import { supabase } from "@/lib/supabase";
+import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  Cloud,
+  Upload,
+  Trash2,
+  FileText,
+  Image as ImageIcon,
+  Music,
+  Database,
+  ExternalLink,
+  Loader2,
+  Link as LinkIcon
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Cloud, Upload, Trash2, Download, ExternalLink, Loader2, FileText, ImageIcon, Music, Database, Plus, Link as LinkIcon } from "lucide-react";
-import { toast } from "sonner";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-const MAX_CLOUD_SIZE = 30 * 1024 * 1024; // 30MB
-
-interface StorageFile {
-  id: string;
-  name: string;
-  created_at: string;
-  metadata: {
-    size: number;
-    mimetype: string;
-  };
-}
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export default function Storage() {
+  const { t } = useTranslation();
   const { session } = useAuth();
-  const [cloudFiles, setCloudFiles] = useState<StorageFile[]>([]);
+  const [cloudFiles, setCloudFiles] = useState<any[]>([]);
+  const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [totalSize, setTotalSize] = useState(0);
-  const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
-  const [linkedImages, setLinkedImages] = useState<any[]>([]);
   const [dbStats, setDbStats] = useState<any[]>([]);
   const cloudInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (session?.user) {
-      fetchCloudFiles();
-      fetchLinkedImages();
-      fetchDbStats();
-    }
-  }, [session]);
-
   const fetchCloudFiles = async () => {
+    if (!session?.user?.id) return;
     try {
-      const { data, error } = await supabase.storage.from("Storage").list(session?.user.id, {
-        limit: 100,
-        offset: 0,
-        sortBy: { column: "created_at", order: "desc" },
-      });
-
+      const { data, error } = await supabase.storage.from("Storage").list(session.user.id);
       if (error) throw error;
 
-      const filesWithIds = data.map(f => ({ ...f, id: f.id || Math.random().toString() })) as any[];
-      setCloudFiles(filesWithIds);
-      const total = data.reduce((acc, file) => acc + (file.metadata?.size || 0), 0);
-      setTotalSize(total);
+      const files = data || [];
+      setCloudFiles(files);
 
-      const urls: Record<string, string> = {};
-      for (const file of filesWithIds) {
-        const { data: signedData } = await supabase.storage
+      const size = files.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
+      setTotalSize(size);
+
+      // Get signed URLs for images
+      const imageFiles = files.filter(f => f.metadata?.mimetype?.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        const { data: signedData, error: signedError } = await supabase.storage
           .from("Storage")
-          .createSignedUrl(`${session?.user.id}/${file.name}`, 3600);
-        if (signedData) urls[file.id] = signedData.signedUrl;
-      }
-      setCloudFileSignedUrls(urls);
-    } catch (error: any) {
-      console.error("Storage load failed:", error);
-      toast.error("Failed to fetch cloud files");
-    }
-  };
+          .createSignedUrls(imageFiles.map(f => `${session.user.id}/${f.name}`), 3600);
 
-  const fetchLinkedImages = async () => {
-    const { data } = await supabase.from("image_links").select("*").eq("user_id", session?.user.id);
-    if (data) setLinkedImages(data);
+        if (!signedError && signedData) {
+          const urlMap: Record<string, string> = {};
+          imageFiles.forEach((f, i) => {
+            if (signedData[i]?.signedUrl) urlMap[f.id] = signedData[i].signedUrl;
+          });
+          setCloudFileSignedUrls(urlMap);
+        }
+      }
+    } catch (error: any) {
+      console.error("Storage error:", error);
+    }
   };
 
   const fetchDbStats = async () => {
-    const stats = [
-      { name: "Chatbot Chats", count: 0, size: 0, tables: ["chats", "chat_messages"] },
-      { name: "User Profiles", count: 1, size: 1024, tables: ["profiles"] },
-      { name: "OAuth & Integrations", count: 0, size: 0, tables: ["user_integrations"] },
-      { name: "Settings", count: 1, size: 512, tables: ["user_preferences"] } ,
-      { name: "Characters", count: 0, size: 0, tables: ["characters"] }
-    ];
-
     try {
-      const { data: userChats } = await supabase.from("chats").select("id").eq("user_id", session?.user.id);
-      const chatIds = userChats?.map(c => c.id) || [];
-
-      const { count: chatsCount } = await supabase.from("chats").select("*", { count: "exact", head: true }).eq("user_id", session?.user.id);
-
-      let msgsCount = 0;
-      if (chatIds.length > 0) {
-        const { count } = await supabase.from("chat_messages").select("*", { count: "exact", head: true }).in("chat_id", chatIds);
-        msgsCount = count || 0;
-      }
-
-      const { count: integCount } = await supabase.from("user_integrations").select("*", { count: "exact", head: true }).eq("user_id", session?.user.id);
-      const { count: charCount } = await supabase.from("characters").select("*", { count: "exact", head: true }).eq("user_id", session?.user.id);
-
-      stats[0].count = (chatsCount || 0) + msgsCount;
-      stats[4].count = charCount || 0;
-      stats[4].size = (charCount || 0) * 2048;
-      stats[0].size = stats[0].count * 500;
-      stats[2].count = integCount || 0;
-      stats[2].size = (integCount || 0) * 256;
-
-      setDbStats(stats);
+      const { data, error } = await supabase.rpc("get_user_storage_stats");
+      if (!error && data) setDbStats(data);
     } catch (e) {
-      console.error("Failed to fetch DB stats:", e);
+      console.error("DB stats error", e);
     }
   };
 
-  const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  useEffect(() => {
+    fetchCloudFiles();
+    fetchDbStats();
+  }, [session]);
 
-    const charCount = dbStats.find(s => s.name === "Characters")?.count || 0;
-    const currentStorage = totalSize + (charCount * 2048);
-    if (currentStorage + file.size > MAX_CLOUD_SIZE) {
-      toast.error("Storage limit exceeded");
+  const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0] || !session?.user?.id) return;
+    const file = e.target.files[0];
+
+    // Check 30MB limit
+    if (totalSize + file.size > 30 * 1024 * 1024) {
+      toast.error("Storage limit exceeded (30MB)");
       return;
     }
 
-    setUploading(true);
     try {
-      const filePath = `${session?.user.id}/${Date.now()}_${file.name}`;
-      if (filePath.includes('..')) throw new Error("Invalid file path");
-      const { error } = await supabase.storage.from("Storage").upload(filePath, file);
+      setUploading(true);
+      const { error } = await supabase.storage
+        .from("Storage")
+        .upload(`${session.user.id}/${Date.now()}_${file.name}`, file);
+
       if (error) throw error;
-      toast.success("File uploaded");
+      toast.success("File uploaded successfully");
       fetchCloudFiles();
     } catch (error: any) {
       toast.error(error.message);
@@ -142,7 +107,6 @@ export default function Storage() {
 
   const deleteCloudFile = async (name: string) => {
     try {
-      if (name.includes('..')) throw new Error('Invalid file name');
       const { error } = await supabase.storage.from("Storage").remove([`${session?.user.id}/${name}`]);
       if (error) throw error;
       toast.success("File deleted");
@@ -191,7 +155,7 @@ export default function Storage() {
     <Layout>
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-white">Storage</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-white">{t('nav.storage')}</h2>
           <p className="text-slate-400">Manage your files and data usage.</p>
         </div>
 

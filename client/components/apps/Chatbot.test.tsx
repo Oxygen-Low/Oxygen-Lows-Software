@@ -4,6 +4,32 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { ChatbotApp } from "./Chatbot";
 
+// Mock i18next
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const keys: Record<string, string> = {
+        "chatbot.newChat": "New Chat",
+        "chatbot.model": "Model",
+        "chatbot.style": "Style",
+        "chatbot.llmCharacter": "LLM Character",
+        "chatbot.userCharacter": "User Character",
+        "chatbot.none": "None",
+        "chatbot.selectChat": "Select a chat to start",
+        "chatbot.askAnything": "Ask anything..."
+      };
+      return keys[key] || key;
+    },
+    i18n: {
+      changeLanguage: () => Promise.resolve(),
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  }
+}));
+
 // Mock ResizeObserver
 global.ResizeObserver = class {
     observe() {}
@@ -36,27 +62,28 @@ vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user" } }, error: null }),
-      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "test-token" } }, error: null }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "test-user" }, access_token: "test-token" } }, error: null }),
       onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
     },
     from: vi.fn((table) => {
       if (table === "chats") return mockSupabaseChain([{ id: "chat-1", title: "New Chat", style: "GeneralAssistant", updated_at: new Date().toISOString() }]);
       if (table === "user_models") return mockSupabaseChain([{ provider: "openai", model_id: "gpt-4" }]);
       if (table === "chat_messages") return mockSupabaseChain([]);
+      if (table === "characters") return mockSupabaseChain([]);
+      if (table === "user_preferences") return mockSupabaseChain({ theme: "default", use_gradient: true, language: "English", sub_language: "GB" });
       return mockSupabaseChain(null);
+    }),
+    rpc: vi.fn((name) => {
+      if (name === "get_chat_styles") return Promise.resolve({ data: [{ id: "GeneralAssistant", title: "Assistant", description: "Helpful", prompt: "" }], error: null });
+      if (name === "upsert_user_preferences") return Promise.resolve({ data: null, error: null });
+      return Promise.resolve({ data: null, error: null });
     }),
   },
 }));
 
 // Mock fetch for streaming
 global.fetch = vi.fn((url) => {
-  if (url === "/api/ai/styles") {
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve([{ id: "GeneralAssistant", title: "Assistant", description: "Helpful" }])
-    });
-  }
-  if (url === "/api/ai/chat") {
+  if (url === "/api/ai/proxy") {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(new TextEncoder().encode("data: {\"choices\":[{\"delta\":{\"content\":\"Hello from AI\"}}]}\n"));
@@ -84,7 +111,7 @@ describe("ChatbotApp", () => {
   it("renders the chatbot app", async () => {
     render(<ThemeProvider><ChatbotApp /></ThemeProvider>);
     await waitFor(() => {
-      expect(screen.queryByText("New Chat", { selector: "button" })).not.toBeNull();
+      expect(screen.queryByText("New Chat")).not.toBeNull();
     });
     expect(screen.queryByText("Select a chat to start")).not.toBeNull();
   });
@@ -92,15 +119,16 @@ describe("ChatbotApp", () => {
   it("creates a new chat and sends a message", async () => {
     render(<ThemeProvider><ChatbotApp /></ThemeProvider>);
 
-    // Wait for initial load
-    const chatItem = await screen.findByText("New Chat", { selector: "span" });
-    fireEvent.click(chatItem);
+    // Wait for initial load - find current chat title in sidebar
+    // It's in a list of chats, we wait for it to appear
+    const chatInSidebar = await screen.findByText("New Chat", { selector: "span" });
+    fireEvent.click(chatInSidebar);
 
     // Verify input is now visible
     const input = await screen.findByPlaceholderText("Ask anything...");
     fireEvent.change(input, { target: { value: "Hi" } });
 
-    // Use click on Send button as well to be sure
+    // Use click on Send button
     const sendButton = screen.getByLabelText("Send message");
     fireEvent.click(sendButton);
 

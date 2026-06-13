@@ -1,22 +1,29 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
+import { format } from "date-fns";
+import {
+  Code,
+  Plus,
+  Trash2,
+  Copy,
+  ExternalLink,
+  ShieldCheck,
+  ShieldAlert,
+  Key,
+  Globe,
+  Lock,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -33,69 +40,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import {
-  ShieldCheck,
-  Code,
-  Plus,
-  Trash2,
-  Copy,
-  Key
-} from "lucide-react";
-import { format } from "date-fns";
-
-type OAuthClient = {
-  id: string;
-  client_name: string;
-  redirect_uris: string;
-  client_type: "public" | "confidential";
-  created_at: string;
-};
-
-type OAuthGrant = {
-  id: string;
-  client_id: string;
-  client_name: string;
-  scopes: string;
-  granted_at: string;
-};
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export function OauthApp() {
-  const { session } = useAuth();
-  const [activeTab, setActiveTab] = useState("developer");
-  const [clients, setClients] = useState<OAuthClient[]>([]);
-  const [grants, setGrants] = useState<OAuthGrant[]>([]);
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState<any[]>([]);
+  const [grants, setGrants] = useState<any[]>([]);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // New client form state
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // Form state
   const [newName, setNewName] = useState("");
+  const [newType, setNewType] = useState<"confidential" | "public">("confidential");
   const [newRedirectUris, setNewRedirectUris] = useState("");
-  const [newType, setNewType] = useState<"public" | "confidential">("confidential");
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session) {
-      fetchData();
-    }
-  }, [session, activeTab]);
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      if (activeTab === "developer") {
-        const { data, error } = await supabase.rpc("get_my_oauth_clients");
-        if (error) throw error;
-        setClients(data || []);
-      } else {
-        const { data, error } = await supabase.rpc("get_my_oauth_grants");
-        if (error) throw error;
-        setGrants(data || []);
-      }
+      // @ts-ignore
+      const { data: clientsData, error: clientsError } = await supabase.auth.oauth.listClients();
+      if (clientsError) throw clientsError;
+      setClients(clientsData || []);
+
+      // @ts-ignore
+      const { data: grantsData, error: grantsError } = await supabase.auth.oauth.listAuthorizedApps();
+      if (grantsError) throw grantsError;
+      setGrants(grantsData || []);
     } catch (error: any) {
       toast({
-        title: "Error fetching data",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -105,31 +87,26 @@ export function OauthApp() {
   };
 
   const handleCreateClient = async () => {
-    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const { data, error } = await supabase.rpc("create_oauth_client", {
-        p_name: newName,
-        p_redirect_uris: newRedirectUris,
-        p_client_type: newType,
+      // @ts-ignore
+      const { data, error } = await supabase.auth.oauth.createClient({
+        name: newName,
+        type: newType,
+        redirect_uris: newRedirectUris.split(",").map((uri) => uri.trim()),
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Client created successfully",
-        description: "Please save your client secret if applicable.",
-      });
-
-      if (newType === "public") {
-        setIsCreateOpen(false);
-      } else {
-        setCreatedSecret(data.client_secret);
-      }
+      setCreatedSecret(data.client_secret);
       fetchData();
+      toast({
+        title: t('common.success'),
+        description: "Application registered successfully",
+      });
     } catch (error: any) {
       toast({
-        title: "Error creating client",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -139,17 +116,21 @@ export function OauthApp() {
   };
 
   const handleDeleteClient = async (id: string) => {
-    if (isSubmitting) return;
-    if (!confirm("Are you sure you want to delete this OAuth client? This action cannot be undone.")) return;
+    if (!confirm(t('common.confirmDelete'))) return;
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.rpc("delete_oauth_client", { p_client_id: id });
+      // @ts-ignore
+      const { error } = await supabase.auth.oauth.deleteClient(id);
       if (error) throw error;
-      toast({ title: "Client deleted" });
+
       fetchData();
+      toast({
+        title: t('common.success'),
+        description: "Application deleted",
+      });
     } catch (error: any) {
       toast({
-        title: "Error deleting client",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -159,16 +140,20 @@ export function OauthApp() {
   };
 
   const handleRevokeGrant = async (id: string) => {
-    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.rpc("revoke_oauth_grant", { p_grant_id: id });
+      // @ts-ignore
+      const { error } = await supabase.auth.oauth.revokeAuthorization(id);
       if (error) throw error;
-      toast({ title: "Access revoked" });
+
       fetchData();
+      toast({
+        title: t('common.success'),
+        description: "Authorization revoked",
+      });
     } catch (error: any) {
       toast({
-        title: "Error revoking access",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -179,45 +164,47 @@ export function OauthApp() {
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: `Copied ${label}` });
+    toast({
+      title: t('chatbot.copyToClipboard'),
+      description: `${label} copied to clipboard`,
+    });
   };
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-slate-950 border border-slate-800 w-full justify-start overflow-x-auto">
-          <TabsTrigger value="developer" className="flex gap-2">
-            <Code className="w-4 h-4" /> My Apps
-          </TabsTrigger>
-          <TabsTrigger value="authorized" className="flex gap-2">
-            <ShieldCheck className="w-4 h-4" /> Authorized
-          </TabsTrigger>
+      <div>
+        <h2 className="text-3xl font-bold text-white mb-2">{t('oauth.title')}</h2>
+        <p className="text-slate-400">{t('oauth.description')}</p>
+      </div>
+
+      <Tabs defaultValue="clients" className="w-full">
+        <TabsList className="bg-slate-900 border-slate-800">
+          <TabsTrigger value="clients">{t('oauth.myClients')}</TabsTrigger>
+          <TabsTrigger value="authorized">{t('oauth.authorizedApps')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="developer" className="mt-6 space-y-6">
+        <TabsContent value="clients" className="mt-6 space-y-6">
           <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-semibold text-white">Developer Applications</h3>
-              <p className="text-sm text-slate-400">Manage OAuth clients for your external applications.</p>
-            </div>
+            <h3 className="text-lg font-semibold text-white">{t('oauth.myClients')}</h3>
             <Dialog open={isCreateOpen} onOpenChange={(open) => {
               setIsCreateOpen(open);
               if (!open) {
-                setCreatedSecret(null);
                 setNewName("");
                 setNewRedirectUris("");
+                setCreatedSecret(null);
               }
             }}>
               <DialogTrigger asChild>
                 <Button className="bg-cyan-600 hover:bg-cyan-700">
-                  <Plus className="w-4 h-4 mr-2" /> Create Client
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('oauth.registerApp')}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-slate-950 border-slate-800 text-white sm:max-w-[500px]">
+              <DialogContent className="bg-slate-900 border-slate-800 text-white">
                 <DialogHeader>
-                  <DialogTitle>Create New OAuth Client</DialogTitle>
+                  <DialogTitle>{t('oauth.registerApp')}</DialogTitle>
                   <DialogDescription className="text-slate-400">
-                    Register a new application to use Oxygen Low's Software Accounts for authentication.
+                    Create a new OAuth application to integrate with Oxygen Low.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -227,37 +214,40 @@ export function OauthApp() {
                       <Label htmlFor="name">Application Name</Label>
                       <Input
                         id="name"
-                        placeholder="My Awesome App"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
-                        className="bg-slate-900 border-slate-800"
+                        placeholder="My Awesome App"
+                        className="bg-slate-800 border-slate-700"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="redirect_uris">Redirect URIs (comma separated)</Label>
+                      <Label htmlFor="uris">Redirect URIs (comma separated)</Label>
                       <Input
-                        id="redirect_uris"
-                        placeholder="https://myapp.com/callback"
+                        id="uris"
                         value={newRedirectUris}
                         onChange={(e) => setNewRedirectUris(e.target.value)}
-                        className="bg-slate-900 border-slate-800"
+                        placeholder="http://localhost:3000/callback"
+                        className="bg-slate-800 border-slate-700"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="type">Client Type</Label>
-                      <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
-                        <SelectTrigger className="bg-slate-900 border-slate-800">
+                      <Label>{t('oauth.appType')}</Label>
+                      <Select
+                        value={newType}
+                        onValueChange={(val: any) => setNewType(val)}
+                      >
+                        <SelectTrigger className="bg-slate-800 border-slate-700">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                          <SelectItem value="confidential">Confidential (Server-side)</SelectItem>
-                          <SelectItem value="public">Public (SPA / Mobile)</SelectItem>
+                          <SelectItem value="confidential">{t('oauth.confidential')}</SelectItem>
+                          <SelectItem value="public">{t('oauth.public')}</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-slate-500">
                         {newType === "confidential"
-                          ? "Requires a client secret. Best for secure server-side apps."
-                          : "No client secret required. Best for Single Page Apps or Mobile apps."}
+                          ? t('oauth.confidentialDesc')
+                          : t('oauth.publicDesc')}
                       </p>
                     </div>
                   </div>
@@ -265,14 +255,14 @@ export function OauthApp() {
                   <div className="space-y-4 py-4">
                     <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                       <p className="text-yellow-500 text-sm font-medium flex items-center gap-2">
-                        <Key className="w-4 h-4" /> IMPORTANT: Store your client secret!
+                        <Key className="w-4 h-4" /> {t('oauth.storeSecret')}
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
-                        It will not be shown again. You can rotate it later if lost.
+                        {t('oauth.secretWarning')}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Client Secret</Label>
+                      <Label>{t('oauth.clientSecret')}</Label>
                       <div className="flex gap-2">
                         <Input
                           readOnly
@@ -282,7 +272,7 @@ export function OauthApp() {
                         <Button
                           variant="secondary"
                           size="icon"
-                          onClick={() => copyToClipboard(createdSecret, "Client Secret")}
+                          onClick={() => copyToClipboard(createdSecret, t('oauth.clientSecret'))}
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
@@ -298,10 +288,10 @@ export function OauthApp() {
                       disabled={!newName || !newRedirectUris || isSubmitting}
                       className="bg-cyan-600 hover:bg-cyan-700"
                     >
-                      Create
+                      {t('common.add')}
                     </Button>
                   ) : (
-                    <Button onClick={() => setIsCreateOpen(false)}>Done</Button>
+                    <Button onClick={() => setIsCreateOpen(false)}>{t('common.done')}</Button>
                   )}
                 </DialogFooter>
               </DialogContent>
@@ -310,11 +300,11 @@ export function OauthApp() {
 
           <div className="grid grid-cols-1 gap-4">
             {loading ? (
-              <div className="py-12 text-center text-slate-500">Loading clients...</div>
+              <div className="py-12 text-center text-slate-500">{t('common.loading')}</div>
             ) : clients.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center bg-slate-900/30 rounded-xl border border-dashed border-slate-800">
                 <Code className="w-12 h-12 text-slate-700 mb-4" />
-                <p className="text-slate-500 text-lg">You haven't created any OAuth apps yet.</p>
+                <p className="text-slate-500 text-lg">{t('oauth.noClients')}</p>
               </div>
             ) : (
               clients.map((client) => (
@@ -353,7 +343,7 @@ export function OauthApp() {
                   <CardContent className="p-6 pt-0 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <Label className="text-slate-500 text-xs uppercase tracking-wider">Client ID</Label>
+                        <Label className="text-slate-500 text-xs uppercase tracking-wider">{t('oauth.clientId')}</Label>
                         <div className="flex gap-2">
                           <code className="flex-1 p-2 bg-slate-950 rounded border border-slate-800 text-xs text-slate-300 font-mono break-all">
                             {client.id}
@@ -362,14 +352,14 @@ export function OauthApp() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-slate-500 hover:text-white"
-                            onClick={() => copyToClipboard(client.id, "Client ID")}
+                            onClick={() => copyToClipboard(client.id, t('oauth.clientId'))}
                           >
                             <Copy className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-slate-500 text-xs uppercase tracking-wider">Redirect URIs</Label>
+                        <Label className="text-slate-500 text-xs uppercase tracking-wider">{t('oauth.redirectUris')}</Label>
                         <div className="flex gap-2">
                           <code className="flex-1 p-2 bg-slate-950 rounded border border-slate-800 text-xs text-slate-300 font-mono truncate">
                             {client.redirect_uris}
@@ -378,7 +368,7 @@ export function OauthApp() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-slate-500 hover:text-white"
-                            onClick={() => copyToClipboard(client.redirect_uris, "Redirect URIs")}
+                            onClick={() => copyToClipboard(client.redirect_uris, t('oauth.redirectUris'))}
                           >
                             <Copy className="w-3 h-3" />
                           </Button>
@@ -394,17 +384,17 @@ export function OauthApp() {
 
         <TabsContent value="authorized" className="mt-6 space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-white">Authorized Applications</h3>
-            <p className="text-sm text-slate-400">Applications that have access to your account.</p>
+            <h3 className="text-lg font-semibold text-white">{t('oauth.authorizedApps')}</h3>
+            <p className="text-sm text-slate-400">{t('oauth.revokeDesc')}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             {loading ? (
-              <div className="py-12 text-center text-slate-500">Loading authorized apps...</div>
+              <div className="py-12 text-center text-slate-500">{t('common.loading')}</div>
             ) : grants.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center bg-slate-900/30 rounded-xl border border-dashed border-slate-800">
                 <ShieldCheck className="w-12 h-12 text-slate-700 mb-4" />
-                <p className="text-slate-500 text-lg">You haven't authorized any apps yet.</p>
+                <p className="text-slate-500 text-lg">{t('oauth.noGrants')}</p>
               </div>
             ) : (
               grants.map((grant) => (
@@ -428,12 +418,12 @@ export function OauthApp() {
                       onClick={() => handleRevokeGrant(grant.id)}
                       disabled={isSubmitting}
                     >
-                      Revoke
+                      {t('common.revoke')}
                     </Button>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {grant.scopes.split(" ").map((scope) => (
+                      {grant.scopes.split(" ").map((scope: string) => (
                         <span key={scope} className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded text-[10px] text-slate-400 font-mono">
                           {scope}
                         </span>
