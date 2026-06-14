@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Cloud,
-  {t('storage.upload')},
+  Upload,
   Trash2,
   FileText,
   Image as ImageIcon,
@@ -28,7 +28,7 @@ export default function Storage() {
   const { session } = useAuth();
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
   const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
-  const [uploading, set{t('storage.upload')}ing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [totalSize, setTotalSize] = useState(0);
   const [dbStats, setDbStats] = useState<any[]>([]);
   const cloudInputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +79,7 @@ export default function Storage() {
     fetchDbStats();
   }, [session]);
 
-  const handleCloud{t('storage.upload')} = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !session?.user?.id) return;
     const file = e.target.files[0];
 
@@ -90,7 +90,7 @@ export default function Storage() {
     }
 
     try {
-      set{t('storage.upload')}ing(true);
+      setUploading(true);
       const { error } = await supabase.storage
         .from("Storage")
         .upload(`${session.user.id}/${Date.now()}_${file.name}`, file);
@@ -101,7 +101,7 @@ export default function Storage() {
     } catch (error: any) {
       toast.error(error.message);
     } finally {
-      set{t('storage.upload')}ing(false);
+      setUploading(false);
     }
   };
 
@@ -243,10 +243,10 @@ export default function Storage() {
                 disabled={uploading}
                 className="bg-cyan-500 hover:bg-cyan-600 text-white"
               >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <{t('storage.upload')} className="w-4 h-4 mr-2" />}
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> :  <Upload className="w-4 h-4 mr-2" />}
                 {t('storage.upload')}
               </Button>
-              <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloud{t('storage.upload')}} />
+              <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloudUpload} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
