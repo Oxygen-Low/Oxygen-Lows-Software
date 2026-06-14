@@ -13,10 +13,14 @@
     "selectLanguage": "选择语言",
     "selectSubLanguage": "选择子语言",
     "processing": "处理中...",
-    "changeLanguage": "更改语言",
+    "changeLanguage": "Change Language",
     "passwordPwned": "此密码在数据泄露中被发现。请选择一个更安全的密码。",
     "accountCreated": "账号已创建！请检查您的邮箱进行验证。",
-    "passwordUpdated": "密码更新成功！您现在可以登录了。"
+    "passwordUpdated": "密码更新成功！您现在可以登录了。",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "控制面板",
@@ -38,13 +42,14 @@
     "success": "成功",
     "error": "错误",
     "currentLanguage": "当前: {{label}}",
-    "changeLanguage": "更改语言",
-    "subLanguages": "{{name}} 子语言",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "更新您的个人资料信息。",
     "integrationsDescription": "将您的账号连接到外部服务。",
     "modelsDescription": "配置您偏好的 AI 模型。",
     "linkProvider": "绑定 {{provider}}",
-    "removeModel": "移除 {{model}} ({{provider}})"
+    "removeModel": "移除 {{model}} ({{provider}})",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "新聊天",
@@ -66,9 +71,9 @@
     "save": "保存",
     "cancel": "取消",
     "back": "返回",
-    "view": "查看",
+    "view": "View",
     "loading": "加载中...",
-    "noItems": "未找到项。",
+    "noItems": "No items",
     "success": "成功",
     "error": "错误",
     "search": "搜索...",
@@ -76,7 +81,8 @@
     "add": "添加",
     "done": "完成",
     "clear": "清除",
-    "revoke": "撤销"
+    "revoke": "撤销",
+    "info": "Info"
   },
   "customize": {
     "appearance": "外观",
@@ -121,8 +127,8 @@
     "unfollow": "取消关注",
     "unblock": "解除屏蔽",
     "viewProfile": "查看资料",
-    "requestSent": "好友请求已发送！",
-    "requestAccepted": "好友请求已接受！",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "已删除好友",
     "requestCancelled": "请求已取消",
     "nowFollowing": "已关注用户",
@@ -130,15 +136,30 @@
     "userUnblocked": "已解除屏蔽用户",
     "add": "添加好友",
     "follow": "关注",
-    "noBio": "该用户还没有写简介。"
+    "noBio": "该用户还没有写简介。",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "总体用量",
+    "overallUsage": "Overall Usage",
     "usageDesc": "文件和应用数据使用的总存储空间",
-    "files": "文件",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "您上传的文件和制品。",
     "cloudStorage": "云存储",
-    "linkedImages": "外链图片",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "即将推出",
     "linkedImagesDesc": "我们正致力于让您能直接在这里管理外部链接。敬请期待！",
     "fileDeleted": "文件已删除",
@@ -148,7 +169,23 @@
     "saved": "节省了 {{percent}}%",
     "clickToSelect": "点击从存储中选择",
     "readyToCompress": "准备压缩",
-    "selectFileDesc": "选择一个文件并调整设置以在此查看结果。"
+    "selectFileDesc": "选择一个文件并调整设置以在此查看结果。",
+    "targetSize": "storage.targetSize",
+    "manage": "Manage your files and data usage.",
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "limit": "Limit: {{limit}} (Files)",
+    "tabs": {
+      "cloudStorage": "Cloud Storage",
+      "linkedImages": "Linked Images"
+    },
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "角色",
@@ -167,7 +204,20 @@
     "saveCharacter": "保存角色",
     "imageUploaded": "图片已上传",
     "noCharacters": "尚未创建角色。点击“新角色”开始。",
-    "confirmDelete": "您确定要删除此角色吗？"
+    "confirmDelete": "您确定要删除此角色吗？",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "设置",
@@ -210,7 +260,15 @@
     "permissionPhone": "访问您的电话号码",
     "trustWarning": "只授权您信任的应用。",
     "approve": "批准",
-    "deny": "拒绝访问"
+    "deny": "拒绝访问",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "源文件",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "如果提供，我们将尝试将文件压缩到此大小以内。",
     "start": "开始压缩",
     "compressing": "正在压缩您的文件...",
-    "compressingDesc": "根据文件大小，这可能需要一点时间。"
+    "compressingDesc": "根据文件大小，这可能需要一点时间。",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "探索并使用平台内的各种应用程序。",
@@ -252,11 +314,16 @@
     },
     "compressor": {
       "name": "文件压缩器",
-      "desc": "压缩图像和音频文件以节省存储空间。"
+      "desc": "压缩图片以节省空间。"
     },
     "oauth": {
       "name": "OAuth",
       "desc": "通过 Oxygen Low 账号为您的应用添加 OAuth。"
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

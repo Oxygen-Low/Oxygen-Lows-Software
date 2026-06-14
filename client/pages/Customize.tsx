@@ -55,7 +55,7 @@ export default function Customize() {
       });
     } else {
       toast({
-        title: "Info",
+        title: t('common.info'),
         description: t('customize.trackAlreadyIn'),
       });
     }

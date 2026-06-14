@@ -13,10 +13,14 @@
     "selectLanguage": "言語を選択",
     "selectSubLanguage": "サブ言語を選択",
     "processing": "処理中...",
-    "changeLanguage": "言語を変更",
+    "changeLanguage": "Change Language",
     "passwordPwned": "このパスワードはデータ漏洩で見つかりました。より安全なパスワードを選択してください。",
     "accountCreated": "アカウントが作成されました！確認メールをチェックしてください。",
-    "passwordUpdated": "パスワードが正常に更新されました！サインインできるようになりました。"
+    "passwordUpdated": "パスワードが正常に更新されました！サインインできるようになりました。",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "ダッシュボード",
@@ -38,13 +42,14 @@
     "success": "成功",
     "error": "エラー",
     "currentLanguage": "現在: {{label}}",
-    "changeLanguage": "言語を変更",
-    "subLanguages": "{{name}} サブ言語",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "プロフィール情報を更新します。",
     "integrationsDescription": "アカウントを外部サービスに接続します。",
     "modelsDescription": "優先するAIモデルを設定します。",
     "linkProvider": "{{provider}} を連携",
-    "removeModel": "{{model}} ({{provider}}) を削除"
+    "removeModel": "{{model}} ({{provider}}) を削除",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "新しいチャット",
@@ -66,9 +71,9 @@
     "save": "保存",
     "cancel": "キャンセル",
     "back": "戻る",
-    "view": "表示",
+    "view": "View",
     "loading": "読み込み中...",
-    "noItems": "アイテムが見つかりません。",
+    "noItems": "No items",
     "success": "成功",
     "error": "エラー",
     "search": "検索...",
@@ -76,7 +81,8 @@
     "add": "追加",
     "done": "完了",
     "clear": "クリア",
-    "revoke": "取り消し"
+    "revoke": "取り消し",
+    "info": "Info"
   },
   "customize": {
     "appearance": "外観",
@@ -121,8 +127,8 @@
     "unfollow": "フォロー解除",
     "unblock": "ブロック解除",
     "viewProfile": "プロフィールを表示",
-    "requestSent": "友達リクエストを送信しました！",
-    "requestAccepted": "友達リクエストを承認しました！",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "友達を解除しました",
     "requestCancelled": "リクエストを取り消しました",
     "nowFollowing": "フォローしました",
@@ -130,15 +136,30 @@
     "userUnblocked": "ユーザーのブロックを解除しました",
     "add": "友達追加",
     "follow": "フォロー",
-    "noBio": "このユーザーはまだ自己紹介を書いていません。"
+    "noBio": "このユーザーはまだ自己紹介を書いていません。",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "全体の使用量",
+    "overallUsage": "Overall Usage",
     "usageDesc": "ファイルとアプリデータで使用されている総ストレージ容量",
-    "files": "ファイル",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "アップロードされたファイルとアーティファクト。",
     "cloudStorage": "クラウドストレージ",
-    "linkedImages": "リンクされた画像",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "近日公開",
     "linkedImagesDesc": "ここで外部リンクを簡単に管理できるように取り組んでいます。お楽しみに！",
     "fileDeleted": "ファイルを削除しました",
@@ -148,7 +169,23 @@
     "saved": "{{percent}}% 節約されました",
     "clickToSelect": "クリックしてストレージから選択",
     "readyToCompress": "圧縮の準備完了",
-    "selectFileDesc": "ファイルを選択し、設定を調整して結果を確認してください。"
+    "selectFileDesc": "ファイルを選択し、設定を調整して結果を確認してください。",
+    "targetSize": "storage.targetSize",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "キャラクター",
@@ -167,7 +204,20 @@
     "saveCharacter": "キャラクターを保存",
     "imageUploaded": "画像をアップロードしました",
     "noCharacters": "キャラクターはまだ作成されていません。「新規キャラクター」をクリックして開始してください。",
-    "confirmDelete": "このキャラクターを削除してもよろしいですか？"
+    "confirmDelete": "このキャラクターを削除してもよろしいですか？",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "設定",
@@ -210,7 +260,15 @@
     "permissionPhone": "電話番号へのアクセス",
     "trustWarning": "信頼できるアプリケーションのみを承認してください。",
     "approve": "承認",
-    "deny": "アクセスを拒否"
+    "deny": "アクセスを拒否",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "ソースファイル",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "指定された場合、ファイルをこのサイズ内に収まるように圧縮を試みます。",
     "start": "圧縮を開始",
     "compressing": "ファイルを圧縮中...",
-    "compressingDesc": "ファイルサイズによっては時間がかかる場合があります。"
+    "compressingDesc": "ファイルサイズによっては時間がかかる場合があります。",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "プラットフォーム内のさまざまなアプリケーションを見つけて使用します。",
@@ -258,5 +320,10 @@
       "name": "OAuth",
       "desc": "Oxygen Lowアカウントを介してアプリにOAuthを追加します。"
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

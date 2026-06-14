@@ -13,10 +13,14 @@
     "selectLanguage": "언어 선택",
     "selectSubLanguage": "하위 언어 선택",
     "processing": "처리 중...",
-    "changeLanguage": "언어 변경",
+    "changeLanguage": "Change Language",
     "passwordPwned": "이 비밀번호는 데이터 유출에서 발견되었습니다. 더 안전한 비밀번호를 선택하세요.",
     "accountCreated": "계정이 생성되었습니다! 이메일을 확인하여 인증해 주세요.",
-    "passwordUpdated": "비밀번호가 성공적으로 업데이트되었습니다! 이제 로그인할 수 있습니다."
+    "passwordUpdated": "비밀번호가 성공적으로 업데이트되었습니다! 이제 로그인할 수 있습니다.",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "대시보드",
@@ -38,13 +42,14 @@
     "success": "성공",
     "error": "오류",
     "currentLanguage": "현재: {{label}}",
-    "changeLanguage": "언어 변경",
-    "subLanguages": "{{name}} 하위 언어",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "프로필 정보를 업데이트합니다.",
     "integrationsDescription": "계정을 외부 서비스와 연결합니다.",
     "modelsDescription": "선호하는 AI 모델을 설정합니다.",
     "linkProvider": "{{provider}} 연결",
-    "removeModel": "{{model}} ({{provider}}) 제거"
+    "removeModel": "{{model}} ({{provider}}) 제거",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "새 채팅",
@@ -66,9 +71,9 @@
     "save": "저장",
     "cancel": "취소",
     "back": "뒤로",
-    "view": "보기",
+    "view": "View",
     "loading": "로딩 중...",
-    "noItems": "항목을 찾을 수 없습니다.",
+    "noItems": "No items",
     "success": "성공",
     "error": "오류",
     "search": "검색...",
@@ -76,7 +81,8 @@
     "add": "추가",
     "done": "완료",
     "clear": "지우기",
-    "revoke": "취소"
+    "revoke": "취소",
+    "info": "Info"
   },
   "customize": {
     "appearance": "외관",
@@ -121,8 +127,8 @@
     "unfollow": "팔로우 취소",
     "unblock": "차단 해제",
     "viewProfile": "프로필 보기",
-    "requestSent": "친구 요청을 보냈습니다!",
-    "requestAccepted": "친구 요청을 수락했습니다!",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "친구를 삭제했습니다",
     "requestCancelled": "요청이 취소되었습니다",
     "nowFollowing": "팔로우를 시작했습니다",
@@ -130,15 +136,30 @@
     "userUnblocked": "사용자 차단을 해제했습니다",
     "add": "친구 추가",
     "follow": "팔로우",
-    "noBio": "이 사용자는 아직 소개를 작성하지 않았습니다."
+    "noBio": "이 사용자는 아직 소개를 작성하지 않았습니다.",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "전체 사용량",
+    "overallUsage": "Overall Usage",
     "usageDesc": "파일 및 앱 데이터에 사용된 총 저장 용량",
-    "files": "파일",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "업로드된 파일 및 아티팩트.",
     "cloudStorage": "클라우드 저장소",
-    "linkedImages": "연결된 이미지",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "출시 예정",
     "linkedImagesDesc": "여기에서 외부 링크를 쉽게 관리할 수 있도록 준비 중입니다. 기대해 주세요!",
     "fileDeleted": "파일이 삭제되었습니다",
@@ -148,7 +169,23 @@
     "saved": "{{percent}}% 절약됨",
     "clickToSelect": "클릭하여 저장소에서 선택",
     "readyToCompress": "압축 준비 완료",
-    "selectFileDesc": "파일을 선택하고 설정을 조정하여 결과를 확인하세요."
+    "selectFileDesc": "파일을 선택하고 설정을 조정하여 결과를 확인하세요.",
+    "targetSize": "storage.targetSize",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "캐릭터",
@@ -167,7 +204,20 @@
     "saveCharacter": "캐릭터 저장",
     "imageUploaded": "이미지가 업로드되었습니다",
     "noCharacters": "아직 생성된 캐릭터가 없습니다. \"새 캐릭터\"를 클릭하여 시작하세요.",
-    "confirmDelete": "정말로 이 캐릭터를 삭제하시겠습니까?"
+    "confirmDelete": "정말로 이 캐릭터를 삭제하시겠습니까?",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "설정",
@@ -210,7 +260,15 @@
     "permissionPhone": "전화번호에 대한 액세스",
     "trustWarning": "신뢰할 수 있는 애플리케이션만 승인하세요.",
     "approve": "승인",
-    "deny": "액세스 거부"
+    "deny": "액세스 거부",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "소스 파일",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "지정된 경우, 파일을 이 크기 내로 압축하려고 시도합니다.",
     "start": "압축 시작",
     "compressing": "파일을 압축하는 중...",
-    "compressingDesc": "파일 크기에 따라 시간이 걸릴 수 있습니다."
+    "compressingDesc": "파일 크기에 따라 시간이 걸릴 수 있습니다.",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "플랫폼 내의 다양한 애플리케이션을 탐색하고 사용하세요.",
@@ -258,5 +320,10 @@
       "name": "OAuth",
       "desc": "Oxygen Low 계정을 통해 앱에 OAuth를 추가하세요."
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

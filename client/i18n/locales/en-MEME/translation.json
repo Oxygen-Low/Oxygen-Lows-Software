@@ -13,10 +13,14 @@
     "selectLanguage": "Pick your vibe",
     "selectSubLanguage": "Pick your sub-vibe",
     "processing": "Thinking...",
-    "changeLanguage": "Switch Vibe",
+    "changeLanguage": "Change Language",
     "passwordPwned": "Bro, this password is in a breach. Pick a better one.",
     "accountCreated": "Manifested! Check your digital mail.",
-    "passwordUpdated": "Password yeeted to new value! Now yeet yourself in."
+    "passwordUpdated": "Password yeeted to new value! Now yeet yourself in.",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "The Hub",
@@ -38,13 +42,14 @@
     "success": "EPIC WIN",
     "error": "EPIC FAIL",
     "currentLanguage": "Currently: {{label}}",
-    "changeLanguage": "Switch Vibe",
-    "subLanguages": "{{name}} Flavours",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "Update your gamer stats.",
     "integrationsDescription": "Connect to the outside world.",
     "modelsDescription": "Pick which AI brain to use.",
     "linkProvider": "Hook up {{provider}}",
-    "removeModel": "Yeet {{model}} ({{provider}})"
+    "removeModel": "Yeet {{model}} ({{provider}})",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "New Yap Session",
@@ -66,9 +71,9 @@
     "save": "Keep",
     "cancel": "Stop",
     "back": "Rewind",
-    "view": "Look",
+    "view": "View",
     "loading": "Hold up...",
-    "noItems": "Nothing here bro.",
+    "noItems": "No items",
     "success": "W",
     "error": "L",
     "search": "Look for...",
@@ -76,7 +81,8 @@
     "add": "Plus",
     "done": "GG",
     "clear": "Wipe",
-    "revoke": "Yeet Access"
+    "revoke": "Yeet Access",
+    "info": "Info"
   },
   "customize": {
     "appearance": "Style",
@@ -121,8 +127,8 @@
     "unfollow": "Stop stalking",
     "unblock": "Forgive",
     "viewProfile": "Inspect",
-    "requestSent": "Invite yeeted!",
-    "requestAccepted": "New homie acquired!",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "Yeeted from circle",
     "requestCancelled": "Vibe check failed",
     "nowFollowing": "Now watching",
@@ -130,15 +136,30 @@
     "userUnblocked": "Back from exile",
     "add": "Add Homie",
     "follow": "Follow",
-    "noBio": "This user has zero lore."
+    "noBio": "This user has zero lore.",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "Total Stuff",
+    "overallUsage": "Overall Usage",
     "usageDesc": "How much junk you've saved",
-    "files": "Loot",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "Your uploaded loot and stuff.",
     "cloudStorage": "Cloud Vault",
-    "linkedImages": "Linked Pics",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "TBA",
     "linkedImagesDesc": "Soon you can manage your external pics here. Patience!",
     "fileDeleted": "Yeeted to the void",
@@ -148,7 +169,23 @@
     "saved": "Saved {{percent}}% chonk",
     "clickToSelect": "Click to pick from vault",
     "readyToCompress": "Ready to squish",
-    "selectFileDesc": "Pick a file and squish it."
+    "selectFileDesc": "Pick a file and squish it.",
+    "targetSize": "storage.targetSize",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "NPCs",
@@ -167,7 +204,20 @@
     "saveCharacter": "Lock in NPC",
     "imageUploaded": "Pic uploaded",
     "noCharacters": "No NPCs yet. Click \"New NPC\" to manifest one.",
-    "confirmDelete": "Are you sure? This NPC will be gone lol."
+    "confirmDelete": "Are you sure? This NPC will be gone lol.",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "Tweaks",
@@ -210,7 +260,15 @@
     "permissionPhone": "To see your digits",
     "trustWarning": "Only trust cool apps.",
     "approve": "Send it",
-    "deny": "Nah"
+    "deny": "Nah",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "The Chonk",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "We'll try to fit it in here.",
     "start": "Start Squishing",
     "compressing": "Squishing it...",
-    "compressingDesc": "Wait a sec, it's a big boy."
+    "compressingDesc": "Wait a sec, it's a big boy.",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "Discover and use various epic gizmos.",
@@ -252,11 +314,16 @@
     },
     "compressor": {
       "name": "Chonk Squisher",
-      "desc": "Squish images and audio to save vault space."
+      "desc": "Compress images to save storage space."
     },
     "oauth": {
       "name": "Passport",
       "desc": "Add passport to your apps via the squad accounts."
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

@@ -132,7 +132,7 @@ export default function UserProfile() {
           return;
         }
         setFriendship(data);
-        toast.success(t('friends.requestAccepted'));
+        toast.success(t('friends.acceptRequest'));
         setStats(s => ({ ...s, friends: s.friends + 1 }));
       } else {
         const { error } = await supabase
@@ -145,7 +145,7 @@ export default function UserProfile() {
         }
         const wasAccepted = friendship.status === 'accepted';
         setFriendship(null);
-        toast.success(wasAccepted ? t('friends.unfriended') : t('friends.requestCancelled'));
+        toast.success(wasAccepted ? t('friends.unfriended') : t('friends.cancelRequest'));
         if (wasAccepted) setStats(s => ({ ...s, friends: Math.max(0, s.friends - 1) }));
       }
     } catch (e: any) {
@@ -254,7 +254,7 @@ export default function UserProfile() {
         ) : error || !profile ? (
           <div className="text-center py-12">
             <p className="text-red-400 text-lg">{error ?? t('common.noItems')}</p>
-            <Button variant="link" onClick={() => window.history.back()} className="text-slate-500">
+            <Button variant="link" onClick={() => navigate(-1)} className="text-slate-500">
               {t('common.back')}
             </Button>
           </div>
@@ -318,8 +318,8 @@ export default function UserProfile() {
                           <><UserPlus className="w-4 h-4 mr-2" /> {t('friends.add')}</>
                         ) : friendship.status === 'pending' ? (
                           friendship.user_id === currentUser.id
-                            ? <><UserX className="w-4 h-4 mr-2" /> {t('friends.requestCancelled')}</>
-                            : <><UserCheck className="w-4 h-4 mr-2" /> {t('friends.requestAccepted')}</>
+                            ? <><UserX className="w-4 h-4 mr-2" /> {t('friends.cancelRequest')}</>
+                            : <><UserCheck className="w-4 h-4 mr-2" /> {t('friends.acceptRequest')}</>
                         ) : (
                           <><UserMinus className="w-4 h-4 mr-2" /> {t('friends.unfriend')}</>
                         )}
@@ -334,7 +334,7 @@ export default function UserProfile() {
                           isFollowing ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "text-slate-300"
                         )}
                       >
-                        {isFollowing ? t('friends.following') : t('friends.follow') || "Follow"}
+                        {isFollowing ? t('friends.following') : t('friends.follow')}
                       </Button>
 
                       <Button

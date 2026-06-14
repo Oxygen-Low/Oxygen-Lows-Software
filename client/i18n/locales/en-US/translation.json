@@ -16,7 +16,11 @@
     "changeLanguage": "Change Language",
     "passwordPwned": "This password was found in a data breach. Please choose a more secure password.",
     "accountCreated": "Account created! Please check your email for verification.",
-    "passwordUpdated": "Password updated successfully! You can now sign in."
+    "passwordUpdated": "Password updated successfully! You can now sign in.",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -39,12 +43,13 @@
     "error": "Error",
     "currentLanguage": "Current: {{label}}",
     "changeLanguage": "Change Language",
-    "subLanguages": "{{name}} Sub-languages",
+    "subLanguages": "Sub-languages",
     "profileDescription": "Update your profile information.",
     "integrationsDescription": "Connect your accounts to external services.",
     "modelsDescription": "Configure your preferred AI models.",
     "linkProvider": "Link {{provider}}",
-    "removeModel": "Remove {{model}} ({{provider}})"
+    "removeModel": "Remove {{model}} ({{provider}})",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "New Chat",
@@ -68,7 +73,7 @@
     "back": "Back",
     "view": "View",
     "loading": "Loading...",
-    "noItems": "No items found.",
+    "noItems": "No items",
     "success": "Success",
     "error": "Error",
     "search": "Search...",
@@ -76,7 +81,8 @@
     "add": "Add",
     "done": "Done",
     "clear": "Clear",
-    "revoke": "Revoke"
+    "revoke": "Revoke",
+    "info": "Info"
   },
   "customize": {
     "appearance": "Appearance",
@@ -121,8 +127,8 @@
     "unfollow": "Unfollow",
     "unblock": "Unblock",
     "viewProfile": "View Profile",
-    "requestSent": "Friend request sent!",
-    "requestAccepted": "Friend request accepted!",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "Unfriended user",
     "requestCancelled": "Request cancelled",
     "nowFollowing": "Following user",
@@ -130,15 +136,30 @@
     "userUnblocked": "User unblocked",
     "add": "Add Friend",
     "follow": "Follow",
-    "noBio": "This user hasn't written a bio yet."
+    "noBio": "This user hasn't written a bio yet.",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
     "overallUsage": "Overall Usage",
     "usageDesc": "Total storage used across your files and app data",
-    "files": "Files",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "Your uploaded files and artifacts.",
     "cloudStorage": "Cloud Storage",
-    "linkedImages": "Linked Images",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "Coming Soon",
     "linkedImagesDesc": "We're working on making it easy to manage external links right here. Stay tuned!",
     "fileDeleted": "File deleted",
@@ -148,7 +169,23 @@
     "saved": "Saved {{percent}}%",
     "clickToSelect": "Click to select from storage",
     "readyToCompress": "Ready to compress",
-    "selectFileDesc": "Select a file and adjust settings to see results here."
+    "selectFileDesc": "Select a file and adjust settings to see results here.",
+    "targetSize": "storage.targetSize",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "Characters",
@@ -167,7 +204,20 @@
     "saveCharacter": "Save Character",
     "imageUploaded": "Image uploaded",
     "noCharacters": "No characters created yet. Click \"New Character\" to begin.",
-    "confirmDelete": "Are you sure you want to delete this character?"
+    "confirmDelete": "Are you sure you want to delete this character?",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "Settings",
@@ -210,7 +260,15 @@
     "permissionPhone": "Access your phone number",
     "trustWarning": "Only authorize applications you trust.",
     "approve": "Approve",
-    "deny": "Deny Access"
+    "deny": "Deny Access",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "Source File",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "If provided, we'll try to compress the file to fit within this size.",
     "start": "Start Compression",
     "compressing": "Compressing your file...",
-    "compressingDesc": "This may take a moment depending on the file size."
+    "compressingDesc": "This may take a moment depending on the file size.",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "Discover and use various applications within the platform.",
@@ -252,11 +314,16 @@
     },
     "compressor": {
       "name": "File Compressor",
-      "desc": "Compress images and audio files to save storage space."
+      "desc": "Compress images to save storage space."
     },
     "oauth": {
       "name": "OAuth",
       "desc": "Add OAuth to your applications via Oxygen Low's Software Accounts."
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

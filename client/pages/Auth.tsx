@@ -65,16 +65,23 @@ export default function Auth() {
     return <Navigate to="/" replace />;
   }
 
-  const generatePassword = () => {
+    const generatePassword = async () => {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+    const array = new Uint32Array(16);
+    window.crypto.getRandomValues(array);
     let newPass = "";
     for (let i = 0; i < 16; i++) {
-      newPass += chars.charAt(Math.floor(Math.random() * chars.length));
+      newPass += chars[array[i] % chars.length];
     }
     setPassword(newPass);
-    navigator.clipboard.writeText(newPass);
-    setSuccessMessage("Password generated and copied to clipboard!");
-    setTimeout(() => setSuccessMessage(null), 3000);
+    try {
+      await navigator.clipboard.writeText(newPass);
+      setSuccessMessage(t('auth.passwordGenerated'));
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error("Failed to copy password:", err);
+      // Fallback: still set the password in the field
+    }
   };
 
   const handleLanguageSelect = (lang: Language) => {
@@ -171,7 +178,7 @@ export default function Auth() {
                 className="flex items-center gap-2 text-slate-400 hover:text-white transition mb-2"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>Back</span>
+                <span>{t('auth.back')}</span>
               </button>
               <div className="flex items-center gap-2 text-white mb-4">
                 <Globe2 className="w-5 h-5 text-cyan-500" />
@@ -201,7 +208,7 @@ export default function Auth() {
                   className="flex items-center gap-2 text-slate-400 hover:text-white transition mb-2 text-xs"
                 >
                   <ChevronLeft className="w-3 h-3" />
-                  <span>Change Language ({selectedLang?.name}{selectedSubLang ? ` - ${selectedSubLang.name}` : ""})</span>
+                  <span>{t('auth.changeLanguage')} ({selectedLang?.name}{selectedSubLang ? ` - ${selectedSubLang.name}` : ''})</span>
                 </button>
               )}
 
@@ -326,28 +333,28 @@ export default function Auth() {
                 onClick={() => signInWithOAuth("github")}
                 className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
               >
-                {t('auth.signin')} with GitHub
+                {t('auth.withProvider', { provider: 'GitHub' })}
               </button>
               <button
                 type="button"
                 onClick={() => signInWithOAuth("discord")}
                 className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
               >
-                {t('auth.signin')} with Discord
+                {t('auth.withProvider', { provider: 'Discord' })}
               </button>
               <button
                 type="button"
                 onClick={() => signInWithOAuth("gitlab")}
                 className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
               >
-                {t('auth.signin')} with GitLab
+                {t('auth.withProvider', { provider: 'GitLab' })}
               </button>
               <button
                 type="button"
                 onClick={() => signInWithOAuth("google")}
                 className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
               >
-                {t('auth.signin')} with Google
+                {t('auth.withProvider', { provider: 'Google' })}
               </button>
             </div>
           )}

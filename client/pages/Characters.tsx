@@ -54,7 +54,7 @@ export default function Characters() {
   const handleSave = async () => {
     try {
       if (!currentCharacter.name) {
-        toast({ title: t('common.error'), description: "Name is required", variant: "destructive" });
+        toast({ title: t('common.error'), description: t('characters.nameRequired'), variant: "destructive" });
         return;
       }
 
@@ -110,9 +110,9 @@ export default function Characters() {
         if (storageError) console.error("Failed to delete character image:", storageError);
       }
 
-      const { error } = await supabase.from("characters").delete().eq("id", id);
+      const { error } = await supabase.from("characters").delete().match({ id: id, user_id: session.user.id });
       if (error) throw error;
-      toast({ title: t('common.success'), description: "Character deleted" });
+      toast({ title: t('common.success'), description: t('characters.deleted') });
       fetchCharacters();
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: "destructive" });
@@ -192,39 +192,39 @@ export default function Characters() {
                   </div>
                   <div className="flex-1 space-y-2">
                     <label className="text-sm font-medium">{t('characters.name')}</label>
-                    <Input value={currentCharacter.name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, name: e.target.value }))} placeholder={t('characters.name')} className="bg-slate-800 border-slate-700" />
+                    <Input value={currentCharacter.name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, name: e.target.value }))} placeholder={t('characters.placeholderName')} className="bg-slate-800 border-slate-700" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('characters.shortDescription')}</label>
-                    <Input value={currentCharacter.short_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, short_description: e.target.value }))} placeholder="A one-line hook" className="bg-slate-800 border-slate-700" />
+                    <Input value={currentCharacter.short_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, short_description: e.target.value }))} placeholder={t('characters.placeholderShort')} className="bg-slate-800 border-slate-700" />
                   </div>
                   <div className="space-y-2 text-cyan-400">
                     <label className="text-sm font-medium">{t('characters.displayName')}</label>
-                    <Input value={currentCharacter.display_name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, display_name: e.target.value }))} placeholder="For organizing characters..." className="bg-slate-800 border-cyan-900" />
+                    <Input value={currentCharacter.display_name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, display_name: e.target.value }))} placeholder={t('characters.placeholderDisplay')} className="bg-slate-800 border-cyan-900" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('characters.appearance')}</label>
-                  <Textarea value={currentCharacter.appearance || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, appearance: e.target.value }))} placeholder="What do they look like?" className="bg-slate-800 border-slate-700 h-20" />
+                  <Textarea value={currentCharacter.appearance || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, appearance: e.target.value }))} placeholder={t('characters.placeholderAppearance')} className="bg-slate-800 border-slate-700 h-20" />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('characters.personality')}</label>
-                  <Textarea value={currentCharacter.personality || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, personality: e.target.value }))} placeholder="How do they act?" className="bg-slate-800 border-slate-700 h-20" />
+                  <Textarea value={currentCharacter.personality || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, personality: e.target.value }))} placeholder={t('characters.placeholderPersonality')} className="bg-slate-800 border-slate-700 h-20" />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('characters.backstory')}</label>
-                  <Textarea value={currentCharacter.backstory || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, backstory: e.target.value }))} placeholder="Their history and origins..." className="bg-slate-800 border-slate-700 h-32" />
+                  <Textarea value={currentCharacter.backstory || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, backstory: e.target.value }))} placeholder={t('characters.placeholderBackstory')} className="bg-slate-800 border-slate-700 h-32" />
                 </div>
 
                 <div className="space-y-2 text-cyan-400">
                   <label className="text-sm font-medium">{t('characters.privateNotes')}</label>
-                  <Textarea value={currentCharacter.hidden_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, hidden_description: e.target.value }))} placeholder="Write notes for yourself here (not shared with LLM)..." className="bg-slate-800 border-cyan-900 h-32" />
+                  <Textarea value={currentCharacter.hidden_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, hidden_description: e.target.value }))} placeholder={t('characters.placeholderPrivate')} className="bg-slate-800 border-cyan-900 h-32" />
                 </div>
               </div>
               <DialogFooter>
@@ -250,7 +250,7 @@ export default function Characters() {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="text-xl font-bold text-white truncate">{char.display_name || char.name}</h3>
-                    <p className="text-sm text-slate-300 truncate">{char.short_description || "No description"}</p>
+                    <p className="text-sm text-slate-300 truncate">{char.short_description || t('characters.noDescription')}</p>
                   </div>
                 </div>
                 <CardContent className="p-4 flex gap-2">

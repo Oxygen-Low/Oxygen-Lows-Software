@@ -13,10 +13,14 @@
     "selectLanguage": "選擇語言",
     "selectSubLanguage": "選擇子語言",
     "processing": "處理中...",
-    "changeLanguage": "更改語言",
+    "changeLanguage": "Change Language",
     "passwordPwned": "此密碼在數據洩漏中被發現。請選擇一個更安全的密碼。",
     "accountCreated": "帳號已建立！請檢查您的郵箱進行驗證。",
-    "passwordUpdated": "密碼更新成功！您現在可以登入了。"
+    "passwordUpdated": "密碼更新成功！您現在可以登入了。",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "控制台",
@@ -38,13 +42,14 @@
     "success": "成功",
     "error": "錯誤",
     "currentLanguage": "當前: {{label}}",
-    "changeLanguage": "更改語言",
-    "subLanguages": "{{name}} 子語言",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "更新您的個人資料資訊。",
     "integrationsDescription": "將您的帳號連接到外部服務。",
     "modelsDescription": "配置您偏好的 AI 模型。",
     "linkProvider": "綁定 {{provider}}",
-    "removeModel": "移除 {{model}} ({{provider}})"
+    "removeModel": "移除 {{model}} ({{provider}})",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "新聊天",
@@ -66,9 +71,9 @@
     "save": "保存",
     "cancel": "取消",
     "back": "返回",
-    "view": "查看",
+    "view": "View",
     "loading": "載入中...",
-    "noItems": "未找到項。",
+    "noItems": "No items",
     "success": "成功",
     "error": "錯誤",
     "search": "搜尋...",
@@ -76,7 +81,8 @@
     "add": "添加",
     "done": "完成",
     "clear": "清除",
-    "revoke": "撤銷"
+    "revoke": "撤銷",
+    "info": "Info"
   },
   "customize": {
     "appearance": "外觀",
@@ -121,8 +127,8 @@
     "unfollow": "取消追蹤",
     "unblock": "解除封鎖",
     "viewProfile": "查看資料",
-    "requestSent": "好友請求已發送！",
-    "requestAccepted": "好友請求已接受！",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "已刪除好友",
     "requestCancelled": "請求已取消",
     "nowFollowing": "已追蹤用戶",
@@ -130,17 +136,32 @@
     "userUnblocked": "已解除封鎖用戶",
     "add": "添加好友",
     "follow": "追蹤",
-    "noBio": "該用戶還沒有寫簡介。"
+    "noBio": "該用戶還沒有寫簡介。",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "總體用量",
+    "overallUsage": "Overall Usage",
     "usageDesc": "文件和應用程式數據使用的總儲存空間",
-    "files": "文件",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "您上傳的文件和製品。",
     "cloudStorage": "雲端儲存",
-    "linkedImages": "外連圖片",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "即將推出",
-    "linkedImagesDesc": "我們正致力於讓您能直接在這裡管理外部連結。敬请期待！",
+    "linkedImagesDesc": "我們正致力於讓您能直接在這裡管理外部連結。敬請期待！",
     "fileDeleted": "文件已刪除",
     "limitExceeded": "儲存空間超出限制 (30MB)",
     "originalSize": "原始大小",
@@ -148,7 +169,23 @@
     "saved": "節省了 {{percent}}%",
     "clickToSelect": "點擊從儲存空間中選擇",
     "readyToCompress": "準備壓縮",
-    "selectFileDesc": "選擇一個文件並調整設定以在此查看結果。"
+    "selectFileDesc": "選擇一個文件並調整設定以在此查看結果。",
+    "targetSize": "storage.targetSize",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "角色",
@@ -167,7 +204,20 @@
     "saveCharacter": "保存角色",
     "imageUploaded": "圖片已上傳",
     "noCharacters": "尚未建立角色。點擊「新角色」開始。",
-    "confirmDelete": "您確定要刪除此角色嗎？"
+    "confirmDelete": "您確定要刪除此角色嗎？",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "設定",
@@ -210,7 +260,15 @@
     "permissionPhone": "訪問您的電話號碼",
     "trustWarning": "只授權您信任的應用程式。",
     "approve": "批准",
-    "deny": "拒絕訪問"
+    "deny": "拒絕訪問",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "源文件",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "如果提供，我們將嘗試將文件壓縮到此大小以內。",
     "start": "開始壓縮",
     "compressing": "正在壓縮您的文件...",
-    "compressingDesc": "根據文件大小，這可能需要一點時間。"
+    "compressingDesc": "根據文件大小，這可能需要一點時間。",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "探索並使用平台內的各種應用程式。",
@@ -252,11 +314,16 @@
     },
     "compressor": {
       "name": "文件壓縮器",
-      "desc": "壓縮圖像和音訊文件以節省儲存空間。"
+      "desc": "壓縮圖片以節省空間。"
     },
     "oauth": {
       "name": "OAuth",
       "desc": "透過 Oxygen Low 帳號為您的應用添加 OAuth。"
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

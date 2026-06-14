@@ -13,10 +13,14 @@
     "selectLanguage": "Eligere Linguam",
     "selectSubLanguage": "Eligere Dialectum",
     "processing": "Agitur...",
-    "changeLanguage": "Mutare Linguam",
+    "changeLanguage": "Change Language",
     "passwordPwned": "Haec tessera in rima data invenitur. Elige tesseram tutiorem.",
     "accountCreated": "Ratio creata! Inspice litteras electronicas.",
-    "passwordUpdated": "Tessera feliciter mutata! Nunc inire potes."
+    "passwordUpdated": "Tessera feliciter mutata! Nunc inire potes.",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "Tabula",
@@ -38,13 +42,14 @@
     "success": "Successus",
     "error": "Error",
     "currentLanguage": "Praesens: {{label}}",
-    "changeLanguage": "Mutare Linguam",
-    "subLanguages": "Dialecti {{name}}",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "Mutare informationem rationis tuae.",
     "integrationsDescription": "Connectere rationes tuas cum servitiis externis.",
     "modelsDescription": "Aptare exemplaria AI praelata.",
     "linkProvider": "Connectere {{provider}}",
-    "removeModel": "Delere {{model}} ({{provider}})"
+    "removeModel": "Delere {{model}} ({{provider}})",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "Novum Colloquium",
@@ -66,9 +71,9 @@
     "save": "Servare",
     "cancel": "Abrogare",
     "back": "Retro",
-    "view": "Aspicere",
+    "view": "View",
     "loading": "Agitur...",
-    "noItems": "Nihil inventum.",
+    "noItems": "No items",
     "success": "Successus",
     "error": "Error",
     "search": "Quaerere...",
@@ -76,7 +81,8 @@
     "add": "Addere",
     "done": "Factum",
     "clear": "Purgare",
-    "revoke": "Revocare"
+    "revoke": "Revocare",
+    "info": "Info"
   },
   "customize": {
     "appearance": "Species",
@@ -121,8 +127,8 @@
     "unfollow": "Desinere sequi",
     "unblock": "Absolvere",
     "viewProfile": "Aspicere Rationem",
-    "requestSent": "Petitio amicitiae missa est!",
-    "requestAccepted": "Petitio amicitiae accepta est!",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "Amicitia dimissa est",
     "requestCancelled": "Petitio abrogata est",
     "nowFollowing": "Nunc sequeris",
@@ -130,15 +136,30 @@
     "userUnblocked": "Usor absolutus est",
     "add": "Addere Amicum",
     "follow": "Sequi",
-    "noBio": "Hic usor nondum bio scripsit."
+    "noBio": "Hic usor nondum bio scripsit.",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "Usus Totus",
+    "overallUsage": "Overall Usage",
     "usageDesc": "Spatium totum occupatum",
-    "files": "Scapi",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "Scapi tui et opera.",
     "cloudStorage": "Repositorium Nubilum",
-    "linkedImages": "Imagines Coniunctae",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "Mox Veniet",
     "linkedImagesDesc": "Laboramus ut nexus externos hic regere possis.",
     "fileDeleted": "Scapus deletus est",
@@ -148,7 +169,23 @@
     "saved": "{{percent}}% servatum",
     "clickToSelect": "Preme ut eligas ex repositorio",
     "readyToCompress": "Paratum ad premendum",
-    "selectFileDesc": "Elige scapum et apta optiones ut videas eventum hic."
+    "selectFileDesc": "Elige scapum et apta optiones ut videas eventum hic.",
+    "targetSize": "Magnitudo Rogata (MB, optionale)",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "Personae",
@@ -167,7 +204,20 @@
     "saveCharacter": "Servare Personam",
     "imageUploaded": "Imago imposita est",
     "noCharacters": "Nullae personae creatae. Preme \"Nova Persona\" ut incipias.",
-    "confirmDelete": "Esne certus te hanc personam delere velle?"
+    "confirmDelete": "Esne certus te hanc personam delere velle?",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "Optiones",
@@ -210,7 +260,15 @@
     "permissionPhone": "Aditus ad numerum telephonicum",
     "trustWarning": "Accipe solum applicationes quibus credis.",
     "approve": "Approbare",
-    "deny": "Negare Aditum"
+    "deny": "Negare Aditum",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "Scapus Fons",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "Si vis, conabimur scapum intra hanc magnitudinem premere.",
     "start": "Incipere Premere",
     "compressing": "Premit scapum tuum...",
-    "compressingDesc": "Hoc paulisper durare potest pro magnitudine scapi."
+    "compressingDesc": "Hoc paulisper durare potest pro magnitudine scapi.",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "Invenire et uti variis applicationibus in suggestu.",
@@ -258,5 +320,10 @@
       "name": "OAuth",
       "desc": "Addere OAuth in apps tuis per Oxygen Low."
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

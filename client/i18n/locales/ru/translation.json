@@ -13,10 +13,14 @@
     "selectLanguage": "Выберите язык",
     "selectSubLanguage": "Выберите под-язык",
     "processing": "Обработка...",
-    "changeLanguage": "Сменить язык",
+    "changeLanguage": "Change Language",
     "passwordPwned": "Этот пароль был найден в базе утечек. Пожалуйста, выберите более надежный пароль.",
     "accountCreated": "Аккаунт создан! Пожалуйста, проверьте почту для подтверждения.",
-    "passwordUpdated": "Пароль успешно обновлен! Теперь вы можете войти."
+    "passwordUpdated": "Пароль успешно обновлен! Теперь вы можете войти.",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "Панель управления",
@@ -38,13 +42,14 @@
     "success": "Успех",
     "error": "Ошибка",
     "currentLanguage": "Текущий: {{label}}",
-    "changeLanguage": "Сменить язык",
-    "subLanguages": "Под-языки {{name}}",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "Обновите информацию в вашем профиле.",
     "integrationsDescription": "Подключите ваши аккаунты к внешним сервисам.",
     "modelsDescription": "Настройте предпочтительные модели ИИ.",
     "linkProvider": "Привязать {{provider}}",
-    "removeModel": "Удалить {{model}} ({{provider}})"
+    "removeModel": "Удалить {{model}} ({{provider}})",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "Новый чат",
@@ -66,9 +71,9 @@
     "save": "Сохранить",
     "cancel": "Отмена",
     "back": "Назад",
-    "view": "Просмотр",
+    "view": "View",
     "loading": "Загрузка...",
-    "noItems": "Ничего не найдено.",
+    "noItems": "No items",
     "success": "Успех",
     "error": "Ошибка",
     "search": "Поиск...",
@@ -76,7 +81,8 @@
     "add": "Добавить",
     "done": "Готово",
     "clear": "Очистить",
-    "revoke": "Отозвать"
+    "revoke": "Отозвать",
+    "info": "Info"
   },
   "customize": {
     "appearance": "Внешний вид",
@@ -121,8 +127,8 @@
     "unfollow": "Отписаться",
     "unblock": "Разблокировать",
     "viewProfile": "Профиль",
-    "requestSent": "Запрос в друзья отправлен!",
-    "requestAccepted": "Запрос в друзья принят!",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "Пользователь удален из друзей",
     "requestCancelled": "Запрос отменен",
     "nowFollowing": "Вы подписались на пользователя",
@@ -130,15 +136,30 @@
     "userUnblocked": "Пользователь разблокирован",
     "add": "Добавить друга",
     "follow": "Подписаться",
-    "noBio": "Пользователь еще ничего не написал о себе."
+    "noBio": "Пользователь еще ничего не написал о себе.",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "Общее использование",
+    "overallUsage": "Overall Usage",
     "usageDesc": "Всего места занято файлами и данными приложений",
-    "files": "Файлы",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "Ваши загруженные файлы и артефакты.",
     "cloudStorage": "Облачное хранилище",
-    "linkedImages": "Ссылки на изображения",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "Скоро",
     "linkedImagesDesc": "Мы работаем над возможностью управлять внешними ссылками прямо здесь. Следите за обновлениями!",
     "fileDeleted": "Файл удален",
@@ -148,7 +169,23 @@
     "saved": "Сэкономлено {{percent}}%",
     "clickToSelect": "Нажмите, чтобы выбрать из хранилища",
     "readyToCompress": "Готово к сжатию",
-    "selectFileDesc": "Выберите файл и настройте параметры, чтобы увидеть результат здесь."
+    "selectFileDesc": "Выберите файл и настройте параметры, чтобы увидеть результат здесь.",
+    "targetSize": "storage.targetSize",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "Персонажи",
@@ -167,7 +204,20 @@
     "saveCharacter": "Сохранить персонажа",
     "imageUploaded": "Изображение загружено",
     "noCharacters": "Персонажи еще не созданы. Нажмите \"Новый персонаж\", чтобы начать.",
-    "confirmDelete": "Вы уверены, что хотите удалить этого персонажа?"
+    "confirmDelete": "Вы уверены, что хотите удалить этого персонажа?",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "Настройки",
@@ -210,7 +260,15 @@
     "permissionPhone": "Доступ к вашему номеру телефона",
     "trustWarning": "Авторизуйте только те приложения, которым вы доверяете.",
     "approve": "Одобрить",
-    "deny": "Отклонить доступ"
+    "deny": "Отклонить доступ",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "Исходный файл",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "Если указано, мы постараемся сжать файл до этого размера.",
     "start": "Начать сжатие",
     "compressing": "Сжимаю ваш файл...",
-    "compressingDesc": "Это может занять некоторое время в зависимости от размера файла."
+    "compressingDesc": "Это может занять некоторое время в зависимости от размера файла.",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "Открывайте и используйте различные приложения на платформе.",
@@ -252,11 +314,16 @@
     },
     "compressor": {
       "name": "Сжатие файлов",
-      "desc": "Сжимайте изображения и аудио для экономии места."
+      "desc": "Сжимайте изображения, чтобы экономить место."
     },
     "oauth": {
       "name": "OAuth",
       "desc": "Добавьте OAuth в свои приложения через Oxygen Low."
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }

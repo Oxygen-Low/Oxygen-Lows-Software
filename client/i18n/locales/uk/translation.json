@@ -13,10 +13,14 @@
     "selectLanguage": "Оберіть мову",
     "selectSubLanguage": "Оберіть під-мову",
     "processing": "Обробка...",
-    "changeLanguage": "Змінити мову",
+    "changeLanguage": "Change Language",
     "passwordPwned": "Цей пароль було знайдено в базі витоків. Будь ласка, оберіть надійніший пароль.",
     "accountCreated": "Акаунт створено! Перевірте пошту для підтвердження.",
-    "passwordUpdated": "Пароль успішно оновлено! Тепер ви можете увійти."
+    "passwordUpdated": "Пароль успішно оновлено! Тепер ви можете увійти.",
+    "back": "Back",
+    "passwordGenerated": "Password generated and copied to clipboard!",
+    "withProvider": "with {{provider}}",
+    "signout": "Sign Out"
   },
   "nav": {
     "dashboard": "Панель",
@@ -38,13 +42,14 @@
     "success": "Успіх",
     "error": "Помилка",
     "currentLanguage": "Поточна: {{label}}",
-    "changeLanguage": "Змінити мову",
-    "subLanguages": "Під-мови {{name}}",
+    "changeLanguage": "Change Language",
+    "subLanguages": "Sub-languages",
     "profileDescription": "Оновіть інформацію у вашому профілі.",
     "integrationsDescription": "Підключіть ваші акаунти до зовнішніх сервісів.",
     "modelsDescription": "Налаштуйте обрані моделі ШІ.",
     "linkProvider": "Прив'язати {{provider}}",
-    "removeModel": "Видалити {{model}} ({{provider}})"
+    "removeModel": "Видалити {{model}} ({{provider}})",
+    "current": "Current: "
   },
   "chatbot": {
     "newChat": "Новий чат",
@@ -66,9 +71,9 @@
     "save": "Зберегти",
     "cancel": "Скасувати",
     "back": "Назад",
-    "view": "Переглянути",
+    "view": "View",
     "loading": "Завантаження...",
-    "noItems": "Нічого не знайдено.",
+    "noItems": "No items",
     "success": "Успіх",
     "error": "Помилка",
     "search": "Пошук...",
@@ -76,7 +81,8 @@
     "add": "Додати",
     "done": "Готово",
     "clear": "Очистити",
-    "revoke": "Відкликати"
+    "revoke": "Відкликати",
+    "info": "Info"
   },
   "customize": {
     "appearance": "Зовнішній вигляд",
@@ -121,8 +127,8 @@
     "unfollow": "Відписатися",
     "unblock": "Розблокувати",
     "viewProfile": "Профіль",
-    "requestSent": "Запит у друзі надіслано!",
-    "requestAccepted": "Запит у друзі прийнято!",
+    "requestSent": "Friend request sent",
+    "requestAccepted": "Friend request accepted",
     "unfriended": "Користувача видалено з друзів",
     "requestCancelled": "Запит скасовано",
     "nowFollowing": "Ви підписалися на користувача",
@@ -130,15 +136,30 @@
     "userUnblocked": "Користувача розблоковано",
     "add": "Додати в друзі",
     "follow": "Підписатися",
-    "noBio": "Користувач ще не написав про себе."
+    "noBio": "Користувач ще не написав про себе.",
+    "cancelRequest": "Cancel Request",
+    "acceptRequest": "Accept Request",
+    "userNotFound": "User not found",
+    "cannotAddYourself": "You cannot add yourself",
+    "removed": "Friendship removed",
+    "unfollowed": "Unfollowed successfully",
+    "unblocked": "User unblocked"
   },
   "storage": {
-    "overallUsage": "Загальне використання",
+    "overallUsage": "Overall Usage",
     "usageDesc": "Всього місця зайнято файлами та даними додатків",
-    "files": "Файли",
+    "files": {
+      "title": "Files",
+      "description": "Your uploaded files and artifacts."
+    },
     "filesDesc": "Ваші завантажені файли та артефакти.",
     "cloudStorage": "Хмарне сховище",
-    "linkedImages": "Посилання на зображення",
+    "linkedImages": {
+      "comingSoon": {
+        "title": "Linked Images Coming Soon",
+        "description": "We are working on a way to let you manage external image links directly from this tab. Stay tuned!"
+      }
+    },
     "comingSoon": "Скоро",
     "linkedImagesDesc": "Ми працюємо над можливістю керувати зовнішніми посиланнями прямо тут. Слідкуйте за оновленнями!",
     "fileDeleted": "Файл видалено",
@@ -148,7 +169,23 @@
     "saved": "Заощаджено {{percent}}%",
     "clickToSelect": "Натисніть, щоб обрати зі сховища",
     "readyToCompress": "Готово до стиснення",
-    "selectFileDesc": "Оберіть файл та налаштуйте параметри, щоб побачити результат тут."
+    "selectFileDesc": "Оберіть файл та налаштуйте параметри, щоб побачити результат тут.",
+    "targetSize": "storage.targetSize",
+    "limit": "Limit: {{limit}} (Files)",
+    "manage": "Manage your files and data usage.",
+    "tabs": {
+      "linkedImages": "Linked Images",
+      "cloudStorage": "Cloud Storage"
+    },
+    "overallUsageDescription": "Total space used by files and application data",
+    "used": "used",
+    "upload": "Upload",
+    "categories": {
+      "text": "Text/Artifacts",
+      "image": "Images",
+      "audio": "Sounds",
+      "data": "Data"
+    }
   },
   "characters": {
     "title": "Персонажі",
@@ -167,7 +204,20 @@
     "saveCharacter": "Зберегти персонажа",
     "imageUploaded": "Зображення завантажено",
     "noCharacters": "Персонажів ще не створено. Натисніть \"Новий персонаж\", щоб почати.",
-    "confirmDelete": "Ви впевнені, що хочете видалити цього персонажа?"
+    "confirmDelete": "Ви впевнені, що хочете видалити цього персонажа?",
+    "nameRequired": "Name is required",
+    "updated": "Character updated",
+    "created": "Character created",
+    "deleted": "Character deleted",
+    "noDescription": "No description",
+    "notAuthorized": "You are not authorized to modify this character",
+    "placeholderName": "Character name",
+    "placeholderShort": "A one-line hook",
+    "placeholderDisplay": "For organizing characters...",
+    "placeholderAppearance": "What do they look like?",
+    "placeholderPersonality": "How do they act?",
+    "placeholderBackstory": "Their history and origins...",
+    "placeholderPrivate": "Write notes for yourself here..."
   },
   "screenshare": {
     "settings": "Налаштування",
@@ -210,7 +260,15 @@
     "permissionPhone": "Доступ до вашого номера телефону",
     "trustWarning": "Авторизуйте тільки ті додатки, яким ви довіряєте.",
     "approve": "Схвалити",
-    "deny": "Відхилити доступ"
+    "deny": "Відхилити доступ",
+    "registeredSuccess": "Application registered successfully",
+    "deletedSuccess": "Application deleted",
+    "revokedSuccess": "Authorization revoked",
+    "copiedToClipboard": "{{label}} copied to clipboard",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "authorizedOn": "Authorized on",
+    "permissionAccessTo": "Access to {{scope}}",
+    "defaultLabel": "(default)"
   },
   "compressor": {
     "sourceFile": "Початковий файл",
@@ -222,7 +280,11 @@
     "targetSizeDesc": "Якщо вказано, ми постараємося стиснути файл до цього розміру.",
     "start": "Почати стиснення",
     "compressing": "Стискаю ваш файл...",
-    "compressingDesc": "Це може зайняти деякий час залежно від розміру файлу."
+    "compressingDesc": "Це може зайняти деякий час залежно від розміру файлу.",
+    "placeholder_example": "e.g. 0.5",
+    "statusTitle": "Status & Results",
+    "successDesc": "File has been compressed and updated in storage.",
+    "compressAnother": "Compress Another File"
   },
   "apps": {
     "description": "Відкривайте та використовуйте різноманітні додатки на платформі.",
@@ -258,5 +320,10 @@
       "name": "OAuth",
       "desc": "Додайте OAuth у свої додатки через Oxygen Low."
     }
+  },
+  "chat": {
+    "copiedToClipboard": "Copied to clipboard",
+    "newChat": "New Chat",
+    "sendMessage": "Send message"
   }
 }
