@@ -1,7 +1,22 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { FileCompressorApp } from './FileCompressor';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+
+// Mock react-i18next
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: {
+      changeLanguage: () => Promise.resolve(),
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  }
+}));
 
 // Mock ResizeObserver
 global.ResizeObserver = class {
@@ -14,6 +29,21 @@ global.ResizeObserver = class {
 const mockDownload = vi.fn();
 vi.mock('@/lib/supabase', () => ({
   supabase: {
+    auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user" } }, error: null }),
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "test-user" } } }, error: null }),
+        onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    },
+    from: vi.fn((table) => {
+        const builder: any = {
+            select: vi.fn(() => builder),
+            eq: vi.fn(() => builder),
+            single: vi.fn(() => Promise.resolve({ data: { theme: "default", language: "English" }, error: null })),
+            then: vi.fn((cb) => cb({ data: { theme: "default", language: "English" }, error: null })),
+        };
+        return builder;
+    }),
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     storage: {
       from: vi.fn(() => ({
         download: mockDownload,
@@ -24,73 +54,55 @@ vi.mock('@/lib/supabase', () => ({
   },
 }));
 
-// Mock FFmpeg
-const mockLoad = vi.fn().mockResolvedValue(undefined);
-const mockExec = vi.fn().mockResolvedValue(0);
-vi.mock('@ffmpeg/ffmpeg', () => {
-  class FFmpegMock {
-    load = mockLoad;
-    on = vi.fn();
-    writeFile = vi.fn().mockResolvedValue(undefined);
-    exec = mockExec;
-    readFile = vi.fn().mockResolvedValue(new Uint8Array());
-  }
-  return { FFmpeg: FFmpegMock };
-});
-
-// Mock @ffmpeg/util
-vi.mock('@ffmpeg/util', () => ({
-  fetchFile: vi.fn(),
-  toBlobURL: vi.fn().mockResolvedValue('blob:url'),
-}));
-
-// Mock browser-image-compression
-vi.mock('browser-image-compression', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}));
-
 // Mock StorageFileSelector
 vi.mock('@/components/StorageFileSelector', () => ({
   StorageFileSelector: ({ onSelect, trigger }: any) => (
-    <div onClick={() => onSelect({ name: 'test.mp3', metadata: { size: 1024, mimetype: 'audio/mpeg' } })}>
+    <div onClick={() => onSelect({ id: '1', name: 'test.jpg', metadata: { size: 1024, mimetype: 'image/jpeg' } })}>
       {trigger}
     </div>
   ),
 }));
 
+// Mock browser-image-compression
+vi.mock('browser-image-compression', () => ({
+  __esModule: true,
+  default: vi.fn().mockResolvedValue(new Blob([], { type: 'image/jpeg' })),
+}));
+
 describe('FileCompressorApp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLoad.mockResolvedValue(undefined);
     mockDownload.mockResolvedValue({ data: new Blob(), error: null });
   });
 
-  it('renders the file compressor app', () => {
-    render(<FileCompressorApp />);
-    expect(screen.getByText('Source File')).toBeDefined();
-    expect(screen.getByText('Compression Settings')).toBeDefined();
-    expect(screen.getByText('Status & Results')).toBeDefined();
+  afterEach(() => {
+    cleanup();
   });
 
-  it('handles audio compression and awaits FFmpeg loading', async () => {
-    render(<FileCompressorApp />);
+  it('renders the file compressor app', () => {
+    render(<ThemeProvider><FileCompressorApp /></ThemeProvider>);
+    expect(screen.getByText('compressor.sourceFile')).toBeDefined();
+    expect(screen.getByText('compressor.settings')).toBeDefined();
+  });
+
+  it('handles image compression', async () => {
+    render(<ThemeProvider><FileCompressorApp /></ThemeProvider>);
 
     // Select a file
-    const selectors = screen.getAllByText('Click to select from storage');
+    const selectors = screen.getAllByText('storage.clickToSelect');
     fireEvent.click(selectors[0]);
 
-    expect(screen.getAllByText('test.mp3').length).toBeGreaterThan(0);
+    // Check if file name appears
+    await waitFor(() => {
+        expect(screen.queryAllByText('test.jpg').length).toBeGreaterThan(0);
+    });
 
     // Start compression
-    const startButtons = screen.getAllByText('Start Compression');
+    const startButtons = screen.getAllByText('compressor.start');
     fireEvent.click(startButtons[0]);
 
     await waitFor(() => {
-      expect(mockLoad).toHaveBeenCalled();
-      expect(mockExec).toHaveBeenCalled();
-    }, { timeout: 2000 });
-
-    expect(screen.getByText('Success!')).toBeDefined();
+      expect(screen.getByText('common.success')).toBeDefined();
+    }, { timeout: 3000 });
   });
 });

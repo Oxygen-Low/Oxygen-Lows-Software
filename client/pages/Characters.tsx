@@ -1,39 +1,36 @@
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Trash2, Edit2, User, ImageIcon, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
-interface Character {
-  id: string;
-  name: string;
-  image_url: string | null;
-  image_path: string | null;
-  short_description: string | null;
-  appearance: string | null;
-  personality: string | null;
-  hidden_description: string | null;
-  display_name: string | null;
-  backstory: string | null;
-}
+import { Plus, User, Image as ImageIcon, Loader2, Edit2, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Characters() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const { toast } = useToast();
-  const [characters, setCharacters] = useState<Character[]>([]);
+  const [characters, setCharacters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>({});
   const [uploading, setUploading] = useState(false);
+  const [currentCharacter, setCurrentCharacter] = useState<any>({});
 
   useEffect(() => {
-    if (session?.user) {
+    if (session?.user.id) {
       fetchCharacters();
     }
   }, [session]);
@@ -43,12 +40,12 @@ export default function Characters() {
       const { data, error } = await supabase
         .from("characters")
         .select("*")
-        .order("display_name", { nullsFirst: false }).order("name");
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setCharacters(data || []);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('common.error'), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -57,38 +54,42 @@ export default function Characters() {
   const handleSave = async () => {
     try {
       if (!currentCharacter.name) {
-        toast({ title: "Error", description: "Name is required", variant: "destructive" });
+        toast({ title: t('common.error'), description: t('characters.nameRequired'), variant: "destructive" });
         return;
       }
 
-      const payload = {
+      const charData = {
         ...currentCharacter,
         user_id: session?.user.id,
       };
 
+      let error;
       if (currentCharacter.id) {
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from("characters")
-          .update(payload)
+          .update(charData)
           .eq("id", currentCharacter.id);
-        if (error) throw error;
-        toast({ title: "Success", description: "Character updated" });
+        error = updateError;
       } else {
-        const { error } = await supabase.from("characters").insert(payload);
-        if (error) throw error;
-        toast({ title: "Success", description: "Character created" });
+        const { error: insertError } = await supabase
+          .from("characters")
+          .insert([charData]);
+        error = insertError;
       }
 
+      if (error) throw error;
+
+      toast({ title: t('common.success'), description: currentCharacter.id ? "Character updated" : "Character created" });
       setIsEditing(false);
       setCurrentCharacter({});
       fetchCharacters();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('common.error'), description: error.message, variant: "destructive" });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this character?")) return;
+    if (!confirm(t('characters.confirmDelete'))) return;
     try {
       // Get character first to get image_path
       const { data: char, error: fetchError } = await supabase
@@ -109,12 +110,12 @@ export default function Characters() {
         if (storageError) console.error("Failed to delete character image:", storageError);
       }
 
-      const { error } = await supabase.from("characters").delete().eq("id", id);
+      const { error } = await supabase.from("characters").delete().match({ id: id, user_id: session.user.id });
       if (error) throw error;
-      toast({ title: "Success", description: "Character deleted" });
+      toast({ title: t('common.success'), description: t('characters.deleted') });
       fetchCharacters();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('common.error'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -144,9 +145,9 @@ export default function Characters() {
       }
 
       setCurrentCharacter(prev => ({ ...prev, image_url: publicUrl, image_path: filePath }));
-      toast({ title: "Success", description: "Image uploaded" });
+      toast({ title: t('common.success'), description: t('characters.imageUploaded') });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('common.error'), description: error.message, variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -157,21 +158,21 @@ export default function Characters() {
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">Characters</h2>
-            <p className="text-slate-400">Create and manage characters for your chats.</p>
+            <h2 className="text-3xl font-bold tracking-tight text-white">{t('characters.title')}</h2>
+            <p className="text-slate-400">{t('characters.description')}</p>
           </div>
           <Dialog open={isEditing} onOpenChange={(open) => { setIsEditing(open); if (!open) setCurrentCharacter({}); }}>
             <DialogTrigger asChild>
               <Button className="bg-cyan-600 hover:bg-cyan-700">
                 <Plus className="w-4 h-4 mr-2" />
-                New Character
+                {t('characters.newCharacter')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
               <DialogHeader>
-                <DialogTitle>{currentCharacter.id ? "Edit Character" : "Create Character"}</DialogTitle>
+                <DialogTitle>{currentCharacter.id ? t('characters.editCharacter') : t('characters.createCharacter')}</DialogTitle>
                 <DialogDescription className="text-slate-400">
-                  Define your character's traits and backstory.
+                  {t('characters.traitsDesc')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -190,45 +191,45 @@ export default function Characters() {
                     )}
                   </div>
                   <div className="flex-1 space-y-2">
-                    <label className="text-sm font-medium">Name</label>
-                    <Input value={currentCharacter.name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, name: e.target.value }))} placeholder="Character Name" className="bg-slate-800 border-slate-700" />
+                    <label className="text-sm font-medium">{t('characters.name')}</label>
+                    <Input value={currentCharacter.name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, name: e.target.value }))} placeholder={t('characters.placeholderName')} className="bg-slate-800 border-slate-700" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Short Description</label>
-                    <Input value={currentCharacter.short_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, short_description: e.target.value }))} placeholder="A one-line hook" className="bg-slate-800 border-slate-700" />
+                    <label className="text-sm font-medium">{t('characters.shortDescription')}</label>
+                    <Input value={currentCharacter.short_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, short_description: e.target.value }))} placeholder={t('characters.placeholderShort')} className="bg-slate-800 border-slate-700" />
                   </div>
                   <div className="space-y-2 text-cyan-400">
-                    <label className="text-sm font-medium">Display Name</label>
-                    <Input value={currentCharacter.display_name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, display_name: e.target.value }))} placeholder="For organizing characters..." className="bg-slate-800 border-cyan-900" />
+                    <label className="text-sm font-medium">{t('characters.displayName')}</label>
+                    <Input value={currentCharacter.display_name || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, display_name: e.target.value }))} placeholder={t('characters.placeholderDisplay')} className="bg-slate-800 border-cyan-900" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Appearance</label>
-                  <Textarea value={currentCharacter.appearance || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, appearance: e.target.value }))} placeholder="What do they look like?" className="bg-slate-800 border-slate-700 h-20" />
+                  <label className="text-sm font-medium">{t('characters.appearance')}</label>
+                  <Textarea value={currentCharacter.appearance || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, appearance: e.target.value }))} placeholder={t('characters.placeholderAppearance')} className="bg-slate-800 border-slate-700 h-20" />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Personality</label>
-                  <Textarea value={currentCharacter.personality || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, personality: e.target.value }))} placeholder="How do they act?" className="bg-slate-800 border-slate-700 h-20" />
+                  <label className="text-sm font-medium">{t('characters.personality')}</label>
+                  <Textarea value={currentCharacter.personality || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, personality: e.target.value }))} placeholder={t('characters.placeholderPersonality')} className="bg-slate-800 border-slate-700 h-20" />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Backstory</label>
-                  <Textarea value={currentCharacter.backstory || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, backstory: e.target.value }))} placeholder="Their history and origins..." className="bg-slate-800 border-slate-700 h-32" />
+                  <label className="text-sm font-medium">{t('characters.backstory')}</label>
+                  <Textarea value={currentCharacter.backstory || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, backstory: e.target.value }))} placeholder={t('characters.placeholderBackstory')} className="bg-slate-800 border-slate-700 h-32" />
                 </div>
 
                 <div className="space-y-2 text-cyan-400">
-                  <label className="text-sm font-medium">Private Notes</label>
-                  <Textarea value={currentCharacter.hidden_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, hidden_description: e.target.value }))} placeholder="Write notes for yourself here (not shared with LLM)..." className="bg-slate-800 border-cyan-900 h-32" />
+                  <label className="text-sm font-medium">{t('characters.privateNotes')}</label>
+                  <Textarea value={currentCharacter.hidden_description || ""} onChange={e => setCurrentCharacter(prev => ({ ...prev, hidden_description: e.target.value }))} placeholder={t('characters.placeholderPrivate')} className="bg-slate-800 border-cyan-900 h-32" />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditing(false)} className="border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
-                <Button onClick={handleSave} className="bg-cyan-600 hover:bg-cyan-700">Save Character</Button>
+                <Button variant="outline" onClick={() => setIsEditing(false)} className="border-slate-700 text-slate-300 hover:bg-slate-800">{t('common.cancel')}</Button>
+                <Button onClick={handleSave} className="bg-cyan-600 hover:bg-cyan-700">{t('characters.saveCharacter')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -249,13 +250,13 @@ export default function Characters() {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="text-xl font-bold text-white truncate">{char.display_name || char.name}</h3>
-                    <p className="text-sm text-slate-300 truncate">{char.short_description || "No description"}</p>
+                    <p className="text-sm text-slate-300 truncate">{char.short_description || t('characters.noDescription')}</p>
                   </div>
                 </div>
                 <CardContent className="p-4 flex gap-2">
                   <Button variant="secondary" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" onClick={() => { setCurrentCharacter(char); setIsEditing(true); }}>
                     <Edit2 className="w-4 h-4 mr-2" />
-                    Edit
+                    {t('common.edit')}
                   </Button>
                   <Button variant="destructive" size="icon" onClick={() => handleDelete(char.id)}>
                     <Trash2 className="w-4 h-4" />
@@ -265,7 +266,7 @@ export default function Characters() {
             ))}
             {characters.length === 0 && (
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
-                <p className="text-slate-500">No characters created yet. Click "New Character" to begin.</p>
+                <p className="text-slate-500">{t('characters.noCharacters')}</p>
               </div>
             )}
           </div>

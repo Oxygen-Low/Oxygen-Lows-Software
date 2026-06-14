@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { File, Search, Loader2, Image as ImageIcon, Music, Film, Folder, ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface StorageFile {
   name: string;
@@ -38,6 +39,7 @@ export function StorageFileSelector({
   allowedTypes,
   trigger,
 }: StorageFileSelectorProps) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -105,17 +107,17 @@ export function StorageFileSelector({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || <Button variant="outline">Select File from Storage</Button>}
+        {trigger || <Button variant="outline">{t('storage.clickToSelect')}</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] bg-slate-950 border-slate-800 text-white">
         <DialogHeader>
-          <DialogTitle>Select File</DialogTitle>
+          <DialogTitle>{t('storage.clickToSelect')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
             <Input
-              placeholder="Search files..."
+              placeholder={t('common.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 bg-slate-900 border-slate-800 text-white"
@@ -203,7 +205,7 @@ export function StorageFileSelector({
                 ) : (
                   <div className="flex flex-col items-center justify-center h-[200px] text-slate-500">
                     <File className="w-8 h-8 mb-2 opacity-20" />
-                    <p>No files found</p>
+                    <p>{t('common.noItems')}</p>
                   </div>
                 )}
               </div>

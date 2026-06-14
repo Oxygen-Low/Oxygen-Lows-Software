@@ -9,6 +9,7 @@ import { Trash2, Plus, Play, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
+import { useTranslation } from "react-i18next";
 
 const THEMES: { label: string; value: Theme }[] = [
   { label: "Default/Oxygen", value: "default" },
@@ -27,6 +28,7 @@ const FONTS: { label: string; value: FontOption }[] = [
 ];
 
 export default function Customize() {
+  const { t } = useTranslation();
   const { theme, setTheme, useGradient, setUseGradient } = useTheme();
   const { font, setFont } = useFont();
   const { session } = useAuth();
@@ -48,13 +50,13 @@ export default function Customize() {
     if (!alreadyInPlaylist) {
       addTrack(track);
       toast({
-        title: "Success",
-        description: `Added "${track.name}" to playlist`,
+        title: t('common.success'),
+        description: t('customize.trackAdded', { name: track.name }),
       });
     } else {
       toast({
-        title: "Info",
-        description: "Track already in playlist",
+        title: t('common.info'),
+        description: t('customize.trackAlreadyIn'),
       });
     }
   };
@@ -62,26 +64,26 @@ export default function Customize() {
   const handleRemoveTrack = (trackFileName: string) => {
     removeTrack(trackFileName);
     toast({
-      title: "Removed",
-      description: "Track removed from playlist",
+      title: t('common.success'),
+      description: t('customize.trackRemoved'),
     });
   };
 
   return (
     <Layout>
       <div className="max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
+        <h1 className="text-3xl font-bold mb-8 text-foreground">{t('nav.customize')}</h1>
 
         {/* Theme Section */}
         <div className="mb-12">
           <h2 className="text-xl font-semibold mb-4 text-foreground">
-            Appearance
+            {t('customize.appearance')}
           </h2>
 
           <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
             <div>
-              <label className="text-foreground font-medium block">Use gradient</label>
-              <p className="text-sm text-muted-foreground">Apply a gradient background based on your theme</p>
+              <label className="text-foreground font-medium block">{t('customize.useGradient')}</label>
+              <p className="text-sm text-muted-foreground">{t('customize.useGradientDesc')}</p>
             </div>
             <button
               onClick={() => setUseGradient(!useGradient)}
@@ -91,11 +93,11 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {useGradient ? "Enabled" : "Disabled"}
+              {useGradient ? t('customize.enabled') : t('customize.disabled')}
             </button>
           </div>
 
-          <h3 className="text-lg font-medium mb-3 text-foreground">Theme Color</h3>
+          <h3 className="text-lg font-medium mb-3 text-foreground">{t('customize.themeColor')}</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {THEMES.map((themeOption) => (
               <button
@@ -115,7 +117,7 @@ export default function Customize() {
 
         {/* Font Section */}
         <div className="mb-12">
-          <h2 className="text-xl font-semibold mb-4 text-foreground">Font</h2>
+          <h2 className="text-xl font-semibold mb-4 text-foreground">{t('customize.font')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {FONTS.map((fontOption) => (
               <button
@@ -136,7 +138,7 @@ export default function Customize() {
         {/* Music Playlist Section */}
         <div>
           <h2 className="text-xl font-semibold mb-4 text-foreground">
-            Music Playlist
+            {t('customize.musicPlaylist')}
           </h2>
 
           {/* Music Player */}
@@ -146,7 +148,7 @@ export default function Customize() {
 
           {/* Shuffle Toggle */}
           <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
-            <label className="text-foreground font-medium">Shuffle</label>
+            <label className="text-foreground font-medium">{t('customize.shuffle')}</label>
             <button
               onClick={() => toggleShuffle(!shuffle)}
               className={`px-4 py-2 rounded-lg border-2 transition-all font-medium ${
@@ -155,18 +157,18 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {shuffle ? "On" : "Off"}
+              {shuffle ? t('customize.on') : t('customize.off')}
             </button>
           </div>
 
           {/* Playlist */}
           <div className="space-y-4 mb-6">
             <h3 className="text-lg font-semibold text-foreground">
-              Current Playlist
+              {t('customize.currentPlaylist')}
             </h3>
             {playlist.length === 0 ? (
               <p className="text-muted-foreground">
-                Your playlist is empty. Add tracks below.
+                {t('customize.playlistEmpty')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -203,7 +205,7 @@ export default function Customize() {
           {/* Available Audio Files */}
           <div>
             <h3 className="text-lg font-semibold mb-3 text-foreground">
-              Add Tracks from Storage
+              {t('customize.addFromStorage')}
             </h3>
             <StorageFileSelector
               allowedTypes={["audio"]}
@@ -218,7 +220,7 @@ export default function Customize() {
               trigger={
                 <Button className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2">
                   <Music className="w-8 h-8 opacity-50" />
-                  <span>Select Audio from Storage</span>
+                  <span>{t('customize.selectAudio')}</span>
                 </Button>
               }
             />

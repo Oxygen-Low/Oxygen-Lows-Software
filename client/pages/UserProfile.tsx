@@ -1,142 +1,103 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import Layout from "@/components/Layout";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import {
+  Users,
+  Loader2,
   UserPlus,
   UserMinus,
-  UserCheck,
   UserX,
+  UserCheck,
   ShieldAlert,
-  ShieldCheck,
-  Loader2,
-  Users
+  ShieldCheck
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-interface UserProfileData {
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  email: string | null;
-  show_email: boolean;
-}
-
-interface ProfilePicture {
-  image_url: string;
-}
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export default function UserProfile() {
-  const { username } = useParams<{ username: string }>();
-  const [profile, setProfile] = useState<UserProfileData | null>(null);
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
+  const { username } = useParams();
+  const navigate = useNavigate();
+  const { session, loading: authLoading } = useAuth();
+  const currentUser = session?.user;
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [friendship, setFriendship] = useState<any>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [stats, setStats] = useState({ followers: 0, following: 0, friends: 0 });
+  const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ friends: 0, followers: 0, following: 0 });
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchProfile(controller.signal);
-    return () => controller.abort();
-  }, [username]);
-
-  const fetchProfile = async (signal: AbortSignal) => {
     if (!username) return;
+    fetchProfile();
+  }, [username, currentUser]);
+
+  const fetchProfile = async () => {
     setIsLoading(true);
     setError(null);
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (signal.aborted) return;
-      setCurrentUser(user);
-
-      const { data, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("user_id, username, display_name, bio, email, show_email")
+      // Fetch user preferences and basic info
+      const { data: pref, error: prefError } = await supabase
+        .from("user_preferences")
+        .select("user_id, display_name, username, bio, profile_picture_path, show_email")
         .eq("username", username)
-        .limit(1)
-        .maybeSingle();
+        .single();
 
-      if (signal.aborted) return;
-
-      if (profileError || !data) {
-        setError("User not found");
-        setIsLoading(false);
+      if (prefError) {
+        if (prefError.code === "PGRST116") {
+          setError(t('common.noItems'));
+        } else {
+          setError(prefError.message);
+        }
         return;
       }
 
-      setProfile(data);
+      setProfile(pref);
 
-      // Fetch profile picture
-      const { data: pictureData } = await supabase
-        .from("profile_pictures")
-        .select("image_url")
-        .eq("user_id", data.user_id)
-        .limit(1)
-        .maybeSingle<ProfilePicture>();
-
-      if (signal.aborted) return;
-      setProfilePicture(pictureData?.image_url ?? null);
-
-      if (user && user.id !== data.user_id) {
-        // Fetch relationship status
-        const [friendData, followData, blockData] = await Promise.all([
-          supabase.from("friendships")
-            .select("*")
-            .or(`and(user_id.eq.${user.id},friend_id.eq.${data.user_id}),and(user_id.eq.${data.user_id},friend_id.eq.${user.id})`)
-            .limit(1)
-            .maybeSingle(),
-          supabase.from("follows")
-            .select("*")
-            .eq("follower_id", user.id)
-            .eq("following_id", data.user_id)
-            .limit(1)
-            .maybeSingle(),
-          supabase.from("blocks")
-            .select("*")
-            .eq("blocker_id", user.id)
-            .eq("blocked_id", data.user_id)
-            .limit(1)
-            .maybeSingle()
-        ]);
-
-        if (signal.aborted) return;
-        setFriendship(friendData.data);
-        setIsFollowing(!!followData.data);
-        setIsBlocked(!!blockData.data);
+      if (pref.profile_picture_path) {
+        const { data } = await supabase.storage
+          .from("Storage")
+          .createSignedUrl(pref.profile_picture_path, 3600);
+        if (data?.signedUrl) setProfilePicture(data.signedUrl);
       }
 
       // Fetch stats
-      const [followersCount, followingCount, friendsRpc] = await Promise.all([
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", data.user_id),
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", data.user_id),
-        supabase.rpc("count_accepted_friends", { p_target_user_id: data.user_id })
+      const [friendsRes, followersRes, followingRes] = await Promise.all([
+        supabase.from("friendships").select("count").eq("status", "accepted").or(`user_id.eq.${pref.user_id},friend_id.eq.${pref.user_id}`),
+        supabase.from("follows").select("count").eq("following_id", pref.user_id),
+        supabase.from("follows").select("count").eq("follower_id", pref.user_id),
       ]);
 
-      if (signal.aborted) return;
       setStats({
-        followers: followersCount.count || 0,
-        following: followingCount.count || 0,
-        friends: Number(friendsRpc.data) || 0
+        friends: (friendsRes.data as any)?.[0]?.count || 0,
+        followers: (followersRes.data as any)?.[0]?.count || 0,
+        following: (followingRes.data as any)?.[0]?.count || 0,
       });
-    } catch (e) {
-      if (!signal.aborted) {
-        console.error("Error fetching profile:", e);
-        setError("Failed to load profile");
+
+      if (currentUser && currentUser.id !== pref.user_id) {
+        // Fetch relations
+        const [friendshipRes, followingStatus, blockStatus] = await Promise.all([
+          supabase.from("friendships").select("*").or(`and(user_id.eq.${currentUser.id},friend_id.eq.${pref.user_id}),and(user_id.eq.${pref.user_id},friend_id.eq.${currentUser.id})`).maybeSingle(),
+          supabase.from("follows").select("*").eq("follower_id", currentUser.id).eq("following_id", pref.user_id).maybeSingle(),
+          supabase.from("blocks").select("*").eq("blocker_id", currentUser.id).eq("blocked_id", pref.user_id).maybeSingle(),
+        ]);
+
+        setFriendship(friendshipRes.data);
+        setIsFollowing(!!followingStatus.data);
+        setIsBlocked(!!blockStatus.data);
       }
+    } catch (e: any) {
+      setError(e.message);
     } finally {
-      if (!signal.aborted) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   };
 
@@ -157,7 +118,7 @@ export default function UserProfile() {
           return;
         }
         setFriendship(data);
-        toast.success("Friend request sent!");
+        toast.success(t('friends.requestSent'));
       } else if (friendship.status === 'pending' && friendship.friend_id === currentUser.id) {
         const { data, error } = await supabase
           .from("friendships")
@@ -171,7 +132,7 @@ export default function UserProfile() {
           return;
         }
         setFriendship(data);
-        toast.success("Friend request accepted!");
+        toast.success(t('friends.acceptRequest'));
         setStats(s => ({ ...s, friends: s.friends + 1 }));
       } else {
         const { error } = await supabase
@@ -184,7 +145,7 @@ export default function UserProfile() {
         }
         const wasAccepted = friendship.status === 'accepted';
         setFriendship(null);
-        toast.success(wasAccepted ? "Unfriended user" : "Request cancelled");
+        toast.success(wasAccepted ? t('friends.unfriended') : t('friends.cancelRequest'));
         if (wasAccepted) setStats(s => ({ ...s, friends: Math.max(0, s.friends - 1) }));
       }
     } catch (e: any) {
@@ -211,7 +172,7 @@ export default function UserProfile() {
         }
         setIsFollowing(false);
         setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
-        toast.success("Unfollowed user");
+        toast.success(t('friends.unfollow'));
       } else {
         const { error } = await supabase
           .from("follows")
@@ -222,7 +183,7 @@ export default function UserProfile() {
         }
         setIsFollowing(true);
         setStats(s => ({ ...s, followers: s.followers + 1 }));
-        toast.success("Following user");
+        toast.success(t('friends.nowFollowing'));
       }
     } catch (e: any) {
       toast.error("An unexpected error occurred: " + e.message);
@@ -247,7 +208,7 @@ export default function UserProfile() {
           return;
         }
         setIsBlocked(false);
-        toast.success("User unblocked");
+        toast.success(t('friends.userUnblocked'));
       } else {
         // Start block transaction
         const { error: blockError } = await supabase
@@ -273,7 +234,7 @@ export default function UserProfile() {
         setIsBlocked(true);
         setIsFollowing(false);
         setFriendship(null);
-        toast.success("User blocked");
+        toast.success(t('friends.userBlocked'));
       }
     } catch (e: any) {
       toast.error("An unexpected error occurred: " + e.message);
@@ -288,13 +249,13 @@ export default function UserProfile() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
             <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
-            <p className="text-slate-400">Loading profile...</p>
+            <p className="text-slate-400">{t('common.loading')}</p>
           </div>
         ) : error || !profile ? (
           <div className="text-center py-12">
-            <p className="text-red-400 text-lg">{error ?? "User not found"}</p>
-            <Button variant="link" onClick={() => window.history.back()} className="text-slate-500">
-              Go Back
+            <p className="text-red-400 text-lg">{error ?? t('common.noItems')}</p>
+            <Button variant="link" onClick={() => navigate(-1)} className="text-slate-500">
+              {t('common.back')}
             </Button>
           </div>
         ) : (
@@ -327,15 +288,15 @@ export default function UserProfile() {
                   <div className="flex flex-wrap justify-center md:justify-start gap-6 py-2">
                     <div className="text-center md:text-left">
                       <p className="text-white font-bold text-lg">{stats.friends}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">Friends</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">{t('nav.friends')}</p>
                     </div>
                     <div className="text-center md:text-left">
                       <p className="text-white font-bold text-lg">{stats.followers}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">Followers</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">{t('friends.followers')}</p>
                     </div>
                     <div className="text-center md:text-left">
                       <p className="text-white font-bold text-lg">{stats.following}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">Following</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">{t('friends.following')}</p>
                     </div>
                   </div>
 
@@ -354,13 +315,13 @@ export default function UserProfile() {
                         {actionLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : !friendship ? (
-                          <><UserPlus className="w-4 h-4 mr-2" /> Add Friend</>
+                          <><UserPlus className="w-4 h-4 mr-2" /> {t('friends.add')}</>
                         ) : friendship.status === 'pending' ? (
                           friendship.user_id === currentUser.id
-                            ? <><UserX className="w-4 h-4 mr-2" /> Cancel Request</>
-                            : <><UserCheck className="w-4 h-4 mr-2" /> Accept</>
+                            ? <><UserX className="w-4 h-4 mr-2" /> {t('friends.cancelRequest')}</>
+                            : <><UserCheck className="w-4 h-4 mr-2" /> {t('friends.acceptRequest')}</>
                         ) : (
-                          <><UserMinus className="w-4 h-4 mr-2" /> Unfriend</>
+                          <><UserMinus className="w-4 h-4 mr-2" /> {t('friends.unfriend')}</>
                         )}
                       </Button>
 
@@ -373,7 +334,7 @@ export default function UserProfile() {
                           isFollowing ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "text-slate-300"
                         )}
                       >
-                        {isFollowing ? "Following" : "Follow"}
+                        {isFollowing ? t('friends.following') : t('friends.follow')}
                       </Button>
 
                       <Button
@@ -385,7 +346,7 @@ export default function UserProfile() {
                           "h-10 w-10",
                           isBlocked ? "text-red-500 bg-red-500/10" : "text-slate-500 hover:text-red-400 hover:bg-red-400/10"
                         )}
-                        title={isBlocked ? "Unblock" : "Block"}
+                        title={isBlocked ? t('friends.unblock') : t('friends.blocked')}
                       >
                         {isBlocked ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
                       </Button>
@@ -395,10 +356,10 @@ export default function UserProfile() {
               </div>
 
               <div className="mt-8 pt-8 border-t border-slate-800/50">
-                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Bio</h3>
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">{t('account.bio')}</h3>
                 <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
                   <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {profile.bio || "This user hasn't written a bio yet."}
+                    {profile.bio || t('friends.noBio') || "This user hasn't written a bio yet."}
                   </p>
                 </div>
               </div>

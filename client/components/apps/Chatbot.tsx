@@ -1,229 +1,277 @@
 import { useState, useEffect, useRef } from "react";
-import { useAiModels } from "@/hooks/useAiModels";
-import { Send, Plus, Trash2, Bot, User, Loader2, FileCode, UserCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
+import {
+  Send,
+  Plus,
+  Trash2,
+  Loader2,
+  Bot,
+  User,
+  FileCode,
+  X,
+  Copy,
+  ChevronRight,
+  Maximize2,
+  Minimize2
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { ArtifactSidebar } from "./ArtifactSidebar";
+import { useAiModels } from "@/hooks/useAiModels";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
-export interface Artifact {
-  language: string;
-  filename: string;
-  content: string;
+interface Chat {
+  id: string;
+  title: string;
+  created_at: string;
+  style: string;
+  llm_character_id: string | null;
+  user_character_id: string | null;
 }
-
-export const parseArtifacts = (content: string): Artifact[] => {
-  const artifacts: Artifact[] = [];
-  const regex = /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\\\\\|$)/g;
-  let match;
-  while ((match = regex.exec(content)) !== null) {
-    artifacts.push({
-      language: match[1],
-      filename: match[2],
-      content: match[3].trim()
-    });
-  }
-  return artifacts;
-};
 
 interface Message {
   role: "user" | "assistant" | "system";
   content: string;
 }
 
-interface Chat {
+interface ChatStyle {
   id: string;
   title: string;
-  style: string;
-  llm_character_id?: string | null;
-  user_character_id?: string | null;
-  updated_at: string;
+  description: string;
+  prompt: string;
 }
 
-const styles = [
-  { id: "none", title: "None", description: "Disable style system" },
-  { id: "general", title: "General Assistant", description: "Helpful and concise" },
-  { id: "coding", title: "Coding Expert", description: "Specialized in software development" },
-  { id: "creative", title: "Creative Writer", description: "Imaginative and expressive" },
-];
+interface Character {
+  id: string;
+  name: string;
+  display_name: string | null;
+}
+
+interface Artifact {
+  id: string;
+  filename: string;
+  language: string;
+  content: string;
+}
+
+const parseArtifacts = (content: string): Artifact[] => {
+  const artifacts: Artifact[] = [];
+  const regex = /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\\\\\|$)/g;
+  let match;
+
+  while ((match = regex.exec(content)) !== null) {
+    artifacts.push({
+      id: Math.random().toString(36).substr(2, 9),
+      filename: match[1],
+      language: match[2],
+      content: match[3].trim()
+    });
+  }
+  return artifacts;
+};
+
+const ArtifactSidebar = ({ artifact, onClose }: { artifact: Artifact; onClose: () => void }) => {
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  return (
+    <div className={cn(
+      "border-l border-slate-800 bg-slate-900 transition-all duration-300 flex flex-col",
+      isMaximized ? "fixed inset-0 z-50" : "w-[450px]"
+    )}>
+      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+        <div className="flex items-center gap-3">
+          <FileCode className="w-5 h-5 text-cyan-400" />
+          <div>
+            <h3 className="text-sm font-semibold text-white">{artifact.filename}</h3>
+            <p className="text-[10px] text-slate-500 uppercase font-mono">{artifact.language}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => { navigator.clipboard.writeText(artifact.content); toast.success("Copied to clipboard"); }}>
+            <Copy className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => setIsMaximized(!isMaximized)}>
+            {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-4">
+          <SyntaxHighlighter
+            style={vscDarkPlus}
+            language={artifact.language}
+            customStyle={{
+              margin: 0,
+              background: 'transparent',
+              fontSize: '13px',
+              lineHeight: '1.6'
+            }}
+          >
+            {artifact.content}
+          </SyntaxHighlighter>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
 
 export const ChatbotApp = () => {
+  const { t } = useTranslation();
+  const { session } = useAuth();
+  const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedStyle, setSelectedStyle] = useState("general");
-
-
-
-  const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
+  const [styles, setStyles] = useState<ChatStyle[]>([]);
+  const [selectedStyle, setSelectedStyle] = useState("GeneralAssistant");
+  const [availableCharacters, setAvailableCharacters] = useState<Character[]>([]);
   const [selectedLlmCharacter, setSelectedLlmCharacter] = useState<string | null>(null);
   const [selectedUserCharacter, setSelectedUserCharacter] = useState<string | null>(null);
-  const [availableCharacters, setAvailableCharacters] = useState<any[]>([]);
-  const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
+  const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastParsedLengthRef = useRef(0);
-  const streamBufferRef = useRef("");
   const isTypingRef = useRef(false);
 
   useEffect(() => {
-    fetchChats();
+    if (!session?.user?.id) return;
 
-    fetchCharacters();
-  }, []);
+    const fetchData = async () => {
+      const [{ data: chatList }, { data: styleList }, { data: chars }] = await Promise.all([
+        supabase.from("chats").select("*").eq("user_id", session.user.id).order("updated_at", { ascending: false }),
+        supabase.rpc("get_chat_styles"),
+        supabase.from("characters").select("id, name, display_name").eq("user_id", session.user.id)
+      ]);
 
-  const fetchCharacters = async () => {
-    const { data } = await supabase.from("characters").select("*").order("display_name", { nullsFirst: false }).order("name");
-    if (data) setAvailableCharacters(data);
-  };
+      if (chatList) setChats(chatList);
+      if (styleList) setStyles(styleList);
+      if (chars) setAvailableCharacters(chars);
+    };
 
-  const fetchChats = async () => {
-    const { data } = await supabase.from("chats").select("*").order("updated_at", { ascending: false });
-    if (data) setChats(data);
-  };
-
-
+    fetchData();
+  }, [session]);
 
   useEffect(() => {
-    if (currentChatId) {
-      fetchMessages(currentChatId);
+    if (!currentChatId) {
+      setMessages([]);
+      setSelectedLlmCharacter(null);
+      setSelectedUserCharacter(null);
+      return;
+    }
+
+    const fetchMessages = async () => {
+      const { data: msgList } = await supabase
+        .from("chat_messages")
+        .select("role, content")
+        .eq("chat_id", currentChatId)
+        .order("created_at", { ascending: true });
+
+      if (msgList) setMessages(msgList as Message[]);
+
       const chat = chats.find(c => c.id === currentChatId);
       if (chat) {
-        setSelectedStyle(chat.style || "general");
-        setSelectedLlmCharacter(chat.llm_character_id || null);
-        setSelectedUserCharacter(chat.user_character_id || null);
+        setSelectedStyle(chat.style);
+        setSelectedLlmCharacter(chat.llm_character_id);
+        setSelectedUserCharacter(chat.user_character_id);
       }
-    } else {
-      setMessages([]);
-    }
+    };
+
+    fetchMessages();
   }, [currentChatId, chats]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const fetchMessages = async (chatId: string) => {
-    const { data } = await supabase.from("chat_messages").select("*").eq("chat_id", chatId).order("created_at", { ascending: true });
-    if (data) setMessages(data.map(m => ({ role: m.role, content: m.content })));
-  };
+  }, [messages, isTyping]);
 
   const handleCreateChat = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase.from("chats").insert({
+    if (!session?.user?.id) return;
+    const { data, error } = await supabase
+      .from("chats")
+      .insert({
         user_id: session.user.id,
         title: "New Chat",
         style: selectedStyle,
         llm_character_id: selectedLlmCharacter,
         user_character_id: selectedUserCharacter
-      }).select().single();
-      if (error) throw error;
-      setChats([data, ...chats]);
-      setCurrentChatId(data.id);
-    } catch (e: any) {
-      toast.error(e.message);
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error(error.message);
+      return;
     }
+
+    setChats([data, ...chats]);
+    setCurrentChatId(data.id);
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim() || !currentChatId || isTypingRef.current) return;
+    if (!input.trim() || isTyping || !currentChatId || !session?.user?.id) return;
 
-    const userMsg: Message = { role: "user", content: input };
-    setMessages(prev => [...prev, userMsg]);
+    const userMessage: Message = { role: "user", content: input };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
     lastParsedLengthRef.current = 0;
 
     try {
-      const { error: userInsertError } = await supabase.from("chat_messages").insert({ chat_id: currentChatId, ...userMsg });
-      if (userInsertError) throw new Error("Failed to persist user message");
+      const { error: userInsertError } = await supabase.from("chat_messages").insert({ chat_id: currentChatId, role: "user", content: input });
+      if (userInsertError) throw userInsertError;
 
-      const llmChar = availableCharacters.find(c => c.id === selectedLlmCharacter);
-      const userChar = availableCharacters.find(c => c.id === selectedUserCharacter);
+      const style = styles.find(s => s.id === selectedStyle);
 
-      let systemPrompt = "";
-      if (selectedStyle !== "none") {
-        const styleObj = styles.find(s => s.id === selectedStyle);
-        systemPrompt = styleObj ? styleObj.description : "";
-      }
-
-      if (llmChar) {
-        systemPrompt += `\nYou are playing the character: ${llmChar.name}.
-Appearance: ${llmChar.appearance || ""}
-Personality: ${llmChar.personality || ""}
-Backstory: ${llmChar.backstory || ""}`;
-      }
-
-      if (userChar) {
-        systemPrompt += `\nThe person you are talking to is: ${userChar.name}.
-Appearance: ${userChar.appearance || ""}
-Personality: ${userChar.personality || ""}
-Backstory: ${userChar.backstory || ""}`;
-      }
-
-      const history = [...messages, userMsg];
-      const chatContext = systemPrompt ? [{ role: "system", content: systemPrompt }, ...history] : history;
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const response = await fetch("/api/ai/chat", {
+      const response = await fetch("/api/ai/proxy", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: chatContext,
           provider: selectedProvider,
           model: selectedModel,
-          stream: true
+          messages: newMessages,
+          systemPrompt: style?.prompt,
+          stream: true,
+          llm_character_id: selectedLlmCharacter,
+          user_character_id: selectedUserCharacter
         })
       });
 
-      if (!response.ok) throw new Error("AI request failed");
+      if (!response.ok) throw new Error("Failed to get response");
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader");
 
       let fullContent = "";
-      streamBufferRef.current = "";
-      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+      setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-      let streamDone = false;
-      while (!streamDone) {
+      while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = new TextDecoder().decode(value);
-        streamBufferRef.current += chunk;
-        const lines = streamBufferRef.current.split("\n");
-        streamBufferRef.current = lines.pop() || "";
+        const lines = chunk.split("\n").filter(l => l.trim());
 
         for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine.startsWith("data: ")) continue;
-
-          const dataStr = trimmedLine.replace("data: ", "");
-          if (dataStr === "[DONE]") { streamDone = true; break; }
+          if (!line.startsWith("data: ")) continue;
+          if (line.includes("[DONE]")) continue;
 
           try {
-            const data = JSON.parse(dataStr);
-
+            const data = JSON.parse(line.slice(6));
             let delta = "";
-            if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom") {
+
+            if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom" || selectedProvider === "stablehorde") {
               delta = data.choices?.[0]?.delta?.content || "";
             } else if (selectedProvider === "anthropic") {
               delta = data.delta?.text || "";
@@ -281,7 +329,7 @@ Backstory: ${userChar.backstory || ""}`;
   return (
     <div className="flex h-[700px] gap-0 bg-slate-950/30 rounded-2xl border border-slate-800 overflow-hidden text-slate-200">
       <div className="w-64 flex flex-col gap-4 border-r border-slate-800 p-6">
-        <Button onClick={handleCreateChat} className="w-full bg-cyan-600"><Plus className="w-4 h-4 mr-2" /> New Chat</Button>
+        <Button onClick={handleCreateChat} className="w-full bg-cyan-600"><Plus className="w-4 h-4 mr-2" /> {t('chatbot.newChat')}</Button>
         <ScrollArea className="flex-1">
           <div className="space-y-2">
             {chats.map(c => (
@@ -293,23 +341,23 @@ Backstory: ${userChar.backstory || ""}`;
           </div>
         </ScrollArea>
         <div className="pt-4 border-t border-slate-800 space-y-4 overflow-y-auto">
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">Model</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.model')}</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded" value={`${selectedProvider}:${selectedModel}`} onChange={e => { const [p, m] = e.target.value.split(":"); setSelection(m, p); }}>
               {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{m.provider === "ollama" ? "ollama/" + m.model_id : m.provider + " - " + m.model_id}</option>)}
             </select>
           </div>
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">Style</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.style')}</label>
             <div className="space-y-1">{styles.map(s => <div key={s.id} onClick={() => { setSelectedStyle(s.id); updateChatSetting({ style: s.id }); }} className={cn("p-2 rounded cursor-pointer", selectedStyle === s.id ? "bg-slate-800 ring-1 ring-cyan-500/50" : "hover:bg-slate-900")}><p className="text-xs font-bold text-white">{s.title}</p><p className="text-[10px] text-slate-500 truncate">{s.description}</p></div>)}</div>
           </div>
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">LLM Character</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.llmCharacter')}</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1" value={selectedLlmCharacter || ""} onChange={e => { const val = e.target.value || null; setSelectedLlmCharacter(val); updateChatSetting({ llm_character_id: val }); }}>
-              <option value="">None</option>
+              <option value="">{t('chatbot.none')}</option>
               {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.display_name || c.name}</option>)}
             </select>
           </div>
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">User Character</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.userCharacter')}</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1" value={selectedUserCharacter || ""} onChange={e => { const val = e.target.value || null; setSelectedUserCharacter(val); updateChatSetting({ user_character_id: val }); }}>
-              <option value="">None</option>
+              <option value="">{t('chatbot.none')}</option>
               {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.display_name || c.name}</option>)}
             </select>
           </div>
@@ -318,7 +366,7 @@ Backstory: ${userChar.backstory || ""}`;
 
       <div className="flex-1 flex flex-col min-w-0 p-6">
         {!currentChatId ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500"><Bot className="w-12 h-12 mb-4" /><p>Select a chat to start</p></div>
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500"><Bot className="w-12 h-12 mb-4" /><p>{t('chatbot.selectChat')}</p></div>
         ) : (
           <>
             <ScrollArea className="flex-1 pr-4">
@@ -370,7 +418,7 @@ Backstory: ${userChar.backstory || ""}`;
               </div>
             </ScrollArea>
             <div className="pt-6 border-t border-slate-800 relative">
-              <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !isTyping && handleSendMessage()} placeholder="Ask anything..." className="w-full bg-slate-900/50 pl-4 pr-12 py-6 border-slate-700 text-white" />
+              <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !isTyping && handleSendMessage()} placeholder={t('chatbot.askAnything')} className="w-full bg-slate-900/50 pl-4 pr-12 py-6 border-slate-700 text-white" />
               <Button onClick={handleSendMessage} disabled={!input.trim() || isTyping} className="absolute right-2 top-1/2 -translate-y-1/2 bg-cyan-600 h-10 w-10 p-0 hover:bg-cyan-700" aria-label="Send message"><Send className="w-4 h-4" /></Button>
             </div>
           </>
