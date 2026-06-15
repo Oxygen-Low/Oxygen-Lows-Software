@@ -9,7 +9,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MusicProvider } from "@/contexts/MusicContext";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Apps from "./pages/Apps";
 import Friends from "./pages/Friends";
@@ -37,7 +36,7 @@ const App = () => (
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <Index />
+                    <Apps />
                   </ProtectedRoute>
                 }
               />
