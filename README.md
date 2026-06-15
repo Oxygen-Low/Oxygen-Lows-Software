@@ -6,13 +6,9 @@ It's easy to set up, just run pnpm install, pnpm build, then pnpm start, then yo
 
 ### You can also set it up using Docker.
 
-docker pull ghcr.io/oxygen-low/oxygen-lows-software:latest
-
-Docker Hub:
+docker pull oxygenlow/oxygen-lows-software:latest
 
 https://hub.docker.com/r/oxygenlow/oxygen-lows-software
-
-docker pull oxygenlow/oxygen-lows-software:latest
 
 ### You also get 30MB of image, document, and audio storage on the cloud at no cost.
 
