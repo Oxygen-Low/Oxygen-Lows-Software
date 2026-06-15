@@ -1,6 +1,6 @@
 FROM node:26-slim
 
-RUN npm install -g pnpm@11.5.2
+RUN pnpm install -g pnpm@11.6.0
 
 WORKDIR /app
 
