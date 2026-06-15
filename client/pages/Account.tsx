@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, Globe2, ChevronRight } from "lucide-react";
+import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import Cropper, { Area } from "react-easy-crop";
@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTheme } from "@/contexts/ThemeContext";
 
 interface UserProfile { user_id: string; username: string; display_name: string; bio: string; email: string | null; show_email: boolean; }
 interface ProfilePicture { id: string; user_id?: string; image_url: string; crop_data: Area; }
@@ -45,19 +44,20 @@ export default function Account() {
   const [newModelInput, setNewModelInput] = useState("");
   const [selectedProviderForModel, setSelectedProviderForModel] = useState("openai");
 
-  useEffect(() => {
+  const fetchAccountData = useCallback(async () => {
     if (!session?.user?.id) return;
-    const fetch = async () => {
-      const { data: pic } = await supabase.from("profile_pictures").select("*").eq("user_id", session.user.id).single();
-      if (pic) setProfilePicture(pic);
-      const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", session.user.id).single();
-      if (prof) { setProfile(prof); setUsernameInput(prof.username || ""); setDisplayNameInput(prof.display_name || ""); setBioInput(prof.bio || ""); }
-      const { data: idents } = await supabase.auth.getUser(); if (idents.user) setIdentities(idents.user.identities || []);
-      const { data: ints } = await supabase.rpc("get_user_integrations"); if (ints) setIntegrations(ints);
-      const { data: mods } = await supabase.from("user_models").select("*"); if (mods) setUserModels(mods);
-    };
-    fetch();
+    const { data: pic } = await supabase.from("profile_pictures").select("*").eq("user_id", session.user.id).single();
+    if (pic) setProfilePicture(pic);
+    const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", session.user.id).single();
+    if (prof) { setProfile(prof); setUsernameInput(prof.username || ""); setDisplayNameInput(prof.display_name || ""); setBioInput(prof.bio || ""); }
+    const { data: idents } = await supabase.auth.getUser(); if (idents.user) setIdentities(idents.user.identities || []);
+    const { data: ints } = await supabase.rpc("get_user_integrations"); if (ints) setIntegrations(ints);
+    const { data: mods } = await supabase.from("user_models").select("*"); if (mods) setUserModels(mods);
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    fetchAccountData();
+  }, [fetchAccountData]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { const r = new FileReader(); r.onload = () => setSelectedImage(r.result as string); r.readAsDataURL(e.target.files[0]); } };
   const handleUpload = async () => {
@@ -88,9 +88,46 @@ export default function Account() {
 
   const handleSaveIntegration = async (provider: string) => {
     const key = apiKeyInputs[provider]; const url = baseUrlInputs[provider];
-    if (key) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_api_key: key, p_base_url: url });
-    else if (url) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_base_url: url });
-    setApiKeyInputs({ ...apiKeyInputs, [provider]: "" }); toast({ title: "Success" });
+    if (!key && !url) return;
+    try {
+      if (key) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_api_key: key, p_base_url: url });
+      else if (url) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_base_url: url });
+      setApiKeyInputs({ ...apiKeyInputs, [provider]: "" });
+      toast({ title: "Success" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const { error } = await supabase.from("profiles").upsert({
+        user_id: session?.user?.id,
+        username: usernameInput,
+        display_name: displayNameInput,
+        bio: bioInput
+      });
+      if (error) throw error;
+      toast({ title: "Success" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleAddCustomModel = async () => {
+    try {
+      const { error } = await supabase.rpc("upsert_user_model", {
+        p_provider: selectedProviderForModel,
+        p_model_id: newModelInput
+      });
+      if (error) throw error;
+      setNewModelInput("");
+      const { data } = await supabase.from("user_models").select("*");
+      if (data) setUserModels(data);
+      toast({ title: "Added" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleLinkIdentity = async (provider: string) => { try { await linkIdentity(provider as any); toast({ title: "Success" }); } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); } };
@@ -130,7 +167,7 @@ export default function Account() {
                     <Input value={usernameInput} onChange={e => setUsernameInput(e.target.value.toLowerCase())} placeholder="Username" className="bg-slate-950" />
                     <Input value={displayNameInput} onChange={e => setDisplayNameInput(e.target.value)} placeholder="Display Name" className="bg-slate-950" />
                     <textarea value={bioInput} onChange={e => setBioInput(e.target.value)} placeholder="Bio" className="w-full min-h-[100px] bg-slate-950 border-slate-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition" />
-                    <Button onClick={() => supabase.from("profiles").upsert({ user_id: session?.user?.id, username: usernameInput, display_name: displayNameInput, bio: bioInput }).then(() => toast({ title: "Success" }))} className="bg-cyan-600">Save Changes</Button>
+                    <Button onClick={handleSaveProfile} className="bg-cyan-600">Save Changes</Button>
                   </div>
                 </div>
               </CardContent>
@@ -167,7 +204,7 @@ export default function Account() {
                 <div className="flex gap-3">
                   <select value={selectedProviderForModel} onChange={e => setSelectedProviderForModel(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm">{PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
                   <Input placeholder="Model ID" value={newModelInput} onChange={e => setNewModelInput(e.target.value)} className="bg-slate-950" />
-                  <Button onClick={() => supabase.rpc("upsert_user_model", { p_provider: selectedProviderForModel, p_model_id: newModelInput }).then(() => { setNewModelInput(""); supabase.from("user_models").select("*").then(({data}) => data && setUserModels(data)); toast({title: "Added"}); })} className="bg-cyan-600">Add</Button>
+                  <Button onClick={handleAddCustomModel} className="bg-cyan-600">Add</Button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {userModels.map((m, idx) => (

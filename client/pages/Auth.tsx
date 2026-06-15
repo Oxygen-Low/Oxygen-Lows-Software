@@ -59,21 +59,37 @@ export default function Auth() {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    setLoadingSubmit(true);
 
     if (mode === "signup" || mode === "recovery") {
-      const isPwned = await isPasswordPwned(password);
-      if (isPwned) {
-        setError("This password has been leaked in data breaches. Please choose a more secure password.");
-        return;
+      try {
+        const isPwned = await isPasswordPwned(password);
+        if (isPwned) {
+          setError("This password has been leaked in data breaches. Please choose a more secure password.");
+          setLoadingSubmit(false);
+          return;
+        }
+      } catch (err) {
+        console.error("HIBP check failed:", err);
       }
     }
 
-    setLoadingSubmit(true);
     try {
       if (mode === "signin") {
-        await signIn(email, password);
+        const res = await signIn(email, password);
+        if ((res as any).error) throw (res as any).error;
       } else if (mode === "signup") {
-        await signUp(email, password, username);
+        const res = await signUp(email, password, username);
+        if ((res as any).error) throw (res as any).error;
+
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .insert({ user_id: userData.user.id, username });
+          if (profileError) throw profileError;
+        }
+
         setSuccessMessage("Account created! You can now sign in.");
         setTimeout(() => setMode("signin"), 2000);
       } else if (mode === "recovery") {
@@ -91,12 +107,18 @@ export default function Auth() {
 
   const generatePassword = () => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+    const array = new Uint32Array(16);
+    crypto.getRandomValues(array);
     let retVal = "";
-    for (let i = 0, n = charset.length; i < 16; ++i) {
-      retVal += charset.charAt(Math.floor(Math.random() * n));
+    for (let i = 0; i < 16; i++) {
+      retVal += charset.charAt(array[i] % charset.length);
     }
     setPassword(retVal);
-    navigator.clipboard.writeText(retVal);
+    try {
+      navigator.clipboard.writeText(retVal);
+    } catch (err) {
+      console.warn("Failed to copy to clipboard:", err);
+    }
   };
 
   return (

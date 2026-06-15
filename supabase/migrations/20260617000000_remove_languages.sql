@@ -3,6 +3,7 @@ ALTER TABLE public.user_preferences DROP COLUMN IF EXISTS language;
 ALTER TABLE public.user_preferences DROP COLUMN IF EXISTS sub_language;
 
 -- Update the upsert_user_preferences function to remove language parameters
+-- Note: p_user_id is used for authorization validation. The operation always targets the current authenticated user (auth.uid()).
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,
@@ -50,13 +51,13 @@ BEGIN
   )
   VALUES (
     v_user_id,
-    p_theme,
-    p_font,
-    p_music_playlist,
+    COALESCE(p_theme, 'default'),
+    COALESCE(p_font, 'default'),
+    COALESCE(p_music_playlist, '[]'::jsonb),
     p_current_music_track,
-    p_current_music_position,
-    p_shuffle_enabled,
-    p_use_gradient,
+    COALESCE(p_current_music_position, 0),
+    COALESCE(p_shuffle_enabled, false),
+    COALESCE(p_use_gradient, true),
     p_last_model_id,
     p_last_provider,
     now()

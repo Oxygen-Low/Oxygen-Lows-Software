@@ -188,10 +188,10 @@ export function FriendsApp() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-slate-950 border border-slate-800 w-full justify-start overflow-x-auto h-auto flex-wrap">
           <TabsTrigger value="friends" className="flex gap-2">
-            <Users className="w-4 h-4" /> "Friends" ({friends.length})
+            <Users className="w-4 h-4" /> Friends ({friends.length})
           </TabsTrigger>
           <TabsTrigger value="requests" className="flex gap-2">
-            <UserPlus className="w-4 h-4" /> "Requests" ({pendingIncoming.length + pendingOutgoing.length})
+            <UserPlus className="w-4 h-4" /> Requests ({pendingIncoming.length + pendingOutgoing.length})
           </TabsTrigger>
           <TabsTrigger value="following" className="flex gap-2">
             <UserCheck className="w-4 h-4" />Social</TabsTrigger>

@@ -109,7 +109,7 @@ export function StorageFileSelector({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] bg-slate-950 border-slate-800 text-white">
         <DialogHeader>
-          <DialogTitle>Click to select from storage</DialogTitle>
+          <DialogTitle>Select File</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="relative">

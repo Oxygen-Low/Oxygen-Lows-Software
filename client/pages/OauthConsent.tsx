@@ -164,7 +164,7 @@ export default function OauthConsent() {
               ) : (
                 <li className="flex items-start gap-3 text-sm text-slate-400">
                   <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>"View your email address" (default)</span>
+                  <span>View your email address (default)</span>
                 </li>
               )}
             </ul>

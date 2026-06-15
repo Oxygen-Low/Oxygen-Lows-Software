@@ -165,7 +165,7 @@ export default function Storage() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-slate-400">
-                <span>{formatSize(totalAll)} "used"</span>
+                <span>{formatSize(totalAll)} used</span>
                 <span>{`Limit: ${'30MB'} (Files)`}</span>
               </div>
               <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden flex">
@@ -263,11 +263,11 @@ export default function Storage() {
                     {cloudFileSignedUrls[file.id] ? (
                       <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" asChild>
                         <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" />View</a>
+                          <ExternalLink className="w-4 h-4 mr-2" /> View</a>
                       </Button>
                     ) : (
                       <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed" disabled>
-                        <ExternalLink className="w-4 h-4 mr-2" />View</Button>
+                        <ExternalLink className="w-4 h-4 mr-2" /> View</Button>
                     )}
                     <Button variant="destructive" size="icon" onClick={() => deleteCloudFile(file.name)}>
                       <Trash2 className="w-4 h-4" />

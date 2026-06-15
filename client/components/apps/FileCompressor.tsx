@@ -215,7 +215,7 @@ export function FileCompressorApp() {
               {compressing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  "Compressing your file..." {progress > 0 ? `${progress}%` : ""}
+                  Compressing your file... {progress > 0 ? `${progress}%` : ""}
                 </>
               ) : (
                 <>

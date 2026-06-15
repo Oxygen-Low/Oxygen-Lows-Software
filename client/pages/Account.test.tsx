@@ -5,9 +5,6 @@ import Account from './Account';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
-// Mock i18next
-
-
 // Full mock of Supabase
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -23,7 +20,7 @@ vi.mock('@/lib/supabase', () => ({
         eq: vi.fn(() => builder),
         order: vi.fn(() => builder),
         single: vi.fn(() => {
-          if (table === 'user_preferences') return Promise.resolve({ data: { theme: 'default', use_gradient: true, }, error: null });
+          if (table === 'user_preferences') return Promise.resolve({ data: { theme: 'default', use_gradient: true }, error: null });
           return Promise.resolve({ data: null, error: null });
         }),
         upsert: vi.fn(() => Promise.resolve({ data: null, error: null })),
@@ -32,7 +29,7 @@ vi.mock('@/lib/supabase', () => ({
       return builder;
     }),
     rpc: vi.fn((name) => {
-      if (name === "get_my_integrations") return Promise.resolve({ data: [], error: null });
+      if (name === "get_user_integrations") return Promise.resolve({ data: [], error: null });
       if (name === "upsert_user_preferences") return Promise.resolve({ data: null, error: null });
       return Promise.resolve({ data: [], error: null });
     }),
@@ -65,7 +62,6 @@ describe('Account Component', () => {
 
   it('links identities correctly', async () => {
     render(<ThemeProvider><Account /></ThemeProvider>);
-    // Look for the translation key since we mocked t to return the key
     const githubBtn = await screen.findByText(/github/i);
     fireEvent.click(githubBtn);
     await waitFor(() => expect(mockLinkIdentity).toHaveBeenCalledWith('github'));
