@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low's Software",
+    "title": "Програмне забезпечення Oxygen Low",
     "signin": "Увійти",
     "signup": "Реєстрація",
     "createAccount": "Створити акаунт",
@@ -28,7 +28,7 @@
     "friends": "Друзі",
     "storage": "Сховище",
     "customize": "Налаштування",
-    "account": "Акаунт"
+    "account": "Налаштування акаунта"
   },
   "account": {
     "profile": "Профіль",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
@@ -317,7 +317,7 @@
     },
     "oauth": {
       "name": "OAuth",
-      "desc": "Додайте OAuth у свої додатки через Oxygen Low's Software."
+      "desc": "Додайте OAuth у свої додатки через Oxygen Low."
     }
   },
   "chat": {

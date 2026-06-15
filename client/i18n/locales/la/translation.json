@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low's Software",
+    "title": "Oxygen Low Scriptura",
     "signin": "Inire",
     "signup": "Subscribere",
     "createAccount": "Creare Rationem",
@@ -28,7 +28,7 @@
     "friends": "Amici",
     "storage": "Repositorium",
     "customize": "Aptare",
-    "account": "Ratio"
+    "account": "Rationis Optiones"
   },
   "account": {
     "profile": "Ratio",
@@ -251,7 +251,7 @@
     "noClients": "Nullas applicationes creasti.",
     "noGrants": "Nullas applicationes accepisti.",
     "authorizeTitle": "Accipere {{name}}",
-    "authorizeDesc": "Haec applicatio connectere vult ad rationem tuam Oxygen Low's Software.",
+    "authorizeDesc": "Haec applicatio connectere vult ad rationem tuam Oxygen Low.",
     "permissions": "Potestates Rogatae:",
     "permissionOpenid": "Aditus ad indicem tuum unicum",
     "permissionEmail": "Aspicere litteras tuas electronicas",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
@@ -317,7 +317,7 @@
     },
     "oauth": {
       "name": "OAuth",
-      "desc": "Addere OAuth in apps tuis per Oxygen Low's Software."
+      "desc": "Addere OAuth in apps tuis per Oxygen Low."
     }
   },
   "chat": {

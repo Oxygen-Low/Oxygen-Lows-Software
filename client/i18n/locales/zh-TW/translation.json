@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low's Software",
+    "title": "Oxygen Low 軟體",
     "signin": "登入",
     "signup": "註冊",
     "createAccount": "建立帳號",
@@ -28,7 +28,7 @@
     "friends": "好友",
     "storage": "儲存空間",
     "customize": "個性化",
-    "account": "帳號"
+    "account": "帳號設定"
   },
   "account": {
     "profile": "個人資料",
@@ -251,7 +251,7 @@
     "noClients": "您尚未建立任何 OAuth 應用程式。",
     "noGrants": "您尚未授權任何應用程式。",
     "authorizeTitle": "授權 {{name}}",
-    "authorizeDesc": "此應用程式想要連接到您的 Oxygen Low's Software 帳號。",
+    "authorizeDesc": "此應用程式想要連接到您的 Oxygen Low 軟體帳號。",
     "permissions": "請求的權限：",
     "permissionOpenid": "訪問您的唯一用戶識別碼",
     "permissionEmail": "查看您的電子郵件地址",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
@@ -317,7 +317,7 @@
     },
     "oauth": {
       "name": "OAuth",
-      "desc": "透過 Oxygen Low's Software 帳號為您的應用添加 OAuth。"
+      "desc": "透過 Oxygen Low 帳號為您的應用添加 OAuth。"
     }
   },
   "chat": {
