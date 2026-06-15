@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low Software",
+    "title": "Oxygen Low's Software",
     "signin": "Войти",
     "signup": "Регистрация",
     "createAccount": "Создать аккаунт",
@@ -28,7 +28,7 @@
     "friends": "Друзья",
     "storage": "Хранилище",
     "customize": "Настройка",
-    "account": "Настройки аккаунта"
+    "account": "Аккаунт"
   },
   "account": {
     "profile": "Профиль",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
@@ -317,7 +317,7 @@
     },
     "oauth": {
       "name": "OAuth",
-      "desc": "Добавьте OAuth в свои приложения через Oxygen Low."
+      "desc": "Добавьте OAuth в свои приложения через Oxygen Low's Software."
     }
   },
   "chat": {

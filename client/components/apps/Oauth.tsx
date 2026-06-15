@@ -204,7 +204,7 @@ export function OauthApp() {
                 <DialogHeader>
                   <DialogTitle>{t('oauth.registerApp')}</DialogTitle>
                   <DialogDescription className="text-slate-400">
-                    Create a new OAuth application to integrate with Oxygen Low.
+                    {t('oauth.createDescription')}
                   </DialogDescription>
                 </DialogHeader>
 
