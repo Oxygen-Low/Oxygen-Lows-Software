@@ -1,5 +1,7 @@
 FROM node:26-slim
 
+RUN corepack enable pnpm
+
 RUN pnpm install -g pnpm@11.6.0
 
 WORKDIR /app
