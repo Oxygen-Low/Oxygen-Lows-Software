@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low's Software",
+    "title": "Oxygen Low 软件",
     "signin": "登录",
     "signup": "注册",
     "createAccount": "创建账号",
@@ -28,7 +28,7 @@
     "friends": "好友",
     "storage": "存储",
     "customize": "个性化",
-    "account": "账号"
+    "account": "账号设置"
   },
   "account": {
     "profile": "个人资料",
@@ -251,7 +251,7 @@
     "noClients": "您尚未创建任何 OAuth 应用。",
     "noGrants": "您尚未授权任何应用。",
     "authorizeTitle": "授权 {{name}}",
-    "authorizeDesc": "此应用想要连接到您的 Oxygen Low's Software 账号。",
+    "authorizeDesc": "此应用想要连接到您的 Oxygen Low 软件账号。",
     "permissions": "请求的权限：",
     "permissionOpenid": "访问您的唯一用户标识符",
     "permissionEmail": "查看您的电子邮箱地址",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
@@ -317,7 +317,7 @@
     },
     "oauth": {
       "name": "OAuth",
-      "desc": "通过 Oxygen Low's Software 账号为您的应用添加 OAuth。"
+      "desc": "通过 Oxygen Low 账号为您的应用添加 OAuth。"
     }
   },
   "chat": {
