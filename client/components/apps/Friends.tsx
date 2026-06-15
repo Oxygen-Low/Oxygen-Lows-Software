@@ -27,7 +27,6 @@ import {
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
 
 interface SocialProfile {
   user_id: string;
@@ -45,8 +44,7 @@ interface Friendship {
 }
 
 export function FriendsApp() {
-  const { t } = useTranslation();
-  const { session } = useAuth();
+    const { session } = useAuth();
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<Friendship[]>([]);
   const [pendingOutgoing, setPendingOutgoing] = useState<Friendship[]>([]);
@@ -112,7 +110,7 @@ export function FriendsApp() {
         .insert({ user_id: session.user.id, friend_id: targetUser.user_id, status: 'pending' });
 
       if (error) throw error;
-      toast.success(t('friends.requestSent'));
+      toast.success("Friend request sent");
       setSearchQuery("");
       fetchData();
     } catch (error: any) {
@@ -127,7 +125,7 @@ export function FriendsApp() {
         .update({ status: 'accepted' })
         .eq('id', id);
       if (error) throw error;
-      toast.success(t('friends.requestAccepted'));
+      toast.success("Friend request accepted");
       fetchData();
     } catch (error: any) {
       toast.error(error.message);
@@ -138,7 +136,7 @@ export function FriendsApp() {
     try {
       const { error } = await supabase.from('friendships').delete().eq('id', id);
       if (error) throw error;
-      toast.success(t('common.success'));
+      toast.success("Success");
       fetchData();
     } catch (error: any) {
       toast.error(error.message);
@@ -149,7 +147,7 @@ export function FriendsApp() {
     try {
       const { error } = await supabase.from('follows').delete().eq('id', id);
       if (error) throw error;
-      toast.success(t('friends.unfollow'));
+      toast.success("Unfollow");
       fetchData();
     } catch (error: any) {
       toast.error(error.message);
@@ -160,7 +158,7 @@ export function FriendsApp() {
     try {
       const { error } = await supabase.from('blocks').delete().eq('blocker_id', session?.user.id).eq('blocked_id', id);
       if (error) throw error;
-      toast.success(t('friends.userUnblocked'));
+      toast.success("User unblocked");
       fetchData();
     } catch (error: any) {
       toast.error(error.message);
@@ -173,7 +171,7 @@ export function FriendsApp() {
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <Input
-            placeholder={t('friends.searchPlaceholder')}
+            placeholder="Search by username..."
             className="pl-10 bg-slate-950 border-slate-800 text-white"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -183,34 +181,28 @@ export function FriendsApp() {
             size="sm"
             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 bg-cyan-600 hover:bg-cyan-700 text-white"
             onClick={handleSendRequest}
-          >
-            {t('common.add')}
-          </Button>
+          >Add</Button>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-slate-950 border border-slate-800 w-full justify-start overflow-x-auto h-auto flex-wrap">
           <TabsTrigger value="friends" className="flex gap-2">
-            <Users className="w-4 h-4" /> {t('nav.friends')} ({friends.length})
+            <Users className="w-4 h-4" /> "Friends" ({friends.length})
           </TabsTrigger>
           <TabsTrigger value="requests" className="flex gap-2">
-            <UserPlus className="w-4 h-4" /> {t('friends.requests')} ({pendingIncoming.length + pendingOutgoing.length})
+            <UserPlus className="w-4 h-4" /> "Requests" ({pendingIncoming.length + pendingOutgoing.length})
           </TabsTrigger>
           <TabsTrigger value="following" className="flex gap-2">
-            <UserCheck className="w-4 h-4" /> {t('friends.social')}
-          </TabsTrigger>
+            <UserCheck className="w-4 h-4" />Social</TabsTrigger>
           <TabsTrigger value="blocked" className="flex gap-2">
-            <ShieldAlert className="w-4 h-4" /> {t('friends.blocked')}
-          </TabsTrigger>
+            <ShieldAlert className="w-4 h-4" />Blocked</TabsTrigger>
         </TabsList>
 
         <TabsContent value="friends" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {friends.length === 0 ? (
-              <p className="text-slate-500 col-span-full py-8 text-center bg-slate-900/30 rounded-lg border border-dashed border-slate-800">
-                {t('friends.noFriends')}
-              </p>
+              <p className="text-slate-500 col-span-full py-8 text-center bg-slate-900/30 rounded-lg border border-dashed border-slate-800">You haven't added any friends yet.</p>
             ) : (
               friends.map((friend) => (
                 <UserCard
@@ -226,15 +218,13 @@ export function FriendsApp() {
                       <DropdownMenuContent align="end" className="bg-slate-950 border-slate-800">
                         <DropdownMenuItem asChild className="text-slate-200 focus:bg-slate-900 focus:text-white">
                           <Link to={`/users/${friend.profile.username}`} className="flex items-center gap-2">
-                            <ExternalLink className="w-4 h-4" /> {t('friends.viewProfile')}
-                          </Link>
+                            <ExternalLink className="w-4 h-4" />View Profile</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
                           onClick={() => handleDeleteFriendship(friend.id)}
                         >
-                          <UserMinus className="w-4 h-4 mr-2" /> {t('friends.unfriend')}
-                        </DropdownMenuItem>
+                          <UserMinus className="w-4 h-4 mr-2" />Unfriend</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   }
@@ -246,10 +236,10 @@ export function FriendsApp() {
 
         <TabsContent value="requests" className="mt-6 space-y-8">
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('friends.incomingRequests')}</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Incoming Requests</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pendingIncoming.length === 0 ? (
-                <p className="text-slate-600 text-sm">{t('friends.noIncoming')}</p>
+                <p className="text-slate-600 text-sm">No incoming friend requests.</p>
               ) : (
                 pendingIncoming.map((req) => (
                   <UserCard
@@ -282,10 +272,10 @@ export function FriendsApp() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('friends.sentRequests')}</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Sent Requests</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pendingOutgoing.length === 0 ? (
-                <p className="text-slate-600 text-sm">{t('friends.noOutgoing')}</p>
+                <p className="text-slate-600 text-sm">No outgoing friend requests.</p>
               ) : (
                 pendingOutgoing.map((req) => (
                   <UserCard
@@ -297,9 +287,7 @@ export function FriendsApp() {
                         variant="ghost"
                         className="text-slate-500 hover:text-red-400"
                         onClick={() => handleDeleteFriendship(req.id)}
-                      >
-                        {t('common.cancel')}
-                      </Button>
+                      >Cancel</Button>
                     }
                   />
                 ))
@@ -310,10 +298,10 @@ export function FriendsApp() {
 
         <TabsContent value="following" className="mt-6 space-y-8">
            <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('friends.following')}</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Following</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {following.length === 0 ? (
-                <p className="text-slate-600 text-sm">{t('friends.notFollowing')}</p>
+                <p className="text-slate-600 text-sm">You aren't following anyone.</p>
               ) : (
                 following.map((f) => (
                   <UserCard
@@ -325,9 +313,7 @@ export function FriendsApp() {
                         variant="outline"
                         className="border-slate-800 hover:bg-slate-900 text-slate-300"
                         onClick={() => handleUnfollow(f.id)}
-                      >
-                        {t('friends.unfollow')}
-                      </Button>
+                      >Unfollow</Button>
                     }
                   />
                 ))
@@ -336,10 +322,10 @@ export function FriendsApp() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('friends.followers')}</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Followers</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {followers.length === 0 ? (
-                <p className="text-slate-600 text-sm">{t('friends.noFollowers')}</p>
+                <p className="text-slate-600 text-sm">You don't have any followers yet.</p>
               ) : (
                 followers.map((f) => (
                   <UserCard
@@ -355,7 +341,7 @@ export function FriendsApp() {
         <TabsContent value="blocked" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {blocked.length === 0 ? (
-              <p className="text-slate-600 py-8 text-center col-span-full">{t('friends.noBlocked')}</p>
+              <p className="text-slate-600 py-8 text-center col-span-full">No blocked users.</p>
             ) : (
               blocked.map((p) => (
                 <UserCard
@@ -367,9 +353,7 @@ export function FriendsApp() {
                       variant="outline"
                       className="text-red-400 border-red-400/20 hover:bg-red-400/10"
                       onClick={() => handleUnblock(p.user_id)}
-                    >
-                      {t('friends.unblock')}
-                    </Button>
+                    >Unblock</Button>
                   }
                 />
               ))

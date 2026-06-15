@@ -21,11 +21,9 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import imageCompression from "browser-image-compression";
-import { useTranslation } from "react-i18next";
 
 export function FileCompressorApp() {
-  const { t } = useTranslation();
-  const [selectedFile, setSelectedFile] = useState<any>(null);
+    const [selectedFile, setSelectedFile] = useState<any>(null);
   const [quality, setQuality] = useState(70);
   const [targetSizeMB, setTargetSizeMB] = useState("");
   const [compressing, setCompressing] = useState(false);
@@ -85,10 +83,10 @@ export function FileCompressorApp() {
         newSize: compressedBlob.size,
         name: selectedFile.name
       });
-      toast.success(t('common.success'));
+      toast.success("Success");
     } catch (error: any) {
       console.error("Compression error:", error);
-      toast.error(error.message || t('common.error'));
+      toast.error(error.message || "Error");
     } finally {
       setCompressing(false);
       setProgress(0);
@@ -101,12 +99,8 @@ export function FileCompressorApp() {
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <FileBox className="w-5 h-5 text-cyan-500" />
-              {t('compressor.sourceFile')}
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              {t('compressor.sourceDesc')}
-            </CardDescription>
+              <FileBox className="w-5 h-5 text-cyan-500" />Source File</CardTitle>
+            <CardDescription className="text-slate-400">Select a file from your storage to compress.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <StorageFileSelector
@@ -126,7 +120,7 @@ export function FileCompressorApp() {
                   ) : (
                     <>
                       <FileBox className="w-8 h-8 opacity-50" />
-                      <span>{t('storage.clickToSelect')}</span>
+                      <span>Click to select from storage</span>
                     </>
                   )}
                 </Button>
@@ -159,17 +153,13 @@ export function FileCompressorApp() {
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Settings2 className="w-5 h-5 text-cyan-500" />
-              {t('compressor.settings')}
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              {t('compressor.settingsDesc')}
-            </CardDescription>
+              <Settings2 className="w-5 h-5 text-cyan-500" />Compression Settings</CardTitle>
+            <CardDescription className="text-slate-400">Adjust quality and target size.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="space-y-4">
               <div className="flex justify-between">
-                <Label className="text-white">{t('compressor.quality')}</Label>
+                <Label className="text-white">Quality</Label>
                 <span className="text-cyan-400 text-sm font-medium">{quality}%</span>
               </div>
               <Slider
@@ -199,7 +189,7 @@ export function FileCompressorApp() {
             </div>
 
             <div className="space-y-4">
-              <Label className="text-white">{t('compressor.targetSize')}</Label>
+              <Label className="text-white">Target Size (MB, optional)</Label>
               <div className="flex gap-2">
                 <Input
                   type="number"
@@ -212,13 +202,9 @@ export function FileCompressorApp() {
                   variant="ghost"
                   onClick={() => setTargetSizeMB("")}
                   className="text-slate-500"
-                >
-                  {t('common.clear')}
-                </Button>
+                >Clear</Button>
               </div>
-              <p className="text-xs text-slate-500">
-                {t('compressor.targetSizeDesc')}
-              </p>
+              <p className="text-xs text-slate-500">If provided, we'll try to compress the file to fit within this size.</p>
             </div>
 
             <Button
@@ -229,13 +215,11 @@ export function FileCompressorApp() {
               {compressing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  {t('compressor.compressing')} {progress > 0 ? `${progress}%` : ""}
+                  "Compressing your file..." {progress > 0 ? `${progress}%` : ""}
                 </>
               ) : (
                 <>
-                  <Zap className="w-5 h-5 mr-2" />
-                  {t('compressor.start')}
-                </>
+                  <Zap className="w-5 h-5 mr-2" />Start Compression</>
               )}
             </Button>
           </CardContent>
@@ -260,8 +244,8 @@ export function FileCompressorApp() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-white font-medium">{t('compressor.compressing')}</p>
-                  <p className="text-slate-500 text-sm">{t('compressor.compressingDesc')}</p>
+                  <p className="text-white font-medium">Compressing your file...</p>
+                  <p className="text-slate-500 text-sm">This may take a moment depending on the file size.</p>
                   <Progress value={progress} className="h-2 bg-slate-800" />
                 </div>
               </div>
@@ -269,22 +253,22 @@ export function FileCompressorApp() {
               <div className="w-full space-y-8 p-6">
                 <div className="p-6 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl">
                   <CheckCircle2 className="w-16 h-16 text-cyan-500 mx-auto mb-4" />
-                  <h3 className="text-2xl font-bold text-white mb-2">{t('common.success')}</h3>
+                  <h3 className="text-2xl font-bold text-white mb-2">Success</h3>
                   <p className="text-slate-400">File has been compressed and updated in storage.</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                    <span className="text-slate-400">{t('storage.originalSize')}</span>
+                    <span className="text-slate-400">Original Size</span>
                     <span className="text-white font-medium">{formatSize(result.originalSize)}</span>
                   </div>
                   <ArrowRight className="w-6 h-6 text-slate-700 mx-auto" />
                   <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-cyan-500/30">
-                    <span className="text-slate-400">{t('storage.newSize')}</span>
+                    <span className="text-slate-400">New Size</span>
                     <div className="text-right">
                       <span className="text-cyan-400 font-bold block">{formatSize(result.newSize)}</span>
                       <span className="text-xs text-green-500 font-medium">
-                        {t('storage.saved', { percent: Math.round((1 - result.newSize / result.originalSize) * 100) })}
+                        {`Saved ${Math.round((1 - result.newSize / result.originalSize) * 100)}%`}
                       </span>
                     </div>
                   </div>
@@ -305,10 +289,8 @@ export function FileCompressorApp() {
                 <div className="p-8 bg-slate-950 rounded-full mb-4">
                   <AlertCircle className="w-12 h-12 opacity-20" />
                 </div>
-                <p className="text-lg font-medium text-slate-400">{t('storage.readyToCompress')}</p>
-                <p className="max-w-[250px] mx-auto">
-                  {t('storage.selectFileDesc')}
-                </p>
+                <p className="text-lg font-medium text-slate-400">Ready to compress</p>
+                <p className="max-w-[250px] mx-auto">Select a file and adjust settings to see results here.</p>
               </div>
             )}
           </CardContent>

@@ -16,11 +16,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 
 export default function UserProfile() {
-  const { t } = useTranslation();
-  const { username } = useParams();
+    const { username } = useParams();
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const currentUser = session?.user;
@@ -53,7 +51,7 @@ export default function UserProfile() {
 
       if (prefError) {
         if (prefError.code === "PGRST116") {
-          setError(t('common.noItems'));
+          setError("No items");
         } else {
           setError(prefError.message);
         }
@@ -118,7 +116,7 @@ export default function UserProfile() {
           return;
         }
         setFriendship(data);
-        toast.success(t('friends.requestSent'));
+        toast.success("Friend request sent");
       } else if (friendship.status === 'pending' && friendship.friend_id === currentUser.id) {
         const { data, error } = await supabase
           .from("friendships")
@@ -132,7 +130,7 @@ export default function UserProfile() {
           return;
         }
         setFriendship(data);
-        toast.success(t('friends.acceptRequest'));
+        toast.success("Accept Request");
         setStats(s => ({ ...s, friends: s.friends + 1 }));
       } else {
         const { error } = await supabase
@@ -145,7 +143,7 @@ export default function UserProfile() {
         }
         const wasAccepted = friendship.status === 'accepted';
         setFriendship(null);
-        toast.success(wasAccepted ? t('friends.unfriended') : t('friends.cancelRequest'));
+        toast.success(wasAccepted ? "Unfriended user" : "Cancel Request");
         if (wasAccepted) setStats(s => ({ ...s, friends: Math.max(0, s.friends - 1) }));
       }
     } catch (e: any) {
@@ -172,7 +170,7 @@ export default function UserProfile() {
         }
         setIsFollowing(false);
         setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
-        toast.success(t('friends.unfollow'));
+        toast.success("Unfollow");
       } else {
         const { error } = await supabase
           .from("follows")
@@ -183,7 +181,7 @@ export default function UserProfile() {
         }
         setIsFollowing(true);
         setStats(s => ({ ...s, followers: s.followers + 1 }));
-        toast.success(t('friends.nowFollowing'));
+        toast.success("Following user");
       }
     } catch (e: any) {
       toast.error("An unexpected error occurred: " + e.message);
@@ -208,7 +206,7 @@ export default function UserProfile() {
           return;
         }
         setIsBlocked(false);
-        toast.success(t('friends.userUnblocked'));
+        toast.success("User unblocked");
       } else {
         // Start block transaction
         const { error: blockError } = await supabase
@@ -234,7 +232,7 @@ export default function UserProfile() {
         setIsBlocked(true);
         setIsFollowing(false);
         setFriendship(null);
-        toast.success(t('friends.userBlocked'));
+        toast.success("User blocked");
       }
     } catch (e: any) {
       toast.error("An unexpected error occurred: " + e.message);
@@ -249,14 +247,12 @@ export default function UserProfile() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
             <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
-            <p className="text-slate-400">{t('common.loading')}</p>
+            <p className="text-slate-400">Loading...</p>
           </div>
         ) : error || !profile ? (
           <div className="text-center py-12">
-            <p className="text-red-400 text-lg">{error ?? t('common.noItems')}</p>
-            <Button variant="link" onClick={() => navigate(-1)} className="text-slate-500">
-              {t('common.back')}
-            </Button>
+            <p className="text-red-400 text-lg">{error ?? "No items"}</p>
+            <Button variant="link" onClick={() => navigate(-1)} className="text-slate-500">Back</Button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -288,15 +284,15 @@ export default function UserProfile() {
                   <div className="flex flex-wrap justify-center md:justify-start gap-6 py-2">
                     <div className="text-center md:text-left">
                       <p className="text-white font-bold text-lg">{stats.friends}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">{t('nav.friends')}</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">Friends</p>
                     </div>
                     <div className="text-center md:text-left">
                       <p className="text-white font-bold text-lg">{stats.followers}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">{t('friends.followers')}</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">Followers</p>
                     </div>
                     <div className="text-center md:text-left">
                       <p className="text-white font-bold text-lg">{stats.following}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">{t('friends.following')}</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">Following</p>
                     </div>
                   </div>
 
@@ -315,13 +311,13 @@ export default function UserProfile() {
                         {actionLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : !friendship ? (
-                          <><UserPlus className="w-4 h-4 mr-2" /> {t('friends.add')}</>
+                          <><UserPlus className="w-4 h-4 mr-2" />Add Friend</>
                         ) : friendship.status === 'pending' ? (
                           friendship.user_id === currentUser.id
-                            ? <><UserX className="w-4 h-4 mr-2" /> {t('friends.cancelRequest')}</>
-                            : <><UserCheck className="w-4 h-4 mr-2" /> {t('friends.acceptRequest')}</>
+                            ? <><UserX className="w-4 h-4 mr-2" />Cancel Request</>
+                            : <><UserCheck className="w-4 h-4 mr-2" />Accept Request</>
                         ) : (
-                          <><UserMinus className="w-4 h-4 mr-2" /> {t('friends.unfriend')}</>
+                          <><UserMinus className="w-4 h-4 mr-2" />Unfriend</>
                         )}
                       </Button>
 
@@ -334,7 +330,7 @@ export default function UserProfile() {
                           isFollowing ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "text-slate-300"
                         )}
                       >
-                        {isFollowing ? t('friends.following') : t('friends.follow')}
+                        {isFollowing ? "Following" : "Follow"}
                       </Button>
 
                       <Button
@@ -346,7 +342,7 @@ export default function UserProfile() {
                           "h-10 w-10",
                           isBlocked ? "text-red-500 bg-red-500/10" : "text-slate-500 hover:text-red-400 hover:bg-red-400/10"
                         )}
-                        title={isBlocked ? t('friends.unblock') : t('friends.blocked')}
+                        title={isBlocked ? "Unblock" : "Blocked"}
                       >
                         {isBlocked ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
                       </Button>
@@ -356,10 +352,10 @@ export default function UserProfile() {
               </div>
 
               <div className="mt-8 pt-8 border-t border-slate-800/50">
-                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">{t('account.bio')}</h3>
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Bio</h3>
                 <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
                   <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {profile.bio || t('friends.noBio') || "This user hasn't written a bio yet."}
+                    {profile.bio || "This user hasn't written a bio yet." || "This user hasn't written a bio yet."}
                   </p>
                 </div>
               </div>

@@ -5,18 +5,7 @@ import { FileCompressorApp } from './FileCompressor';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
 // Mock react-i18next
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: {
-      changeLanguage: () => Promise.resolve(),
-    },
-  }),
-  initReactI18next: {
-    type: '3rdParty',
-    init: () => {},
-  }
-}));
+
 
 // Mock ResizeObserver
 global.ResizeObserver = class {
@@ -81,15 +70,15 @@ describe('FileCompressorApp', () => {
 
   it('renders the file compressor app', () => {
     render(<ThemeProvider><FileCompressorApp /></ThemeProvider>);
-    expect(screen.getByText('compressor.sourceFile')).toBeDefined();
-    expect(screen.getByText('compressor.settings')).toBeDefined();
+    expect(screen.getByText("Source File")).toBeDefined();
+    expect(screen.getByText("Compression Settings")).toBeDefined();
   });
 
   it('handles image compression', async () => {
     render(<ThemeProvider><FileCompressorApp /></ThemeProvider>);
 
     // Select a file
-    const selectors = screen.getAllByText('storage.clickToSelect');
+    const selectors = screen.getAllByText("Click to select from storage");
     fireEvent.click(selectors[0]);
 
     // Check if file name appears
@@ -98,11 +87,11 @@ describe('FileCompressorApp', () => {
     });
 
     // Start compression
-    const startButtons = screen.getAllByText('compressor.start');
+    const startButtons = screen.getAllByText("Start Compression");
     fireEvent.click(startButtons[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('common.success')).toBeDefined();
+      expect(screen.getByText("Success")).toBeDefined();
     }, { timeout: 3000 });
   });
 });

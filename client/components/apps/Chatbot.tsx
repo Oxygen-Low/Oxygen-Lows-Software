@@ -24,7 +24,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useAiModels } from "@/hooks/useAiModels";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 
 interface Chat {
   id: string;
@@ -125,8 +124,7 @@ const ArtifactSidebar = ({ artifact, onClose }: { artifact: Artifact; onClose: (
 };
 
 export const ChatbotApp = () => {
-  const { t } = useTranslation();
-  const { session } = useAuth();
+    const { session } = useAuth();
   const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -329,7 +327,7 @@ export const ChatbotApp = () => {
   return (
     <div className="flex h-[700px] gap-0 bg-slate-950/30 rounded-2xl border border-slate-800 overflow-hidden text-slate-200">
       <div className="w-64 flex flex-col gap-4 border-r border-slate-800 p-6">
-        <Button onClick={handleCreateChat} className="w-full bg-cyan-600"><Plus className="w-4 h-4 mr-2" /> {t('chatbot.newChat')}</Button>
+        <Button onClick={handleCreateChat} className="w-full bg-cyan-600"><Plus className="w-4 h-4 mr-2" />New Chat</Button>
         <ScrollArea className="flex-1">
           <div className="space-y-2">
             {chats.map(c => (
@@ -341,23 +339,23 @@ export const ChatbotApp = () => {
           </div>
         </ScrollArea>
         <div className="pt-4 border-t border-slate-800 space-y-4 overflow-y-auto">
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.model')}</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">Model</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded" value={`${selectedProvider}:${selectedModel}`} onChange={e => { const [p, m] = e.target.value.split(":"); setSelection(m, p); }}>
               {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{m.provider === "ollama" ? "ollama/" + m.model_id : m.provider + " - " + m.model_id}</option>)}
             </select>
           </div>
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.style')}</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">Style</label>
             <div className="space-y-1">{styles.map(s => <div key={s.id} onClick={() => { setSelectedStyle(s.id); updateChatSetting({ style: s.id }); }} className={cn("p-2 rounded cursor-pointer", selectedStyle === s.id ? "bg-slate-800 ring-1 ring-cyan-500/50" : "hover:bg-slate-900")}><p className="text-xs font-bold text-white">{s.title}</p><p className="text-[10px] text-slate-500 truncate">{s.description}</p></div>)}</div>
           </div>
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.llmCharacter')}</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">LLM Character</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1" value={selectedLlmCharacter || ""} onChange={e => { const val = e.target.value || null; setSelectedLlmCharacter(val); updateChatSetting({ llm_character_id: val }); }}>
-              <option value="">{t('chatbot.none')}</option>
+              <option value="">None</option>
               {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.display_name || c.name}</option>)}
             </select>
           </div>
-          <div><label className="text-[10px] font-bold text-slate-500 uppercase">{t('chatbot.userCharacter')}</label>
+          <div><label className="text-[10px] font-bold text-slate-500 uppercase">User Character</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1" value={selectedUserCharacter || ""} onChange={e => { const val = e.target.value || null; setSelectedUserCharacter(val); updateChatSetting({ user_character_id: val }); }}>
-              <option value="">{t('chatbot.none')}</option>
+              <option value="">None</option>
               {availableCharacters.map(c => <option key={c.id} value={c.id}>{c.display_name || c.name}</option>)}
             </select>
           </div>
@@ -366,7 +364,7 @@ export const ChatbotApp = () => {
 
       <div className="flex-1 flex flex-col min-w-0 p-6">
         {!currentChatId ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500"><Bot className="w-12 h-12 mb-4" /><p>{t('chatbot.selectChat')}</p></div>
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500"><Bot className="w-12 h-12 mb-4" /><p>Select a chat to start</p></div>
         ) : (
           <>
             <ScrollArea className="flex-1 pr-4">
@@ -418,7 +416,7 @@ export const ChatbotApp = () => {
               </div>
             </ScrollArea>
             <div className="pt-6 border-t border-slate-800 relative">
-              <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !isTyping && handleSendMessage()} placeholder={t('chatbot.askAnything')} className="w-full bg-slate-900/50 pl-4 pr-12 py-6 border-slate-700 text-white" />
+              <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !isTyping && handleSendMessage()} placeholder="Ask anything..." className="w-full bg-slate-900/50 pl-4 pr-12 py-6 border-slate-700 text-white" />
               <Button onClick={handleSendMessage} disabled={!input.trim() || isTyping} className="absolute right-2 top-1/2 -translate-y-1/2 bg-cyan-600 h-10 w-10 p-0 hover:bg-cyan-700" aria-label="Send message"><Send className="w-4 h-4" /></Button>
             </div>
           </>

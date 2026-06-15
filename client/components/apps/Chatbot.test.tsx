@@ -5,30 +5,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/re
 import { ChatbotApp } from "./Chatbot";
 
 // Mock i18next
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const keys: Record<string, string> = {
-        "chatbot.newChat": "New Chat",
-        "chatbot.model": "Model",
-        "chatbot.style": "Style",
-        "chatbot.llmCharacter": "LLM Character",
-        "chatbot.userCharacter": "User Character",
-        "chatbot.none": "None",
-        "chatbot.selectChat": "Select a chat to start",
-        "chatbot.askAnything": "Ask anything..."
-      };
-      return keys[key] || key;
-    },
-    i18n: {
-      changeLanguage: () => Promise.resolve(),
-    },
-  }),
-  initReactI18next: {
-    type: '3rdParty',
-    init: () => {},
-  }
-}));
+
 
 // Mock ResizeObserver
 global.ResizeObserver = class {
