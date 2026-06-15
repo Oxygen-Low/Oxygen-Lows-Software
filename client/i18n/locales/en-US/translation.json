@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low Software",
+    "title": "Oxygen Low's Software",
     "signin": "Sign In",
     "signup": "Sign Up",
     "createAccount": "Create Account",
@@ -28,7 +28,7 @@
     "friends": "Friends",
     "storage": "Storage",
     "customize": "Customize",
-    "account": "Account Settings"
+    "account": "Account"
   },
   "account": {
     "profile": "Profile",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"

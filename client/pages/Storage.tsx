@@ -45,16 +45,15 @@ export default function Storage() {
       const size = files.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
       setTotalSize(size);
 
-      // Get signed URLs for images
-      const imageFiles = files.filter(f => f.metadata?.mimetype?.startsWith("image/"));
-      if (imageFiles.length > 0) {
+      // Get signed URLs for all files
+      if (files.length > 0) {
         const { data: signedData, error: signedError } = await supabase.storage
           .from("Storage")
-          .createSignedUrls(imageFiles.map(f => `${session.user.id}/${f.name}`), 3600);
+          .createSignedUrls(files.map(f => `${session.user.id}/${f.name}`), 3600);
 
         if (!signedError && signedData) {
           const urlMap: Record<string, string> = {};
-          imageFiles.forEach((f, i) => {
+          files.forEach((f, i) => {
             if (signedData[i]?.signedUrl) urlMap[f.id] = signedData[i].signedUrl;
           });
           setCloudFileSignedUrls(urlMap);

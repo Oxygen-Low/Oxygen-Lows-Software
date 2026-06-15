@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low 소프트웨어",
+    "title": "Oxygen Low's Software",
     "signin": "로그인",
     "signup": "회원가입",
     "createAccount": "계정 만들기",
@@ -28,7 +28,7 @@
     "friends": "친구",
     "storage": "저장소",
     "customize": "사용자 설정",
-    "account": "계정 설정"
+    "account": "계정"
   },
   "account": {
     "profile": "프로필",
@@ -251,7 +251,7 @@
     "noClients": "아직 생성된 OAuth 애플리케이션이 없습니다.",
     "noGrants": "아직 승인된 애플리케이션이 없습니다.",
     "authorizeTitle": "{{name}} 승인",
-    "authorizeDesc": "이 애플리케이션이 Oxygen Low 소프트웨어 계정에 연결하려고 합니다.",
+    "authorizeDesc": "이 애플리케이션이 Oxygen Low's Software 계정에 연결하려고 합니다.",
     "permissions": "요청된 권한:",
     "permissionOpenid": "고유 사용자 식별자에 대한 액세스",
     "permissionEmail": "이메일 주소 보기",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
@@ -317,7 +317,7 @@
     },
     "oauth": {
       "name": "OAuth",
-      "desc": "Oxygen Low 계정을 통해 앱에 OAuth를 추가하세요."
+      "desc": "Oxygen Low's Software 계정을 통해 앱에 OAuth를 추가하세요."
     }
   },
   "chat": {

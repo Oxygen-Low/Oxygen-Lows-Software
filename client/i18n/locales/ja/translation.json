@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low ソフトウェア",
+    "title": "Oxygen Low's Software",
     "signin": "サインイン",
     "signup": "サインアップ",
     "createAccount": "アカウント作成",
@@ -28,7 +28,7 @@
     "friends": "友達",
     "storage": "ストレージ",
     "customize": "カスタマイズ",
-    "account": "アカウント設定"
+    "account": "アカウント"
   },
   "account": {
     "profile": "プロフィール",
@@ -251,7 +251,7 @@
     "noClients": "OAuthアプリケーションはまだ作成されていません。",
     "noGrants": "承認されたアプリケーションはまだありません。",
     "authorizeTitle": "{{name}} を承認",
-    "authorizeDesc": "このアプリケーションは Oxygen Low ソフトウェアアカウントへの接続を求めています。",
+    "authorizeDesc": "このアプリケーションは Oxygen Low's Softwareアカウントへの接続を求めています。",
     "permissions": "要求された権限:",
     "permissionOpenid": "一意のユーザー識別子へのアクセス",
     "permissionEmail": "メールアドレスの表示",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
@@ -317,7 +317,7 @@
     },
     "oauth": {
       "name": "OAuth",
-      "desc": "Oxygen Lowアカウントを介してアプリにOAuthを追加します。"
+      "desc": "Oxygen Low's Softwareアカウントを介してアプリにOAuthを追加します。"
     }
   },
   "chat": {

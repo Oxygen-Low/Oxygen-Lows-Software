@@ -1,6 +1,6 @@
 {
   "auth": {
-    "title": "Oxygen Low Software (EPIC)",
+    "title": "Oxygen Low's Software (EPIC)",
     "signin": "Yeet In",
     "signup": "Join the Squad",
     "createAccount": "Manifest Account",
@@ -10,8 +10,8 @@
     "password": "Password (don't get pwned)",
     "newPassword": "Fresh Password",
     "generatePassword": "Get a random code lol",
-    "selectLanguage": "Pick your vibe",
-    "selectSubLanguage": "Pick your sub-vibe",
+    "selectLanguage": "Choose your vibe",
+    "selectSubLanguage": "Choose your flavor",
     "processing": "Thinking...",
     "changeLanguage": "Change Language",
     "passwordPwned": "Bro, this password is in a breach. Pick a better one.",
@@ -23,12 +23,12 @@
     "signout": "Sign Out"
   },
   "nav": {
-    "apps": "Gizmos",
+    "apps": "GIZMOS & GADGETS",
     "characters": "NPCs",
     "friends": "The Homies",
-    "storage": "Vault",
+    "storage": "DISK SPACE",
     "customize": "Pimp My App",
-    "account": "Settings lol"
+    "account": "MY PROFILE"
   },
   "account": {
     "profile": "The Stats",
@@ -69,9 +69,9 @@
     "edit": "Modify",
     "save": "Keep",
     "cancel": "Stop",
-    "back": "Rewind",
-    "view": "View",
-    "loading": "Hold up...",
+    "back": "Return to base",
+    "view": "Witness",
+    "loading": "Spinning up...",
     "noItems": "No items",
     "success": "W",
     "error": "L",
@@ -251,7 +251,7 @@
     "noClients": "No apps yet.",
     "noGrants": "No apps authorized.",
     "authorizeTitle": "Trust {{name}}?",
-    "authorizeDesc": "This app wants to see your Oxygen Low stuff.",
+    "authorizeDesc": "This app wants to see your Oxygen Low's Software stuff.",
     "permissions": "What it wants:",
     "permissionOpenid": "To know who you are",
     "permissionEmail": "To see your digital mail",
@@ -264,7 +264,7 @@
     "deletedSuccess": "Application deleted",
     "revokedSuccess": "Authorization revoked",
     "copiedToClipboard": "{{label}} copied to clipboard",
-    "createDescription": "Create a new OAuth application to integrate with Oxygen Low.",
+    "createDescription": "Create a new OAuth application to integrate with Oxygen Low's Software.",
     "authorizedOn": "Authorized on",
     "permissionAccessTo": "Access to {{scope}}",
     "defaultLabel": "(default)"
