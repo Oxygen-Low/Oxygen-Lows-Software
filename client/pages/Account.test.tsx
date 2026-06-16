@@ -43,7 +43,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: vi.fn() }));
-vi.mock('@/components/Layout', () => ({ default: ({ children }: any) => <div data-testid="layout">{children}</div> }));
+vi.mock('@/components/Layout', () => ({ __esModule: true, default: ({ children }: any) => <div data-testid="layout">{children}</div> }));
 
 // Mock Radix UI Tabs to always render children
 vi.mock('@/components/ui/tabs', () => ({
@@ -61,7 +61,7 @@ describe('Account Component', () => {
   });
 
   it('links identities correctly', async () => {
-    render(<ThemeProvider><Account /></ThemeProvider>);
+    render(<Account />);
     const githubBtn = await screen.findByText(/github/i);
     fireEvent.click(githubBtn);
     await waitFor(() => expect(mockLinkIdentity).toHaveBeenCalledWith('github'));
@@ -69,5 +69,11 @@ describe('Account Component', () => {
     const gitlabBtn = await screen.findByText(/gitlab/i);
     fireEvent.click(gitlabBtn);
     await waitFor(() => expect(mockLinkIdentity).toHaveBeenCalledWith('gitlab'));
+  });
+
+  it('renders with correct header', async () => {
+    render(<Account />);
+    const headers = screen.getAllByText('Account', { selector: 'h1' });
+    expect(headers.length).toBeGreaterThan(0);
   });
 });
