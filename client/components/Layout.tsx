@@ -36,7 +36,7 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* Header */}
       <header className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-10`}>
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <h1 className={`${styles["logo"]} text-2xl font-bold`}>Oxygen Low Software</h1>
+          <h1 className={`${styles["logo"]} text-2xl font-bold`}>Oxygen Low's Software</h1>
           <div className="flex items-center gap-4">
             <span className={`${styles["user-email"]} text-sm`}>{session?.user?.email}</span>
             <button
