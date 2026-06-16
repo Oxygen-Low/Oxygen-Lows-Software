@@ -150,7 +150,7 @@ export default function Account() {
     <Layout>
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="space-y-2">
-          <h1 className="text-4xl font-bold text-white tracking-tight">Account Settings</h1>
+          <h1 className="text-4xl font-bold text-white tracking-tight">Account</h1>
           <p className="text-slate-400">Manage your profile, integrations, and preferences.</p>
         </header>
 

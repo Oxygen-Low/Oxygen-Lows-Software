@@ -15,7 +15,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { label: "Apps", href: "/apps", icon: Package },
     { label: "Storage", href: "/storage", icon: HardDrive },
-    { label: "Account Settings", href: "/account", icon: User },
+    { label: "Account", href: "/account", icon: User },
     { label: "Friends", href: "/friends", icon: Users },
     { label: "Customize", href: "/customize", icon: Palette },
     { label: "Characters", href: "/characters", icon: Contact },

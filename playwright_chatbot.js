@@ -15,7 +15,7 @@ const { chromium } = require('playwright');
 
     await page.goto('http://localhost:8080/account');
     // Assertion before screenshot
-    await page.waitForSelector('h1:has-text("Account Settings")');
+    await page.waitForSelector('h1:has-text("Account")');
     await page.screenshot({ path: 'account_page.png' });
   } catch (e) {
     console.error("Navigation or screenshot failed:", e);
