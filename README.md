@@ -2,15 +2,29 @@
 
 Most user-data is stored on the cloud, so there's almost no need to transfer data between servers.
 
-It's easy to set up, just run pnpm install, pnpm build, then pnpm start, then you've got the entire website hosted with all of your data available.
 
-### You can also set it up using Docker.
+
+## Setup
+
+### [Docker](https://hub.docker.com/r/oxygenlow/oxygen-lows-software)
 
 docker pull oxygenlow/oxygen-lows-software:latest
 
-https://hub.docker.com/r/oxygenlow/oxygen-lows-software
+docker run -p 3000:3000 oxygenlow/oxygen-lows-software:latest
 
-### You also get 30MB of image, document, and audio storage on the cloud at no cost.
+### Pnpm/Npm/Github
+
+git clone https://github.com/Oxygen-Low/Oxygen-Lows-Software/
+
+pnpm install
+
+pnpm build
+
+pnpm start
+
+## Features/Extra
+
+### You get 30MB of image, document, and audio storage on the cloud at no cost.
 
 ### Don't want to self-host it? You can access it via the Render servers:
 
