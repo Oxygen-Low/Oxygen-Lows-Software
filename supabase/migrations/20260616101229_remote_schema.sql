@@ -624,6 +624,11 @@ END;
 $function$
 ;
 
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean);
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean);
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text);
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text, text, text);
+
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(p_user_id uuid, p_theme text DEFAULT NULL::text, p_font text DEFAULT NULL::text, p_music_playlist jsonb DEFAULT NULL::jsonb, p_current_music_track text DEFAULT NULL::text, p_current_music_position bigint DEFAULT NULL::bigint, p_shuffle_enabled boolean DEFAULT NULL::boolean, p_use_gradient boolean DEFAULT NULL::boolean, p_last_model_id text DEFAULT NULL::text, p_last_provider text DEFAULT NULL::text)
  RETURNS void
  LANGUAGE plpgsql
