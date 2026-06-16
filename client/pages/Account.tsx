@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight } from "lucide-react";
+import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight, ShieldAlert, ShieldCheck, Copy, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { encrypt, decrypt, generateMasterKey, saveMasterKey, getMasterKey } from "@/lib/crypto";
 import Cropper, { Area } from "react-easy-crop";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,11 @@ export default function Account() {
   const [baseUrlInputs, setBaseUrlInputs] = useState<Record<string, string>>({});
   const [newModelInput, setNewModelInput] = useState("");
   const [selectedProviderForModel, setSelectedProviderForModel] = useState("openai");
+  const [encryptionSettings, setEncryptionSettings] = useState<Record<string, boolean>>({});
+  const [generatedKey, setGeneratedKey] = useState("");
+  const [masterKeyInput, setMasterKeyInput] = useState("");
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [selectedKeyLength, setSelectedKeyLength] = useState(32);
 
   const fetchAccountData = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -53,6 +59,8 @@ export default function Account() {
     const { data: idents } = await supabase.auth.getUser(); if (idents.user) setIdentities(idents.user.identities || []);
     const { data: ints } = await supabase.rpc("get_my_integrations"); if (ints) setIntegrations(ints);
     const { data: mods } = await supabase.from("user_models").select("*"); if (mods) setUserModels(mods);
+    const { data: prefs } = await supabase.from("user_preferences").select("encryption_settings").eq("user_id", session.user.id).single();
+    if (prefs?.encryption_settings) setEncryptionSettings(prefs.encryption_settings);
   }, [session?.user?.id]);
 
   useEffect(() => {
@@ -146,6 +154,115 @@ export default function Account() {
   const handleLinkIdentity = async (provider: string) => { try { await linkIdentity(provider as any); toast({ title: "Success" }); } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); } };
   const isLinked = (provider: string) => identities.some(i => i.provider === provider);
 
+  const handleGenerateKey = () => {
+    const key = generateMasterKey(selectedKeyLength);
+    setGeneratedKey(key);
+    toast({ title: "Key Generated", description: "Please copy it securely." });
+  };
+
+  const handleToggleEncryption = async (target: string) => {
+    if (!masterKeyInput.trim()) {
+      toast({ title: "Error", description: "Please enter your masterkey first.", variant: "destructive" });
+      return;
+    }
+
+    const currentKey = getMasterKey();
+    if (currentKey && currentKey !== masterKeyInput.trim()) {
+       toast({ title: "Error", description: "Masterkey mismatch. If you want to change your key, you must first decrypt everything.", variant: "destructive" });
+       return;
+    }
+
+    setIsMigrating(true);
+    try {
+      const isEnabling = !encryptionSettings[target];
+      const key = masterKeyInput.trim();
+
+      if (target === 'characters') {
+        const { data: chars } = await supabase.from('characters').select('*');
+        if (chars) {
+          for (const char of chars) {
+            if (isEnabling && !char.is_encrypted) {
+              const encryptedChar = {
+                name: await encrypt(char.name || '', key),
+                short_description: char.short_description ? await encrypt(char.short_description, key) : null,
+                display_name: char.display_name ? await encrypt(char.display_name, key) : null,
+                appearance: char.appearance ? await encrypt(char.appearance, key) : null,
+                personality: char.personality ? await encrypt(char.personality, key) : null,
+                backstory: char.backstory ? await encrypt(char.backstory, key) : null,
+                hidden_description: char.hidden_description ? await encrypt(char.hidden_description, key) : null,
+                is_encrypted: true
+              };
+              await supabase.from('characters').update(encryptedChar).eq('id', char.id);
+            } else if (!isEnabling && char.is_encrypted) {
+              const decryptedChar = {
+                name: await decrypt(char.name, key),
+                short_description: char.short_description ? await decrypt(char.short_description, key) : null,
+                display_name: char.display_name ? await decrypt(char.display_name, key) : null,
+                appearance: char.appearance ? await decrypt(char.appearance, key) : null,
+                personality: char.personality ? await decrypt(char.personality, key) : null,
+                backstory: char.backstory ? await decrypt(char.backstory, key) : null,
+                hidden_description: char.hidden_description ? await decrypt(char.hidden_description, key) : null,
+                is_encrypted: false
+              };
+              await supabase.from('characters').update(decryptedChar).eq('id', char.id);
+            }
+          }
+        }
+      }
+
+      if (target === 'chats') {
+        const { data: chats } = await supabase.from('chats').select('*');
+        if (chats) {
+          for (const chat of chats) {
+            if (isEnabling && !chat.is_encrypted) {
+               const encryptedChat = {
+                 title: await encrypt(chat.title || 'New Chat', key),
+                 is_encrypted: true
+               };
+               await supabase.from('chats').update(encryptedChat).eq('id', chat.id);
+            } else if (!isEnabling && chat.is_encrypted) {
+               const decryptedChat = {
+                 title: await decrypt(chat.title, key),
+                 is_encrypted: false
+               };
+               await supabase.from('chats').update(decryptedChat).eq('id', chat.id);
+            }
+
+            const { data: messages } = await supabase.from('chat_messages').select('*').eq('chat_id', chat.id);
+            if (messages) {
+              for (const msg of messages) {
+                if (isEnabling && !msg.is_encrypted) {
+                  await supabase.from('chat_messages').update({
+                    content: await encrypt(msg.content, key),
+                    is_encrypted: true
+                  }).eq('id', msg.id);
+                } else if (!isEnabling && msg.is_encrypted) {
+                   await supabase.from('chat_messages').update({
+                     content: await decrypt(msg.content, key),
+                     is_encrypted: false
+                   }).eq('id', msg.id);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const newSettings = { ...encryptionSettings, [target]: isEnabling };
+      await supabase.rpc('upsert_user_preferences', {
+        p_user_id: session?.user?.id,
+        p_encryption_settings: newSettings
+      });
+      setEncryptionSettings(newSettings);
+      saveMasterKey(key);
+      toast({ title: "Success", description: `${target} ${isEnabling ? 'encrypted' : 'decrypted'} successfully.` });
+    } catch (e: any) {
+      toast({ title: "Migration Error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto space-y-8">
@@ -159,6 +276,7 @@ export default function Account() {
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="models">Custom Models</TabsTrigger>
+            <TabsTrigger value="security">Advanced Security</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -211,6 +329,99 @@ export default function Account() {
               </CardContent>
             </Card>
           </TabsContent>
+          <TabsContent value="security" className="space-y-6">
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-cyan-500" />
+                  Client-Side Encryption
+                </CardTitle>
+                <CardDescription>
+                  Protect your data with a masterkey. Data is encrypted in your browser before being sent to the server.
+                  <br />
+                  <strong className="text-red-400">Warning: If you lose your masterkey, your data cannot be recovered.</strong>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {!generatedKey && Object.values(encryptionSettings).every(v => !v) && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                       <label className="text-sm font-medium text-slate-300">Key Security Level</label>
+                       <select
+                         value={selectedKeyLength}
+                         onChange={(e) => setSelectedKeyLength(Number(e.target.value))}
+                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm"
+                       >
+                         <option value={32}>Basic (32 chars)</option>
+                         <option value={64}>Medium (64 chars)</option>
+                         <option value={256}>High (256 chars)</option>
+                         <option value={512}>Very High (512 chars)</option>
+                       </select>
+                    </div>
+                    <Button onClick={handleGenerateKey} className="bg-cyan-600 w-full">
+                      Generate New Masterkey
+                    </Button>
+                  </div>
+                )}
+
+                {generatedKey && (
+                  <div className="p-4 rounded-xl bg-slate-950 border border-cyan-900/50 space-y-4">
+                    <p className="text-xs font-mono break-all text-cyan-400">{generatedKey}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { navigator.clipboard.writeText(generatedKey); toast({ title: "Copied" }); }}
+                      className="w-full gap-2"
+                    >
+                      <Copy className="w-4 h-4" /> Copy Masterkey
+                    </Button>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Enter Masterkey to Toggle</label>
+                    <Input
+                      type="password"
+                      placeholder="Paste your masterkey here"
+                      value={masterKeyInput}
+                      onChange={(e) => setMasterKeyInput(e.target.value)}
+                      className="bg-slate-950"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Button
+                      variant={encryptionSettings.characters ? "secondary" : "outline"}
+                      onClick={() => handleToggleEncryption('characters')}
+                      disabled={isMigrating}
+                      className="h-16 justify-between px-6"
+                    >
+                      <div className="text-left">
+                        <div className="font-semibold">Characters</div>
+                        <div className="text-xs text-slate-500">{encryptionSettings.characters ? 'Encrypted' : 'Unencrypted'}</div>
+                      </div>
+                      {isMigrating ? <RefreshCw className="w-5 h-5 animate-spin" /> : (encryptionSettings.characters ? <ShieldCheck className="w-5 h-5 text-green-500" /> : <ShieldAlert className="w-5 h-5 text-slate-600" />)}
+                    </Button>
+
+                    <Button
+                      variant={encryptionSettings.chats ? "secondary" : "outline"}
+                      onClick={() => handleToggleEncryption('chats')}
+                      disabled={isMigrating}
+                      className="h-16 justify-between px-6"
+                    >
+                      <div className="text-left">
+                        <div className="font-semibold">Chatbot Chats</div>
+                        <div className="text-xs text-slate-500">{encryptionSettings.chats ? 'Encrypted' : 'Unencrypted'}</div>
+                      </div>
+                      {isMigrating ? <RefreshCw className="w-5 h-5 animate-spin" /> : (encryptionSettings.chats ? <ShieldCheck className="w-5 h-5 text-green-500" /> : <ShieldAlert className="w-5 h-5 text-slate-600" />)}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="models" className="space-y-6">
             <Card className="bg-slate-900/50 border-slate-800">
               <CardContent className="pt-6 space-y-6">
