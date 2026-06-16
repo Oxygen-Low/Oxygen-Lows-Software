@@ -269,7 +269,7 @@ export const ChatbotApp = () => {
             const data = JSON.parse(line.slice(6));
             let delta = "";
 
-            if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom" || selectedProvider === "stablehorde") {
+            if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom" || selectedProvider === "stablehorde" || selectedProvider === "lmstudio") {
               delta = data.choices?.[0]?.delta?.content || "";
             } else if (selectedProvider === "anthropic") {
               delta = data.delta?.text || "";
@@ -341,7 +341,7 @@ export const ChatbotApp = () => {
         <div className="pt-4 border-t border-slate-800 space-y-4 overflow-y-auto">
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">Model</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded" value={`${selectedProvider}:${selectedModel}`} onChange={e => { const [p, m] = e.target.value.split(":"); setSelection(m, p); }}>
-              {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{m.provider === "ollama" ? "ollama/" + m.model_id : m.provider + " - " + m.model_id}</option>)}
+              {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{m.provider === "ollama" ? "ollama/" + m.model_id : m.provider === "lmstudio" ? "lmstudio/" + m.model_id : m.provider + " - " + m.model_id}</option>)}
             </select>
           </div>
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">Style</label>

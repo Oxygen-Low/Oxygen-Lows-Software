@@ -67,16 +67,31 @@ const getSystemContentFromYaml = (filePath: string): string | null => {
 };
 
 export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
+  const localModels = [];
+
   try {
     const response = await axios.get("http://127.0.0.1:11434/api/tags", { timeout: 2000 });
     const models = (response.data.models || []).map((m: any) => ({
       provider: "ollama",
       model_id: m.name
     }));
-    res.json(models);
+    localModels.push(...models);
   } catch (error) {
-    res.json([]);
+    // Ignore Ollama errors
   }
+
+  try {
+    const response = await axios.get("http://127.0.0.1:1234/v1/models", { timeout: 2000 });
+    const models = (response.data.data || []).map((m: any) => ({
+      provider: "lmstudio",
+      model_id: m.id
+    }));
+    localModels.push(...models);
+  } catch (error) {
+    // Ignore LMStudio errors
+  }
+
+  res.json(localModels);
 };
 
 export const handleProxyAiRequest: RequestHandler = async (req, res) => {
@@ -98,7 +113,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     .eq("provider", provider)
     .single();
 
-  if (!integration?.api_key && provider !== "ollama" && provider !== "kobold") {
+  if (!integration?.api_key && provider !== "ollama" && provider !== "kobold" && provider !== "lmstudio") {
     return res.status(400).json({ error: "Provider not configured" });
   }
 
@@ -238,6 +253,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       case "ollama":
         handleResponse(await axios.post("http://127.0.0.1:11434/api/chat", { model, messages: processedMessages, stream }, axiosOptions));
+        break;
+      case "lmstudio":
+        handleResponse(await axios.post("http://127.0.0.1:1234/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
         break;
       case "kobold":
         handleResponse(await axios.post("http://127.0.0.1:5001/api/v1/generate", { prompt: processedMessages[processedMessages.length - 1]?.content || "" }, axiosOptions));
