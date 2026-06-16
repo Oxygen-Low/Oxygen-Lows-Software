@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
@@ -143,52 +143,60 @@ export const ChatbotApp = () => {
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
 
+  const fetchDataRef = useRef<() => Promise<void>>();
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastParsedLengthRef = useRef(0);
   const isTypingRef = useRef(false);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!session?.user?.id) return;
 
-    const fetchData = async () => {
-      const [{ data: prefs }, { data: styleList }, { data: chars }] = await Promise.all([
-        supabase.from("user_preferences").select("encryption_settings").eq("user_id", session.user.id).single(),
-        supabase.rpc("get_chat_styles"),
-        supabase.from("characters").select("id, name, display_name, is_encrypted").eq("user_id", session.user.id)
-      ]);
+    const [{ data: prefs }, { data: styleList }, { data: chars }] = await Promise.all([
+      supabase.from("user_preferences").select("encryption_settings").eq("user_id", session.user.id).single(),
+      supabase.rpc("get_chat_styles"),
+      supabase.from("characters").select("id, name, display_name, is_encrypted").eq("user_id", session.user.id)
+    ]);
 
-      const enabled = prefs?.encryption_settings?.chats || false;
-      setIsEncryptionEnabled(enabled);
+    const enabled = prefs?.encryption_settings?.chats || false;
+    setIsEncryptionEnabled(enabled);
 
-      if (styleList) setStyles(styleList);
+    if (styleList) setStyles(styleList);
 
-      const key = getMasterKey();
-      if (enabled && !key) {
-        setShowUnlockModal(true);
-      } else {
-        const { data: chatList } = await supabase.from("chats").select("*").eq("user_id", session.user.id).order("updated_at", { ascending: false });
-        if (chatList) {
-          const processedChats = await Promise.all(chatList.map(async c => {
-            if (!c.is_encrypted) return c;
-            try { return { ...c, title: await decrypt(c.title, key!) }; }
-            catch (e) { return { ...c, title: "[Encrypted]" }; }
-          }));
-          setChats(processedChats);
-        }
-
-        if (chars) {
-          const processedChars = await Promise.all(chars.map(async c => {
-             if (!c.is_encrypted) return c;
-             try { return { ...c, display_name: c.display_name ? await decrypt(c.display_name, key!) : null, name: await decrypt(c.name, key!) }; }
-             catch (e) { return { ...c, name: "[Encrypted]" }; }
-          }));
-          setAvailableCharacters(processedChars);
-        }
+    const key = getMasterKey();
+    if (enabled && !key) {
+      setShowUnlockModal(true);
+    } else {
+      const { data: chatList } = await supabase.from("chats").select("*").eq("user_id", session.user.id).order("updated_at", { ascending: false });
+      if (chatList) {
+        const processedChats = await Promise.all(chatList.map(async c => {
+          if (!c.is_encrypted) return c;
+          try {
+             if (!key) throw new Error("No key");
+             return { ...c, title: await decrypt(c.title, key) };
+          }
+          catch (e) { return { ...c, title: "[Encrypted]" }; }
+        }));
+        setChats(processedChats);
       }
-    };
 
-    fetchData();
+      if (chars) {
+        const processedChars = await Promise.all(chars.map(async c => {
+           if (!c.is_encrypted) return c;
+           try {
+             if (!key) throw new Error("No key");
+             return { ...c, display_name: c.display_name ? await decrypt(c.display_name, key) : null, name: await decrypt(c.name, key) };
+           }
+           catch (e) { return { ...c, name: "[Encrypted]" }; }
+        }));
+        setAvailableCharacters(processedChars);
+      }
+    }
   }, [session]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     if (!currentChatId) {
@@ -209,7 +217,10 @@ export const ChatbotApp = () => {
         const key = getMasterKey();
         const processedMessages = await Promise.all(msgList.map(async m => {
           if (!m.is_encrypted) return m;
-          try { return { ...m, content: await decrypt(m.content, key!) }; }
+          try {
+            if (!key) throw new Error("No key");
+            return { ...m, content: await decrypt(m.content, key) };
+          }
           catch (e) { return { ...m, content: "[Encrypted Content]" }; }
         }));
         setMessages(processedMessages as Message[]);
@@ -233,6 +244,10 @@ export const ChatbotApp = () => {
   const handleCreateChat = async () => {
     if (!session?.user?.id) return;
     const key = getMasterKey();
+    if (isEncryptionEnabled && !key) {
+      setShowUnlockModal(true);
+      return;
+    }
     const title = "New Chat";
     const { data, error } = await supabase
       .from("chats")
@@ -270,10 +285,14 @@ export const ChatbotApp = () => {
 
     try {
       const key = getMasterKey();
+      if (isEncryptionEnabled && !key) {
+        setShowUnlockModal(true);
+        return;
+      }
       const { error: userInsertError } = await supabase.from("chat_messages").insert({
         chat_id: currentChatId,
         role: "user",
-        content: isEncryptionEnabled ? await encrypt(input, key!) : input,
+        content: (isEncryptionEnabled && key) ? await encrypt(input, key) : input,
         is_encrypted: isEncryptionEnabled
       });
       if (userInsertError) throw userInsertError;
@@ -364,7 +383,7 @@ export const ChatbotApp = () => {
       const { error: assistantInsertError } = await supabase.from("chat_messages").insert({
         chat_id: currentChatId,
         role: "assistant",
-        content: isEncryptionEnabled ? await encrypt(fullContent, key!) : fullContent,
+        content: (isEncryptionEnabled && key) ? await encrypt(fullContent, key) : fullContent,
         is_encrypted: isEncryptionEnabled
       });
       if (assistantInsertError) throw assistantInsertError;
@@ -392,7 +411,7 @@ export const ChatbotApp = () => {
 
   return (
     <div className="flex h-[700px] gap-0 bg-slate-950/30 rounded-2xl border border-slate-800 overflow-hidden text-slate-200">
-      <UnlockModal isOpen={showUnlockModal} onUnlock={() => { setShowUnlockModal(false); window.location.reload(); }} />
+      <UnlockModal isOpen={showUnlockModal} onClose={() => setShowUnlockModal(false)} onUnlock={() => { setShowUnlockModal(false); fetchData(); }} />
       <div className="w-64 flex flex-col gap-4 border-r border-slate-800 p-6">
         <Button onClick={handleCreateChat} className="w-full bg-cyan-600"><Plus className="w-4 h-4 mr-2" />New Chat</Button>
         <ScrollArea className="flex-1">

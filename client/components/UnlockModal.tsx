@@ -2,26 +2,63 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
-import { saveMasterKey } from "@/lib/crypto";
+import { Lock, LogOut, X } from "lucide-react";
+import { saveMasterKey, decrypt } from "@/lib/crypto";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 
 interface UnlockModalProps {
   isOpen: boolean;
+  onClose: () => void;
   onUnlock: () => void;
 }
 
-export const UnlockModal = ({ isOpen, onUnlock }: UnlockModalProps) => {
+export const UnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => {
+  const { signOut, session } = useAuth();
   const [keyInput, setKeyInput] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleUnlock = () => {
-    if (keyInput.trim()) {
+  const handleUnlock = async () => {
+    if (!keyInput.trim() || !session?.user?.id) return;
+
+    setIsVerifying(true);
+    setError(null);
+    try {
+      // Validate key against validation_hash in user_preferences
+      const { data, error: fetchError } = await supabase
+        .from('user_preferences')
+        .select('encryption_settings')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const validationHash = data?.encryption_settings?.validation_hash;
+      if (validationHash) {
+        try {
+          await decrypt(validationHash, keyInput.trim());
+        } catch (e) {
+          throw new Error("Invalid masterkey. Please check your key and try again.");
+        }
+      }
+
       saveMasterKey(keyInput.trim());
       onUnlock();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-slate-900 border-slate-800 text-white" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -32,20 +69,25 @@ export const UnlockModal = ({ isOpen, onUnlock }: UnlockModalProps) => {
             Enter your masterkey to access your encrypted data. This key is never stored on our servers.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
+        <div className="py-4 space-y-4">
           <Input
             type="password"
             placeholder="Enter Masterkey"
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-            className="bg-slate-800 border-slate-700"
+            className={`bg-slate-800 border-slate-700 ${error ? 'border-red-500 focus:border-red-500' : ''}`}
             autoFocus
+            disabled={isVerifying}
           />
+          {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
         </div>
-        <DialogFooter>
-          <Button onClick={handleUnlock} className="bg-cyan-600 hover:bg-cyan-700 w-full">
-            Unlock
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="ghost" onClick={handleSignOut} className="text-slate-400 hover:text-white hover:bg-slate-800 order-2 sm:order-1">
+            <LogOut className="w-4 h-4 mr-2" /> Sign Out
+          </Button>
+          <Button onClick={handleUnlock} disabled={isVerifying} className="bg-cyan-600 hover:bg-cyan-700 flex-1 order-1 sm:order-2">
+            {isVerifying ? "Verifying..." : "Unlock"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -44,7 +44,7 @@ export default function Account() {
   const [baseUrlInputs, setBaseUrlInputs] = useState<Record<string, string>>({});
   const [newModelInput, setNewModelInput] = useState("");
   const [selectedProviderForModel, setSelectedProviderForModel] = useState("openai");
-  const [encryptionSettings, setEncryptionSettings] = useState<Record<string, boolean>>({});
+  const [encryptionSettings, setEncryptionSettings] = useState<Record<string, any>>({});
   const [generatedKey, setGeneratedKey] = useState("");
   const [masterKeyInput, setMasterKeyInput] = useState("");
   const [isMigrating, setIsMigrating] = useState(false);
@@ -178,7 +178,7 @@ export default function Account() {
       const key = masterKeyInput.trim();
 
       if (target === 'characters') {
-        const { data: chars } = await supabase.from('characters').select('*');
+        const { data: chars } = await supabase.from('characters').select('*').eq('user_id', session?.user?.id);
         if (chars) {
           for (const char of chars) {
             if (isEnabling && !char.is_encrypted) {
@@ -211,7 +211,7 @@ export default function Account() {
       }
 
       if (target === 'chats') {
-        const { data: chats } = await supabase.from('chats').select('*');
+        const { data: chats } = await supabase.from('chats').select('*').eq('user_id', session?.user?.id);
         if (chats) {
           for (const chat of chats) {
             if (isEnabling && !chat.is_encrypted) {
@@ -249,6 +249,15 @@ export default function Account() {
       }
 
       const newSettings = { ...encryptionSettings, [target]: isEnabling };
+
+      // If enabling encryption for the first time, save a validation hash
+      if (isEnabling && !newSettings.validation_hash) {
+        newSettings.validation_hash = await encrypt('valid', key);
+      } else if (!isEnabling && Object.values(newSettings).filter(v => v === true).length === 0) {
+        // If disabling everything, we can clear the validation hash
+        delete newSettings.validation_hash;
+      }
+
       await supabase.rpc('upsert_user_preferences', {
         p_user_id: session?.user?.id,
         p_encryption_settings: newSettings

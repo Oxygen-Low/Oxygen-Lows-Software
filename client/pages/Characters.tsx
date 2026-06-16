@@ -44,11 +44,12 @@ export default function Characters() {
     if (enabled && !getMasterKey()) {
       setShowUnlockModal(true);
     } else {
-      fetchCharacters();
+      fetchCharacters(enabled);
     }
   };
 
-  const fetchCharacters = async () => {
+  const fetchCharacters = async (overrideEncryptionEnabled?: boolean) => {
+    const encryptionEnabled = overrideEncryptionEnabled !== undefined ? overrideEncryptionEnabled : isEncryptionEnabled;
     try {
       const { data, error } = await supabase
         .from("characters")
@@ -57,7 +58,7 @@ export default function Characters() {
 
       if (error) throw error;
 
-      if (isEncryptionEnabled) {
+      if (encryptionEnabled) {
         const key = getMasterKey();
         if (!key) {
            setShowUnlockModal(true);
@@ -217,7 +218,7 @@ export default function Characters() {
 
   return (
     <Layout>
-      <UnlockModal isOpen={showUnlockModal} onUnlock={() => { setShowUnlockModal(false); fetchCharacters(); }} />
+      <UnlockModal isOpen={showUnlockModal} onClose={() => setShowUnlockModal(false)} onUnlock={() => { setShowUnlockModal(false); fetchCharacters(true); }} />
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex justify-between items-center">
           <div>

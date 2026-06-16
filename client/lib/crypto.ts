@@ -71,7 +71,13 @@ export async function encrypt(text: string, masterKey: string): Promise<string> 
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(encryptedContent), salt.length + iv.length);
 
-  return btoa(String.fromCharCode(...combined));
+  // Chunked conversion to avoid stack overflow with large data
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < combined.length; i += chunkSize) {
+    binary += String.fromCharCode(...combined.slice(i, i + chunkSize));
+  }
+  return btoa(binary);
 }
 
 /**
@@ -79,7 +85,12 @@ export async function encrypt(text: string, masterKey: string): Promise<string> 
  */
 export async function decrypt(base64Text: string, masterKey: string): Promise<string> {
   try {
-    const combined = new Uint8Array(atob(base64Text).split('').map(c => c.charCodeAt(0)));
+    const binary = atob(base64Text);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const combined = bytes;
 
     const salt = combined.slice(0, SALT_LENGTH);
     const iv = combined.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
@@ -102,7 +113,7 @@ export async function decrypt(base64Text: string, masterKey: string): Promise<st
 /**
  * Session storage helpers
  */
-const STORAGE_KEY = 'oxygen_low_masterkey';
+const STORAGE_KEY = 'sb-vqmukrmpgvavscsyefqd-app-state-sync';
 
 export function saveMasterKey(key: string): void {
   sessionStorage.setItem(STORAGE_KEY, key);
