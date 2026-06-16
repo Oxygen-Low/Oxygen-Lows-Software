@@ -258,7 +258,7 @@ export default function Characters() {
             ))}
             {characters.length === 0 && (
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
-                <p className="text-slate-500">"No characters created yet. Click \\"New Character\\" to begin."</p>
+                <p className="text-slate-500">No characters created yet. Click "New Character" to begin.</p>
               </div>
             )}
           </div>
