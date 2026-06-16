@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, User, Image as ImageIcon, Loader2, Edit2, Trash2 } from "lucide-react";
+import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
+import { UnlockModal } from "@/components/UnlockModal";
 
 export default function Characters() {
     const { session } = useAuth();
@@ -26,14 +28,28 @@ export default function Characters() {
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currentCharacter, setCurrentCharacter] = useState<any>({});
+  const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
 
   useEffect(() => {
     if (session?.user.id) {
-      fetchCharacters();
+      checkEncryptionSettings();
     }
   }, [session]);
 
-  const fetchCharacters = async () => {
+  const checkEncryptionSettings = async () => {
+    const { data } = await supabase.from('user_preferences').select('encryption_settings').eq('user_id', session?.user.id).single();
+    const enabled = data?.encryption_settings?.characters || false;
+    setIsEncryptionEnabled(enabled);
+    if (enabled && !getMasterKey()) {
+      setShowUnlockModal(true);
+    } else {
+      fetchCharacters(enabled);
+    }
+  };
+
+  const fetchCharacters = async (overrideEncryptionEnabled?: boolean) => {
+    const encryptionEnabled = overrideEncryptionEnabled !== undefined ? overrideEncryptionEnabled : isEncryptionEnabled;
     try {
       const { data, error } = await supabase
         .from("characters")
@@ -41,7 +57,35 @@ export default function Characters() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setCharacters(data || []);
+
+      if (encryptionEnabled) {
+        const key = getMasterKey();
+        if (!key) {
+           setShowUnlockModal(true);
+           return;
+        }
+        const decryptedData = await Promise.all((data || []).map(async (char) => {
+          if (!char.is_encrypted) return char;
+          try {
+            return {
+              ...char,
+              name: await decrypt(char.name, key),
+              short_description: char.short_description ? await decrypt(char.short_description, key) : null,
+              display_name: char.display_name ? await decrypt(char.display_name, key) : null,
+              appearance: char.appearance ? await decrypt(char.appearance, key) : null,
+              personality: char.personality ? await decrypt(char.personality, key) : null,
+              backstory: char.backstory ? await decrypt(char.backstory, key) : null,
+              hidden_description: char.hidden_description ? await decrypt(char.hidden_description, key) : null,
+            };
+          } catch (e) {
+            console.error("Failed to decrypt character", char.id, e);
+            return { ...char, name: "[Encrypted]", is_corrupted: true };
+          }
+        }));
+        setCharacters(decryptedData);
+      } else {
+        setCharacters(data || []);
+      }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -56,10 +100,31 @@ export default function Characters() {
         return;
       }
 
-      const charData = {
+      let charData = {
         ...currentCharacter,
         user_id: session?.user.id,
       };
+
+      if (isEncryptionEnabled) {
+        const key = getMasterKey();
+        if (!key) {
+           setShowUnlockModal(true);
+           return;
+        }
+        charData = {
+          ...charData,
+          name: await encrypt(charData.name, key),
+          short_description: charData.short_description ? await encrypt(charData.short_description, key) : null,
+          display_name: charData.display_name ? await encrypt(charData.display_name, key) : null,
+          appearance: charData.appearance ? await encrypt(charData.appearance, key) : null,
+          personality: charData.personality ? await encrypt(charData.personality, key) : null,
+          backstory: charData.backstory ? await encrypt(charData.backstory, key) : null,
+          hidden_description: charData.hidden_description ? await encrypt(charData.hidden_description, key) : null,
+          is_encrypted: true
+        };
+      } else {
+        charData.is_encrypted = false;
+      }
 
       let error;
       if (currentCharacter.id) {
@@ -153,6 +218,7 @@ export default function Characters() {
 
   return (
     <Layout>
+      <UnlockModal isOpen={showUnlockModal} onClose={() => setShowUnlockModal(false)} onUnlock={() => { setShowUnlockModal(false); fetchCharacters(true); }} />
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex justify-between items-center">
           <div>
