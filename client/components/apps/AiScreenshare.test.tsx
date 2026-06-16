@@ -5,18 +5,7 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { AiScreenshareApp } from "./AiScreenshare";
 
 // Mock react-i18next
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options: any) => key,
-    i18n: {
-      changeLanguage: () => Promise.resolve(),
-    },
-  }),
-  initReactI18next: {
-    type: '3rdParty',
-    init: () => {},
-  }
-}));
+
 
 // Mock scrollIntoView before anything else
 if (!window.HTMLElement.prototype.scrollIntoView) {
@@ -104,11 +93,11 @@ describe("AiScreenshareApp", () => {
     expect(screen.getByText("Gaming Coach")).toBeDefined();
     expect(screen.getByText("Video React")).toBeDefined();
     expect(screen.getByText("Viewer")).toBeDefined();
-    expect(screen.getByText("screenshare.startScreenshare")).toBeDefined();
+    expect(screen.getByText("Start Screenshare")).toBeDefined();
   });
 
   it("shows preview area", async () => {
     render(<ThemeProvider><AiScreenshareApp /></ThemeProvider>);
-    expect(screen.getByText("screenshare.captureDesc")).toBeDefined();
+    expect(screen.getByText("Capture a window or screen to let the AI start reacting.")).toBeDefined();
   });
 });

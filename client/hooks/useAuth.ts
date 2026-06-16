@@ -32,7 +32,7 @@ export const useAuth = () => {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, username: string, language?: string, subLanguage?: string | null) => {
+  const signUp = async (email: string, password: string, username: string) => {
     try {
       setError(null);
       const { data, error } = await supabase.auth.signUp({
@@ -48,9 +48,7 @@ export const useAuth = () => {
       if (data.user?.id) {
         try {
           await supabase.rpc("upsert_user_preferences", {
-            p_user_id: data.user.id,
-            p_language: language,
-            p_sub_language: subLanguage,
+            p_user_id: data.user.id
           });
         } catch (prefsError) {
           console.error("Failed to initialize user preferences:", prefsError);

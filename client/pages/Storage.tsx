@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Cloud,
-  {t('storage.upload')},
+  Upload,
   Trash2,
   FileText,
   Image as ImageIcon,
@@ -21,14 +21,12 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 
 export default function Storage() {
-  const { t } = useTranslation();
-  const { session } = useAuth();
+    const { session } = useAuth();
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
   const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
-  const [uploading, set{t('storage.upload')}ing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [totalSize, setTotalSize] = useState(0);
   const [dbStats, setDbStats] = useState<any[]>([]);
   const cloudInputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +77,7 @@ export default function Storage() {
     fetchDbStats();
   }, [session]);
 
-  const handleCloud{t('storage.upload')} = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !session?.user?.id) return;
     const file = e.target.files[0];
 
@@ -90,7 +88,7 @@ export default function Storage() {
     }
 
     try {
-      set{t('storage.upload')}ing(true);
+      setUploading(true);
       const { error } = await supabase.storage
         .from("Storage")
         .upload(`${session.user.id}/${Date.now()}_${file.name}`, file);
@@ -101,7 +99,7 @@ export default function Storage() {
     } catch (error: any) {
       toast.error(error.message);
     } finally {
-      set{t('storage.upload')}ing(false);
+      setUploading(false);
     }
   };
 
@@ -117,10 +115,10 @@ export default function Storage() {
   };
 
   const categories = {
-    text: { color: "bg-white", label: t('storage.categories.text'), icon: FileText, files: [] as any[], size: 0 },
-    image: { color: "bg-orange-500", label: t('storage.categories.image'), icon: ImageIcon, files: [] as any[], size: 0 },
-    audio: { color: "bg-blue-500", label: t('storage.categories.audio'), icon: Music, files: [] as any[], size: 0 },
-    data: { color: "bg-black", label: t('storage.categories.data'), icon: Database, files: [] as any[], size: 0 },
+    text: { color: "bg-white", label: "Text/Artifacts", icon: FileText, files: [] as any[], size: 0 },
+    image: { color: "bg-orange-500", label: "Images", icon: ImageIcon, files: [] as any[], size: 0 },
+    audio: { color: "bg-blue-500", label: "Sounds", icon: Music, files: [] as any[], size: 0 },
+    data: { color: "bg-black", label: "Data", icon: Database, files: [] as any[], size: 0 },
   };
 
   cloudFiles.forEach(f => {
@@ -155,22 +153,20 @@ export default function Storage() {
     <Layout>
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-white">{t('nav.storage')}</h2>
-          <p className="text-slate-400">{t('storage.manage')}</p>
+          <h2 className="text-3xl font-bold tracking-tight text-white">Storage</h2>
+          <p className="text-slate-400">Manage your files and data usage.</p>
         </div>
 
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
-            <CardTitle className="text-white">{t('storage.overallUsage')}</CardTitle>
-            <CardDescription className="text-slate-400">
-              {t('storage.overallUsageDescription')}
-            </CardDescription>
+            <CardTitle className="text-white">Overall Usage</CardTitle>
+            <CardDescription className="text-slate-400">Total space used by files and application data</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-slate-400">
-                <span>{formatSize(totalAll)} {t('storage.used')}</span>
-                <span>{t('storage.limit', { limit: '30MB' })}</span>
+                <span>{formatSize(totalAll)} used</span>
+                <span>{`Limit: ${'30MB'} (Files)`}</span>
               </div>
               <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden flex">
                 {Object.entries(categories).map(([key, cat]) => {
@@ -200,7 +196,7 @@ export default function Storage() {
                                  <span className="text-[10px] text-slate-500 whitespace-nowrap">{formatSize(f.metadata?.size || f.size)}</span>
                                </div>
                              ))}
-                             {cat.files.length === 0 && <p className="p-4 text-center text-xs text-slate-500 italic">{t('common.noItems')}</p>}
+                             {cat.files.length === 0 && <p className="p-4 text-center text-xs text-slate-500 italic">No items</p>}
                            </div>
                          </ScrollArea>
                        </HoverCardContent>
@@ -223,30 +219,26 @@ export default function Storage() {
         <Tabs defaultValue="cloud" className="w-full">
           <TabsList className="bg-slate-900 border border-slate-800">
             <TabsTrigger value="cloud" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-400">
-              <Cloud className="w-4 h-4 mr-2" />
-              {t('storage.tabs.cloudStorage')}
-            </TabsTrigger>
+              <Cloud className="w-4 h-4 mr-2" />Cloud Storage</TabsTrigger>
             <TabsTrigger value="links" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-400">
-              <LinkIcon className="w-4 h-4 mr-2" />
-              {t('storage.tabs.linkedImages')}
-            </TabsTrigger>
+              <LinkIcon className="w-4 h-4 mr-2" />Linked Images</TabsTrigger>
           </TabsList>
 
           <TabsContent value="cloud" className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-medium text-white">{t('storage.files.title')}</h3>
-                <p className="text-sm text-slate-400">{t('storage.files.description')}</p>
+                <h3 className="text-lg font-medium text-white">Files</h3>
+                <p className="text-sm text-slate-400">Your uploaded files and artifacts.</p>
               </div>
               <Button
                 onClick={() => cloudInputRef.current?.click()}
                 disabled={uploading}
                 className="bg-cyan-500 hover:bg-cyan-600 text-white"
               >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <{t('storage.upload')} className="w-4 h-4 mr-2" />}
-                {t('storage.upload')}
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+                Upload
               </Button>
-              <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloud{t('storage.upload')}} />
+              <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloudUpload} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -271,15 +263,11 @@ export default function Storage() {
                     {cloudFileSignedUrls[file.id] ? (
                       <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" asChild>
                         <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          {t('common.view')}
-                        </a>
+                          <ExternalLink className="w-4 h-4 mr-2" /> View</a>
                       </Button>
                     ) : (
                       <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed" disabled>
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        {t('common.view')}
-                      </Button>
+                        <ExternalLink className="w-4 h-4 mr-2" /> View</Button>
                     )}
                     <Button variant="destructive" size="icon" onClick={() => deleteCloudFile(file.name)}>
                       <Trash2 className="w-4 h-4" />
@@ -293,10 +281,8 @@ export default function Storage() {
           <TabsContent value="links" className="space-y-6">
              <div className="p-12 text-center border-2 border-dashed border-slate-800 rounded-xl">
                 <LinkIcon className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">{t('storage.tabs.linkedImages')} Coming Soon</h3>
-                <p className="text-slate-500 max-w-sm mx-auto text-sm">
-                  {t('storage.linkedImages.comingSoon.description')}
-                </p>
+                <h3 className="text-lg font-medium text-white mb-2">"Linked Images" Coming Soon</h3>
+                <p className="text-slate-500 max-w-sm mx-auto text-sm">We are working on a way to let you manage external image links directly from this tab. Stay tuned!</p>
              </div>
           </TabsContent>
         </Tabs>

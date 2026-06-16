@@ -7,18 +7,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 
 // Mock react-i18next
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: {
-      changeLanguage: () => Promise.resolve(),
-    },
-  }),
-  initReactI18next: {
-    type: '3rdParty',
-    init: () => {},
-  }
-}));
+
 
 // Mock ResizeObserver
 global.ResizeObserver = class {
@@ -87,7 +76,7 @@ describe('FriendsApp', () => {
       </MemoryRouter>
     );
 
-    const input = await screen.findByPlaceholderText('friends.searchPlaceholder');
+    const input = await screen.findByPlaceholderText("Search by username...");
     expect(input).toBeDefined();
 
     await waitFor(() => {
@@ -119,10 +108,10 @@ describe('FriendsApp', () => {
       </MemoryRouter>
     );
 
-    const input = await screen.findByPlaceholderText('friends.searchPlaceholder');
+    const input = await screen.findByPlaceholderText("Search by username...");
     fireEvent.change(input, { target: { value: 'otheruser' } });
 
-    const addButtons = await screen.findAllByText('common.add');
+    const addButtons = await screen.findAllByText("Add");
     fireEvent.click(addButtons[0]);
 
     await waitFor(() => {

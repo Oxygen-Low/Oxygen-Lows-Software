@@ -18,7 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { AiScreenshareApp } from "@/components/apps/AiScreenshare";
-import { useTranslation } from "react-i18next";
 
 import { ChatbotApp } from "@/components/apps/Chatbot";
 
@@ -27,33 +26,30 @@ type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games
 interface AppMetadata {
   id: string;
   name: string;
-  nameKey: string;
-  descriptionKey: string;
+  description: string;
   categories: Category[];
   icon: React.ReactNode;
   component: React.ComponentType;
 }
 
 export default function Apps() {
-  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
 
-  const CATEGORIES: { name: Category; labelKey: string; icon: React.ReactNode; descriptionKey: string }[] = [
-    { name: "All", labelKey: "apps.categories.all", icon: <Box className="w-5 h-5" />, descriptionKey: "apps.categories.allDesc" },
-    { name: "Utility", labelKey: "apps.categories.utility", icon: <Wrench className="w-5 h-5" />, descriptionKey: "apps.categories.utilityDesc" },
-    { name: "LLM/AI", labelKey: "apps.categories.ai", icon: <BrainCircuit className="w-5 h-5" />, descriptionKey: "apps.categories.aiDesc" },
-    { name: "Development", labelKey: "apps.categories.dev", icon: <Code className="w-5 h-5" />, descriptionKey: "apps.categories.devDesc" },
-    { name: "Social", labelKey: "apps.categories.social", icon: <MessageSquare className="w-5 h-5" />, descriptionKey: "apps.categories.socialDesc" },
-    { name: "Games", labelKey: "apps.categories.games", icon: <Gamepad2 className="w-5 h-5" />, descriptionKey: "apps.categories.gamesDesc" },
+  const CATEGORIES: { name: Category; label: string; icon: React.ReactNode; description: string }[] = [
+    { name: "All", label: "All", icon: <Box className="w-5 h-5" />, description: "All available applications" },
+    { name: "Utility", label: "Utility", icon: <Wrench className="w-5 h-5" />, description: "Tools and utilities" },
+    { name: "LLM/AI", label: "LLM/AI", icon: <BrainCircuit className="w-5 h-5" />, description: "AI powered applications" },
+    { name: "Development", label: "Development", icon: <Code className="w-5 h-5" />, description: "Developer tools" },
+    { name: "Social", label: "Social", icon: <MessageSquare className="w-5 h-5" />, description: "Connect with others" },
+    { name: "Games", label: "Games", icon: <Gamepad2 className="w-5 h-5" />, description: "Fun and games" },
   ];
 
   const apps: AppMetadata[] = [
     {
       id: "chatbot",
       name: "Chatbot",
-      nameKey: "apps.chatbot.name",
-      descriptionKey: "apps.chatbot.desc",
+      description: "Chat with state-of-the-art LLMs with memory and custom styles.",
       categories: ["All", "LLM/AI"],
       icon: <Bot className="w-8 h-8 text-cyan-500" />,
       component: ChatbotApp,
@@ -61,8 +57,7 @@ export default function Apps() {
     {
       id: "ai-screenshare",
       name: "AI Screenshare",
-      nameKey: "apps.screenshare.name",
-      descriptionKey: "apps.screenshare.desc",
+      description: "Let AI watch your screen and react to what you are doing in real-time.",
       categories: ["All", "LLM/AI"],
       icon: <Monitor className="w-8 h-8 text-cyan-500" />,
       component: AiScreenshareApp,
@@ -70,8 +65,7 @@ export default function Apps() {
     {
       id: "file-compressor",
       name: "File Compressor",
-      nameKey: "apps.compressor.name",
-      descriptionKey: "apps.compressor.desc",
+      description: "Compress images to save storage space.",
       categories: ["All", "Utility"],
       icon: <Box className="w-8 h-8 text-cyan-500" />,
       component: FileCompressorApp,
@@ -79,8 +73,7 @@ export default function Apps() {
     {
       id: "oauth",
       name: "OAuth",
-      nameKey: "apps.oauth.name",
-      descriptionKey: "apps.oauth.desc",
+      description: "Add OAuth to your applications via Oxygen Low's Software Accounts.",
       categories: ["All", "Development"],
       icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
       component: OauthApp,
@@ -101,8 +94,8 @@ export default function Apps() {
       "Social": 0,
       "Games": 0,
     };
-    apps.forEach(app => {
-      app.categories.forEach(cat => {
+    apps.forEach((app) => {
+      app.categories.forEach((cat) => {
         if (cat !== "All") counts[cat]++;
       });
     });
@@ -111,17 +104,18 @@ export default function Apps() {
 
   if (activeApp) {
     const AppComponent = activeApp.component;
+
     return (
       <Layout>
         <div className="space-y-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mb-8">
             <button
               onClick={() => setActiveApp(null)}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
             >
               <AppWindow className="w-6 h-6" />
             </button>
-            <h2 className="text-2xl font-bold text-white">{t(activeApp.nameKey)}</h2>
+            <h2 className="text-2xl font-bold text-white">{activeApp.name}</h2>
           </div>
           <AppComponent />
         </div>
@@ -133,8 +127,8 @@ export default function Apps() {
     <Layout>
       <div className="space-y-8">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">{t('nav.apps')}</h2>
-          <p className="text-slate-400">{t('apps.description')}</p>
+          <h2 className="text-3xl font-bold text-white mb-2">Apps</h2>
+          <p className="text-slate-400">Discover and use various applications within the platform.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -158,8 +152,8 @@ export default function Apps() {
                     {cat.icon}
                   </div>
                   <div>
-                    <CardTitle className="text-lg text-white">{t(cat.labelKey)}</CardTitle>
-                    <CardDescription className="text-xs text-slate-500">{t(cat.descriptionKey)}</CardDescription>
+                    <CardTitle className="text-lg text-white">{cat.label}</CardTitle>
+                    <CardDescription className="text-xs text-slate-500">{cat.description}</CardDescription>
                   </div>
                 </CardHeader>
               </Card>
@@ -169,7 +163,7 @@ export default function Apps() {
 
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white">
-            {t('apps.activeCategory', { category: t(`apps.categories.${selectedCategory.toLowerCase().replace('/', '')}`) })}
+            {`${selectedCategory} Apps`}
           </h3>
 
           {filteredApps.length > 0 ? (
@@ -184,18 +178,17 @@ export default function Apps() {
                     <div className="mb-4 transition-transform group-hover:scale-110">
                       {app.icon}
                     </div>
-                    <CardTitle className="text-xl text-white mb-2">{t(app.nameKey)}</CardTitle>
+                    <CardTitle className="text-xl text-white mb-2">{app.name}</CardTitle>
                     <CardDescription className="text-slate-400">
-                      {t(app.descriptionKey)}
+                      {app.description}
                     </CardDescription>
                   </CardHeader>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="py-12 flex flex-col items-center justify-center bg-slate-900/30 rounded-xl border border-dashed border-slate-800">
-              <Box className="w-12 h-12 text-slate-700 mb-4" />
-              <p className="text-slate-500 text-lg">{t('common.noItems')}</p>
+            <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
+              <p className="text-slate-500">No apps found in this category.</p>
             </div>
           )}
         </div>

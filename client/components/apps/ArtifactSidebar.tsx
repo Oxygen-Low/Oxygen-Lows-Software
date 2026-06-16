@@ -6,7 +6,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 
 interface ArtifactSidebarProps {
   artifact: {
@@ -18,8 +17,7 @@ interface ArtifactSidebarProps {
 }
 
 export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
-  const { t } = useTranslation();
-  const [saving, setSaving] = useState(false);
+    const [saving, setSaving] = useState(false);
 
   if (!artifact) return null;
 
@@ -68,7 +66,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title={`Download as ${artifact.filename.split(".").pop()}`}>
             <Download className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveToCloud} disabled={saving} title={t('common.save')}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveToCloud} disabled={saving} title="Save">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>

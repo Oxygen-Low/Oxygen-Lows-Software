@@ -42,11 +42,9 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { useTranslation } from "react-i18next";
 
 export function OauthApp() {
-  const { t } = useTranslation();
-  const { toast } = useToast();
+    const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<any[]>([]);
   const [grants, setGrants] = useState<any[]>([]);
@@ -77,7 +75,7 @@ export function OauthApp() {
       setGrants(grantsData || []);
     } catch (error: any) {
       toast({
-        title: t('common.error'),
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -101,12 +99,12 @@ export function OauthApp() {
       setCreatedSecret(data.client_secret);
       fetchData();
       toast({
-        title: t('common.success'),
+        title: "Success",
         description: "Application registered successfully",
       });
     } catch (error: any) {
       toast({
-        title: t('common.error'),
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -116,7 +114,7 @@ export function OauthApp() {
   };
 
   const handleDeleteClient = async (id: string) => {
-    if (!confirm(t('common.confirmDelete'))) return;
+    if (!confirm("Are you sure you want to delete this item?")) return;
     setIsSubmitting(true);
     try {
       // @ts-ignore
@@ -125,12 +123,12 @@ export function OauthApp() {
 
       fetchData();
       toast({
-        title: t('common.success'),
+        title: "Success",
         description: "Application deleted",
       });
     } catch (error: any) {
       toast({
-        title: t('common.error'),
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -148,12 +146,12 @@ export function OauthApp() {
 
       fetchData();
       toast({
-        title: t('common.success'),
+        title: "Success",
         description: "Authorization revoked",
       });
     } catch (error: any) {
       toast({
-        title: t('common.error'),
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -165,7 +163,7 @@ export function OauthApp() {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: t('chatbot.copyToClipboard'),
+      title: "Copied to clipboard",
       description: `${label} copied to clipboard`,
     });
   };
@@ -173,19 +171,19 @@ export function OauthApp() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-white mb-2">{t('oauth.title')}</h2>
-        <p className="text-slate-400">{t('oauth.description')}</p>
+        <h2 className="text-3xl font-bold text-white mb-2">OAuth Applications</h2>
+        <p className="text-slate-400">Manage your OAuth clients and authorized applications.</p>
       </div>
 
       <Tabs defaultValue="clients" className="w-full">
         <TabsList className="bg-slate-900 border-slate-800">
-          <TabsTrigger value="clients">{t('oauth.myClients')}</TabsTrigger>
-          <TabsTrigger value="authorized">{t('oauth.authorizedApps')}</TabsTrigger>
+          <TabsTrigger value="clients">My Clients</TabsTrigger>
+          <TabsTrigger value="authorized">Authorized Apps</TabsTrigger>
         </TabsList>
 
         <TabsContent value="clients" className="mt-6 space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-white">{t('oauth.myClients')}</h3>
+            <h3 className="text-lg font-semibold text-white">My Clients</h3>
             <Dialog open={isCreateOpen} onOpenChange={(open) => {
               setIsCreateOpen(open);
               if (!open) {
@@ -196,13 +194,11 @@ export function OauthApp() {
             }}>
               <DialogTrigger asChild>
                 <Button className="bg-cyan-600 hover:bg-cyan-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('oauth.registerApp')}
-                </Button>
+                  <Plus className="w-4 h-4 mr-2" />Register New App</Button>
               </DialogTrigger>
               <DialogContent className="bg-slate-900 border-slate-800 text-white">
                 <DialogHeader>
-                  <DialogTitle>{t('oauth.registerApp')}</DialogTitle>
+                  <DialogTitle>Register New App</DialogTitle>
                   <DialogDescription className="text-slate-400">
                     Create a new OAuth application to integrate with Oxygen Low.
                   </DialogDescription>
@@ -231,7 +227,7 @@ export function OauthApp() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t('oauth.appType')}</Label>
+                      <Label>Application Type</Label>
                       <Select
                         value={newType}
                         onValueChange={(val: any) => setNewType(val)}
@@ -240,14 +236,14 @@ export function OauthApp() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                          <SelectItem value="confidential">{t('oauth.confidential')}</SelectItem>
-                          <SelectItem value="public">{t('oauth.public')}</SelectItem>
+                          <SelectItem value="confidential">Confidential (Server-side)</SelectItem>
+                          <SelectItem value="public">Public (SPA / Mobile)</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-slate-500">
                         {newType === "confidential"
-                          ? t('oauth.confidentialDesc')
-                          : t('oauth.publicDesc')}
+                          ? "Requires a client secret. Best for secure server apps."
+                          : "No client secret required. Best for SPAs or mobile apps."}
                       </p>
                     </div>
                   </div>
@@ -255,14 +251,11 @@ export function OauthApp() {
                   <div className="space-y-4 py-4">
                     <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                       <p className="text-yellow-500 text-sm font-medium flex items-center gap-2">
-                        <Key className="w-4 h-4" /> {t('oauth.storeSecret')}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {t('oauth.secretWarning')}
-                      </p>
+                        <Key className="w-4 h-4" />IMPORTANT: Store your client secret!</p>
+                      <p className="text-xs text-slate-400 mt-1">It won't be shown again. You can reset it later if lost.</p>
                     </div>
                     <div className="space-y-2">
-                      <Label>{t('oauth.clientSecret')}</Label>
+                      <Label>Client Secret</Label>
                       <div className="flex gap-2">
                         <Input
                           readOnly
@@ -272,7 +265,7 @@ export function OauthApp() {
                         <Button
                           variant="secondary"
                           size="icon"
-                          onClick={() => copyToClipboard(createdSecret, t('oauth.clientSecret'))}
+                          onClick={() => copyToClipboard(createdSecret, "Client Secret")}
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
@@ -287,11 +280,9 @@ export function OauthApp() {
                       onClick={handleCreateClient}
                       disabled={!newName || !newRedirectUris || isSubmitting}
                       className="bg-cyan-600 hover:bg-cyan-700"
-                    >
-                      {t('common.add')}
-                    </Button>
+                    >Add</Button>
                   ) : (
-                    <Button onClick={() => setIsCreateOpen(false)}>{t('common.done')}</Button>
+                    <Button onClick={() => setIsCreateOpen(false)}>Done</Button>
                   )}
                 </DialogFooter>
               </DialogContent>
@@ -300,11 +291,11 @@ export function OauthApp() {
 
           <div className="grid grid-cols-1 gap-4">
             {loading ? (
-              <div className="py-12 text-center text-slate-500">{t('common.loading')}</div>
+              <div className="py-12 text-center text-slate-500">Loading...</div>
             ) : clients.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center bg-slate-900/30 rounded-xl border border-dashed border-slate-800">
                 <Code className="w-12 h-12 text-slate-700 mb-4" />
-                <p className="text-slate-500 text-lg">{t('oauth.noClients')}</p>
+                <p className="text-slate-500 text-lg">You haven't created any OAuth applications yet.</p>
               </div>
             ) : (
               clients.map((client) => (
@@ -343,7 +334,7 @@ export function OauthApp() {
                   <CardContent className="p-6 pt-0 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <Label className="text-slate-500 text-xs uppercase tracking-wider">{t('oauth.clientId')}</Label>
+                        <Label className="text-slate-500 text-xs uppercase tracking-wider">Client ID</Label>
                         <div className="flex gap-2">
                           <code className="flex-1 p-2 bg-slate-950 rounded border border-slate-800 text-xs text-slate-300 font-mono break-all">
                             {client.id}
@@ -352,14 +343,14 @@ export function OauthApp() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-slate-500 hover:text-white"
-                            onClick={() => copyToClipboard(client.id, t('oauth.clientId'))}
+                            onClick={() => copyToClipboard(client.id, "Client ID")}
                           >
                             <Copy className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-slate-500 text-xs uppercase tracking-wider">{t('oauth.redirectUris')}</Label>
+                        <Label className="text-slate-500 text-xs uppercase tracking-wider">Redirect URIs</Label>
                         <div className="flex gap-2">
                           <code className="flex-1 p-2 bg-slate-950 rounded border border-slate-800 text-xs text-slate-300 font-mono truncate">
                             {client.redirect_uris}
@@ -368,7 +359,7 @@ export function OauthApp() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-slate-500 hover:text-white"
-                            onClick={() => copyToClipboard(client.redirect_uris, t('oauth.redirectUris'))}
+                            onClick={() => copyToClipboard(client.redirect_uris, "Redirect URIs")}
                           >
                             <Copy className="w-3 h-3" />
                           </Button>
@@ -384,17 +375,17 @@ export function OauthApp() {
 
         <TabsContent value="authorized" className="mt-6 space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-white">{t('oauth.authorizedApps')}</h3>
-            <p className="text-sm text-slate-400">{t('oauth.revokeDesc')}</p>
+            <h3 className="text-lg font-semibold text-white">Authorized Apps</h3>
+            <p className="text-sm text-slate-400">Applications that have access to your account.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             {loading ? (
-              <div className="py-12 text-center text-slate-500">{t('common.loading')}</div>
+              <div className="py-12 text-center text-slate-500">Loading...</div>
             ) : grants.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center bg-slate-900/30 rounded-xl border border-dashed border-slate-800">
                 <ShieldCheck className="w-12 h-12 text-slate-700 mb-4" />
-                <p className="text-slate-500 text-lg">{t('oauth.noGrants')}</p>
+                <p className="text-slate-500 text-lg">You haven't authorized any applications yet.</p>
               </div>
             ) : (
               grants.map((grant) => (
@@ -417,9 +408,7 @@ export function OauthApp() {
                       className="text-red-400 border-red-400/20 hover:bg-red-400/10"
                       onClick={() => handleRevokeGrant(grant.id)}
                       disabled={isSubmitting}
-                    >
-                      {t('common.revoke')}
-                    </Button>
+                    >Revoke</Button>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
                     <div className="flex flex-wrap gap-2 mt-2">

@@ -1,4 +1,3 @@
-import "./i18n/config";
 import "./global.css";
 
 import { Toaster } from "@/components/ui/toaster";

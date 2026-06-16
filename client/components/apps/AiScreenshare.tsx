@@ -18,7 +18,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useAiModels } from "@/hooks/useAiModels";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 
 interface Message {
   role: "user" | "assistant";
@@ -32,8 +31,7 @@ interface Style {
 }
 
 export function AiScreenshareApp() {
-  const { t } = useTranslation();
-  const { session } = useAuth();
+    const { session } = useAuth();
   const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -225,14 +223,12 @@ export function AiScreenshareApp() {
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Monitor className="w-5 h-5 text-cyan-500" />
-              {t('screenshare.settings')}
-            </CardTitle>
-            <CardDescription>{t('screenshare.configDesc')}</CardDescription>
+              <Monitor className="w-5 h-5 text-cyan-500" />Settings</CardTitle>
+            <CardDescription>Configure your screen AI companion</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">{t('screenshare.visionModel')}</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Vision Model</label>
               <select
                 className="w-full bg-slate-950 text-sm text-white p-2 rounded border border-slate-800"
                 value={`${selectedProvider}:${selectedModel}`}
@@ -249,12 +245,11 @@ export function AiScreenshareApp() {
                 ))}
               </select>
               <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                <Info className="w-3 h-3" /> {t('screenshare.visionNote')}
-              </p>
+                <Info className="w-3 h-3" />Note: Only vision-capable models work effectively.</p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">{t('chatbot.style')}</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Style</label>
               <div className="grid grid-cols-1 gap-2">
                 {styles.map(s => (
                   <div
@@ -285,9 +280,9 @@ export function AiScreenshareApp() {
               )}
             >
               {isAnalyzing ? (
-                <><StopCircle className="w-6 h-6 mr-2" /> {t('screenshare.stopAnalysis')}</>
+                <><StopCircle className="w-6 h-6 mr-2" />Stop Analysis</>
               ) : (
-                <><Play className="w-6 h-6 mr-2" /> {t('screenshare.startScreenshare')}</>
+                <><Play className="w-6 h-6 mr-2" />Start Screenshare</>
               )}
             </Button>
           </CardContent>
@@ -304,7 +299,7 @@ export function AiScreenshareApp() {
           {!isAnalyzing && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 p-6 text-center">
               <Monitor className="w-12 h-12 mb-4 opacity-20" />
-              <p className="text-sm">{t('screenshare.captureDesc')}</p>
+              <p className="text-sm">Capture a window or screen to let the AI start reacting.</p>
             </div>
           )}
         </div>
@@ -316,7 +311,7 @@ export function AiScreenshareApp() {
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 py-20">
                 <Bot className="w-16 h-16 mb-4 opacity-10" />
-                <p>{t('screenshare.waiting')}</p>
+                <p>Waiting for screen capture...</p>
               </div>
             )}
             {messages.map((m, i) => (
@@ -340,7 +335,7 @@ export function AiScreenshareApp() {
                         }
                       }}
                     >
-                      {typeof m.content === "string" ? m.content : t('screenshare.capturing')}
+                      {typeof m.content === "string" ? m.content : "Capturing screen..."}
                     </ReactMarkdown>
                   </div>
                 </div>
@@ -352,7 +347,7 @@ export function AiScreenshareApp() {
                   <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <span className="animate-pulse">{t('chatbot.thinking')}</span>
+                  <span className="animate-pulse">Thinking...</span>
                 </div>
               </div>
             )}
@@ -361,7 +356,7 @@ export function AiScreenshareApp() {
         </ScrollArea>
         <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <p className="text-[10px] text-slate-500 uppercase font-bold text-center">
-            {isAnalyzing ? t('screenshare.active') : t('screenshare.inactive')}
+            {isAnalyzing ? "AI is watching and reacting every 5 seconds" : "Analysis is currently inactive"}
           </p>
         </div>
       </div>

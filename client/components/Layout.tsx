@@ -3,24 +3,22 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, Package, User, Users, HardDrive, Palette, Contact } from "lucide-react";
 import styles from "./Layout.module.css";
-import { useTranslation } from "react-i18next";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export const Layout = ({ children }: LayoutProps) => {
-  const { t } = useTranslation();
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
 
   const navItems = [
-    { label: t('nav.apps'), href: "/apps", icon: Package },
-    { label: t('nav.storage'), href: "/storage", icon: HardDrive },
-    { label: t('nav.account'), href: "/account", icon: User },
-    { label: t('nav.friends'), href: "/friends", icon: Users },
-    { label: t('nav.customize'), href: "/customize", icon: Palette },
-    { label: t('nav.characters'), href: "/characters", icon: Contact },
+    { label: "Apps", href: "/apps", icon: Package },
+    { label: "Storage", href: "/storage", icon: HardDrive },
+    { label: "Account Settings", href: "/account", icon: User },
+    { label: "Friends", href: "/friends", icon: Users },
+    { label: "Customize", href: "/customize", icon: Palette },
+    { label: "Characters", href: "/characters", icon: Contact },
   ];
 
   const handleSignOut = async () => {
@@ -38,18 +36,14 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* Header */}
       <header className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-10`}>
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <h1 className={`${styles["logo"]} text-2xl font-bold`}>
-            {t('auth.title')}
-          </h1>
+          <h1 className={`${styles["logo"]} text-2xl font-bold`}>Oxygen Low Software</h1>
           <div className="flex items-center gap-4">
             <span className={`${styles["user-email"]} text-sm`}>{session?.user?.email}</span>
             <button
               onClick={handleSignOut}
               className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium`}
             >
-              <LogOut className="w-4 h-4" />
-              {t('auth.signin') === "Sign In" ? "Sign Out" : t('auth.signin') === "Войти" ? "Выйти" : t('auth.signin') === "サインイン" ? "サインアウト" : t('auth.signin') === "로그인" ? "로그아웃" : t('auth.signin') === "登录" ? "退出登录" : t('auth.signin') === "登入" ? "登出" : t('auth.signin') === "Inire" ? "Exire" : "Sign Out"}
-            </button>
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out</button>
           </div>
         </div>
       </header>

@@ -5,20 +5,6 @@ import Account from './Account';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
-// Mock i18next
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: {
-      changeLanguage: () => Promise.resolve(),
-    },
-  }),
-  initReactI18next: {
-    type: '3rdParty',
-    init: () => {},
-  }
-}));
-
 // Full mock of Supabase
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -34,7 +20,7 @@ vi.mock('@/lib/supabase', () => ({
         eq: vi.fn(() => builder),
         order: vi.fn(() => builder),
         single: vi.fn(() => {
-          if (table === 'user_preferences') return Promise.resolve({ data: { theme: 'default', use_gradient: true, language: 'English', sub_language: 'GB' }, error: null });
+          if (table === 'user_preferences') return Promise.resolve({ data: { theme: 'default', use_gradient: true }, error: null });
           return Promise.resolve({ data: null, error: null });
         }),
         upsert: vi.fn(() => Promise.resolve({ data: null, error: null })),
@@ -76,7 +62,6 @@ describe('Account Component', () => {
 
   it('links identities correctly', async () => {
     render(<ThemeProvider><Account /></ThemeProvider>);
-    // Look for the translation key since we mocked t to return the key
     const githubBtn = await screen.findByText(/github/i);
     fireEvent.click(githubBtn);
     await waitFor(() => expect(mockLinkIdentity).toHaveBeenCalledWith('github'));
