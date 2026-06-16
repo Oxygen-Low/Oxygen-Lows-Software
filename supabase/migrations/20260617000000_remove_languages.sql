@@ -2,6 +2,11 @@
 ALTER TABLE public.user_preferences DROP COLUMN IF EXISTS language;
 ALTER TABLE public.user_preferences DROP COLUMN IF EXISTS sub_language;
 
+-- Drop existing overloads to avoid "cannot change return type" errors and clean up stale versions
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean);
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text);
+DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text, text, text);
+
 -- Update the upsert_user_preferences function to remove language parameters
 -- Note: p_user_id is used for authorization validation. The operation always targets the current authenticated user (auth.uid()).
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
