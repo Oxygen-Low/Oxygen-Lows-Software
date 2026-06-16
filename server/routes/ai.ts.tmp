@@ -1,0 +1,61 @@
+<<<<<<< SEARCH
+export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
+  try {
+    const response = await axios.get("http://127.0.0.1:11434/api/tags", { timeout: 2000 });
+    const models = (response.data.models || []).map((m: any) => ({
+      provider: "ollama",
+      model_id: m.name
+    }));
+    res.json(models);
+  } catch (error) {
+    res.json([]);
+  }
+};
+=======
+export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
+  const localModels = [];
+
+  try {
+    const response = await axios.get("http://127.0.0.1:11434/api/tags", { timeout: 2000 });
+    const models = (response.data.models || []).map((m: any) => ({
+      provider: "ollama",
+      model_id: m.name
+    }));
+    localModels.push(...models);
+  } catch (error) {
+    // Ignore Ollama errors
+  }
+
+  try {
+    const response = await axios.get("http://127.0.0.1:1234/v1/models", { timeout: 2000 });
+    const models = (response.data.data || []).map((m: any) => ({
+      provider: "lmstudio",
+      model_id: m.id
+    }));
+    localModels.push(...models);
+  } catch (error) {
+    // Ignore LMStudio errors
+  }
+
+  res.json(localModels);
+};
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+  if (!integration?.api_key && provider !== "ollama" && provider !== "kobold") {
+=======
+  if (!integration?.api_key && provider !== "ollama" && provider !== "kobold" && provider !== "lmstudio") {
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+      case "ollama":
+        handleResponse(await axios.post("http://127.0.0.1:11434/api/chat", { model, messages: processedMessages, stream }, axiosOptions));
+        break;
+      case "kobold":
+=======
+      case "ollama":
+        handleResponse(await axios.post("http://127.0.0.1:11434/api/chat", { model, messages: processedMessages, stream }, axiosOptions));
+        break;
+      case "lmstudio":
+        handleResponse(await axios.post("http://127.0.0.1:1234/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
+        break;
+      case "kobold":
+>>>>>>> REPLACE
