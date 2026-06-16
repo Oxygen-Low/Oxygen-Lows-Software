@@ -237,11 +237,13 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       }
       case "google": {
-        const safeModel = String(model || "").replace(/[^a-zA-Z0-9\-_]/g, "");
+        if (typeof model !== "string" || !/^[a-zA-Z0-9\-_]+$/.test(model)) {
+          return res.status(400).json({ error: "Invalid Google model ID" });
+        }
         await handleResponse(await axios({
           method: "post",
           baseURL: "https://generativelanguage.googleapis.com",
-          url: "/v1beta/models/" + safeModel + ":generateContent",
+          url: "/v1beta/models/" + model + ":generateContent",
           data: {
             contents: processedMessages.map((m: any) => {
               const role = m.role === "assistant" ? "model" : "user";
