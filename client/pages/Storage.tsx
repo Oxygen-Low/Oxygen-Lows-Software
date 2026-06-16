@@ -236,7 +236,7 @@ export default function Storage() {
                 className="bg-cyan-500 hover:bg-cyan-600 text-white"
               >
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-                "Upload"
+                Upload
               </Button>
               <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloudUpload} />
             </div>

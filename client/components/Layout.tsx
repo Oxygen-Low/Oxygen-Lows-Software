@@ -43,7 +43,7 @@ export const Layout = ({ children }: LayoutProps) => {
               onClick={handleSignOut}
               className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium`}
             >
-              <LogOut className="w-4 h-4 mr-2" />Sign Out</button>
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out</button>
           </div>
         </div>
       </header>

@@ -51,7 +51,7 @@ export default function Account() {
     const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", session.user.id).single();
     if (prof) { setProfile(prof); setUsernameInput(prof.username || ""); setDisplayNameInput(prof.display_name || ""); setBioInput(prof.bio || ""); }
     const { data: idents } = await supabase.auth.getUser(); if (idents.user) setIdentities(idents.user.identities || []);
-    const { data: ints } = await supabase.rpc("get_user_integrations"); if (ints) setIntegrations(ints);
+    const { data: ints } = await supabase.rpc("get_my_integrations"); if (ints) setIntegrations(ints);
     const { data: mods } = await supabase.from("user_models").select("*"); if (mods) setUserModels(mods);
   }, [session?.user?.id]);
 
@@ -91,7 +91,7 @@ export default function Account() {
     if (!key && !url) return;
     try {
       if (key) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_api_key: key, p_base_url: url });
-      else if (url) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_base_url: url });
+      else if (url) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_api_key: null, p_base_url: url });
       setApiKeyInputs({ ...apiKeyInputs, [provider]: "" });
       toast({ title: "Success" });
     } catch (e: any) {
@@ -125,6 +125,19 @@ export default function Account() {
       const { data } = await supabase.from("user_models").select("*");
       if (data) setUserModels(data);
       toast({ title: "Added" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveCustomModel = async (m: UserModel) => {
+    try {
+      const { error } = await supabase.rpc("remove_user_model", {
+        p_provider: m.provider,
+        p_model_id: m.model_id
+      });
+      if (error) throw error;
+      setUserModels(userModels.filter(x => x !== m));
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -210,7 +223,7 @@ export default function Account() {
                   {userModels.map((m, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-950/50 border border-slate-800/50 group">
                       <div className="flex flex-col"><span className="text-xs text-slate-500 font-mono uppercase">{m.provider}</span><span className="text-sm text-white font-medium">{m.model_id}</span></div>
-                      <button onClick={() => supabase.rpc("remove_user_model", { p_provider: m.provider, p_model_id: m.model_id }).then(() => setUserModels(userModels.filter(x => x !== m)))} aria-label={`Remove ${m.model_id} (${m.provider})`} className="p-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleRemoveCustomModel(m)} aria-label={`Remove ${m.model_id} (${m.provider})`} className="p-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ))}
                 </div>

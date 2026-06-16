@@ -29,7 +29,7 @@ vi.mock('@/lib/supabase', () => ({
       return builder;
     }),
     rpc: vi.fn((name) => {
-      if (name === "get_user_integrations") return Promise.resolve({ data: [], error: null });
+      if (name === "get_my_integrations") return Promise.resolve({ data: [], error: null });
       if (name === "upsert_user_preferences") return Promise.resolve({ data: null, error: null });
       return Promise.resolve({ data: [], error: null });
     }),
