@@ -126,7 +126,7 @@ export default function Auth() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
-            Oxygen Low
+            Oxygen Low's Software
           </h1>
           <p className="text-slate-400">
             {mode === "signin" ? "Welcome back" : mode === "signup" ? "Create your account" : "Set new password"}

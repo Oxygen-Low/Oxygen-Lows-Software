@@ -232,9 +232,13 @@ export const ChatbotApp = () => {
 
       const style = styles.find(s => s.id === selectedStyle);
 
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
       const response = await fetch("/api/ai/proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           provider: selectedProvider,
           model: selectedModel,
@@ -246,7 +250,16 @@ export const ChatbotApp = () => {
         })
       });
 
-      if (!response.ok) throw new Error("Failed to get response");
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to get response");
+        } else {
+          const errorText = await response.text();
+          throw new Error(`Server error: ${errorText.substring(0, 100)}`);
+        }
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader");
