@@ -257,6 +257,9 @@ export const ChatbotApp = () => {
           throw new Error(errorData.error || "Failed to get response");
         } else {
           const errorText = await response.text();
+          if (errorText.includes("<!DOCTYPE html>") || errorText.includes("<html>")) {
+            throw new Error("The AI service returned an unexpected HTML error. This usually means the service is down, misconfigured, or blocked by a firewall.");
+          }
           throw new Error(`Server error: ${errorText.substring(0, 100)}`);
         }
       }

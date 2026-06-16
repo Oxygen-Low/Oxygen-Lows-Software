@@ -146,7 +146,38 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     abortController.abort();
   });
 
-  const handleResponse = (response: any) => {
+  const handleResponse = async (response: any) => {
+    if (response.status >= 400) {
+      let errorData = response.data;
+      if (stream && response.data && typeof response.data.on === "function") {
+        try {
+          const chunks = [];
+          for await (const chunk of response.data) {
+            chunks.push(chunk);
+          }
+          const buffer = Buffer.concat(chunks);
+          const text = buffer.toString();
+          try {
+            errorData = JSON.parse(text);
+          } catch {
+            errorData = text;
+          }
+        } catch (e) {
+          errorData = "Error reading upstream error response";
+        }
+      }
+
+      const errorMessage = typeof errorData === "string"
+        ? errorData
+        : (errorData?.error?.message || errorData?.error || errorData?.message || "Upstream service error");
+
+      return res.status(response.status).json({
+        error: errorMessage,
+        status: response.status,
+        upstream: errorData
+      });
+    }
+
     if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -163,7 +194,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   try {
     switch (provider) {
       case "openai":
-        handleResponse(await axios.post("https://api.openai.com/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
+        await handleResponse(await axios.post("https://api.openai.com/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
         break;
       case "anthropic": {
         const s = processedMessages.find((m: any) => m.role === "system");
@@ -196,7 +227,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           }
           return m;
         });
-        handleResponse(await axios.post("https://api.anthropic.com/v1/messages", {
+        await handleResponse(await axios.post("https://api.anthropic.com/v1/messages", {
           model,
           messages: transformedMessages,
           max_tokens: 4096,
@@ -207,7 +238,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       }
       case "google": {
         const safeModel = String(model || "").replace(/[^a-zA-Z0-9\-_]/g, "");
-        handleResponse(await axios({
+        await handleResponse(await axios({
           method: "post",
           baseURL: "https://generativelanguage.googleapis.com",
           url: "/v1beta/models/" + safeModel + ":generateContent",
@@ -242,30 +273,30 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       }
       case "openrouter":
-        handleResponse(await axios.post("https://openrouter.ai/api/v1/chat/completions", { model, messages: processedMessages, stream }, {
+        await handleResponse(await axios.post("https://openrouter.ai/api/v1/chat/completions", { model, messages: processedMessages, stream }, {
           ...axiosOptions, headers: { ...axiosOptions.headers, "Authorization": `Bearer ${integration?.api_key}` }
         }));
         break;
       case "grok":
-        handleResponse(await axios.post("https://api.x.ai/v1/chat/completions", { model, messages: processedMessages, stream }, {
+        await handleResponse(await axios.post("https://api.x.ai/v1/chat/completions", { model, messages: processedMessages, stream }, {
           ...axiosOptions, headers: { ...axiosOptions.headers, "Authorization": `Bearer ${integration?.api_key}` }
         }));
         break;
       case "ollama":
-        handleResponse(await axios.post("http://127.0.0.1:11434/api/chat", { model, messages: processedMessages, stream }, axiosOptions));
+        await handleResponse(await axios.post("http://127.0.0.1:11434/api/chat", { model, messages: processedMessages, stream }, axiosOptions));
         break;
       case "lmstudio":
-        handleResponse(await axios.post("http://127.0.0.1:1234/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
+        await handleResponse(await axios.post("http://127.0.0.1:1234/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
         break;
       case "kobold":
-        handleResponse(await axios.post("http://127.0.0.1:5001/api/v1/generate", { prompt: processedMessages[processedMessages.length - 1]?.content || "" }, axiosOptions));
+        await handleResponse(await axios.post("http://127.0.0.1:5001/api/v1/generate", { prompt: processedMessages[processedMessages.length - 1]?.content || "" }, axiosOptions));
         break;
       case "custom": {
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
         await validateAiUrl(integration.base_url);
         const finalUrl = buildValidatedCustomUrl(integration.base_url);
         const customHeaders = integration?.api_key ? { ...axiosOptions.headers, "Authorization": `Bearer ${integration.api_key}` } : axiosOptions.headers;
-        handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
+        await handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
         break;
       }
       default:
