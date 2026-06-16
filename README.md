@@ -8,19 +8,19 @@ Most user-data is stored on the cloud, so there's almost no need to transfer dat
 
 ### [Docker](https://hub.docker.com/r/oxygenlow/oxygen-lows-software)
 
-docker pull oxygenlow/oxygen-lows-software:latest
+`docker pull oxygenlow/oxygen-lows-software:latest`
 
-docker run -p 3000:3000 oxygenlow/oxygen-lows-software:latest
+`docker run -p 3000:3000 oxygenlow/oxygen-lows-software:latest`
 
 ### Pnpm/Npm/Github
 
-git clone https://github.com/Oxygen-Low/Oxygen-Lows-Software/
+`git clone https://github.com/Oxygen-Low/Oxygen-Lows-Software`
 
-pnpm install
+`pnpm install`
 
-pnpm build
+`pnpm build`
 
-pnpm start
+`pnpm start`
 
 ## Features/Extra
 
