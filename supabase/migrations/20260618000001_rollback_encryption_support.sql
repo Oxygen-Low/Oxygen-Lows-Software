@@ -1,5 +1,21 @@
 -- Rollback migration for encryption support
 
+-- Pre-condition: Ensure no encrypted data exists before dropping columns
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM public.characters WHERE is_encrypted = true) THEN
+        RAISE EXCEPTION 'Rollback aborted: Encrypted records found in public.characters. Decrypt all data before rolling back.';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.chats WHERE is_encrypted = true) THEN
+        RAISE EXCEPTION 'Rollback aborted: Encrypted records found in public.chats. Decrypt all data before rolling back.';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.chat_messages WHERE is_encrypted = true) THEN
+        RAISE EXCEPTION 'Rollback aborted: Encrypted records found in public.chat_messages. Decrypt all data before rolling back.';
+    END IF;
+END $$;
+
 -- Remove columns from characters, chats, and chat_messages
 ALTER TABLE public.characters DROP COLUMN IF EXISTS is_encrypted;
 ALTER TABLE public.chats DROP COLUMN IF EXISTS is_encrypted;

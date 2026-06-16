@@ -143,8 +143,6 @@ export const ChatbotApp = () => {
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
 
-  const fetchDataRef = useRef<() => Promise<void>>();
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastParsedLengthRef = useRef(0);
   const isTypingRef = useRef(false);

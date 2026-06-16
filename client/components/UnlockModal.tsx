@@ -18,6 +18,8 @@ export const UnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => 
   const [keyInput, setKeyInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [validationHashExists, setValidationHashExists] = useState<boolean | null>(null);
 
   const handleUnlock = async () => {
     if (!keyInput.trim() || !session?.user?.id) return;
@@ -36,10 +38,17 @@ export const UnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => 
 
       const validationHash = data?.encryption_settings?.validation_hash;
       if (validationHash) {
+        setValidationHashExists(true);
         try {
           await decrypt(validationHash, keyInput.trim());
         } catch (e) {
           throw new Error("Invalid masterkey. Please check your key and try again.");
+        }
+      } else {
+        setValidationHashExists(false);
+        if (!needsConfirmation) {
+          setNeedsConfirmation(true);
+          return;
         }
       }
 
@@ -81,13 +90,18 @@ export const UnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => 
             disabled={isVerifying}
           />
           {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+          {needsConfirmation && !error && (
+            <p className="text-xs text-amber-500 font-medium">
+              No existing encryption found. This will be set as your new masterkey. Please ensure you have copied it correctly.
+            </p>
+          )}
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="ghost" onClick={handleSignOut} className="text-slate-400 hover:text-white hover:bg-slate-800 order-2 sm:order-1">
             <LogOut className="w-4 h-4 mr-2" /> Sign Out
           </Button>
           <Button onClick={handleUnlock} disabled={isVerifying} className="bg-cyan-600 hover:bg-cyan-700 flex-1 order-1 sm:order-2">
-            {isVerifying ? "Verifying..." : "Unlock"}
+            {isVerifying ? "Verifying..." : (needsConfirmation ? "Confirm & Set Key" : "Unlock")}
           </Button>
         </DialogFooter>
       </DialogContent>

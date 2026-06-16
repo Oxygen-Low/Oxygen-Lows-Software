@@ -14,10 +14,14 @@ const IV_LENGTH = 12;
 export function generateMasterKey(length: number): string {
   const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
   let result = '';
-  const randomValues = new Uint32Array(length);
-  window.crypto.getRandomValues(randomValues);
-  for (let i = 0; i < length; i++) {
-    result += charset[randomValues[i] % charset.length];
+  const maxUint32 = 4294967295;
+  const threshold = maxUint32 - (maxUint32 % charset.length);
+
+  while (result.length < length) {
+    const randomValue = window.crypto.getRandomValues(new Uint32Array(1))[0];
+    if (randomValue < threshold) {
+      result += charset[randomValue % charset.length];
+    }
   }
   return result;
 }

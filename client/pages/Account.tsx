@@ -253,7 +253,7 @@ export default function Account() {
       // If enabling encryption for the first time, save a validation hash
       if (isEnabling && !newSettings.validation_hash) {
         newSettings.validation_hash = await encrypt('valid', key);
-      } else if (!isEnabling && Object.values(newSettings).filter(v => v === true).length === 0) {
+      } else if (!isEnabling && !newSettings.characters && !newSettings.chats) {
         // If disabling everything, we can clear the validation hash
         delete newSettings.validation_hash;
       }
