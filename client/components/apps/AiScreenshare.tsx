@@ -181,6 +181,9 @@ export function AiScreenshareApp() {
           if (response.status === 413) {
             throw new Error("Payload too large. The screenshot or chat history exceeds the server limit.");
           }
+          if (errorText.includes("<!DOCTYPE html>") || errorText.includes("<html>")) {
+            throw new Error("The AI service returned an unexpected HTML error. This usually means the service is down, misconfigured, or blocked by a firewall.");
+          }
           throw new Error(`Server error (${response.status}): ${errorText.substring(0, 100)}...`);
         }
       }
