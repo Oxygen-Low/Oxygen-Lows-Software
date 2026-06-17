@@ -7,9 +7,19 @@ ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS is_encrypted BOOLEAN D
 ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS encryption_settings JSONB DEFAULT '{}'::jsonb;
 
 -- Drop existing overload to update the function
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text);
-
--- Update upsert_user_preferences to include encryption_settings
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || _func.proto;
+    END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,

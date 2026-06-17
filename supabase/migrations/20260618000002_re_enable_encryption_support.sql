@@ -10,10 +10,19 @@ ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS encryption_settings
 
 -- Drop ALL existing overloads to avoid "cannot change return type of existing function" errors.
 -- These drops cover all known historical signatures of upsert_user_preferences.
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean);
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean);
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text);
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text, text, text);
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || _func.proto;
+    END LOOP;
+END $$;
 
 -- Update upsert_user_preferences to include encryption_settings
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(

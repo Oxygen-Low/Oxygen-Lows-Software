@@ -3,6 +3,19 @@ ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS language TEXT DEFAU
 ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS sub_language TEXT DEFAULT 'GB';
 
 -- Hardened function to upsert user preferences with language support
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || _func.proto;
+    END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,

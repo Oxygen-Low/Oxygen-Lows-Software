@@ -31,6 +31,19 @@ CREATE POLICY "Users can insert their own preferences"
   WITH CHECK (auth.uid() = user_id);
 
 -- Create function to upsert user preferences atomically
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || _func.proto;
+    END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,
