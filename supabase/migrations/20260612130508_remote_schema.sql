@@ -666,11 +666,3 @@ BEGIN
 END;
 $function$
 ;
-
-DO $$
-DECLARE
-    _func record;
-BEGIN
-;
-
-
