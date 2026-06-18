@@ -14,8 +14,9 @@ BEGIN
         FROM pg_proc
         WHERE proname = 'upsert_user_preferences'
           AND pronamespace = 'public'::regnamespace
+          AND prokind = 'f'
     LOOP
-        EXECUTE 'DROP FUNCTION ' || _func.proto;
+        EXECUTE format('DROP FUNCTION %s', _func.proto);
     END LOOP;
 END $$;
 CREATE OR REPLACE FUNCTION upsert_user_preferences(

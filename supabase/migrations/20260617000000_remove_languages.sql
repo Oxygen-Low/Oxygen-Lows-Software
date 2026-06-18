@@ -4,9 +4,6 @@ ALTER TABLE public.user_preferences DROP COLUMN IF EXISTS sub_language;
 
 -- Drop existing overloads to avoid "cannot change return type" errors and clean up stale versions
 
-
-
-
 -- Update the upsert_user_preferences function to remove language parameters
 -- Note: p_user_id is used for authorization validation. The operation always targets the current authenticated user (auth.uid()).
 DO $$
@@ -18,8 +15,9 @@ BEGIN
         FROM pg_proc
         WHERE proname = 'upsert_user_preferences'
           AND pronamespace = 'public'::regnamespace
+          AND prokind = 'f'
     LOOP
-        EXECUTE 'DROP FUNCTION ' || _func.proto;
+        EXECUTE format('DROP FUNCTION %s', _func.proto);
     END LOOP;
 END $$;
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
