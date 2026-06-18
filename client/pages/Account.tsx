@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight, ShieldAlert, ShieldCheck, Copy, RefreshCw } from "lucide-react";
+import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight, ShieldAlert, ShieldCheck, ShieldOff, Copy, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { encrypt, decrypt, generateMasterKey, saveMasterKey, getMasterKey } from "@/lib/crypto";
@@ -272,6 +272,40 @@ export default function Account() {
     }
   };
 
+  const handleResetEncryption = async () => {
+    if (!window.confirm("Are you sure you want to reset encryption? This will PERMANENTLY DELETE all currently encrypted data. Unencrypted data will not be affected.")) {
+      return;
+    }
+
+    setIsMigrating(true);
+    try {
+      // 1. Delete encrypted data
+      await supabase.from('characters').delete().eq('user_id', session?.user?.id).eq('is_encrypted', true);
+      await supabase.from('chats').delete().eq('user_id', session?.user?.id).eq('is_encrypted', true);
+      await supabase.from('chat_messages').delete().eq('is_encrypted', true);
+
+      // 2. Reset encryption settings
+      const newSettings = {};
+      await supabase.rpc('upsert_user_preferences', {
+        p_user_id: session?.user?.id,
+        p_encryption_settings: newSettings
+      });
+
+      // 3. Clear local state and session
+      setEncryptionSettings(newSettings);
+      setMasterKeyInput("");
+      setGeneratedKey("");
+      clearMasterKey();
+
+      toast({ title: "Encryption Reset", description: "All encrypted data has been deleted and encryption settings have been reset." });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto space-y-8">
@@ -426,6 +460,20 @@ export default function Account() {
                       {isMigrating ? <RefreshCw className="w-5 h-5 animate-spin" /> : (encryptionSettings.chats ? <ShieldCheck className="w-5 h-5 text-green-500" /> : <ShieldAlert className="w-5 h-5 text-slate-600" />)}
                     </Button>
                   </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-800">
+                  <Button
+                    variant="destructive"
+                    onClick={handleResetEncryption}
+                    disabled={isMigrating}
+                    className="w-full gap-2"
+                  >
+                    <ShieldOff className="w-4 h-4" /> Reset Encryption
+                  </Button>
+                  <p className="text-[10px] text-slate-500 mt-2 text-center">
+                    This will delete all encrypted data and allow you to set a new masterkey.
+                  </p>
                 </div>
               </CardContent>
             </Card>

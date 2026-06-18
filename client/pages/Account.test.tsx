@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Account from './Account';
 import { useAuth } from '@/hooks/useAuth';
-import { ThemeProvider } from '@/contexts/ThemeContext';
 
 // Full mock of Supabase
 vi.mock('@/lib/supabase', () => ({
