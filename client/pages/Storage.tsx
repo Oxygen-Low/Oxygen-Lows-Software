@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Cloud,
   Upload,
   Trash2,
   FileText,
@@ -10,12 +9,10 @@ import {
   Music,
   Database,
   ExternalLink,
-  Loader2,
-  Link as LinkIcon
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { supabase } from "@/lib/supabase";
@@ -23,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function Storage() {
-    const { session } = useAuth();
+  const { session } = useAuth();
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
   const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
@@ -48,27 +45,36 @@ export default function Storage() {
       if (imageFiles.length > 0) {
         const { data: signedData, error: signedError } = await supabase.storage
           .from("Storage")
-          .createSignedUrls(imageFiles.map(f => `${session.user.id}/${f.name}`), 3600);
+          .createSignedUrls(
+            imageFiles.map(f => `${session.user.id}/${f.name}`),
+            3600
+          );
 
-        if (!signedError && signedData) {
-          const urlMap: Record<string, string> = {};
-          imageFiles.forEach((f, i) => {
-            if (signedData[i]?.signedUrl) urlMap[f.id] = signedData[i].signedUrl;
-          });
-          setCloudFileSignedUrls(urlMap);
-        }
+        if (signedError) throw signedError;
+
+        const urls: Record<string, string> = {};
+        imageFiles.forEach((f, i) => {
+          if (signedData[i]) {
+            urls[f.id] = signedData[i].signedUrl;
+          }
+        });
+        setCloudFileSignedUrls(urls);
       }
     } catch (error: any) {
-      console.error("Storage error:", error);
+      console.error("Error fetching files:", error);
     }
   };
 
   const fetchDbStats = async () => {
     try {
-      const { data, error } = await supabase.rpc("get_user_storage_stats");
-      if (!error && data) setDbStats(data);
-    } catch (e) {
-      console.error("DB stats error", e);
+      const tables = ['characters', 'chats', 'chat_messages', 'user_preferences'];
+      const stats = await Promise.all(tables.map(async (table) => {
+        const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+        return { name: table, size: (count || 0) * 1024 }; // Estimate 1KB per row
+      }));
+      setDbStats(stats);
+    } catch (error) {
+      console.error("Error fetching DB stats:", error);
     }
   };
 
@@ -78,20 +84,19 @@ export default function Storage() {
   }, [session]);
 
   const handleCloudUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0] || !session?.user?.id) return;
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    if (!file || !session?.user?.id) return;
 
-    // Check 30MB limit
     if (totalSize + file.size > 30 * 1024 * 1024) {
-      toast.error("Storage limit exceeded (30MB)");
+      toast.error("Storage limit reached (30MB)");
       return;
     }
 
+    setUploading(true);
     try {
-      setUploading(true);
       const { error } = await supabase.storage
         .from("Storage")
-        .upload(`${session.user.id}/${Date.now()}_${file.name}`, file);
+        .upload(`${session.user.id}/${file.name}`, file, { upsert: false });
 
       if (error) throw error;
       toast.success("File uploaded successfully");
@@ -216,76 +221,59 @@ export default function Storage() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="cloud" className="w-full">
-          <TabsList className="bg-slate-900 border border-slate-800">
-            <TabsTrigger value="cloud" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-400">
-              <Cloud className="w-4 h-4 mr-2" />Cloud Storage</TabsTrigger>
-            <TabsTrigger value="links" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-400">
-              <LinkIcon className="w-4 h-4 mr-2" />Linked Images</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="cloud" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-medium text-white">Files</h3>
-                <p className="text-sm text-slate-400">Your uploaded files and artifacts.</p>
-              </div>
-              <Button
-                onClick={() => cloudInputRef.current?.click()}
-                disabled={uploading}
-                className="bg-cyan-500 hover:bg-cyan-600 text-white"
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-                Upload
-              </Button>
-              <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloudUpload} />
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-medium text-white">Files</h3>
+              <p className="text-sm text-slate-400">Your uploaded files and artifacts.</p>
             </div>
+            <Button
+              onClick={() => cloudInputRef.current?.click()}
+              disabled={uploading}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+            >
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+              Upload
+            </Button>
+            <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloudUpload} />
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cloudFiles.map((file) => (
-                <Card key={file.id} className="bg-slate-950 border-slate-800 overflow-hidden group">
-                  <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
-                    {file.metadata?.mimetype?.startsWith("image/") && cloudFileSignedUrls[file.id] ? (
-                      <img src={cloudFileSignedUrls[file.id]} alt={file.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                    ) : file.metadata?.mimetype?.startsWith("audio/") ? (
-                      <Music className="w-12 h-12 text-blue-500" />
-                    ) : (
-                      <FileText className="w-12 h-12 text-slate-700" />
-                    )}
-                  </div>
-                  <CardHeader className="p-4">
-                    <CardTitle className="text-sm text-white truncate">{file.name}</CardTitle>
-                    <CardDescription className="text-xs text-slate-500">
-                      {formatSize(file.metadata?.size || 0)} • {new Date(file.created_at).toLocaleDateString()}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 flex gap-2">
-                    {cloudFileSignedUrls[file.id] ? (
-                      <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" asChild>
-                        <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" /> View</a>
-                      </Button>
-                    ) : (
-                      <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed" disabled>
-                        <ExternalLink className="w-4 h-4 mr-2" /> View</Button>
-                    )}
-                    <Button variant="destructive" size="icon" onClick={() => deleteCloudFile(file.name)}>
-                      <Trash2 className="w-4 h-4" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {cloudFiles.map((file) => (
+              <Card key={file.id} className="bg-slate-950 border-slate-800 overflow-hidden group">
+                <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
+                  {file.metadata?.mimetype?.startsWith("image/") && cloudFileSignedUrls[file.id] ? (
+                    <img src={cloudFileSignedUrls[file.id]} alt={file.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                  ) : file.metadata?.mimetype?.startsWith("audio/") ? (
+                    <Music className="w-12 h-12 text-blue-500" />
+                  ) : (
+                    <FileText className="w-12 h-12 text-slate-700" />
+                  )}
+                </div>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-sm text-white truncate">{file.name}</CardTitle>
+                  <CardDescription className="text-xs text-slate-500">
+                    {formatSize(file.metadata?.size || 0)} • {new Date(file.created_at).toLocaleDateString()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 flex gap-2">
+                  {cloudFileSignedUrls[file.id] ? (
+                    <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" asChild>
+                      <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" /> View</a>
                     </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="links" className="space-y-6">
-             <div className="p-12 text-center border-2 border-dashed border-slate-800 rounded-xl">
-                <LinkIcon className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">"Linked Images" Coming Soon</h3>
-                <p className="text-slate-500 max-w-sm mx-auto text-sm">We are working on a way to let you manage external image links directly from this tab. Stay tuned!</p>
-             </div>
-          </TabsContent>
-        </Tabs>
+                  ) : (
+                    <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed" disabled>
+                      <ExternalLink className="w-4 h-4 mr-2" /> View</Button>
+                  )}
+                  <Button variant="destructive" size="icon" onClick={() => deleteCloudFile(file.name)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     </Layout>
   );
