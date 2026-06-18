@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight, ShieldAlert, ShieldCheck, ShieldOff, Copy, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { encrypt, decrypt, generateMasterKey, saveMasterKey, getMasterKey } from "@/lib/crypto";
+import { encrypt, decrypt, generateMasterKey, saveMasterKey, getMasterKey, clearMasterKey } from "@/lib/crypto";
 import Cropper, { Area } from "react-easy-crop";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
