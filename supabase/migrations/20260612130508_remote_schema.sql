@@ -4,6 +4,20 @@ alter table "public"."user_preferences" add column "last_provider" text;
 
 set check_function_bodies = off;
 
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+          AND prokind = 'f'
+    LOOP
+        EXECUTE format('DROP FUNCTION %s', _func.proto);
+    END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(p_user_id uuid, p_theme text DEFAULT NULL::text, p_font text DEFAULT NULL::text, p_music_playlist jsonb DEFAULT NULL::jsonb, p_current_music_track text DEFAULT NULL::text, p_current_music_position bigint DEFAULT NULL::bigint, p_shuffle_enabled boolean DEFAULT NULL::boolean, p_use_gradient boolean DEFAULT NULL::boolean, p_last_model_id text DEFAULT NULL::text, p_last_provider text DEFAULT NULL::text)
  RETURNS public.user_preferences
  LANGUAGE plpgsql
@@ -653,46 +667,10 @@ END;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.upsert_user_preferences(p_user_id uuid, p_theme text DEFAULT NULL::text, p_font text DEFAULT NULL::text, p_music_playlist jsonb DEFAULT NULL::jsonb, p_current_music_track text DEFAULT NULL::text, p_current_music_position bigint DEFAULT NULL::bigint, p_shuffle_enabled boolean DEFAULT NULL::boolean, p_use_gradient boolean DEFAULT NULL::boolean)
- RETURNS public.user_preferences
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
+DO $$
 DECLARE
-  result public.user_preferences;
+    _func record;
 BEGIN
-  INSERT INTO public.user_preferences (
-    user_id,
-    theme,
-    font,
-    music_playlist,
-    current_music_track,
-    current_music_position,
-    shuffle_enabled,
-    use_gradient
-  ) VALUES (
-    p_user_id,
-    COALESCE(p_theme, 'default'),
-    COALESCE(p_font, 'default'),
-    COALESCE(p_music_playlist, '[]'::jsonb),
-    p_current_music_track,
-    COALESCE(p_current_music_position, 0),
-    COALESCE(p_shuffle_enabled, FALSE),
-    COALESCE(p_use_gradient, TRUE)
-  )
-  ON CONFLICT (user_id) DO UPDATE SET
-    theme = COALESCE(p_theme, user_preferences.theme),
-    font = COALESCE(p_font, user_preferences.font),
-    music_playlist = COALESCE(p_music_playlist, user_preferences.music_playlist),
-    current_music_track = COALESCE(p_current_music_track, user_preferences.current_music_track),
-    current_music_position = COALESCE(p_current_music_position, user_preferences.current_music_position),
-    shuffle_enabled = COALESCE(p_shuffle_enabled, user_preferences.shuffle_enabled),
-    use_gradient = COALESCE(p_use_gradient, user_preferences.use_gradient),
-    updated_at = NOW()
-  RETURNING * INTO result;
-  RETURN result;
-END;
-$function$
 ;
 
 

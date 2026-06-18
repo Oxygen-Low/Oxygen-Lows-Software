@@ -690,6 +690,20 @@ end;
 $function$
 ;
 
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+          AND prokind = 'f'
+    LOOP
+        EXECUTE format('DROP FUNCTION %s', _func.proto);
+    END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(p_user_id uuid, p_theme text DEFAULT NULL::text, p_font text DEFAULT NULL::text, p_music_playlist jsonb DEFAULT NULL::jsonb, p_current_music_track text DEFAULT NULL::text, p_current_music_position bigint DEFAULT NULL::bigint, p_shuffle_enabled boolean DEFAULT NULL::boolean, p_use_gradient boolean DEFAULT NULL::boolean)
  RETURNS public.user_preferences
  LANGUAGE plpgsql

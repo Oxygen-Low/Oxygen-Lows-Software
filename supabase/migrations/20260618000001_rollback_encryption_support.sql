@@ -25,9 +25,20 @@ ALTER TABLE public.chat_messages DROP COLUMN IF EXISTS is_encrypted;
 ALTER TABLE public.user_preferences DROP COLUMN IF EXISTS encryption_settings;
 
 -- Drop the updated upsert_user_preferences function
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(uuid, text, text, jsonb, text, bigint, boolean, boolean, text, text, jsonb);
-
--- Restore the original upsert_user_preferences function signature (from 20260617000000_remove_languages.sql)
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+          AND prokind = 'f'
+    LOOP
+        EXECUTE format('DROP FUNCTION %s', _func.proto);
+    END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,

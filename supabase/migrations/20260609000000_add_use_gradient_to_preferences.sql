@@ -2,9 +2,23 @@
 ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS use_gradient BOOLEAN DEFAULT TRUE;
 
 -- Drop the existing function to avoid ambiguity with the new signature
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(UUID, TEXT, TEXT, JSONB, TEXT, BIGINT, BOOLEAN);
+
 
 -- Update the upsert_user_preferences function to include p_use_gradient
+DO $$
+DECLARE
+    _func record;
+BEGIN
+    FOR _func IN
+        SELECT oid::regprocedure as proto
+        FROM pg_proc
+        WHERE proname = 'upsert_user_preferences'
+          AND pronamespace = 'public'::regnamespace
+          AND prokind = 'f'
+    LOOP
+        EXECUTE format('DROP FUNCTION %s', _func.proto);
+    END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,
