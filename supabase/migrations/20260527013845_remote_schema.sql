@@ -1,2 +1,0 @@
--- This migration file is empty because all of its contents are handled by other migrations
--- (either previous or following) in a more consistent manner.
