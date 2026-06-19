@@ -95,7 +95,7 @@ export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
 };
 
 export const handleProxyAiRequest: RequestHandler = async (req, res) => {
-  const { provider, model, messages, stream, style } = req.body;
+  const { provider, model, messages, stream, style, apiKey, baseUrl } = req.body;
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: "No authorization header" });
   const token = authHeader.replace("Bearer ", "");
@@ -107,11 +107,14 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return res.status(401).json({ error: "Invalid token" });
 
-  const { data: integration } = await supabase
+  let { data: integration } = await supabase
     .from("user_integrations")
     .select("api_key, base_url")
     .eq("provider", provider)
     .single();
+
+  if (apiKey) { integration = { ...integration, api_key: apiKey }; }
+  if (baseUrl) { integration = { ...integration, base_url: baseUrl }; }
 
   if (!integration?.api_key && provider !== "ollama" && provider !== "kobold" && provider !== "lmstudio") {
     return res.status(400).json({ error: "Provider not configured" });
@@ -194,7 +197,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   try {
     switch (provider) {
       case "openai":
-        await handleResponse(await axios.post("https://api.openai.com/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
+        await handleResponse(await axios.post("https://api.openai.com/v1/chat/completions", { model, messages: processedMessages, stream }, {
+          ...axiosOptions, headers: { ...axiosOptions.headers, "Authorization": `Bearer ${integration?.api_key}` }
+        }));
         break;
       case "anthropic": {
         const s = processedMessages.find((m: any) => m.role === "system");
@@ -295,7 +300,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       case "custom": {
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
-        await validateAiUrl(integration.base_url);
+        if (!integration.base_url.startsWith("https://")) throw new Error("HTTPS required"); await validateAiUrl(integration.base_url);
         const finalUrl = buildValidatedCustomUrl(integration.base_url);
         const customHeaders = integration?.api_key ? { ...axiosOptions.headers, "Authorization": `Bearer ${integration.api_key}` } : axiosOptions.headers;
         await handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
