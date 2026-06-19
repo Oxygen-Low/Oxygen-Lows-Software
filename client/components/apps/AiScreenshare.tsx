@@ -127,7 +127,7 @@ export function AiScreenshareApp() {
   };
 
   const analyzeFrame = async () => {
-    if (!streamRef.current) return;
+    if (!streamRef.current || !session?.user?.id) return;
 
     let success = false;
     try {
@@ -150,8 +150,8 @@ export function AiScreenshareApp() {
       if (!frame) return; // Will be rescheduled by finally
 
       setIsTyping(true);
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const token = authSession?.access_token;
 
       // Prepare multi-modal message
       const userMessage: Message = {

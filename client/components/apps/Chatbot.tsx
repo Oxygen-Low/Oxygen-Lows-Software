@@ -297,6 +297,8 @@ export const ChatbotApp = () => {
         }
       }
 
+
+
       const key = getMasterKey();
       if (isEncryptionEnabled && !key) {
         setShowUnlockModal(true);

@@ -300,7 +300,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       case "custom": {
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
-        await validateAiUrl(integration.base_url);
+        if (!integration.base_url.startsWith("https://")) throw new Error("HTTPS required"); await validateAiUrl(integration.base_url);
         const finalUrl = buildValidatedCustomUrl(integration.base_url);
         const customHeaders = integration?.api_key ? { ...axiosOptions.headers, "Authorization": `Bearer ${integration.api_key}` } : axiosOptions.headers;
         await handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
