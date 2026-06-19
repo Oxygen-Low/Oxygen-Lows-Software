@@ -1,4 +1,0 @@
-name: Oxygen Lows CodeQL
-packs:
-  - codeql/javascript-queries
-  - oxygen-lows/codeql-extensions

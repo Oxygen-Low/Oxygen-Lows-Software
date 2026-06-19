@@ -1,7 +1,0 @@
-extensions:
-  - addsTo:
-      pack: codeql/javascript-all
-      extensible: barrierModel
-    data:
-      - ["server/lib/safeAiUrl", "Member[resolveCustomProviderUrl].ReturnValue", "request-forgery"]
-      - ["../lib/safeAiUrl", "Member[resolveCustomProviderUrl].ReturnValue", "request-forgery"]
