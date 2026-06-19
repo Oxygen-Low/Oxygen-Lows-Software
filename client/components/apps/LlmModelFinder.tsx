@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Cpu, HardDrive, Zap, ExternalLink, Info, Layers } from "lucide-react";
+import { Search, Cpu, HardDrive, Zap, ExternalLink, Info, Layers, Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const TASKS = [
   { id: "text-generation", label: "Text Generation", hfTag: "text-generation" },
@@ -34,28 +35,31 @@ interface Model {
 export const LlmModelFinderApp = () => {
   const [task, setTask] = useState(TASKS[0].id);
   const [ram, setRam] = useState(16);
-  const [cpuCores, setCpuCores] = useState(8);
   const [useGpu, setUseGpu] = useState(false);
   const [vram, setVram] = useState(8);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [models, setModels] = useState<Model[]>([]);
 
   const ramLimit = useMemo(() => Math.max(0, ram - 1), [ram]); // 1GB reserved
 
   const fetchModels = async () => {
     setLoading(true);
+    setError(null);
     try {
       const selectedTask = TASKS.find(t => t.id === task);
       let url = `https://huggingface.co/api/models?filter=${selectedTask?.hfTag}&sort=downloads&direction=-1&limit=100&full=true&config=true`;
 
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch models from Hugging Face: ${response.statusText}`);
+      }
       const data = await response.json();
 
       const processedModels = data.map((m: any) => {
         let params = 0;
 
-        // Try to find a parameter count tag (e.g., "params:70B", "7B", "70b")
         const paramTag = m.tags?.find((t: string) =>
           t.toLowerCase().startsWith("params:") ||
           /^[0-9.]+[bm]$/i.test(t)
@@ -71,12 +75,10 @@ export const LlmModelFinderApp = () => {
             }
           }
         } else {
-          // Fallback guess from name
           const nameMatch = m.id.match(/([0-9.]+)[Bb]/);
           if (nameMatch) params = parseFloat(nameMatch[1]);
         }
 
-        // RAM estimation for 4-bit quantization (0.7GB per billion + 1GB baseline)
         const ramNeeded = params > 0 ? params * 0.7 + 1.0 : 0;
 
         return {
@@ -95,7 +97,8 @@ export const LlmModelFinderApp = () => {
       const filtered = processedModels.filter((m: Model) => {
         const matchesSearch = m.id.toLowerCase().includes(searchQuery.toLowerCase());
         const hardwareLimit = useGpu ? vram : ramLimit;
-        const fitsInHardware = m.ramRequired === 0 || m.ramRequired <= hardwareLimit;
+        // Only include models with known size that fit
+        const fitsInHardware = m.ramRequired > 0 && m.ramRequired <= hardwareLimit;
 
         const matchesAdditional = selectedTask?.additionalTags
           ? selectedTask.additionalTags.some(tag =>
@@ -108,8 +111,9 @@ export const LlmModelFinderApp = () => {
       });
 
       setModels(filtered.sort((a: Model, b: Model) => b.downloads - a.downloads));
-    } catch (error) {
-      console.error("Error fetching models:", error);
+    } catch (err: any) {
+      console.error("Error fetching models:", err);
+      setError(err.message || "An unexpected error occurred while searching for models.");
     } finally {
       setLoading(false);
     }
@@ -159,21 +163,6 @@ export const LlmModelFinderApp = () => {
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label className="text-slate-300">CPU Cores</Label>
-                <span className="text-cyan-400 font-mono font-bold">{cpuCores}</span>
-              </div>
-              <Slider
-                value={[cpuCores]}
-                onValueChange={(v) => setCpuCores(v[0])}
-                min={1}
-                max={32}
-                step={1}
-                className="py-4"
-              />
-            </div>
-
             <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/50 border border-slate-800">
               <div className="space-y-0.5">
                 <Label htmlFor="gpu-mode" className="text-slate-300">GPU Acceleration</Label>
@@ -210,7 +199,7 @@ export const LlmModelFinderApp = () => {
             >
               {loading ? (
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 animate-pulse" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Searching...
                 </div>
               ) : "Find Compatible Models"}
@@ -238,11 +227,27 @@ export const LlmModelFinderApp = () => {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px] pr-4">
-              {models.length === 0 && !loading ? (
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-[400px] text-slate-500">
+                  <Loader2 className="w-12 h-12 mb-4 animate-spin opacity-20 text-cyan-500" />
+                  <p className="font-medium">Fetching best models...</p>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center h-[400px] text-slate-500">
+                  <Alert variant="destructive" className="bg-red-900/20 border-red-900/50 text-red-200 w-full max-w-md">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Search Failed</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                  <Button variant="outline" className="mt-4 border-slate-800 text-slate-400" onClick={fetchModels}>
+                    Try Again
+                  </Button>
+                </div>
+              ) : models.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[400px] text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
                   <Search className="w-12 h-12 mb-4 opacity-20" />
-                  <p className="font-medium text-lg">No models loaded yet</p>
-                  <p className="text-sm">Adjust your specs and click "Find Models"</p>
+                  <p className="font-medium text-lg">No models found</p>
+                  <p className="text-sm">Try adjusting your specs or search query.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
@@ -309,9 +314,9 @@ export const LlmModelFinderApp = () => {
                             <Button
                               size="sm"
                               className="h-8 bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 text-xs"
-                              onClick={() => window.open(`https://ollama.com/library/${model.name.toLowerCase().replace(/-v[0-9.]+$/, "")}`, "_blank")}
+                              onClick={() => window.open(`https://ollama.com/search?q=${model.name.toLowerCase()}`, "_blank")}
                             >
-                              Ollama Link
+                              Search Ollama
                             </Button>
                             <Button
                               size="sm"
