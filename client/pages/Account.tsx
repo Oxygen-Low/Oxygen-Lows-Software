@@ -57,10 +57,25 @@ export default function Account() {
     const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", session.user.id).single();
     if (prof) { setProfile(prof); setUsernameInput(prof.username || ""); setDisplayNameInput(prof.display_name || ""); setBioInput(prof.bio || ""); }
     const { data: idents } = await supabase.auth.getUser(); if (idents.user) setIdentities(idents.user.identities || []);
-    const { data: ints } = await supabase.rpc("get_my_integrations"); if (ints) setIntegrations(ints);
-    const { data: mods } = await supabase.from("user_models").select("*"); if (mods) setUserModels(mods);
+    const { data: ints } = await supabase.rpc("get_my_integrations");
     const { data: prefs } = await supabase.from("user_preferences").select("encryption_settings").eq("user_id", session.user.id).single();
-    if (prefs?.encryption_settings) setEncryptionSettings(prefs.encryption_settings);
+    const settings = prefs?.encryption_settings || {};
+    setEncryptionSettings(settings);
+
+    if (ints) {
+      const key = getMasterKey();
+      if (settings.integrations && key) {
+        const processedInts = await Promise.all(ints.map(async (i: any) => ({
+          ...i,
+          base_url: i.base_url ? await decrypt(i.base_url, key).catch(() => "[Encrypted]") : undefined
+        })));
+        setIntegrations(processedInts);
+      } else {
+        setIntegrations(ints);
+      }
+    }
+    const { data: mods } = await supabase.from("user_models").select("*"); if (mods) setUserModels(mods);
+
   }, [session?.user?.id]);
 
   useEffect(() => {
@@ -97,10 +112,31 @@ export default function Account() {
   const handleSaveIntegration = async (provider: string) => {
     const key = apiKeyInputs[provider]; const url = baseUrlInputs[provider];
     if (!key && !url) return;
+
+    if (!encryptionSettings.integrations) {
+      toast({ title: "Encryption Required", description: "You must enable 'Integrations' encryption in the Security tab before saving API keys.", variant: "destructive" });
+      return;
+    }
+
+    const masterKey = getMasterKey();
+    if (!masterKey) {
+       toast({ title: "Error", description: "Masterkey not found. Please enter it in the Security tab.", variant: "destructive" });
+       return;
+    }
+
     try {
-      if (key) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_api_key: key, p_base_url: url });
-      else if (url) await supabase.rpc("upsert_user_integration", { p_provider: provider, p_api_key: null, p_base_url: url });
+      const finalKey = key ? await encrypt(key, masterKey) : null;
+      const finalUrl = url ? await encrypt(url, masterKey) : (baseUrlInputs[provider] === "" ? null : undefined);
+
+      await supabase.rpc("upsert_user_integration", {
+        p_provider: provider,
+        p_api_key: finalKey,
+        p_base_url: finalUrl
+      });
+
       setApiKeyInputs({ ...apiKeyInputs, [provider]: "" });
+      setBaseUrlInputs({ ...baseUrlInputs, [provider]: "" });
+      fetchAccountData();
       toast({ title: "Success" });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -248,12 +284,27 @@ export default function Account() {
         }
       }
 
+      if (target === 'integrations') {
+        if (!isEnabling) {
+          if (!window.confirm("Disabling encryption for integrations will PERMANENTLY DELETE all your saved API keys and Base URLs. Please make sure you have them saved elsewhere. Continue?")) {
+            setIsMigrating(false);
+            return;
+          }
+          await supabase.from('user_integrations').delete().eq('user_id', session?.user?.id);
+          setIntegrations([]);
+        } else {
+          // Force delete existing unencrypted integrations when enabling
+          await supabase.from('user_integrations').delete().eq('user_id', session?.user?.id);
+          setIntegrations([]);
+        }
+      }
+
       const newSettings = { ...encryptionSettings, [target]: isEnabling };
 
       // If enabling encryption for the first time, save a validation hash
       if (isEnabling && !newSettings.validation_hash) {
         newSettings.validation_hash = await encrypt('valid', key);
-      } else if (!isEnabling && !newSettings.characters && !newSettings.chats) {
+      } else if (!isEnabling && !newSettings.characters && !newSettings.chats && !newSettings.integrations) {
         // If disabling everything, we can clear the validation hash
         delete newSettings.validation_hash;
       }
@@ -283,6 +334,7 @@ export default function Account() {
       await supabase.from('characters').delete().eq('user_id', session?.user?.id).eq('is_encrypted', true);
       await supabase.from('chats').delete().eq('user_id', session?.user?.id).eq('is_encrypted', true);
       await supabase.from('chat_messages').delete().eq('is_encrypted', true);
+      await supabase.from('user_integrations').delete().eq('user_id', session?.user?.id);
 
       // 2. Reset encryption settings
       const newSettings = {};
@@ -458,6 +510,19 @@ export default function Account() {
                         <div className="text-xs text-slate-500">{encryptionSettings.chats ? 'Encrypted' : 'Unencrypted'}</div>
                       </div>
                       {isMigrating ? <RefreshCw className="w-5 h-5 animate-spin" /> : (encryptionSettings.chats ? <ShieldCheck className="w-5 h-5 text-green-500" /> : <ShieldAlert className="w-5 h-5 text-slate-600" />)}
+                    </Button>
+
+                    <Button
+                      variant={encryptionSettings.integrations ? "secondary" : "outline"}
+                      onClick={() => handleToggleEncryption('integrations')}
+                      disabled={isMigrating}
+                      className="h-16 justify-between px-6 sm:col-span-2"
+                    >
+                      <div className="text-left">
+                        <div className="font-semibold">Integrations</div>
+                        <div className="text-xs text-slate-500">{encryptionSettings.integrations ? 'Encrypted' : 'Unencrypted'}</div>
+                      </div>
+                      {isMigrating ? <RefreshCw className="w-5 h-5 animate-spin" /> : (encryptionSettings.integrations ? <ShieldCheck className="w-5 h-5 text-green-500" /> : <ShieldAlert className="w-5 h-5 text-slate-600" />)}
                     </Button>
                   </div>
                 </div>

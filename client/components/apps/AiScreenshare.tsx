@@ -131,6 +131,21 @@ export function AiScreenshareApp() {
 
     let success = false;
     try {
+      const { data: userInts } = await supabase.from("user_integrations").select("*").eq("user_id", session.user.id).eq("provider", selectedProvider).single();
+      const { data: prefs } = await supabase.from("user_preferences").select("encryption_settings").eq("user_id", session.user.id).single();
+      const encryptionSettings = prefs?.encryption_settings || {};
+
+      let decryptedKey = undefined;
+      let decryptedBaseUrl = undefined;
+
+      if (userInts && encryptionSettings.integrations) {
+        const { decrypt, getMasterKey } = await import("@/lib/crypto");
+        const masterKey = getMasterKey();
+        if (masterKey) {
+          if (userInts.api_key) decryptedKey = await decrypt(userInts.api_key, masterKey);
+          if (userInts.base_url) decryptedBaseUrl = await decrypt(userInts.base_url, masterKey);
+        }
+      }
       const frame = captureFrame();
       if (!frame) return; // Will be rescheduled by finally
 
@@ -167,7 +182,9 @@ export function AiScreenshareApp() {
           model: selectedModel,
           style: selectedStyle,
           messages: [...historyForAi, userMessage],
-          stream: false
+          stream: false,
+          apiKey: decryptedKey,
+          baseUrl: decryptedBaseUrl
         })
       });
 
