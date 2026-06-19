@@ -13,13 +13,14 @@ import {
   Users,
   ShieldCheck,
   Bot,
-  Monitor
+  Monitor,
+  Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { AiScreenshareApp } from "@/components/apps/AiScreenshare";
-
 import { ChatbotApp } from "@/components/apps/Chatbot";
+import { LlmModelFinderApp } from "@/components/apps/LlmModelFinder";
 
 type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
@@ -61,6 +62,14 @@ export default function Apps() {
       categories: ["All", "LLM/AI"],
       icon: <Monitor className="w-8 h-8 text-cyan-500" />,
       component: AiScreenshareApp,
+    },
+    {
+      id: "llm-model-finder",
+      name: "LLM Model Finder",
+      description: "Find the best model capable of running on your hardware for different tasks.",
+      categories: ["All", "LLM/AI"],
+      icon: <Search className="w-8 h-8 text-cyan-500" />,
+      component: LlmModelFinderApp,
     },
     {
       id: "file-compressor",
