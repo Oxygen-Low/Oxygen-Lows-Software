@@ -1,0 +1,6 @@
+name: oxygen-lows/codeql-extensions
+version: 0.0.1
+libraryPathDependencies:
+  - codeql/javascript-all
+dataExtensions:
+  - "**/*.yml"

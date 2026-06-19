@@ -3,55 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
 import path from "path";
 import fs from "fs";
-import net from "net";
-import { lookup } from "dns/promises";
+import { resolveCustomProviderUrl } from "../lib/safeAiUrl";
+
+export { isPrivateIP, validateAiUrl } from "../lib/safeAiUrl";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
-
-export const isPrivateIP = (ip: string): boolean => {
-  if (net.isIPv4(ip)) {
-    const parts = ip.split(".").map(Number);
-    if (parts[0] === 0 || parts[0] === 127 || parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168) || (parts[0] === 169 && parts[1] === 254)) return true;
-    return false;
-  } else if (net.isIPv6(ip)) {
-    const expanded = ip.toLowerCase();
-    if (expanded === "::1" || expanded === "0:0:0:0:0:0:0:1") return true;
-    const v4MappedMatch = expanded.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
-    if (v4MappedMatch) return isPrivateIP(v4MappedMatch[1]);
-    if (expanded.startsWith("fc") || expanded.startsWith("fd") || expanded.startsWith("fe8") || expanded.startsWith("fe9") || expanded.startsWith("fea") || expanded.startsWith("feb")) return true;
-    return false;
-  }
-  return false;
-};
-
-export const validateAiUrl = async (baseUrl: string): Promise<void> => {
-  const u = new URL(baseUrl);
-  if (u.protocol !== "https:") throw new Error("HTTPS required");
-  if (isPrivateIP(u.hostname) || ["localhost", "127.0.0.1", "::1"].includes(u.hostname.toLowerCase())) throw new Error("Public origin required");
-  try {
-    const { address } = await lookup(u.hostname);
-    if (isPrivateIP(address)) throw new Error("Public origin required");
-  } catch (e: any) {
-    if (e.message === "Public origin required") throw e;
-  }
-};
-
-function buildValidatedCustomUrl(baseUrl: string): string {
-  try {
-    if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
-      throw new Error('Invalid path');
-    }
-    const url = new URL(baseUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      throw new Error('Invalid protocol');
-    }
-    url.pathname = url.pathname.replace(/\/+$/, "") + "/chat/completions";
-    return url.href;
-  } catch {
-    throw new Error('Invalid URL');
-  }
-}
 
 const getSystemContentFromYaml = (filePath: string): string | null => {
   try {
@@ -300,8 +257,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       case "custom": {
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
-        if (!integration.base_url.startsWith("https://")) throw new Error("HTTPS required"); await validateAiUrl(integration.base_url);
-        const finalUrl = buildValidatedCustomUrl(integration.base_url);
+        const finalUrl = await resolveCustomProviderUrl(integration.base_url);
         const customHeaders = integration?.api_key ? { ...axiosOptions.headers, "Authorization": `Bearer ${integration.api_key}` } : axiosOptions.headers;
         await handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
         break;

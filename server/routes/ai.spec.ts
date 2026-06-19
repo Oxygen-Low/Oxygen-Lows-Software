@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isPrivateIP, validateAiUrl } from "./ai";
+import { isPrivateIP, validateAiUrl, resolveCustomProviderUrl } from "../lib/safeAiUrl";
 import fs from "fs";
 import path from "path";
 
@@ -53,6 +53,40 @@ describe("SSRF Validation", () => {
 
     it("should reject URLs that resolve to private IPs", async () => {
        await expect(validateAiUrl("https://localhost/api")).rejects.toThrow("Public origin required");
+    });
+  });
+
+  describe("resolveCustomProviderUrl", () => {
+    it("should build chat/completions path for valid public HTTPS URLs", async () => {
+      const url = await resolveCustomProviderUrl("https://api.openai.com/v1");
+      expect(url).toBe("https://api.openai.com/v1/chat/completions");
+    });
+
+    it("should normalize trailing slashes before appending chat/completions", async () => {
+      const url = await resolveCustomProviderUrl("https://api.openai.com/v1/");
+      expect(url).toBe("https://api.openai.com/v1/chat/completions");
+    });
+
+    it("should reject non-HTTPS URLs", async () => {
+      await expect(resolveCustomProviderUrl("http://api.openai.com/v1")).rejects.toThrow("HTTPS required");
+    });
+
+    it("should reject URLs with private IP hostnames", async () => {
+      await expect(resolveCustomProviderUrl("https://127.0.0.1/api")).rejects.toThrow("Public origin required");
+      await expect(resolveCustomProviderUrl("https://10.0.0.1/api")).rejects.toThrow("Public origin required");
+    });
+
+    it("should reject localhost hostnames", async () => {
+      await expect(resolveCustomProviderUrl("https://localhost/api")).rejects.toThrow("Public origin required");
+    });
+
+    it("should reject path traversal in URL", async () => {
+      await expect(resolveCustomProviderUrl("https://api.openai.com/v1/../internal")).rejects.toThrow("Invalid path");
+      await expect(resolveCustomProviderUrl("https://api.openai.com/v1/%2e%2e/internal")).rejects.toThrow("Invalid path");
+    });
+
+    it("should reject URLs with embedded credentials", async () => {
+      await expect(resolveCustomProviderUrl("https://user:pass@api.openai.com/v1")).rejects.toThrow("Credentials in URL are not allowed");
     });
   });
 });
