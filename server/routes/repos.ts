@@ -124,6 +124,7 @@ router.post("/user/git-password", authenticateRepoRequest, async (req, res) => {
 
 router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
     const repo = await getRepo(id);
     res.json(repo);
@@ -132,6 +133,7 @@ router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res
 
 router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   if ((req as any).repoPermission !== "admin") return res.status(403).json({ error: "Forbidden" });
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -146,6 +148,7 @@ router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, 
 
 router.get("/:id/files", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const ref = String(req.query.ref || "main");
   const p = String(req.query.path || "");
   if (!REF_REGEX.test(ref) || !isSafePath(p)) return res.status(400).json({ error: "Invalid parameters" });
@@ -164,6 +167,7 @@ router.get("/:id/files", authenticateRepoRequest, authorizeRepoAccess, async (re
 
 router.get("/:id/content", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const ref = String(req.query.ref || "main");
   const p = String(req.query.path || "");
   if (!REF_REGEX.test(ref) || !isSafePath(p)) return res.status(400).json({ error: "Invalid parameters" });
@@ -177,6 +181,7 @@ router.get("/:id/content", authenticateRepoRequest, authorizeRepoAccess, async (
 
 router.post("/:id/edit", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { filePath, content, branch, message } = req.body;
   if (!filePath || !isSafePath(filePath) || !branch || !REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid parameters" });
   if ((req as any).repoPermission === "read") return res.status(403).json({ error: "Forbidden" });
@@ -298,6 +303,8 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
 });
 
 router.get("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+  const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const prId = String(req.params.prId);
   if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   try {
@@ -309,6 +316,8 @@ router.get("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAc
 });
 
 router.post("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+  const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const prId = String(req.params.prId);
   if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   const { body } = req.body;
