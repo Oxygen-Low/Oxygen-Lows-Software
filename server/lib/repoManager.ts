@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import simpleGit from "simple-git";
-import * as archiverModule from "archiver";
-const archiver = (archiverModule as any).default || archiverModule;
+import { ZipArchive } from "archiver";
 import extract from "extract-zip";
 import fs from "fs-extra";
 import path from "path";
@@ -83,7 +82,7 @@ class RepoManager {
     const repoPath = path.join(REPOS_DATA_DIR, `${repoId}.git`);
     const zipPath = path.join(os.tmpdir(), `${repoId}-upload.zip`);
     const output = fs.createWriteStream(zipPath);
-    const archive = archiver("zip", { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     const archivePromise = new Promise((res, rej) => { output.on("close", res); archive.on("error", rej); });
     archive.pipe(output); archive.directory(repoPath, ".git"); await archive.finalize(); await archivePromise;
     const buffer = await fs.readFile(zipPath);
