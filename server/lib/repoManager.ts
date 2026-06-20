@@ -30,7 +30,6 @@ class RepoManager {
 
   async ensureLoaded(repoId: string, storagePath: string): Promise<string> {
     if (!validateId(repoId)) throw new Error("Invalid repo ID");
-    // Ensure storagePath is safe (e.g. starts with ownerId/repos/)
     if (!/^[0-9a-f-]+\/repos\/[0-9a-f-]+\.zip$/.test(storagePath)) throw new Error("Invalid storage path");
 
     const repoPath = path.join(REPOS_DATA_DIR, `${repoId}.git`);
@@ -49,11 +48,12 @@ class RepoManager {
         await fs.writeFile(zipPath, Buffer.from(await data.arrayBuffer()));
         const extractDir = path.join(os.tmpdir(), `${repoId}-extract`);
         await fs.ensureDir(extractDir);
+        const resolvedExtractDir = path.resolve(extractDir);
         await extract(zipPath, {
           dir: extractDir,
           onEntry: (entry) => {
             const entryPath = path.resolve(extractDir, entry.fileName);
-            if (!entryPath.startsWith(path.resolve(extractDir))) {
+            if (!entryPath.startsWith(resolvedExtractDir + path.sep) && entryPath !== resolvedExtractDir) {
               throw new Error("Invalid zip entry (Zip Slip detected)");
             }
           }

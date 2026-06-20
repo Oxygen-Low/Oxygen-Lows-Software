@@ -74,7 +74,7 @@ describe("RepositoriesApp", () => {
     (global.fetch as any).mockImplementationOnce(() => Promise.resolve({
         ok: true,
         json: () => Promise.resolve([]),
-    })); // for mount fetch
+    }));
 
     render(<ThemeProvider><RepositoriesApp /></ThemeProvider>);
 
@@ -99,27 +99,47 @@ describe("RepositoriesApp", () => {
     });
   });
 
-  it("shows error toast on non-OK response during creation", async () => {
+  it("handles keyboard navigation (Enter/Space) and nested paths", async () => {
+    // 1. Initial fetch
     (global.fetch as any).mockImplementationOnce(() => Promise.resolve({
         ok: true,
-        json: () => Promise.resolve([]),
-    })); // for mount fetch
+        json: () => Promise.resolve([{ id: "repo-1", name: "test-repo", profiles: { username: "user" }, zip_size_bytes: 0 }]),
+    }));
 
     render(<ThemeProvider><RepositoriesApp /></ThemeProvider>);
 
-    const nameInput = screen.getByPlaceholderText("Repo name...");
-    fireEvent.change(nameInput, { target: { value: "error-repo" } });
+    // 2. Click repo to enter detail
+    const repoCard = await screen.findByText("user/test-repo");
+    fireEvent.click(repoCard);
 
+    // 3. Mock tree fetch for root
     (global.fetch as any).mockImplementationOnce(() => Promise.resolve({
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({ error: "Failed to create repository" })
+        ok: true,
+        json: () => Promise.resolve([{ name: "folder", type: "tree" }]),
     }));
 
-    fireEvent.click(screen.getByText("New Repo"));
+    // 4. Find folder and press Enter
+    const folderBtn = await screen.findByText("folder");
+    fireEvent.keyDown(folderBtn, { key: "Enter" });
 
+    // 5. Verify nested tree fetch
     await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith("Failed to create repository");
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/repos/repo-1/tree?path=folder"), expect.anything());
+    });
+
+    // 6. Mock tree fetch for nested
+    (global.fetch as any).mockImplementationOnce(() => Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([{ name: "file.txt", type: "blob" }]),
+    }));
+
+    // 7. Find file and press Space
+    const fileBtn = await screen.findByText("file.txt");
+    fireEvent.keyDown(fileBtn, { key: " " });
+
+    // 8. Verify nested file fetch
+    await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/repos/repo-1/file?path=folder%2Ffile.txt"), expect.anything());
     });
   });
 });

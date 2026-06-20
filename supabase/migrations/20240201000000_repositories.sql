@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.repository_collaborators (
 CREATE TABLE IF NOT EXISTS public.repository_issues (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     repo_id UUID NOT NULL REFERENCES public.repositories(id) ON DELETE CASCADE,
-    number INTEGER,
+    number INTEGER NOT NULL,
     title TEXT NOT NULL,
     body TEXT,
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
@@ -35,12 +35,13 @@ CREATE TABLE IF NOT EXISTS public.repository_issues (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_repo_issues_number ON public.repository_issues(repo_id, number);
 
 -- Pull Requests Table
 CREATE TABLE IF NOT EXISTS public.repository_pull_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     repo_id UUID NOT NULL REFERENCES public.repositories(id) ON DELETE CASCADE,
-    number INTEGER,
+    number INTEGER NOT NULL,
     title TEXT NOT NULL,
     body TEXT,
     source_branch TEXT NOT NULL,
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.repository_pull_requests (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_repo_prs_number ON public.repository_pull_requests(repo_id, number);
 
 -- Pull Request Comments Table
 CREATE TABLE IF NOT EXISTS public.repository_pull_request_comments (
@@ -74,13 +76,22 @@ CREATE TABLE IF NOT EXISTS public.repository_passwords (
 -- Per-repository numbering function
 CREATE OR REPLACE FUNCTION public.calculate_next_repo_number()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_repo_id UUID;
+    v_lock_id BIGINT;
 BEGIN
+    v_repo_id := NEW.repo_id;
+    -- Use an advisory lock to serialize number calculation per repository
+    -- Convert UUID to a bigint for the lock key. Using hashtext is a common way.
+    v_lock_id := hashtext(v_repo_id::text);
+    PERFORM pg_advisory_xact_lock(v_lock_id);
+
     IF NEW.number IS NULL THEN
         SELECT COALESCE(MAX(number), 0) + 1 INTO NEW.number
         FROM (
-            SELECT number FROM public.repository_issues WHERE repo_id = NEW.repo_id
+            SELECT number FROM public.repository_issues WHERE repo_id = v_repo_id
             UNION ALL
-            SELECT number FROM public.repository_pull_requests WHERE repo_id = NEW.repo_id
+            SELECT number FROM public.repository_pull_requests WHERE repo_id = v_repo_id
         ) combined;
     END IF;
     RETURN NEW;

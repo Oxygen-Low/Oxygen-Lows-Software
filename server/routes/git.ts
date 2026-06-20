@@ -17,6 +17,13 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
   const repoName = req.params[1];
   const gitPath = req.params[2];
 
+  // Validate gitPath against allowlist
+  const allowedPaths = ["info/refs", "git-upload-pack", "git-receive-pack", "HEAD", "objects/info/packs", "objects/info/alternates", "objects/info/http-alternates"];
+  const isAllowed = allowedPaths.some(p => gitPath === p) ||
+                    /^(objects\/[0-9a-f]{2}\/[0-9a-f]{38}|objects\/pack\/pack-[0-9a-f]{40}\.(pack|idx))$/.test(gitPath);
+
+  if (!isAllowed) return res.status(403).json({ error: "Invalid git path" });
+
   const user = (req as any).user;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) return res.status(500).json({ error: "Config error" });
@@ -58,6 +65,7 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
 
     let headerBuffer = Buffer.alloc(0);
     let headersParsed = false;
+    let statusFound = false;
 
     gitBackend.stdout.on('data', (chunk) => {
         if (headersParsed) {
@@ -76,23 +84,31 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
             const bodyPart = headerBuffer.slice(index + sepLen);
 
             headersPart.split(/\r?\n/).forEach(line => {
-                const parts = line.split(': ');
+                const parts = line.split(': ', 2);
                 if (parts.length === 2) {
                     if (parts[0].toLowerCase() === 'status') {
                         const statusCode = parseInt(parts[1].split(' ')[0]);
-                        if (!isNaN(statusCode)) res.status(statusCode);
+                        if (!isNaN(statusCode)) {
+                            res.status(statusCode);
+                            statusFound = true;
+                        }
                     } else {
                         res.setHeader(parts[0], parts[1]);
                     }
                 }
             });
 
+            if (!statusFound) res.status(200);
             headersParsed = true;
             if (bodyPart.length > 0) res.write(bodyPart);
         }
     });
 
     gitBackend.stdout.on('end', () => {
+        if (!headersParsed && !res.headersSent) {
+            // git http-backend might have exited without output if something went wrong
+            res.status(500).json({ error: "Git backend produced no output" });
+        }
         res.end();
     });
 

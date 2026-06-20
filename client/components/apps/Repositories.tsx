@@ -69,6 +69,7 @@ export function RepositoriesApp() {
 function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
   const [activeTab, setActiveTab] = useState("code");
   const [tree, setTree] = useState<any[]>([]);
+  const [currentPath, setCurrentPath] = useState("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +78,7 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
 
   const fetchTree = useCallback(async (path: string = "") => {
     setLoading(true);
+    setCurrentPath(path);
     try {
       const { data: token } = await supabase.auth.getSession();
       const res = await fetch(`/api/repos/${repo.id}/tree?path=${encodeURIComponent(path)}`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
@@ -116,17 +118,11 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
   useEffect(() => { if (activeTab === "settings") fetchGitPassword(); }, [activeTab]);
 
   const handleEntryClick = (file: any) => {
+    const fullPath = currentPath ? `${currentPath}/${file.name}` : file.name;
     if (file.type === 'blob') {
-      loadFile(file.name);
+      loadFile(fullPath);
     } else if (file.type === 'tree') {
-      fetchTree(file.name);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent, file: any) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleEntryClick(file);
+      fetchTree(fullPath);
     }
   };
 
@@ -138,7 +134,21 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
         <TabsContent value="code" className="mt-6 space-y-4">
           <div className="flex gap-2 items-center text-sm bg-slate-900/50 p-2 rounded border border-slate-800"><span className="text-slate-500">Clone URL:</span><code className="text-cyan-400 flex-1 px-2 py-1 bg-black/30 rounded">{window.location.origin}/api/git/{repo.profiles?.username}/{repo.name}.git</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/git/${repo.profiles?.username}/${repo.name}.git`); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div>
           <div className="grid grid-cols-12 gap-4 h-[600px]">
-            <Card className="col-span-3 bg-slate-900/50 border-slate-800 flex flex-col"><CardHeader className="p-4 border-b border-slate-800"><CardTitle className="text-sm font-medium">Files</CardTitle></CardHeader><ScrollArea className="flex-1 p-2">{loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto mt-10" /> : tree.map(file => <div key={file.name} tabIndex={0} role="button" aria-label={`Open ${file.name}`} onClick={() => handleEntryClick(file)} onKeyDown={(e) => handleKeyDown(e, file)} className={cn("flex items-center gap-2 p-2 rounded cursor-pointer text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50", selectedFile === file.name ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400 hover:bg-slate-800")}>{file.type === 'tree' ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}{file.name}</div>)}</ScrollArea></Card>
+            <Card className="col-span-3 bg-slate-900/50 border-slate-800 flex flex-col"><CardHeader className="p-4 border-b border-slate-800"><CardTitle className="text-sm font-medium">Files</CardTitle></CardHeader>
+              <ScrollArea className="flex-1 p-2">
+                {currentPath && (
+                  <button type="button" onClick={() => fetchTree(currentPath.includes("/") ? currentPath.substring(0, currentPath.lastIndexOf("/")) : "")} className="flex items-center gap-2 p-2 rounded text-sm text-slate-500 hover:bg-slate-800 w-full text-left">
+                    <Folder className="w-4 h-4" /> ..
+                  </button>
+                )}
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto mt-10" /> : tree.map(file => (
+                  <button key={file.name} type="button" onClick={() => handleEntryClick(file)} className={cn("flex items-center gap-2 p-2 rounded text-sm w-full text-left focus:outline-none focus:ring-2 focus:ring-cyan-500/50", selectedFile === (currentPath ? `${currentPath}/${file.name}` : file.name) ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400 hover:bg-slate-800")}>
+                    {file.type === 'tree' ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}
+                    {file.name}
+                  </button>
+                ))}
+              </ScrollArea>
+            </Card>
             <Card className="col-span-9 bg-slate-950 border-slate-800 flex flex-col overflow-hidden">{selectedFile ? <><div className="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/50"><span className="text-sm text-slate-300">{selectedFile}</span><Button size="sm" onClick={saveFile} disabled={isSaving}>{isSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3 mr-2" />}Commit</Button></div><div className="flex-1"><Editor height="100%" defaultLanguage="typescript" theme="vs-dark" value={fileContent} onChange={(val) => setFileContent(val || "")} /></div></> : <div className="flex-1 flex flex-col items-center justify-center text-slate-600"><Code className="w-12 h-12 mb-4 opacity-20" /><p>Select a file to view</p></div>}</Card>
           </div>
         </TabsContent>

@@ -5,6 +5,6 @@ export const apiLimiter = rateLimit({
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false, ip: false },
+  validate: { xForwardedForHeader: true, ip: true },
   message: { error: "Too many requests, please try again later." }
 });
