@@ -17,12 +17,20 @@ function validateId(id: string) {
 
 class RepoManager {
   private loadedRepos = new Map<string, LoadedRepo>();
-  private supabaseService: any;
+  private _supabaseService: any;
+
+  private get supabaseService() {
+    if (this._supabaseService) return this._supabaseService;
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://vqmukrmpgvavscsyefqd.supabase.co";
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) {
+      throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured on the server. Please check your environment variables.");
+    }
+    this._supabaseService = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+    return this._supabaseService;
+  }
 
   constructor() {
-    const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (serviceRoleKey) this.supabaseService = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
     fs.ensureDirSync(REPOS_DATA_DIR);
     if (typeof setInterval !== 'undefined') setInterval(() => this.sweep(), 60000).unref();
   }
