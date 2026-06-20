@@ -13,6 +13,11 @@ if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;
 }
 
+/**
+ * Creates and configures an Express application with security, CORS, and API route handlers.
+ *
+ * @returns The configured Express application.
+ */
 export function createServer() {
   const app = express();
 

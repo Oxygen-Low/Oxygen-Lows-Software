@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import Editor from "@monaco-editor/react";
 
+/**
+ * Displays a list of user repositories with options to create new ones and navigate to repository details.
+ */
 export function RepositoriesApp() {
   const { session } = useAuth();
   const [repos, setRepos] = useState<any[]>([]);
@@ -66,6 +69,15 @@ export function RepositoriesApp() {
   );
 }
 
+/**
+ * Displays detailed information and management interface for a repository.
+ *
+ * Provides tabs for browsing and editing code, managing issues and pull requests,
+ * adding collaborators, and configuring settings including git authentication.
+ *
+ * @param repo - The repository object
+ * @param onBack - Callback invoked when returning to the repository list
+ */
 function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
   const [activeTab, setActiveTab] = useState("code");
   const [tree, setTree] = useState<any[]>([]);

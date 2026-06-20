@@ -11,6 +11,13 @@ import crypto from "crypto";
 const router = Router();
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 
+/**
+ * Fetches a repository by its ID.
+ *
+ * @param id - The repository ID to fetch
+ * @returns The repository record
+ * @throws Throws an error if the repository is not found
+ */
 async function getRepo(id: string) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
