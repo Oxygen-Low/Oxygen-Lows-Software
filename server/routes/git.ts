@@ -4,14 +4,21 @@ import path from "path";
 import { repoManager } from "../lib/repoManager";
 import { authenticateRepoRequest } from "../lib/repoAuth";
 import { createClient } from "@supabase/supabase-js";
+import rateLimit from "express-rate-limit";
 
 const router = Router();
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 
+const gitApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: { error: "Too many requests to git service" }
+});
+
+router.use(gitApiLimiter);
 router.use(authenticateRepoRequest);
 
-// Use a regex to match /owner/repo.git/path
-router.all(/^\/([^\/]+)\/([^\/]+)\.git\/(.*)/, async (req: any, res: any) => {
+router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: any) => {
   const owner = req.params[0];
   const repoName = req.params[1];
   const gitPath = req.params[2];
