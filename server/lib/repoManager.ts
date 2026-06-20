@@ -25,7 +25,7 @@ class RepoManager {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (serviceRoleKey) this.supabaseService = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
     fs.ensureDirSync(REPOS_DATA_DIR);
-    if (typeof setInterval !== 'undefined') setInterval(() => this.sweep(), 60000);
+    if (typeof setInterval !== 'undefined') setInterval(() => this.sweep(), 60000).unref();
   }
 
   async ensureLoaded(repoId: string, storagePath: string): Promise<string> {
