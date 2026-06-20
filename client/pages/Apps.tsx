@@ -14,13 +14,15 @@ import {
   ShieldCheck,
   Bot,
   Monitor,
-  Search
+  Search,
+  GitBranch
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { AiScreenshareApp } from "@/components/apps/AiScreenshare";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { LlmModelFinderApp } from "@/components/apps/LlmModelFinder";
+import { RepositoriesApp } from "@/components/apps/Repositories";
 
 type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
@@ -70,6 +72,14 @@ export default function Apps() {
       categories: ["All", "LLM/AI"],
       icon: <Search className="w-8 h-8 text-cyan-500" />,
       component: LlmModelFinderApp,
+    },
+    {
+      id: "repositories",
+      name: "Repositories",
+      description: "Host git repositories with issues, pull requests, and web editing.",
+      categories: ["All", "Development"],
+      icon: <GitBranch className="w-8 h-8 text-cyan-500" />,
+      component: RepositoriesApp,
     },
     {
       id: "file-compressor",
