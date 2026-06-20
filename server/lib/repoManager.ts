@@ -30,7 +30,6 @@ class RepoManager {
 
   async ensureLoaded(repoId: string, storagePath: string): Promise<string> {
     if (!validateId(repoId)) throw new Error("Invalid repo ID");
-    // Ensure storagePath is safe (e.g. starts with ownerId/repos/)
     if (!/^[0-9a-f-]+\/repos\/[0-9a-f-]+\.zip$/.test(storagePath)) throw new Error("Invalid storage path");
 
     const repoPath = path.join(REPOS_DATA_DIR, `${repoId}.git`);
@@ -49,7 +48,16 @@ class RepoManager {
         await fs.writeFile(zipPath, Buffer.from(await data.arrayBuffer()));
         const extractDir = path.join(os.tmpdir(), `${repoId}-extract`);
         await fs.ensureDir(extractDir);
-        await extract(zipPath, { dir: extractDir });
+        const resolvedExtractDir = path.resolve(extractDir);
+        await extract(zipPath, {
+          dir: extractDir,
+          onEntry: (entry) => {
+            const entryPath = path.resolve(extractDir, entry.fileName);
+            if (!entryPath.startsWith(resolvedExtractDir + path.sep) && entryPath !== resolvedExtractDir) {
+              throw new Error("Invalid zip entry (Zip Slip detected)");
+            }
+          }
+        });
         await fs.move(path.join(extractDir, ".git"), repoPath, { overwrite: true });
         await fs.remove(zipPath); await fs.remove(extractDir);
       } finally { info!.loading = null; }
@@ -79,8 +87,7 @@ class RepoManager {
     const archivePromise = new Promise((res, rej) => { output.on("close", res); archive.on("error", rej); });
     archive.pipe(output); archive.directory(repoPath, ".git"); await archive.finalize(); await archivePromise;
     const buffer = await fs.readFile(zipPath);
-    await this.supabaseService.storage.from("Storage").remove([storagePath]);
-    const { error } = await this.supabaseService.storage.from("Storage").upload(storagePath, buffer, { contentType: "application/zip", upsert: false });
+    const { error } = await this.supabaseService.storage.from("Storage").upload(storagePath, buffer, { contentType: "application/zip", upsert: true });
     if (error) throw error;
     await fs.remove(zipPath); return { size: buffer.length };
   }
@@ -96,9 +103,16 @@ class RepoManager {
   private async sweep() {
     const now = Date.now();
     for (const [id, info] of this.loadedRepos.entries()) {
-      if (now - info.lastActivity > IDLE_TIMEOUT && !info.loading) {
-        const { data } = await this.supabaseService.from("repositories").select("storage_path").eq("id", id).single();
-        if (data?.storage_path) { await this.forceUnload(id, data.storage_path); await this.supabaseService.from("repositories").update({ is_loaded: false }).eq("id", id); }
+      try {
+        if (now - info.lastActivity > IDLE_TIMEOUT && !info.loading) {
+          const { data } = await this.supabaseService.from("repositories").select("storage_path").eq("id", id).single();
+          if (data?.storage_path) {
+            await this.forceUnload(id, data.storage_path);
+            await this.supabaseService.from("repositories").update({ is_loaded: false }).eq("id", id);
+          }
+        }
+      } catch (err) {
+        console.error(`Error sweeping repository ${id}:`, err);
       }
     }
   }
