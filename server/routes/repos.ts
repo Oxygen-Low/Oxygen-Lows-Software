@@ -11,15 +11,29 @@ import crypto from "crypto";
 const router = Router();
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const REF_REGEX = /^[a-zA-Z0-9\._\-\/]+$/;
+const SAFE_PATH_REGEX = /^[a-zA-Z0-9\._\-\/]*$/;
+
+function validateId(id: string) {
+  return UUID_REGEX.test(id);
+}
+
+function isSafePath(p: string) {
+  if (typeof p !== 'string') return false;
+  if (p.includes('..')) return false;
+  if (path.isAbsolute(p)) return false;
+  return SAFE_PATH_REGEX.test(p);
+}
+
 async function getRepo(id: string) {
+  if (!validateId(id)) throw new Error("Invalid ID");
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
   const { data } = await supabaseAdmin.from("repositories").select("*").eq("id", id).single();
   if (!data) throw new Error("Repo not found");
   return data;
 }
-
-const REF_REGEX = /^[a-zA-Z0-9\._\-\/]+$/;
 
 router.get("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
   const user = (req as any).user;
@@ -58,7 +72,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
     let finalSize = initialSize;
     if (initReadme) {
       const repoPath = repoManager.getRepoPath(repoId);
-      const tempDir = path.join(path.dirname(repoPath), `${repoId}-init-${crypto.randomBytes(4).toString('hex')}`);
+      const tempDir = path.resolve(path.dirname(repoPath), `${repoId}-init-${crypto.randomBytes(4).toString('hex')}`);
       try {
         await fs.ensureDir(tempDir);
         await simpleGit().clone(repoPath, tempDir);
@@ -100,6 +114,7 @@ router.post("/user/git-password", authenticateRepoRequest, apiLimiter, async (re
 
 router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
     const repo = await getRepo(id);
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path);
@@ -111,6 +126,7 @@ router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res
 
 router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   if ((req as any).repoPermission !== "admin") return res.status(403).json({ error: "Forbidden" });
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
@@ -129,10 +145,11 @@ router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, 
 
 router.get("/:id/tree", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const ref = String(req.query.ref || "HEAD");
   if (!REF_REGEX.test(ref)) return res.status(400).json({ error: "Invalid ref" });
   const treePath = String(req.query.path || "");
-  if (!/^[a-zA-Z0-9\._\-\/]*$/.test(treePath)) return res.status(400).json({ error: "Invalid path" });
+  if (!isSafePath(treePath)) return res.status(400).json({ error: "Invalid path" });
   try {
     const repo = await getRepo(id);
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path);
@@ -149,10 +166,11 @@ router.get("/:id/tree", authenticateRepoRequest, authorizeRepoAccess, async (req
 
 router.get("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const ref = String(req.query.ref || "HEAD");
   if (!REF_REGEX.test(ref)) return res.status(400).json({ error: "Invalid ref" });
   const filePath = String(req.query.path || "");
-  if (!/^[a-zA-Z0-9\._\-\/]*$/.test(filePath)) return res.status(400).json({ error: "Invalid path" });
+  if (!isSafePath(filePath)) return res.status(400).json({ error: "Invalid path" });
   try {
     const repo = await getRepo(id);
     await repoManager.ensureLoaded(id, repo.storage_path);
@@ -163,8 +181,9 @@ router.get("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req
 
 router.put("/:id/file", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { path: filePath, content, message, branch = "main" } = req.body;
-  if (typeof filePath !== 'string' || !/^[a-zA-Z0-9\._\-\/]+$/.test(filePath)) return res.status(400).json({ error: "Invalid path" });
+  if (!isSafePath(filePath)) return res.status(400).json({ error: "Invalid path" });
   if ((req as any).repoPermission === "read") return res.status(403).json({ error: "Forbidden" });
   try {
     const repo = await getRepo(id);
@@ -193,6 +212,7 @@ router.put("/:id/file", authenticateRepoRequest, authorizeRepoAccess, apiLimiter
 
 router.get("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
   const { data, error } = await supabaseAdmin.from("repository_issues").select("*, author:profiles!repository_issues_author_id_fkey(username)").eq("repo_id", id).order("created_at", { ascending: false });
@@ -202,6 +222,7 @@ router.get("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, async (r
 
 router.post("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { title, body } = req.body;
   const user = (req as any).user;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -213,6 +234,7 @@ router.post("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, apiLimi
 
 router.get("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
   const { data, error } = await supabaseAdmin.from("repository_pull_requests").select("*, author:profiles!repository_pull_requests_author_id_fkey(username)").eq("repo_id", id).order("created_at", { ascending: false });
@@ -222,6 +244,7 @@ router.get("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, async (re
 
 router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { title, body, source_branch, target_branch } = req.body;
   const user = (req as any).user;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -233,7 +256,9 @@ router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, apiLimit
 
 router.get("/:id/pulls/:prId/diff", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const prId = String(req.params.prId);
+  if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   try {
     const repo = await getRepo(id);
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -248,7 +273,9 @@ router.get("/:id/pulls/:prId/diff", authenticateRepoRequest, authorizeRepoAccess
 
 router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const prId = String(req.params.prId);
+  if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   const user = (req as any).user;
   if ((req as any).repoPermission === "read") return res.status(403).json({ error: "Forbidden" });
   try {
@@ -276,6 +303,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
 
 router.get("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const prId = String(req.params.prId);
+  if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
   const { data, error } = await supabaseAdmin.from("repository_pull_request_comments").select("*, user:profiles!repository_pull_request_comments_user_id_fkey(username)").eq("pr_id", prId).order("created_at", { ascending: true });
@@ -285,6 +313,7 @@ router.get("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAc
 
 router.post("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const prId = String(req.params.prId);
+  if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   const { body } = req.body;
   const user = (req as any).user;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -296,6 +325,7 @@ router.post("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoA
 
 router.get("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
   const { data, error } = await supabaseAdmin.from("repository_collaborators").select("*, user:profiles!repository_collaborators_user_id_fkey(username, display_name)").eq("repo_id", id);
@@ -305,6 +335,7 @@ router.get("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, a
 
 router.post("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { username, permission = "write" } = req.body;
   if ((req as any).repoPermission !== "admin") return res.status(403).json({ error: "Forbidden" });
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
