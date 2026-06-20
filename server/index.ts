@@ -1,5 +1,4 @@
 import ws from "ws";
-import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
@@ -8,6 +7,7 @@ import { handleDemo } from "./routes/demo";
 import { handleProxyAiRequest, handleGetLocalProviders, handleGetChatStyles } from "./routes/ai";
 import { reposRouter } from "./routes/repos";
 import { gitRouter } from "./routes/git";
+import { apiLimiter } from "./lib/limiter";
 
 if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;
@@ -15,13 +15,6 @@ if (typeof global !== "undefined" && !global.WebSocket) {
 
 export function createServer() {
   const app = express();
-  const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 500,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please try again later." }
-  });
 
   app.use(
     helmet({

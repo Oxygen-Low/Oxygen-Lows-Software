@@ -1,31 +1,28 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { Book, Plus, HardDrive, GitBranch, RefreshCw, ChevronRight, File, Folder, Code, Save, Send, GitPullRequest, AlertCircle, Copy, Users, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import {
-  GitBranch, Plus, Trash2, Book, Code, AlertCircle, Users, Settings, ChevronRight, Folder, File, Save, Check, Copy, GitPullRequest, MessageSquare, RefreshCw, HardDrive, Send
-} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import Editor from "@monaco-editor/react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-
-interface Repository { id: string; name: string; description: string; owner_id: string; is_loaded: boolean; zip_size_bytes: number; default_branch: string; profiles?: { username: string }; permission?: 'read' | 'write' | 'admin'; }
 
 export function RepositoriesApp() {
   const { session } = useAuth();
-  const [repos, setRepos] = useState<Repository[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newRepoName, setNewRepoName] = useState("");
   const [newRepoDesc, setNewRepoDesc] = useState("");
+  const [selectedRepo, setSelectedRepo] = useState<any | null>(null);
+
   const fetchRepos = useCallback(async () => {
-    if (!session) return;
+    setLoading(true);
     try {
       const { data: token } = await supabase.auth.getSession();
       const res = await fetch("/api/repos", { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
@@ -33,7 +30,9 @@ export function RepositoriesApp() {
       if (res.ok) setRepos(data);
     } catch (err) { toast.error("Failed to fetch repositories"); } finally { setLoading(false); }
   }, [session]);
+
   useEffect(() => { fetchRepos(); }, [fetchRepos]);
+
   const createRepo = async () => {
     if (!newRepoName) return;
     setCreating(true);
@@ -43,7 +42,9 @@ export function RepositoriesApp() {
       if (res.ok) { toast.success("Repository created"); setNewRepoName(""); setNewRepoDesc(""); fetchRepos(); } else { const error = await res.json(); toast.error(error.error || "Failed to create repository"); }
     } catch (err) { toast.error("Error creating repository"); } finally { setCreating(false); }
   };
+
   if (selectedRepo) return <RepoDetail repo={selectedRepo} onBack={() => { setSelectedRepo(null); fetchRepos(); }} />;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -58,13 +59,14 @@ export function RepositoriesApp() {
               <CardContent><div className="flex items-center gap-4 text-xs text-slate-500"><div className="flex items-center gap-1"><HardDrive className="w-3 h-3" />{(repo.zip_size_bytes / 1024).toFixed(1)} KB</div><div className="flex items-center gap-1"><GitBranch className="w-3 h-3" />{repo.default_branch}</div></div></CardContent>
             </Card>
           ))}
-          {repos.length === 0 && <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl"><p className="text-slate-500">No repositories yet.</p></div>}
-        </div>}
+          {repos.length === 0 && <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl text-slate-500">No repositories found. Create one to get started!</div>}
+        </div>
+      }
     </div>
   );
 }
 
-function RepoDetail({ repo, onBack }: { repo: Repository, onBack: () => void }) {
+function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
   const [activeTab, setActiveTab] = useState("code");
   const [tree, setTree] = useState<any[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -72,23 +74,27 @@ function RepoDetail({ repo, onBack }: { repo: Repository, onBack: () => void }) 
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [gitPassword, setGitPassword] = useState<string | null>(null);
+
   const fetchTree = useCallback(async (path: string = "") => {
     setLoading(true);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch(`/api/repos/${repo.id}/tree?path=${path}`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
+      const res = await fetch(`/api/repos/${repo.id}/tree?path=${encodeURIComponent(path)}`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
       const data = await res.json(); if (res.ok) setTree(data);
     } catch (err) { toast.error("Failed to fetch tree"); } finally { setLoading(false); }
   }, [repo.id]);
+
   useEffect(() => { fetchTree(); }, [fetchTree]);
+
   const loadFile = async (filePath: string) => {
     setSelectedFile(filePath);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch(`/api/repos/${repo.id}/file?path=${filePath}`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
+      const res = await fetch(`/api/repos/${repo.id}/file?path=${encodeURIComponent(filePath)}`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
       const content = await res.text(); setFileContent(content);
     } catch (err) { toast.error("Failed to load file"); }
   };
+
   const saveFile = async () => {
     if (!selectedFile) return;
     setIsSaving(true);
@@ -98,6 +104,7 @@ function RepoDetail({ repo, onBack }: { repo: Repository, onBack: () => void }) 
       if (res.ok) toast.success("Saved"); else toast.error("Failed to save");
     } catch (err) { toast.error("Error saving"); } finally { setIsSaving(false); }
   };
+
   const fetchGitPassword = async () => {
     try {
       const { data: token } = await supabase.auth.getSession();
@@ -105,7 +112,24 @@ function RepoDetail({ repo, onBack }: { repo: Repository, onBack: () => void }) 
       const data = await res.json(); setGitPassword(data.password);
     } catch (err) {}
   };
+
   useEffect(() => { if (activeTab === "settings") fetchGitPassword(); }, [activeTab]);
+
+  const handleEntryClick = (file: any) => {
+    if (file.type === 'blob') {
+      loadFile(file.name);
+    } else if (file.type === 'tree') {
+      fetchTree(file.name);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, file: any) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleEntryClick(file);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center"><div className="flex items-center gap-4"><Button variant="ghost" size="sm" onClick={onBack}><ChevronRight className="w-4 h-4 rotate-180 mr-1" />Back</Button><div className="flex items-center gap-2"><Book className="w-5 h-5 text-cyan-400" /><h2 className="text-xl font-bold text-white">{repo.profiles?.username}/{repo.name}</h2></div></div><Badge variant={repo.is_loaded ? "default" : "secondary"}>{repo.is_loaded ? "Loaded" : "Unloaded"}</Badge></div>
@@ -114,7 +138,7 @@ function RepoDetail({ repo, onBack }: { repo: Repository, onBack: () => void }) 
         <TabsContent value="code" className="mt-6 space-y-4">
           <div className="flex gap-2 items-center text-sm bg-slate-900/50 p-2 rounded border border-slate-800"><span className="text-slate-500">Clone URL:</span><code className="text-cyan-400 flex-1 px-2 py-1 bg-black/30 rounded">{window.location.origin}/api/git/{repo.profiles?.username}/{repo.name}.git</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/git/${repo.profiles?.username}/${repo.name}.git`); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div>
           <div className="grid grid-cols-12 gap-4 h-[600px]">
-            <Card className="col-span-3 bg-slate-900/50 border-slate-800 flex flex-col"><CardHeader className="p-4 border-b border-slate-800"><CardTitle className="text-sm font-medium">Files</CardTitle></CardHeader><ScrollArea className="flex-1 p-2">{loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto mt-10" /> : tree.map(file => <div key={file.name} onClick={() => file.type === 'blob' && loadFile(file.name)} className={cn("flex items-center gap-2 p-2 rounded cursor-pointer text-sm", selectedFile === file.name ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400 hover:bg-slate-800")}>{file.type === 'tree' ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}{file.name}</div>)}</ScrollArea></Card>
+            <Card className="col-span-3 bg-slate-900/50 border-slate-800 flex flex-col"><CardHeader className="p-4 border-b border-slate-800"><CardTitle className="text-sm font-medium">Files</CardTitle></CardHeader><ScrollArea className="flex-1 p-2">{loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto mt-10" /> : tree.map(file => <div key={file.name} tabIndex={0} role="button" aria-label={`Open ${file.name}`} onClick={() => handleEntryClick(file)} onKeyDown={(e) => handleKeyDown(e, file)} className={cn("flex items-center gap-2 p-2 rounded cursor-pointer text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50", selectedFile === file.name ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400 hover:bg-slate-800")}>{file.type === 'tree' ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}{file.name}</div>)}</ScrollArea></Card>
             <Card className="col-span-9 bg-slate-950 border-slate-800 flex flex-col overflow-hidden">{selectedFile ? <><div className="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/50"><span className="text-sm text-slate-300">{selectedFile}</span><Button size="sm" onClick={saveFile} disabled={isSaving}>{isSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3 mr-2" />}Commit</Button></div><div className="flex-1"><Editor height="100%" defaultLanguage="typescript" theme="vs-dark" value={fileContent} onChange={(val) => setFileContent(val || "")} /></div></> : <div className="flex-1 flex flex-col items-center justify-center text-slate-600"><Code className="w-12 h-12 mb-4 opacity-20" /><p>Select a file to view</p></div>}</Card>
           </div>
         </TabsContent>
@@ -124,7 +148,7 @@ function RepoDetail({ repo, onBack }: { repo: Repository, onBack: () => void }) 
         <TabsContent value="settings" className="space-y-4">
            <Card className="bg-slate-900/50 border-slate-800"><CardHeader><CardTitle>Git Authentication</CardTitle></CardHeader><CardContent className="space-y-4">{gitPassword ? <div className="flex gap-2"><code className="flex-1 bg-black/30 p-2 rounded border border-slate-800 text-cyan-400 break-all text-xs">{gitPassword}</code><Button variant="outline" onClick={() => { navigator.clipboard.writeText(gitPassword); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div> : <p className="text-slate-500 italic">No password generated.</p>}<Button variant="secondary" onClick={async () => { const { data: token } = await supabase.auth.getSession(); const res = await fetch("/api/repos/user/git-password", { method: "POST", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); const data = await res.json(); setGitPassword(data.password); }}>Generate Password</Button></CardContent></Card>
            {repo.permission === 'admin' && (
-             <Card className="bg-slate-900/50 border-red-900/30"><CardHeader><CardTitle className="text-red-400">Danger Zone</CardTitle></CardHeader><CardContent><Button variant="destructive" onClick={async () => { if(confirm("Delete?")) { const { data: token } = await supabase.auth.getSession(); await fetch(`/api/repos/${repo.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); onBack(); } }}>Delete Repository</Button></CardContent></Card>
+             <Card className="bg-slate-900/50 border-red-900/30"><CardHeader><CardTitle className="text-red-400">Danger Zone</CardTitle></CardHeader><CardContent><Button variant="destructive" onClick={async () => { if(confirm("Delete?")) { try { const { data: token } = await supabase.auth.getSession(); const res = await fetch(`/api/repos/${repo.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); if (res.ok) { toast.success("Repository deleted"); onBack(); } else { const error = await res.json(); toast.error(error.error || "Failed to delete repository"); } } catch (err) { toast.error("Error deleting repository"); } } }}>Delete Repository</Button></CardContent></Card>
            )}
         </TabsContent>
       </Tabs>

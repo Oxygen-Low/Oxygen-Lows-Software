@@ -2,21 +2,14 @@ import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { repoManager } from "../lib/repoManager";
 import { authenticateRepoRequest, authorizeRepoAccess } from "../lib/repoAuth";
-import simpleGit from "simple-git";
-import path from "path";
+import { apiLimiter } from "../lib/limiter";
 import fs from "fs-extra";
-import rateLimit from "express-rate-limit";
+import path from "path";
+import simpleGit from "simple-git";
+import crypto from "crypto";
 
 const router = Router();
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
-
-const repoApiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: "Too many requests to repository API" }
-});
-
-router.use(repoApiLimiter);
 
 async function getRepo(id: string) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -26,42 +19,54 @@ async function getRepo(id: string) {
   return data;
 }
 
-router.get("/", authenticateRepoRequest, async (req, res) => {
+router.get("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
   const user = (req as any).user;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
-  const { data: collabs } = await supabaseAdmin.from("repository_collaborators").select("repo_id").eq("user_id", user.id);
-  const collabIds = collabs?.map(c => c.repo_id) || [];
+
+  const { data: collabs } = await supabaseAdmin.from("repository_collaborators").select("repo_id, permission").eq("user_id", user.id);
+  const collabMap = new Map(collabs?.map(c => [c.repo_id, c.permission]) || []);
+  const collabIds = Array.from(collabMap.keys());
+
   const query = supabaseAdmin.from("repositories").select("*, profiles!repositories_owner_id_fkey(username)");
   if (collabIds.length > 0) query.or(`owner_id.eq.${user.id},id.in.(${collabIds.join(",")})`);
   else query.eq("owner_id", user.id);
+
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  const enhancedData = data?.map(repo => ({
+      ...repo,
+      permission: repo.owner_id === user.id ? 'admin' : collabMap.get(repo.id)
+  }));
+
+  res.json(enhancedData);
 });
 
-router.post("/", authenticateRepoRequest, async (req, res) => {
+router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
   const { name, description, initReadme } = req.body;
   if (!name || !/^[a-z0-9_-]+$/.test(name)) return res.status(400).json({ error: "Invalid name" });
   const user = (req as any).user;
   const repoId = crypto.randomUUID();
   try {
-    const { storagePath } = await repoManager.createRepo(repoId, user.id, name);
+    const { storagePath, size: initialSize } = await repoManager.createRepo(repoId, user.id, name);
+    let finalSize = initialSize;
     if (initReadme) {
       const repoPath = repoManager.getRepoPath(repoId);
-      const tempDir = path.join(path.dirname(repoPath), `${repoId}-init`);
+      const tempDir = path.join(path.dirname(repoPath), `${repoId}-init-${crypto.randomBytes(4).toString('hex')}`);
       await fs.ensureDir(tempDir);
       await simpleGit().clone(repoPath, tempDir);
       await fs.writeFile(path.join(tempDir, "README.md"), `# ${name}\n\n${description || ""}`);
       const tempGit = simpleGit(tempDir);
       await tempGit.add("README.md"); await tempGit.commit("Initial commit"); await tempGit.push("origin", "main");
       await fs.remove(tempDir);
-      await repoManager.uploadToStorage(repoId, storagePath);
+      const { size } = await repoManager.uploadToStorage(repoId, storagePath);
+      finalSize = size;
     }
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
-    const { data, error } = await supabaseAdmin.from("repositories").insert({ id: repoId, owner_id: user.id, name, description, storage_path: storagePath, zip_size_bytes: 0, is_loaded: true }).select().single();
-    if (error) throw error;
+    const { data, error } = await supabaseAdmin.from("repositories").insert({ id: repoId, owner_id: user.id, name, description, storage_path: storagePath, zip_size_bytes: finalSize, is_loaded: true }).select().single();
+    if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -70,39 +75,42 @@ router.get("/user/git-password", authenticateRepoRequest, async (req, res) => {
   const user = (req as any).user;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
-  const { data } = await supabaseAdmin.from("repository_passwords").select("password").eq("user_id", user.id).single();
+  const { data, error } = await supabaseAdmin.from("repository_passwords").select("password").eq("user_id", user.id).single();
+  if (error && error.code !== "PGRST116") return res.status(500).json({ error: error.message });
   res.json({ password: data?.password || null });
 });
 
-router.post("/user/git-password", authenticateRepoRequest, async (req, res) => {
+router.post("/user/git-password", authenticateRepoRequest, apiLimiter, async (req, res) => {
   const user = (req as any).user;
+  const password = crypto.randomBytes(32).toString("hex");
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
-  const newPassword = Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('');
-  await supabaseAdmin.rpc("upsert_repository_password", { p_password: newPassword });
-  res.json({ password: newPassword });
+  const { error } = await supabaseAdmin.rpc("upsert_repository_password", { p_user_id: user.id, p_password: password });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ password });
 });
 
 router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
-  const { data, error } = await supabaseAdmin.from("repositories").select("*, profiles!repositories_owner_id_fkey(username)").eq("id", id).single();
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ ...data, permission: (req as any).repoPermission });
+  try {
+    const repo = await getRepo(id);
+    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path);
+    repoManager.touchActivity(id);
+    const branches = await simpleGit(repoPath).branch();
+    res.json({ ...repo, branches: branches.all, current_branch: branches.current });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete("/:id", authenticateRepoRequest, async (req, res) => {
+router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
-  const user = (req as any).user;
+  if ((req as any).repoPermission !== "admin") return res.status(403).json({ error: "Forbidden" });
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey!, { auth: { persistSession: false } });
-  const { data: repo } = await supabaseAdmin.from("repositories").select("*").eq("id", id).single();
-  if (!repo || repo.owner_id !== user.id) return res.status(403).json({ error: "Forbidden" });
-  await repoManager.forceUnload(id, repo.storage_path);
-  await supabaseAdmin.storage.from("Storage").remove([repo.storage_path]);
+  const { data: repo } = await supabaseAdmin.from("repositories").select("storage_path").eq("id", id).single();
+  if (repo) await supabaseAdmin.storage.from("Storage").remove([repo.storage_path]);
   const { error } = await supabaseAdmin.from("repositories").delete().eq("id", id);
   if (error) return res.status(500).json({ error: error.message });
+  await fs.remove(repoManager.getRepoPath(id));
   res.json({ success: true });
 });
 
@@ -113,9 +121,11 @@ router.get("/:id/tree", authenticateRepoRequest, authorizeRepoAccess, async (req
   if (!/^[a-zA-Z0-9\._\-\/]*$/.test(treePath)) return res.status(400).json({ error: "Invalid path" });
   try {
     const repo = await getRepo(id);
-    await repoManager.ensureLoaded(id, repo.storage_path);
-    const result = await simpleGit(repoManager.getRepoPath(id)).raw(["ls-tree", "-l", `${ref}:${treePath}`]);
-    res.json(result.split("\n").filter(Boolean).map(line => {
+    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path);
+    const git = simpleGit(repoPath);
+    const result = await git.raw(["ls-tree", "-l", `${ref}:${treePath}`]);
+    const lines = result.trim().split("\n").filter(l => l.length > 0);
+    res.json(lines.map(line => {
       const [meta, name] = line.split("\t");
       const [mode, type, sha, size] = meta.split(/ +/);
       return { mode, type, sha, size, name };
@@ -136,21 +146,21 @@ router.get("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-router.put("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+router.put("/:id/file", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
   const { path: filePath, content, message, branch = "main" } = req.body;
-  if (!/^[a-zA-Z0-9\._\-\/]+$/.test(filePath)) return res.status(400).json({ error: "Invalid path" });
+  if (typeof filePath !== 'string' || !/^[a-zA-Z0-9\._\-\/]+$/.test(filePath)) return res.status(400).json({ error: "Invalid path" });
   if ((req as any).repoPermission === "read") return res.status(403).json({ error: "Forbidden" });
   try {
     const repo = await getRepo(id);
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path);
-    const tempDir = path.join(path.dirname(repoPath), `${id}-edit-${Date.now()}`);
+    const tempDir = path.resolve(path.dirname(repoPath), `${id}-edit-${crypto.randomBytes(4).toString('hex')}`);
     await fs.ensureDir(tempDir);
     await simpleGit().clone(repoPath, tempDir);
     const tempGit = simpleGit(tempDir);
     await tempGit.checkout(branch);
-    const fullPath = path.join(tempDir, filePath);
-    if (!fullPath.startsWith(tempDir)) throw new Error("Invalid path");
+    const fullPath = path.resolve(tempDir, filePath);
+    if (!fullPath.startsWith(tempDir)) throw new Error("Invalid path (traversal detected)");
     await fs.ensureDir(path.dirname(fullPath));
     await fs.writeFile(fullPath, content);
     await tempGit.add(filePath); await tempGit.commit(message || "Web edit"); await tempGit.push("origin", branch);
@@ -172,7 +182,7 @@ router.get("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, async (r
   res.json(data);
 });
 
-router.post("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+router.post("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
   const { title, body } = req.body;
   const user = (req as any).user;
@@ -192,7 +202,7 @@ router.get("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, async (re
   res.json(data);
 });
 
-router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
   const { title, body, source_branch, target_branch } = req.body;
   const user = (req as any).user;
@@ -218,7 +228,7 @@ router.get("/:id/pulls/:prId/diff", authenticateRepoRequest, authorizeRepoAccess
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
   const prId = String(req.params.prId);
   const user = (req as any).user;
@@ -230,7 +240,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
     const { data: pr } = await supabaseAdmin.from("repository_pull_requests").select("*").eq("id", prId).single();
     if (!pr || pr.status !== "open") return res.status(400).json({ error: "Not mergeable" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path);
-    const tempDir = path.join(path.dirname(repoPath), `${id}-merge-${prId}`);
+    const tempDir = path.resolve(path.dirname(repoPath), `${id}-merge-${crypto.randomBytes(8).toString('hex')}`);
     await fs.ensureDir(tempDir);
     await simpleGit().clone(repoPath, tempDir);
     const tempGit = simpleGit(tempDir);
@@ -272,7 +282,7 @@ router.get("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, a
   res.json(data);
 });
 
-router.post("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+router.post("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
   const { username, permission = "write" } = req.body;
   if ((req as any).repoPermission !== "admin") return res.status(403).json({ error: "Forbidden" });
