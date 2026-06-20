@@ -6,6 +6,8 @@ import helmet from "helmet";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { handleProxyAiRequest, handleGetLocalProviders, handleGetChatStyles } from "./routes/ai";
+import { reposRouter } from "./routes/repos";
+import { gitRouter } from "./routes/git";
 
 if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;
@@ -52,6 +54,9 @@ export function createServer() {
   app.post("/api/ai/proxy", apiLimiter, handleProxyAiRequest);
   app.get("/api/ai/local-providers", apiLimiter, handleGetLocalProviders);
   app.get("/api/ai/styles", apiLimiter, handleGetChatStyles);
+
+  app.use("/api/repos", reposRouter);
+  app.use("/api/git", gitRouter);
 
   return app;
 }
