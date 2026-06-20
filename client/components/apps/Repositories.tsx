@@ -29,7 +29,7 @@ export function RepositoriesApp() {
       const data = await res.json();
       if (res.ok) setRepos(data);
     } catch (err) { toast.error("Failed to fetch repositories"); } finally { setLoading(false); }
-  }, [session]);
+  }, []);
 
   useEffect(() => { fetchRepos(); }, [fetchRepos]);
 
