@@ -21,6 +21,18 @@ function validateId(id: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
 }
 
+function getSafeRepoPath(repoId: string) {
+  if (!validateId(repoId)) throw new Error("Invalid ID");
+  const safeId = path.basename(repoId);
+  return path.join(REPOS_DATA_DIR, `${safeId}.git`);
+}
+
+function getSafeTmpPath(repoId: string, suffix: string) {
+    if (!validateId(repoId)) throw new Error("Invalid ID");
+    const safeId = path.basename(repoId);
+    return path.join(os.tmpdir(), `${safeId}${suffix}`);
+}
+
 class RepoManager {
   private loadedRepos = new Map<string, LoadedRepo>();
 
@@ -44,7 +56,7 @@ class RepoManager {
     if (!validateId(repoId)) throw new Error("Invalid repo ID");
     if (!/^[0-9a-f-]+\/repos\/[0-9a-f-]+\.zip$/.test(storagePath)) throw new Error("Invalid storage path");
 
-    const repoPath = path.join(REPOS_DATA_DIR, `${repoId}.git`);
+    const repoPath = getSafeRepoPath(repoId);
     let info = this.loadedRepos.get(repoId);
     if (!info) { info = { lastActivity: Date.now(), loading: null }; this.loadedRepos.set(repoId, info); }
     info.lastActivity = Date.now();
@@ -59,9 +71,9 @@ class RepoManager {
         const { data, error } = await supabase.storage.from("Storage").download(storagePath);
         if (error || !data) throw new Error(`Download failed: ${error?.message || 'No data'}`);
 
-        const zipPath = path.join(os.tmpdir(), `${repoId}.zip`);
+        const zipPath = getSafeTmpPath(repoId, ".zip");
         await fs.writeFile(zipPath, Buffer.from(await data.arrayBuffer()));
-        const extractDir = path.join(os.tmpdir(), `${repoId}-extract`);
+        const extractDir = getSafeTmpPath(repoId, "-extract");
         await fs.ensureDir(extractDir);
         const resolvedExtractDir = path.resolve(extractDir);
         await extract(zipPath, {
@@ -73,7 +85,13 @@ class RepoManager {
             }
           }
         });
-        await fs.move(path.join(extractDir, ".git"), repoPath, { overwrite: true });
+        const gitDir = path.join(extractDir, ".git");
+        if (await fs.pathExists(gitDir)) {
+            await fs.move(gitDir, repoPath, { overwrite: true });
+        } else {
+            // If it's a bare repo, it might be the root of the zip
+            await fs.move(extractDir, repoPath, { overwrite: true });
+        }
         await fs.remove(zipPath); await fs.remove(extractDir);
       } finally { info!.loading = null; }
     })();
@@ -84,7 +102,7 @@ class RepoManager {
     if (!validateId(repoId) || !validateId(ownerId)) throw new Error("Invalid ID");
     if (!/^[a-z0-9_-]+$/.test(name)) throw new Error("Invalid name");
 
-    const repoPath = path.join(REPOS_DATA_DIR, `${repoId}.git`);
+    const repoPath = getSafeRepoPath(repoId);
     await fs.ensureDir(repoPath);
     await simpleGit(repoPath).init(true);
     const storagePath = `${ownerId}/repos/${repoId}.zip`;
@@ -95,8 +113,8 @@ class RepoManager {
 
   async uploadToStorage(repoId: string, storagePath: string, token: string) {
     if (!validateId(repoId)) throw new Error("Invalid ID");
-    const repoPath = path.join(REPOS_DATA_DIR, `${repoId}.git`);
-    const zipPath = path.join(os.tmpdir(), `${repoId}-upload.zip`);
+    const repoPath = getSafeRepoPath(repoId);
+    const zipPath = getSafeTmpPath(repoId, "-upload.zip");
     const output = fs.createWriteStream(zipPath);
     const archive = new ZipArchive({ zlib: { level: 9 } });
     const archivePromise = new Promise((res, rej) => { output.on("close", res); archive.on("error", rej); });
@@ -117,7 +135,8 @@ class RepoManager {
             console.error(`Failed to sync repo ${repoId} to storage during unload:`, err);
         }
     }
-    await fs.remove(path.join(REPOS_DATA_DIR, `${repoId}.git`));
+    const repoPath = getSafeRepoPath(repoId);
+    await fs.remove(repoPath);
     this.loadedRepos.delete(repoId);
   }
 
@@ -148,8 +167,7 @@ class RepoManager {
   }
 
   getRepoPath(repoId: string) {
-    if (!validateId(repoId)) throw new Error("Invalid ID");
-    return path.join(REPOS_DATA_DIR, `${repoId}.git`);
+    return getSafeRepoPath(repoId);
   }
 }
 export const repoManager = new RepoManager();
