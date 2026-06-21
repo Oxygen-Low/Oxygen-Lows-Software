@@ -133,9 +133,12 @@ class RepoManager {
             await this.uploadToStorage(repoId, storagePath, token);
         } catch (err) {
             console.error(`Failed to sync repo ${repoId} to storage during unload:`, err);
-            // Return early to prevent data loss - do not delete local copy if sync fails
             return;
         }
+    } else {
+        // If no token, we can't sync. Skip unloading to prevent data loss.
+        console.warn(`No token for repo ${repoId}. Skipping unload to prevent data loss.`);
+        return;
     }
     const repoPath = getSafeRepoPath(repoId);
     await fs.remove(repoPath);
@@ -156,13 +159,17 @@ class RepoManager {
     for (const [id, info] of this.loadedRepos.entries()) {
       try {
         if (now - info.lastActivity > IDLE_TIMEOUT && !info.loading) {
+          if (!info.ownerToken) {
+              console.warn(`Token missing for repo ${id} during sweep. Skipping.`);
+              continue;
+          }
+
           const supabase = this.getSupabaseClient(info.ownerToken);
 
-          // Check if token is valid (if provided)
-          if (info.ownerToken && info.ownerToken !== supabaseAnonKey) {
+          if (info.ownerToken !== supabaseAnonKey) {
               const { data: { user } } = await supabase.auth.getUser(info.ownerToken);
               if (!user) {
-                  console.warn(`Token for repo ${id} is expired. Skipping unload to prevent data loss.`);
+                  console.warn(`Token for repo ${id} is expired. Skipping unload.`);
                   continue;
               }
           }
@@ -170,7 +177,6 @@ class RepoManager {
           const { data } = await supabase.from("repositories").select("storage_path").eq("id", id).single();
           if (data?.storage_path) {
             await this.forceUnload(id, data.storage_path, info.ownerToken);
-            // Only update DB if it was successfully removed from memory
             if (!this.loadedRepos.has(id)) {
                 await supabase.from("repositories").update({ is_loaded: false }).eq("id", id);
             }

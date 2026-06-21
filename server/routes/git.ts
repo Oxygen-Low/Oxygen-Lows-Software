@@ -64,6 +64,15 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
         }
     });
 
+    gitBackend.on('error', (err) => {
+        console.error('Git backend spawn error:', err);
+        if (!res.headersSent) res.status(500).json({ error: "Git backend failed to start" });
+    });
+
+    gitBackend.stderr.on('data', (data) => {
+        console.error(`Git backend stderr: ${data}`);
+    });
+
     let headerBuffer = Buffer.alloc(0);
     let headersParsed = false;
 
@@ -106,14 +115,10 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
         if (isWriteOp && canWrite && token) {
             try {
                 const { size } = await repoManager.uploadToStorage(repo.id, repo.storage_path, token);
-                const sp = createClient(supabaseUrl, supabaseAnonKey, {
-                    global: { headers: { Authorization: `Bearer ${token}` } },
-                    auth: { persistSession: false }
-                });
-                await sp.from("repositories").update({ zip_size_bytes: size }).eq("id", repo.id);
+                await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", repo.id);
             } catch (err) { console.error("Save error:", err); }
         }
-        res.end();
+        if (!res.writableEnded) res.end();
     });
 
     req.pipe(gitBackend.stdin);

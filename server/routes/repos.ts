@@ -17,7 +17,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const REF_REGEX = /^[a-zA-Z0-9\._\-\/]+$/;
+const REF_REGEX = /^[a-zA-Z0-9\._\-\/][a-zA-Z0-9\._\-\/]*$/; // Updated to ensure it doesn't start with - is hard with regex alone if we want to allow it later?
+// Actually: /^(?!-)[a-zA-Z0-9\._\-\/]+$/ is better for "doesn't start with dash"
+const SAFE_REF_REGEX = /^(?!-)[a-zA-Z0-9\._\-\/]+$/;
 const SAFE_PATH_REGEX = /^[a-zA-Z0-9\._\-\/]*$/;
 
 function validateId(id: string) {
@@ -93,6 +95,7 @@ router.post("/:id/fork", authenticateRepoRequest, apiLimiter, async (req, res) =
         const supabase = getSupabaseClient(token);
         const { data: newRepoId, error } = await supabase.rpc("fork_repository", { p_repo_id: id });
         if (error) return res.status(500).json({ error: error.message });
+        if (!validateId(newRepoId)) return res.status(500).json({ error: "Invalid new repo ID from server" });
 
         const { data: newRepo } = await supabase.from("repositories").select("*").eq("id", newRepoId).single();
         if (!newRepo) throw new Error("Failed to create fork record");
@@ -100,7 +103,7 @@ router.post("/:id/fork", authenticateRepoRequest, apiLimiter, async (req, res) =
         const originalRepo = await getRepo(id, token);
         const originalPath = await repoManager.ensureLoaded(id, originalRepo.storage_path, token);
 
-        const forkPath = path.join(path.dirname(originalPath), `${newRepoId}.git`);
+        const forkPath = repoManager.getRepoPath(newRepoId);
         await fs.ensureDir(forkPath);
         await simpleGit().clone(originalPath, forkPath, ["--bare"]);
 
@@ -128,7 +131,7 @@ router.get(/^\/([0-9a-f-]+)\/tree\/([^\/]+)(?:\/(.*))?$/, authenticateRepoReques
   const subpath = req.params[2] || "";
   const token = (req as any).supabaseToken;
 
-  if (!REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid branch" });
+  if (!SAFE_REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid branch" });
   if (subpath && !isSafePath(subpath)) return res.status(400).json({ error: "Invalid path" });
 
   try {
@@ -152,7 +155,7 @@ router.get(/^\/([0-9a-f-]+)\/blob\/([^\/]+)\/(.+)$/, authenticateRepoRequest, au
   const filePath = req.params[2];
   const token = (req as any).supabaseToken;
 
-  if (!REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid branch" });
+  if (!SAFE_REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid branch" });
   if (!isSafePath(filePath)) return res.status(400).json({ error: "Invalid path" });
 
   try {
@@ -168,7 +171,7 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { filePath, content, branch, message } = req.body;
-  if (!filePath || !isSafePath(filePath) || !branch || !REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid parameters" });
+  if (!filePath || !isSafePath(filePath) || !branch || !SAFE_REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid parameters" });
 
   const repo = await getRepo(id, token);
   const user = (req as any).user;
@@ -244,7 +247,7 @@ router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, apiLimit
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { title, body, source_branch, target_branch } = req.body;
 
-  if (!REF_REGEX.test(source_branch) || !REF_REGEX.test(target_branch)) {
+  if (!SAFE_REF_REGEX.test(source_branch) || !SAFE_REF_REGEX.test(target_branch)) {
       return res.status(400).json({ error: "Invalid branch names" });
   }
 
@@ -269,7 +272,7 @@ router.get("/:id/pulls/:prId/diff", authenticateRepoRequest, authorizeRepoAccess
     const { data: pr } = await supabase.from("repository_pull_requests").select("*").eq("id", prId).single();
     if (!pr) return res.status(404).json({ error: "PR not found" });
     await repoManager.ensureLoaded(id, repo.storage_path, token);
-    const diff = await simpleGit(repoManager.getRepoPath(id)).raw(["diff", pr.target_branch, pr.source_branch]);
+    const diff = await simpleGit(repoManager.getRepoPath(id)).raw(["diff", "--", pr.target_branch, pr.source_branch]);
     res.send(diff);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -300,7 +303,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
       await fs.ensureDir(tempDir);
       await simpleGit().clone(repoPath, tempDir);
       const tempGit = simpleGit(tempDir);
-      await tempGit.checkout(pr.target_branch); await tempGit.merge([pr.source_branch]); await tempGit.push("origin", pr.target_branch);
+      await tempGit.checkout(pr.target_branch); await tempGit.merge(["--", pr.source_branch]); await tempGit.push("origin", pr.target_branch);
       const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);
       await supabase.from("repository_pull_requests").update({ status: "merged", merged_at: new Date().toISOString(), merged_by: user.id }).eq("id", prId);
       await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", id);
