@@ -111,14 +111,18 @@ router.get("/user/git-password", authenticateRepoRequest, async (req, res) => {
 });
 
 router.post("/user/git-password", authenticateRepoRequest, async (req, res) => {
-  const { password } = req.body;
-  if (!password || password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
+  let { password } = req.body;
+  if (!password) {
+    password = crypto.randomBytes(32).toString("hex");
+  } else if (password.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters" });
+  }
   const user = (req as any).user;
   try {
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin.rpc("upsert_repository_password", { p_user_id: user.id, p_password: password });
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true });
+    res.json({ password });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
