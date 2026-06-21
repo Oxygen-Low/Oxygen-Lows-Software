@@ -452,7 +452,7 @@ export const ChatbotApp = () => {
         <div className="pt-4 border-t border-slate-800 space-y-4 overflow-y-auto">
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">Model</label>
             <select className="w-full bg-slate-900 text-xs text-white p-2 rounded" value={`${selectedProvider}:${selectedModel}`} onChange={e => { const [p, m] = e.target.value.split(":"); setSelection(m, p); }}>
-              {models.map((m, i) => <option key={i} value={`${m.provider}:${m.model_id}`}>{formatModelLabel(m.provider, m.model_id)}</option>)}
+              {models.map((m) => <option key={`${m.provider}:${m.model_id}`} value={`${m.provider}:${m.model_id}`}>{formatModelLabel(m.provider, m.model_id)}</option>)}
             </select>
           </div>
           <div><label className="text-[10px] font-bold text-slate-500 uppercase">Style</label>
