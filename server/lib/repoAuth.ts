@@ -1,12 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { Request, Response, NextFunction } from "express";
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be configured.");
-}
+const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
+const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 export async function authenticateRepoRequest(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;

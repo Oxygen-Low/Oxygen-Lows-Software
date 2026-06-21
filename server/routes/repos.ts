@@ -9,12 +9,8 @@ import simpleGit from "simple-git";
 import crypto from "crypto";
 
 const router = Router();
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase config missing");
-}
+const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
+const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REF_REGEX = /^[a-zA-Z0-9\._\-\/][a-zA-Z0-9\._\-\/]*$/; // Updated to ensure it doesn't start with - is hard with regex alone if we want to allow it later?

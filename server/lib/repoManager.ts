@@ -8,8 +8,8 @@ import os from "os";
 
 const REPOS_DATA_DIR = process.env.REPOS_DATA_DIR || path.join(os.tmpdir(), "oxygen-repos");
 const IDLE_TIMEOUT = 10 * 60 * 1000;
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
+const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 interface LoadedRepo {
   lastActivity: number;
@@ -37,7 +37,6 @@ class RepoManager {
   private loadedRepos = new Map<string, LoadedRepo>();
 
   private getSupabaseClient(token?: string) {
-    if (!supabaseUrl || !supabaseAnonKey) throw new Error("Supabase config missing");
     return createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       auth: { persistSession: false }
@@ -154,7 +153,6 @@ class RepoManager {
   }
 
   private async sweep() {
-    if (!supabaseUrl || !supabaseAnonKey) return;
     const now = Date.now();
     for (const [id, info] of this.loadedRepos.entries()) {
       try {

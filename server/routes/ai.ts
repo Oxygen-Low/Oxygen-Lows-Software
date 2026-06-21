@@ -7,8 +7,8 @@ import { resolveCustomProviderUrl } from "../lib/safeAiUrl";
 
 export { isPrivateIP, validateAiUrl } from "../lib/safeAiUrl";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
+const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 const getSystemContentFromYaml = (filePath: string): string | null => {
   try {

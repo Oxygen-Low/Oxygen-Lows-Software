@@ -7,8 +7,8 @@ import { createClient } from "@supabase/supabase-js";
 import { apiLimiter } from "../lib/limiter";
 
 const router = Router();
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
+const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 router.use(apiLimiter);
 router.use(authenticateRepoRequest);
@@ -19,7 +19,6 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
   const gitPath = req.params[2];
   const token = (req as any).supabaseToken;
 
-  if (!supabaseUrl || !supabaseAnonKey) return res.status(500).json({ error: "Config error" });
 
   const allowedPaths = ["info/refs", "git-upload-pack", "git-receive-pack", "HEAD", "objects/info/packs", "objects/info/alternates", "objects/info/http-alternates"];
   const isAllowed = allowedPaths.some(p => gitPath === p) ||
