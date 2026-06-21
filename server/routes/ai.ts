@@ -48,6 +48,29 @@ export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
     // Ignore LMStudio errors
   }
 
+  try {
+    const response = await axios.get("http://127.0.0.1:5001/v1/models", { timeout: 2000 });
+    const models = (response.data.data || []).map((m: any) => ({
+      provider: "koboldcpp",
+      model_id: m.id
+    }));
+    if (!models.length) throw new Error("No Kobold.cpp OpenAI-compatible models found");
+    localModels.push(...models);
+  } catch (error) {
+    try {
+      const response = await axios.get("http://127.0.0.1:5001/api/v1/model", { timeout: 2000 });
+      const modelId = response.data?.result;
+      if (modelId) {
+        localModels.push({
+          provider: "koboldcpp",
+          model_id: modelId
+        });
+      }
+    } catch (fallbackError) {
+      // Ignore Kobold.cpp errors
+    }
+  }
+
   res.json(localModels);
 };
 
@@ -73,7 +96,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   if (apiKey) { integration = { ...integration, api_key: apiKey }; }
   if (baseUrl) { integration = { ...integration, base_url: baseUrl }; }
 
-  if (!integration?.api_key && provider !== "ollama" && provider !== "kobold" && provider !== "lmstudio") {
+  if (!integration?.api_key && provider !== "ollama" && provider !== "kobold" && provider !== "koboldcpp" && provider !== "lmstudio") {
     return res.status(400).json({ error: "Provider not configured" });
   }
 
@@ -252,8 +275,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       case "lmstudio":
         await handleResponse(await axios.post("http://127.0.0.1:1234/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
         break;
+      case "koboldcpp":
       case "kobold":
-        await handleResponse(await axios.post("http://127.0.0.1:5001/api/v1/generate", { prompt: processedMessages[processedMessages.length - 1]?.content || "" }, axiosOptions));
+        await handleResponse(await axios.post("http://127.0.0.1:5001/v1/chat/completions", { model, messages: processedMessages, stream }, axiosOptions));
         break;
       case "custom": {
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
