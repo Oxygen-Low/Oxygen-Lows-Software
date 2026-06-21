@@ -1,3 +1,4 @@
+process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import { createServer } from "../index";
