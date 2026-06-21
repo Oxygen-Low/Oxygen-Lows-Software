@@ -30,6 +30,13 @@ interface Style {
   description: string;
 }
 
+const formatModelLabel = (provider: string, modelId: string) => {
+  if (provider === "ollama") return "ollama/" + modelId;
+  if (provider === "lmstudio") return "lmstudio/" + modelId;
+  if (provider === "koboldcpp" || provider === "kobold") return "koboldcpp/" + modelId;
+  return provider + " - " + modelId;
+};
+
 export function AiScreenshareApp() {
     const { session } = useAuth();
   const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
@@ -209,7 +216,7 @@ export function AiScreenshareApp() {
       let assistantContent = "";
 
       // Handle different provider response formats
-      if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom" || selectedProvider === "lmstudio") {
+      if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom" || selectedProvider === "lmstudio" || selectedProvider === "koboldcpp" || selectedProvider === "kobold") {
         assistantContent = data.choices?.[0]?.message?.content || "";
       } else if (selectedProvider === "anthropic") {
         assistantContent = data.content?.[0]?.text || "";
@@ -260,7 +267,7 @@ export function AiScreenshareApp() {
               >
                 {models.map((m, i) => (
                   <option key={i} value={`${m.provider}:${m.model_id}`}>
-                    {m.provider === "ollama" ? "ollama/" + m.model_id : m.provider === "lmstudio" ? "lmstudio/" + m.model_id : m.provider + " - " + m.model_id}
+                    {formatModelLabel(m.provider, m.model_id)}
                   </option>
                 ))}
               </select>
