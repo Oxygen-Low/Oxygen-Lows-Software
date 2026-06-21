@@ -7,8 +7,8 @@ import { createClient } from "@supabase/supabase-js";
 import { apiLimiter } from "../lib/limiter";
 
 const router = Router();
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 router.use(apiLimiter);
 router.use(authenticateRepoRequest);
@@ -18,6 +18,8 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
   const repoName = req.params[1];
   const gitPath = req.params[2];
   const token = (req as any).supabaseToken;
+
+  if (!supabaseUrl || !supabaseAnonKey) return res.status(500).json({ error: "Config error" });
 
   const allowedPaths = ["info/refs", "git-upload-pack", "git-receive-pack", "HEAD", "objects/info/packs", "objects/info/alternates", "objects/info/http-alternates"];
   const isAllowed = allowedPaths.some(p => gitPath === p) ||
@@ -62,10 +64,42 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
         }
     });
 
+    let headerBuffer = Buffer.alloc(0);
     let headersParsed = false;
+
     gitBackend.stdout.on('data', (chunk) => {
-        if (headersParsed) { res.write(chunk); return; }
-        res.write(chunk);
+        if (headersParsed) {
+            res.write(chunk);
+            return;
+        }
+
+        headerBuffer = Buffer.concat([headerBuffer, chunk]);
+        const separator = headerBuffer.indexOf('\r\n\r\n');
+        const altSeparator = headerBuffer.indexOf('\n\n');
+        const index = separator !== -1 ? separator : altSeparator;
+        const sepLen = separator !== -1 ? 4 : 2;
+
+        if (index !== -1) {
+            const headersPart = headerBuffer.slice(0, index).toString();
+            const bodyPart = headerBuffer.slice(index + sepLen);
+
+            headersPart.split(/\r?\n/).forEach(line => {
+                const parts = line.split(': ', 2);
+                if (parts.length === 2) {
+                    const key = parts[0].toLowerCase();
+                    const value = parts[1];
+                    if (key === 'status') {
+                        const statusCode = parseInt(value.split(' ')[0]);
+                        if (!isNaN(statusCode)) res.status(statusCode);
+                    } else {
+                        res.setHeader(parts[0], value);
+                    }
+                }
+            });
+
+            headersParsed = true;
+            if (bodyPart.length > 0) res.write(bodyPart);
+        }
     });
 
     gitBackend.stdout.on('end', async () => {

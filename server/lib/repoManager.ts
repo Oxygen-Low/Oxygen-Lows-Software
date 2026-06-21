@@ -8,8 +8,8 @@ import os from "os";
 
 const REPOS_DATA_DIR = process.env.REPOS_DATA_DIR || path.join(os.tmpdir(), "oxygen-repos");
 const IDLE_TIMEOUT = 10 * 60 * 1000;
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 interface LoadedRepo {
   lastActivity: number;
@@ -37,6 +37,7 @@ class RepoManager {
   private loadedRepos = new Map<string, LoadedRepo>();
 
   private getSupabaseClient(token?: string) {
+    if (!supabaseUrl || !supabaseAnonKey) throw new Error("Supabase config missing");
     return createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       auth: { persistSession: false }
@@ -89,7 +90,6 @@ class RepoManager {
         if (await fs.pathExists(gitDir)) {
             await fs.move(gitDir, repoPath, { overwrite: true });
         } else {
-            // If it's a bare repo, it might be the root of the zip
             await fs.move(extractDir, repoPath, { overwrite: true });
         }
         await fs.remove(zipPath); await fs.remove(extractDir);
@@ -133,6 +133,8 @@ class RepoManager {
             await this.uploadToStorage(repoId, storagePath, token);
         } catch (err) {
             console.error(`Failed to sync repo ${repoId} to storage during unload:`, err);
+            // Return early to prevent data loss - do not delete local copy if sync fails
+            return;
         }
     }
     const repoPath = getSafeRepoPath(repoId);
@@ -149,15 +151,29 @@ class RepoManager {
   }
 
   private async sweep() {
+    if (!supabaseUrl || !supabaseAnonKey) return;
     const now = Date.now();
     for (const [id, info] of this.loadedRepos.entries()) {
       try {
         if (now - info.lastActivity > IDLE_TIMEOUT && !info.loading) {
           const supabase = this.getSupabaseClient(info.ownerToken);
+
+          // Check if token is valid (if provided)
+          if (info.ownerToken && info.ownerToken !== supabaseAnonKey) {
+              const { data: { user } } = await supabase.auth.getUser(info.ownerToken);
+              if (!user) {
+                  console.warn(`Token for repo ${id} is expired. Skipping unload to prevent data loss.`);
+                  continue;
+              }
+          }
+
           const { data } = await supabase.from("repositories").select("storage_path").eq("id", id).single();
           if (data?.storage_path) {
             await this.forceUnload(id, data.storage_path, info.ownerToken);
-            await supabase.from("repositories").update({ is_loaded: false }).eq("id", id);
+            // Only update DB if it was successfully removed from memory
+            if (!this.loadedRepos.has(id)) {
+                await supabase.from("repositories").update({ is_loaded: false }).eq("id", id);
+            }
           }
         }
       } catch (err) {

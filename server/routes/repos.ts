@@ -9,8 +9,12 @@ import simpleGit from "simple-git";
 import crypto from "crypto";
 
 const router = Router();
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Supabase config missing");
+}
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REF_REGEX = /^[a-zA-Z0-9\._\-\/]+$/;
@@ -28,7 +32,7 @@ function isSafePath(p: string) {
 }
 
 function getSupabaseClient(token?: string) {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(supabaseUrl!, supabaseAnonKey!, {
     global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     auth: { persistSession: false }
   });
@@ -123,6 +127,10 @@ router.get(/^\/([0-9a-f-]+)\/tree\/([^\/]+)(?:\/(.*))?$/, authenticateRepoReques
   const branch = req.params[1];
   const subpath = req.params[2] || "";
   const token = (req as any).supabaseToken;
+
+  if (!REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid branch" });
+  if (subpath && !isSafePath(subpath)) return res.status(400).json({ error: "Invalid path" });
+
   try {
     const repo = await getRepo(id, token);
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
@@ -143,6 +151,10 @@ router.get(/^\/([0-9a-f-]+)\/blob\/([^\/]+)\/(.+)$/, authenticateRepoRequest, au
   const branch = req.params[1];
   const filePath = req.params[2];
   const token = (req as any).supabaseToken;
+
+  if (!REF_REGEX.test(branch)) return res.status(400).json({ error: "Invalid branch" });
+  if (!isSafePath(filePath)) return res.status(400).json({ error: "Invalid path" });
+
   try {
     const repo = await getRepo(id, token);
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
@@ -231,6 +243,11 @@ router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, apiLimit
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { title, body, source_branch, target_branch } = req.body;
+
+  if (!REF_REGEX.test(source_branch) || !REF_REGEX.test(target_branch)) {
+      return res.status(400).json({ error: "Invalid branch names" });
+  }
+
   const user = (req as any).user;
   try {
     const supabase = getSupabaseClient(token);
