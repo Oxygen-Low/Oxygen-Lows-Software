@@ -189,5 +189,12 @@ class RepoManager {
   getRepoPath(repoId: string) {
     return getSafeRepoPath(repoId);
   }
+
+  async deleteRepo(repoId: string) {
+    if (!validateId(repoId)) throw new Error("Invalid ID");
+    const repoPath = getSafeRepoPath(repoId);
+    await fs.remove(repoPath);
+    this.loadedRepos.delete(repoId);
+  }
 }
 export const repoManager = new RepoManager();
