@@ -1,12 +1,5 @@
-import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Lock, LogOut, X } from "lucide-react";
@@ -20,19 +13,13 @@ interface UnlockModalProps {
   onUnlock: () => void;
 }
 
-export const UnlockModal = ({
-  isOpen,
-  onClose,
-  onUnlock,
-}: UnlockModalProps) => {
+export const UnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => {
   const { signOut, session } = useAuth();
-  const [keyInput, setKeyInput] = useState("");
+  const [keyInput, setKeyInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  const [validationHashExists, setValidationHashExists] = useState<
-    boolean | null
-  >(null);
+  const [validationHashExists, setValidationHashExists] = useState<boolean | null>(null);
 
   const handleUnlock = async () => {
     if (!keyInput.trim() || !session?.user?.id) return;
@@ -42,9 +29,9 @@ export const UnlockModal = ({
     try {
       // Validate key against validation_hash in user_preferences
       const { data, error: fetchError } = await supabase
-        .from("user_preferences")
-        .select("encryption_settings")
-        .eq("user_id", session.user.id)
+        .from('user_preferences')
+        .select('encryption_settings')
+        .eq('user_id', session.user.id)
         .single();
 
       if (fetchError) throw fetchError;
@@ -55,9 +42,7 @@ export const UnlockModal = ({
         try {
           await decrypt(validationHash, keyInput.trim());
         } catch (e) {
-          throw new Error(
-            "Invalid masterkey. Please check your key and try again.",
-          );
+          throw new Error("Invalid masterkey. Please check your key and try again.");
         }
       } else {
         setValidationHashExists(false);
@@ -83,18 +68,14 @@ export const UnlockModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent
-        className="bg-slate-900 border-slate-800 text-white"
-        onPointerDownOutside={(e) => e.preventDefault()}
-      >
+      <DialogContent className="bg-slate-900 border-slate-800 text-white" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lock className="w-5 h-5 text-cyan-500" />
             Unlock Encrypted Content
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            Enter your masterkey to access your encrypted data. This key is
-            never stored on our servers.
+            Enter your masterkey to access your encrypted data. This key is never stored on our servers.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
@@ -103,37 +84,24 @@ export const UnlockModal = ({
             placeholder="Enter Masterkey"
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-            className={`bg-slate-800 border-slate-700 ${error ? "border-red-500 focus:border-red-500" : ""}`}
+            onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+            className={`bg-slate-800 border-slate-700 ${error ? 'border-red-500 focus:border-red-500' : ''}`}
             autoFocus
             disabled={isVerifying}
           />
           {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
           {needsConfirmation && !error && (
             <p className="text-xs text-amber-500 font-medium">
-              No existing encryption found. This will be set as your new
-              masterkey. Please ensure you have copied it correctly.
+              No existing encryption found. This will be set as your new masterkey. Please ensure you have copied it correctly.
             </p>
           )}
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button
-            variant="ghost"
-            onClick={handleSignOut}
-            className="text-slate-400 hover:text-white hover:bg-slate-800 order-2 sm:order-1"
-          >
+          <Button variant="ghost" onClick={handleSignOut} className="text-slate-400 hover:text-white hover:bg-slate-800 order-2 sm:order-1">
             <LogOut className="w-4 h-4 mr-2" /> Sign Out
           </Button>
-          <Button
-            onClick={handleUnlock}
-            disabled={isVerifying}
-            className="bg-cyan-600 hover:bg-cyan-700 flex-1 order-1 sm:order-2"
-          >
-            {isVerifying
-              ? "Verifying..."
-              : needsConfirmation
-                ? "Confirm & Set Key"
-                : "Unlock"}
+          <Button onClick={handleUnlock} disabled={isVerifying} className="bg-cyan-600 hover:bg-cyan-700 flex-1 order-1 sm:order-2">
+            {isVerifying ? "Verifying..." : (needsConfirmation ? "Confirm & Set Key" : "Unlock")}
           </Button>
         </DialogFooter>
       </DialogContent>

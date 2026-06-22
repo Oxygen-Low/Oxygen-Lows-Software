@@ -79,7 +79,7 @@ export const useFont = () => {
         setFontState((prev) => prev);
       }
     },
-    [session?.user?.id],
+    [session?.user?.id]
   );
 
   return { font, setFont, isLoading };

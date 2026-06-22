@@ -1,11 +1,5 @@
 /** @vitest-environment jsdom */
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  cleanup,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { LlmModelFinderApp } from "./LlmModelFinder";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
@@ -23,9 +17,7 @@ global.fetch = mockFetch;
 
 // Mock the ScrollArea component to avoid Radix UI issues in tests
 vi.mock("@/components/ui/scroll-area", () => ({
-  ScrollArea: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 // Mock the Slider component to avoid Radix UI useSize issues
@@ -65,7 +57,7 @@ describe("LlmModelFinderApp", () => {
         likes: 5000,
         lastModified: "2023-10-01T00:00:00Z",
         tags: ["text-generation", "conversational", "llama-2", "params:7B"],
-      },
+      }
     ];
 
     mockFetch.mockResolvedValueOnce({
@@ -99,7 +91,7 @@ describe("LlmModelFinderApp", () => {
         likes: 5000,
         lastModified: "2023-10-01T00:00:00Z",
         tags: ["text-generation", "params:7B"],
-      },
+      }
     ];
 
     mockFetch.mockResolvedValueOnce({
@@ -127,7 +119,7 @@ describe("LlmModelFinderApp", () => {
         likes: 10,
         lastModified: "2023-10-01T00:00:00Z",
         tags: ["text-generation", "params:40B"], // ~29GB RAM
-      },
+      }
     ];
 
     mockFetch.mockResolvedValueOnce({
@@ -150,11 +142,9 @@ describe("LlmModelFinderApp", () => {
     });
 
     // Increase VRAM to 40GB
-    const vramSlider = screen
-      .getAllByRole("slider")
-      .find((s) => s.getAttribute("max") === "48");
+    const vramSlider = screen.getAllByRole("slider").find(s => s.getAttribute("max") === "48");
     if (vramSlider) {
-      fireEvent.change(vramSlider, { target: { value: "40" } });
+       fireEvent.change(vramSlider, { target: { value: "40" } });
     }
 
     mockFetch.mockResolvedValueOnce({
@@ -170,20 +160,8 @@ describe("LlmModelFinderApp", () => {
 
   it("filters models by search query", async () => {
     const mockModels = [
-      {
-        id: "owner/llama",
-        downloads: 10,
-        likes: 1,
-        lastModified: "2023",
-        tags: ["text-generation", "params:7B"],
-      },
-      {
-        id: "owner/mistral",
-        downloads: 10,
-        likes: 1,
-        lastModified: "2023",
-        tags: ["text-generation", "params:7B"],
-      },
+      { id: "owner/llama", downloads: 10, likes: 1, lastModified: "2023", tags: ["text-generation", "params:7B"] },
+      { id: "owner/mistral", downloads: 10, likes: 1, lastModified: "2023", tags: ["text-generation", "params:7B"] }
     ];
 
     mockFetch.mockResolvedValue({ ok: true, json: async () => mockModels });
@@ -215,13 +193,7 @@ describe("LlmModelFinderApp", () => {
 
   it("filters out models with unknown size (ramRequired === 0)", async () => {
     const mockModels = [
-      {
-        id: "owner/unknown",
-        downloads: 10,
-        likes: 1,
-        lastModified: "2023",
-        tags: ["text-generation"],
-      }, // No params
+      { id: "owner/unknown", downloads: 10, likes: 1, lastModified: "2023", tags: ["text-generation"] } // No params
     ];
 
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => mockModels });

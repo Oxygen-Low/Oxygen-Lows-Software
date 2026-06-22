@@ -7,18 +7,11 @@ export interface Model {
   model_id: string;
 }
 
-export const useAiModels = (
-  defaultModelId = "gpt-4o",
-  defaultProvider = "openai",
-) => {
+export const useAiModels = (defaultModelId = "gpt-4o", defaultProvider = "openai") => {
   const { lastModelId, lastProvider, setModelPreference } = useTheme();
   const [models, setModels] = useState<Model[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>(
-    lastModelId || defaultModelId,
-  );
-  const [selectedProvider, setSelectedProvider] = useState<string>(
-    lastProvider || defaultProvider,
-  );
+  const [selectedModel, setSelectedModel] = useState<string>(lastModelId || defaultModelId);
+  const [selectedProvider, setSelectedProvider] = useState<string>(lastProvider || defaultProvider);
   const [isLoading, setIsLoading] = useState(true);
 
   // Use refs to track current values for the fetch callback
@@ -33,10 +26,7 @@ export const useAiModels = (
   const fetchModels = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data: dbModels } = await supabase
-        .from("user_models")
-        .select("provider, model_id")
-        .order("provider");
+      const { data: dbModels } = await supabase.from("user_models").select("provider, model_id").order("provider");
       const localResponse = await fetch("/api/ai/local-providers");
       const localModels = localResponse.ok ? await localResponse.json() : [];
 
@@ -45,20 +35,11 @@ export const useAiModels = (
 
       if (allModels.length > 0) {
         // Check if current selection is valid in the new list
-        const isValid = allModels.some(
-          (m) =>
-            m.model_id === selectedModelRef.current &&
-            m.provider === selectedProviderRef.current,
-        );
+        const isValid = allModels.some(m => m.model_id === selectedModelRef.current && m.provider === selectedProviderRef.current);
 
         if (!isValid) {
           // If not valid, try to use last known good from preferences if not already tried
-          const prefValid =
-            lastModelId &&
-            lastProvider &&
-            allModels.some(
-              (m) => m.model_id === lastModelId && m.provider === lastProvider,
-            );
+          const prefValid = lastModelId && lastProvider && allModels.some(m => m.model_id === lastModelId && m.provider === lastProvider);
 
           if (prefValid) {
             setSelectedModel(lastModelId!);
@@ -82,14 +63,11 @@ export const useAiModels = (
     fetchModels();
   }, [fetchModels]);
 
-  const updateSelection = useCallback(
-    (modelId: string, provider: string) => {
-      setSelectedModel(modelId);
-      setSelectedProvider(provider);
-      setModelPreference(modelId, provider);
-    },
-    [setModelPreference],
-  );
+  const updateSelection = useCallback((modelId: string, provider: string) => {
+    setSelectedModel(modelId);
+    setSelectedProvider(provider);
+    setModelPreference(modelId, provider);
+  }, [setModelPreference]);
 
   return {
     models,
@@ -99,6 +77,6 @@ export const useAiModels = (
     setSelectedProvider: (p: string) => updateSelection(selectedModel, p),
     setSelection: updateSelection,
     isLoading,
-    refreshModels: fetchModels,
+    refreshModels: fetchModels
   };
 };

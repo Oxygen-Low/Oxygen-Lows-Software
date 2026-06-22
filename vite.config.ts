@@ -22,11 +22,7 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          if (
-            id.includes("node_modules/react") ||
-            id.includes("node_modules/react-dom") ||
-            id.includes("node_modules/react-router-dom")
-          ) {
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/react-router-dom")) {
             return "vendor-react";
           }
           if (id.includes("node_modules/@radix-ui")) {
@@ -35,10 +31,7 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("node_modules/recharts")) {
             return "vendor-charts";
           }
-          if (
-            id.includes("node_modules/three") ||
-            id.includes("node_modules/@react-three")
-          ) {
+          if (id.includes("node_modules/three") || id.includes("node_modules/@react-three")) {
             return "vendor-three";
           }
         },

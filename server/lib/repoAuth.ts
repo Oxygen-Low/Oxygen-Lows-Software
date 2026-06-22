@@ -4,11 +4,7 @@ import { Request, Response, NextFunction } from "express";
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
-export async function authenticateRepoRequest(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export async function authenticateRepoRequest(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   let token: string | null = null;
   if (authHeader?.startsWith("Bearer ")) {
@@ -21,14 +17,10 @@ export async function authenticateRepoRequest(
   }
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
-    auth: { persistSession: false },
-  });
+  const supabase = createClient(supabaseUrl!, supabaseAnonKey!, { auth: { persistSession: false } });
 
   // Try as JWT
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(token);
+  const { data: { user } } = await supabase.auth.getUser(token);
   if (user) {
     (req as any).user = user;
     (req as any).supabaseToken = token;
@@ -37,17 +29,10 @@ export async function authenticateRepoRequest(
 
   // Try as Git Password
   if (token.length === 64) {
-    const { data: passwordData } = await supabase.rpc(
-      "verify_repository_password",
-      { p_password: token },
-    );
+    const { data: passwordData } = await supabase.rpc("verify_repository_password", { p_password: token });
     if (passwordData && passwordData.length > 0) {
       const userId = passwordData[0].user_id;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+      const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", userId).single();
       if (profile) {
         (req as any).user = { id: userId, email: profile.email };
         // We don't have a valid Supabase JWT for this user.
@@ -60,11 +45,7 @@ export async function authenticateRepoRequest(
   res.status(401).json({ error: "Invalid token" });
 }
 
-export async function authorizeRepoAccess(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export async function authorizeRepoAccess(req: Request, res: Response, next: NextFunction) {
   const repoId = req.params.repoId || req.params.id;
   const user = (req as any).user;
   const token = (req as any).supabaseToken;
@@ -73,17 +54,13 @@ export async function authorizeRepoAccess(
 
   const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
     global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-    auth: { persistSession: false },
+    auth: { persistSession: false }
   });
 
-  const { data: repo, error } = await supabase
-    .from("repositories")
-    .select("owner_id")
-    .eq("id", repoId)
-    .single();
+  const { data: repo, error } = await supabase.from("repositories").select("owner_id").eq("id", repoId).single();
 
   if (error || !repo) {
-    return res.status(404).json({ error: "Repository not found" });
+      return res.status(404).json({ error: "Repository not found" });
   }
 
   if (repo.owner_id === user.id) {
@@ -91,12 +68,7 @@ export async function authorizeRepoAccess(
     return next();
   }
 
-  const { data: collab } = await supabase
-    .from("repository_collaborators")
-    .select("permission")
-    .eq("repo_id", repoId)
-    .eq("user_id", user.id)
-    .single();
+  const { data: collab } = await supabase.from("repository_collaborators").select("permission").eq("repo_id", repoId).eq("user_id", user.id).single();
   if (collab) {
     (req as any).repoPermission = collab.permission;
     return next();
