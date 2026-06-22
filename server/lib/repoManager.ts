@@ -30,7 +30,11 @@ function getSafeRepoPath(repoId: string) {
 function getSafeTmpPath(repoId: string, suffix: string) {
     if (!validateId(repoId)) throw new Error("Invalid ID");
     const safeId = path.basename(repoId);
-    return path.join(os.tmpdir(), `${safeId}${suffix}`);
+    const base = path.resolve(os.tmpdir());
+    const target = path.resolve(base, `${safeId}${suffix}`);
+    const relative = path.relative(base, target);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error("Invalid path");
+    return target;
 }
 
 class RepoManager {
