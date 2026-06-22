@@ -17,28 +17,22 @@ interface ArtifactSidebarProps {
 }
 
 export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
-  const [saving, setSaving] = useState(false);
+    const [saving, setSaving] = useState(false);
 
   if (!artifact) return null;
 
   const handleSaveToCloud = async () => {
     setSaving(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       // Construct file directly from content
-      const file = new File([artifact.content], artifact.filename, {
-        type: "text/plain",
-      });
+      const file = new File([artifact.content], artifact.filename, { type: "text/plain" });
 
       const filePath = `${user.id}/${Date.now()}_${artifact.filename}`;
-      if (filePath.includes("..")) throw new Error("Invalid file path");
-      const { error } = await supabase.storage
-        .from("Storage")
-        .upload(filePath, file);
+      if (filePath.includes('..')) throw new Error("Invalid file path");
+      const { error } = await supabase.storage.from("Storage").upload(filePath, file);
 
       if (error) throw error;
       toast.success("Artifact saved to cloud storage");
@@ -66,40 +60,16 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
       <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
         <div className="flex items-center gap-2 min-w-0">
           <FileCode className="w-4 h-4 text-cyan-400" />
-          <span className="text-sm font-medium text-slate-200 truncate">
-            {artifact.filename}
-          </span>
+          <span className="text-sm font-medium text-slate-200 truncate">{artifact.filename}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleDownload}
-            title={`Download as ${artifact.filename.split(".").pop()}`}
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title={`Download as ${artifact.filename.split(".").pop()}`}>
             <Download className="w-4 h-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleSaveToCloud}
-            disabled={saving}
-            title="Save"
-          >
-            {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveToCloud} disabled={saving} title="Save">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onClose}
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>
         </div>

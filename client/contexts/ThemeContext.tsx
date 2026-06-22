@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
+import { createContext, useContext, ReactNode, useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -44,7 +37,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       "theme-black",
       "theme-white",
       "use-gradient",
-      "dark",
+      "dark"
     );
 
     // Add the new theme class if not default
@@ -112,85 +105,74 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     loadPreferences();
   }, [session?.user?.id, applyTheme]);
 
-  const setTheme = useCallback(
-    async (newTheme: Theme) => {
-      setThemeState(newTheme);
-      applyTheme(newTheme, useGradient);
+  const setTheme = useCallback(async (newTheme: Theme) => {
+    setThemeState(newTheme);
+    applyTheme(newTheme, useGradient);
 
-      if (session?.user?.id) {
-        try {
-          await supabase.rpc("upsert_user_preferences", {
-            p_user_id: session.user.id,
-            p_theme: newTheme,
-            p_use_gradient: useGradient,
-            p_last_model_id: lastModelId,
-            p_last_provider: lastProvider,
-          });
-        } catch (error) {
-          console.error("Failed to save theme:", error);
-        }
+    if (session?.user?.id) {
+      try {
+        await supabase.rpc("upsert_user_preferences", {
+          p_user_id: session.user.id,
+          p_theme: newTheme,
+          p_use_gradient: useGradient,
+          p_last_model_id: lastModelId,
+          p_last_provider: lastProvider
+        });
+      } catch (error) {
+        console.error("Failed to save theme:", error);
       }
-    },
-    [session?.user?.id, useGradient, applyTheme, lastModelId, lastProvider],
-  );
+    }
+  }, [session?.user?.id, useGradient, applyTheme, lastModelId, lastProvider]);
 
-  const setUseGradient = useCallback(
-    async (newGradient: boolean) => {
-      setUseGradientState(newGradient);
-      applyTheme(theme, newGradient);
+  const setUseGradient = useCallback(async (newGradient: boolean) => {
+    setUseGradientState(newGradient);
+    applyTheme(theme, newGradient);
 
-      if (session?.user?.id) {
-        try {
-          await supabase.rpc("upsert_user_preferences", {
-            p_user_id: session.user.id,
-            p_theme: theme,
-            p_use_gradient: newGradient,
-            p_last_model_id: lastModelId,
-            p_last_provider: lastProvider,
-          });
-        } catch (error) {
-          console.error("Failed to save gradient preference:", error);
-        }
+    if (session?.user?.id) {
+      try {
+        await supabase.rpc("upsert_user_preferences", {
+          p_user_id: session.user.id,
+          p_theme: theme,
+          p_use_gradient: newGradient,
+          p_last_model_id: lastModelId,
+          p_last_provider: lastProvider
+        });
+      } catch (error) {
+        console.error("Failed to save gradient preference:", error);
       }
-    },
-    [session?.user?.id, theme, applyTheme, lastModelId, lastProvider],
-  );
+    }
+  }, [session?.user?.id, theme, applyTheme, lastModelId, lastProvider]);
 
-  const setModelPreference = useCallback(
-    async (modelId: string, provider: string) => {
-      setLastModelId(modelId);
-      setLastProvider(provider);
+  const setModelPreference = useCallback(async (modelId: string, provider: string) => {
+    setLastModelId(modelId);
+    setLastProvider(provider);
 
-      if (session?.user?.id) {
-        try {
-          await supabase.rpc("upsert_user_preferences", {
-            p_user_id: session.user.id,
-            p_theme: theme,
-            p_use_gradient: useGradient,
-            p_last_model_id: modelId,
-            p_last_provider: provider,
-          });
-        } catch (error) {
-          console.error("Failed to save model preference:", error);
-        }
+    if (session?.user?.id) {
+      try {
+        await supabase.rpc("upsert_user_preferences", {
+          p_user_id: session.user.id,
+          p_theme: theme,
+          p_use_gradient: useGradient,
+          p_last_model_id: modelId,
+          p_last_provider: provider
+        });
+      } catch (error) {
+        console.error("Failed to save model preference:", error);
       }
-    },
-    [session?.user?.id, theme, useGradient],
-  );
+    }
+  }, [session?.user?.id, theme, useGradient]);
 
   return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        useGradient,
-        lastModelId,
-        lastProvider,
-        setTheme,
-        setUseGradient,
-        setModelPreference,
-        isLoading,
-      }}
-    >
+    <ThemeContext.Provider value={{
+      theme,
+      useGradient,
+      lastModelId,
+      lastProvider,
+      setTheme,
+      setUseGradient,
+      setModelPreference,
+      isLoading
+    }}>
       {children}
     </ThemeContext.Provider>
   );

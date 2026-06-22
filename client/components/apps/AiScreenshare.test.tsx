@@ -6,6 +6,7 @@ import { AiScreenshareApp } from "./AiScreenshare";
 
 // Mock react-i18next
 
+
 // Mock scrollIntoView before anything else
 if (!window.HTMLElement.prototype.scrollIntoView) {
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -26,17 +27,10 @@ const mockSupabaseChain = (data: any) => {
     select: vi.fn(() => builder),
     order: vi.fn(() => builder),
     eq: vi.fn(() => builder),
-    single: vi.fn(() =>
-      Promise.resolve({
-        data: Array.isArray(data) ? data[0] : data,
-        error: null,
-      }),
-    ),
+    single: vi.fn(() => Promise.resolve({ data: Array.isArray(data) ? data[0] : data, error: null })),
     then: vi.fn((onFulfilled) => {
       const res = { data, error: null };
-      return onFulfilled
-        ? Promise.resolve(res).then(onFulfilled)
-        : Promise.resolve(res);
+      return onFulfilled ? Promise.resolve(res).then(onFulfilled) : Promise.resolve(res);
     }),
   };
   return builder;
@@ -45,43 +39,21 @@ const mockSupabaseChain = (data: any) => {
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
-      getUser: vi
-        .fn()
-        .mockResolvedValue({
-          data: { user: { id: "test-user" } },
-          error: null,
-        }),
-      getSession: vi
-        .fn()
-        .mockResolvedValue({
-          data: {
-            session: { user: { id: "test-user" }, access_token: "test-token" },
-          },
-          error: null,
-        }),
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      })),
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user" } }, error: null }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "test-user" }, access_token: "test-token" } }, error: null }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
     },
     from: vi.fn((table) => {
-      if (table === "user_models")
-        return mockSupabaseChain([
-          { provider: "openai", model_id: "gpt-4-vision" },
-        ]);
-      if (table === "user_preferences")
-        return mockSupabaseChain({ theme: "default", language: "English" });
+      if (table === "user_models") return mockSupabaseChain([{ provider: "openai", model_id: "gpt-4-vision" }]);
+      if (table === "user_preferences") return mockSupabaseChain({ theme: "default", language: "English" });
       return mockSupabaseChain(null);
     }),
     rpc: vi.fn((name) => {
-      if (name === "get_chat_styles")
-        return Promise.resolve({
-          data: [
-            { id: "gaming_coach", title: "Gaming Coach", description: "Test" },
-            { id: "video_react", title: "Video React", description: "Test" },
-            { id: "viewer", title: "Viewer", description: "Test" },
-          ],
-          error: null,
-        });
+      if (name === 'get_chat_styles') return Promise.resolve({ data: [
+        { id: "gaming_coach", title: "Gaming Coach", description: "Test" },
+        { id: "video_react", title: "Video React", description: "Test" },
+        { id: "viewer", title: "Viewer", description: "Test" }
+      ], error: null });
       return Promise.resolve({ data: null, error: null });
     }),
   },
@@ -93,12 +65,12 @@ global.fetch = vi.fn((url, options) => {
 }) as any;
 
 // Mock MediaDevices
-Object.defineProperty(navigator, "mediaDevices", {
+Object.defineProperty(navigator, 'mediaDevices', {
   value: {
-    getDisplayMedia: vi.fn(),
+    getDisplayMedia: vi.fn()
   },
   configurable: true,
-  writable: true,
+  writable: true
 });
 
 describe("AiScreenshareApp", () => {
@@ -111,11 +83,7 @@ describe("AiScreenshareApp", () => {
   });
 
   it("renders the AI Screenshare app with settings and authorization", async () => {
-    render(
-      <ThemeProvider>
-        <AiScreenshareApp />
-      </ThemeProvider>,
-    );
+    render(<ThemeProvider><AiScreenshareApp /></ThemeProvider>);
 
     // Assert UI population
     await waitFor(() => {
@@ -129,15 +97,7 @@ describe("AiScreenshareApp", () => {
   });
 
   it("shows preview area", async () => {
-    render(
-      <ThemeProvider>
-        <AiScreenshareApp />
-      </ThemeProvider>,
-    );
-    expect(
-      screen.getByText(
-        "Capture a window or screen to let the AI start reacting.",
-      ),
-    ).toBeDefined();
+    render(<ThemeProvider><AiScreenshareApp /></ThemeProvider>);
+    expect(screen.getByText("Capture a window or screen to let the AI start reacting.")).toBeDefined();
   });
 });

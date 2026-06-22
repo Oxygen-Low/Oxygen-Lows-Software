@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { Monitor, Play, StopCircle, Loader2, Bot, Info } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Monitor,
+  Play,
+  StopCircle,
+  Loader2,
+  Bot,
+  Info
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -20,9 +21,7 @@ import { toast } from "sonner";
 
 interface Message {
   role: "user" | "assistant";
-  content:
-    | string
-    | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
 interface Style {
@@ -34,15 +33,13 @@ interface Style {
 const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "ollama") return "ollama/" + modelId;
   if (provider === "lmstudio") return "lmstudio/" + modelId;
-  if (provider === "koboldcpp" || provider === "kobold")
-    return "koboldcpp/" + modelId;
+  if (provider === "koboldcpp" || provider === "kobold") return "koboldcpp/" + modelId;
   return provider + " - " + modelId;
 };
 
 export function AiScreenshareApp() {
-  const { session } = useAuth();
-  const { models, selectedModel, selectedProvider, setSelection } =
-    useAiModels();
+    const { session } = useAuth();
+  const { models, selectedModel, selectedProvider, setSelection } = useAiModels();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -66,7 +63,7 @@ export function AiScreenshareApp() {
 
   useEffect(() => {
     const fetchStyles = async () => {
-      const { data } = await supabase.rpc("get_chat_styles");
+      const { data } = await supabase.rpc('get_chat_styles');
       if (data) setStyles(data);
     };
     fetchStyles();
@@ -78,7 +75,7 @@ export function AiScreenshareApp() {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { cursor: "always" } as any,
-        audio: false,
+        audio: false
       });
 
       streamRef.current = stream;
@@ -100,7 +97,7 @@ export function AiScreenshareApp() {
 
   const stopSharing = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     if (analysisTimeoutRef.current) {
@@ -141,17 +138,8 @@ export function AiScreenshareApp() {
 
     let success = false;
     try {
-      const { data: userInts } = await supabase
-        .from("user_integrations")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .eq("provider", selectedProvider)
-        .single();
-      const { data: prefs } = await supabase
-        .from("user_preferences")
-        .select("encryption_settings")
-        .eq("user_id", session.user.id)
-        .single();
+      const { data: userInts } = await supabase.from("user_integrations").select("*").eq("user_id", session.user.id).eq("provider", selectedProvider).single();
+      const { data: prefs } = await supabase.from("user_preferences").select("encryption_settings").eq("user_id", session.user.id).single();
       const encryptionSettings = prefs?.encryption_settings || {};
 
       let decryptedKey = undefined;
@@ -161,37 +149,30 @@ export function AiScreenshareApp() {
         const { decrypt, getMasterKey } = await import("@/lib/crypto");
         const masterKey = getMasterKey();
         if (masterKey) {
-          if (userInts.api_key)
-            decryptedKey = await decrypt(userInts.api_key, masterKey);
-          if (userInts.base_url)
-            decryptedBaseUrl = await decrypt(userInts.base_url, masterKey);
+          if (userInts.api_key) decryptedKey = await decrypt(userInts.api_key, masterKey);
+          if (userInts.base_url) decryptedBaseUrl = await decrypt(userInts.base_url, masterKey);
         }
       }
       const frame = captureFrame();
       if (!frame) return; // Will be rescheduled by finally
 
       setIsTyping(true);
-      const {
-        data: { session: authSession },
-      } = await supabase.auth.getSession();
+      const { data: { session: authSession } } = await supabase.auth.getSession();
       const token = authSession?.access_token;
 
       // Prepare multi-modal message
       const userMessage: Message = {
         role: "user",
         content: [
-          {
-            type: "text",
-            text: "React to what is happening on my screen based on your style.",
-          },
-          { type: "image_url", image_url: { url: frame } },
-        ],
+          { type: "text", text: "React to what is happening on my screen based on your style." },
+          { type: "image_url", image_url: { url: frame } }
+        ]
       };
 
       // Use messagesRef to get the latest state
-      const historyForAi = messagesRef.current.map((m) => {
+      const historyForAi = messagesRef.current.map(m => {
         if (Array.isArray(m.content)) {
-          const textPart = m.content.find((p) => p.type === "text");
+          const textPart = m.content.find(p => p.type === "text");
           return { role: m.role, content: textPart?.text || "" };
         }
         return m;
@@ -201,7 +182,7 @@ export function AiScreenshareApp() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           provider: selectedProvider,
@@ -210,35 +191,24 @@ export function AiScreenshareApp() {
           messages: [...historyForAi, userMessage],
           stream: false,
           apiKey: decryptedKey,
-          baseUrl: decryptedBaseUrl,
-        }),
+          baseUrl: decryptedBaseUrl
+        })
       });
 
       if (!response.ok) {
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
           const error = await response.json();
-          throw new Error(
-            error.error || `AI request failed with status ${response.status}`,
-          );
+          throw new Error(error.error || `AI request failed with status ${response.status}`);
         } else {
           const errorText = await response.text();
           if (response.status === 413) {
-            throw new Error(
-              "Payload too large. The screenshot or chat history exceeds the server limit.",
-            );
+            throw new Error("Payload too large. The screenshot or chat history exceeds the server limit.");
           }
-          if (
-            errorText.includes("<!DOCTYPE html>") ||
-            errorText.includes("<html>")
-          ) {
-            throw new Error(
-              "The AI service returned an unexpected HTML error. This usually means the service is down, misconfigured, or blocked by a firewall.",
-            );
+          if (errorText.includes("<!DOCTYPE html>") || errorText.includes("<html>")) {
+            throw new Error("The AI service returned an unexpected HTML error. This usually means the service is down, misconfigured, or blocked by a firewall.");
           }
-          throw new Error(
-            `Server error (${response.status}): ${errorText.substring(0, 100)}...`,
-          );
+          throw new Error(`Server error (${response.status}): ${errorText.substring(0, 100)}...`);
         }
       }
 
@@ -246,32 +216,21 @@ export function AiScreenshareApp() {
       let assistantContent = "";
 
       // Handle different provider response formats
-      if (
-        selectedProvider === "openai" ||
-        selectedProvider === "openrouter" ||
-        selectedProvider === "grok" ||
-        selectedProvider === "custom" ||
-        selectedProvider === "lmstudio" ||
-        selectedProvider === "koboldcpp" ||
-        selectedProvider === "kobold"
-      ) {
+      if (selectedProvider === "openai" || selectedProvider === "openrouter" || selectedProvider === "grok" || selectedProvider === "custom" || selectedProvider === "lmstudio" || selectedProvider === "koboldcpp" || selectedProvider === "kobold") {
         assistantContent = data.choices?.[0]?.message?.content || "";
       } else if (selectedProvider === "anthropic") {
         assistantContent = data.content?.[0]?.text || "";
       } else if (selectedProvider === "google") {
-        assistantContent =
-          data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        assistantContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       } else if (selectedProvider === "ollama") {
         assistantContent = data.message?.content || data.response || "";
       }
 
       if (assistantContent) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: assistantContent },
-        ]);
+        setMessages(prev => [...prev, { role: "assistant", content: assistantContent }]);
       }
       success = true;
+
     } catch (err: any) {
       console.error("Analysis error:", err);
       toast.error(`Analysis error: ${err.message}`);
@@ -291,22 +250,16 @@ export function AiScreenshareApp() {
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Monitor className="w-5 h-5 text-cyan-500" />
-              Settings
-            </CardTitle>
-            <CardDescription>
-              Configure your screen AI companion
-            </CardDescription>
+              <Monitor className="w-5 h-5 text-cyan-500" />Settings</CardTitle>
+            <CardDescription>Configure your screen AI companion</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">
-                Vision Model
-              </label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Vision Model</label>
               <select
                 className="w-full bg-slate-950 text-sm text-white p-2 rounded border border-slate-800"
                 value={`${selectedProvider}:${selectedModel}`}
-                onChange={(e) => {
+                onChange={e => {
                   const [p, m] = e.target.value.split(":");
                   setSelection(m, p);
                 }}
@@ -319,17 +272,13 @@ export function AiScreenshareApp() {
                 ))}
               </select>
               <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                <Info className="w-3 h-3" />
-                Note: Only vision-capable models work effectively.
-              </p>
+                <Info className="w-3 h-3" />Note: Only vision-capable models work effectively.</p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">
-                Style
-              </label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Style</label>
               <div className="grid grid-cols-1 gap-2">
-                {styles.map((s) => (
+                {styles.map(s => (
                   <div
                     key={s.id}
                     onClick={() => !isAnalyzing && setSelectedStyle(s.id)}
@@ -338,7 +287,7 @@ export function AiScreenshareApp() {
                       selectedStyle === s.id
                         ? "bg-cyan-500/10 border-cyan-500/50 text-cyan-400"
                         : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700",
-                      isAnalyzing && "opacity-50 cursor-not-allowed",
+                      isAnalyzing && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <p className="text-sm font-bold">{s.title}</p>
@@ -354,19 +303,13 @@ export function AiScreenshareApp() {
                 "w-full py-6 text-lg font-bold transition-all",
                 isAnalyzing
                   ? "bg-red-500 hover:bg-red-600 text-white"
-                  : "bg-cyan-600 hover:bg-cyan-700 text-white",
+                  : "bg-cyan-600 hover:bg-cyan-700 text-white"
               )}
             >
               {isAnalyzing ? (
-                <>
-                  <StopCircle className="w-6 h-6 mr-2" />
-                  Stop Analysis
-                </>
+                <><StopCircle className="w-6 h-6 mr-2" />Stop Analysis</>
               ) : (
-                <>
-                  <Play className="w-6 h-6 mr-2" />
-                  Start Screenshare
-                </>
+                <><Play className="w-6 h-6 mr-2" />Start Screenshare</>
               )}
             </Button>
           </CardContent>
@@ -383,9 +326,7 @@ export function AiScreenshareApp() {
           {!isAnalyzing && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 p-6 text-center">
               <Monitor className="w-12 h-12 mb-4 opacity-20" />
-              <p className="text-sm">
-                Capture a window or screen to let the AI start reacting.
-              </p>
+              <p className="text-sm">Capture a window or screen to let the AI start reacting.</p>
             </div>
           )}
         </div>
@@ -401,52 +342,27 @@ export function AiScreenshareApp() {
               </div>
             )}
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex gap-4 max-w-[85%]",
-                  m.role === "user" ? "ml-auto flex-row-reverse hidden" : "",
-                )}
-              >
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-800",
-                  )}
-                >
+              <div key={i} className={cn("flex gap-4 max-w-[85%]", m.role === "user" ? "ml-auto flex-row-reverse hidden" : "")}>
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-800")}>
                   <Bot className="w-4 h-4 text-cyan-400" />
                 </div>
                 <div className="flex flex-col gap-2 flex-1 min-w-0">
                   <div className="p-4 rounded-2xl text-sm bg-slate-900 border border-slate-800 text-slate-200">
                     <ReactMarkdown
                       components={{
-                        code({
-                          node,
-                          inline,
-                          className,
-                          children,
-                          ...props
-                        }: any) {
+                        code({node, inline, className, children, ...props}: any) {
                           const match = /language-(\w+)/.exec(className || "");
                           return !inline && match ? (
-                            <SyntaxHighlighter
-                              style={vscDarkPlus}
-                              language={match[1]}
-                              PreTag="div"
-                              {...props}
-                            >
+                            <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" {...props}>
                               {String(children).replace(/\n$/, "")}
                             </SyntaxHighlighter>
                           ) : (
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
+                            <code className={className} {...props}>{children}</code>
                           );
-                        },
+                        }
                       }}
                     >
-                      {typeof m.content === "string"
-                        ? m.content
-                        : "Capturing screen..."}
+                      {typeof m.content === "string" ? m.content : "Capturing screen..."}
                     </ReactMarkdown>
                   </div>
                 </div>
@@ -467,9 +383,7 @@ export function AiScreenshareApp() {
         </ScrollArea>
         <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <p className="text-[10px] text-slate-500 uppercase font-bold text-center">
-            {isAnalyzing
-              ? "AI is watching and reacting every 5 seconds"
-              : "Analysis is currently inactive"}
+            {isAnalyzing ? "AI is watching and reacting every 5 seconds" : "Analysis is currently inactive"}
           </p>
         </div>
       </div>

@@ -1,15 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  LogOut,
-  Package,
-  User,
-  Users,
-  HardDrive,
-  Palette,
-  Contact,
-} from "lucide-react";
+import { LogOut, Package, User, Users, HardDrive, Palette, Contact } from "lucide-react";
 import styles from "./Layout.module.css";
 
 interface LayoutProps {
@@ -42,23 +34,16 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className={styles["layout-wrapper"]}>
       <div className={styles["background-gradient"]} />
       {/* Header */}
-      <header
-        className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-10`}
-      >
+      <header className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-10`}>
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <h1 className={`${styles["logo"]} text-2xl font-bold`}>
-            Oxygen Low's Software
-          </h1>
+          <h1 className={`${styles["logo"]} text-2xl font-bold`}>Oxygen Low's Software</h1>
           <div className="flex items-center gap-4">
-            <span className={`${styles["user-email"]} text-sm`}>
-              {session?.user?.email}
-            </span>
+            <span className={`${styles["user-email"]} text-sm`}>{session?.user?.email}</span>
             <button
               onClick={handleSignOut}
               className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium`}
             >
-              <LogOut className="w-4 h-4 mr-2" /> Sign Out
-            </button>
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out</button>
           </div>
         </div>
       </header>
@@ -66,9 +51,7 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* Main Layout */}
       <div className="flex">
         {/* Sidebar */}
-        <aside
-          className={`${styles["sidebar"]} w-64 border-r min-h-[calc(100vh-73px)]`}
-        >
+        <aside className={`${styles["sidebar"]} w-64 border-r min-h-[calc(100vh-73px)]`}>
           <nav className="p-4 space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -88,7 +71,9 @@ export const Layout = ({ children }: LayoutProps) => {
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-12">{children}</main>
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-12">
+          {children}
+        </main>
       </div>
     </div>
   );

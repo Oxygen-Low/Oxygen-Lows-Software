@@ -2,8 +2,8 @@
  * Secure client-side encryption using AES-GCM (Web Crypto API)
  */
 
-const ENCRYPTION_ALGORITHM = "AES-GCM";
-const KEY_DERIVATION_ALGORITHM = "PBKDF2";
+const ENCRYPTION_ALGORITHM = 'AES-GCM';
+const KEY_DERIVATION_ALGORITHM = 'PBKDF2';
 const ITERATIONS = 100000;
 const SALT_LENGTH = 16;
 const IV_LENGTH = 12;
@@ -12,9 +12,8 @@ const IV_LENGTH = 12;
  * Generates a random masterkey of specified length
  */
 export function generateMasterKey(length: number): string {
-  const charset =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
-  let result = "";
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
+  let result = '';
   const maxUint32 = 4294967295;
   const threshold = maxUint32 - (maxUint32 % charset.length);
 
@@ -30,17 +29,14 @@ export function generateMasterKey(length: number): string {
 /**
  * Derives a CryptoKey from the masterkey string
  */
-async function deriveKey(
-  masterKey: string,
-  salt: Uint8Array,
-): Promise<CryptoKey> {
+async function deriveKey(masterKey: string, salt: Uint8Array): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const keyMaterial = await window.crypto.subtle.importKey(
-    "raw",
+    'raw',
     encoder.encode(masterKey),
     KEY_DERIVATION_ALGORITHM,
     false,
-    ["deriveKey"],
+    ['deriveKey']
   );
 
   return window.crypto.subtle.deriveKey(
@@ -48,12 +44,12 @@ async function deriveKey(
       name: KEY_DERIVATION_ALGORITHM,
       salt: salt as BufferSource,
       iterations: ITERATIONS,
-      hash: "SHA-256",
+      hash: 'SHA-256'
     },
     keyMaterial,
     { name: ENCRYPTION_ALGORITHM, length: 256 },
     false,
-    ["encrypt", "decrypt"],
+    ['encrypt', 'decrypt']
   );
 }
 
@@ -61,10 +57,7 @@ async function deriveKey(
  * Encrypts a string using the masterkey
  * Returns a base64 string containing salt, IV, and ciphertext
  */
-export async function encrypt(
-  text: string,
-  masterKey: string,
-): Promise<string> {
+export async function encrypt(text: string, masterKey: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
   const salt = window.crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
@@ -74,18 +67,16 @@ export async function encrypt(
   const encryptedContent = await window.crypto.subtle.encrypt(
     { name: ENCRYPTION_ALGORITHM, iv },
     key,
-    data,
+    data
   );
 
-  const combined = new Uint8Array(
-    salt.length + iv.length + encryptedContent.byteLength,
-  );
+  const combined = new Uint8Array(salt.length + iv.length + encryptedContent.byteLength);
   combined.set(salt, 0);
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(encryptedContent), salt.length + iv.length);
 
   // Chunked conversion to avoid stack overflow with large data
-  let binary = "";
+  let binary = '';
   const chunkSize = 8192;
   for (let i = 0; i < combined.length; i += chunkSize) {
     binary += String.fromCharCode(...combined.slice(i, i + chunkSize));
@@ -96,10 +87,7 @@ export async function encrypt(
 /**
  * Decrypts a base64 string using the masterkey
  */
-export async function decrypt(
-  base64Text: string,
-  masterKey: string,
-): Promise<string> {
+export async function decrypt(base64Text: string, masterKey: string): Promise<string> {
   try {
     const binary = atob(base64Text);
     const bytes = new Uint8Array(binary.length);
@@ -116,20 +104,20 @@ export async function decrypt(
     const decryptedContent = await window.crypto.subtle.decrypt(
       { name: ENCRYPTION_ALGORITHM, iv },
       key,
-      ciphertext,
+      ciphertext
     );
 
     return new TextDecoder().decode(decryptedContent);
   } catch (e) {
-    console.error("Decryption failed", e);
-    throw new Error("Invalid masterkey or corrupted data");
+    console.error('Decryption failed', e);
+    throw new Error('Invalid masterkey or corrupted data');
   }
 }
 
 /**
  * Session storage helpers
  */
-const STORAGE_KEY = "sb-vqmukrmpgvavscsyefqd-app-state-sync";
+const STORAGE_KEY = 'sb-vqmukrmpgvavscsyefqd-app-state-sync';
 
 export function saveMasterKey(key: string): void {
   sessionStorage.setItem(STORAGE_KEY, key);

@@ -4,11 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
-import {
-  handleProxyAiRequest,
-  handleGetLocalProviders,
-  handleGetChatStyles,
-} from "./routes/ai";
+import { handleProxyAiRequest, handleGetLocalProviders, handleGetChatStyles } from "./routes/ai";
 import { reposRouter } from "./routes/repos";
 import { gitRouter } from "./routes/git";
 import { apiLimiter } from "./lib/limiter";
@@ -27,41 +23,12 @@ export function createServer() {
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          "connect-src": [
-            "'self'",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
-            "https://api.pwnedpasswords.com",
-            "https://unpkg.com",
-            "https://api.openai.com",
-            "https://api.anthropic.com",
-            "https://generativelanguage.googleapis.com",
-            "https://openrouter.ai",
-            "https://api.x.ai",
-          ],
-          "style-src": [
-            "'self'",
-            "https://fonts.googleapis.com",
-            "'unsafe-inline'",
-          ],
+          "connect-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "https://api.pwnedpasswords.com", "https://unpkg.com", "https://api.openai.com", "https://api.anthropic.com", "https://generativelanguage.googleapis.com", "https://openrouter.ai", "https://api.x.ai"],
+          "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
-          "img-src": [
-            "'self'",
-            "data:",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
-            "*",
-          ],
-          "media-src": [
-            "'self'",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
-            "blob:",
-          ],
-          "script-src": [
-            "'self'",
-            "https://unpkg.com",
-            "'unsafe-eval'",
-            "'unsafe-inline'",
-            "blob:",
-          ],
+          "img-src": ["'self'", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "*"],
+          "media-src": ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co", "blob:"],
+          "script-src": ["'self'", "https://unpkg.com", "'unsafe-eval'", "'unsafe-inline'", "blob:"],
           "worker-src": ["'self'", "blob:"],
         },
       },
