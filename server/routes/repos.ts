@@ -5,6 +5,7 @@ import { authenticateRepoRequest, authorizeRepoAccess } from "../lib/repoAuth";
 import { apiLimiter } from "../lib/limiter";
 import fs from "fs-extra";
 import path from "path";
+import os from "os";
 import simpleGit from "simple-git";
 import crypto from "crypto";
 
@@ -63,22 +64,66 @@ router.get("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
 });
 
 router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, initReadme } = req.body;
   const user = (req as any).user;
   const token = (req as any).supabaseToken;
   if (!name || !/^[a-z0-9_-]+$/.test(name)) return res.status(400).json({ error: "Invalid name" });
 
+  const repoId = crypto.randomUUID();
+  const storagePath = `${user.id}/repos/${repoId}.zip`;
+
   try {
     const supabase = getSupabaseClient(token);
-    const { data: repo, error } = await supabase.from("repositories").insert({ owner_id: user.id, name, description }).select().single();
-    if (error) return res.status(500).json({ error: error.message });
 
-    const { storagePath, size } = await repoManager.createRepo(repo.id, user.id, name, token);
-    const { error: updateError } = await supabase.from("repositories").update({ storage_path: storagePath, zip_size_bytes: size }).eq("id", repo.id);
-    if (updateError) return res.status(500).json({ error: updateError.message });
+    // Create local repo first
+    const { size } = await repoManager.createRepo(repoId, user.id, name, token);
 
-    res.json({ ...repo, storage_path: storagePath, zip_size_bytes: size });
-  } catch (err: any) { res.status(500).json({ error: err.message }); }
+    // Optionally init readme
+    if (initReadme) {
+        const repoPath = repoManager.getRepoPath(repoId);
+        const git = simpleGit(repoPath);
+        const readmePath = path.join(repoPath, "README.md");
+        // For bare repos, we can't just write a file.
+        // We need to clone it to a temp dir, add file, commit, push back to bare.
+        const tempDir = path.join(os.tmpdir(), `init-${repoId}`);
+        try {
+            await fs.ensureDir(tempDir);
+            await simpleGit().clone(repoPath, tempDir);
+            const tempGit = simpleGit(tempDir);
+            await fs.writeFile(path.join(tempDir, "README.md"), `# ${name}\n\n${description || ""}`);
+            await tempGit.add("README.md");
+            await tempGit.commit("Initial commit");
+            await tempGit.push("origin", "main");
+            // Sync back to storage
+            await repoManager.uploadToStorage(repoId, storagePath, token);
+        } finally {
+            await fs.remove(tempDir);
+        }
+    }
+
+    const { data: repo, error } = await supabase.from("repositories").insert({
+        id: repoId,
+        owner_id: user.id,
+        name,
+        description,
+        storage_path: storagePath,
+        zip_size_bytes: size,
+        is_loaded: true
+    }).select().single();
+
+    if (error) {
+        // Cleanup on DB failure
+        await repoManager.deleteRepo(repoId);
+        await supabase.storage.from("Storage").remove([storagePath]);
+        return res.status(500).json({ error: error.message });
+    }
+
+    res.json(repo);
+  } catch (err: any) {
+    // Best effort cleanup
+    try { await repoManager.deleteRepo(repoId); } catch {}
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post("/:id/fork", authenticateRepoRequest, apiLimiter, async (req, res) => {
@@ -118,6 +163,35 @@ router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res
   try {
     const repo = await getRepo(id, token);
     res.json(repo);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+  const id = String(req.params.id);
+  const token = (req as any).supabaseToken;
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
+
+  if ((req as any).repoPermission !== "admin") {
+      return res.status(403).json({ error: "Only administrators can delete the repository" });
+  }
+
+  try {
+    const repo = await getRepo(id, token);
+    const supabase = getSupabaseClient(token);
+
+    // 1. Delete from database
+    const { error: dbError } = await supabase.from("repositories").delete().eq("id", id);
+    if (dbError) return res.status(500).json({ error: dbError.message });
+
+    // 2. Delete from storage if it exists
+    if (repo.storage_path) {
+        await supabase.storage.from("Storage").remove([repo.storage_path]);
+    }
+
+    // 3. Delete local cache
+    await repoManager.deleteRepo(id);
+
+    res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
