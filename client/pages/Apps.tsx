@@ -1,7 +1,13 @@
 import { OauthApp } from "@/components/apps/Oauth";
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   AppWindow,
   Wrench,
@@ -15,7 +21,7 @@ import {
   Bot,
   Monitor,
   Search,
-  GitBranch
+  GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -24,7 +30,13 @@ import { ChatbotApp } from "@/components/apps/Chatbot";
 import { LlmModelFinderApp } from "@/components/apps/LlmModelFinder";
 import { RepositoriesApp } from "@/components/apps/Repositories";
 
-type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
+type Category =
+  | "All"
+  | "Utility"
+  | "LLM/AI"
+  | "Development"
+  | "Social"
+  | "Games";
 
 interface AppMetadata {
   id: string;
@@ -39,20 +51,56 @@ export default function Apps() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
 
-  const CATEGORIES: { name: Category; label: string; icon: React.ReactNode; description: string }[] = [
-    { name: "All", label: "All", icon: <Box className="w-5 h-5" />, description: "All available applications" },
-    { name: "Utility", label: "Utility", icon: <Wrench className="w-5 h-5" />, description: "Tools and utilities" },
-    { name: "LLM/AI", label: "LLM/AI", icon: <BrainCircuit className="w-5 h-5" />, description: "AI powered applications" },
-    { name: "Development", label: "Development", icon: <Code className="w-5 h-5" />, description: "Developer tools" },
-    { name: "Social", label: "Social", icon: <MessageSquare className="w-5 h-5" />, description: "Connect with others" },
-    { name: "Games", label: "Games", icon: <Gamepad2 className="w-5 h-5" />, description: "Fun and games" },
+  const CATEGORIES: {
+    name: Category;
+    label: string;
+    icon: React.ReactNode;
+    description: string;
+  }[] = [
+    {
+      name: "All",
+      label: "All",
+      icon: <Box className="w-5 h-5" />,
+      description: "All available applications",
+    },
+    {
+      name: "Utility",
+      label: "Utility",
+      icon: <Wrench className="w-5 h-5" />,
+      description: "Tools and utilities",
+    },
+    {
+      name: "LLM/AI",
+      label: "LLM/AI",
+      icon: <BrainCircuit className="w-5 h-5" />,
+      description: "AI powered applications",
+    },
+    {
+      name: "Development",
+      label: "Development",
+      icon: <Code className="w-5 h-5" />,
+      description: "Developer tools",
+    },
+    {
+      name: "Social",
+      label: "Social",
+      icon: <MessageSquare className="w-5 h-5" />,
+      description: "Connect with others",
+    },
+    {
+      name: "Games",
+      label: "Games",
+      icon: <Gamepad2 className="w-5 h-5" />,
+      description: "Fun and games",
+    },
   ];
 
   const apps: AppMetadata[] = [
     {
       id: "chatbot",
       name: "Chatbot",
-      description: "Chat with state-of-the-art LLMs with memory and custom styles.",
+      description:
+        "Chat with state-of-the-art LLMs with memory and custom styles.",
       categories: ["All", "LLM/AI"],
       icon: <Bot className="w-8 h-8 text-cyan-500" />,
       component: ChatbotApp,
@@ -60,7 +108,8 @@ export default function Apps() {
     {
       id: "ai-screenshare",
       name: "AI Screenshare",
-      description: "Let AI watch your screen and react to what you are doing in real-time.",
+      description:
+        "Let AI watch your screen and react to what you are doing in real-time.",
       categories: ["All", "LLM/AI"],
       icon: <Monitor className="w-8 h-8 text-cyan-500" />,
       component: AiScreenshareApp,
@@ -68,7 +117,8 @@ export default function Apps() {
     {
       id: "llm-model-finder",
       name: "LLM Model Finder",
-      description: "Find the best model capable of running on your hardware for different tasks.",
+      description:
+        "Find the best model capable of running on your hardware for different tasks.",
       categories: ["All", "LLM/AI"],
       icon: <Search className="w-8 h-8 text-cyan-500" />,
       component: LlmModelFinderApp,
@@ -76,7 +126,8 @@ export default function Apps() {
     {
       id: "repositories",
       name: "Repositories",
-      description: "Host git repositories with issues, pull requests, and web editing.",
+      description:
+        "Host git repositories with issues, pull requests, and web editing.",
       categories: ["All", "Development"],
       icon: <GitBranch className="w-8 h-8 text-cyan-500" />,
       component: RepositoriesApp,
@@ -92,7 +143,8 @@ export default function Apps() {
     {
       id: "oauth",
       name: "OAuth",
-      description: "Add OAuth to your applications via Oxygen Low's Software Accounts.",
+      description:
+        "Add OAuth to your applications via Oxygen Low's Software Accounts.",
       categories: ["All", "Development"],
       icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
       component: OauthApp,
@@ -106,12 +158,12 @@ export default function Apps() {
 
   const categoryAppCounts = useMemo(() => {
     const counts: Record<Category, number> = {
-      "All": apps.length,
-      "Utility": 0,
+      All: apps.length,
+      Utility: 0,
       "LLM/AI": 0,
-      "Development": 0,
-      "Social": 0,
-      "Games": 0,
+      Development: 0,
+      Social: 0,
+      Games: 0,
     };
     apps.forEach((app) => {
       app.categories.forEach((cat) => {
@@ -147,7 +199,9 @@ export default function Apps() {
       <div className="space-y-8">
         <div>
           <h2 className="text-3xl font-bold text-white mb-2">Apps</h2>
-          <p className="text-slate-400">Discover and use various applications within the platform.</p>
+          <p className="text-slate-400">
+            Discover and use various applications within the platform.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -158,21 +212,31 @@ export default function Apps() {
                 key={cat.name}
                 className={cn(
                   "cursor-pointer transition-all border-slate-800 bg-slate-900/50 hover:bg-slate-900",
-                  selectedCategory === cat.name && "ring-2 ring-cyan-500 border-transparent",
-                  !hasApps && cat.name !== "All" && "opacity-50 grayscale-[0.5]"
+                  selectedCategory === cat.name &&
+                    "ring-2 ring-cyan-500 border-transparent",
+                  !hasApps &&
+                    cat.name !== "All" &&
+                    "opacity-50 grayscale-[0.5]",
                 )}
                 onClick={() => setSelectedCategory(cat.name)}
               >
                 <CardHeader className="flex flex-row items-center gap-4 p-4">
-                  <div className={cn(
-                    "p-2 rounded-lg bg-slate-800 text-slate-300",
-                    selectedCategory === cat.name && "bg-cyan-500/10 text-cyan-400"
-                  )}>
+                  <div
+                    className={cn(
+                      "p-2 rounded-lg bg-slate-800 text-slate-300",
+                      selectedCategory === cat.name &&
+                        "bg-cyan-500/10 text-cyan-400",
+                    )}
+                  >
                     {cat.icon}
                   </div>
                   <div>
-                    <CardTitle className="text-lg text-white">{cat.label}</CardTitle>
-                    <CardDescription className="text-xs text-slate-500">{cat.description}</CardDescription>
+                    <CardTitle className="text-lg text-white">
+                      {cat.label}
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500">
+                      {cat.description}
+                    </CardDescription>
                   </div>
                 </CardHeader>
               </Card>
@@ -197,7 +261,9 @@ export default function Apps() {
                     <div className="mb-4 transition-transform group-hover:scale-110">
                       {app.icon}
                     </div>
-                    <CardTitle className="text-xl text-white mb-2">{app.name}</CardTitle>
+                    <CardTitle className="text-xl text-white mb-2">
+                      {app.name}
+                    </CardTitle>
                     <CardDescription className="text-slate-400">
                       {app.description}
                     </CardDescription>
