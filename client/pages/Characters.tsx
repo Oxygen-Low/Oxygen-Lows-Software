@@ -84,7 +84,7 @@ export default function Characters() {
         }));
         setCharacters(decryptedData);
       } else {
-        setCharacters(data || []);
+        const charsWithSignedUrls = await Promise.all((data || []).map(async (char) => { if (char.image_path) { const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600); if (urlData) return { ...char, image_url: urlData.signedUrl }; } return char; })); setCharacters(charsWithSignedUrls);
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -198,16 +198,16 @@ export default function Characters() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("Storage")
-        .getPublicUrl(filePath);
+      const { data: { publicUrl: stableUrl } } = supabase.storage.from("Storage").getPublicUrl(filePath);
+      const { data: signedData } = await supabase.storage.from("Storage").createSignedUrl(filePath, 3600);
+      const publicUrl = signedData?.signedUrl || stableUrl;
 
       // Clean up old image if replacing
       if (currentCharacter.image_path) {
         await supabase.storage.from("Storage").remove([currentCharacter.image_path]);
       }
 
-      setCurrentCharacter(prev => ({ ...prev, image_url: publicUrl, image_path: filePath }));
+      setCurrentCharacter(prev => ({ ...prev, image_url: stableUrl, image_path: filePath }));
       toast({ title: "Success", description: "Image uploaded" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

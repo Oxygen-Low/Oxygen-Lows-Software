@@ -68,7 +68,7 @@ class RepoManager {
     info.loading = (async () => {
       try {
         const supabase = this.getSupabaseClient(token);
-        const { data, error } = await supabase.storage.from("Storage").download(storagePath);
+        const { data, error } = await supabase.storage.from("Repositories").download(storagePath);
         if (error || !data) throw new Error(`Download failed: ${error?.message || 'No data'}`);
 
         const zipPath = getSafeTmpPath(repoId, ".zip");
@@ -121,7 +121,7 @@ class RepoManager {
 
     const buffer = await fs.readFile(zipPath);
     const supabase = this.getSupabaseClient(token);
-    const { error } = await supabase.storage.from("Storage").upload(storagePath, buffer, { contentType: "application/zip", upsert: true });
+    const { error } = await supabase.storage.from("Repositories").upload(storagePath, buffer, { contentType: "application/zip", upsert: true });
     if (error) throw error;
     await fs.remove(zipPath); return { size: buffer.length };
   }
