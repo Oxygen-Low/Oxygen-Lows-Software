@@ -82,9 +82,9 @@ export default function Characters() {
             return { ...char, name: "[Encrypted]", is_corrupted: true };
           }
         }));
-        setCharacters(decryptedData);
+        const charsWithSignedUrls = await Promise.all((decryptedData || []).map(async (char) => { if (char.image_path) { const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600).catch(() => ({ data: null })); if (urlData?.signedUrl) return { ...char, image_url: urlData.signedUrl }; else return { ...char, image_url: "" }; } return char; })); setCharacters(charsWithSignedUrls);
       } else {
-        const charsWithSignedUrls = await Promise.all((data || []).map(async (char) => { if (char.image_path) { const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600); if (urlData) return { ...char, image_url: urlData.signedUrl }; } return char; })); setCharacters(charsWithSignedUrls);
+        const charsWithSignedUrls = await Promise.all((data || []).map(async (char) => { if (char.image_path) { const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600).catch(() => ({ data: null })); if (urlData?.signedUrl) return { ...char, image_url: urlData.signedUrl }; else return { ...char, image_url: "" }; } return char; })); setCharacters(charsWithSignedUrls);
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -200,14 +200,14 @@ export default function Characters() {
 
       const { data: { publicUrl: stableUrl } } = supabase.storage.from("Storage").getPublicUrl(filePath);
       const { data: signedData } = await supabase.storage.from("Storage").createSignedUrl(filePath, 3600);
-      const publicUrl = signedData?.signedUrl || stableUrl;
+      const publicUrl = signedData?.signedUrl || "";
 
       // Clean up old image if replacing
       if (currentCharacter.image_path) {
         await supabase.storage.from("Storage").remove([currentCharacter.image_path]);
       }
 
-      setCurrentCharacter(prev => ({ ...prev, image_url: stableUrl, image_path: filePath }));
+      setCurrentCharacter(prev => ({ ...prev, image_url: publicUrl, image_path: filePath }));
       toast({ title: "Success", description: "Image uploaded" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

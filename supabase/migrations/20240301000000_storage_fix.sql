@@ -8,21 +8,26 @@ DROP POLICY IF EXISTS "Users can upload their own repository zips" ON storage.ob
 
 -- Add policies for Repositories bucket
 -- Allow anyone to view repositories (making them public)
+DROP POLICY IF EXISTS "Public can view repositories" ON storage.objects;
 CREATE POLICY "Public can view repositories" ON storage.objects
 FOR SELECT TO public
 USING (bucket_id = 'Repositories');
 
 -- Allow authenticated users to manage their own repository files in the Repositories bucket
+DROP POLICY IF EXISTS "Users can manage their own repositories" ON storage.objects;
 CREATE POLICY "Users can manage their own repositories" ON storage.objects
 FOR ALL TO authenticated
 USING (bucket_id = 'Repositories' AND (auth.uid())::text = owner_id)
 WITH CHECK (bucket_id = 'Repositories' AND (auth.uid())::text = owner_id);
 
--- Add image_path to profile_pictures and characters if they don't exist
+-- Add image_path to profile_pictures, characters and user_preferences if they don't exist
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profile_pictures' AND column_name = 'image_path') THEN
         ALTER TABLE public.profile_pictures ADD COLUMN image_path TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'characters' AND column_name = 'image_path') THEN
+        ALTER TABLE public.characters ADD COLUMN image_path TEXT;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'profile_picture_path') THEN
         ALTER TABLE public.user_preferences ADD COLUMN profile_picture_path TEXT;
@@ -31,29 +36,44 @@ END $$;
 
 -- Migrate existing image_path data if possible (extract from image_url)
 UPDATE public.profile_pictures
-SET image_path = split_part(image_url, '/public/Storage/', 2)
+SET image_path = CASE
+    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
+    ELSE split_part(image_url, '/public/Storage/', 2)
+END
 WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
 
 UPDATE public.characters
-SET image_path = split_part(image_url, '/public/Storage/', 2)
+SET image_path = CASE
+    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
+    ELSE split_part(image_url, '/public/Storage/', 2)
+END
 WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
 
 -- Allow authenticated users to view profile pictures and character images in private bucket
+-- Added ownership checks for security
+DROP POLICY IF EXISTS "Authenticated users can view linked images" ON storage.objects;
 CREATE POLICY "Authenticated users can view linked images" ON storage.objects
 FOR SELECT TO authenticated
 USING (
   bucket_id = 'Storage' AND (
     (auth.uid())::text = owner_id OR
-    EXISTS (SELECT 1 FROM public.profile_pictures WHERE image_path = name) OR
-    EXISTS (SELECT 1 FROM public.characters WHERE image_path = name)
+    EXISTS (SELECT 1 FROM public.profile_pictures WHERE image_path = name AND user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.characters WHERE image_path = name AND user_id = auth.uid())
   )
 );
 
 -- Triggers to sync image_path
 CREATE OR REPLACE FUNCTION public.sync_profile_picture_path()
 RETURNS TRIGGER AS $$
+DECLARE
+    extracted_path TEXT;
 BEGIN
-    NEW.image_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    extracted_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    IF extracted_path = '' THEN
+        NEW.image_path := NULL;
+    ELSE
+        NEW.image_path := extracted_path;
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -65,8 +85,15 @@ FOR EACH ROW EXECUTE FUNCTION public.sync_profile_picture_path();
 
 CREATE OR REPLACE FUNCTION public.sync_character_image_path()
 RETURNS TRIGGER AS $$
+DECLARE
+    extracted_path TEXT;
 BEGIN
-    NEW.image_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    extracted_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    IF extracted_path = '' THEN
+        NEW.image_path := NULL;
+    ELSE
+        NEW.image_path := extracted_path;
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
