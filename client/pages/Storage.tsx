@@ -9,12 +9,22 @@ import {
   Music,
   Database,
   ExternalLink,
-  Loader2
+  Loader2,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -22,7 +32,9 @@ import { toast } from "sonner";
 export default function Storage() {
   const { session } = useAuth();
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
-  const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<Record<string, string>>({});
+  const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<
+    Record<string, string>
+  >({});
   const [uploading, setUploading] = useState(false);
   const [totalSize, setTotalSize] = useState(0);
   const [dbStats, setDbStats] = useState<any[]>([]);
@@ -31,7 +43,9 @@ export default function Storage() {
   const fetchCloudFiles = async () => {
     if (!session?.user?.id) return;
     try {
-      const { data, error } = await supabase.storage.from("Storage").list(session.user.id);
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .list(session.user.id);
       if (error) throw error;
 
       const files = data || [];
@@ -41,13 +55,15 @@ export default function Storage() {
       setTotalSize(size);
 
       // Get signed URLs for images
-      const imageFiles = files.filter(f => f.metadata?.mimetype?.startsWith("image/"));
+      const imageFiles = files.filter((f) =>
+        f.metadata?.mimetype?.startsWith("image/"),
+      );
       if (imageFiles.length > 0) {
         const { data: signedData, error: signedError } = await supabase.storage
           .from("Storage")
           .createSignedUrls(
-            imageFiles.map(f => `${session.user.id}/${f.name}`),
-            3600
+            imageFiles.map((f) => `${session.user.id}/${f.name}`),
+            3600,
           );
 
         if (signedError) throw signedError;
@@ -67,11 +83,20 @@ export default function Storage() {
 
   const fetchDbStats = async () => {
     try {
-      const tables = ['characters', 'chats', 'chat_messages', 'user_preferences'];
-      const stats = await Promise.all(tables.map(async (table) => {
-        const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
-        return { name: table, size: (count || 0) * 1024 }; // Estimate 1KB per row
-      }));
+      const tables = [
+        "characters",
+        "chats",
+        "chat_messages",
+        "user_preferences",
+      ];
+      const stats = await Promise.all(
+        tables.map(async (table) => {
+          const { count, error } = await supabase
+            .from(table)
+            .select("*", { count: "exact", head: true });
+          return { name: table, size: (count || 0) * 1024 }; // Estimate 1KB per row
+        }),
+      );
       setDbStats(stats);
     } catch (error) {
       console.error("Error fetching DB stats:", error);
@@ -110,7 +135,9 @@ export default function Storage() {
 
   const deleteCloudFile = async (name: string) => {
     try {
-      const { error } = await supabase.storage.from("Storage").remove([`${session?.user.id}/${name}`]);
+      const { error } = await supabase.storage
+        .from("Storage")
+        .remove([`${session?.user.id}/${name}`]);
       if (error) throw error;
       toast.success("File deleted");
       fetchCloudFiles();
@@ -120,13 +147,37 @@ export default function Storage() {
   };
 
   const categories = {
-    text: { color: "bg-white", label: "Text/Artifacts", icon: FileText, files: [] as any[], size: 0 },
-    image: { color: "bg-orange-500", label: "Images", icon: ImageIcon, files: [] as any[], size: 0 },
-    audio: { color: "bg-blue-500", label: "Sounds", icon: Music, files: [] as any[], size: 0 },
-    data: { color: "bg-black", label: "Data", icon: Database, files: [] as any[], size: 0 },
+    text: {
+      color: "bg-white",
+      label: "Text/Artifacts",
+      icon: FileText,
+      files: [] as any[],
+      size: 0,
+    },
+    image: {
+      color: "bg-orange-500",
+      label: "Images",
+      icon: ImageIcon,
+      files: [] as any[],
+      size: 0,
+    },
+    audio: {
+      color: "bg-blue-500",
+      label: "Sounds",
+      icon: Music,
+      files: [] as any[],
+      size: 0,
+    },
+    data: {
+      color: "bg-black",
+      label: "Data",
+      icon: Database,
+      files: [] as any[],
+      size: 0,
+    },
   };
 
-  cloudFiles.forEach(f => {
+  cloudFiles.forEach((f) => {
     const type = f.metadata?.mimetype || "";
     const size = f.metadata?.size || 0;
     if (type.startsWith("image/")) {
@@ -143,7 +194,7 @@ export default function Storage() {
 
   const totalDataSize = dbStats.reduce((acc, s) => acc + s.size, 0);
   categories.data.size = totalDataSize;
-  categories.data.files = dbStats.map(s => ({ name: s.name, size: s.size }));
+  categories.data.files = dbStats.map((s) => ({ name: s.name, size: s.size }));
 
   const totalAll = totalSize + totalDataSize;
   const formatSize = (bytes: number) => {
@@ -158,55 +209,90 @@ export default function Storage() {
     <Layout>
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-white">Storage</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-white">
+            Storage
+          </h2>
           <p className="text-slate-400">Manage your files and data usage.</p>
         </div>
 
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <CardTitle className="text-white">Overall Usage</CardTitle>
-            <CardDescription className="text-slate-400">Total space used by files and application data</CardDescription>
+            <CardDescription className="text-slate-400">
+              Total space used by files and application data
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-slate-400">
                 <span>{formatSize(totalAll)} used</span>
-                <span>{`Limit: ${'30MB'} (Files)`}</span>
+                <span>{`Limit: ${"30MB"} (Files)`}</span>
               </div>
               <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden flex">
                 {Object.entries(categories).map(([key, cat]) => {
-                   const width = (cat.size / (30 * 1024 * 1024)) * 100;
-                   if (width === 0) return null;
-                   return (
-                     <HoverCard key={key}>
-                       <HoverCardTrigger asChild>
-                         <div
-                           className={cn("h-full cursor-pointer transition-opacity hover:opacity-80", cat.color)}
-                           style={{ width: `${Math.max(width, 1)}%` }}
-                         />
-                       </HoverCardTrigger>
-                       <HoverCardContent className="w-64 bg-slate-900 border-slate-800 p-0 overflow-hidden">
-                         <div className="p-3 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
-                           <div className="flex items-center gap-2">
-                             <cat.icon className={cn("w-4 h-4", key === "text" ? "text-slate-400" : cat.color.replace("bg-", "text-"))} />
-                             <span className="text-sm font-bold text-white">{cat.label}</span>
-                           </div>
-                           <span className="text-xs text-slate-400">{formatSize(cat.size)}</span>
-                         </div>
-                         <ScrollArea className="h-48">
-                           <div className="p-2 space-y-1">
-                             {cat.files.sort((a, b) => (b.metadata?.size || b.size) - (a.metadata?.size || a.size)).map((f, i) => (
-                               <div key={i} className="flex justify-between items-center p-2 rounded hover:bg-slate-800">
-                                 <span className="text-[11px] text-slate-300 truncate mr-2">{f.name}</span>
-                                 <span className="text-[10px] text-slate-500 whitespace-nowrap">{formatSize(f.metadata?.size || f.size)}</span>
-                               </div>
-                             ))}
-                             {cat.files.length === 0 && <p className="p-4 text-center text-xs text-slate-500 italic">No items</p>}
-                           </div>
-                         </ScrollArea>
-                       </HoverCardContent>
-                     </HoverCard>
-                   );
+                  const width = (cat.size / (30 * 1024 * 1024)) * 100;
+                  if (width === 0) return null;
+                  return (
+                    <HoverCard key={key}>
+                      <HoverCardTrigger asChild>
+                        <div
+                          className={cn(
+                            "h-full cursor-pointer transition-opacity hover:opacity-80",
+                            cat.color,
+                          )}
+                          style={{ width: `${Math.max(width, 1)}%` }}
+                        />
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-64 bg-slate-900 border-slate-800 p-0 overflow-hidden">
+                        <div className="p-3 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <cat.icon
+                              className={cn(
+                                "w-4 h-4",
+                                key === "text"
+                                  ? "text-slate-400"
+                                  : cat.color.replace("bg-", "text-"),
+                              )}
+                            />
+                            <span className="text-sm font-bold text-white">
+                              {cat.label}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-400">
+                            {formatSize(cat.size)}
+                          </span>
+                        </div>
+                        <ScrollArea className="h-48">
+                          <div className="p-2 space-y-1">
+                            {cat.files
+                              .sort(
+                                (a, b) =>
+                                  (b.metadata?.size || b.size) -
+                                  (a.metadata?.size || a.size),
+                              )
+                              .map((f, i) => (
+                                <div
+                                  key={i}
+                                  className="flex justify-between items-center p-2 rounded hover:bg-slate-800"
+                                >
+                                  <span className="text-[11px] text-slate-300 truncate mr-2">
+                                    {f.name}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                                    {formatSize(f.metadata?.size || f.size)}
+                                  </span>
+                                </div>
+                              ))}
+                            {cat.files.length === 0 && (
+                              <p className="p-4 text-center text-xs text-slate-500 italic">
+                                No items
+                              </p>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
                 })}
               </div>
               <div className="flex flex-wrap gap-4 pt-2">
@@ -225,25 +311,44 @@ export default function Storage() {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-medium text-white">Files</h3>
-              <p className="text-sm text-slate-400">Your uploaded files and artifacts.</p>
+              <p className="text-sm text-slate-400">
+                Your uploaded files and artifacts.
+              </p>
             </div>
             <Button
               onClick={() => cloudInputRef.current?.click()}
               disabled={uploading}
               className="bg-cyan-500 hover:bg-cyan-600 text-white"
             >
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
               Upload
             </Button>
-            <input type="file" className="hidden" ref={cloudInputRef} onChange={handleCloudUpload} />
+            <input
+              type="file"
+              className="hidden"
+              ref={cloudInputRef}
+              onChange={handleCloudUpload}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {cloudFiles.map((file) => (
-              <Card key={file.id} className="bg-slate-950 border-slate-800 overflow-hidden group">
+              <Card
+                key={file.id}
+                className="bg-slate-950 border-slate-800 overflow-hidden group"
+              >
                 <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
-                  {file.metadata?.mimetype?.startsWith("image/") && cloudFileSignedUrls[file.id] ? (
-                    <img src={cloudFileSignedUrls[file.id]} alt={file.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                  {file.metadata?.mimetype?.startsWith("image/") &&
+                  cloudFileSignedUrls[file.id] ? (
+                    <img
+                      src={cloudFileSignedUrls[file.id]}
+                      alt={file.name}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
                   ) : file.metadata?.mimetype?.startsWith("audio/") ? (
                     <Music className="w-12 h-12 text-blue-500" />
                   ) : (
@@ -251,22 +356,45 @@ export default function Storage() {
                   )}
                 </div>
                 <CardHeader className="p-4">
-                  <CardTitle className="text-sm text-white truncate">{file.name}</CardTitle>
+                  <CardTitle className="text-sm text-white truncate">
+                    {file.name}
+                  </CardTitle>
                   <CardDescription className="text-xs text-slate-500">
-                    {formatSize(file.metadata?.size || 0)} • {new Date(file.created_at).toLocaleDateString()}
+                    {formatSize(file.metadata?.size || 0)} •{" "}
+                    {new Date(file.created_at).toLocaleDateString()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 pt-0 flex gap-2">
                   {cloudFileSignedUrls[file.id] ? (
-                    <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white" asChild>
-                      <a href={cloudFileSignedUrls[file.id]} target="_blank" rel="noreferrer">
-                        <ExternalLink className="w-4 h-4 mr-2" /> View</a>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
+                      asChild
+                    >
+                      <a
+                        href={cloudFileSignedUrls[file.id]}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" /> View
+                      </a>
                     </Button>
                   ) : (
-                    <Button variant="secondary" size="sm" className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed" disabled>
-                      <ExternalLink className="w-4 h-4 mr-2" /> View</Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed"
+                      disabled
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" /> View
+                    </Button>
                   )}
-                  <Button variant="destructive" size="icon" onClick={() => deleteCloudFile(file.name)}>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => deleteCloudFile(file.name)}
+                  >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </CardContent>

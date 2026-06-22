@@ -12,13 +12,13 @@ import {
   UserX,
   UserCheck,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function UserProfile() {
-    const { username } = useParams();
+  const { username } = useParams();
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const currentUser = session?.user;
@@ -31,7 +31,11 @@ export default function UserProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({ friends: 0, followers: 0, following: 0 });
+  const [stats, setStats] = useState({
+    friends: 0,
+    followers: 0,
+    following: 0,
+  });
 
   useEffect(() => {
     if (!username) return;
@@ -45,7 +49,9 @@ export default function UserProfile() {
       // Fetch user preferences and basic info
       const { data: pref, error: prefError } = await supabase
         .from("user_preferences")
-        .select("user_id, display_name, username, bio, profile_picture_path, show_email")
+        .select(
+          "user_id, display_name, username, bio, profile_picture_path, show_email",
+        )
         .eq("username", username)
         .single();
 
@@ -69,9 +75,19 @@ export default function UserProfile() {
 
       // Fetch stats
       const [friendsRes, followersRes, followingRes] = await Promise.all([
-        supabase.from("friendships").select("count").eq("status", "accepted").or(`user_id.eq.${pref.user_id},friend_id.eq.${pref.user_id}`),
-        supabase.from("follows").select("count").eq("following_id", pref.user_id),
-        supabase.from("follows").select("count").eq("follower_id", pref.user_id),
+        supabase
+          .from("friendships")
+          .select("count")
+          .eq("status", "accepted")
+          .or(`user_id.eq.${pref.user_id},friend_id.eq.${pref.user_id}`),
+        supabase
+          .from("follows")
+          .select("count")
+          .eq("following_id", pref.user_id),
+        supabase
+          .from("follows")
+          .select("count")
+          .eq("follower_id", pref.user_id),
       ]);
 
       setStats({
@@ -82,11 +98,29 @@ export default function UserProfile() {
 
       if (currentUser && currentUser.id !== pref.user_id) {
         // Fetch relations
-        const [friendshipRes, followingStatus, blockStatus] = await Promise.all([
-          supabase.from("friendships").select("*").or(`and(user_id.eq.${currentUser.id},friend_id.eq.${pref.user_id}),and(user_id.eq.${pref.user_id},friend_id.eq.${currentUser.id})`).maybeSingle(),
-          supabase.from("follows").select("*").eq("follower_id", currentUser.id).eq("following_id", pref.user_id).maybeSingle(),
-          supabase.from("blocks").select("*").eq("blocker_id", currentUser.id).eq("blocked_id", pref.user_id).maybeSingle(),
-        ]);
+        const [friendshipRes, followingStatus, blockStatus] = await Promise.all(
+          [
+            supabase
+              .from("friendships")
+              .select("*")
+              .or(
+                `and(user_id.eq.${currentUser.id},friend_id.eq.${pref.user_id}),and(user_id.eq.${pref.user_id},friend_id.eq.${currentUser.id})`,
+              )
+              .maybeSingle(),
+            supabase
+              .from("follows")
+              .select("*")
+              .eq("follower_id", currentUser.id)
+              .eq("following_id", pref.user_id)
+              .maybeSingle(),
+            supabase
+              .from("blocks")
+              .select("*")
+              .eq("blocker_id", currentUser.id)
+              .eq("blocked_id", pref.user_id)
+              .maybeSingle(),
+          ],
+        );
 
         setFriendship(friendshipRes.data);
         setIsFollowing(!!followingStatus.data);
@@ -107,7 +141,11 @@ export default function UserProfile() {
       if (!friendship) {
         const { data, error } = await supabase
           .from("friendships")
-          .insert({ user_id: currentUser.id, friend_id: profile.user_id, status: 'pending' })
+          .insert({
+            user_id: currentUser.id,
+            friend_id: profile.user_id,
+            status: "pending",
+          })
           .select()
           .limit(1)
           .maybeSingle();
@@ -117,10 +155,13 @@ export default function UserProfile() {
         }
         setFriendship(data);
         toast.success("Friend request sent");
-      } else if (friendship.status === 'pending' && friendship.friend_id === currentUser.id) {
+      } else if (
+        friendship.status === "pending" &&
+        friendship.friend_id === currentUser.id
+      ) {
         const { data, error } = await supabase
           .from("friendships")
-          .update({ status: 'accepted' })
+          .update({ status: "accepted" })
           .eq("id", friendship.id)
           .select()
           .limit(1)
@@ -131,7 +172,7 @@ export default function UserProfile() {
         }
         setFriendship(data);
         toast.success("Accept Request");
-        setStats(s => ({ ...s, friends: s.friends + 1 }));
+        setStats((s) => ({ ...s, friends: s.friends + 1 }));
       } else {
         const { error } = await supabase
           .from("friendships")
@@ -141,10 +182,11 @@ export default function UserProfile() {
           toast.error("Failed to remove friendship: " + error.message);
           return;
         }
-        const wasAccepted = friendship.status === 'accepted';
+        const wasAccepted = friendship.status === "accepted";
         setFriendship(null);
         toast.success(wasAccepted ? "Unfriended user" : "Cancel Request");
-        if (wasAccepted) setStats(s => ({ ...s, friends: Math.max(0, s.friends - 1) }));
+        if (wasAccepted)
+          setStats((s) => ({ ...s, friends: Math.max(0, s.friends - 1) }));
       }
     } catch (e: any) {
       toast.error("An unexpected error occurred: " + e.message);
@@ -169,18 +211,21 @@ export default function UserProfile() {
           return;
         }
         setIsFollowing(false);
-        setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
+        setStats((s) => ({ ...s, followers: Math.max(0, s.followers - 1) }));
         toast.success("Unfollow");
       } else {
         const { error } = await supabase
           .from("follows")
-          .insert({ follower_id: currentUser.id, following_id: profile.user_id });
+          .insert({
+            follower_id: currentUser.id,
+            following_id: profile.user_id,
+          });
         if (error) {
           toast.error("Failed to follow: " + error.message);
           return;
         }
         setIsFollowing(true);
-        setStats(s => ({ ...s, followers: s.followers + 1 }));
+        setStats((s) => ({ ...s, followers: s.followers + 1 }));
         toast.success("Following user");
       }
     } catch (e: any) {
@@ -219,14 +264,19 @@ export default function UserProfile() {
         }
 
         // Use RPC for privileged cleanup of relations
-        const { error: cleanupError } = await supabase.rpc("handle_block_cleanup", {
-           p_blocker_id: currentUser.id,
-           p_blocked_id: profile.user_id
-        });
+        const { error: cleanupError } = await supabase.rpc(
+          "handle_block_cleanup",
+          {
+            p_blocker_id: currentUser.id,
+            p_blocked_id: profile.user_id,
+          },
+        );
 
         if (cleanupError) {
-           toast.error("Failed to cleanup relations after block: " + cleanupError.message);
-           return;
+          toast.error(
+            "Failed to cleanup relations after block: " + cleanupError.message,
+          );
+          return;
         }
 
         setIsBlocked(true);
@@ -252,7 +302,13 @@ export default function UserProfile() {
         ) : error || !profile ? (
           <div className="text-center py-12">
             <p className="text-red-400 text-lg">{error ?? "No items"}</p>
-            <Button variant="link" onClick={() => navigate(-1)} className="text-slate-500">Back</Button>
+            <Button
+              variant="link"
+              onClick={() => navigate(-1)}
+              className="text-slate-500"
+            >
+              Back
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -274,25 +330,43 @@ export default function UserProfile() {
 
                 <div className="flex-1 text-center md:text-left space-y-4">
                   <div>
-                    <h2 className="text-3xl font-bold text-white mb-1">{profile.display_name}</h2>
-                    <p className="text-cyan-500 font-medium">@{profile.username}</p>
+                    <h2 className="text-3xl font-bold text-white mb-1">
+                      {profile.display_name}
+                    </h2>
+                    <p className="text-cyan-500 font-medium">
+                      @{profile.username}
+                    </p>
                     {profile.show_email && profile.email && (
-                      <p className="text-slate-500 text-sm mt-1">{profile.email}</p>
+                      <p className="text-slate-500 text-sm mt-1">
+                        {profile.email}
+                      </p>
                     )}
                   </div>
 
                   <div className="flex flex-wrap justify-center md:justify-start gap-6 py-2">
                     <div className="text-center md:text-left">
-                      <p className="text-white font-bold text-lg">{stats.friends}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">Friends</p>
+                      <p className="text-white font-bold text-lg">
+                        {stats.friends}
+                      </p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">
+                        Friends
+                      </p>
                     </div>
                     <div className="text-center md:text-left">
-                      <p className="text-white font-bold text-lg">{stats.followers}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">Followers</p>
+                      <p className="text-white font-bold text-lg">
+                        {stats.followers}
+                      </p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">
+                        Followers
+                      </p>
                     </div>
                     <div className="text-center md:text-left">
-                      <p className="text-white font-bold text-lg">{stats.following}</p>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider">Following</p>
+                      <p className="text-white font-bold text-lg">
+                        {stats.following}
+                      </p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">
+                        Following
+                      </p>
                     </div>
                   </div>
 
@@ -303,21 +377,35 @@ export default function UserProfile() {
                         disabled={actionLoading}
                         className={cn(
                           "min-w-[120px]",
-                          friendship?.status === 'accepted'
+                          friendship?.status === "accepted"
                             ? "bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-200"
-                            : "bg-cyan-600 hover:bg-cyan-700 text-white"
+                            : "bg-cyan-600 hover:bg-cyan-700 text-white",
                         )}
                       >
                         {actionLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : !friendship ? (
-                          <><UserPlus className="w-4 h-4 mr-2" />Add Friend</>
-                        ) : friendship.status === 'pending' ? (
-                          friendship.user_id === currentUser.id
-                            ? <><UserX className="w-4 h-4 mr-2" />Cancel Request</>
-                            : <><UserCheck className="w-4 h-4 mr-2" />Accept Request</>
+                          <>
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Add Friend
+                          </>
+                        ) : friendship.status === "pending" ? (
+                          friendship.user_id === currentUser.id ? (
+                            <>
+                              <UserX className="w-4 h-4 mr-2" />
+                              Cancel Request
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="w-4 h-4 mr-2" />
+                              Accept Request
+                            </>
+                          )
                         ) : (
-                          <><UserMinus className="w-4 h-4 mr-2" />Unfriend</>
+                          <>
+                            <UserMinus className="w-4 h-4 mr-2" />
+                            Unfriend
+                          </>
                         )}
                       </Button>
 
@@ -327,7 +415,9 @@ export default function UserProfile() {
                         disabled={actionLoading}
                         className={cn(
                           "min-w-[120px] border-slate-700",
-                          isFollowing ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "text-slate-300"
+                          isFollowing
+                            ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                            : "text-slate-300",
                         )}
                       >
                         {isFollowing ? "Following" : "Follow"}
@@ -340,11 +430,17 @@ export default function UserProfile() {
                         disabled={actionLoading}
                         className={cn(
                           "h-10 w-10",
-                          isBlocked ? "text-red-500 bg-red-500/10" : "text-slate-500 hover:text-red-400 hover:bg-red-400/10"
+                          isBlocked
+                            ? "text-red-500 bg-red-500/10"
+                            : "text-slate-500 hover:text-red-400 hover:bg-red-400/10",
                         )}
                         title={isBlocked ? "Unblock" : "Blocked"}
                       >
-                        {isBlocked ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+                        {isBlocked ? (
+                          <ShieldCheck className="w-5 h-5" />
+                        ) : (
+                          <ShieldAlert className="w-5 h-5" />
+                        )}
                       </Button>
                     </div>
                   )}
@@ -352,10 +448,14 @@ export default function UserProfile() {
               </div>
 
               <div className="mt-8 pt-8 border-t border-slate-800/50">
-                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Bio</h3>
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                  Bio
+                </h3>
                 <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
                   <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {profile.bio || "This user hasn't written a bio yet." || "This user hasn't written a bio yet."}
+                    {profile.bio ||
+                      "This user hasn't written a bio yet." ||
+                      "This user hasn't written a bio yet."}
                   </p>
                 </div>
               </div>

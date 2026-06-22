@@ -1,15 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateMasterKey, encrypt, decrypt } from './crypto';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { generateMasterKey, encrypt, decrypt } from "./crypto";
 
 // Mock window.crypto for Node environment
-if (typeof window === 'undefined') {
+if (typeof window === "undefined") {
   (global as any).window = {
-    crypto: require('crypto').webcrypto
+    crypto: require("crypto").webcrypto,
   };
 }
 
-describe('Crypto Library', () => {
-  it('should generate a masterkey of correct length', () => {
+describe("Crypto Library", () => {
+  it("should generate a masterkey of correct length", () => {
     const key32 = generateMasterKey(32);
     expect(key32.length).toBe(32);
 
@@ -17,9 +17,9 @@ describe('Crypto Library', () => {
     expect(key64.length).toBe(64);
   });
 
-  it('should encrypt and decrypt a string correctly', async () => {
-    const masterKey = 'test-master-key-12345678901234567890';
-    const originalText = 'Hello, World! This is a secret message.';
+  it("should encrypt and decrypt a string correctly", async () => {
+    const masterKey = "test-master-key-12345678901234567890";
+    const originalText = "Hello, World! This is a secret message.";
 
     const encrypted = await encrypt(originalText, masterKey);
     expect(encrypted).not.toBe(originalText);
@@ -28,13 +28,15 @@ describe('Crypto Library', () => {
     expect(decrypted).toBe(originalText);
   });
 
-  it('should fail to decrypt with wrong key', async () => {
-    const masterKey = 'correct-key';
-    const wrongKey = 'wrong-key';
-    const originalText = 'Secret';
+  it("should fail to decrypt with wrong key", async () => {
+    const masterKey = "correct-key";
+    const wrongKey = "wrong-key";
+    const originalText = "Secret";
 
     const encrypted = await encrypt(originalText, masterKey);
 
-    await expect(decrypt(encrypted, wrongKey)).rejects.toThrow('Invalid masterkey or corrupted data');
+    await expect(decrypt(encrypted, wrongKey)).rejects.toThrow(
+      "Invalid masterkey or corrupted data",
+    );
   });
 });

@@ -10,7 +10,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { File, Search, Loader2, Image as ImageIcon, Music, Film, Folder, ChevronRight, Home } from "lucide-react";
+import {
+  File,
+  Search,
+  Loader2,
+  Image as ImageIcon,
+  Music,
+  Film,
+  Folder,
+  ChevronRight,
+  Home,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StorageFile {
@@ -38,7 +48,7 @@ export function StorageFileSelector({
   allowedTypes,
   trigger,
 }: StorageFileSelectorProps) {
-    const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -67,7 +77,9 @@ export function StorageFileSelector({
   const filteredItems = items.filter((item) => {
     // Folders don't have id/metadata usually in .list() return
     const isFolder = !item.id;
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = item.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
 
     if (isFolder) return matchesSearch;
 
@@ -76,12 +88,16 @@ export function StorageFileSelector({
 
     let matchesExtension = true;
     if (allowedExtensions && allowedExtensions.length > 0) {
-      matchesExtension = extension ? allowedExtensions.includes(`.${extension}`) : false;
+      matchesExtension = extension
+        ? allowedExtensions.includes(`.${extension}`)
+        : false;
     }
 
     let matchesType = true;
     if (allowedTypes && allowedTypes.length > 0) {
-      matchesType = allowedTypes.some((type) => mimeType.startsWith(`${type}/`));
+      matchesType = allowedTypes.some((type) =>
+        mimeType.startsWith(`${type}/`),
+      );
     }
 
     return matchesSearch && matchesExtension && matchesType;
@@ -96,16 +112,21 @@ export function StorageFileSelector({
   };
 
   const getFileIcon = (mimetype: string) => {
-    if (mimetype.startsWith("image/")) return <ImageIcon className="w-4 h-4 text-pink-500" />;
-    if (mimetype.startsWith("audio/")) return <Music className="w-4 h-4 text-cyan-500" />;
-    if (mimetype.startsWith("video/")) return <Film className="w-4 h-4 text-purple-500" />;
+    if (mimetype.startsWith("image/"))
+      return <ImageIcon className="w-4 h-4 text-pink-500" />;
+    if (mimetype.startsWith("audio/"))
+      return <Music className="w-4 h-4 text-cyan-500" />;
+    if (mimetype.startsWith("video/"))
+      return <Film className="w-4 h-4 text-purple-500" />;
     return <File className="w-4 h-4 text-slate-400" />;
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || <Button variant="outline">Click to select from storage</Button>}
+        {trigger || (
+          <Button variant="outline">Click to select from storage</Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] bg-slate-950 border-slate-800 text-white">
         <DialogHeader>
@@ -141,10 +162,13 @@ export function StorageFileSelector({
                       <div key={i} className="flex items-center">
                         <ChevronRight className="w-3 h-3 mx-1 opacity-50" />
                         <button
-                          onClick={() => setCurrentPath(currentPath.slice(0, i + 1))}
+                          onClick={() =>
+                            setCurrentPath(currentPath.slice(0, i + 1))
+                          }
                           className={cn(
                             "hover:text-cyan-400 truncate max-w-[100px]",
-                            i === currentPath.length - 1 && "text-cyan-400 font-medium"
+                            i === currentPath.length - 1 &&
+                              "text-cyan-400 font-medium",
                           )}
                         >
                           {part}
@@ -166,9 +190,10 @@ export function StorageFileSelector({
                               setCurrentPath([...currentPath, item.name]);
                             } else {
                               // Ensure the name includes the full path for the consumer
-                              const fullName = currentPath.length > 0
-                                ? `${currentPath.join("/")}/${item.name}`
-                                : item.name;
+                              const fullName =
+                                currentPath.length > 0
+                                  ? `${currentPath.join("/")}/${item.name}`
+                                  : item.name;
                               onSelect({ ...item, name: fullName });
                               setOpen(false);
                             }
@@ -183,10 +208,14 @@ export function StorageFileSelector({
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-sm font-medium truncate",
-                              isFolder ? "text-slate-300" : "group-hover:text-cyan-400"
-                            )}>
+                            <p
+                              className={cn(
+                                "text-sm font-medium truncate",
+                                isFolder
+                                  ? "text-slate-300"
+                                  : "group-hover:text-cyan-400",
+                              )}
+                            >
                               {item.name}
                             </p>
                             {!isFolder && (
@@ -195,7 +224,9 @@ export function StorageFileSelector({
                               </p>
                             )}
                           </div>
-                          {isFolder && <ChevronRight className="w-4 h-4 text-slate-600" />}
+                          {isFolder && (
+                            <ChevronRight className="w-4 h-4 text-slate-600" />
+                          )}
                         </button>
                       );
                     })}
