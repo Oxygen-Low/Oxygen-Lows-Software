@@ -53,7 +53,7 @@ export default function Account() {
   const fetchAccountData = useCallback(async () => {
     if (!session?.user?.id) return;
     const { data: pic } = await supabase.from("profile_pictures").select("*").eq("user_id", session.user.id).single();
-    if (pic) setProfilePicture(pic);
+    if (pic) { if (pic.image_path) { supabase.storage.from("Storage").createSignedUrl(pic.image_path, 3600).then(({ data }) => { if (data) setProfilePicture({ ...pic, image_url: data.signedUrl }); else setProfilePicture({ ...pic, image_url: "" }); }).catch(() => setProfilePicture({ ...pic, image_url: "" })); } else { setProfilePicture(pic); } }
     const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", session.user.id).single();
     if (prof) { setProfile(prof); setUsernameInput(prof.username || ""); setDisplayNameInput(prof.display_name || ""); setBioInput(prof.bio || ""); }
     const { data: idents } = await supabase.auth.getUser(); if (idents.user) setIdentities(idents.user.identities || []);
@@ -94,9 +94,11 @@ export default function Account() {
       if (!blob) return;
       const path = `${session.user.id}/profile_${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage.from("Storage").upload(path, blob); if (upErr) throw upErr;
-      const { data: { publicUrl } } = supabase.storage.from("Storage").getPublicUrl(path);
+      const { data: { publicUrl: stableUrl } } = supabase.storage.from("Storage").getPublicUrl(path);
+      const { data: signedData } = await supabase.storage.from("Storage").createSignedUrl(path, 3600);
+      const publicUrl = signedData?.signedUrl || "";
       const { data: old } = await supabase.from("profile_pictures").select("image_url").eq("user_id", session.user.id).single();
-      await supabase.from("profile_pictures").upsert({ user_id: session.user.id, image_url: publicUrl, crop_data: croppedArea });
+      await supabase.from("profile_pictures").upsert({ user_id: session.user.id, image_url: path, crop_data: croppedArea });
       if (old?.image_url) { const p = old.image_url.split('/public/Storage/')[1]; if (p) await supabase.storage.from("Storage").remove([p]); }
       setProfilePicture({ id: "", user_id: session.user.id, image_url: publicUrl, crop_data: croppedArea }); setSelectedImage(null);
       toast({ title: "Success" });

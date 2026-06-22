@@ -1,0 +1,159 @@
+-- Update bucket visibility
+UPDATE storage.buckets SET public = false WHERE id = 'Storage';
+UPDATE storage.buckets SET public = true WHERE id = 'Repositories';
+
+-- Drop broad repo-related policies from the general Storage bucket
+DROP POLICY IF EXISTS "Anyone can download repository zips" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload their own repository zips" ON storage.objects;
+
+-- Add policies for Repositories bucket
+-- Allow anyone to view repositories (making them public)
+DROP POLICY IF EXISTS "Public can view repositories" ON storage.objects;
+CREATE POLICY "Public can view repositories" ON storage.objects
+FOR SELECT TO public
+USING (bucket_id = 'Repositories');
+
+-- Allow authenticated users to manage their own repository files in the Repositories bucket
+DROP POLICY IF EXISTS "Users can manage their own repositories" ON storage.objects;
+CREATE POLICY "Users can manage their own repositories" ON storage.objects
+FOR ALL TO authenticated
+USING (bucket_id = 'Repositories' AND (auth.uid())::text = owner_id)
+WITH CHECK (bucket_id = 'Repositories' AND (auth.uid())::text = owner_id);
+
+-- Add image_path to profile_pictures, characters and user_preferences if they don't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profile_pictures' AND column_name = 'image_path') THEN
+        ALTER TABLE public.profile_pictures ADD COLUMN image_path TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'characters' AND column_name = 'image_path') THEN
+        ALTER TABLE public.characters ADD COLUMN image_path TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'profile_picture_path') THEN
+        ALTER TABLE public.user_preferences ADD COLUMN profile_picture_path TEXT;
+    END IF;
+END $$;
+
+-- Migrate existing image_path data if possible (extract from image_url)
+UPDATE public.profile_pictures
+SET image_path = CASE
+    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
+    ELSE split_part(image_url, '/public/Storage/', 2)
+END
+WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
+
+UPDATE public.characters
+SET image_path = CASE
+    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
+    ELSE split_part(image_url, '/public/Storage/', 2)
+END
+WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
+
+-- Allow authenticated users to view profile pictures and character images in private bucket
+-- Added ownership checks for security
+DROP POLICY IF EXISTS "Authenticated users can view linked images" ON storage.objects;
+CREATE POLICY "Authenticated users can view linked images" ON storage.objects
+FOR SELECT TO authenticated
+USING (
+  bucket_id = 'Storage' AND (
+    (auth.uid())::text = owner_id OR
+    EXISTS (SELECT 1 FROM public.profile_pictures WHERE image_path = name AND user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.characters WHERE image_path = name AND user_id = auth.uid())
+  )
+);
+
+-- Triggers to sync image_path
+CREATE OR REPLACE FUNCTION public.sync_profile_picture_path()
+RETURNS TRIGGER AS $$
+DECLARE
+    extracted_path TEXT;
+BEGIN
+    extracted_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    IF extracted_path = '' THEN
+        NEW.image_path := NULL;
+    ELSE
+        NEW.image_path := extracted_path;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS sync_profile_picture_path_trigger ON public.profile_pictures;
+CREATE TRIGGER sync_profile_picture_path_trigger
+BEFORE INSERT OR UPDATE OF image_url ON public.profile_pictures
+FOR EACH ROW EXECUTE FUNCTION public.sync_profile_picture_path();
+
+CREATE OR REPLACE FUNCTION public.sync_character_image_path()
+RETURNS TRIGGER AS $$
+DECLARE
+    extracted_path TEXT;
+BEGIN
+    extracted_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    IF extracted_path = '' THEN
+        NEW.image_path := NULL;
+    ELSE
+        NEW.image_path := extracted_path;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS sync_character_image_path_trigger ON public.characters;
+CREATE TRIGGER sync_character_image_path_trigger
+BEFORE INSERT OR UPDATE OF image_url ON public.characters
+FOR EACH ROW EXECUTE FUNCTION public.sync_character_image_path();
+
+-- Update upsert_user_preferences to include profile_picture_path
+CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
+  p_user_id UUID,
+  p_theme TEXT DEFAULT NULL,
+  p_font TEXT DEFAULT NULL,
+  p_music_playlist JSONB DEFAULT NULL,
+  p_current_music_track TEXT DEFAULT NULL,
+  p_current_music_position BIGINT DEFAULT NULL,
+  p_shuffle_enabled BOOLEAN DEFAULT NULL,
+  p_use_gradient BOOLEAN DEFAULT NULL,
+  p_last_model_id TEXT DEFAULT NULL,
+  p_last_provider TEXT DEFAULT NULL,
+  p_encryption_settings JSONB DEFAULT NULL,
+  p_profile_picture_path TEXT DEFAULT NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  IF p_user_id IS NOT NULL AND p_user_id != auth.uid() THEN RAISE EXCEPTION 'User ID mismatch'; END IF;
+
+  INSERT INTO public.user_preferences (
+    user_id, theme, font, music_playlist, current_music_track, current_music_position,
+    shuffle_enabled, use_gradient, last_model_id, last_provider, encryption_settings, profile_picture_path, updated_at
+  )
+  VALUES (
+    auth.uid(),
+    COALESCE(p_theme, 'default'),
+    COALESCE(p_font, 'default'),
+    COALESCE(p_music_playlist, '[]'::jsonb),
+    p_current_music_track,
+    COALESCE(p_current_music_position, 0),
+    COALESCE(p_shuffle_enabled, false),
+    COALESCE(p_use_gradient, true),
+    p_last_model_id,
+    p_last_provider,
+    COALESCE(p_encryption_settings, '{}'::jsonb),
+    p_profile_picture_path,
+    now()
+  )
+  ON CONFLICT (user_id) DO UPDATE SET
+    theme = COALESCE(p_theme, public.user_preferences.theme),
+    font = COALESCE(p_font, public.user_preferences.font),
+    music_playlist = COALESCE(p_music_playlist, public.user_preferences.music_playlist),
+    current_music_track = COALESCE(p_current_music_track, public.user_preferences.current_music_track),
+    current_music_position = COALESCE(p_current_music_position, public.user_preferences.current_music_position),
+    shuffle_enabled = COALESCE(p_shuffle_enabled, public.user_preferences.shuffle_enabled),
+    use_gradient = COALESCE(p_use_gradient, public.user_preferences.use_gradient),
+    last_model_id = COALESCE(p_last_model_id, public.user_preferences.last_model_id),
+    last_provider = COALESCE(p_last_provider, public.user_preferences.last_provider),
+    encryption_settings = COALESCE(p_encryption_settings, public.user_preferences.encryption_settings),
+    profile_picture_path = COALESCE(p_profile_picture_path, public.user_preferences.profile_picture_path),
+    updated_at = now();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
