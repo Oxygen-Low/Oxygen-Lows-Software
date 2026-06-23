@@ -222,13 +222,16 @@ BEGIN
     CREATE POLICY "Users can manage their own git password" ON public.repository_passwords FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 END $$;
 
-CREATE OR REPLACE FUNCTION public.upsert_repository_password(p_user_id UUID, p_password TEXT) RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION public.upsert_repository_password(p_user_id UUID, p_password TEXT)
+RETURNS VOID
+SET search_path = pg_catalog, public
+AS $$
 BEGIN
     -- Only allow setting your own password unless caller is service role
     IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
-    INSERT INTO public.repository_passwords (user_id, password, updated_at) VALUES (p_user_id, p_password, now())
+    INSERT INTO public.repository_passwords (user_id, password, updated_at) VALUES (p_user_id, extensions.crypt(p_password, extensions.gen_salt('bf')), now())
     ON CONFLICT (user_id) DO UPDATE SET password = EXCLUDED.password, updated_at = now();
 END; $$ LANGUAGE plpgsql SECURITY DEFINER;
 

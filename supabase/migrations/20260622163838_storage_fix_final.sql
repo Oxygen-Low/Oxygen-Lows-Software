@@ -36,17 +36,11 @@ END $$;
 
 -- Migrate existing image_path data if possible (extract from image_url)
 UPDATE public.profile_pictures
-SET image_path = CASE
-    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
-    ELSE split_part(image_url, '/public/Storage/', 2)
-END
+SET image_path = NULLIF(split_part(split_part(image_url, '/public/Storage/', 2), '?', 1), '')
 WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
 
 UPDATE public.characters
-SET image_path = CASE
-    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
-    ELSE split_part(image_url, '/public/Storage/', 2)
-END
+SET image_path = NULLIF(split_part(split_part(image_url, '/public/Storage/', 2), '?', 1), '')
 WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
 
 -- Allow authenticated users to view profile pictures and character images in private bucket
@@ -57,8 +51,9 @@ FOR SELECT TO authenticated
 USING (
   bucket_id = 'Storage' AND (
     (auth.uid())::text = owner_id OR
-    EXISTS (SELECT 1 FROM public.profile_pictures WHERE image_path = name AND user_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.characters WHERE image_path = name AND user_id = auth.uid())
+    EXISTS (SELECT 1 FROM public.profile_pictures WHERE image_path = name) OR
+    EXISTS (SELECT 1 FROM public.characters WHERE image_path = name) OR
+    EXISTS (SELECT 1 FROM public.user_preferences WHERE profile_picture_path = name)
   )
 );
 
@@ -68,7 +63,7 @@ RETURNS TRIGGER AS $$
 DECLARE
     extracted_path TEXT;
 BEGIN
-    extracted_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    extracted_path := split_part(split_part(NEW.image_url, '/public/Storage/', 2), '?', 1);
     IF extracted_path = '' THEN
         NEW.image_path := NULL;
     ELSE
@@ -88,7 +83,7 @@ RETURNS TRIGGER AS $$
 DECLARE
     extracted_path TEXT;
 BEGIN
-    extracted_path := split_part(NEW.image_url, '/public/Storage/', 2);
+    extracted_path := split_part(split_part(NEW.image_url, '/public/Storage/', 2), '?', 1);
     IF extracted_path = '' THEN
         NEW.image_path := NULL;
     ELSE
@@ -104,6 +99,22 @@ BEFORE INSERT OR UPDATE OF image_url ON public.characters
 FOR EACH ROW EXECUTE FUNCTION public.sync_character_image_path();
 
 -- Update upsert_user_preferences to include profile_picture_path
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE p.proname = 'upsert_user_preferences' AND n.nspname = 'public'
+    ) THEN
+        EXECUTE (
+            SELECT string_agg('DROP FUNCTION IF EXISTS ' || p.oid::regprocedure || ';', ' ')
+            FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE p.proname = 'upsert_user_preferences' AND n.nspname = 'public'
+        );
+    END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,
