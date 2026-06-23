@@ -36,21 +36,28 @@ CREATE POLICY "Users can create PR comments in any PR" ON public.repository_pull
 
 -- Verify repository password for the backend (using anon key)
 CREATE OR REPLACE FUNCTION public.verify_repository_password(p_password TEXT)
+SET search_path = pg_catalog, public
 RETURNS TABLE (user_id UUID) AS $$
 BEGIN
-    RETURN QUERY SELECT rp.user_id FROM public.repository_passwords rp WHERE rp.password = p_password;
+    RETURN QUERY SELECT rp.user_id FROM public.repository_passwords rp WHERE rp.password = crypt(p_password, rp.password);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Fork repository function
 CREATE OR REPLACE FUNCTION public.fork_repository(p_repo_id UUID)
-RETURNS UUID AS $$
+RETURNS UUID
+SET search_path = pg_catalog, public
+AS $$
 DECLARE
     v_new_repo_id UUID;
     v_name TEXT;
     v_description TEXT;
 BEGIN
     SELECT name, description INTO v_name, v_description FROM public.repositories WHERE id = p_repo_id;
+
+    IF v_name IS NULL THEN
+        RAISE EXCEPTION 'Repository not found';
+    END IF;
 
     INSERT INTO public.repositories (owner_id, name, description, forked_from_id)
     VALUES (auth.uid(), v_name || '-fork', v_description, p_repo_id)

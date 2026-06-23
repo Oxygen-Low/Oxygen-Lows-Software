@@ -37,15 +37,15 @@ END $$;
 -- Migrate existing image_path data if possible (extract from image_url)
 UPDATE public.profile_pictures
 SET image_path = CASE
-    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
-    ELSE split_part(image_url, '/public/Storage/', 2)
+    WHEN split_part(split_part(image_url, '/public/Storage/', 2), '?', 1) = '' THEN NULL
+    ELSE split_part(split_part(image_url, '/public/Storage/', 2), '?', 1)
 END
 WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
 
 UPDATE public.characters
 SET image_path = CASE
-    WHEN split_part(image_url, '/public/Storage/', 2) = '' THEN NULL
-    ELSE split_part(image_url, '/public/Storage/', 2)
+    WHEN split_part(split_part(image_url, '/public/Storage/', 2), '?', 1) = '' THEN NULL
+    ELSE split_part(split_part(image_url, '/public/Storage/', 2), '?', 1)
 END
 WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';
 
@@ -58,7 +58,8 @@ USING (
   bucket_id = 'Storage' AND (
     (auth.uid())::text = owner_id OR
     EXISTS (SELECT 1 FROM public.profile_pictures WHERE image_path = name AND user_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.characters WHERE image_path = name AND user_id = auth.uid())
+    EXISTS (SELECT 1 FROM public.characters WHERE image_path = name AND user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_preferences WHERE profile_picture_path = name AND user_id = auth.uid())
   )
 );
 
@@ -104,6 +105,17 @@ BEFORE INSERT OR UPDATE OF image_url ON public.characters
 FOR EACH ROW EXECUTE FUNCTION public.sync_character_image_path();
 
 -- Update upsert_user_preferences to include profile_picture_path
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'upsert_user_preferences') THEN
+        EXECUTE (
+            SELECT string_agg('DROP FUNCTION IF EXISTS ' || oid::regprocedure || ';', ' ')
+            FROM pg_proc
+            WHERE proname = 'upsert_user_preferences'
+        );
+    END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,

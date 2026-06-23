@@ -47,6 +47,7 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
   if (isWriteOp && !canWrite) return res.status(403).json({ error: "Write access required." });
 
   try {
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(repo.id, repo.storage_path, token);
     repoManager.touchActivity(repo.id, token);
 
@@ -113,6 +114,7 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
     gitBackend.stdout.on('end', async () => {
         if (isWriteOp && canWrite && token) {
             try {
+                if (!repo.storage_path) throw new Error("Repository storage path is missing");
                 const { size } = await repoManager.uploadToStorage(repo.id, repo.storage_path, token);
                 await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", repo.id);
             } catch (err) { console.error("Save error:", err); }

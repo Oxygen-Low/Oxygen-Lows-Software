@@ -142,7 +142,8 @@ router.post("/:id/fork", authenticateRepoRequest, apiLimiter, async (req, res) =
         if (!newRepo) throw new Error("Failed to create fork record");
 
         const originalRepo = await getRepo(id, token);
-        const originalPath = await repoManager.ensureLoaded(id, originalRepo.storage_path, token);
+        if (!originalRepo.storage_path) return res.status(400).json({ error: "Original repository storage path is missing" });
+    const originalPath = await repoManager.ensureLoaded(id, originalRepo.storage_path, token);
 
         const forkPath = repoManager.getRepoPath(newRepoId);
         await fs.ensureDir(forkPath);
@@ -206,6 +207,7 @@ router.get(/^\/([0-9a-f-]+)\/tree\/([^\/]+)(?:\/(.*))?$/, authenticateRepoReques
 
   try {
     const repo = await getRepo(id, token);
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
     repoManager.touchActivity(id, token);
     const git = simpleGit(repoPath);
@@ -230,6 +232,7 @@ router.get(/^\/([0-9a-f-]+)\/blob\/([^\/]+)\/(.+)$/, authenticateRepoRequest, au
 
   try {
     const repo = await getRepo(id, token);
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
     const content = await simpleGit(repoPath).show([`${branch}:${filePath}`]);
     res.send(content);
@@ -251,6 +254,7 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
 
   if ((req as any).repoPermission === "read") return res.status(403).json({ error: "Forbidden" });
   try {
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
     const tempDir = path.resolve(path.dirname(repoPath), `${id}-edit-${crypto.randomBytes(4).toString('hex')}`);
     try {
@@ -263,6 +267,8 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await fs.ensureDir(path.dirname(fullPath));
       await fs.writeFile(fullPath, content);
       await tempGit.add(filePath); await tempGit.commit(message || "Web edit"); await tempGit.push("origin", branch);
+      if (!repo.storage_path) throw new Error("Repository storage path is missing");
+      if (!repo.storage_path) throw new Error("Repository storage path is missing");
       const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);
       const supabase = getSupabaseClient(token);
       await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", id);
@@ -341,6 +347,7 @@ router.get("/:id/pulls/:prId/diff", authenticateRepoRequest, authorizeRepoAccess
     const supabase = getSupabaseClient(token);
     const { data: pr } = await supabase.from("repository_pull_requests").select("*").eq("id", prId).single();
     if (!pr) return res.status(404).json({ error: "PR not found" });
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     await repoManager.ensureLoaded(id, repo.storage_path, token);
     const diff = await simpleGit(repoManager.getRepoPath(id)).raw(["diff", "--", pr.target_branch, pr.source_branch]);
     res.send(diff);
@@ -367,6 +374,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
         return res.status(403).json({ error: "Only the repository owner or admin can merge to the main branch." });
     }
 
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
     const tempDir = path.resolve(path.dirname(repoPath), `${id}-merge-${crypto.randomBytes(8).toString('hex')}`);
     try {
@@ -374,6 +382,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
       await simpleGit().clone(repoPath, tempDir);
       const tempGit = simpleGit(tempDir);
       await tempGit.checkout(pr.target_branch); await tempGit.merge(["--", pr.source_branch]); await tempGit.push("origin", pr.target_branch);
+      if (!repo.storage_path) throw new Error("Repository storage path is missing");
       const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);
       await supabase.from("repository_pull_requests").update({ status: "merged", merged_at: new Date().toISOString(), merged_by: user.id }).eq("id", prId);
       await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", id);

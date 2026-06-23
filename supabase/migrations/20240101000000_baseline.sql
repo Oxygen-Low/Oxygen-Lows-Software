@@ -261,6 +261,17 @@ CREATE OR REPLACE TRIGGER on_auth_identity_insert
   FOR EACH ROW EXECUTE FUNCTION public.block_automatic_linking();
 
 -- upsert_user_preferences
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'upsert_user_preferences') THEN
+        EXECUTE (
+            SELECT string_agg('DROP FUNCTION IF EXISTS ' || oid::regprocedure || ';', ' ')
+            FROM pg_proc
+            WHERE proname = 'upsert_user_preferences'
+        );
+    END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,
