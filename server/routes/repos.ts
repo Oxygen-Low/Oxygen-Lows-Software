@@ -90,6 +90,11 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
             await fs.ensureDir(tempDir);
             await simpleGit().clone(repoPath, tempDir);
             const tempGit = simpleGit(tempDir);
+            const { authorName, authorEmail } = req.body;
+            if (authorName && authorEmail) {
+                await tempGit.addConfig("user.name", authorName);
+                await tempGit.addConfig("user.email", authorEmail);
+            }
             await fs.writeFile(path.join(tempDir, "README.md"), `# ${name}\n\n${description || ""}`);
             await tempGit.add("README.md");
             await tempGit.commit("Initial commit");
@@ -262,6 +267,11 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await simpleGit().clone(repoPath, tempDir);
       const tempGit = simpleGit(tempDir);
       await tempGit.checkout(branch);
+      const { authorName, authorEmail } = req.body;
+      if (authorName && authorEmail) {
+          await tempGit.addConfig("user.name", authorName);
+          await tempGit.addConfig("user.email", authorEmail);
+      }
       const fullPath = path.resolve(tempDir, filePath);
       if (!fullPath.startsWith(tempDir + path.sep) && fullPath !== tempDir) throw new Error("Invalid path (traversal detected)");
       await fs.ensureDir(path.dirname(fullPath));
@@ -380,6 +390,11 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
       await fs.ensureDir(tempDir);
       await simpleGit().clone(repoPath, tempDir);
       const tempGit = simpleGit(tempDir);
+      const { authorName, authorEmail } = req.body;
+      if (authorName && authorEmail) {
+          await tempGit.addConfig("user.name", authorName);
+          await tempGit.addConfig("user.email", authorEmail);
+      }
       await tempGit.checkout(pr.target_branch); await tempGit.merge(["--", pr.source_branch]); await tempGit.push("origin", pr.target_branch);
       if (!repo.storage_path) throw new Error("Repository storage path is missing");
       const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);

@@ -38,7 +38,18 @@ export function RepositoriesApp() {
     setCreating(true);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch("/api/repos", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` }, body: JSON.stringify({ name: newRepoName, description: newRepoDesc, initReadme: true }) });
+      const { data: profile } = await supabase.from("profiles").select("username, email").eq("user_id", session?.user?.id).single();
+      const res = await fetch("/api/repos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` },
+        body: JSON.stringify({
+          name: newRepoName,
+          description: newRepoDesc,
+          initReadme: true,
+          authorName: profile?.username || session?.user?.user_metadata?.username || "Anonymous",
+          authorEmail: profile?.email || session?.user?.email || "anon@example.com"
+        })
+      });
       if (res.ok) { toast.success("Repository created"); setNewRepoName(""); setNewRepoDesc(""); fetchRepos(); } else { const error = await res.json(); toast.error(error.error || "Failed to create repository"); }
     } catch (err) { toast.error("Error creating repository"); } finally { setCreating(false); }
   };
@@ -102,7 +113,20 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
     setIsSaving(true);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch(`/api/repos/${repo.id}/file`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` }, body: JSON.stringify({ path: selectedFile, content: fileContent, message: `Edit ${selectedFile}` }) });
+      const { data: user } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from("profiles").select("username, email").eq("user_id", user.user?.id).single();
+      const res = await fetch(`/api/repos/${repo.id}/files`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` },
+        body: JSON.stringify({
+          filePath: selectedFile,
+          branch: "main", // Default branch
+          content: fileContent,
+          message: `Edit ${selectedFile}`,
+          authorName: profile?.username || user.user?.user_metadata?.username || "Anonymous",
+          authorEmail: profile?.email || user.user?.email || "anon@example.com"
+        })
+      });
       if (res.ok) toast.success("Saved"); else toast.error("Failed to save");
     } catch (err) { toast.error("Error saving"); } finally { setIsSaving(false); }
   };
@@ -210,7 +234,16 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
 
   const merge = async () => {
     const { data: token } = await supabase.auth.getSession();
-    const res = await fetch(`/api/repos/${repoId}/pulls/${selectedPr.id}/merge`, { method: "POST", headers: { Authorization: `Bearer ${token.session?.access_token}` } });
+    const { data: user } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from("profiles").select("username, email").eq("user_id", user.user?.id).single();
+    const res = await fetch(`/api/repos/${repoId}/pulls/${selectedPr.id}/merge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` },
+      body: JSON.stringify({
+        authorName: profile?.username || user.user?.user_metadata?.username || "Anonymous",
+        authorEmail: profile?.email || user.user?.email || "anon@example.com"
+      })
+    });
     if (res.ok) { toast.success("Merged"); fetchPrs(); setSelectedPr(null); }
   };
 
