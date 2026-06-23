@@ -108,6 +108,7 @@ class RepoManager {
     const repoPath = getSafeRepoPath(repoId);
     await fs.ensureDir(repoPath);
     await simpleGit(repoPath).init(true);
+    await simpleGit(repoPath).raw(["symbolic-ref", "HEAD", "refs/heads/main"]);
     const storagePath = `${ownerId}/repos/${repoId}.zip`;
     const { size } = await this.uploadToStorage(repoId, storagePath, token);
     this.loadedRepos.set(repoId, { lastActivity: Date.now(), loading: null, ownerToken: token });

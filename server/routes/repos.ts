@@ -82,7 +82,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
     const supabase = getSupabaseClient(token);
 
     // Create local repo first
-    const { size } = await repoManager.createRepo(repoId, user.id, name, token);
+    let { size } = await repoManager.createRepo(repoId, user.id, name, token);
 
     // Optionally init readme
     if (initReadme) {
@@ -96,6 +96,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
             await fs.ensureDir(tempDir);
             await simpleGit().clone(repoPath, tempDir);
             const tempGit = simpleGit(tempDir);
+            await tempGit.checkoutLocalBranch("main");
             const profile = await getAuthorProfile(user.id, token);
             const authorName = profile?.username || user.user_metadata?.username || "Anonymous";
             const authorEmail = profile?.email || user.email || "anon@example.com";
@@ -106,7 +107,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
             await tempGit.commit("Initial commit");
             await tempGit.push("origin", "main");
             // Sync back to storage
-            await repoManager.uploadToStorage(repoId, storagePath, token);
+            ({ size } = await repoManager.uploadToStorage(repoId, storagePath, token));
         } finally {
             await fs.remove(tempDir);
         }
