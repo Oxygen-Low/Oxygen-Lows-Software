@@ -231,7 +231,7 @@ BEGIN
     IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
-    INSERT INTO public.repository_passwords (user_id, password, updated_at) VALUES (p_user_id, crypt(p_password, gen_salt('bf')), now())
+    INSERT INTO public.repository_passwords (user_id, password, updated_at) VALUES (p_user_id, extensions.crypt(p_password, extensions.gen_salt('bf')), now())
     ON CONFLICT (user_id) DO UPDATE SET password = EXCLUDED.password, updated_at = now();
 END; $$ LANGUAGE plpgsql SECURITY DEFINER;
 

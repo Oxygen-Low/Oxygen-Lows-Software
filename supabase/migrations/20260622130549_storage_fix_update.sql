@@ -8,5 +8,5 @@ END $$;
 
 -- Migrate existing image_path data if possible (extract from image_url)
 UPDATE public.profile_pictures
-SET image_path = split_part(split_part(image_url, '/public/Storage/', 2), '?', 1)
+SET image_path = NULLIF(split_part(split_part(image_url, '/public/Storage/', 2), '?', 1), '')
 WHERE image_path IS NULL AND image_url LIKE '%/public/Storage/%';

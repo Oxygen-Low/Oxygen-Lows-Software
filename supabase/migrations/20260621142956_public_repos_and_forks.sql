@@ -35,11 +35,17 @@ CREATE POLICY "Users can create PR comments in any PR" ON public.repository_pull
 -- SECURITY DEFINER Functions
 
 -- Verify repository password for the backend (using anon key)
+-- Hash any existing plaintext passwords
+UPDATE public.repository_passwords
+SET password = extensions.crypt(password, extensions.gen_salt('bf'))
+WHERE password NOT LIKE '$2a$%' AND password NOT LIKE '$2b$%';
+
 CREATE OR REPLACE FUNCTION public.verify_repository_password(p_password TEXT)
+RETURNS TABLE (user_id UUID)
 SET search_path = pg_catalog, public
-RETURNS TABLE (user_id UUID) AS $$
+AS $$
 BEGIN
-    RETURN QUERY SELECT rp.user_id FROM public.repository_passwords rp WHERE rp.password = crypt(p_password, rp.password);
+    RETURN QUERY SELECT rp.user_id FROM public.repository_passwords rp WHERE rp.password = extensions.crypt(p_password, rp.password);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

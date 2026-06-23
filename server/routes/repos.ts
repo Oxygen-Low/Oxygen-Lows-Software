@@ -268,7 +268,6 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await fs.writeFile(fullPath, content);
       await tempGit.add(filePath); await tempGit.commit(message || "Web edit"); await tempGit.push("origin", branch);
       if (!repo.storage_path) throw new Error("Repository storage path is missing");
-      if (!repo.storage_path) throw new Error("Repository storage path is missing");
       const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);
       const supabase = getSupabaseClient(token);
       await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", id);

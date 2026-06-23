@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS public.upsert_user_preferences(UUID, TEXT, TEXT, JSONB, TEXT, BIGINT, BOOLEAN, BOOLEAN, TEXT, TEXT, JSONB, TEXT);
+DROP FUNCTION IF EXISTS public.upsert_user_preferences CASCADE;
 -- Update upsert_user_preferences to include profile_picture_path
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
