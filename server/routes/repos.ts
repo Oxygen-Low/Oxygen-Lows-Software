@@ -69,6 +69,29 @@ router.get("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
+router.get("/user/git-password", authenticateRepoRequest, apiLimiter, async (req, res) => {
+  const user = (req as any).user;
+  const token = (req as any).supabaseToken;
+  try {
+    const supabase = getSupabaseClient(token);
+    const { data, error } = await supabase.from("repository_passwords").select("user_id").eq("user_id", user.id).single();
+    if (error && error.code !== 'PGRST116') return res.status(500).json({ error: error.message });
+    res.json({ password: data ? "••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••" : null });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post("/user/git-password", authenticateRepoRequest, apiLimiter, async (req, res) => {
+  const user = (req as any).user;
+  const token = (req as any).supabaseToken;
+  try {
+    const password = crypto.randomBytes(32).toString("hex");
+    const supabase = getSupabaseClient(token);
+    const { error } = await supabase.rpc("upsert_repository_password", { p_user_id: user.id, p_password: password });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ password });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
 router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
   const { name, description, initReadme } = req.body;
   const user = (req as any).user;
