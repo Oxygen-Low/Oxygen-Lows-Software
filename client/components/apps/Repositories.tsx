@@ -38,7 +38,15 @@ export function RepositoriesApp() {
     setCreating(true);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch("/api/repos", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` }, body: JSON.stringify({ name: newRepoName, description: newRepoDesc, initReadme: true }) });
+      const res = await fetch("/api/repos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` },
+        body: JSON.stringify({
+          name: newRepoName,
+          description: newRepoDesc,
+          initReadme: true
+        })
+      });
       if (res.ok) { toast.success("Repository created"); setNewRepoName(""); setNewRepoDesc(""); fetchRepos(); } else { const error = await res.json(); toast.error(error.error || "Failed to create repository"); }
     } catch (err) { toast.error("Error creating repository"); } finally { setCreating(false); }
   };
@@ -102,7 +110,16 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
     setIsSaving(true);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch(`/api/repos/${repo.id}/file`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` }, body: JSON.stringify({ path: selectedFile, content: fileContent, message: `Edit ${selectedFile}` }) });
+      const res = await fetch(`/api/repos/${repo.id}/files`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` },
+        body: JSON.stringify({
+          filePath: selectedFile,
+          branch: repo.default_branch || "main",
+          content: fileContent,
+          message: `Edit ${selectedFile}`
+        })
+      });
       if (res.ok) toast.success("Saved"); else toast.error("Failed to save");
     } catch (err) { toast.error("Error saving"); } finally { setIsSaving(false); }
   };
@@ -210,7 +227,10 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
 
   const merge = async () => {
     const { data: token } = await supabase.auth.getSession();
-    const res = await fetch(`/api/repos/${repoId}/pulls/${selectedPr.id}/merge`, { method: "POST", headers: { Authorization: `Bearer ${token.session?.access_token}` } });
+    const res = await fetch(`/api/repos/${repoId}/pulls/${selectedPr.id}/merge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` }
+    });
     if (res.ok) { toast.success("Merged"); fetchPrs(); setSelectedPr(null); }
   };
 
