@@ -187,7 +187,7 @@ function RepoIssues({ repoId }: { repoId: string }) {
   const [issues, setIssues] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const fetchIssues = useCallback(async () => {
-    const { data } = await supabase.from("repository_issues").select("*, author:profiles!repository_issues_author_id_fkey(username)").eq("repo_id", repoId).order("created_at", { ascending: false });
+    const { data } = await supabase.from("repository_issues").select("*, author:profiles!author_id(username)").eq("repo_id", repoId).order("created_at", { ascending: false });
     if (data) setIssues(data);
   }, [repoId]);
   useEffect(() => { fetchIssues(); }, [fetchIssues]);
@@ -211,7 +211,7 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
   const [newPr, setNewPr] = useState({ title: "", source: "", target: "main" });
 
   const fetchPrs = useCallback(async () => {
-    const { data } = await supabase.from("repository_pull_requests").select("*, author:profiles!repository_pull_requests_author_id_fkey(username)").eq("repo_id", repoId).order("created_at", { ascending: false });
+    const { data } = await supabase.from("repository_pull_requests").select("*, author:profiles!author_id(username)").eq("repo_id", repoId).order("created_at", { ascending: false });
     if (data) setPrs(data);
   }, [repoId]);
   useEffect(() => { fetchPrs(); }, [fetchPrs]);
@@ -221,7 +221,7 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
     const { data: token } = await supabase.auth.getSession();
     const res = await fetch(`/api/repos/${repoId}/pulls/${pr.id}/diff`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
     setDiff(await res.text());
-    const { data: comms } = await supabase.from("repository_pull_request_comments").select("*, user:profiles!repository_pull_request_comments_user_id_fkey(username)").eq("pr_id", pr.id).order("created_at", { ascending: true });
+    const { data: comms } = await supabase.from("repository_pull_request_comments").select("*, user:profiles!user_id(username)").eq("pr_id", pr.id).order("created_at", { ascending: true });
     if (comms) setComments(comms);
   };
 
@@ -290,7 +290,7 @@ function RepoCollaborators({ repoId, isOwner }: { repoId: string, isOwner: boole
   const [friends, setFriends] = useState<any[]>([]);
   const [username, setUsername] = useState("");
   const fetchData = useCallback(async () => {
-    supabase.from("repository_collaborators").select("*, user:profiles!repository_collaborators_user_id_fkey(username, display_name)").eq("repo_id", repoId).then(({ data }) => { if (data) setCollabs(data); });
+    supabase.from("repository_collaborators").select("*, user:profiles!user_id(username, display_name)").eq("repo_id", repoId).then(({ data }) => { if (data) setCollabs(data); });
     if (isOwner) { const { data } = await supabase.rpc("get_my_friendships"); if (data) setFriends(data.filter((f:any) => f.status === 'accepted')); }
   }, [repoId, isOwner]);
   useEffect(() => { fetchData(); }, [fetchData]);
