@@ -7,13 +7,16 @@ const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 export async function authenticateRepoRequest(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   let token: string | null = null;
+  let gitUsername: string | null = null;
+
   if (authHeader?.startsWith("Bearer ")) {
     token = authHeader.substring(7);
   } else if (authHeader?.startsWith("Basic ")) {
     const base64 = authHeader.substring(6);
     const decoded = Buffer.from(base64, "base64").toString();
-    const [_, password] = decoded.split(":");
+    const [username, password] = decoded.split(":");
     token = password;
+    gitUsername = username;
   }
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
@@ -29,7 +32,10 @@ export async function authenticateRepoRequest(req: Request, res: Response, next:
 
   // Try as Git Password
   if (token.length === 64) {
-    const { data: passwordData } = await supabase.rpc("verify_repository_password", { p_password: token });
+    const { data: passwordData } = await supabase.rpc("verify_repository_password", {
+      p_username: gitUsername,
+      p_password: token
+    });
     if (passwordData && passwordData.length > 0) {
       const userId = passwordData[0].user_id;
       const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", userId).single();
