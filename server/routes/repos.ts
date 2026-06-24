@@ -231,6 +231,45 @@ router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, 
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
+router.get("/:id/tree", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+  const id = String(req.params.id);
+  const subpath = String(req.query.path || "");
+  const token = (req as any).supabaseToken;
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
+  if (subpath && !isSafePath(subpath)) return res.status(400).json({ error: "Invalid path" });
+  try {
+    const repo = await getRepo(id, token);
+    const branch = repo.default_branch || "main";
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
+    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
+    repoManager.touchActivity(id, token);
+    const git = simpleGit(repoPath);
+    const tree = await git.raw(["ls-tree", "-l", `${branch}:${subpath}`]);
+    const items = tree.split("\n").filter(Boolean).map(line => {
+      const [info, file] = line.split("\t");
+      const [mode, type, sha, size] = info.split(/\s+/);
+      return { name: file, type, size: size === "-" ? 0 : parseInt(size), path: subpath ? `${subpath}/${file}` : file };
+    });
+    res.json(items);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.get("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
+  const id = String(req.params.id);
+  const filePath = String(req.query.path || "");
+  const token = (req as any).supabaseToken;
+  if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
+  if (!isSafePath(filePath)) return res.status(400).json({ error: "Invalid path" });
+  try {
+    const repo = await getRepo(id, token);
+    const branch = repo.default_branch || "main";
+    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
+    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
+    const content = await simpleGit(repoPath).show([`${branch}:${filePath}`]);
+    res.send(content);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
 router.get(/^\/([0-9a-f-]+)\/tree\/([^\/]+)(?:\/(.*))?$/, authenticateRepoRequest, authorizeRepoAccess, async (req: any, res) => {
   const id = req.params[0];
   const branch = req.params[1];
@@ -324,7 +363,7 @@ router.get("/:id/issues", authenticateRepoRequest, authorizeRepoAccess, async (r
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
     const supabase = getSupabaseClient(token);
-    const { data, error } = await supabase.from("repository_issues").select("*, author:profiles!repository_issues_author_id_fkey(username)").eq("repo_id", id).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("repository_issues").select("*, author:profiles!author_id(username)").eq("repo_id", id).order("created_at", { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -350,7 +389,7 @@ router.get("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, async (re
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
     const supabase = getSupabaseClient(token);
-    const { data, error } = await supabase.from("repository_pull_requests").select("*, author:profiles!repository_pull_requests_author_id_fkey(username)").eq("repo_id", id).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("repository_pull_requests").select("*, author:profiles!author_id(username)").eq("repo_id", id).order("created_at", { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -445,7 +484,7 @@ router.get("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAc
   if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   try {
     const supabase = getSupabaseClient(token);
-    const { data, error } = await supabase.from("repository_pull_request_comments").select("*, user:profiles!repository_pull_request_comments_user_id_fkey(username)").eq("pr_id", prId).order("created_at", { ascending: true });
+    const { data, error } = await supabase.from("repository_pull_request_comments").select("*, user:profiles!user_id(username)").eq("pr_id", prId).order("created_at", { ascending: true });
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -473,7 +512,7 @@ router.get("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, a
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
     const supabase = getSupabaseClient(token);
-    const { data, error } = await supabase.from("repository_collaborators").select("*, user:profiles!repository_collaborators_user_id_fkey(username, display_name)").eq("repo_id", id);
+    const { data, error } = await supabase.from("repository_collaborators").select("*, user:profiles!user_id(username, display_name)").eq("repo_id", id);
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
