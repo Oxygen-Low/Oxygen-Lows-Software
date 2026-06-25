@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Book, Plus, HardDrive, GitBranch, RefreshCw, ChevronRight, File, Folder, Code, Save, Send, GitPullRequest, GitFork, AlertCircle, Copy, Users, Trash2 } from "lucide-react";
+import { Book, Plus, HardDrive, GitBranch, RefreshCw, ChevronRight, File, Folder, Code, Save, Send, GitPullRequest, GitFork, AlertCircle, Copy, Users, Trash2, Info } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,7 @@ export function RepositoriesApp() {
 }
 
 function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
+  const { session } = useAuth();
   const [activeTab, setActiveTab] = useState("code");
   const [tree, setTree] = useState<any[]>([]);
   const [currentPath, setCurrentPath] = useState("");
@@ -83,6 +84,16 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [gitPassword, setGitPassword] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      supabase.from("profiles").select("username").eq("user_id", session.user.id).single().then(({ data }) => setProfile(data));
+    }
+  }, [session]);
+
+  const username = profile?.username;
+  const cloneUrl = username ? `${window.location.protocol}//${username}@${window.location.host}/api/git/${repo.profiles?.username}/${repo.name}.git` : null;
 
   const fetchTree = useCallback(async (path: string = "") => {
     setLoading(true);
@@ -149,7 +160,7 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-slate-900 border-slate-800 p-1"><TabsTrigger value="code">Code</TabsTrigger><TabsTrigger value="issues">Issues</TabsTrigger><TabsTrigger value="pulls">Pull Requests</TabsTrigger><TabsTrigger value="collaborators">Collaborators</TabsTrigger><TabsTrigger value="settings">Settings</TabsTrigger></TabsList>
         <TabsContent value="code" className="mt-6 space-y-4">
-          <div className="flex gap-2 items-center text-sm bg-slate-900/50 p-2 rounded border border-slate-800"><span className="text-slate-500">Clone URL:</span><code className="text-cyan-400 flex-1 px-2 py-1 bg-black/30 rounded">{window.location.origin}/api/git/{repo.profiles?.username}/{repo.name}.git</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/git/${repo.profiles?.username}/${repo.name}.git`); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div>
+          {cloneUrl && <div className="flex gap-2 items-center text-sm bg-slate-900/50 p-2 rounded border border-slate-800"><span className="text-slate-500">Clone URL:</span><code className="text-cyan-400 flex-1 px-2 py-1 bg-black/30 rounded">{cloneUrl}</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(cloneUrl); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div>}
           <div className="grid grid-cols-12 gap-4 h-[600px]">
             <Card className="col-span-3 bg-slate-900/50 border-slate-800 flex flex-col"><CardHeader className="p-4 border-b border-slate-800"><CardTitle className="text-sm font-medium">Files</CardTitle></CardHeader>
               <ScrollArea className="flex-1 p-2">
@@ -173,7 +184,17 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
         <TabsContent value="pulls"><RepoPullRequests repoId={repo.id} /></TabsContent>
         <TabsContent value="collaborators"><RepoCollaborators repoId={repo.id} isOwner={repo.permission === 'admin'} /></TabsContent>
         <TabsContent value="settings" className="space-y-4">
-           <Card className="bg-slate-900/50 border-slate-800"><CardHeader><CardTitle>Git Authentication</CardTitle></CardHeader><CardContent className="space-y-4">{gitPassword ? <div className="flex gap-2"><code className="flex-1 bg-black/30 p-2 rounded border border-slate-800 text-cyan-400 break-all text-xs">{gitPassword}</code><Button variant="outline" onClick={() => { navigator.clipboard.writeText(gitPassword); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div> : <p className="text-slate-500 italic">No password generated.</p>}<Button variant="secondary" onClick={async () => { const { data: token } = await supabase.auth.getSession(); const res = await fetch("/api/repos/user/git-password", { method: "POST", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); const data = await res.json(); setGitPassword(data.password); }}>Generate Password</Button></CardContent></Card>
+           <Card className="bg-slate-900/50 border-slate-800">
+             <CardHeader><CardTitle>Git Authentication</CardTitle><CardDescription>Authenticate with git using your username and a generated password.</CardDescription></CardHeader>
+             <CardContent className="space-y-4">
+               {username && <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-200">
+                 <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                 <p>To clone or push to this repository, use your username (<strong>{username}</strong>) and the generated password below. The username must match your account for the password to be valid.</p>
+               </div>}
+               {gitPassword ? <div className="flex gap-2"><code className="flex-1 bg-black/30 p-2 rounded border border-slate-800 text-cyan-400 break-all text-xs">{gitPassword}</code><Button variant="outline" onClick={() => { navigator.clipboard.writeText(gitPassword); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div> : <p className="text-slate-500 italic">No password generated.</p>}
+               <Button variant="secondary" onClick={async () => { const { data: token } = await supabase.auth.getSession(); const res = await fetch("/api/repos/user/git-password", { method: "POST", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); const data = await res.json(); setGitPassword(data.password); }}>Generate Password</Button>
+             </CardContent>
+           </Card>
            {repo.permission === 'admin' && (
              <Card className="bg-slate-900/50 border-red-900/30"><CardHeader><CardTitle className="text-red-400">Danger Zone</CardTitle></CardHeader><CardContent><Button variant="destructive" onClick={async () => { if(confirm("Delete?")) { try { const { data: token } = await supabase.auth.getSession(); const res = await fetch(`/api/repos/${repo.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); if (res.ok) { toast.success("Repository deleted"); onBack(); } else { const error = await res.json(); toast.error(error.error || "Failed to delete repository"); } } catch (err) { toast.error("Error deleting repository"); } } }}>Delete Repository</Button></CardContent></Card>
            )}
