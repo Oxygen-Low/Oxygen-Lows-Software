@@ -5,6 +5,7 @@ import extract from "extract-zip";
 import fs from "fs-extra";
 import path from "path";
 import os from "os";
+import crypto from "crypto";
 
 const REPOS_DATA_DIR = process.env.REPOS_DATA_DIR || path.join(os.tmpdir(), "oxygen-repos");
 const IDLE_TIMEOUT = 10 * 60 * 1000;
@@ -229,6 +230,10 @@ class RepoManager {
 
   getRepoPath(repoId: string) {
     return getSafeRepoPath(repoId);
+  }
+
+  getSafeTmpPath(repoId: string, suffix: string) {
+    return getSafeTmpPath(repoId, suffix);
   }
 
   async deleteRepo(repoId: string) {

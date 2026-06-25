@@ -21,6 +21,11 @@ async function getRepo(id: string, token: string) {
   return data;
 }
 
+function isSafePath(filePath: string) {
+  if (!filePath || filePath.includes('..') || path.isAbsolute(filePath)) return false;
+  return true;
+}
+
 router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
   const token = (req as any).supabaseToken;
@@ -70,7 +75,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
     // Optionally init readme
     if (initReadme) {
       const repoPath = repoManager.getRepoPath(repoId);
-      const tempDir = path.resolve(path.dirname(repoPath), `${repoId}-init-${crypto.randomBytes(4).toString('hex')}`);
+      const tempDir = repoManager.getSafeTmpPath(repoId, `-init-${crypto.randomBytes(4).toString('hex')}`);
       try {
         await fs.ensureDir(tempDir);
         await repoManager.git().clone(repoPath, tempDir);
@@ -160,13 +165,14 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
   const user = (req as any).user;
 
   if ((req as any).repoPermission === "read") return res.status(403).json({ error: "Forbidden" });
+  if (!isSafePath(filePath)) return res.status(400).json({ error: "Invalid file path" });
 
   try {
     const repo = await getRepo(id, token);
     if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
 
-    const tempDir = path.resolve(path.dirname(repoPath), `${id}-edit-${crypto.randomBytes(8).toString('hex')}`);
+    const tempDir = repoManager.getSafeTmpPath(id, `-edit-${crypto.randomBytes(8).toString('hex')}`);
     try {
       await fs.ensureDir(tempDir);
       await repoManager.git().clone(repoPath, tempDir);
@@ -280,7 +286,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
 
     if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
-    const tempDir = path.resolve(path.dirname(repoPath), `${id}-merge-${crypto.randomBytes(8).toString('hex')}`);
+    const tempDir = repoManager.getSafeTmpPath(id, `-merge-${crypto.randomBytes(8).toString('hex')}`);
     try {
       await fs.ensureDir(tempDir);
       await repoManager.git().clone(repoPath, tempDir);
