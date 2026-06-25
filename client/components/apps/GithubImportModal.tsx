@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Github, RefreshCw, ChevronRight, Book } from "lucide-react";
+import { Search, RefreshCw, ChevronRight, Book } from "lucide-react";
+import { Github } from "./GithubIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
