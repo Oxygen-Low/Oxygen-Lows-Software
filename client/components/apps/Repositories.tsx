@@ -92,7 +92,7 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
     }
   }, [session]);
 
-  const username = profile?.username || session?.user?.user_metadata?.username;
+  const username = profile?.username;
   const cloneUrl = username ? `${window.location.protocol}//${username}@${window.location.host}/api/git/${repo.profiles?.username}/${repo.name}.git` : null;
 
   const fetchTree = useCallback(async (path: string = "") => {
@@ -160,7 +160,7 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-slate-900 border-slate-800 p-1"><TabsTrigger value="code">Code</TabsTrigger><TabsTrigger value="issues">Issues</TabsTrigger><TabsTrigger value="pulls">Pull Requests</TabsTrigger><TabsTrigger value="collaborators">Collaborators</TabsTrigger><TabsTrigger value="settings">Settings</TabsTrigger></TabsList>
         <TabsContent value="code" className="mt-6 space-y-4">
-          <div className="flex gap-2 items-center text-sm bg-slate-900/50 p-2 rounded border border-slate-800"><span className="text-slate-500">Clone URL:</span><code className="text-cyan-400 flex-1 px-2 py-1 bg-black/30 rounded">{cloneUrl || "Loading..."}</code><Button variant="ghost" size="sm" disabled={!cloneUrl} onClick={() => { if (cloneUrl) { navigator.clipboard.writeText(cloneUrl); toast.success("Copied"); } }}><Copy className="w-4 h-4" /></Button></div>
+          {cloneUrl && <div className="flex gap-2 items-center text-sm bg-slate-900/50 p-2 rounded border border-slate-800"><span className="text-slate-500">Clone URL:</span><code className="text-cyan-400 flex-1 px-2 py-1 bg-black/30 rounded">{cloneUrl}</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(cloneUrl); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div>}
           <div className="grid grid-cols-12 gap-4 h-[600px]">
             <Card className="col-span-3 bg-slate-900/50 border-slate-800 flex flex-col"><CardHeader className="p-4 border-b border-slate-800"><CardTitle className="text-sm font-medium">Files</CardTitle></CardHeader>
               <ScrollArea className="flex-1 p-2">
@@ -187,10 +187,10 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
            <Card className="bg-slate-900/50 border-slate-800">
              <CardHeader><CardTitle>Git Authentication</CardTitle><CardDescription>Authenticate with git using your username and a generated password.</CardDescription></CardHeader>
              <CardContent className="space-y-4">
-               <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-200">
+               {username && <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-200">
                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                 <p>To clone or push to this repository, use your username (<strong>{username || "..."}</strong>) and the generated password below. The username must match your account for the password to be valid.</p>
-               </div>
+                 <p>To clone or push to this repository, use your username (<strong>{username}</strong>) and the generated password below. The username must match your account for the password to be valid.</p>
+               </div>}
                {gitPassword ? <div className="flex gap-2"><code className="flex-1 bg-black/30 p-2 rounded border border-slate-800 text-cyan-400 break-all text-xs">{gitPassword}</code><Button variant="outline" onClick={() => { navigator.clipboard.writeText(gitPassword); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button></div> : <p className="text-slate-500 italic">No password generated.</p>}
                <Button variant="secondary" onClick={async () => { const { data: token } = await supabase.auth.getSession(); const res = await fetch("/api/repos/user/git-password", { method: "POST", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); const data = await res.json(); setGitPassword(data.password); }}>Generate Password</Button>
              </CardContent>
