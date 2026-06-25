@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Github, Book, Plus, HardDrive, GitBranch, RefreshCw, ChevronRight, File, Folder, Code, Save, Send, GitPullRequest, GitFork, AlertCircle, Copy, Users, Trash2, Info } from "lucide-react";
+import { Book, Plus, HardDrive, GitBranch, RefreshCw, ChevronRight, File, Folder, Code, Save, Send, GitPullRequest, GitFork, AlertCircle, Copy, Users, Trash2, Info } from "lucide-react";
+import { Github } from "./GithubIcon";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
