@@ -2,6 +2,8 @@ FROM node:26-slim
 
 RUN npm install -g pnpm
 
+RUN npm install -g git
+
 WORKDIR /app
 
 ENV PORT=3000
