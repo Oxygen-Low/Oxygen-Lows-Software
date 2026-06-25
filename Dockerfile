@@ -1,7 +1,5 @@
 FROM node:26-slim
 
-RUN corepack prepare pnpm@11.6.0 --activate
-
 WORKDIR /app
 
 ENV PORT=3000
