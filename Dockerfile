@@ -1,8 +1,6 @@
 FROM node:26-slim
 
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
-
-RUN npm install -g pnpm@11.6.0
+RUN corepack prepare pnpm@11.6.0 --activate
 
 WORKDIR /app
 
