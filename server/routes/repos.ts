@@ -471,4 +471,109 @@ router.post("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, 
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
+
+
+router.get("/github/list", authenticateRepoRequest, apiLimiter, async (req, res) => {
+  const githubToken = req.headers["x-github-token"];
+  if (!githubToken) return res.status(400).json({ error: "GitHub token missing" });
+  try {
+    const response = await fetch("https://api.github.com/user/repos?sort=updated&per_page=100", {
+      headers: { Authorization: `Bearer ${githubToken}`, "Accept": "application/vnd.github.v3+json" }
+    });
+    if (!response.ok) return res.status(response.status).json({ error: "Failed to fetch GitHub repositories" });
+    const repos = await response.json();
+    res.json(repos);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post("/github/import", authenticateRepoRequest, apiLimiter, async (req, res) => {
+  const user = (req as any).user;
+  const token = (req as any).supabaseToken;
+  const githubToken = req.headers["x-github-token"] as string;
+  const { fullName, name, description } = req.body;
+  if (!githubToken) return res.status(400).json({ error: "GitHub token missing" });
+  if (!fullName || !name) return res.status(400).json({ error: "Missing required fields" });
+
+  try {
+    const supabase = getSupabaseClient(token);
+    const repoId = crypto.randomUUID();
+    const { storagePath, size } = await repoManager.importGithubRepo(repoId, user.id, fullName, githubToken, token);
+
+    const { data: repo, error } = await supabase.from("repositories").insert({
+      id: repoId,
+      owner_id: user.id,
+      name,
+      description,
+      storage_path: storagePath,
+      zip_size_bytes: size,
+      github_repo_full_name: fullName,
+      github_sync_at: new Date().toISOString(),
+      is_loaded: true
+    }).select().single();
+
+    if (error) {
+      await repoManager.deleteRepo(repoId);
+      return res.status(500).json({ error: error.message });
+    }
+    res.json(repo);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post("/:id/sync", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
+  const id = String(req.params.id);
+  const token = (req as any).supabaseToken;
+  const githubToken = req.headers["x-github-token"] as string;
+  if (!githubToken) return res.status(400).json({ error: "GitHub token missing" });
+
+  try {
+    const repo = await getRepo(id, token);
+    if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
+
+    const supabase = getSupabaseClient(token);
+
+    // Sync Issues
+    const issuesRes = await fetch(`https://api.github.com/repos/${repo.github_repo_full_name}/issues?state=all&per_page=100`, {
+      headers: { Authorization: `Bearer ${githubToken}`, "Accept": "application/vnd.github.v3+json" }
+    });
+    if (issuesRes.ok) {
+      const githubIssues = await issuesRes.json();
+      for (const issue of githubIssues) {
+        const isPR = !!issue.pull_request;
+        const table = isPR ? "repository_pull_requests" : "repository_issues";
+
+        const payload: any = {
+          repo_id: id,
+          number: issue.number,
+          title: issue.title,
+          body: issue.body,
+          status: issue.state === "open" ? "open" : (isPR && issue.merged_at ? "merged" : "closed"),
+          github_id: issue.id,
+          github_username: issue.user.login,
+          updated_at: issue.updated_at
+        };
+
+        if (isPR) {
+          // Fetch PR details for branches
+          const prRes = await fetch(issue.pull_request.url, {
+            headers: { Authorization: `Bearer ${githubToken}`, "Accept": "application/vnd.github.v3+json" }
+          });
+          if (prRes.ok) {
+            const prDetails = await prRes.json();
+            payload.source_branch = prDetails.head.ref;
+            payload.target_branch = prDetails.base.ref;
+            payload.merged_at = prDetails.merged_at;
+          } else {
+            payload.source_branch = "unknown";
+            payload.target_branch = "unknown";
+          }
+        }
+
+        await supabase.from(table).upsert(payload, { onConflict: "repo_id, number" });
+      }
+    }
+
+    await supabase.from("repositories").update({ github_sync_at: new Date().toISOString() }).eq("id", id);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
 export { router as reposRouter };

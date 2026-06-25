@@ -115,6 +115,24 @@ class RepoManager {
     return { storagePath, size };
   }
 
+  async importGithubRepo(repoId: string, ownerId: string, githubFullName: string, githubToken: string, userToken: string) {
+    if (!validateId(repoId) || !validateId(ownerId)) throw new Error("Invalid ID");
+
+    const repoPath = getSafeRepoPath(repoId);
+    await fs.ensureDir(repoPath);
+
+    const git = simpleGit();
+    const remoteUrl = `https://x-access-token:${githubToken}@github.com/${githubFullName}.git`;
+
+    await git.clone(remoteUrl, repoPath, ["--mirror"]);
+
+    const storagePath = `${ownerId}/repos/${repoId}.zip`;
+    const { size } = await this.uploadToStorage(repoId, storagePath, userToken);
+
+    this.loadedRepos.set(repoId, { lastActivity: Date.now(), loading: null, ownerToken: userToken });
+    return { storagePath, size };
+  }
+
   async uploadToStorage(repoId: string, storagePath: string, token: string) {
     if (!validateId(repoId)) throw new Error("Invalid ID");
     const repoPath = getSafeRepoPath(repoId);
