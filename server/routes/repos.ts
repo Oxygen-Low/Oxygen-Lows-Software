@@ -22,7 +22,9 @@ async function getRepo(id: string, token: string) {
 }
 
 function isSafePath(filePath: string) {
-  if (!filePath || filePath.includes('..') || path.isAbsolute(filePath)) return false;
+  if (!filePath) return false;
+  const normalized = path.normalize(filePath);
+  if (normalized.includes('..') || path.isAbsolute(normalized)) return false;
   return true;
 }
 
@@ -183,7 +185,11 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await tempGit.addConfig("user.name", authorName);
       await tempGit.addConfig("user.email", authorEmail);
 
-      const fullPath = path.join(tempDir, filePath);
+      const fullPath = path.resolve(tempDir, filePath);
+      if (!fullPath.startsWith(path.resolve(tempDir) + path.sep)) {
+          return res.status(400).json({ error: "Path injection detected" });
+      }
+
       await fs.ensureDir(path.dirname(fullPath));
       await fs.writeFile(fullPath, content);
       await tempGit.add(filePath);
