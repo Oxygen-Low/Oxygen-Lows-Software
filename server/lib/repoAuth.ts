@@ -40,7 +40,7 @@ export async function authenticateRepoRequest(req: Request, res: Response, next:
     if (passwordData && passwordData.length > 0) {
       const userId = passwordData[0].user_id;
       const supabaseAdmin = getSupabaseAdmin();
-      const { data: profile } = await supabaseAdmin.from("profiles").select("*").eq("id", userId).single();
+      const { data: profile } = await supabaseAdmin.from("profiles").select("*").eq("user_id", userId).single();
       if (profile) {
         (req as any).user = { id: userId, email: profile.email };
         // We don't have a valid Supabase JWT for this user.

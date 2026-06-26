@@ -25,12 +25,16 @@ export function getSupabaseAdmin() {
     });
 }
 
-export async function getAuthorProfile(userId: string, token: string) {
+/**
+ * Fetches the username and email for a given user ID from the public.profiles table.
+ * Note: This uses the admin client to bypass RLS as it is used for git identity derivation.
+ */
+export async function getAuthorProfile(userId: string) {
     const supabaseAdmin = getSupabaseAdmin();
     const { data: profile, error } = await supabaseAdmin
         .from('profiles')
         .select('username, email')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
     if (error) {

@@ -6,25 +6,39 @@ import { repoManager } from "../lib/repoManager";
 import { authenticateRepoRequest, authorizeRepoAccess } from "../lib/repoAuth";
 import { getSupabaseAdmin, getAuthorProfile } from "../lib/supabase";
 import { apiLimiter } from "../lib/limiter";
+import { createClient } from "@supabase/supabase-js";
 
 const router = Router();
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function validateId(id: string) { return UUID_REGEX.test(id); }
 
-function getSupabaseClient(token: string) { return getSupabaseAdmin(); }
+function getAuthenticatedClient(token: string) {
+  const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
+  const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+
+  if (token && token !== supabaseAnonKey) {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false }
+    });
+  }
+  return getSupabaseAdmin();
+}
 
 async function getRepo(id: string, token: string) {
-  const supabase = getSupabaseClient(token);
+  const supabase = getAuthenticatedClient(token);
   const { data, error } = await supabase.from("repositories").select("*").eq("id", id).single();
-  if (error || !data) throw new Error("Repository not found");
+  if (error || !data) throw new Error("Repository not found or access denied");
   return data;
 }
 
 function isSafePath(filePath: string) {
   if (!filePath) return false;
   const normalized = path.normalize(filePath);
+  // Prevent path traversal and absolute paths
   if (normalized.includes('..') || path.isAbsolute(normalized)) return false;
+  // Further restrict to common safe characters if needed, but for now normalization is key
   return true;
 }
 
@@ -45,7 +59,7 @@ router.get("/", authenticateRepoRequest, async (req, res) => {
     const token = (req as any).supabaseToken;
     const user = (req as any).user;
     try {
-        const supabase = getSupabaseClient(token);
+        const supabase = getAuthenticatedClient(token);
         const { data: ownedRepos, error: ownedError } = await supabase.from("repositories").select("*").eq("owner_id", user.id);
         const { data: collabRepos, error: collabError } = await supabase.from("repository_collaborators").select("repositories(*)").eq("user_id", user.id);
 
@@ -69,12 +83,10 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
   const storagePath = `${user.id}/repos/${repoId}.zip`;
 
   try {
-    const supabase = getSupabaseClient(token);
+    const supabase = getSupabaseAdmin();
 
-    // Create local repo first
     let { size } = await repoManager.createRepo(repoId, user.id, name, token);
 
-    // Optionally init readme
     if (initReadme) {
       const repoPath = repoManager.getRepoPath(repoId);
       const tempDir = repoManager.getSafeTmpPath(repoId, `-init-${crypto.randomBytes(4).toString('hex')}`);
@@ -82,7 +94,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
         await fs.ensureDir(tempDir);
         await repoManager.git().clone(repoPath, tempDir);
         const tempGit = repoManager.git(tempDir);
-        const profile = await getAuthorProfile(user.id, token);
+        const profile = await getAuthorProfile(user.id);
         const authorName = profile?.username || user.user_metadata?.username || "Anonymous";
         const authorEmail = profile?.email || user.email || "anon@example.com";
         await tempGit.addConfig("user.name", authorName);
@@ -101,7 +113,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
     const { data, error } = await supabase.from("repositories").insert({ id: repoId, owner_id: user.id, name, description, storage_path: storagePath, zip_size_bytes: size }).select().single();
     if (error) {
         await repoManager.deleteRepo(repoId);
-        await supabase.storage.from("Storage").remove([storagePath]);
+        await supabase.storage.from("Repositories").remove([storagePath]);
         return res.status(500).json({ error: error.message });
     }
     res.json(data);
@@ -117,11 +129,18 @@ router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, 
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
     const repo = await getRepo(id, token);
-    const supabase = getSupabaseClient(token);
-    await repoManager.deleteRepo(id);
-    if (repo.storage_path) await supabase.storage.from("Repositories").remove([repo.storage_path]);
+    const supabase = getSupabaseAdmin();
+
+    // Delete from DB first to ensure transactional integrity (sort of)
     const { error } = await supabase.from("repositories").delete().eq("id", id);
     if (error) throw error;
+
+    // Cleanup artifacts best-effort
+    await repoManager.deleteRepo(id);
+    if (repo.storage_path) {
+        await supabase.storage.from("Repositories").remove([repo.storage_path]);
+    }
+
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -131,13 +150,22 @@ router.get("/:id/files", authenticateRepoRequest, authorizeRepoAccess, async (re
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const branch = (req.query.branch as string) || "main";
-  const folder = (req.query.path as string) || "";
+  let folder = (req.query.path as string) || "";
+
   try {
     const repo = await getRepo(id, token);
     if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
     const git = repoManager.git(repoPath);
-    const filesString = await git.raw(["ls-tree", "-r", "--name-only", branch, folder ? `${folder}/` : ""]);
+
+    // Normalize and trim trailing slashes to avoid root listing issues
+    folder = folder.replace(/\/+$/, "");
+    const pathspec = folder ? `${folder}/` : "";
+
+    const args = ["ls-tree", "-r", "--name-only", branch];
+    if (pathspec) args.push(pathspec);
+
+    const filesString = await git.raw(args);
     const files = filesString.split("\n").filter(Boolean);
     res.json(files);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -171,6 +199,13 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
 
   try {
     const repo = await getRepo(id, token);
+
+    // Authorization check for protected branches (default branch)
+    const defaultBranch = repo.default_branch || "main";
+    if (branch === defaultBranch && repo.owner_id !== user.id && (req as any).repoPermission !== "admin") {
+      return res.status(403).json({ error: `Only the repository owner or admin can push to the ${defaultBranch} branch.` });
+    }
+
     if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
     const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
 
@@ -179,13 +214,22 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await fs.ensureDir(tempDir);
       await repoManager.git().clone(repoPath, tempDir);
       const tempGit = repoManager.git(tempDir);
-      const profile = await getAuthorProfile(user.id, token);
+
+      // Explicitly checkout target branch
+      try {
+        await tempGit.checkout(branch);
+      } catch (e) {
+        await tempGit.checkoutLocalBranch(branch);
+      }
+
+      const profile = await getAuthorProfile(user.id);
       const authorName = profile?.username || user.user_metadata?.username || "Anonymous";
       const authorEmail = profile?.email || user.email || "anon@example.com";
       await tempGit.addConfig("user.name", authorName);
       await tempGit.addConfig("user.email", authorEmail);
 
       const fullPath = path.resolve(tempDir, filePath);
+      // Strict path verification to prevent injection
       if (!fullPath.startsWith(path.resolve(tempDir) + path.sep)) {
           return res.status(400).json({ error: "Path injection detected" });
       }
@@ -197,7 +241,7 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await tempGit.push("origin", branch);
 
       const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);
-      const supabase = getSupabaseClient(token);
+      const supabase = getSupabaseAdmin();
       await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", id);
       res.json({ success: true });
     } finally {
@@ -225,8 +269,8 @@ router.get("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, async (re
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
-    const supabase = getSupabaseClient(token);
-    const { data, error } = await supabase.from("repository_pull_requests").select("*, user:profiles!user_id(username)").eq("repo_id", id).order("created_at", { ascending: false });
+    const supabase = getAuthenticatedClient(token);
+    const { data, error } = await supabase.from("repository_pull_requests").select("*, user:profiles!author_id(username)").eq("repo_id", id).order("created_at", { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -239,13 +283,16 @@ router.get("/:id/pulls/:prId", authenticateRepoRequest, authorizeRepoAccess, asy
     const prId = String(req.params.prId);
     if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
     try {
-      const supabase = getSupabaseClient(token);
-      const { data: pr, error } = await supabase.from("repository_pull_requests").select("*, user:profiles!user_id(username)").eq("id", prId).single();
-      if (error || !pr) return res.status(404).json({ error: "PR not found" });
+      const supabase = getAuthenticatedClient(token);
+      // Scope PR lookup to repo_id
+      const { data: pr, error } = await supabase.from("repository_pull_requests").select("*, user:profiles!author_id(username)").eq("id", prId).eq("repo_id", id).single();
+      if (error || !pr) return res.status(404).json({ error: "PR not found in this repository" });
 
       const repo = await getRepo(id, token);
       const repoPath = await repoManager.ensureLoaded(id, repo.storage_path!, token);
-      const diff = await repoManager.git(repoPath).raw(["diff", "--", pr.target_branch, pr.source_branch]);
+
+      // Fix diff argument ordering: range before --
+      const diff = await repoManager.git(repoPath).raw(["diff", pr.target_branch, pr.source_branch, "--"]);
 
       res.json({ ...pr, diff });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -258,13 +305,13 @@ router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, apiLimit
   const { title, body, source_branch, target_branch } = req.body;
   const user = (req as any).user;
   try {
-    const supabase = getSupabaseClient(token);
-    const { data: lastPR } = await supabase.from("repository_pull_requests").select("number").eq("repo_id", id).order("number", { ascending: false }).limit(1).single();
-    const number = (lastPR?.number || 0) + 1;
+    const supabase = getSupabaseAdmin();
 
+    // Rely on DB unique constraint and sequence for atomic PR number allocation
     const { data, error } = await supabase.from("repository_pull_requests").insert({
-      repo_id: id, user_id: user.id, number, title, body, source_branch, target_branch, status: "open"
+      repo_id: id, author_id: user.id, title, body, source_branch, target_branch, status: "open"
     }).select().single();
+
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -282,12 +329,14 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
 
   try {
     const repo = await getRepo(id, token);
-    const supabase = getSupabaseClient(token);
-    const { data: pr } = await supabase.from("repository_pull_requests").select("*").eq("id", prId).single();
+    const supabase = getSupabaseAdmin();
+    // Scope PR lookup to repo_id
+    const { data: pr } = await supabase.from("repository_pull_requests").select("*").eq("id", prId).eq("repo_id", id).single();
     if (!pr || pr.status !== "open") return res.status(400).json({ error: "Not mergeable" });
 
-    if (pr.target_branch === "main" && repo.owner_id !== user.id && (req as any).repoPermission !== "admin") {
-        return res.status(403).json({ error: "Only the repository owner or admin can merge to the main branch." });
+    const defaultBranch = repo.default_branch || "main";
+    if (pr.target_branch === defaultBranch && repo.owner_id !== user.id && (req as any).repoPermission !== "admin") {
+        return res.status(403).json({ error: `Only the repository owner or admin can merge to the ${defaultBranch} branch.` });
     }
 
     if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
@@ -297,7 +346,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
       await fs.ensureDir(tempDir);
       await repoManager.git().clone(repoPath, tempDir);
       const tempGit = repoManager.git(tempDir);
-      const profile = await getAuthorProfile(user.id, token);
+      const profile = await getAuthorProfile(user.id);
       const authorName = profile?.username || user.user_metadata?.username || "Anonymous";
       const authorEmail = profile?.email || user.email || "anon@example.com";
       await tempGit.addConfig("user.name", authorName);
@@ -321,7 +370,7 @@ router.get("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoAc
   const prId = String(req.params.prId);
   if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
   try {
-    const supabase = getSupabaseClient(token);
+    const supabase = getAuthenticatedClient(token);
     const { data, error } = await supabase.from("repository_pull_request_comments").select("*, user:profiles!user_id(username)").eq("pr_id", prId).order("created_at", { ascending: true });
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
@@ -337,7 +386,7 @@ router.post("/:id/pulls/:prId/comments", authenticateRepoRequest, authorizeRepoA
   const { body } = req.body;
   const user = (req as any).user;
   try {
-    const supabase = getSupabaseClient(token);
+    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.from("repository_pull_request_comments").insert({ pr_id: prId, user_id: user.id, body }).select().single();
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
@@ -349,7 +398,7 @@ router.get("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, a
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
-    const supabase = getSupabaseClient(token);
+    const supabase = getAuthenticatedClient(token);
     const { data, error } = await supabase.from("repository_collaborators").select("*, user:profiles!user_id(username, display_name)").eq("repo_id", id);
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
@@ -363,7 +412,7 @@ router.post("/:id/collaborators", authenticateRepoRequest, authorizeRepoAccess, 
   const { username, permission = "write" } = req.body;
   if ((req as any).repoPermission !== "admin") return res.status(403).json({ error: "Forbidden" });
   try {
-    const supabase = getSupabaseClient(token);
+    const supabase = getSupabaseAdmin();
     const { error } = await supabase.rpc("add_repo_collaborator", { p_repo_id: id, p_username: username, p_permission: permission });
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
@@ -394,7 +443,7 @@ router.post("/github/import", authenticateRepoRequest, apiLimiter, async (req, r
   if (!fullName || !name) return res.status(400).json({ error: "Missing required fields" });
 
   try {
-    const supabase = getSupabaseClient(token);
+    const supabase = getSupabaseAdmin();
     const repoId = crypto.randomUUID();
     const { storagePath, size } = await repoManager.importGithubRepo(repoId, user.id, fullName, githubToken, token);
 
@@ -428,7 +477,7 @@ router.post("/:id/sync", authenticateRepoRequest, authorizeRepoAccess, apiLimite
     const repo = await getRepo(id, token);
     if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
 
-    const supabase = getSupabaseClient(token);
+    const supabase = getSupabaseAdmin();
 
     // Sync Issues
     const issuesRes = await fetch(`https://api.github.com/repos/${repo.github_repo_full_name}/issues?state=all&per_page=100`, {
