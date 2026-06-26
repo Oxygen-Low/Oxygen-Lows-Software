@@ -159,7 +159,7 @@ router.get("/:id/files", authenticateRepoRequest, authorizeRepoAccess, async (re
     const git = repoManager.git(repoPath);
 
     // Normalize and trim trailing slashes to avoid root listing issues
-    folder = folder.replace(/\/+$/, "");
+    while (folder.endsWith("/")) { folder = folder.slice(0, -1); }
     const pathspec = folder ? `${folder}/` : "";
 
     const args = ["ls-tree", "-r", "--name-only", branch];
