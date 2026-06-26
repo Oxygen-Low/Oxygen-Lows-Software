@@ -149,8 +149,8 @@ router.get("/:id/files", authenticateRepoRequest, authorizeRepoAccess, async (re
   const id = String(req.params.id);
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
-  const branch = (req.query.branch as string) || "main";
-  let folder = (req.query.path as string) || "";
+  const branch = typeof req.query.branch === "string" ? req.query.branch : "main";
+  let folder = typeof req.query.path === "string" ? req.query.path : "";
 
   try {
     const repo = await getRepo(id, token);
@@ -175,8 +175,8 @@ router.get("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req
   const id = String(req.params.id);
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
-  const filePath = req.query.path as string;
-  const selectedBranch = (req.query.branch as string) || "main";
+  const filePath = typeof req.query.path === "string" ? req.query.path : "";
+  const selectedBranch = typeof req.query.branch === "string" ? req.query.branch : "main";
   if (!filePath) return res.status(400).json({ error: "Path is required" });
   try {
     const repo = await getRepo(id, token);
@@ -254,7 +254,7 @@ router.get("/:id/commits", authenticateRepoRequest, authorizeRepoAccess, async (
   const id = String(req.params.id);
   const token = (req as any).supabaseToken;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
-  const branch = (req.query.branch as string) || "main";
+  const branch = typeof req.query.branch === "string" ? req.query.branch : "main";
   try {
     const repo = await getRepo(id, token);
     if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
