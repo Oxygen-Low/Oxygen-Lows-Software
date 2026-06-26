@@ -15,7 +15,8 @@ import {
   Bot,
   Monitor,
   Search,
-  GitBranch
+  GitBranch,
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -23,6 +24,7 @@ import { AiScreenshareApp } from "@/components/apps/AiScreenshare";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { LlmModelFinderApp } from "@/components/apps/LlmModelFinder";
 import { RepositoriesApp } from "@/components/apps/Repositories";
+import { LearnApp } from "@/components/apps/Learn";
 
 type Category = "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
@@ -96,6 +98,14 @@ export default function Apps() {
       categories: ["All", "Development"],
       icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
       component: OauthApp,
+    },
+    {
+      id: "learn",
+      name: "Learn",
+      description: "Master new skills through interactive courses and 3D models.",
+      categories: ["All", "Utility"],
+      icon: <BookOpen className="w-8 h-8 text-cyan-500" />,
+      component: LearnApp,
     },
   ];
 
