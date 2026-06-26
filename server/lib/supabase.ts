@@ -2,9 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: false
   },
@@ -13,25 +13,32 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
-export function getSupabaseAdmin() {
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) {
-        throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured on the server");
-    }
-    return createClient(supabaseUrl, serviceRoleKey, {
-        auth: {
-            persistSession: false
-        }
+export function getAuthenticatedClient(token?: string) {
+  if (token && token !== supabaseAnonKey) {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false }
     });
+  }
+  return supabase;
+}
+
+/**
+ * Historically this returned an admin client using the service role key.
+ * Now it returns the standard anon client to remove the service role key requirement.
+ * Database operations formerly relying on bypassing RLS should now be covered by
+ * appropriate RLS policies or use authenticated clients.
+ */
+export function getSupabaseAdmin() {
+    return supabase;
 }
 
 /**
  * Fetches the username and email for a given user ID from the public.profiles table.
- * Note: This uses the admin client to bypass RLS as it is used for git identity derivation.
+ * Now uses the anon client as profiles are viewable by everyone.
  */
 export async function getAuthorProfile(userId: string) {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: profile, error } = await supabaseAdmin
+    const { data: profile, error } = await supabase
         .from('profiles')
         .select('username, email')
         .eq('user_id', userId)

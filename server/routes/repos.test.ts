@@ -1,4 +1,3 @@
-process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import { createServer } from "../index";
@@ -9,7 +8,8 @@ vi.mock("../lib/repoManager", () => ({
     createRepo: vi.fn(),
     getRepoPath: vi.fn(),
     uploadToStorage: vi.fn(),
-    ensureLoaded: vi.fn()
+    ensureLoaded: vi.fn(),
+    getSafeTmpPath: vi.fn()
   }
 }));
 
@@ -35,7 +35,12 @@ vi.mock("@supabase/supabase-js", () => {
                     return Promise.resolve({ data: [{ id: "repo-123", owner_id: "123" }], error: null }).then(onfulfilled);
                 })
             })),
-            rpc: vi.fn().mockResolvedValue({ data: [], error: null })
+            rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+            storage: {
+                from: vi.fn(() => ({
+                    remove: vi.fn().mockResolvedValue({ data: null, error: null })
+                }))
+            }
         }))
     };
 });
