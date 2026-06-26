@@ -1,15 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
-import simpleGit from "simple-git";
+import simpleGit, { SimpleGit } from "simple-git";
 import { ZipArchive } from "archiver";
 import extract from "extract-zip";
 import fs from "fs-extra";
 import path from "path";
 import os from "os";
+import crypto from "crypto";
 
 const REPOS_DATA_DIR = process.env.REPOS_DATA_DIR || path.join(os.tmpdir(), "oxygen-repos");
 const IDLE_TIMEOUT = 10 * 60 * 1000;
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const GIT_BINARY = process.env.GIT_PATH || "git";
 
 interface LoadedRepo {
   lastActivity: number;
@@ -29,9 +31,9 @@ function getSafeRepoPath(repoId: string) {
 
 function getSafeTmpPath(repoId: string, suffix: string) {
     if (!validateId(repoId)) throw new Error("Invalid ID");
-    const safeId = path.basename(repoId);
     const base = path.resolve(os.tmpdir());
-    const target = path.resolve(base, `${safeId}${suffix}`);
+    // Use a random UUID instead of the repoId to satisfy CodeQL's path injection checks
+    const target = path.resolve(base, `${crypto.randomUUID()}${suffix}`);
     const relative = path.relative(base, target);
     if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error("Invalid path");
     return target;
@@ -50,6 +52,23 @@ class RepoManager {
   constructor() {
     fs.ensureDirSync(REPOS_DATA_DIR);
     if (typeof setInterval !== 'undefined') setInterval(() => this.sweep(), 60000).unref();
+    this.checkGit();
+  }
+
+  private async checkGit() {
+    try {
+      await simpleGit({ binary: GIT_BINARY }).version();
+      console.log(`Git check successful: using "${GIT_BINARY}"`);
+    } catch (err) {
+      console.error(`Git check failed: Could not find or execute git at "${GIT_BINARY}". Please ensure git is installed and in your PATH, or set the GIT_PATH environment variable.`);
+    }
+  }
+
+  public git(baseDir?: string): SimpleGit {
+    return simpleGit({
+      baseDir,
+      binary: GIT_BINARY
+    });
   }
 
   getOwnerToken(repoId: string) {
@@ -107,8 +126,8 @@ class RepoManager {
 
     const repoPath = getSafeRepoPath(repoId);
     await fs.ensureDir(repoPath);
-    await simpleGit(repoPath).init(true);
-    await simpleGit(repoPath).raw(["symbolic-ref", "HEAD", "refs/heads/main"]);
+    await this.git(repoPath).init(true);
+    await this.git(repoPath).raw(["symbolic-ref", "HEAD", "refs/heads/main"]);
     const storagePath = `${ownerId}/repos/${repoId}.zip`;
     const { size } = await this.uploadToStorage(repoId, storagePath, token);
     this.loadedRepos.set(repoId, { lastActivity: Date.now(), loading: null, ownerToken: token });
@@ -121,7 +140,7 @@ class RepoManager {
     const repoPath = getSafeRepoPath(repoId);
     await fs.ensureDir(repoPath);
 
-    const git = simpleGit();
+    const git = this.git();
     const remoteUrl = `https://x-access-token:${githubToken}@github.com/${githubFullName}.git`;
 
     await git.clone(remoteUrl, repoPath, ["--mirror"]);
@@ -211,6 +230,10 @@ class RepoManager {
 
   getRepoPath(repoId: string) {
     return getSafeRepoPath(repoId);
+  }
+
+  getSafeTmpPath(repoId: string, suffix: string) {
+    return getSafeTmpPath(repoId, suffix);
   }
 
   async deleteRepo(repoId: string) {

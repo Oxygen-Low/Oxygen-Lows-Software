@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Request, Response, NextFunction } from "express";
+import { getSupabaseAdmin } from "./supabase";
 
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
@@ -38,7 +39,8 @@ export async function authenticateRepoRequest(req: Request, res: Response, next:
     });
     if (passwordData && passwordData.length > 0) {
       const userId = passwordData[0].user_id;
-      const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", userId).single();
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data: profile } = await supabaseAdmin.from("profiles").select("*").eq("user_id", userId).single();
       if (profile) {
         (req as any).user = { id: userId, email: profile.email };
         // We don't have a valid Supabase JWT for this user.
