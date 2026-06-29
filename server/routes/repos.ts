@@ -9,7 +9,7 @@ import { apiLimiter } from "../lib/limiter";
 
 const router = Router();
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function validateId(id: string) { return UUID_REGEX.test(id); }
 
 async function getRepo(id: string, token: string) {
