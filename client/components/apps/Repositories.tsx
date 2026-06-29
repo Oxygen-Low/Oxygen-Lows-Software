@@ -1,148 +1,245 @@
-import { useState, useEffect, useCallback } from "react";
-import { Book, Plus, HardDrive, GitBranch, RefreshCw, ChevronRight, File, Folder, Code, Save, Send, GitPullRequest, GitFork, AlertCircle, Copy, Users, Trash2, Info } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "../../lib/supabase";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { ScrollArea } from "../ui/scroll-area";
+import { Book, Code, AlertCircle, GitPullRequest, Settings, Plus, ChevronRight, Folder, File, Save, RefreshCw, Copy, Search, ExternalLink, Send, Users, Info } from "lucide-react";
 import { Github } from "./GithubIcon";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { cn } from "../../lib/utils";
 import Editor from "@monaco-editor/react";
-import { GithubImportModal } from "./GithubImportModal";
 
 export function RepositoriesApp() {
-  const { session } = useAuth();
   const [repos, setRepos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [newRepoName, setNewRepoName] = useState("");
-  const [newRepoDesc, setNewRepoDesc] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<any | null>(null);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [newRepo, setNewRepo] = useState({ name: "", description: "", initReadme: true });
 
   const fetchRepos = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: token } = await supabase.auth.getSession();
-      const res = await fetch("/api/repos", { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
-      const data = await res.json();
-      if (res.ok) setRepos(data);
-    } catch (err) { toast.error("Failed to fetch repositories"); } finally { setLoading(false); }
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session) return;
+
+      const res = await fetch("/api/repos", {
+        headers: { Authorization: "Bearer " + session.session.access_token }
+      });
+      if (res.ok) setRepos(await res.json());
+    } catch (err) {
+      toast.error("Failed to fetch repositories");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { fetchRepos(); }, [fetchRepos]);
+  useEffect(() => {
+    fetchRepos();
+  }, [fetchRepos]);
 
   const createRepo = async () => {
-    if (!newRepoName) return;
-    setCreating(true);
+    if (!newRepo.name) return;
     try {
-      const { data: token } = await supabase.auth.getSession();
+      const { data: session } = await supabase.auth.getSession();
       const res = await fetch("/api/repos", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` },
-        body: JSON.stringify({
-          name: newRepoName,
-          description: newRepoDesc,
-          initReadme: true
-        })
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (session.session?.access_token || "")
+        },
+        body: JSON.stringify(newRepo)
       });
-      if (res.ok) { toast.success("Repository created"); setNewRepoName(""); setNewRepoDesc(""); fetchRepos(); } else { const error = await res.json(); toast.error(error.error || "Failed to create repository"); }
-    } catch (err) { toast.error("Error creating repository"); } finally { setCreating(false); }
+
+      if (res.ok) {
+        toast.success("Repository created");
+        setShowCreate(false);
+        setNewRepo({ name: "", description: "", initReadme: true });
+        fetchRepos();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to create repository");
+      }
+    } catch (err) {
+      toast.error("Error creating repository");
+    }
   };
 
-  if (selectedRepo) return <RepoDetail repo={selectedRepo} onBack={() => { setSelectedRepo(null); fetchRepos(); }} />;
+  const filteredRepos = repos.filter(r =>
+    r.name.toLowerCase().includes(search.toLowerCase()) ||
+    r.description?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (selectedRepo) {
+    return <RepoDetail repo={selectedRepo} onBack={() => { setSelectedRepo(null); fetchRepos(); }} />;
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto h-full overflow-auto">
       <div className="flex justify-between items-center">
-        <div><h2 className="text-2xl font-bold text-white">Your Repositories</h2><p className="text-slate-400">Manage your git projects.</p></div>
-        <div className="flex gap-2">
-          <Input placeholder="Repo name..." value={newRepoName} onChange={(e) => setNewRepoName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))} className="w-48 bg-slate-900 border-slate-800" />
-          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}><Github className="w-4 h-4 mr-2" />Import</Button>
-          <Button onClick={createRepo} disabled={creating || !newRepoName}>{creating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}New Repo</Button>
+        <div>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Repositories</h1>
+          <p className="text-slate-400">Manage and browse your git repositories</p>
+        </div>
+        <Button onClick={() => setShowCreate(true)} className="bg-cyan-600 hover:bg-cyan-700">
+          <Plus className="w-4 h-4 mr-2" /> New Repository
+        </Button>
+      </div>
+
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Input
+            placeholder="Search repositories..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-10 bg-slate-900 border-slate-800"
+          />
         </div>
       </div>
-      <GithubImportModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} onImported={fetchRepos} />
-      {loading ? <div className="flex justify-center py-20"><RefreshCw className="w-8 h-8 text-cyan-500 animate-spin" /></div> :
+
+      {showCreate && (
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader>
+            <CardTitle>Create New Repository</CardTitle>
+            <CardDescription>A repository contains all project files, including the revision history.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Repository Name</label>
+              <Input
+                placeholder="my-awesome-project"
+                value={newRepo.name}
+                onChange={e => setNewRepo({ ...newRepo, name: e.target.value })}
+                className="bg-slate-950 border-slate-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description (optional)</label>
+              <Input
+                placeholder="Brief description of your project"
+                value={newRepo.description}
+                onChange={e => setNewRepo({ ...newRepo, description: e.target.value })}
+                className="bg-slate-950 border-slate-800"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={newRepo.initReadme}
+                onChange={e => setNewRepo({ ...newRepo, initReadme: e.target.checked })}
+                id="initReadme"
+              />
+              <label htmlFor="initReadme" className="text-sm">Initialize with a README</label>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={createRepo}>Create Repository</Button>
+              <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="w-8 h-8 text-cyan-500 animate-spin" />
+        </div>
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {repos.map((repo) => (
-            <Card key={repo.id} className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition cursor-pointer" onClick={() => setSelectedRepo(repo)}>
-              <CardHeader className="pb-2"><div className="flex justify-between items-start"><div className="flex items-center gap-2"><Book className="w-4 h-4 text-cyan-400" /><CardTitle className="text-lg text-white">{repo.profiles?.username}/{repo.name}</CardTitle></div><Badge variant={repo.is_loaded ? "default" : "secondary"}>{repo.is_loaded ? "Loaded" : "Unloaded"}</Badge> {repo.github_repo_full_name && <Badge variant="secondary" className="bg-slate-800 text-slate-300 ml-1"><Github className="w-3 h-3 mr-1" />Github</Badge>}</div><CardDescription className="line-clamp-2 mt-1">{repo.description || "No description."}</CardDescription></CardHeader>
-              <CardContent><div className="flex items-center gap-4 text-xs text-slate-500"><div className="flex items-center gap-1"><HardDrive className="w-3 h-3" />{(repo.zip_size_bytes / 1024).toFixed(1)} KB</div><div className="flex items-center gap-1"><GitBranch className="w-3 h-3" />{repo.default_branch}</div></div></CardContent>
+          {filteredRepos.map(repo => (
+            <Card
+              key={repo.id}
+              className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer group"
+              onClick={() => setSelectedRepo(repo)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2">
+                    <Book className="w-4 h-4 text-cyan-400" />
+                    <CardTitle className="text-lg text-white">{repo.profiles?.username}/{repo.name}</CardTitle>
+                  </div>
+                  <Badge variant={repo.is_loaded ? "default" : "secondary"}>
+                    {repo.is_loaded ? "Loaded" : "Unloaded"}
+                  </Badge>
+                  {repo.github_repo_full_name && <Badge variant="secondary" className="bg-slate-800 text-slate-300 ml-1"><Github className="w-3 h-3 mr-1" />Github</Badge>}
+                </div>
+                <CardDescription className="line-clamp-2 mt-1">{repo.description || "No description."}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 text-xs text-slate-500">
+                  <span className="flex items-center gap-1"><RefreshCw className="w-3 h-3" /> {new Date(repo.updated_at).toLocaleDateString()}</span>
+                  <span className="flex items-center gap-1"><Plus className="w-3 h-3" /> {(repo.zip_size_bytes / 1024).toFixed(1)} KB</span>
+                </div>
+              </CardContent>
             </Card>
           ))}
-          {repos.length === 0 && <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl text-slate-500">No repositories found. Create one to get started!</div>}
         </div>
-      }
+      )}
     </div>
   );
 }
 
 function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
-  const { session } = useAuth();
   const [activeTab, setActiveTab] = useState("code");
   const [tree, setTree] = useState<any[]>([]);
   const [currentPath, setCurrentPath] = useState("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState("");
+  const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [gitPassword, setGitPassword] = useState<string | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    const syncRepo = async () => {
-      if (!repo.github_repo_full_name) return;
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const githubToken = sessionData.session?.provider_token;
-        if (!githubToken) return;
-        await fetch(`/api/repos/${repo.id}/sync`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${sessionData.session?.access_token}`,
-            "x-github-token": githubToken
-          }
-        });
-      } catch (err) {}
-    };
-    syncRepo();
-  }, [repo.id, repo.github_repo_full_name]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+  }, []);
 
-  useEffect(() => {
-    if (session?.user?.id) {
-      supabase.from("profiles").select("username").eq("user_id", session.user.id).single().then(({ data }) => setProfile(data));
-    }
-  }, [session]);
+  const protocol = typeof window !== "undefined" ? window.location.protocol : "http:";
+  const host = typeof window !== "undefined" ? window.location.host : "localhost";
+  const cloneUrl = protocol + "//" + host + "/api/git/" + (repo.profiles?.username || "owner") + "/" + repo.name + ".git";
 
-  const username = profile?.username;
-  const cloneUrl = username ? `${window.location.protocol}//${username}@${window.location.host}/api/git/${repo.profiles?.username}/${repo.name}.git` : null;
-
-  const fetchTree = useCallback(async (path: string = "") => {
-    setLoading(true);
-    setCurrentPath(path);
+  const fetchTree = useCallback(async (path = "") => {
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch(`/api/repos/${repo.id}/tree?path=${path}`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
-      const data = await res.json();
-      if (res.ok) setTree(data);
-    } catch (err) { toast.error("Failed to load files"); } finally { setLoading(false); }
+      const res = await fetch("/api/repos/" + repo.id + "/files?path=" + path, {
+        headers: { Authorization: "Bearer " + (token.session?.access_token || "") }
+      });
+      if (res.ok) {
+        const files = await res.json();
+        setTree(files.map((f: string) => ({
+          name: f.split("/").pop(),
+          path: f,
+          type: f.endsWith("/") ? "tree" : "blob"
+        })));
+        setCurrentPath(path);
+      }
+    } catch (err) {
+      toast.error("Failed to fetch files");
+    }
   }, [repo.id]);
 
-  useEffect(() => { fetchTree(""); }, [fetchTree]);
+  useEffect(() => {
+    fetchTree();
+  }, [fetchTree]);
 
   const loadFile = async (path: string) => {
     setSelectedFile(path);
     setLoading(true);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch(`/api/repos/${repo.id}/files?path=${path}`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
+      const res = await fetch("/api/repos/" + repo.id + "/file?path=" + path, {
+        headers: { Authorization: "Bearer " + (token.session?.access_token || "") }
+      });
       if (res.ok) setFileContent(await res.text());
-    } catch (err) { toast.error("Failed to load file"); } finally { setLoading(false); }
+    } catch (err) {
+      toast.error("Failed to load file");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const saveFile = async () => {
@@ -150,18 +247,47 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
     setIsSaving(true);
     try {
       const { data: token } = await supabase.auth.getSession();
-      const res = await fetch(`/api/repos/${repo.id}/files`, {
+      const res = await fetch("/api/repos/" + repo.id + "/files", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` },
-        body: JSON.stringify({ filePath: selectedFile, content: fileContent, branch: repo.default_branch, message: `Update ${selectedFile}` })
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (token.session?.access_token || "")
+        },
+        body: JSON.stringify({
+          filePath: selectedFile,
+          content: fileContent,
+          branch: repo.default_branch,
+          message: "Update " + selectedFile
+        })
       });
-      if (res.ok) toast.success("File saved"); else toast.error("Failed to save file");
-    } catch (err) { toast.error("Error saving file"); } finally { setIsSaving(false); }
+      if (res.ok) toast.success("File saved");
+      else toast.error("Failed to save file");
+    } catch (err) {
+      toast.error("Error saving file");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center"><div className="flex items-center gap-4"><Button variant="ghost" size="sm" onClick={onBack}><ChevronRight className="w-4 h-4 rotate-180 mr-1" />Back</Button><div className="flex items-center gap-2"><Book className="w-5 h-5 text-cyan-400" /><h2 className="text-xl font-bold text-white">{repo.profiles?.username}/{repo.name}</h2></div></div><Badge variant={repo.is_loaded ? "default" : "secondary"}>{repo.is_loaded ? "Loaded" : "Unloaded"}</Badge> {repo.github_repo_full_name && <Badge variant="secondary" className="bg-slate-800 text-slate-300 ml-1"><Github className="w-3 h-3 mr-1" />Github</Badge>}</div>
+    <div className="p-6 space-y-6 max-w-7xl mx-auto h-full overflow-auto">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ChevronRight className="w-4 h-4 rotate-180 mr-1" /> Back
+          </Button>
+          <div className="flex items-center gap-2">
+            <Book className="w-5 h-5 text-cyan-400" />
+            <h2 className="text-xl font-bold text-white">{repo.profiles?.username}/{repo.name}</h2>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant={repo.is_loaded ? "default" : "secondary"}>
+            {repo.is_loaded ? "Loaded" : "Unloaded"}
+          </Badge>
+          {repo.github_repo_full_name && <Badge variant="secondary" className="bg-slate-800 text-slate-300 ml-1"><Github className="w-3 h-3 mr-1" />Github</Badge>}
+        </div>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-slate-900 border-slate-800">
@@ -206,13 +332,28 @@ function RepoDetail({ repo, onBack }: { repo: any, onBack: () => void }) {
         <TabsContent value="pulls" className="mt-4"><RepoPullRequests repoId={repo.id} /></TabsContent>
 
         <TabsContent value="settings" className="mt-4 space-y-4">
-           <Card className="bg-slate-900/50 border-slate-800"><CardHeader><CardTitle className="text-white">Clone Repository</CardTitle><CardDescription>Clone this repository to your local machine.</CardDescription></CardHeader><CardContent className="space-y-4">
-             <div className="space-y-2"><label className="text-xs font-medium text-slate-400">Clone URL</label><div className="flex gap-2"><Input readOnly value={cloneUrl || "Loading..."} className="bg-slate-950 border-slate-800 font-mono text-xs" /><Button variant="ghost" size="icon" onClick={() => { if(cloneUrl) { navigator.clipboard.writeText(cloneUrl); toast.success("Copied to clipboard"); } }}><Copy className="w-4 h-4" /></Button></div></div>
-             <div className="space-y-2"><label className="text-xs font-medium text-slate-400">Git Password</label>{gitPassword ? <div className="flex gap-2"><Input readOnly value={gitPassword} className="bg-slate-950 border-slate-800 font-mono text-xs" /><Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(gitPassword); toast.success("Copied to clipboard"); }}><Copy className="w-4 h-4" /></Button></div> : <Button onClick={async () => { const { data: token } = await supabase.auth.getSession(); const res = await fetch("/api/repos/user/git-password", { method: "POST", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); const data = await res.json(); setGitPassword(data.password); }} variant="outline" size="sm">Generate Git Password</Button>}<p className="text-[10px] text-slate-500 flex items-center gap-1"><Info className="w-3 h-3" />This password is used for HTTP basic auth with your username.</p></div>
-           </CardContent></Card>
+           <Card className="bg-slate-900/50 border-slate-800">
+             <CardHeader>
+               <CardTitle className="text-white">Clone Repository</CardTitle>
+               <CardDescription>Clone this repository to your local machine. Read access is public.</CardDescription>
+             </CardHeader>
+             <CardContent className="space-y-4">
+               <div className="space-y-2">
+                 <label className="text-xs font-medium text-slate-400">Clone URL</label>
+                 <div className="flex gap-2">
+                   <Input readOnly value={cloneUrl} className="bg-slate-950 border-slate-800 font-mono text-xs" />
+                   <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(cloneUrl); toast.success("Copied to clipboard"); }}><Copy className="w-4 h-4" /></Button>
+                 </div>
+               </div>
+               <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                 <Info className="w-3 h-3" />
+                 To push changes, use your Supabase Access Token as the password.
+               </p>
+             </CardContent>
+           </Card>
            <Card className="bg-slate-900/50 border-slate-800"><CardHeader><CardTitle className="text-white">Collaborators</CardTitle><CardDescription>Manage who has access to this repository.</CardDescription></CardHeader><CardContent><RepoCollaborators repoId={repo.id} isOwner={repo.owner_id === session?.user?.id} /></CardContent></Card>
            {repo.owner_id === session?.user?.id && (
-             <Card className="bg-red-950/20 border-red-900/50"><CardHeader><CardTitle className="text-red-400">Danger Zone</CardTitle><CardDescription>Irreversible actions for this repository.</CardDescription></CardHeader><CardContent><Button variant="destructive" onClick={async () => { if(confirm("Delete?")) { try { const { data: token } = await supabase.auth.getSession(); const res = await fetch(`/api/repos/${repo.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token.session?.access_token}` } }); if (res.ok) { toast.success("Repository deleted"); onBack(); } else { const error = await res.json(); toast.error(error.error || "Failed to delete repository"); } } catch (err) { toast.error("Error deleting repository"); } } }}>Delete Repository</Button></CardContent></Card>
+             <Card className="bg-red-950/20 border-red-900/50"><CardHeader><CardTitle className="text-red-400">Danger Zone</CardTitle><CardDescription>Irreversible actions for this repository.</CardDescription></CardHeader><CardContent><Button variant="destructive" onClick={async () => { if(confirm("Delete?")) { try { const { data: token } = await supabase.auth.getSession(); const res = await fetch("/api/repos/" + repo.id, { method: "DELETE", headers: { Authorization: "Bearer " + (token.session?.access_token || "") } }); if (res.ok) { toast.success("Repository deleted"); onBack(); } else { const error = await res.json(); toast.error(error.error || "Failed to delete repository"); } } catch (err) { toast.error("Error deleting repository"); } } }}>Delete Repository</Button></CardContent></Card>
            )}
         </TabsContent>
       </Tabs>
@@ -256,7 +397,7 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
   const loadPr = async (pr: any) => {
     setSelectedPr(pr);
     const { data: token } = await supabase.auth.getSession();
-    const res = await fetch(`/api/repos/${repoId}/pulls/${pr.id}/diff`, { headers: { Authorization: `Bearer ${token.session?.access_token}` } });
+    const res = await fetch("/api/repos/" + repoId + "/pulls/" + pr.id + "/diff", { headers: { Authorization: "Bearer " + (token.session?.access_token || "") } });
     setDiff(await res.text());
     const { data: comms } = await supabase.from("repository_pull_request_comments").select("*, user:profiles!user_id(username)").eq("pr_id", pr.id).order("created_at", { ascending: true });
     if (comms) setComments(comms);
@@ -264,9 +405,9 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
 
   const merge = async () => {
     const { data: token } = await supabase.auth.getSession();
-    const res = await fetch(`/api/repos/${repoId}/pulls/${selectedPr.id}/merge`, {
+    const res = await fetch("/api/repos/" + repoId + "/pulls/" + selectedPr.id + "/merge", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` }
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + (token.session?.access_token || "") }
     });
     if (res.ok) { toast.success("Merged"); fetchPrs(); setSelectedPr(null); }
   };
@@ -280,7 +421,7 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
   const createPr = async () => {
     if (!newPr.title || !newPr.source) return;
     const { data: token } = await supabase.auth.getSession();
-    const res = await fetch(`/api/repos/${repoId}/pulls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.session?.access_token}` }, body: JSON.stringify({ title: newPr.title, source_branch: newPr.source, target_branch: newPr.target }) });
+    const res = await fetch("/api/repos/" + repoId + "/pulls", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + (token.session?.access_token || "") }, body: JSON.stringify({ title: newPr.title, source_branch: newPr.source, target_branch: newPr.target }) });
     if (res.ok) { toast.success("PR Created"); setShowCreate(false); fetchPrs(); }
   };
 

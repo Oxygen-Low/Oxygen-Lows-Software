@@ -1,0 +1,9 @@
+
+> public
+> cross-env VITE_PUBLIC_MODE=true node dist/server/node-build.mjs
+
+Oxygen Low's Software server running on port 3000
+Frontend: http://localhost:3000
+API: http://localhost:3000/api
+Git check successful: using "git"
+Received SIGTERM, shutting down gracefully
