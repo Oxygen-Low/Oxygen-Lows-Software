@@ -191,7 +191,11 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await tempGit.addConfig("user.name", authorName);
       await tempGit.addConfig("user.email", authorEmail);
       await tempGit.checkout(branch);
-      const fullPath = path.join(tempDir, filePath);
+      const base = path.resolve(tempDir);
+      const target = path.resolve(base, filePath);
+      const relative = path.relative(base, target);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) return res.status(400).json({ error: "Invalid file path" });
+      const fullPath = target;
       await fs.ensureDir(path.dirname(fullPath));
       await fs.writeFile(fullPath, content);
       await tempGit.add(filePath);

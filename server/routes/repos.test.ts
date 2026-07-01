@@ -101,4 +101,95 @@ describe("Repos Routes", () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("id");
   });
+
+  describe("Path Traversal Security Tests", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      (repoManager.ensureLoaded as any).mockResolvedValue("/tmp/fake-repo");
+      (repoManager.getSafeTmpPath as any).mockReturnValue("/tmp/fake-temp-dir");
+      (repoManager.uploadToStorage as any).mockResolvedValue({ size: 1024 });
+    });
+
+    it("POST /api/repos/:id/files should reject path traversal with ../", async () => {
+      const res = await request(app)
+        .post(`/api/repos/${validId}/files`)
+        .set("Authorization", "Bearer valid-token")
+        .send({
+          filePath: "../../../etc/passwd",
+          content: "malicious content",
+          branch: "main",
+          message: "Attack attempt"
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty("error");
+      expect(res.body.error).toBe("Invalid file path");
+    });
+
+    it("POST /api/repos/:id/files should reject absolute paths", async () => {
+      const res = await request(app)
+        .post(`/api/repos/${validId}/files`)
+        .set("Authorization", "Bearer valid-token")
+        .send({
+          filePath: "/etc/passwd",
+          content: "malicious content",
+          branch: "main",
+          message: "Attack attempt"
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty("error");
+      expect(res.body.error).toBe("Invalid file path");
+    });
+
+    it("POST /api/repos/:id/files should reject encoded path traversal", async () => {
+      const res = await request(app)
+        .post(`/api/repos/${validId}/files`)
+        .set("Authorization", "Bearer valid-token")
+        .send({
+          filePath: "..%2F..%2F..%2Fetc%2Fpasswd",
+          content: "malicious content",
+          branch: "main",
+          message: "Attack attempt"
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty("error");
+      expect(res.body.error).toBe("Invalid file path");
+    });
+
+    it("POST /api/repos/:id/files should reject paths with mixed traversal patterns", async () => {
+      const res = await request(app)
+        .post(`/api/repos/${validId}/files`)
+        .set("Authorization", "Bearer valid-token")
+        .send({
+          filePath: "subdir/../../../../../../etc/passwd",
+          content: "malicious content",
+          branch: "main",
+          message: "Attack attempt"
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty("error");
+      expect(res.body.error).toBe("Invalid file path");
+    });
+
+    it("POST /api/repos/:id/files should accept valid relative paths", async () => {
+      const res = await request(app)
+        .post(`/api/repos/${validId}/files`)
+        .set("Authorization", "Bearer valid-token")
+        .send({
+          filePath: "src/components/MyComponent.tsx",
+          content: "export const MyComponent = () => <div>Hello</div>;",
+          branch: "main",
+          message: "Add component"
+        });
+
+      // Should not be rejected by path validation (may fail for other reasons in mock)
+      expect(res.status).not.toBe(400);
+      if (res.status === 400) {
+        expect(res.body.error).not.toBe("Invalid file path");
+      }
+    });
+  });
 });
