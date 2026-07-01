@@ -121,7 +121,7 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "4.3.1",
     "tailwindcss-animate": "^1.0.7",
-    "three": "^0.184.0",
+    "three": "^0.185.1",
     "tsx": "^4.22.4",
     "typescript": "6.0.3",
     "vaul": "^1.1.2",
