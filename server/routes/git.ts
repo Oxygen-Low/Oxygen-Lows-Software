@@ -38,10 +38,16 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
   const { data: repo } = await supabase.from("repositories").select("*").eq("owner_id", ownerProfile.user_id).eq("name", repoName).single();
   if (!repo) return res.status(404).json({ error: "Repo not found" });
 
-  const isOwner = repo.owner_id === user.id;
-  const { data: collab } = await supabase.from("repository_collaborators").select("permission").eq("repo_id", repo.id).eq("user_id", user.id).single();
+  const isOwner = user ? repo.owner_id === user.id : false;
+  let canWrite = isOwner;
 
-  const canWrite = isOwner || (collab && (collab.permission === 'admin' || collab.permission === 'write'));
+  if (user && !isOwner) {
+    const { data: collab } = await supabase.from("repository_collaborators").select("permission").eq("repo_id", repo.id).eq("user_id", user.id).single();
+    if (collab && (collab.permission === 'admin' || collab.permission === 'write')) {
+      canWrite = true;
+    }
+  }
+
   const isWriteOp = req.path.includes("git-receive-pack") || req.query.service === "git-receive-pack";
 
   if (isWriteOp && !canWrite) return res.status(403).json({ error: "Write access required." });
@@ -56,7 +62,7 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
             GIT_PROJECT_ROOT: path.dirname(repoPath),
             GIT_HTTP_EXPORT_ALL: "1",
             PATH_INFO: "/" + gitPath,
-            REMOTE_USER: user.id,
+            REMOTE_USER: user?.id || "anonymous",
             REMOTE_ADDR: req.ip,
             CONTENT_TYPE: req.headers["content-type"] as string,
             QUERY_STRING: req.url.split("?")[1] || "",
@@ -86,11 +92,11 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
         const separator = headerBuffer.indexOf('\r\n\r\n');
         const altSeparator = headerBuffer.indexOf('\n\n');
         const index = separator !== -1 ? separator : altSeparator;
-        const sepLen = separator !== -1 ? 4 : 2;
+        const x_sepLen = separator !== -1 ? 4 : 2;
 
         if (index !== -1) {
             const headersPart = headerBuffer.slice(0, index).toString();
-            const bodyPart = headerBuffer.slice(index + sepLen);
+            const bodyPart = headerBuffer.slice(index + x_sepLen);
 
             headersPart.split(/\r?\n/).forEach(line => {
                 const parts = line.split(': ', 2);
