@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -90,11 +91,13 @@ const COURSES: Course[] = [
             id: "storage",
             title: "Storage (HDD/SSD)",
             content: "Unlike RAM, storage is long-term memory. It's where your files, photos, and programs are kept even when the computer is off. SSDs (Solid State Drives) are much faster than older HDDs (Hard Disk Drives).",
+            model: "storage"
           },
           {
             id: "psu",
             title: "Power Supply Unit (PSU)",
             content: "The PSU converts power from the wall outlet to the type of power needed by the computer. It sends power through cables to the motherboard and other components.",
+            model: "psu"
           }
         ]
       },
@@ -122,16 +125,33 @@ const COURSES: Course[] = [
 // --- 3D Components ---
 
 const ComputerPart = ({ type, onClick }: { type: string; onClick: (info: string) => void }) => {
+  const handleClick = (e: any, info: string) => {
+    e.stopPropagation();
+    onClick(info);
+  };
+
   if (type === "cpu") {
     return (
-      <group onClick={(e) => { e.stopPropagation(); onClick("CPU: The Brain. Processes instructions."); }}>
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[2, 0.2, 2]} />
-          <meshStandardMaterial color="#334155" />
+      <group>
+        {/* Substrate/PCB */}
+        <mesh position={[0, 0, 0]} onClick={(e) => handleClick(e, "CPU Substrate: The fiberglass base that connects the die to the pins.")}>
+          <boxGeometry args={[2, 0.1, 2]} />
+          <meshStandardMaterial color="#1e3a8a" />
         </mesh>
-        <mesh position={[0, 0.15, 0]}>
-          <boxGeometry args={[1.5, 0.1, 1.5]} />
-          <meshStandardMaterial color="#94a3b8" />
+        {/* Heat Spreader (IHS) */}
+        <mesh position={[0, 0.1, 0]} onClick={(e) => handleClick(e, "Integrated Heat Spreader (IHS): Protects the silicon die and spreads heat to the cooler.")}>
+          <boxGeometry args={[1.6, 0.15, 1.6]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.8} roughness={0.2} />
+        </mesh>
+        {/* Pins (Underneath) */}
+        <mesh position={[0, -0.1, 0]} onClick={(e) => handleClick(e, "CPU Pins/Pads: Thousands of electrical contacts that interface with the motherboard socket.")}>
+          <boxGeometry args={[1.8, 0.05, 1.8]} />
+          <meshStandardMaterial color="#d4af37" metalness={1} roughness={0.1} />
+        </mesh>
+        {/* Die (Visible if we "opened" it, but let's keep it realistic) */}
+        <mesh position={[0, 0.02, 0]} visible={false}>
+          <boxGeometry args={[0.8, 0.05, 0.8]} />
+          <meshStandardMaterial color="#111" />
         </mesh>
       </group>
     );
@@ -139,41 +159,139 @@ const ComputerPart = ({ type, onClick }: { type: string; onClick: (info: string)
 
   if (type === "ram") {
     return (
-      <group onClick={(e) => { e.stopPropagation(); onClick("RAM: Short-term memory. Fast but volatile."); }}>
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[3, 0.1, 0.5]} />
+      <group>
+        {/* PCB */}
+        <mesh position={[0, 0, 0]} onClick={(e) => handleClick(e, "RAM PCB: The circuit board that connects memory chips to the system.")}>
+          <boxGeometry args={[4, 1.2, 0.05]} />
           <meshStandardMaterial color="#065f46" />
         </mesh>
-        {[...Array(4)].map((_, i) => (
-          <mesh key={i} position={[-1.2 + i * 0.8, 0.1, 0]}>
-            <boxGeometry args={[0.6, 0.1, 0.4]} />
-            <meshStandardMaterial color="#1e293b" />
+        {/* Memory Chips */}
+        {[...Array(8)].map((_, i) => (
+          <mesh
+            key={i}
+            position={[-1.75 + i * 0.5, 0.2, 0.05]}
+            onClick={(e) => handleClick(e, "DRAM Chips: Where the actual data is stored temporarily using capacitors.")}
+          >
+            <boxGeometry args={[0.35, 0.6, 0.05]} />
+            <meshStandardMaterial color="#111" />
           </mesh>
         ))}
+        {/* Gold Contacts */}
+        <mesh position={[0, -0.55, 0]} onClick={(e) => handleClick(e, "Gold Contacts: High-conductivity pins that interface with the motherboard RAM slots.")}>
+          <boxGeometry args={[3.8, 0.1, 0.06]} />
+          <meshStandardMaterial color="#d4af37" metalness={1} roughness={0.1} />
+        </mesh>
+        {/* SPD Chip */}
+        <mesh position={[1.5, -0.2, 0.05]} onClick={(e) => handleClick(e, "SPD Chip: Stores timing and speed information for the BIOS.")}>
+          <boxGeometry args={[0.15, 0.15, 0.03]} />
+          <meshStandardMaterial color="#222" />
+        </mesh>
       </group>
     );
   }
 
   if (type === "motherboard") {
     return (
-      <group onClick={(e) => { e.stopPropagation(); onClick("Motherboard: The spine. Connects everything together."); }}>
-        <mesh position={[0, -0.2, 0]}>
-          <boxGeometry args={[5, 0.2, 4]} />
-          <meshStandardMaterial color="#14532d" />
+      <group rotation={[-Math.PI / 2, 0, 0]}>
+        {/* PCB */}
+        <mesh position={[0, 0, -0.1]} onClick={(e) => handleClick(e, "Motherboard PCB: A multi-layered circuit board with copper traces connecting all components.")}>
+          <boxGeometry args={[5, 6, 0.1]} />
+          <meshStandardMaterial color="#064e3b" />
         </mesh>
         {/* CPU Socket */}
-        <mesh position={[-1, -0.05, 0.5]}>
-          <boxGeometry args={[1.2, 0.1, 1.2]} />
+        <mesh position={[0, 1.5, 0]} onClick={(e) => handleClick(e, "CPU Socket: The interface that holds the CPU and connects it to the rest of the board.")}>
+          <boxGeometry args={[1.5, 1.5, 0.15]} />
           <meshStandardMaterial color="#334155" />
         </mesh>
         {/* RAM Slots */}
-        <mesh position={[1.5, -0.05, 0]}>
-          <boxGeometry args={[0.2, 0.1, 3]} />
+        {[...Array(4)].map((_, i) => (
+          <mesh
+            key={i}
+            position={[1.5 + i * 0.3, 1.5, 0]}
+            onClick={(e) => handleClick(e, "DIMM Slots: Connectors for RAM modules.")}
+          >
+            <boxGeometry args={[0.1, 3.5, 0.2]} />
+            <meshStandardMaterial color="#111" />
+          </mesh>
+        ))}
+        {/* PCIe Slot */}
+        <mesh position={[0, -1, 0]} onClick={(e) => handleClick(e, "PCIe Slot: High-speed expansion slot for GPUs, SSDs, and other cards.")}>
+          <boxGeometry args={[4, 0.2, 0.2]} />
+          <meshStandardMaterial color="#1e3a8a" />
+        </mesh>
+        <mesh position={[0, -2, 0]} onClick={(e) => handleClick(e, "PCIe Slot: High-speed expansion slot.")}>
+          <boxGeometry args={[4, 0.2, 0.2]} />
+          <meshStandardMaterial color="#1e3a8a" />
+        </mesh>
+        {/* Chipset / Heatsink */}
+        <mesh position={[1.5, -1, 0]} onClick={(e) => handleClick(e, "Chipset Heatsink: Cools the chipset that manages communication between CPU and peripherals.")}>
+          <boxGeometry args={[1, 1, 0.3]} />
+          <meshStandardMaterial color="#475569" metalness={0.7} />
+        </mesh>
+        {/* I/O Ports */}
+        <mesh position={[-2.4, 1.5, 0.4]} onClick={(e) => handleClick(e, "Rear I/O: Ports for USB, Ethernet, Audio, and Video.")}>
+          <boxGeometry args={[0.2, 2.5, 0.8]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.8} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (type === "storage") {
+    return (
+      <group>
+        {/* M.2 SSD PCB */}
+        <mesh position={[0, 0, 0]} onClick={(e) => handleClick(e, "M.2 SSD PCB: The compact circuit board for modern high-speed storage.")}>
+          <boxGeometry args={[3, 0.8, 0.05]} />
           <meshStandardMaterial color="#1e293b" />
         </mesh>
-        <mesh position={[1.8, -0.05, 0]}>
-          <boxGeometry args={[0.2, 0.1, 3]} />
-          <meshStandardMaterial color="#1e293b" />
+        {/* NAND Flash Chips */}
+        {[...Array(2)].map((_, i) => (
+          <mesh
+            key={i}
+            position={[-0.5 + i * 1, 0, 0.06]}
+            onClick={(e) => handleClick(e, "NAND Flash: Non-volatile memory chips that store your data without power.")}
+          >
+            <boxGeometry args={[0.7, 0.6, 0.05]} />
+            <meshStandardMaterial color="#111" />
+          </mesh>
+        ))}
+        {/* Controller */}
+        <mesh position={[-1.1, 0, 0.06]} onClick={(e) => handleClick(e, "SSD Controller: The processor that manages data placement and retrieval.")}>
+          <boxGeometry args={[0.5, 0.5, 0.05]} />
+          <meshStandardMaterial color="#222" />
+        </mesh>
+        {/* M.2 Key Contacts */}
+        <mesh position={[1.45, 0, 0]} onClick={(e) => handleClick(e, "M.2 Connector: The interface that plugs into the motherboard M.2 slot.")}>
+          <boxGeometry args={[0.1, 0.7, 0.06]} />
+          <meshStandardMaterial color="#d4af37" metalness={1} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (type === "psu") {
+    return (
+      <group>
+        {/* Outer Case */}
+        <mesh position={[0, 0, 0]} onClick={(e) => handleClick(e, "PSU Case: Metal enclosure that houses high-voltage components and shields EMI.")}>
+          <boxGeometry args={[3, 3, 3]} />
+          <meshStandardMaterial color="#111" metalness={0.5} roughness={0.5} />
+        </mesh>
+        {/* Fan Grille */}
+        <mesh position={[0, 1.51, 0]} onClick={(e) => handleClick(e, "Intake Fan: Pulls cool air into the PSU to cool internal transformers and capacitors.")}>
+          <cylinderGeometry args={[1.2, 1.2, 0.02, 32]} />
+          <meshStandardMaterial color="#333" />
+        </mesh>
+        {/* Power Socket */}
+        <mesh position={[0, 0, 1.51]} onClick={(e) => handleClick(e, "AC Inlet: Where the power cord from the wall outlet connects.")}>
+          <boxGeometry args={[1, 0.6, 0.1]} />
+          <meshStandardMaterial color="#222" />
+        </mesh>
+        {/* Modular Cables (Simplified) */}
+        <mesh position={[0, 0, -1.51]} onClick={(e) => handleClick(e, "Cable Interface: Outputs DC power at 3.3V, 5V, and 12V to the computer.")}>
+          <boxGeometry args={[2.5, 2.5, 0.1]} />
+          <meshStandardMaterial color="#111" />
         </mesh>
       </group>
     );
@@ -191,7 +309,7 @@ const ModelViewer = ({ type }: { type: string }) => {
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />
         <ComputerPart type={type} onClick={setInfo} />
-        <OrbitControls enableZoom={false} />
+        <OrbitControls enableZoom={true} />
       </Canvas>
       <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
         {info ? (
