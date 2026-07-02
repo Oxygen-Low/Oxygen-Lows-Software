@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight, ShieldAlert, ShieldCheck, ShieldOff, Copy, RefreshCw } from "lucide-react";
+import { Lock, Upload, Share2, Globe, Cpu, Key, Plus, Trash2, ChevronRight, ShieldAlert, ShieldCheck, ShieldOff, Copy, RefreshCw, Maximize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { encrypt, decrypt, generateMasterKey, saveMasterKey, getMasterKey, clearMasterKey } from "@/lib/crypto";
@@ -9,6 +9,7 @@ import Cropper, { Area } from "react-easy-crop";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface UserProfile { user_id: string; username: string; display_name: string; bio: string; email: string | null; show_email: boolean; }
@@ -32,7 +33,11 @@ export default function Account() {
   const [profilePicture, setProfilePicture] = useState<ProfilePicture | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [selectedStoragePath, setSelectedStoragePath] = useState<string | null>(null);
+  const [fitImage, setFitImage] = useState(false);
+
   const [identities, setIdentities] = useState<any[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
@@ -82,25 +87,36 @@ export default function Account() {
     fetchAccountData();
   }, [fetchAccountData]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { const r = new FileReader(); r.onload = () => setSelectedImage(r.result as string); r.readAsDataURL(e.target.files[0]); } };
-  const handleUpload = async () => {
-    if (!selectedImage || !croppedArea || !session?.user?.id) return;
+  const handleStorageSelect = async (file: any) => {
+    setSelectedStoragePath(file.name);
+    setFitImage(false);
+    setZoom(1);
+    const { data } = await supabase.storage.from("Storage").createSignedUrl(file.name, 3600);
+    if (data?.signedUrl) setSelectedImage(data.signedUrl);
+  };
+
+
+    const handleUpload = async () => {
+    if (!selectedImage || !croppedArea || !session?.user?.id || !selectedStoragePath) return;
     try {
-      const img = new Image(); img.src = selectedImage; await new Promise(r => img.onload = r);
-      const canvas = document.createElement("canvas");
-      canvas.width = croppedArea.width; canvas.height = croppedArea.height;
-      canvas.getContext("2d")?.drawImage(img, croppedArea.x, croppedArea.y, croppedArea.width, croppedArea.height, 0, 0, croppedArea.width, croppedArea.height);
-      const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, "image/jpeg", 0.9));
-      if (!blob) return;
-      const path = `${session.user.id}/profile_${Date.now()}.jpg`;
-      const { error: upErr } = await supabase.storage.from("Storage").upload(path, blob); if (upErr) throw upErr;
-      const { data: { publicUrl: stableUrl } } = supabase.storage.from("Storage").getPublicUrl(path);
-      const { data: signedData } = await supabase.storage.from("Storage").createSignedUrl(path, 3600);
+      const { data: signedData } = await supabase.storage.from("Storage").createSignedUrl(selectedStoragePath, 3600);
       const publicUrl = signedData?.signedUrl || "";
-      const { data: old } = await supabase.from("profile_pictures").select("image_url").eq("user_id", session.user.id).single();
-      await supabase.from("profile_pictures").upsert({ user_id: session.user.id, image_url: path, crop_data: croppedArea });
-      if (old?.image_url) { const p = old.image_url.split('/public/Storage/')[1]; if (p) await supabase.storage.from("Storage").remove([p]); }
-      setProfilePicture({ id: "", user_id: session.user.id, image_url: publicUrl, crop_data: croppedArea }); setSelectedImage(null);
+
+      await supabase.from("profile_pictures").upsert({
+        user_id: session.user.id,
+        image_url: selectedStoragePath,
+        crop_data: croppedArea,
+        image_path: selectedStoragePath
+      });
+
+      await supabase.rpc('upsert_user_preferences', {
+        p_user_id: session.user.id,
+        p_profile_picture_path: selectedStoragePath
+      });
+
+      setProfilePicture({ id: "", user_id: session.user.id, image_url: publicUrl, crop_data: croppedArea });
+      setSelectedImage(null);
+      setSelectedStoragePath(null);
       toast({ title: "Success" });
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
   };
@@ -388,8 +404,8 @@ export default function Account() {
                     <div className="w-32 h-32 rounded-3xl bg-slate-800 border-2 border-slate-700 overflow-hidden flex items-center justify-center">
                       {profilePicture ? <img src={profilePicture.image_url} alt="Profile" className="w-full h-full object-cover" /> : <Globe className="w-12 h-12 text-slate-600" />}
                     </div>
-                    <button onClick={() => fileInputRef.current?.click()} aria-label="Upload profile image" className="absolute -bottom-2 -right-2 p-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl shadow-lg"><Upload className="w-4 h-4" /></button>
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                    <StorageFileSelector onSelect={handleStorageSelect} allowedTypes={["image"]} trigger={<button aria-label="Select profile image" className="absolute -bottom-2 -right-2 p-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl shadow-lg"><Upload className="w-4 h-4" /></button>} />
+
                   </div>
                   <div className="flex-1 space-y-4">
                     <Input value={usernameInput} onChange={e => setUsernameInput(e.target.value.toLowerCase())} placeholder="Username" className="bg-slate-950" />
@@ -567,7 +583,48 @@ export default function Account() {
           </TabsContent>
         </Tabs>
       </div>
-      {selectedImage && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"><Card className="w-full max-w-2xl bg-slate-900 border-slate-800"><CardHeader><CardTitle className="text-white">Crop Image</CardTitle></CardHeader><CardContent className="space-y-6"><div className="relative h-96 w-full bg-black"><Cropper image={selectedImage} crop={{x:0,y:0}} zoom={1} aspect={1} onCropChange={()=>{}} onZoomChange={()=>{}} onCropComplete={(_, p)=>setCroppedArea(p)} /></div><div className="flex gap-3 justify-end"><Button variant="ghost" onClick={() => setSelectedImage(null)}>Cancel</Button><Button onClick={handleUpload} className="bg-cyan-600 text-white">Save</Button></div></CardContent></Card></div>}
+      {selectedImage && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"><Card className="w-full max-w-2xl bg-slate-900 border-slate-800"><CardHeader><CardTitle className="text-white">Crop Image</CardTitle></CardHeader><CardContent className="space-y-6"><div className="relative h-96 w-full bg-black">
+                <Cropper
+                  image={selectedImage}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={(_, p)=>setCroppedArea(p)}
+                  objectFit={fitImage ? "contain" : "cover"}
+                  minZoom={fitImage ? 0.1 : 1}
+                />
+              </div>
+              <div className="flex flex-col gap-4 px-1">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={fitImage ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                        setFitImage(!fitImage);
+                        if (!fitImage) setZoom(0.1);
+                        else setZoom(1);
+                    }}
+                    className="gap-2"
+                  >
+                    <Maximize className="w-4 h-4" />
+                    {fitImage ? "Fill Area" : "Fit Entire Image"}
+                  </Button>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-slate-400">Zoom</span>
+                  <input
+                    type="range"
+                    min={fitImage ? 0.1 : 1}
+                    max={3}
+                    step={0.1}
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                </div>
+              </div><div className="flex gap-3 justify-end"><Button variant="ghost" onClick={() => setSelectedImage(null)}>Cancel</Button><Button onClick={handleUpload} className="bg-cyan-600 text-white">Save</Button></div></CardContent></Card></div>}
     </Layout>
   );
 }
