@@ -52,8 +52,8 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* Main Layout */}
       <div className="flex">
         {/* Sidebar */}
-        <aside className={`${styles["sidebar"]} w-64 border-r min-h-[calc(100vh-73px)] flex flex-col`}>
-          <nav className="p-4 space-y-2 flex-1">
+        <aside className={`${styles["sidebar"]} w-64 border-r sticky top-[73px] h-[calc(100vh-73px)] flex flex-col`}>
+          <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
 
