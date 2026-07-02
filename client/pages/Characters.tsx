@@ -1,3 +1,4 @@
+import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,10 +27,20 @@ export default function Characters() {
   const [characters, setCharacters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [selectedStoragePath, setSelectedStoragePath] = useState<string | null>(null);
+
   const [currentCharacter, setCurrentCharacter] = useState<any>({});
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+
+
+  const handleStorageSelect = async (file: any) => {
+    setSelectedStoragePath(file.name);
+    const { data } = await supabase.storage.from("Storage").createSignedUrl(file.name, 3600);
+    if (data?.signedUrl) {
+      setCurrentCharacter(prev => ({ ...prev, image_url: data.signedUrl, image_path: file.name }));
+    }
+  };
 
   useEffect(() => {
     if (session?.user.id) {
@@ -182,38 +193,7 @@ export default function Characters() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    try {
-      setUploading(true);
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${session?.user.id}/${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("Storage")
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl: stableUrl } } = supabase.storage.from("Storage").getPublicUrl(filePath);
-      const { data: signedData } = await supabase.storage.from("Storage").createSignedUrl(filePath, 3600);
-      const publicUrl = signedData?.signedUrl || "";
-
-      // Clean up old image if replacing
-      if (currentCharacter.image_path) {
-        await supabase.storage.from("Storage").remove([currentCharacter.image_path]);
-      }
-
-      setCurrentCharacter(prev => ({ ...prev, image_url: publicUrl, image_path: filePath }));
-      toast({ title: "Success", description: "Image uploaded" });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
   };
 
   return (
@@ -243,12 +223,13 @@ export default function Characters() {
                     ) : (
                       <ImageIcon className="w-8 h-8 text-slate-600" />
                     )}
-                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} disabled={uploading} />
-                    {uploading && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                      </div>
-                    )}
+                    <StorageFileSelector
+                      onSelect={handleStorageSelect}
+                      allowedTypes={["image"]}
+                      trigger={
+                        <button className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" aria-label="Select character image" />
+                      }
+                    />
                   </div>
                   <div className="flex-1 space-y-2">
                     <label className="text-sm font-medium">Name</label>
@@ -332,4 +313,3 @@ export default function Characters() {
       </div>
     </Layout>
   );
-}
