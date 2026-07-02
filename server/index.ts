@@ -19,7 +19,7 @@ export function createServer() {
   app.use(
     helmet({
       crossOriginOpenerPolicy: { policy: "same-origin" },
-      crossOriginEmbedderPolicy: { policy: "require-corp" },
+      crossOriginEmbedderPolicy: false,
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),

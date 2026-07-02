@@ -40,20 +40,19 @@ export default function Storage() {
       const size = files.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
       setTotalSize(size);
 
-      // Get signed URLs for images
-      const imageFiles = files.filter(f => f.metadata?.mimetype?.startsWith("image/"));
-      if (imageFiles.length > 0) {
+      // Get signed URLs for all files
+      if (files.length > 0) {
         const { data: signedData, error: signedError } = await supabase.storage
           .from("Storage")
           .createSignedUrls(
-            imageFiles.map(f => `${session.user.id}/${f.name}`),
+            files.map(f => `${session.user.id}/${f.name}`),
             3600
           );
 
         if (signedError) throw signedError;
 
         const urls: Record<string, string> = {};
-        imageFiles.forEach((f, i) => {
+        files.forEach((f, i) => {
           if (signedData[i]) {
             urls[f.id] = signedData[i].signedUrl;
           }
@@ -244,8 +243,13 @@ export default function Storage() {
                 <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
                   {file.metadata?.mimetype?.startsWith("image/") && cloudFileSignedUrls[file.id] ? (
                     <img src={cloudFileSignedUrls[file.id]} alt={file.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                  ) : file.metadata?.mimetype?.startsWith("audio/") ? (
-                    <Music className="w-12 h-12 text-blue-500" />
+                  ) : file.metadata?.mimetype?.startsWith("audio/") && cloudFileSignedUrls[file.id] ? (
+                    <div className="flex flex-col items-center gap-4 w-full p-4">
+                      <Music className="w-12 h-12 text-blue-500" />
+                      <audio controls className="w-full h-8">
+                        <source src={cloudFileSignedUrls[file.id]} type={file.metadata.mimetype} />
+                      </audio>
+                    </div>
                   ) : (
                     <FileText className="w-12 h-12 text-slate-700" />
                   )}
