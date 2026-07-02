@@ -193,9 +193,6 @@ export default function Characters() {
     }
   };
 
-
-  };
-
   return (
     <Layout>
       <UnlockModal isOpen={showUnlockModal} onClose={() => setShowUnlockModal(false)} onUnlock={() => { setShowUnlockModal(false); fetchCharacters(true); }} />
@@ -313,3 +310,4 @@ export default function Characters() {
       </div>
     </Layout>
   );
+}
