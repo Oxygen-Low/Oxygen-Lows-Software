@@ -33,7 +33,7 @@ vi.mock("@supabase/supabase-js", () => {
             from: vi.fn(() => ({
                 select: vi.fn().mockReturnThis(),
                 eq: vi.fn().mockReturnThis(),
-                single: vi.fn().mockResolvedValue({ data: { id: "12345678-1234-1234-1234-1234567890ab", owner_id: "123", storage_path: "path/to/zip", profiles: { username: "testuser" } }, error: null }),
+                single: vi.fn().mockResolvedValue({ data: { id: "12345678-1234-1234-1234-1234567890ab", owner_id: "123", github_repo_full_name: "test/repo", profiles: { username: "testuser" } }, error: null }),
                 order: vi.fn().mockReturnThis(),
                 insert: vi.fn().mockReturnThis(),
                 update: vi.fn().mockReturnThis(),
@@ -66,9 +66,9 @@ describe("Repos Routes", () => {
     expect(res.status).toBe(200);
   });
 
-  it("POST /api/repos should still return 401 without token", async () => {
+  it("POST /api/repos (old route) should return 404", async () => {
     const res = await request(app).post("/api/repos").send({ name: "test" });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(404);
   });
 
   it("GET /api/repos/:id should return 200 for valid ID even without token (public)", async () => {
@@ -86,28 +86,11 @@ describe("Repos Routes", () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
-  it("POST /api/repos should create a repository for authenticated user", async () => {
-    (repoManager.createRepo as any).mockResolvedValue({ storagePath: "path/to/zip", size: 1024 });
-    (repoManager.getRepoPath as any).mockReturnValue("/tmp/fake-repo");
-
-    const res = await request(app)
-      .post("/api/repos")
-      .set("Authorization", "Bearer valid-token")
-      .send({ name: "my-repo", description: "a test repo", initReadme: false });
-
-    if (res.status === 500) {
-        console.error("POST /api/repos failed with 500:", res.body);
-    }
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("id");
-  });
-
   describe("Path Traversal Security Tests", () => {
     beforeEach(() => {
       vi.clearAllMocks();
       (repoManager.ensureLoaded as any).mockResolvedValue("/tmp/fake-repo");
       (repoManager.getSafeTmpPath as any).mockReturnValue("/tmp/fake-temp-dir");
-      (repoManager.uploadToStorage as any).mockResolvedValue({ size: 1024 });
     });
 
     it("POST /api/repos/:id/files should reject path traversal with ../", async () => {

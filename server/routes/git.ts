@@ -5,6 +5,7 @@ import { repoManager } from "../lib/repoManager";
 import { authenticateRepoRequest } from "../lib/repoAuth";
 import { createClient } from "@supabase/supabase-js";
 import { apiLimiter } from "../lib/limiter";
+import { getAuthorProfile } from "../lib/supabase";
 
 const router = Router();
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
@@ -18,7 +19,7 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
   const repoName = req.params[1];
   const gitPath = req.params[2];
   const token = (req as any).supabaseToken;
-
+  const githubToken = req.headers["x-github-token"] as string;
 
   const allowedPaths = ["info/refs", "git-upload-pack", "git-receive-pack", "HEAD", "objects/info/packs", "objects/info/alternates", "objects/info/http-alternates"];
   const isAllowed = allowedPaths.some(p => gitPath === p) ||
@@ -37,6 +38,7 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
 
   const { data: repo } = await supabase.from("repositories").select("*").eq("owner_id", ownerProfile.user_id).eq("name", repoName).single();
   if (!repo) return res.status(404).json({ error: "Repo not found" });
+  if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
 
   const isOwner = user ? repo.owner_id === user.id : false;
   let canWrite = isOwner;
@@ -53,8 +55,7 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
   if (isWriteOp && !canWrite) return res.status(403).json({ error: "Write access required." });
 
   try {
-    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
-    const repoPath = await repoManager.ensureLoaded(repo.id, repo.storage_path, token);
+    const repoPath = await repoManager.ensureLoaded(repo.id, repo.github_repo_full_name, token);
     repoManager.touchActivity(repo.id, token);
 
     const gitBackend = spawn("git", ["http-backend"], {
@@ -118,12 +119,22 @@ router.all(/^\/([a-z0-9_-]+)\/([a-z0-9_-]+)\.git\/(.*)/, async (req: any, res: a
     });
 
     gitBackend.stdout.on('end', async () => {
-        if (isWriteOp && canWrite && token) {
+        if (isWriteOp && canWrite) {
             try {
-                if (!repo.storage_path) throw new Error("Repository storage path is missing");
-                const { size } = await repoManager.uploadToStorage(repo.id, repo.storage_path, token);
-                await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", repo.id);
-            } catch (err) { console.error("Save error:", err); }
+                if (githubToken) {
+                    const git = repoManager.git(repoPath);
+                    const remoteUrl = `https://x-access-token:${githubToken}@github.com/${repo.github_repo_full_name}.git`;
+
+                    // Add/update github remote
+                    try { await git.removeRemote("github"); } catch(e) {}
+                    await git.addRemote("github", remoteUrl);
+
+                    // We don't know which branch was pushed, but git-receive-pack updated our bare repo.
+                    // To be safe, we'd need to parse the push or just push everything.
+                    // For simplicity, let's try to push all branches.
+                    await git.push(["github", "--all"]);
+                }
+            } catch (err) { console.error("Sync to GitHub error:", err); }
         }
         if (!res.writableEnded) res.end();
     });

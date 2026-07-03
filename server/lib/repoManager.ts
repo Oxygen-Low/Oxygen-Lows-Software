@@ -1,7 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import simpleGit, { SimpleGit } from "simple-git";
-import { ZipArchive } from "archiver";
-import extract from "extract-zip";
 import fs from "fs-extra";
 import path from "path";
 import os from "os";
@@ -32,7 +30,6 @@ function getSafeRepoPath(repoId: string) {
 function getSafeTmpPath(repoId: string, suffix: string) {
     if (!validateId(repoId)) throw new Error("Invalid ID");
     const base = path.resolve(os.tmpdir());
-    // Use a random UUID instead of the repoId to satisfy CodeQL's path injection checks
     const target = path.resolve(base, `${crypto.randomUUID()}${suffix}`);
     const relative = path.relative(base, target);
     if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error("Invalid path");
@@ -75,9 +72,9 @@ class RepoManager {
     return this.loadedRepos.get(repoId)?.ownerToken;
   }
 
-  async ensureLoaded(repoId: string, storagePath: string, token?: string): Promise<string> {
+  async ensureLoaded(repoId: string, githubFullName: string, token?: string): Promise<string> {
     if (!validateId(repoId)) throw new Error("Invalid repo ID");
-    if (!/^[0-9a-f-]+\/repos\/[0-9a-f-]+\.zip$/.test(storagePath)) throw new Error("Invalid storage path");
+    if (!githubFullName) throw new Error("GitHub full name is required");
 
     const repoPath = getSafeRepoPath(repoId);
     let info = this.loadedRepos.get(repoId);
@@ -90,102 +87,17 @@ class RepoManager {
 
     info.loading = (async () => {
       try {
-        const supabase = this.getSupabaseClient(token);
-        if (storagePath.includes('..')) throw new Error("Invalid path");
-        const { data, error } = await supabase.storage.from("Repositories").download(storagePath);
-        if (error || !data) throw new Error(`Download failed: ${error?.message || 'No data'}`);
-
-        const zipPath = getSafeTmpPath(repoId, ".zip");
-        await fs.writeFile(zipPath, Buffer.from(await data.arrayBuffer()));
-        const extractDir = getSafeTmpPath(repoId, "-extract");
-        await fs.ensureDir(extractDir);
-        const resolvedExtractDir = path.resolve(extractDir);
-        await extract(zipPath, {
-          dir: extractDir,
-          onEntry: (entry) => {
-            const entryPath = path.resolve(extractDir, entry.fileName);
-            if (!entryPath.startsWith(resolvedExtractDir + path.sep) && entryPath !== resolvedExtractDir) {
-              throw new Error("Invalid zip entry (Zip Slip detected)");
-            }
-          }
-        });
-        const gitDir = path.join(extractDir, ".git");
-        if (await fs.pathExists(gitDir)) {
-            await fs.move(gitDir, repoPath, { overwrite: true });
-        } else {
-            await fs.move(extractDir, repoPath, { overwrite: true });
-        }
-        await fs.remove(zipPath); await fs.remove(extractDir);
+        await fs.ensureDir(repoPath);
+        const git = this.git();
+        const remoteUrl = `https://github.com/${githubFullName}.git`;
+        // Clone as a bare repository to act as our "origin" server-side
+        await git.clone(remoteUrl, repoPath, ["--mirror"]);
+      } catch (err) {
+        await fs.remove(repoPath);
+        throw err;
       } finally { info!.loading = null; }
     })();
     await info.loading; return repoPath;
-  }
-
-  async createRepo(repoId: string, ownerId: string, name: string, token: string) {
-    if (!validateId(repoId) || !validateId(ownerId)) throw new Error("Invalid ID");
-    if (!/^[a-z0-9_-]+$/.test(name)) throw new Error("Invalid name");
-
-    const repoPath = getSafeRepoPath(repoId);
-    await fs.ensureDir(repoPath);
-    await this.git(repoPath).init(true);
-    await this.git(repoPath).raw(["symbolic-ref", "HEAD", "refs/heads/main"]);
-    const storagePath = `${ownerId}/repos/${repoId}.zip`;
-    const { size } = await this.uploadToStorage(repoId, storagePath, token);
-    this.loadedRepos.set(repoId, { lastActivity: Date.now(), loading: null, ownerToken: token });
-    return { storagePath, size };
-  }
-
-  async importGithubRepo(repoId: string, ownerId: string, githubFullName: string, githubToken: string, userToken: string) {
-    if (!validateId(repoId) || !validateId(ownerId)) throw new Error("Invalid ID");
-
-    const repoPath = getSafeRepoPath(repoId);
-    await fs.ensureDir(repoPath);
-
-    const git = this.git();
-    const remoteUrl = `https://x-access-token:${githubToken}@github.com/${githubFullName}.git`;
-
-    await git.clone(remoteUrl, repoPath, ["--mirror"]);
-
-    const storagePath = `${ownerId}/repos/${repoId}.zip`;
-    const { size } = await this.uploadToStorage(repoId, storagePath, userToken);
-
-    this.loadedRepos.set(repoId, { lastActivity: Date.now(), loading: null, ownerToken: userToken });
-    return { storagePath, size };
-  }
-
-  async uploadToStorage(repoId: string, storagePath: string, token: string) {
-    if (!validateId(repoId)) throw new Error("Invalid ID");
-    const repoPath = getSafeRepoPath(repoId);
-    const zipPath = getSafeTmpPath(repoId, "-upload.zip");
-    const output = fs.createWriteStream(zipPath);
-    const archive = new ZipArchive({ zlib: { level: 9 } });
-    const archivePromise = new Promise((res, rej) => { output.on("close", res); archive.on("error", rej); });
-    archive.pipe(output); archive.directory(repoPath, ".git"); await archive.finalize(); await archivePromise;
-
-    const buffer = await fs.readFile(zipPath);
-    const supabase = this.getSupabaseClient(token);
-    if (storagePath.includes('..')) throw new Error("Invalid path");
-    const { error } = await supabase.storage.from("Repositories").upload(storagePath, buffer, { contentType: "application/zip", upsert: true });
-    if (error) throw error;
-    await fs.remove(zipPath); return { size: buffer.length };
-  }
-
-  async forceUnload(repoId: string, storagePath: string, token?: string) {
-    if (token) {
-        try {
-            await this.uploadToStorage(repoId, storagePath, token);
-        } catch (err) {
-            console.error(`Failed to sync repo ${repoId} to storage during unload:`, err);
-            return;
-        }
-    } else {
-        // If no token, we can't sync. Skip unloading to prevent data loss.
-        console.warn(`No token for repo ${repoId}. Skipping unload to prevent data loss.`);
-        return;
-    }
-    const repoPath = getSafeRepoPath(repoId);
-    await fs.remove(repoPath);
-    this.loadedRepos.delete(repoId);
   }
 
   touchActivity(repoId: string, token?: string) {
@@ -201,27 +113,13 @@ class RepoManager {
     for (const [id, info] of this.loadedRepos.entries()) {
       try {
         if (now - info.lastActivity > IDLE_TIMEOUT && !info.loading) {
-          if (!info.ownerToken) {
-              console.warn(`Token missing for repo ${id} during sweep. Skipping.`);
-              continue;
-          }
+          const repoPath = getSafeRepoPath(id);
+          await fs.remove(repoPath);
+          this.loadedRepos.delete(id);
 
-          const supabase = this.getSupabaseClient(info.ownerToken);
-
-          if (info.ownerToken !== supabaseAnonKey) {
-              const { data: { user } } = await supabase.auth.getUser(info.ownerToken);
-              if (!user) {
-                  console.warn(`Token for repo ${id} is expired. Skipping unload.`);
-                  continue;
-              }
-          }
-
-          const { data } = await supabase.from("repositories").select("storage_path").eq("id", id).single();
-          if (data?.storage_path) {
-            await this.forceUnload(id, data.storage_path, info.ownerToken);
-            if (!this.loadedRepos.has(id)) {
-                await supabase.from("repositories").update({ is_loaded: false }).eq("id", id);
-            }
+          if (info.ownerToken) {
+            const supabase = this.getSupabaseClient(info.ownerToken);
+            await supabase.from("repositories").update({ is_loaded: false }).eq("id", id);
           }
         }
       } catch (err) {
