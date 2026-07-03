@@ -193,6 +193,13 @@ export default function Characters() {
     }
   };
 
+  const handleStorageSelect = (file: any) => {
+    if (file.path.includes('..')) {
+      throw new Error("Invalid file path");
+    }
+    setCurrentCharacter(prev => ({ ...prev, image_url: file.url, image_path: file.path }));
+  };
+
   return (
     <Layout>
       <EncryptionUnlockModal isOpen={showEncryptionUnlockModal} onClose={() => setShowEncryptionUnlockModal(false)} onUnlock={() => { setShowEncryptionUnlockModal(false); fetchCharacters(true); }} />
