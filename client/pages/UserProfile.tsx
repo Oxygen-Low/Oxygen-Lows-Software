@@ -42,36 +42,48 @@ export default function UserProfile() {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch user preferences and basic info
-      const { data: pref, error: prefError } = await supabase
-        .from("user_preferences")
-        .select("user_id, display_name, username, bio, profile_picture_path, show_email")
+      // Fetch basic profile info
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, username, bio, show_email, email")
         .eq("username", username)
         .single();
 
-      if (prefError) {
-        if (prefError.code === "PGRST116") {
+      if (profileError) {
+        if (profileError.code === "PGRST116") {
           setError("No items");
         } else {
-          setError(prefError.message);
+          setError(profileError.message);
         }
         return;
       }
 
-      setProfile(pref);
+      // Fetch user preferences (for profile picture path)
+      const { data: prefData } = await supabase
+        .from("user_preferences")
+        .select("profile_picture_path")
+        .eq("user_id", profileData.user_id)
+        .single();
 
-      if (pref.profile_picture_path) {
+      const combinedProfile = {
+        ...profileData,
+        profile_picture_path: prefData?.profile_picture_path
+      };
+
+      setProfile(combinedProfile);
+
+      if (combinedProfile.profile_picture_path) {
         const { data } = await supabase.storage
           .from("Storage")
-          .createSignedUrl(pref.profile_picture_path, 3600);
+          .createSignedUrl(combinedProfile.profile_picture_path, 3600);
         if (data?.signedUrl) setProfilePicture(data.signedUrl);
       }
 
       // Fetch stats
       const [friendsRes, followersRes, followingRes] = await Promise.all([
-        supabase.from("friendships").select("count").eq("status", "accepted").or(`user_id.eq.${pref.user_id},friend_id.eq.${pref.user_id}`),
-        supabase.from("follows").select("count").eq("following_id", pref.user_id),
-        supabase.from("follows").select("count").eq("follower_id", pref.user_id),
+        supabase.from("friendships").select("count").eq("status", "accepted").or(`user_id.eq.${profileData.user_id},friend_id.eq.${profileData.user_id}`),
+        supabase.from("follows").select("count").eq("following_id", profileData.user_id),
+        supabase.from("follows").select("count").eq("follower_id", profileData.user_id),
       ]);
 
       setStats({
@@ -80,12 +92,12 @@ export default function UserProfile() {
         following: (followingRes.data as any)?.[0]?.count || 0,
       });
 
-      if (currentUser && currentUser.id !== pref.user_id) {
+      if (currentUser && currentUser.id !== profileData.user_id) {
         // Fetch relations
         const [friendshipRes, followingStatus, blockStatus] = await Promise.all([
-          supabase.from("friendships").select("*").or(`and(user_id.eq.${currentUser.id},friend_id.eq.${pref.user_id}),and(user_id.eq.${pref.user_id},friend_id.eq.${currentUser.id})`).maybeSingle(),
-          supabase.from("follows").select("*").eq("follower_id", currentUser.id).eq("following_id", pref.user_id).maybeSingle(),
-          supabase.from("blocks").select("*").eq("blocker_id", currentUser.id).eq("blocked_id", pref.user_id).maybeSingle(),
+          supabase.from("friendships").select("*").or(`and(user_id.eq.${currentUser.id},friend_id.eq.${profileData.user_id}),and(user_id.eq.${profileData.user_id},friend_id.eq.${currentUser.id})`).maybeSingle(),
+          supabase.from("follows").select("*").eq("follower_id", currentUser.id).eq("following_id", profileData.user_id).maybeSingle(),
+          supabase.from("blocks").select("*").eq("blocker_id", currentUser.id).eq("blocked_id", profileData.user_id).maybeSingle(),
         ]);
 
         setFriendship(friendshipRes.data);
