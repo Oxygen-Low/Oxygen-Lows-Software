@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-interface UnlockModalProps {
+interface PointsUnlockModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -21,14 +21,14 @@ interface UnlockModalProps {
   currentPoints: number;
 }
 
-export const UnlockModal = ({
+export const PointsUnlockModal = ({
   isOpen,
   onClose,
   onSuccess,
   itemName,
   cost,
   currentPoints,
-}: UnlockModalProps) => {
+}: PointsUnlockModalProps) => {
   const [isUnlocking, setIsUnlocking] = useState(false);
 
   const handleUnlock = async () => {

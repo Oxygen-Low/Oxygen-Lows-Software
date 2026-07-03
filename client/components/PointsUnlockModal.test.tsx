@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import { UnlockModal } from "./UnlockModal";
+import { PointsUnlockModal } from "./PointsUnlockModal";
 import { supabase } from "@/lib/supabase";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-describe("UnlockModal", () => {
+describe("PointsUnlockModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -31,7 +31,7 @@ describe("UnlockModal", () => {
   };
 
   it("renders modal content correctly", () => {
-    render(<UnlockModal {...defaultProps} />);
+    render(<PointsUnlockModal {...defaultProps} />);
     expect(screen.getByText(/Unlock Premium App/i)).toBeDefined();
     expect(screen.getByText("100")).toBeDefined();
     expect(screen.getByText("300")).toBeDefined();
@@ -40,7 +40,7 @@ describe("UnlockModal", () => {
   it("calls adjust_points RPC and onSuccess when Unlock Now is clicked", async () => {
     (supabase.rpc as any).mockResolvedValue({ error: null });
 
-    render(<UnlockModal {...defaultProps} />);
+    render(<PointsUnlockModal {...defaultProps} />);
 
     const unlockButton = screen.getByRole("button", { name: /Unlock Now/i });
     fireEvent.click(unlockButton);
@@ -53,7 +53,7 @@ describe("UnlockModal", () => {
   });
 
   it("disables unlock button if points are insufficient", () => {
-    render(<UnlockModal {...defaultProps} currentPoints={50} />);
+    render(<PointsUnlockModal {...defaultProps} currentPoints={50} />);
     const unlockButton = screen.getByRole("button", { name: /Unlock Now/i });
     expect(unlockButton).toHaveProperty("disabled", true);
   });

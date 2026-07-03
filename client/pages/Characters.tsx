@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, User, Image as ImageIcon, Loader2, Edit2, Trash2 } from "lucide-react";
 import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
-import { UnlockModal } from "@/components/UnlockModal";
+import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
 
 export default function Characters() {
     const { session } = useAuth();
@@ -31,7 +31,7 @@ export default function Characters() {
 
   const [currentCharacter, setCurrentCharacter] = useState<any>({});
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] = useState(false);
 
 
   const handleStorageSelect = async (file: any) => {
@@ -53,7 +53,7 @@ export default function Characters() {
     const enabled = data?.encryption_settings?.characters || false;
     setIsEncryptionEnabled(enabled);
     if (enabled && !getMasterKey()) {
-      setShowUnlockModal(true);
+      setShowEncryptionUnlockModal(true);
     } else {
       fetchCharacters(enabled);
     }
@@ -72,7 +72,7 @@ export default function Characters() {
       if (encryptionEnabled) {
         const key = getMasterKey();
         if (!key) {
-           setShowUnlockModal(true);
+           setShowEncryptionUnlockModal(true);
            return;
         }
         const decryptedData = await Promise.all((data || []).map(async (char) => {
@@ -119,7 +119,7 @@ export default function Characters() {
       if (isEncryptionEnabled) {
         const key = getMasterKey();
         if (!key) {
-           setShowUnlockModal(true);
+           setShowEncryptionUnlockModal(true);
            return;
         }
         charData = {
@@ -195,7 +195,7 @@ export default function Characters() {
 
   return (
     <Layout>
-      <UnlockModal isOpen={showUnlockModal} onClose={() => setShowUnlockModal(false)} onUnlock={() => { setShowUnlockModal(false); fetchCharacters(true); }} />
+      <EncryptionUnlockModal isOpen={showEncryptionUnlockModal} onClose={() => setShowEncryptionUnlockModal(false)} onUnlock={() => { setShowEncryptionUnlockModal(false); fetchCharacters(true); }} />
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex justify-between items-center">
           <div>
