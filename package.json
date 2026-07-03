@@ -78,6 +78,7 @@
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "4.3.2",
     "@tanstack/react-query": "^5.101.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/archiver": "^8.0.0",
     "@types/cors": "^2.8.19",
@@ -137,16 +138,10 @@
       "dist/server/**/*.js"
     ]
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@swc/core",
-      "esbuild"
-    ],
-    "overrides": {
-      "zod@<=4.4.0": "4.4.0",
-      "music-metadata@<=11.12.3": "11.12.3",
-      "file-type@<=21.3.3": "21.3.3",
-      "dompurify@<=3.4.11": "3.4.11"
-    }
+  "overrides": {
+    "zod@<=4.4.0": "4.4.0",
+    "music-metadata@<=11.12.3": "11.12.3",
+    "file-type@<=21.3.3": "21.3.3",
+    "dompurify@<=3.4.11": "3.4.11"
   }
 }
