@@ -1,99 +1,106 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Diamond, Lock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
-import { saveMasterKey, decrypt } from "@/lib/crypto";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface UnlockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUnlock: () => void;
+  onSuccess: () => void;
+  itemName: string;
+  cost: number;
+  currentPoints: number;
 }
 
-export const UnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => {
-  const { session } = useAuth();
-  const [keyInput, setKeyInput] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  const [validationHashExists, setValidationHashExists] = useState<boolean | null>(null);
+export const UnlockModal = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  itemName,
+  cost,
+  currentPoints,
+}: UnlockModalProps) => {
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   const handleUnlock = async () => {
-    if (!keyInput.trim() || !session?.user?.id) return;
+    if (currentPoints < cost) {
+      toast.error("Not enough points!");
+      return;
+    }
 
-    setIsVerifying(true);
-    setError(null);
+    setIsUnlocking(true);
     try {
-      // Validate key against validation_hash in user_preferences
-      const { data, error: fetchError } = await supabase
-        .from('user_preferences')
-        .select('encryption_settings')
-        .eq('user_id', session.user.id)
-        .single();
+      const { error } = await supabase.rpc("adjust_points", {
+        p_amount: -cost,
+      });
 
-      if (fetchError) throw fetchError;
+      if (error) throw error;
 
-      const validationHash = data?.encryption_settings?.validation_hash;
-      if (validationHash) {
-        setValidationHashExists(true);
-        try {
-          await decrypt(validationHash, keyInput.trim());
-        } catch (e) {
-          throw new Error("Invalid masterkey. Please check your key and try again.");
-        }
-      } else {
-        setValidationHashExists(false);
-        if (!needsConfirmation) {
-          setNeedsConfirmation(true);
-          return;
-        }
-      }
-
-      saveMasterKey(keyInput.trim());
-      onUnlock();
-    } catch (e: any) {
-      setError(e.message);
+      toast.success(`Successfully unlocked ${itemName}!`);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Unlock error:", error);
+      toast.error("Failed to unlock. Please try again.");
     } finally {
-      setIsVerifying(false);
+      setIsUnlocking(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-900 border-slate-800 text-white" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="w-5 h-5 text-cyan-500" />
-            Unlock Encrypted Content
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Lock className="w-5 h-5 text-cyan-400" />
+            Unlock {itemName}
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            Enter your masterkey to access your encrypted data. This key is never stored on our servers.
+            This action requires {cost} points. You currently have {currentPoints} points.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4">
-          <Input
-            type="password"
-            placeholder="Enter Masterkey"
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-            className={`bg-slate-800 border-slate-700 ${error ? 'border-red-500 focus:border-red-500' : ''}`}
-            autoFocus
-            disabled={isVerifying}
-          />
-          {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-          {needsConfirmation && !error && (
-            <p className="text-xs text-amber-500 font-medium">
-              No existing encryption found. This will be set as your new masterkey. Please ensure you have copied it correctly.
-            </p>
-          )}
+        <div className="flex items-center justify-center py-6">
+          <div className="flex items-center gap-4 px-6 py-4 bg-slate-950 rounded-2xl border border-slate-800">
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-slate-500 uppercase tracking-widest mb-1">Cost</span>
+              <div className="flex items-center gap-2">
+                <Diamond className="w-5 h-5 text-cyan-400" />
+                <span className="text-2xl font-bold text-white">{cost}</span>
+              </div>
+            </div>
+            <div className="w-px h-10 bg-slate-800" />
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-slate-500 uppercase tracking-widest mb-1">Balance</span>
+              <div className="flex items-center gap-2">
+                <Diamond className="w-5 h-5 text-slate-400" />
+                <span className="text-2xl font-bold text-slate-300">{currentPoints}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <DialogFooter className="flex justify-end">
-          <Button onClick={handleUnlock} disabled={isVerifying} className="bg-cyan-600 hover:bg-cyan-700">
-            {isVerifying ? "Verifying..." : (needsConfirmation ? "Confirm & Set Key" : "Unlock")}
+        <DialogFooter className="sm:justify-center gap-3">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="text-slate-400 hover:text-white text-sm"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUnlock}
+            disabled={isUnlocking || currentPoints < cost}
+            className="bg-cyan-600 hover:bg-cyan-500 text-white px-8"
+          >
+            {isUnlocking ? "Unlocking..." : "Unlock Now"}
           </Button>
         </DialogFooter>
       </DialogContent>
