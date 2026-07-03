@@ -32,9 +32,10 @@ router.get("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   try {
     const repo = await getRepo(id, token);
-    const repoPath = repo.storage_path ? await repoManager.ensureLoaded(id, repo.storage_path, token) : null;
-    const git = repoPath ? repoManager.git(repoPath) : null;
-    const branches = git ? await git.branchLocal() : { all: [], current: "" };
+    if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
+    const repoPath = await repoManager.ensureLoaded(id, repo.github_repo_full_name, token);
+    const git = repoManager.git(repoPath);
+    const branches = await git.branchLocal();
     res.json({ ...repo, branches: branches.all, currentBranch: branches.current });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -49,57 +50,7 @@ router.get("/", authenticateRepoRequest, async (req, res) => {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
-  const { name, description, initReadme } = req.body;
-  const user = (req as any).user;
-  const token = (req as any).supabaseToken;
-
-  if (!user) return res.status(401).json({ error: "Authentication required to create a repository." });
-  if (!name || !/^[a-z0-9_-]+$/.test(name)) return res.status(400).json({ error: "Invalid name" });
-
-  const repoId = crypto.randomUUID();
-  const storagePath = `${user.id}/repos/${repoId}.zip`;
-
-  try {
-    const supabase = getAuthenticatedClient(token);
-
-    let { size } = await repoManager.createRepo(repoId, user.id, name, token);
-
-    if (initReadme) {
-      const repoPath = repoManager.getRepoPath(repoId);
-      const tempDir = repoManager.getSafeTmpPath(repoId, "-init-" + crypto.randomBytes(4).toString("hex"));
-      try {
-        await fs.ensureDir(tempDir);
-        await repoManager.git().clone(repoPath, tempDir);
-        const tempGit = repoManager.git(tempDir);
-        const profile = await getAuthorProfile(user.id);
-        const authorName = profile?.username || user.user_metadata?.username || "Anonymous";
-        const authorEmail = profile?.email || user.email || "anon@example.com";
-        await tempGit.addConfig("user.name", authorName);
-        await tempGit.addConfig("user.email", authorEmail);
-        await fs.writeFile(path.join(tempDir, "README.md"), "# " + name + "\n\n" + (description || ""));
-        await tempGit.add("README.md");
-        await tempGit.commit("Initial commit");
-        await tempGit.push("origin", "main");
-        const { size: newSize } = await repoManager.uploadToStorage(repoId, storagePath, token);
-        size = newSize;
-      } finally {
-        await fs.remove(tempDir);
-      }
-    }
-
-    const { data, error } = await supabase.from("repositories").insert({ id: repoId, owner_id: user.id, name, description, storage_path: storagePath, zip_size_bytes: size }).select().single();
-    if (error) {
-        await repoManager.deleteRepo(repoId);
-        await supabase.storage.from("Repositories").remove([storagePath]);
-        return res.status(500).json({ error: error.message });
-    }
-    res.json(data);
-  } catch (err: any) {
-    await repoManager.deleteRepo(repoId);
-    res.status(500).json({ error: err.message });
-  }
-});
+// POST / is removed as we only support GitHub import now
 
 router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, res) => {
   const id = String(req.params.id);
@@ -109,17 +60,10 @@ router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, 
   if ((req as any).repoPermission !== "admin") return res.status(403).json({ error: "Forbidden: Only repository owners can delete repositories." });
 
   try {
-    const repo = await getRepo(id, token);
     const supabase = getAuthenticatedClient(token);
-
     const { error } = await supabase.from("repositories").delete().eq("id", id);
     if (error) throw error;
-
     await repoManager.deleteRepo(id);
-    if (repo.storage_path) {
-        await supabase.storage.from("Repositories").remove([repo.storage_path]);
-    }
-
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -133,8 +77,8 @@ router.get("/:id/files", authenticateRepoRequest, authorizeRepoAccess, async (re
 
   try {
     const repo = await getRepo(id, token);
-    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
-    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
+    if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
+    const repoPath = await repoManager.ensureLoaded(id, repo.github_repo_full_name, token);
     const git = repoManager.git(repoPath);
 
     while (folder.endsWith("/")) { folder = folder.slice(0, -1); }
@@ -158,8 +102,8 @@ router.get("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req
   if (!filePath) return res.status(400).json({ error: "Path is required" });
   try {
     const repo = await getRepo(id, token);
-    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
-    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
+    if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
+    const repoPath = await repoManager.ensureLoaded(id, repo.github_repo_full_name, token);
     const content = await repoManager.git(repoPath).show([selectedBranch + ":" + filePath]);
     res.send(content);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -168,6 +112,7 @@ router.get("/:id/file", authenticateRepoRequest, authorizeRepoAccess, async (req
 router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
   const token = (req as any).supabaseToken;
+  const githubToken = req.headers["x-github-token"] as string;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const { filePath, content, branch = "main", message = "Update file" } = req.body;
   const user = (req as any).user;
@@ -178,8 +123,8 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
 
   try {
     const repo = await getRepo(id, token);
-    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
-    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
+    if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
+    const repoPath = await repoManager.ensureLoaded(id, repo.github_repo_full_name, token);
     const tempDir = repoManager.getSafeTmpPath(id, "-edit-" + crypto.randomBytes(8).toString("hex"));
     try {
       await fs.ensureDir(tempDir);
@@ -190,7 +135,13 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       const authorEmail = profile?.email || user.email || "anon@example.com";
       await tempGit.addConfig("user.name", authorName);
       await tempGit.addConfig("user.email", authorEmail);
-      await tempGit.checkout(branch);
+
+      try {
+        await tempGit.checkout(branch);
+      } catch (err) {
+        await tempGit.checkoutLocalBranch(branch);
+      }
+
       const base = path.resolve(tempDir);
       const target = path.resolve(base, filePath);
       const relative = path.relative(base, target);
@@ -200,10 +151,19 @@ router.post("/:id/files", authenticateRepoRequest, authorizeRepoAccess, apiLimit
       await fs.writeFile(fullPath, content);
       await tempGit.add(filePath);
       await tempGit.commit(message);
-      await tempGit.push("origin", branch);
-      const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);
-      const supabase = getAuthenticatedClient(token);
-      await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", id);
+
+      if (githubToken) {
+          const remoteUrl = `https://x-access-token:${githubToken}@github.com/${repo.github_repo_full_name}.git`;
+          await tempGit.addRemote("github", remoteUrl);
+          await tempGit.push("github", branch);
+          // Also push to our local bare repo to keep it in sync
+          await tempGit.push("origin", branch);
+      } else {
+          // If no github token, we can only update the local bare repo.
+          // This might be desired if the user just wants to "save" locally for now,
+          // but our requirements say push back to GitHub.
+          throw new Error("GitHub token is required to save changes.");
+      }
       res.json({ success: true });
     } finally {
       await fs.remove(tempDir);
@@ -218,8 +178,8 @@ router.get("/:id/commits", authenticateRepoRequest, authorizeRepoAccess, async (
   const branch = typeof req.query.branch === "string" ? req.query.branch : "main";
   try {
     const repo = await getRepo(id, token);
-    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
-    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
+    if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
+    const repoPath = await repoManager.ensureLoaded(id, repo.github_repo_full_name, token);
     const commits = await repoManager.git(repoPath).log([branch]);
     res.json(commits.all);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -286,6 +246,7 @@ router.post("/:id/pulls", authenticateRepoRequest, authorizeRepoAccess, apiLimit
 router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAccess, apiLimiter, async (req, res) => {
   const id = String(req.params.id);
   const token = (req as any).supabaseToken;
+  const githubToken = req.headers["x-github-token"] as string;
   if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
   const prId = String(req.params.prId);
   if (!validateId(prId)) return res.status(400).json({ error: "Invalid PR ID" });
@@ -296,6 +257,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
 
   try {
     const repo = await getRepo(id, token);
+    if (!repo.github_repo_full_name) return res.status(400).json({ error: "Not a GitHub repository" });
     const supabase = getAuthenticatedClient(token);
     const { data: pr } = await supabase.from("repository_pull_requests").select("*").eq("id", prId).eq("repo_id", id).single();
     if (!pr || pr.status !== "open") return res.status(400).json({ error: "Not mergeable" });
@@ -305,8 +267,7 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
         return res.status(403).json({ error: "Only the repository owner or admin can merge to the " + defaultBranch + " branch." });
     }
 
-    if (!repo.storage_path) return res.status(400).json({ error: "Repository storage path is missing" });
-    const repoPath = await repoManager.ensureLoaded(id, repo.storage_path, token);
+    const repoPath = await repoManager.ensureLoaded(id, repo.github_repo_full_name, token);
     const tempDir = repoManager.getSafeTmpPath(id, "-merge-" + crypto.randomBytes(8).toString("hex"));
     try {
       await fs.ensureDir(tempDir);
@@ -317,11 +278,19 @@ router.post("/:id/pulls/:prId/merge", authenticateRepoRequest, authorizeRepoAcce
       const authorEmail = profile?.email || user.email || "anon@example.com";
       await tempGit.addConfig("user.name", authorName);
       await tempGit.addConfig("user.email", authorEmail);
-      await tempGit.checkout(pr.target_branch); await tempGit.merge(["--", pr.source_branch]); await tempGit.push("origin", pr.target_branch);
-      if (!repo.storage_path) throw new Error("Repository storage path is missing");
-      const { size } = await repoManager.uploadToStorage(id, repo.storage_path, token);
+      await tempGit.checkout(pr.target_branch);
+      await tempGit.merge(["--", pr.source_branch]);
+
+      if (githubToken) {
+          const remoteUrl = `https://x-access-token:${githubToken}@github.com/${repo.github_repo_full_name}.git`;
+          await tempGit.addRemote("github", remoteUrl);
+          await tempGit.push("github", pr.target_branch);
+          await tempGit.push("origin", pr.target_branch);
+      } else {
+          throw new Error("GitHub token is required to merge changes to GitHub.");
+      }
+
       await supabase.from("repository_pull_requests").update({ status: "merged", merged_at: new Date().toISOString(), merged_by: user.id }).eq("id", prId);
-      await supabase.from("repositories").update({ zip_size_bytes: size }).eq("id", id);
       res.json({ success: true });
     } finally {
       await fs.remove(tempDir);
@@ -413,22 +382,19 @@ router.post("/github/import", authenticateRepoRequest, apiLimiter, async (req, r
   try {
     const supabase = getAuthenticatedClient(token);
     const repoId = crypto.randomUUID();
-    const { storagePath, size } = await repoManager.importGithubRepo(repoId, user.id, fullName, githubToken, token);
 
+    // We don't need to call importGithubRepo anymore, ensureLoaded will handle it on first access
     const { data: repo, error } = await supabase.from("repositories").insert({
       id: repoId,
       owner_id: user.id,
       name,
       description,
-      storage_path: storagePath,
-      zip_size_bytes: size,
       github_repo_full_name: fullName,
       github_sync_at: new Date().toISOString(),
-      is_loaded: true
+      is_loaded: false
     }).select().single();
 
     if (error) {
-      await repoManager.deleteRepo(repoId);
       return res.status(500).json({ error: error.message });
     }
     res.json(repo);
