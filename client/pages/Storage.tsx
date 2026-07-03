@@ -109,6 +109,7 @@ export default function Storage() {
 
   const deleteCloudFile = async (name: string) => {
     try {
+      if (name.includes('..')) throw new Error('Invalid file name');
       const { error } = await supabase.storage.from("Storage").remove([`${session?.user.id}/${name}`]);
       if (error) throw error;
       toast.success("File deleted");
