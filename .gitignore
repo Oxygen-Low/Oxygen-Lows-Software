@@ -28,8 +28,3 @@ dist-ssr
 
 # Local uploads
 uploads
-
-
-
-pnpm-lock.yaml
-pnpm-workspace.yaml
