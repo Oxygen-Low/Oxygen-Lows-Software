@@ -2,18 +2,15 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   BookOpen,
   Box,
-  Search,
   ChevronRight,
   ChevronLeft,
   Info,
   Layers,
   Cpu,
   MousePointer2,
-  CheckCircle2,
-  PanelsTopLeft
+  CheckCircle2
 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -343,8 +340,8 @@ export function LearnApp() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [selectedSubSubCategory, setSelectedSubSubCategory] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showAll, setShowAll] = useState(false);
+
+
   const [progress, setProgress] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -381,46 +378,26 @@ export function LearnApp() {
 
   const filteredCourses = useMemo(() => {
     return COURSES.filter(c => {
-      const matchesSearch =
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.sections.some(s =>
-          s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.content.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
-      if (selectedSubSubCategory) return c.subSubCategory === selectedSubSubCategory && matchesSearch;
-      if (selectedSubCategory) return c.subCategory === selectedSubCategory && matchesSearch;
-      if (selectedCategory) return c.category === selectedCategory && matchesSearch;
-
-      return matchesSearch;
+      if (selectedSubSubCategory) return c.subSubCategory === selectedSubSubCategory;
+      if (selectedSubCategory) return c.subCategory === selectedSubCategory;
+      if (selectedCategory) return c.category === selectedCategory;
+      return false;
     });
-  }, [searchQuery, selectedCategory, selectedSubCategory, selectedSubSubCategory]);
+  }, [selectedCategory, selectedSubCategory, selectedSubSubCategory]);
 
   const handleCourseClick = (course: Course) => {
     setSelectedCourse(course);
     setView("course");
   };
 
-  const isBrowsing = searchQuery || selectedCategory || showAll;
+  const isBrowsing = !!selectedCategory;
 
   const renderHome = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <div>
           <h3 className="text-2xl font-bold text-white">Start Learning</h3>
-          <p className="text-slate-400">Choose a category or search for a course.</p>
-        </div>
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <Input
-            placeholder="Search courses or content..."
-            className="pl-10 bg-slate-900 border-slate-800 text-white"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              if (e.target.value) setShowAll(false);
-            }}
-          />
+          <p className="text-slate-400">Choose a category to start learning.</p>
         </div>
       </div>
 
@@ -444,30 +421,17 @@ export function LearnApp() {
               </CardHeader>
             </Card>
           ))}
-          <Card
-            className="bg-slate-900/50 border-slate-800 hover:border-cyan-500/50 transition-all cursor-pointer group"
-            onClick={() => {
-              setShowAll(true);
-            }}
-          >
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center mb-4">
-                <PanelsTopLeft className="w-6 h-6 text-slate-400" />
-              </div>
-              <CardTitle className="text-white">All Courses</CardTitle>
-              <CardDescription>Browse everything we have to offer</CardDescription>
-            </CardHeader>
-          </Card>
+
         </div>
       ) : (
         <div className="space-y-6">
           <div className="flex items-center gap-2 text-sm overflow-x-auto pb-2">
             <Button variant="ghost" size="sm" onClick={() => {
-              setSelectedCategory(null);
+              setSelectedCategory(null); setSelectedSubCategory(null); setSelectedSubSubCategory(null);
               setSelectedSubCategory(null);
               setSelectedSubSubCategory(null);
-              setSearchQuery("");
-              setShowAll(false);
+
+
             }} className="text-slate-400 whitespace-nowrap">Home</Button>
 
             {isBrowsing && (
@@ -537,9 +501,9 @@ export function LearnApp() {
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
                  <p className="text-slate-500 text-lg">No courses found matching your criteria.</p>
                  <Button variant="link" className="text-cyan-500 mt-2" onClick={() => {
-                   setSearchQuery("");
-                   setSelectedCategory(null);
-                   setShowAll(false);
+
+                   setSelectedCategory(null); setSelectedSubCategory(null); setSelectedSubSubCategory(null);
+
                  }}>Clear filters</Button>
               </div>
             )}
@@ -579,8 +543,8 @@ export function LearnApp() {
                     onClick={() => {
                       setSelectedSubCategory(sub);
                       setSelectedSubSubCategory(ss);
-                      setShowAll(false);
-                      setSearchQuery("");
+
+
                       setView("home");
                     }}
                   >
