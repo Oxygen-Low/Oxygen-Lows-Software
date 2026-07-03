@@ -13,7 +13,7 @@ interface UnlockModalProps {
   onUnlock: () => void;
 }
 
-export const UnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => {
+export const EncryptionUnlockModal = ({ isOpen, onClose, onUnlock }: UnlockModalProps) => {
   const { session } = useAuth();
   const [keyInput, setKeyInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);

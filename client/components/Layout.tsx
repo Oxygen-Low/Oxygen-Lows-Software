@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogOut, Package, User, Users, HardDrive, Palette, Contact } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
+import { PointsDisplay } from "./PointsDisplay";
 
 interface LayoutProps {
   children: ReactNode;
@@ -53,7 +54,8 @@ export const Layout = ({ children }: LayoutProps) => {
       <div className="flex">
         {/* Sidebar */}
         <aside className={`${styles["sidebar"]} w-64 border-r sticky top-[73px] h-[calc(100vh-73px)] flex flex-col`}>
-          <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+          <PointsDisplay />
+          <nav className="p-4 space-y-2 flex-1 overflow-y-auto pt-2">
             {navItems.map((item) => {
               const Icon = item.icon;
 

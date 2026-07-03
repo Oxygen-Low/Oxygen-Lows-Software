@@ -25,7 +25,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useAiModels } from "@/hooks/useAiModels";
 import { toast } from "sonner";
 import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
-import { UnlockModal } from "@/components/UnlockModal";
+import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
 
 interface Chat {
   id: string;
@@ -148,7 +148,7 @@ export const ChatbotApp = () => {
   const [selectedUserCharacter, setSelectedUserCharacter] = useState<string | null>(null);
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastParsedLengthRef = useRef(0);
@@ -170,7 +170,7 @@ export const ChatbotApp = () => {
 
     const key = getMasterKey();
     if (enabled && !key) {
-      setShowUnlockModal(true);
+      setShowEncryptionUnlockModal(true);
     } else {
       const { data: chatList } = await supabase.from("chats").select("*").eq("user_id", session.user.id).order("updated_at", { ascending: false });
       if (chatList) {
@@ -250,7 +250,7 @@ export const ChatbotApp = () => {
     if (!session?.user?.id) return;
     const key = getMasterKey();
     if (isEncryptionEnabled && !key) {
-      setShowUnlockModal(true);
+      setShowEncryptionUnlockModal(true);
       return;
     }
     const title = "New Chat";
@@ -308,7 +308,7 @@ export const ChatbotApp = () => {
 
       const key = getMasterKey();
       if (isEncryptionEnabled && !key) {
-        setShowUnlockModal(true);
+        setShowEncryptionUnlockModal(true);
         return;
       }
       const { error: userInsertError } = await supabase.from("chat_messages").insert({
@@ -436,7 +436,7 @@ export const ChatbotApp = () => {
 
   return (
     <div className="flex h-[700px] gap-0 bg-slate-950/30 rounded-2xl border border-slate-800 overflow-hidden text-slate-200">
-      <UnlockModal isOpen={showUnlockModal} onClose={() => setShowUnlockModal(false)} onUnlock={() => { setShowUnlockModal(false); fetchData(); }} />
+      <EncryptionUnlockModal isOpen={showEncryptionUnlockModal} onClose={() => setShowEncryptionUnlockModal(false)} onUnlock={() => { setShowEncryptionUnlockModal(false); fetchData(); }} />
       <div className="w-64 flex flex-col gap-4 border-r border-slate-800 p-6">
         <Button onClick={handleCreateChat} className="w-full bg-cyan-600"><Plus className="w-4 h-4 mr-2" />New Chat</Button>
         <ScrollArea className="flex-1">
