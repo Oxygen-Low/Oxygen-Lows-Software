@@ -91,6 +91,7 @@ router.post("/", authenticateRepoRequest, apiLimiter, async (req, res) => {
     const { data, error } = await supabase.from("repositories").insert({ id: repoId, owner_id: user.id, name, description, storage_path: storagePath, zip_size_bytes: size }).select().single();
     if (error) {
         await repoManager.deleteRepo(repoId);
+        if (storagePath.includes('..')) throw new Error("Invalid storage path");
         await supabase.storage.from("Repositories").remove([storagePath]);
         return res.status(500).json({ error: error.message });
     }
@@ -117,6 +118,7 @@ router.delete("/:id", authenticateRepoRequest, authorizeRepoAccess, async (req, 
 
     await repoManager.deleteRepo(id);
     if (repo.storage_path) {
+        if (repo.storage_path.includes('..')) throw new Error("Invalid storage path");
         await supabase.storage.from("Repositories").remove([repo.storage_path]);
     }
 
