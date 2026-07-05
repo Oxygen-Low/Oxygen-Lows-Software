@@ -91,6 +91,7 @@ export default function Account() {
     setSelectedStoragePath(file.name);
     setFitImage(false);
     setZoom(1);
+    if (file.name.includes('..')) throw new Error('Invalid file name');
     const { data } = await supabase.storage.from("Storage").createSignedUrl(file.name, 3600);
     if (data?.signedUrl) setSelectedImage(data.signedUrl);
   };
