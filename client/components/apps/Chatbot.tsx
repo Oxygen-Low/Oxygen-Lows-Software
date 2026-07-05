@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
@@ -84,6 +84,57 @@ const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "koboldcpp" || provider === "kobold") return "koboldcpp/" + modelId;
   return provider + " - " + modelId;
 };
+
+/**
+ * ⚡ Bolt Performance Optimization:
+ * Extracting the individual chat message rendering into a `React.memo` wrapped component.
+ * This prevents the extremely expensive re-renders of `ReactMarkdown` and `SyntaxHighlighter`
+ * for the entire chat history on every single token received during a streaming response.
+ * Without this, a long chat history with lots of code blocks would cause severe UI lag
+ * during text streaming.
+ */
+const ChatMessage = React.memo(({ message: m, setActiveArtifact }: { message: Message, setActiveArtifact: (art: Artifact) => void }) => {
+  const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
+  const displayContent = (m.content || "").replace(/`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\\\\\|$)/g, "");
+
+  return (
+    <div className={cn("flex gap-4 max-w-[85%]", m.role === "user" ? "ml-auto flex-row-reverse" : "")}>
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", m.role === "user" ? "bg-cyan-600" : "bg-slate-800")}>
+        {m.role === "user" ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-cyan-400" />}
+      </div>
+      <div className="flex flex-col gap-2 flex-1 min-w-0">
+        <div className={cn("p-4 rounded-2xl text-sm prose prose-invert max-w-none", m.role === "user" ? "bg-cyan-600/10 border border-cyan-500/20 text-white" : "bg-slate-900 border border-slate-800 text-slate-200")}>
+          <ReactMarkdown
+            components={{
+              code({node, inline, className, children, ...props}: any) {
+                const match = /language-(\w+)/.exec(className || "");
+                return !inline && match ? (
+                  <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" {...props}>
+                    {String(children).replace(/\n$/, "")}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>{children}</code>
+                );
+              }
+            }}
+          >
+            {displayContent}
+          </ReactMarkdown>
+        </div>
+        {artifacts.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {artifacts.map((art, idx) => (
+              <Button key={idx} variant="outline" size="sm" className="h-9 bg-slate-900/50 border-slate-800 hover:bg-slate-800 text-xs" onClick={() => setActiveArtifact(art)}>
+                <FileCode className="w-3.5 h-3.5 mr-2 text-cyan-400" />
+                {art.filename}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
 
 const ArtifactSidebar = ({ artifact, onClose }: { artifact: Artifact; onClose: () => void }) => {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -480,48 +531,9 @@ export const ChatbotApp = () => {
           <>
             <ScrollArea className="flex-1 pr-4">
               <div className="space-y-6 py-4">
-                {messages.map((m, i) => {
-                  const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
-                  const displayContent = (m.content || "").replace(/`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\\\\\|$)/g, "");
-
-                  return (
-                    <div key={i} className={cn("flex gap-4 max-w-[85%]", m.role === "user" ? "ml-auto flex-row-reverse" : "")}>
-                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", m.role === "user" ? "bg-cyan-600" : "bg-slate-800")}>
-                        {m.role === "user" ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-cyan-400" />}
-                      </div>
-                      <div className="flex flex-col gap-2 flex-1 min-w-0">
-                        <div className={cn("p-4 rounded-2xl text-sm prose prose-invert max-w-none", m.role === "user" ? "bg-cyan-600/10 border border-cyan-500/20 text-white" : "bg-slate-900 border border-slate-800 text-slate-200")}>
-                          <ReactMarkdown
-                            components={{
-                              code({node, inline, className, children, ...props}: any) {
-                                const match = /language-(\w+)/.exec(className || "");
-                                return !inline && match ? (
-                                  <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" {...props}>
-                                    {String(children).replace(/\n$/, "")}
-                                  </SyntaxHighlighter>
-                                ) : (
-                                  <code className={className} {...props}>{children}</code>
-                                );
-                              }
-                            }}
-                          >
-                            {displayContent}
-                          </ReactMarkdown>
-                        </div>
-                        {artifacts.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {artifacts.map((art, idx) => (
-                              <Button key={idx} variant="outline" size="sm" className="h-9 bg-slate-900/50 border-slate-800 hover:bg-slate-800 text-xs" onClick={() => setActiveArtifact(art)}>
-                                <FileCode className="w-3.5 h-3.5 mr-2 text-cyan-400" />
-                                {art.filename}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                {messages.map((m, i) => (
+                  <ChatMessage key={i} message={m} setActiveArtifact={setActiveArtifact} />
+                ))}
                 {isTyping && <div className="flex gap-4"><div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center"><Loader2 className="w-4 h-4 text-cyan-400 animate-spin" /></div><div className="p-4 rounded-2xl bg-slate-900 border border-slate-800"><span className="animate-pulse">...</span></div></div>}
                 <div ref={messagesEndRef} />
               </div>
