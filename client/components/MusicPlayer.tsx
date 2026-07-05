@@ -3,7 +3,7 @@ import { useMusic } from "@/hooks/useMusic";
 import { Button } from "@/components/ui/button";
 
 export const MusicPlayer = () => {
-    const {
+  const {
     currentTrack,
     currentPosition,
     isPlaying,
@@ -43,7 +43,9 @@ export const MusicPlayer = () => {
             onClick={() => playTrack(playlist[0])}
             className="bg-primary hover:bg-primary/90"
           >
-            <Play className="w-4 h-4 mr-2" />Start Playlist</Button>
+            <Play className="w-4 h-4 mr-2" />
+            Start Playlist
+          </Button>
         )}
       </div>
     );
@@ -106,7 +108,9 @@ export const MusicPlayer = () => {
           size="sm"
           variant={shuffle ? "default" : "ghost"}
           onClick={() => toggleShuffle(!shuffle)}
-          className={shuffle ? "bg-primary hover:bg-primary/90" : "hover:text-primary"}
+          className={
+            shuffle ? "bg-primary hover:bg-primary/90" : "hover:text-primary"
+          }
         >
           <Shuffle className="w-4 h-4" />
         </Button>

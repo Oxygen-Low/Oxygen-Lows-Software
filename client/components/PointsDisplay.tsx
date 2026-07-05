@@ -51,7 +51,7 @@ export const PointsDisplay = () => {
             // Reset diff after animation
             setTimeout(() => setDiff(null), 2000);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -69,7 +69,9 @@ export const PointsDisplay = () => {
           <Diamond className="w-5 h-5 text-cyan-400" />
         </div>
         <div>
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Points</p>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+            Points
+          </p>
           <div className="relative flex items-center">
             <span className="text-xl font-bold text-white tabular-nums">
               {points.toLocaleString()}

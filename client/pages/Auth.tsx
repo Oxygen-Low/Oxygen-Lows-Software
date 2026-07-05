@@ -65,7 +65,9 @@ export default function Auth() {
       try {
         const isPwned = await isPasswordPwned(password);
         if (isPwned) {
-          setError("This password has been leaked in data breaches. Please choose a more secure password.");
+          setError(
+            "This password has been leaked in data breaches. Please choose a more secure password.",
+          );
           setLoadingSubmit(false);
           return;
         }
@@ -93,7 +95,9 @@ export default function Auth() {
         setSuccessMessage("Account created! You can now sign in.");
         setTimeout(() => setMode("signin"), 2000);
       } else if (mode === "recovery") {
-        const { error: recoveryError } = await supabase.auth.updateUser({ password });
+        const { error: recoveryError } = await supabase.auth.updateUser({
+          password,
+        });
         if (recoveryError) throw recoveryError;
         setSuccessMessage("Password updated successfully!");
         setTimeout(() => setMode("signin"), 2000);
@@ -106,7 +110,8 @@ export default function Auth() {
   };
 
   const generatePassword = () => {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+    const charset =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
     const array = new Uint32Array(16);
     crypto.getRandomValues(array);
     let retVal = "";
@@ -129,7 +134,11 @@ export default function Auth() {
             Oxygen Low's Software
           </h1>
           <p className="text-slate-400">
-            {mode === "signin" ? "Welcome back" : mode === "signup" ? "Create your account" : "Set new password"}
+            {mode === "signin"
+              ? "Welcome back"
+              : mode === "signup"
+                ? "Create your account"
+                : "Set new password"}
           </p>
         </div>
 
@@ -137,7 +146,10 @@ export default function Auth() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode !== "recovery" && (
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Email Address
                 </label>
                 <div className="relative">
@@ -157,7 +169,10 @@ export default function Auth() {
 
             {mode === "signup" && (
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Username
                 </label>
                 <input
@@ -175,7 +190,10 @@ export default function Auth() {
             )}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 {mode === "recovery" ? "New Password" : "Password"}
               </label>
               <div className="relative">
@@ -194,7 +212,11 @@ export default function Auth() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-400 transition"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
               {mode === "signup" && (

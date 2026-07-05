@@ -11,7 +11,7 @@ import {
   MoreVertical,
   ExternalLink,
   ShieldAlert,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,12 +39,12 @@ interface Friendship {
   id: string;
   user_id: string;
   friend_id: string;
-  status: 'pending' | 'accepted';
+  status: "pending" | "accepted";
   profile: SocialProfile;
 }
 
 export function FriendsApp() {
-    const { session } = useAuth();
+  const { session } = useAuth();
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<Friendship[]>([]);
   const [pendingOutgoing, setPendingOutgoing] = useState<Friendship[]>([]);
@@ -59,20 +59,53 @@ export function FriendsApp() {
     if (!session?.user?.id) return;
     setLoading(true);
     try {
-      const [{ data: fData }, { data: folData }, { data: ferData }, { data: bData }] = await Promise.all([
-        supabase.rpc('get_my_friendships'),
-        supabase.from('follows').select('id, following_id, profile:profiles!follows_following_id_fkey(*)').eq('follower_id', session.user.id),
-        supabase.from('follows').select('id, follower_id, profile:profiles!follows_follower_id_fkey(*)').eq('following_id', session.user.id),
-        supabase.from('blocks').select('blocked_id, profile:profiles!blocks_blocked_id_fkey(*)').eq('blocker_id', session.user.id)
+      const [
+        { data: fData },
+        { data: folData },
+        { data: ferData },
+        { data: bData },
+      ] = await Promise.all([
+        supabase.rpc("get_my_friendships"),
+        supabase
+          .from("follows")
+          .select(
+            "id, following_id, profile:profiles!follows_following_id_fkey(*)",
+          )
+          .eq("follower_id", session.user.id),
+        supabase
+          .from("follows")
+          .select(
+            "id, follower_id, profile:profiles!follows_follower_id_fkey(*)",
+          )
+          .eq("following_id", session.user.id),
+        supabase
+          .from("blocks")
+          .select("blocked_id, profile:profiles!blocks_blocked_id_fkey(*)")
+          .eq("blocker_id", session.user.id),
       ]);
 
       if (fData) {
-        setFriends(fData.filter((f: any) => f.status === 'accepted'));
-        setPendingIncoming(fData.filter((f: any) => f.status === 'pending' && f.friend_id === session.user.id));
-        setPendingOutgoing(fData.filter((f: any) => f.status === 'pending' && f.user_id === session.user.id));
+        setFriends(fData.filter((f: any) => f.status === "accepted"));
+        setPendingIncoming(
+          fData.filter(
+            (f: any) =>
+              f.status === "pending" && f.friend_id === session.user.id,
+          ),
+        );
+        setPendingOutgoing(
+          fData.filter(
+            (f: any) => f.status === "pending" && f.user_id === session.user.id,
+          ),
+        );
       }
-      if (folData) setFollowing(folData.map((f: any) => ({ id: f.id, profile: f.profile })));
-      if (ferData) setFollowers(ferData.map((f: any) => ({ id: f.id, profile: f.profile })));
+      if (folData)
+        setFollowing(
+          folData.map((f: any) => ({ id: f.id, profile: f.profile })),
+        );
+      if (ferData)
+        setFollowers(
+          ferData.map((f: any) => ({ id: f.id, profile: f.profile })),
+        );
       if (bData) setBlocked(bData.map((b: any) => b.profile));
     } catch (error: any) {
       toast.error(error.message);
@@ -90,9 +123,9 @@ export function FriendsApp() {
     try {
       // Find user by username
       const { data: targetUser, error: findError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('username', searchQuery.trim().toLowerCase())
+        .from("profiles")
+        .select("user_id")
+        .eq("username", searchQuery.trim().toLowerCase())
         .single();
 
       if (findError || !targetUser) {
@@ -106,8 +139,12 @@ export function FriendsApp() {
       }
 
       const { error } = await supabase
-        .from('friendships')
-        .insert({ user_id: session.user.id, friend_id: targetUser.user_id, status: 'pending' });
+        .from("friendships")
+        .insert({
+          user_id: session.user.id,
+          friend_id: targetUser.user_id,
+          status: "pending",
+        });
 
       if (error) throw error;
       toast.success("Friend request sent");
@@ -121,9 +158,9 @@ export function FriendsApp() {
   const handleAcceptRequest = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('friendships')
-        .update({ status: 'accepted' })
-        .eq('id', id);
+        .from("friendships")
+        .update({ status: "accepted" })
+        .eq("id", id);
       if (error) throw error;
       toast.success("Friend request accepted");
       fetchData();
@@ -134,7 +171,10 @@ export function FriendsApp() {
 
   const handleDeleteFriendship = async (id: string) => {
     try {
-      const { error } = await supabase.from('friendships').delete().eq('id', id);
+      const { error } = await supabase
+        .from("friendships")
+        .delete()
+        .eq("id", id);
       if (error) throw error;
       toast.success("Success");
       fetchData();
@@ -145,7 +185,7 @@ export function FriendsApp() {
 
   const handleUnfollow = async (id: string) => {
     try {
-      const { error } = await supabase.from('follows').delete().eq('id', id);
+      const { error } = await supabase.from("follows").delete().eq("id", id);
       if (error) throw error;
       toast.success("Unfollow");
       fetchData();
@@ -156,7 +196,11 @@ export function FriendsApp() {
 
   const handleUnblock = async (id: string) => {
     try {
-      const { error } = await supabase.from('blocks').delete().eq('blocker_id', session?.user.id).eq('blocked_id', id);
+      const { error } = await supabase
+        .from("blocks")
+        .delete()
+        .eq("blocker_id", session?.user.id)
+        .eq("blocked_id", id);
       if (error) throw error;
       toast.success("User unblocked");
       fetchData();
@@ -175,13 +219,15 @@ export function FriendsApp() {
             className="pl-10 bg-slate-950 border-slate-800 text-white"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSendRequest()}
+            onKeyDown={(e) => e.key === "Enter" && handleSendRequest()}
           />
           <Button
             size="sm"
             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 bg-cyan-600 hover:bg-cyan-700 text-white"
             onClick={handleSendRequest}
-          >Add</Button>
+          >
+            Add
+          </Button>
         </div>
       </div>
 
@@ -191,18 +237,25 @@ export function FriendsApp() {
             <Users className="w-4 h-4" /> Friends ({friends.length})
           </TabsTrigger>
           <TabsTrigger value="requests" className="flex gap-2">
-            <UserPlus className="w-4 h-4" /> Requests ({pendingIncoming.length + pendingOutgoing.length})
+            <UserPlus className="w-4 h-4" /> Requests (
+            {pendingIncoming.length + pendingOutgoing.length})
           </TabsTrigger>
           <TabsTrigger value="following" className="flex gap-2">
-            <UserCheck className="w-4 h-4" />Social</TabsTrigger>
+            <UserCheck className="w-4 h-4" />
+            Social
+          </TabsTrigger>
           <TabsTrigger value="blocked" className="flex gap-2">
-            <ShieldAlert className="w-4 h-4" />Blocked</TabsTrigger>
+            <ShieldAlert className="w-4 h-4" />
+            Blocked
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="friends" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {friends.length === 0 ? (
-              <p className="text-slate-500 col-span-full py-8 text-center bg-slate-900/30 rounded-lg border border-dashed border-slate-800">You haven't added any friends yet.</p>
+              <p className="text-slate-500 col-span-full py-8 text-center bg-slate-900/30 rounded-lg border border-dashed border-slate-800">
+                You haven't added any friends yet.
+              </p>
             ) : (
               friends.map((friend) => (
                 <UserCard
@@ -211,20 +264,37 @@ export function FriendsApp() {
                   action={
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400"
+                        >
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-slate-950 border-slate-800">
-                        <DropdownMenuItem asChild className="text-slate-200 focus:bg-slate-900 focus:text-white">
-                          <Link to={`/users/${friend.profile.username}`} className="flex items-center gap-2">
-                            <ExternalLink className="w-4 h-4" />View Profile</Link>
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-slate-950 border-slate-800"
+                      >
+                        <DropdownMenuItem
+                          asChild
+                          className="text-slate-200 focus:bg-slate-900 focus:text-white"
+                        >
+                          <Link
+                            to={`/users/${friend.profile.username}`}
+                            className="flex items-center gap-2"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            View Profile
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
                           onClick={() => handleDeleteFriendship(friend.id)}
                         >
-                          <UserMinus className="w-4 h-4 mr-2" />Unfriend</DropdownMenuItem>
+                          <UserMinus className="w-4 h-4 mr-2" />
+                          Unfriend
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   }
@@ -236,10 +306,14 @@ export function FriendsApp() {
 
         <TabsContent value="requests" className="mt-6 space-y-8">
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Incoming Requests</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              Incoming Requests
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pendingIncoming.length === 0 ? (
-                <p className="text-slate-600 text-sm">No incoming friend requests.</p>
+                <p className="text-slate-600 text-sm">
+                  No incoming friend requests.
+                </p>
               ) : (
                 pendingIncoming.map((req) => (
                   <UserCard
@@ -272,10 +346,14 @@ export function FriendsApp() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Sent Requests</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              Sent Requests
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pendingOutgoing.length === 0 ? (
-                <p className="text-slate-600 text-sm">No outgoing friend requests.</p>
+                <p className="text-slate-600 text-sm">
+                  No outgoing friend requests.
+                </p>
               ) : (
                 pendingOutgoing.map((req) => (
                   <UserCard
@@ -287,7 +365,9 @@ export function FriendsApp() {
                         variant="ghost"
                         className="text-slate-500 hover:text-red-400"
                         onClick={() => handleDeleteFriendship(req.id)}
-                      >Cancel</Button>
+                      >
+                        Cancel
+                      </Button>
                     }
                   />
                 ))
@@ -297,11 +377,15 @@ export function FriendsApp() {
         </TabsContent>
 
         <TabsContent value="following" className="mt-6 space-y-8">
-           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Following</h3>
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              Following
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {following.length === 0 ? (
-                <p className="text-slate-600 text-sm">You aren't following anyone.</p>
+                <p className="text-slate-600 text-sm">
+                  You aren't following anyone.
+                </p>
               ) : (
                 following.map((f) => (
                   <UserCard
@@ -313,7 +397,9 @@ export function FriendsApp() {
                         variant="outline"
                         className="border-slate-800 hover:bg-slate-900 text-slate-300"
                         onClick={() => handleUnfollow(f.id)}
-                      >Unfollow</Button>
+                      >
+                        Unfollow
+                      </Button>
                     }
                   />
                 ))
@@ -322,16 +408,17 @@ export function FriendsApp() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Followers</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              Followers
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {followers.length === 0 ? (
-                <p className="text-slate-600 text-sm">You don't have any followers yet.</p>
+                <p className="text-slate-600 text-sm">
+                  You don't have any followers yet.
+                </p>
               ) : (
                 followers.map((f) => (
-                  <UserCard
-                    key={f.id}
-                    profile={f.profile}
-                  />
+                  <UserCard key={f.id} profile={f.profile} />
                 ))
               )}
             </div>
@@ -341,7 +428,9 @@ export function FriendsApp() {
         <TabsContent value="blocked" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {blocked.length === 0 ? (
-              <p className="text-slate-600 py-8 text-center col-span-full">No blocked users.</p>
+              <p className="text-slate-600 py-8 text-center col-span-full">
+                No blocked users.
+              </p>
             ) : (
               blocked.map((p) => (
                 <UserCard
@@ -353,7 +442,9 @@ export function FriendsApp() {
                       variant="outline"
                       className="text-red-400 border-red-400/20 hover:bg-red-400/10"
                       onClick={() => handleUnblock(p.user_id)}
-                    >Unblock</Button>
+                    >
+                      Unblock
+                    </Button>
                   }
                 />
               ))
@@ -365,13 +456,22 @@ export function FriendsApp() {
   );
 }
 
-function UserCard({ profile, action }: { profile: SocialProfile, action?: React.ReactNode }) {
+function UserCard({
+  profile,
+  action,
+}: {
+  profile: SocialProfile;
+  action?: React.ReactNode;
+}) {
   if (!profile) return null;
 
   return (
     <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors">
       <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0">
-        <Link to={`/users/${profile.username}`} className="flex items-center gap-3 group">
+        <Link
+          to={`/users/${profile.username}`}
+          className="flex items-center gap-3 group"
+        >
           <Avatar className="h-10 w-10 border border-slate-700">
             <AvatarImage src={profile.image_url || undefined} />
             <AvatarFallback className="bg-slate-800 text-slate-400">

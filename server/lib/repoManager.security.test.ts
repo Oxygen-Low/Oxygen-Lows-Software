@@ -19,34 +19,39 @@ describe("RepoManager Path Traversal Security", () => {
   describe("getSafeTmpPath path traversal protection", () => {
     // Test the getSafeTmpPath function indirectly through the module
     // Since it's not exported, we'll test the behavior through the public API
-    
+
     it("should reject path traversal with ../ in repoId", () => {
       // This tests that validateId rejects invalid IDs
       const invalidId = "../../../etc/passwd";
-      
+
       // The validateId function should reject this
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
       expect(uuidRegex.test(invalidId)).toBe(false);
     });
 
     it("should reject path traversal with absolute paths", () => {
       const invalidId = "/etc/passwd";
-      
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
       expect(uuidRegex.test(invalidId)).toBe(false);
     });
 
     it("should accept valid UUID format", () => {
       const validId = "12345678-1234-1234-1234-123456789abc";
-      
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
       expect(uuidRegex.test(validId)).toBe(true);
     });
 
     it("should reject null bytes in path", () => {
-      const invalidId = "12345678-1234-1234-1234-123456789abc\x00../../etc/passwd";
-      
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+      const invalidId =
+        "12345678-1234-1234-1234-123456789abc\x00../../etc/passwd";
+
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
       expect(uuidRegex.test(invalidId)).toBe(false);
     });
   });
@@ -56,7 +61,7 @@ describe("RepoManager Path Traversal Security", () => {
       const base = path.resolve(os.tmpdir());
       const maliciousPath = path.resolve(base, "../../../etc/passwd");
       const relative = path.relative(base, maliciousPath);
-      
+
       // The security check: relative path should not start with '..'
       expect(relative.startsWith("..")).toBe(true);
     });
@@ -65,7 +70,7 @@ describe("RepoManager Path Traversal Security", () => {
       const base = path.resolve(os.tmpdir());
       const maliciousPath = "/etc/passwd";
       const relative = path.relative(base, maliciousPath);
-      
+
       // The security check: when trying to escape with absolute path,
       // the relative path will start with '..' (going up from tmpdir)
       expect(relative.startsWith("..")).toBe(true);
@@ -73,9 +78,12 @@ describe("RepoManager Path Traversal Security", () => {
 
     it("should allow safe paths within base directory", () => {
       const base = path.resolve(os.tmpdir());
-      const safePath = path.resolve(base, "12345678-1234-1234-1234-123456789abc.zip");
+      const safePath = path.resolve(
+        base,
+        "12345678-1234-1234-1234-123456789abc.zip",
+      );
       const relative = path.relative(base, safePath);
-      
+
       // Safe path should not start with '..' and should not be absolute
       expect(relative.startsWith("..")).toBe(false);
       expect(path.isAbsolute(relative)).toBe(false);
@@ -86,7 +94,7 @@ describe("RepoManager Path Traversal Security", () => {
       // Test path with . and .. components
       const trickPath = path.resolve(base, "safe/../../etc/passwd");
       const relative = path.relative(base, trickPath);
-      
+
       // After resolution, this should be detected as escaping
       expect(relative.startsWith("..") || path.isAbsolute(relative)).toBe(true);
     });
@@ -94,7 +102,9 @@ describe("RepoManager Path Traversal Security", () => {
 
   describe("validateId function behavior", () => {
     const validateId = (id: string) => {
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+        id,
+      );
     };
 
     it("should reject path traversal attempts", () => {
@@ -105,9 +115,15 @@ describe("RepoManager Path Traversal Security", () => {
     });
 
     it("should reject special characters", () => {
-      expect(validateId("12345678-1234-1234-1234-123456789abc; rm -rf /")).toBe(false);
-      expect(validateId("12345678-1234-1234-1234-123456789abc\n../../etc")).toBe(false);
-      expect(validateId("12345678-1234-1234-1234-123456789abc\x00")).toBe(false);
+      expect(validateId("12345678-1234-1234-1234-123456789abc; rm -rf /")).toBe(
+        false,
+      );
+      expect(
+        validateId("12345678-1234-1234-1234-123456789abc\n../../etc"),
+      ).toBe(false);
+      expect(validateId("12345678-1234-1234-1234-123456789abc\x00")).toBe(
+        false,
+      );
     });
 
     it("should accept only valid UUIDs", () => {
@@ -126,7 +142,9 @@ describe("RepoManager Path Traversal Security", () => {
 
   describe("Combined security validation", () => {
     const validateId = (id: string) => {
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+        id,
+      );
     };
 
     const getSafeTmpPath = (repoId: string, suffix: string) => {
@@ -135,19 +153,22 @@ describe("RepoManager Path Traversal Security", () => {
       const base = path.resolve(os.tmpdir());
       const target = path.resolve(base, `${safeId}${suffix}`);
       const relative = path.relative(base, target);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error("Invalid path");
+      if (relative.startsWith("..") || path.isAbsolute(relative))
+        throw new Error("Invalid path");
       return target;
     };
 
     it("should throw error for path traversal attempts", () => {
-      expect(() => getSafeTmpPath("../../../etc/passwd", ".zip")).toThrow("Invalid ID");
+      expect(() => getSafeTmpPath("../../../etc/passwd", ".zip")).toThrow(
+        "Invalid ID",
+      );
       expect(() => getSafeTmpPath("/etc/passwd", ".zip")).toThrow("Invalid ID");
     });
 
     it("should successfully create safe paths for valid UUIDs", () => {
       const validId = "12345678-1234-1234-1234-123456789abc";
       const result = getSafeTmpPath(validId, ".zip");
-      
+
       expect(result).toContain(validId);
       expect(result).toContain(".zip");
       expect(result).toContain(os.tmpdir());
@@ -160,7 +181,7 @@ describe("RepoManager Path Traversal Security", () => {
       const result = getSafeTmpPath(validId, ".zip");
       const base = path.resolve(os.tmpdir());
       const relative = path.relative(base, result);
-      
+
       expect(relative.startsWith(".")).toBe(false);
       expect(path.isAbsolute(relative)).toBe(false);
     });

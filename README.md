@@ -2,8 +2,6 @@
 
 Most user-data is stored on the cloud, so there's almost no need to transfer data between servers.
 
-
-
 ## Setup
 
 ### [Docker](https://hub.docker.com/r/oxygenlow/oxygen-lows-software)

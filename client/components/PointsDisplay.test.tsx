@@ -18,7 +18,9 @@ describe("PointsDisplay", () => {
   });
 
   it("renders points when available", async () => {
-    (useAuth as any).mockReturnValue({ session: { user: { id: "test-user" } } });
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "test-user" } },
+    });
     (supabase.from as any).mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),

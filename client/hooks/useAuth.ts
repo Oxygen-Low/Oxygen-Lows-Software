@@ -48,7 +48,7 @@ export const useAuth = () => {
       if (data.user?.id) {
         try {
           await supabase.rpc("upsert_user_preferences", {
-            p_user_id: data.user.id
+            p_user_id: data.user.id,
           });
         } catch (prefsError) {
           console.error("Failed to initialize user preferences:", prefsError);
@@ -88,7 +88,8 @@ export const useAuth = () => {
       });
       if (error) throw error;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Password reset failed";
+      const message =
+        err instanceof Error ? err.message : "Password reset failed";
       setError(message);
       throw err;
     }
@@ -109,38 +110,54 @@ export const useAuth = () => {
     }
   };
 
-  const signInWithOAuth = async (provider: 'github' | 'discord' | 'gitlab' | 'google') => {
+  const signInWithOAuth = async (
+    provider: "github" | "discord" | "gitlab" | "google",
+  ) => {
     try {
       setError(null);
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: window.location.origin,
-          scopes: provider === "gitlab" ? "read_user" : provider === "google" ? "email profile openid" : undefined,
+          scopes:
+            provider === "gitlab"
+              ? "read_user"
+              : provider === "google"
+                ? "email profile openid"
+                : undefined,
         },
       });
       if (error) throw error;
     } catch (err) {
-      const message = err instanceof Error ? err.message : `${provider} sign in failed`;
+      const message =
+        err instanceof Error ? err.message : `${provider} sign in failed`;
       setError(message);
       throw err;
     }
   };
 
-  const linkIdentity = async (provider: 'github' | 'discord' | 'gitlab' | 'google') => {
+  const linkIdentity = async (
+    provider: "github" | "discord" | "gitlab" | "google",
+  ) => {
     try {
       setError(null);
       const { data, error } = await supabase.auth.linkIdentity({
         provider,
         options: {
           redirectTo: `${window.location.origin}/account`,
-          scopes: provider === "gitlab" ? "read_user" : provider === "google" ? "email profile openid" : undefined,
+          scopes:
+            provider === "gitlab"
+              ? "read_user"
+              : provider === "google"
+                ? "email profile openid"
+                : undefined,
         },
       });
       if (error) throw error;
       return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : `${provider} linking failed`;
+      const message =
+        err instanceof Error ? err.message : `${provider} linking failed`;
       setError(message);
       throw err;
     }
