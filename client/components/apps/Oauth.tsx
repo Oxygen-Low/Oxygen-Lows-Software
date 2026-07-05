@@ -68,13 +68,13 @@ export function OauthApp() {
     try {
       // @ts-ignore
       const { data: clientsData, error: clientsError } =
-        await supabase.auth.oauth.listClients();
+        await (supabase.auth as any).oauth.listClients();
       if (clientsError) throw clientsError;
       setClients(clientsData || []);
 
       // @ts-ignore
       const { data: grantsData, error: grantsError } =
-        await supabase.auth.oauth.listAuthorizedApps();
+        await (supabase.auth as any).oauth.listAuthorizedApps();
       if (grantsError) throw grantsError;
       setGrants(grantsData || []);
     } catch (error: any) {
@@ -92,7 +92,7 @@ export function OauthApp() {
     setIsSubmitting(true);
     try {
       // @ts-ignore
-      const { data, error } = await supabase.auth.oauth.createClient({
+      const { data, error } = await (supabase.auth as any).oauth.createClient({
         name: newName,
         type: newType,
         redirect_uris: newRedirectUris.split(",").map((uri) => uri.trim()),
@@ -122,7 +122,7 @@ export function OauthApp() {
     setIsSubmitting(true);
     try {
       // @ts-ignore
-      const { error } = await supabase.auth.oauth.deleteClient(id);
+      const { error } = await (supabase.auth as any).oauth.deleteClient(id);
       if (error) throw error;
 
       fetchData();
@@ -145,7 +145,7 @@ export function OauthApp() {
     setIsSubmitting(true);
     try {
       // @ts-ignore
-      const { error } = await supabase.auth.oauth.revokeAuthorization(id);
+      const { error } = await (supabase.auth as any).oauth.revokeGrant(id);
       if (error) throw error;
 
       fetchData();

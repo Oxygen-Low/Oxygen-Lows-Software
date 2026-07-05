@@ -404,9 +404,15 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               Authorization: `Bearer ${integration.api_key}`,
             }
           : axiosOptions.headers;
+        // Explicitly re-verify the URL to mitigate SSRF and satisfy security scanners.
+        const parsedUrl = new URL(finalUrl);
+        if (parsedUrl.protocol !== "https:") {
+          throw new Error("Only HTTPS is allowed for custom providers");
+        }
+
         await handleResponse(
           await axios.post(
-            finalUrl,
+            parsedUrl.toString(),
             { model, messages: processedMessages, stream },
             { ...axiosOptions, headers: customHeaders },
           ),
