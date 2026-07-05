@@ -93,6 +93,7 @@ export default function Storage() {
 
     setUploading(true);
     try {
+      if (file.name.includes('..')) throw new Error("Invalid file name");
       const { error } = await supabase.storage
         .from("Storage")
         .upload(`${session.user.id}/${file.name}`, file, { upsert: false });
