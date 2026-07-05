@@ -2,14 +2,21 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldAlert, Check, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
 export default function OauthConsent() {
-    const [searchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -38,7 +45,8 @@ export default function OauthConsent() {
 
       try {
         // @ts-ignore
-        const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+        const { data, error } =
+          await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
 
         if (error) throw error;
         setAuthDetails(data);
@@ -57,7 +65,8 @@ export default function OauthConsent() {
     setProcessing(true);
     try {
       // @ts-ignore
-      const { data, error } = await supabase.auth.oauth.approveAuthorization(authorizationId);
+      const { data, error } =
+        await supabase.auth.oauth.approveAuthorization(authorizationId);
       if (error) throw error;
       if ((data as any)?.redirect_to) {
         window.location.href = (data as any).redirect_to;
@@ -77,7 +86,8 @@ export default function OauthConsent() {
     setProcessing(true);
     try {
       // @ts-ignore
-      const { data, error } = await supabase.auth.oauth.denyAuthorization(authorizationId);
+      const { data, error } =
+        await supabase.auth.oauth.denyAuthorization(authorizationId);
       if (error) throw error;
       if ((data as any)?.redirect_to) {
         window.location.href = (data as any).redirect_to;
@@ -122,7 +132,12 @@ export default function OauthConsent() {
             <p className="text-center text-slate-400">{error}</p>
           </CardContent>
           <CardFooter>
-            <Button onClick={() => navigate("/")} className="w-full bg-slate-800 hover:bg-slate-700">Back</Button>
+            <Button
+              onClick={() => navigate("/")}
+              className="w-full bg-slate-800 hover:bg-slate-700"
+            >
+              Back
+            </Button>
           </CardFooter>
         </Card>
       </div>
@@ -146,18 +161,27 @@ export default function OauthConsent() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
-            <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Requested Permissions:</h4>
+            <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              Requested Permissions:
+            </h4>
             <ul className="space-y-2">
               {scopes && scopes.length > 0 ? (
                 scopes.map((scope: string) => (
-                  <li key={scope} className="flex items-start gap-3 text-sm text-slate-400">
+                  <li
+                    key={scope}
+                    className="flex items-start gap-3 text-sm text-slate-400"
+                  >
                     <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                     <span>
-                      {scope === "openid" && "Access to your unique user identifier"}
+                      {scope === "openid" &&
+                        "Access to your unique user identifier"}
                       {scope === "email" && "View your email address"}
-                      {scope === "profile" && "Access your profile info (name, photo)"}
+                      {scope === "profile" &&
+                        "Access your profile info (name, photo)"}
                       {scope === "phone" && "Access your phone number"}
-                      {!["openid", "email", "profile", "phone"].includes(scope) && `Access to ${scope}`}
+                      {!["openid", "email", "profile", "phone"].includes(
+                        scope,
+                      ) && `Access to ${scope}`}
                     </span>
                   </li>
                 ))
@@ -172,7 +196,9 @@ export default function OauthConsent() {
 
           <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
-            <p className="text-xs text-slate-400">Only authorize applications you trust.</p>
+            <p className="text-xs text-slate-400">
+              Only authorize applications you trust.
+            </p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
@@ -188,7 +214,9 @@ export default function OauthConsent() {
             onClick={handleDeny}
             disabled={processing}
             className="w-full text-slate-500 hover:text-red-400 hover:bg-red-400/10"
-          >Deny Access</Button>
+          >
+            Deny Access
+          </Button>
         </CardFooter>
       </Card>
     </div>

@@ -1,0 +1,232 @@
+diff --git a/lib/jsdom/browser/resources/jsdom-dispatcher.js b/lib/jsdom/browser/resources/jsdom-dispatcher.js
+index 151424c905be392afb3094c024c8e274f0309e8c..abd491466fae7a02425d6f606ea5d85f4058e7dc 100644
+--- a/lib/jsdom/browser/resources/jsdom-dispatcher.js
++++ b/lib/jsdom/browser/resources/jsdom-dispatcher.js
+@@ -5,8 +5,8 @@ const { fileURLToPath } = require("url");
+ const { parseURL, serializeURL, serializeURLOrigin, serializePath } = require("whatwg-url");
+ const dataURLFromRecord = require("data-urls").fromURLRecord;
+ const { Dispatcher } = require("undici");
+-const WrapHandler = require("undici/lib/handler/wrap-handler.js");
+-const UnwrapHandler = require("undici/lib/handler/unwrap-handler.js");
++const WrapHandler = require("./undici-wrap-handler.js");
++const UnwrapHandler = require("./undici-unwrap-handler.js");
+ const { toBase64 } = require("@exodus/bytes/base64.js");
+ const { utf8Encode } = require("../../living/helpers/encoding");
+ const { sendStreamResponse } = require("./stream-handler");
+diff --git a/lib/jsdom/browser/resources/undici-unwrap-handler.js b/lib/jsdom/browser/resources/undici-unwrap-handler.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..0c0de569a24feda9eaf500d6af5463a12dd5314d
+--- /dev/null
++++ b/lib/jsdom/browser/resources/undici-unwrap-handler.js
+@@ -0,0 +1,105 @@
++'use strict'
++
++const { parseHeaders } = require('undici/lib/core/util')
++const { InvalidArgumentError } = require('undici/lib/core/errors')
++
++const kResume = Symbol('resume')
++
++class UnwrapController {
++  #paused = false
++  #reason = null
++  #aborted = false
++  #abort
++
++  [kResume] = null
++
++  rawHeaders = null
++  rawTrailers = null
++
++  constructor (abort) {
++    this.#abort = abort
++  }
++
++  pause () {
++    this.#paused = true
++  }
++
++  resume () {
++    if (this.#paused) {
++      this.#paused = false
++      this[kResume]?.()
++    }
++  }
++
++  abort (reason) {
++    if (!this.#aborted) {
++      this.#aborted = true
++      this.#reason = reason
++      this.#abort(reason)
++    }
++  }
++
++  get aborted () {
++    return this.#aborted
++  }
++
++  get reason () {
++    return this.#reason
++  }
++
++  get paused () {
++    return this.#paused
++  }
++}
++
++module.exports = class UnwrapHandler {
++  #handler
++  #controller
++
++  constructor (handler) {
++    this.#handler = handler
++  }
++
++  static unwrap (handler) {
++    return !handler.onRequestStart ? handler : new UnwrapHandler(handler)
++  }
++
++  onConnect (abort, context) {
++    this.#controller = new UnwrapController(abort)
++    this.#handler.onRequestStart?.(this.#controller, context)
++  }
++
++  onResponseStarted () {
++    return this.#handler.onResponseStarted?.()
++  }
++
++  onUpgrade (statusCode, rawHeaders, socket) {
++    this.#controller.rawHeaders = rawHeaders
++    this.#handler.onRequestUpgrade?.(this.#controller, statusCode, parseHeaders(rawHeaders), socket)
++  }
++
++  onHeaders (statusCode, rawHeaders, resume, statusMessage) {
++    this.#controller[kResume] = resume
++    this.#controller.rawHeaders = rawHeaders
++    this.#handler.onResponseStart?.(this.#controller, statusCode, parseHeaders(rawHeaders), statusMessage)
++    return !this.#controller.paused
++  }
++
++  onData (data) {
++    this.#handler.onResponseData?.(this.#controller, data)
++    return !this.#controller.paused
++  }
++
++  onComplete (rawTrailers) {
++    this.#controller.rawTrailers = rawTrailers
++    this.#handler.onResponseEnd?.(this.#controller, parseHeaders(rawTrailers))
++  }
++
++  onError (err) {
++    if (!this.#handler.onResponseError) {
++      throw new InvalidArgumentError('invalid onError method')
++    }
++
++    this.#handler.onResponseError?.(this.#controller, err)
++  }
++}
+diff --git a/lib/jsdom/browser/resources/undici-wrap-handler.js b/lib/jsdom/browser/resources/undici-wrap-handler.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..c73c36e68cfe540f4b8222390f4daced620802b5
+--- /dev/null
++++ b/lib/jsdom/browser/resources/undici-wrap-handler.js
+@@ -0,0 +1,100 @@
++'use strict'
++
++const { InvalidArgumentError } = require('undici/lib/core/errors')
++
++function toRawHeaderValue (value) {
++  return Array.isArray(value)
++    ? value.map((item) => Buffer.from(item, 'latin1'))
++    : Buffer.from(value, 'latin1')
++}
++
++module.exports = class WrapHandler {
++  #handler
++
++  constructor (handler) {
++    this.#handler = handler
++  }
++
++  static wrap (handler) {
++    return handler.onRequestStart ? handler : new WrapHandler(handler)
++  }
++
++  onConnect (abort, context) {
++    return this.#handler.onConnect?.(abort, context)
++  }
++
++  onResponseStarted () {
++    return this.#handler.onResponseStarted?.()
++  }
++
++  onHeaders (statusCode, rawHeaders, resume, statusMessage) {
++    return this.#handler.onHeaders?.(statusCode, rawHeaders, resume, statusMessage)
++  }
++
++  onUpgrade (statusCode, rawHeaders, socket) {
++    return this.#handler.onUpgrade?.(statusCode, rawHeaders, socket)
++  }
++
++  onData (data) {
++    return this.#handler.onData?.(data)
++  }
++
++  onComplete (trailers) {
++    return this.#handler.onComplete?.(trailers)
++  }
++
++  onError (err) {
++    if (!this.#handler.onError) {
++      throw err
++    }
++
++    return this.#handler.onError?.(err)
++  }
++
++  onRequestStart (controller, context) {
++    this.#handler.onConnect?.((reason) => controller.abort(reason), context)
++  }
++
++  onRequestUpgrade (controller, statusCode, headers, socket) {
++    const rawHeaders = []
++    for (const [key, val] of Object.entries(headers)) {
++      rawHeaders.push(Buffer.from(key, 'latin1'), toRawHeaderValue(val))
++    }
++
++    this.#handler.onUpgrade?.(statusCode, rawHeaders, socket)
++  }
++
++  onResponseStart (controller, statusCode, headers, statusMessage) {
++    const rawHeaders = []
++    for (const [key, val] of Object.entries(headers)) {
++      rawHeaders.push(Buffer.from(key, 'latin1'), toRawHeaderValue(val))
++    }
++
++    if (this.#handler.onHeaders?.(statusCode, rawHeaders, () => controller.resume(), statusMessage) === false) {
++      controller.pause()
++    }
++  }
++
++  onResponseData (controller, data) {
++    if (this.#handler.onData?.(data) === false) {
++      controller.pause()
++    }
++  }
++
++  onResponseEnd (controller, trailers) {
++    const rawTrailers = []
++    for (const [key, val] of Object.entries(trailers)) {
++      rawTrailers.push(Buffer.from(key, 'latin1'), toRawHeaderValue(val))
++    }
++
++    this.#handler.onComplete?.(rawTrailers)
++  }
++
++  onResponseError (controller, err) {
++    if (!this.#handler.onError) {
++      throw new InvalidArgumentError('invalid onError method')
++    }
++
++    this.#handler.onError?.(err)
++  }
++}

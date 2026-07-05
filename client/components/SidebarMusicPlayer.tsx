@@ -20,7 +20,9 @@ export const SidebarMusicPlayer = () => {
     return (
       <div className="p-4 mt-auto border-t border-border">
         <div className="flex flex-col gap-2">
-          <p className="text-muted-foreground text-xs text-center">No track playing</p>
+          <p className="text-muted-foreground text-xs text-center">
+            No track playing
+          </p>
           {playlist.length > 0 && (
             <Button
               size="sm"
@@ -39,7 +41,10 @@ export const SidebarMusicPlayer = () => {
   return (
     <div className="p-4 mt-auto border-t border-border space-y-3">
       <div className="overflow-hidden">
-        <p className="font-medium text-xs text-foreground truncate" title={currentTrack.name}>
+        <p
+          className="font-medium text-xs text-foreground truncate"
+          title={currentTrack.name}
+        >
           {currentTrack.name}
         </p>
       </div>

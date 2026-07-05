@@ -65,13 +65,16 @@ export const PointsUnlockModal = ({
             Unlock {itemName}
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            This action requires {cost} points. You currently have {currentPoints} points.
+            This action requires {cost} points. You currently have{" "}
+            {currentPoints} points.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center justify-center py-6">
           <div className="flex items-center gap-4 px-6 py-4 bg-slate-950 rounded-2xl border border-slate-800">
             <div className="flex flex-col items-center">
-              <span className="text-xs text-slate-500 uppercase tracking-widest mb-1">Cost</span>
+              <span className="text-xs text-slate-500 uppercase tracking-widest mb-1">
+                Cost
+              </span>
               <div className="flex items-center gap-2">
                 <Diamond className="w-5 h-5 text-cyan-400" />
                 <span className="text-2xl font-bold text-white">{cost}</span>
@@ -79,10 +82,14 @@ export const PointsUnlockModal = ({
             </div>
             <div className="w-px h-10 bg-slate-800" />
             <div className="flex flex-col items-center">
-              <span className="text-xs text-slate-500 uppercase tracking-widest mb-1">Balance</span>
+              <span className="text-xs text-slate-500 uppercase tracking-widest mb-1">
+                Balance
+              </span>
               <div className="flex items-center gap-2">
                 <Diamond className="w-5 h-5 text-slate-400" />
-                <span className="text-2xl font-bold text-slate-300">{currentPoints}</span>
+                <span className="text-2xl font-bold text-slate-300">
+                  {currentPoints}
+                </span>
               </div>
             </div>
           </div>

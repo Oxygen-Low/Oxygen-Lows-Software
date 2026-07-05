@@ -15,41 +15,62 @@ vi.mock("../lib/repoManager", () => ({
     getSafeTmpPath: vi.fn(),
     touchActivity: vi.fn(),
     git: vi.fn().mockReturnValue({
-      branchLocal: vi.fn().mockResolvedValue({ all: ["main"], current: "main" })
-    })
-  }
+      branchLocal: vi
+        .fn()
+        .mockResolvedValue({ all: ["main"], current: "main" }),
+    }),
+  },
 }));
 
 // Simple mock for supabase
 vi.mock("@supabase/supabase-js", () => {
-    return {
-        createClient: vi.fn(() => ({
-            auth: {
-                getUser: vi.fn().mockResolvedValue({ data: { user: { id: "123" } }, error: null }),
-                admin: {
-                    getUserById: vi.fn().mockResolvedValue({ data: { user: { id: "123" } }, error: null })
-                }
+  return {
+    createClient: vi.fn(() => ({
+      auth: {
+        getUser: vi
+          .fn()
+          .mockResolvedValue({ data: { user: { id: "123" } }, error: null }),
+        admin: {
+          getUserById: vi
+            .fn()
+            .mockResolvedValue({ data: { user: { id: "123" } }, error: null }),
+        },
+      },
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi
+          .fn()
+          .mockResolvedValue({
+            data: {
+              id: "12345678-1234-1234-1234-1234567890ab",
+              owner_id: "123",
+              github_repo_full_name: "test/repo",
+              profiles: { username: "testuser" },
             },
-            from: vi.fn(() => ({
-                select: vi.fn().mockReturnThis(),
-                eq: vi.fn().mockReturnThis(),
-                single: vi.fn().mockResolvedValue({ data: { id: "12345678-1234-1234-1234-1234567890ab", owner_id: "123", github_repo_full_name: "test/repo", profiles: { username: "testuser" } }, error: null }),
-                order: vi.fn().mockReturnThis(),
-                insert: vi.fn().mockReturnThis(),
-                update: vi.fn().mockReturnThis(),
-                or: vi.fn().mockReturnThis(),
-                then: vi.fn().mockImplementation(function(onfulfilled) {
-                    return Promise.resolve({ data: [{ id: "12345678-1234-1234-1234-1234567890ab", owner_id: "123" }], error: null }).then(onfulfilled);
-                })
-            })),
-            rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
-            storage: {
-                from: vi.fn(() => ({
-                    remove: vi.fn().mockResolvedValue({ data: null, error: null })
-                }))
-            }
-        }))
-    };
+            error: null,
+          }),
+        order: vi.fn().mockReturnThis(),
+        insert: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        then: vi.fn().mockImplementation(function (onfulfilled) {
+          return Promise.resolve({
+            data: [
+              { id: "12345678-1234-1234-1234-1234567890ab", owner_id: "123" },
+            ],
+            error: null,
+          }).then(onfulfilled);
+        }),
+      })),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+      storage: {
+        from: vi.fn(() => ({
+          remove: vi.fn().mockResolvedValue({ data: null, error: null }),
+        })),
+      },
+    })),
+  };
 });
 
 describe("Repos Routes", () => {
@@ -101,7 +122,7 @@ describe("Repos Routes", () => {
           filePath: "../../../etc/passwd",
           content: "malicious content",
           branch: "main",
-          message: "Attack attempt"
+          message: "Attack attempt",
         });
 
       expect(res.status).toBe(400);
@@ -117,7 +138,7 @@ describe("Repos Routes", () => {
           filePath: "/etc/passwd",
           content: "malicious content",
           branch: "main",
-          message: "Attack attempt"
+          message: "Attack attempt",
         });
 
       expect(res.status).toBe(400);
@@ -133,7 +154,7 @@ describe("Repos Routes", () => {
           filePath: "..%2F..%2F..%2Fetc%2Fpasswd",
           content: "malicious content",
           branch: "main",
-          message: "Attack attempt"
+          message: "Attack attempt",
         });
 
       expect(res.status).toBe(400);
@@ -149,7 +170,7 @@ describe("Repos Routes", () => {
           filePath: "subdir/../../../../../../etc/passwd",
           content: "malicious content",
           branch: "main",
-          message: "Attack attempt"
+          message: "Attack attempt",
         });
 
       expect(res.status).toBe(400);
@@ -165,7 +186,7 @@ describe("Repos Routes", () => {
           filePath: "src/components/MyComponent.tsx",
           content: "export const MyComponent = () => <div>Hello</div>;",
           branch: "main",
-          message: "Add component"
+          message: "Add component",
         });
 
       // Should not be rejected by path validation (may fail for other reasons in mock)

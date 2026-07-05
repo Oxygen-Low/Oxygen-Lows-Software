@@ -27,7 +27,7 @@ const FONTS: { label: string; value: FontOption }[] = [
 ];
 
 export default function Customize() {
-    const { theme, setTheme, useGradient, setUseGradient } = useTheme();
+  const { theme, setTheme, useGradient, setUseGradient } = useTheme();
   const { font, setFont } = useFont();
   const { session } = useAuth();
   const { toast } = useToast();
@@ -43,7 +43,7 @@ export default function Customize() {
 
   const handleAddTrack = (track: PlaylistTrack) => {
     const alreadyInPlaylist = playlist.some(
-      (t) => t.fileName === track.fileName
+      (t) => t.fileName === track.fileName,
     );
     if (!alreadyInPlaylist) {
       addTrack(track);
@@ -74,12 +74,18 @@ export default function Customize() {
 
         {/* Theme Section */}
         <div className="mb-12">
-          <h2 className="text-xl font-semibold mb-4 text-foreground">Appearance</h2>
+          <h2 className="text-xl font-semibold mb-4 text-foreground">
+            Appearance
+          </h2>
 
           <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
             <div>
-              <label className="text-foreground font-medium block">Use gradient</label>
-              <p className="text-sm text-muted-foreground">Apply a gradient background based on your theme</p>
+              <label className="text-foreground font-medium block">
+                Use gradient
+              </label>
+              <p className="text-sm text-muted-foreground">
+                Apply a gradient background based on your theme
+              </p>
             </div>
             <button
               onClick={() => setUseGradient(!useGradient)}
@@ -93,7 +99,9 @@ export default function Customize() {
             </button>
           </div>
 
-          <h3 className="text-lg font-medium mb-3 text-foreground">Theme Color</h3>
+          <h3 className="text-lg font-medium mb-3 text-foreground">
+            Theme Color
+          </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {THEMES.map((themeOption) => (
               <button
@@ -133,7 +141,9 @@ export default function Customize() {
 
         {/* Music Playlist Section */}
         <div>
-          <h2 className="text-xl font-semibold mb-4 text-foreground">Music Playlist</h2>
+          <h2 className="text-xl font-semibold mb-4 text-foreground">
+            Music Playlist
+          </h2>
 
           {/* Music Player */}
           <div className="mb-6">
@@ -157,9 +167,13 @@ export default function Customize() {
 
           {/* Playlist */}
           <div className="space-y-4 mb-6">
-            <h3 className="text-lg font-semibold text-foreground">Current Playlist</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              Current Playlist
+            </h3>
             {playlist.length === 0 ? (
-              <p className="text-muted-foreground">Your playlist is empty. Add tracks below.</p>
+              <p className="text-muted-foreground">
+                Your playlist is empty. Add tracks below.
+              </p>
             ) : (
               <div className="space-y-2">
                 {playlist.map((track) => (
@@ -179,7 +193,12 @@ export default function Customize() {
                         {track.fileName}
                       </p>
                     </div>
-                    <button onClick={() => playTrack(track)} className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2"><Play className="w-4 h-4" /></button>
+                    <button
+                      onClick={() => playTrack(track)}
+                      className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2"
+                    >
+                      <Play className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleRemoveTrack(track.fileName)}
                       className="p-2 hover:bg-destructive/20 rounded-lg text-destructive transition-colors"
@@ -194,14 +213,20 @@ export default function Customize() {
 
           {/* Available Audio Files */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-foreground">Add from Storage</h3>
+            <h3 className="text-lg font-semibold mb-3 text-foreground">
+              Add from Storage
+            </h3>
             <StorageFileSelector
               allowedTypes={["audio"]}
               onSelect={(file) => {
                 const track: PlaylistTrack = {
                   id: file.id,
                   fileName: file.name,
-                  name: file.name.split('/').pop()?.replace(/\.[^/.]+$/, "") || file.name,
+                  name:
+                    file.name
+                      .split("/")
+                      .pop()
+                      ?.replace(/\.[^/.]+$/, "") || file.name,
                 };
                 handleAddTrack(track);
               }}
