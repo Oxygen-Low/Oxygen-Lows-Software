@@ -138,13 +138,11 @@ export function FriendsApp() {
         return;
       }
 
-      const { error } = await supabase
-        .from("friendships")
-        .insert({
-          user_id: session.user.id,
-          friend_id: targetUser.user_id,
-          status: "pending",
-        });
+      const { error } = await supabase.from("friendships").insert({
+        user_id: session.user.id,
+        friend_id: targetUser.user_id,
+        status: "pending",
+      });
 
       if (error) throw error;
       toast.success("Friend request sent");

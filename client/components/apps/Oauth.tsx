@@ -67,14 +67,16 @@ export function OauthApp() {
     setLoading(true);
     try {
       // @ts-ignore
-      const { data: clientsData, error: clientsError } =
-        await supabase.auth.oauth.listClients();
+      const { data: clientsData, error: clientsError } = await (
+        supabase.auth as any
+      ).oauth.listClients();
       if (clientsError) throw clientsError;
       setClients(clientsData || []);
 
       // @ts-ignore
-      const { data: grantsData, error: grantsError } =
-        await supabase.auth.oauth.listAuthorizedApps();
+      const { data: grantsData, error: grantsError } = await (
+        supabase.auth as any
+      ).oauth.listAuthorizedApps();
       if (grantsError) throw grantsError;
       setGrants(grantsData || []);
     } catch (error: any) {

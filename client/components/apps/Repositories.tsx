@@ -541,13 +541,11 @@ function RepoIssues({ repoId }: { repoId: string }) {
         <Button
           onClick={async () => {
             if (!title) return;
-            await supabase
-              .from("repository_issues")
-              .insert({
-                repo_id: repoId,
-                title,
-                author_id: (await supabase.auth.getUser()).data.user?.id,
-              });
+            await supabase.from("repository_issues").insert({
+              repo_id: repoId,
+              title,
+              author_id: (await supabase.auth.getUser()).data.user?.id,
+            });
             setTitle("");
             fetchIssues();
           }}
@@ -650,13 +648,11 @@ function RepoPullRequests({ repoId }: { repoId: string }) {
 
   const addComment = async () => {
     if (!newComment) return;
-    await supabase
-      .from("repository_pull_request_comments")
-      .insert({
-        pr_id: selectedPr.id,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        body: newComment,
-      });
+    await supabase.from("repository_pull_request_comments").insert({
+      pr_id: selectedPr.id,
+      user_id: (await supabase.auth.getUser()).data.user?.id,
+      body: newComment,
+    });
     setNewComment("");
     loadPr(selectedPr);
   };

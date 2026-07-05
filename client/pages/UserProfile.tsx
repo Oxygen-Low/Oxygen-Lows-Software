@@ -226,12 +226,10 @@ export default function UserProfile() {
         setStats((s) => ({ ...s, followers: Math.max(0, s.followers - 1) }));
         toast.success("Unfollow");
       } else {
-        const { error } = await supabase
-          .from("follows")
-          .insert({
-            follower_id: currentUser.id,
-            following_id: profile.user_id,
-          });
+        const { error } = await supabase.from("follows").insert({
+          follower_id: currentUser.id,
+          following_id: profile.user_id,
+        });
         if (error) {
           toast.error("Failed to follow: " + error.message);
           return;

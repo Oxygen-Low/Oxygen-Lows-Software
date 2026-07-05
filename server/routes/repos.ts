@@ -96,11 +96,9 @@ router.delete(
     if (!validateId(id)) return res.status(400).json({ error: "Invalid ID" });
 
     if ((req as any).repoPermission !== "admin")
-      return res
-        .status(403)
-        .json({
-          error: "Forbidden: Only repository owners can delete repositories.",
-        });
+      return res.status(403).json({
+        error: "Forbidden: Only repository owners can delete repositories.",
+      });
 
     try {
       const supabase = getAuthenticatedClient(token);
@@ -460,14 +458,12 @@ router.post(
         repo.owner_id !== user.id &&
         (req as any).repoPermission !== "admin"
       ) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Only the repository owner or admin can merge to the " +
-              defaultBranch +
-              " branch.",
-          });
+        return res.status(403).json({
+          error:
+            "Only the repository owner or admin can merge to the " +
+            defaultBranch +
+            " branch.",
+        });
       }
 
       const repoPath = await repoManager.ensureLoaded(

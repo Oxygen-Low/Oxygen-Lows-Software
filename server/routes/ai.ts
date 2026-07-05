@@ -398,6 +398,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         if (!integration?.base_url)
           return res.status(400).json({ error: "Base URL required" });
         const finalUrl = await resolveCustomProviderUrl(integration.base_url);
+        if (!finalUrl.startsWith("https://")) throw new Error("Invalid URL");
         const customHeaders = integration?.api_key
           ? {
               ...axiosOptions.headers,
@@ -406,7 +407,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           : axiosOptions.headers;
         await handleResponse(
           await axios.post(
-            finalUrl,
+            finalUrl, // validated via resolveCustomProviderUrl
             { model, messages: processedMessages, stream },
             { ...axiosOptions, headers: customHeaders },
           ),

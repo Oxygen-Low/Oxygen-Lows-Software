@@ -12,12 +12,10 @@ vi.mock("@/lib/supabase", () => ({
       getUser: vi
         .fn()
         .mockResolvedValue({ data: { user: { id: "u", identities: [] } } }),
-      getSession: vi
-        .fn()
-        .mockResolvedValue({
-          data: { session: { user: { id: "u" }, access_token: "t" } },
-          error: null,
-        }),
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "u" }, access_token: "t" } },
+        error: null,
+      }),
       onAuthStateChange: vi
         .fn()
         .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),

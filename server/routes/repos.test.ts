@@ -39,17 +39,15 @@ vi.mock("@supabase/supabase-js", () => {
       from: vi.fn(() => ({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi
-          .fn()
-          .mockResolvedValue({
-            data: {
-              id: "12345678-1234-1234-1234-1234567890ab",
-              owner_id: "123",
-              github_repo_full_name: "test/repo",
-              profiles: { username: "testuser" },
-            },
-            error: null,
-          }),
+        single: vi.fn().mockResolvedValue({
+          data: {
+            id: "12345678-1234-1234-1234-1234567890ab",
+            owner_id: "123",
+            github_repo_full_name: "test/repo",
+            profiles: { username: "testuser" },
+          },
+          error: null,
+        }),
         order: vi.fn().mockReturnThis(),
         insert: vi.fn().mockReturnThis(),
         update: vi.fn().mockReturnThis(),

@@ -24,18 +24,14 @@ const mockDownload = vi.fn();
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
-      getUser: vi
-        .fn()
-        .mockResolvedValue({
-          data: { user: { id: "test-user" } },
-          error: null,
-        }),
-      getSession: vi
-        .fn()
-        .mockResolvedValue({
-          data: { session: { user: { id: "test-user" } } },
-          error: null,
-        }),
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { id: "test-user" } },
+        error: null,
+      }),
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "test-user" } } },
+        error: null,
+      }),
       onAuthStateChange: vi.fn(() => ({
         data: { subscription: { unsubscribe: vi.fn() } },
       })),
