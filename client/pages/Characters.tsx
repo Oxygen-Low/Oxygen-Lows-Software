@@ -36,6 +36,9 @@ export default function Characters() {
 
   const handleStorageSelect = async (file: any) => {
     setSelectedStoragePath(file.name);
+    if (file.name.includes('..')) {
+      throw new Error('Invalid file name');
+    }
     const { data } = await supabase.storage.from("Storage").createSignedUrl(file.name, 3600);
     if (data?.signedUrl) {
       setCurrentCharacter(prev => ({ ...prev, image_url: data.signedUrl, image_path: file.name }));
@@ -93,9 +96,9 @@ export default function Characters() {
             return { ...char, name: "[Encrypted]", is_corrupted: true };
           }
         }));
-        const charsWithSignedUrls = await Promise.all((decryptedData || []).map(async (char) => { if (char.image_path) { const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600).catch(() => ({ data: null })); if (urlData?.signedUrl) return { ...char, image_url: urlData.signedUrl }; else return { ...char, image_url: "" }; } return char; })); setCharacters(charsWithSignedUrls);
+        const charsWithSignedUrls = await Promise.all((decryptedData || []).map(async (char) => { if (char.image_path) { if (char.image_path.includes('..')) throw new Error('Invalid file path'); const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600).catch(() => ({ data: null })); if (urlData?.signedUrl) return { ...char, image_url: urlData.signedUrl }; else return { ...char, image_url: "" }; } return char; })); setCharacters(charsWithSignedUrls);
       } else {
-        const charsWithSignedUrls = await Promise.all((data || []).map(async (char) => { if (char.image_path) { const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600).catch(() => ({ data: null })); if (urlData?.signedUrl) return { ...char, image_url: urlData.signedUrl }; else return { ...char, image_url: "" }; } return char; })); setCharacters(charsWithSignedUrls);
+        const charsWithSignedUrls = await Promise.all((data || []).map(async (char) => { if (char.image_path) { if (char.image_path.includes('..')) throw new Error('Invalid file path'); const { data: urlData } = await supabase.storage.from("Storage").createSignedUrl(char.image_path, 3600).catch(() => ({ data: null })); if (urlData?.signedUrl) return { ...char, image_url: urlData.signedUrl }; else return { ...char, image_url: "" }; } return char; })); setCharacters(charsWithSignedUrls);
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
