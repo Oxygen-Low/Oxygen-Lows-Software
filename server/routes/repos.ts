@@ -23,6 +23,8 @@ function isSafePath(filePath: string) {
   if (!filePath) return false;
   const normalized = path.normalize(filePath);
   if (normalized.includes('..') || path.isAbsolute(normalized)) return false;
+  const segments = normalized.split(path.sep);
+  if (segments.includes('.git')) return false;
   return true;
 }
 
