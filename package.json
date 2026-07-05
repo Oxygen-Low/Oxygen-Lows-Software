@@ -113,7 +113,7 @@
     "react-day-picker": "^9.8.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.79.0",
-    "react-resizable-panels": "^3.0.4",
+    "react-resizable-panels": "^4.12.1",
     "react-router-dom": "^7.18.1",
     "recharts": "^2.12.7",
     "serverless-http": "^4.0.0",
