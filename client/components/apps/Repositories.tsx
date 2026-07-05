@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Book, Plus, Search, RefreshCw, ChevronRight, Code, AlertCircle, GitPullRequest, GitBranch, Github, Send, Users, Trash2, Globe, Lock, Download, Edit2, FileCode, Folder } from "lucide-react";
+import { Book, Plus, Search, RefreshCw, ChevronRight, Code, AlertCircle, GitPullRequest, GitBranch, Send, Users, Trash2, Globe, Lock, Download, Edit2, FileCode, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { GithubImportModal } from "./GithubImportModal";
+import { Github } from "./GithubIcon";
 
-export default function Repositories() {
+export function RepositoriesApp() {
   const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
