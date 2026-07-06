@@ -153,13 +153,13 @@ const ArtifactSidebar = ({ artifact, onClose }: { artifact: Artifact; onClose: (
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => { navigator.clipboard.writeText(artifact.content); toast.success("Copied to clipboard"); }}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => { navigator.clipboard.writeText(artifact.content); toast.success("Copied to clipboard"); }} aria-label="Copy code">
             <Copy className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => setIsMaximized(!isMaximized)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => setIsMaximized(!isMaximized)} aria-label={isMaximized ? "Minimize" : "Maximize"}>
             {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={onClose} aria-label="Close sidebar">
             <X className="w-4 h-4" />
           </Button>
         </div>

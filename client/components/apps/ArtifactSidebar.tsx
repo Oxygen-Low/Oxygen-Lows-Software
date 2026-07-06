@@ -63,13 +63,13 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
           <span className="text-sm font-medium text-slate-200 truncate">{artifact.filename}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title={`Download as ${artifact.filename.split(".").pop()}`}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title={`Download as ${artifact.filename.split(".").pop()}`} aria-label={`Download as ${artifact.filename.split(".").pop()}`}>
             <Download className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveToCloud} disabled={saving} title="Save">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveToCloud} disabled={saving} title="Save" aria-label="Save to Cloud">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label="Close">
             <X className="w-4 h-4" />
           </Button>
         </div>

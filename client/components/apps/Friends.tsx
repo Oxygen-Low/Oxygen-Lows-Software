@@ -211,7 +211,7 @@ export function FriendsApp() {
                   action={
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" aria-label="More options">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -252,6 +252,7 @@ export function FriendsApp() {
                           variant="ghost"
                           className="h-8 w-8 text-green-500 hover:text-green-400 hover:bg-green-500/10"
                           onClick={() => handleAcceptRequest(req.id)}
+                          aria-label="Accept request"
                         >
                           <UserCheck className="w-4 h-4" />
                         </Button>
@@ -260,6 +261,7 @@ export function FriendsApp() {
                           variant="ghost"
                           className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                           onClick={() => handleDeleteFriendship(req.id)}
+                          aria-label="Decline request"
                         >
                           <UserX className="w-4 h-4" />
                         </Button>

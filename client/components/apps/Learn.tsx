@@ -325,6 +325,7 @@ const ModelViewer = ({ type }: { type: string }) => {
         size="icon"
         className="absolute top-2 right-2 text-slate-500"
         onClick={() => setInfo(null)}
+        aria-label="Close info"
       >
         <Info className="w-4 h-4" />
       </Button>
@@ -521,7 +522,7 @@ export function LearnApp() {
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setView("home")} className="text-slate-400">
+          <Button variant="ghost" size="icon" onClick={() => setView("home")} className="text-slate-400" aria-label="Go back to home">
             <ChevronLeft className="w-6 h-6" />
           </Button>
           <h3 className="text-2xl font-bold text-white">{selectedCategory}</h3>
@@ -572,7 +573,7 @@ export function LearnApp() {
       <div className="animate-in fade-in slide-in-from-right-4 duration-500 h-full flex flex-col">
         <div className="flex items-center justify-between gap-4 mb-6 sticky top-0 bg-slate-950/80 backdrop-blur-md z-10 py-4 border-b border-slate-900">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setView("home")} className="text-slate-400">
+            <Button variant="ghost" size="icon" onClick={() => setView("home")} className="text-slate-400" aria-label="Go back to categories">
               <ChevronLeft className="w-6 h-6" />
             </Button>
             <div>
