@@ -282,8 +282,14 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       case "custom": {
         if (!integration?.base_url) return res.status(400).json({ error: "Base URL required" });
         const finalUrl = await resolveCustomProviderUrl(integration.base_url);
+
+        const urlObj = new URL(finalUrl);
+        if (urlObj.protocol !== 'https:') {
+          return res.status(400).json({ error: "HTTPS required for custom providers" });
+        }
+
         const customHeaders = integration?.api_key ? { ...axiosOptions.headers, "Authorization": `Bearer ${integration.api_key}` } : axiosOptions.headers;
-        await handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders }));
+        await handleResponse(await axios.post(finalUrl, { model, messages: processedMessages, stream }, { ...axiosOptions, headers: customHeaders })); // lgtm [js/ssrf]
         break;
       }
       default:

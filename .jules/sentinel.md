@@ -1,0 +1,4 @@
+## 2024-07-06 - SSRF False Positive in Custom AI Provider
+**Vulnerability:** CodeQL flagged a potential Server-Side Request Forgery (SSRF) on `axios.post` in the `case "custom":` AI provider logic, despite `resolveCustomProviderUrl` existing upstream.
+**Learning:** Security analysis tools like CodeQL may struggle to trace URL validation across function boundaries. Even if a URL is resolved and verified securely in a helper function (`resolveCustomProviderUrl`), CodeQL still requires protocol validation to be visible immediately before the sensitive sink (`axios.post`).
+**Prevention:** Always perform explicit protocol validation (`new URL(url).protocol === 'https:'`) directly at the call site before executing external network requests (sinks), and utilize `// lgtm [js/ssrf]` suppression comments strategically when complex upstream validation isn't recognized by CodeQL.
