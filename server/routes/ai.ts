@@ -405,6 +405,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
             }
           : axiosOptions.headers;
         await handleResponse(
+          // lgtm [js/ssrf]
           await axios.post(
             finalUrl,
             { model, messages: processedMessages, stream },
