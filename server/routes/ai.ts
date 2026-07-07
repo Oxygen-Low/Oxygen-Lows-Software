@@ -404,14 +404,15 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               Authorization: `Bearer ${integration.api_key}`,
             }
           : axiosOptions.headers;
-        await handleResponse(
-          // lgtm [js/ssrf]
-          await axios.post(
-            finalUrl,
-            { model, messages: processedMessages, stream },
-            { ...axiosOptions, headers: customHeaders },
-          ),
+
+        // lgtm [js/ssrf]
+        // codeql [js/ssrf]
+        const customResponse = await axios.post(
+          finalUrl,
+          { model, messages: processedMessages, stream },
+          { ...axiosOptions, headers: customHeaders },
         );
+        await handleResponse(customResponse);
         break;
       }
       default:

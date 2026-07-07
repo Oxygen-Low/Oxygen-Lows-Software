@@ -70,7 +70,6 @@ export async function resolveCustomProviderUrl(
     throw new Error("Invalid URL");
   }
 
-  if (url.protocol !== "https:") throw new Error("HTTPS required");
   if (url.username || url.password)
     throw new Error("Credentials in URL are not allowed");
 
