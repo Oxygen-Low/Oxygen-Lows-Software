@@ -5,7 +5,8 @@ import path from "path";
 import os from "os";
 import crypto from "crypto";
 
-const REPOS_DATA_DIR = process.env.REPOS_DATA_DIR || path.join(os.tmpdir(), "oxygen-repos");
+const REPOS_DATA_DIR =
+  process.env.REPOS_DATA_DIR || path.join(os.tmpdir(), "oxygen-repos");
 const IDLE_TIMEOUT = 10 * 60 * 1000;
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
@@ -18,7 +19,9 @@ interface LoadedRepo {
 }
 
 function validateId(id: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+    id,
+  );
 }
 
 function getSafeRepoPath(repoId: string) {
@@ -28,12 +31,13 @@ function getSafeRepoPath(repoId: string) {
 }
 
 function getSafeTmpPath(repoId: string, suffix: string) {
-    if (!validateId(repoId)) throw new Error("Invalid ID");
-    const base = path.resolve(os.tmpdir());
-    const target = path.resolve(base, `${crypto.randomUUID()}${suffix}`);
-    const relative = path.relative(base, target);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error("Invalid path");
-    return target;
+  if (!validateId(repoId)) throw new Error("Invalid ID");
+  const base = path.resolve(os.tmpdir());
+  const target = path.resolve(base, `${crypto.randomUUID()}${suffix}`);
+  const relative = path.relative(base, target);
+  if (relative.startsWith("..") || path.isAbsolute(relative))
+    throw new Error("Invalid path");
+  return target;
 }
 
 class RepoManager {
@@ -42,13 +46,14 @@ class RepoManager {
   private getSupabaseClient(token?: string) {
     return createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-      auth: { persistSession: false }
+      auth: { persistSession: false },
     });
   }
 
   constructor() {
     fs.ensureDirSync(REPOS_DATA_DIR);
-    if (typeof setInterval !== 'undefined') setInterval(() => this.sweep(), 60000).unref();
+    if (typeof setInterval !== "undefined")
+      setInterval(() => this.sweep(), 60000).unref();
     this.checkGit();
   }
 
@@ -57,14 +62,16 @@ class RepoManager {
       await simpleGit({ binary: GIT_BINARY }).version();
       console.log(`Git check successful: using "${GIT_BINARY}"`);
     } catch (err) {
-      console.error(`Git check failed: Could not find or execute git at "${GIT_BINARY}". Please ensure git is installed and in your PATH, or set the GIT_PATH environment variable.`);
+      console.error(
+        `Git check failed: Could not find or execute git at "${GIT_BINARY}". Please ensure git is installed and in your PATH, or set the GIT_PATH environment variable.`,
+      );
     }
   }
 
   public git(baseDir?: string): SimpleGit {
     return simpleGit({
       baseDir,
-      binary: GIT_BINARY
+      binary: GIT_BINARY,
     });
   }
 
@@ -72,18 +79,28 @@ class RepoManager {
     return this.loadedRepos.get(repoId)?.ownerToken;
   }
 
-  async ensureLoaded(repoId: string, githubFullName: string, token?: string): Promise<string> {
+  async ensureLoaded(
+    repoId: string,
+    githubFullName: string,
+    token?: string,
+  ): Promise<string> {
     if (!validateId(repoId)) throw new Error("Invalid repo ID");
     if (!githubFullName) throw new Error("GitHub full name is required");
 
     const repoPath = getSafeRepoPath(repoId);
     let info = this.loadedRepos.get(repoId);
-    if (!info) { info = { lastActivity: Date.now(), loading: null }; this.loadedRepos.set(repoId, info); }
+    if (!info) {
+      info = { lastActivity: Date.now(), loading: null };
+      this.loadedRepos.set(repoId, info);
+    }
     info.lastActivity = Date.now();
     if (token) info.ownerToken = token;
 
     if (fs.existsSync(repoPath)) return repoPath;
-    if (info.loading) { await info.loading; return repoPath; }
+    if (info.loading) {
+      await info.loading;
+      return repoPath;
+    }
 
     info.loading = (async () => {
       try {
@@ -95,16 +112,19 @@ class RepoManager {
       } catch (err) {
         await fs.remove(repoPath);
         throw err;
-      } finally { info!.loading = null; }
+      } finally {
+        info!.loading = null;
+      }
     })();
-    await info.loading; return repoPath;
+    await info.loading;
+    return repoPath;
   }
 
   touchActivity(repoId: string, token?: string) {
     const info = this.loadedRepos.get(repoId);
     if (info) {
-        info.lastActivity = Date.now();
-        if (token) info.ownerToken = token;
+      info.lastActivity = Date.now();
+      if (token) info.ownerToken = token;
     }
   }
 
@@ -119,7 +139,10 @@ class RepoManager {
 
           if (info.ownerToken) {
             const supabase = this.getSupabaseClient(info.ownerToken);
-            await supabase.from("repositories").update({ is_loaded: false }).eq("id", id);
+            await supabase
+              .from("repositories")
+              .update({ is_loaded: false })
+              .eq("id", id);
           }
         }
       } catch (err) {

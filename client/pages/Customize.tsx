@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import Layout from "@/components/Layout";
 import { useTheme, Theme } from "@/hooks/useTheme";
@@ -5,7 +7,7 @@ import { useFont, FontOption } from "@/hooks/useFont";
 import { useMusic, PlaylistTrack } from "@/hooks/useMusic";
 import { useAuth } from "@/hooks/useAuth";
 import { MusicPlayer } from "@/components/MusicPlayer";
-import { Trash2, Plus, Play, Music } from "lucide-react";
+import { Trash2, Plus, Play, Music, Zap, Sliders } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
@@ -27,7 +29,7 @@ const FONTS: { label: string; value: FontOption }[] = [
 ];
 
 export default function Customize() {
-    const { theme, setTheme, useGradient, setUseGradient } = useTheme();
+  const { theme, setTheme, useGradient, setUseGradient } = useTheme();
   const { font, setFont } = useFont();
   const { session } = useAuth();
   const { toast } = useToast();
@@ -41,15 +43,41 @@ export default function Customize() {
     playTrack,
   } = useMusic();
 
-  const handleAddTrack = (track: PlaylistTrack) => {
+  const handleAddTrack = async (track: any) => {
+    let finalTrack: PlaylistTrack = {
+      id: track.id,
+      fileName: track.name,
+      name: track.name.split("/").pop() || track.name,
+    };
+
+    if (track.name.endsWith(".reactive")) {
+      try {
+        const { data } = await supabase.storage
+          .from("Storage")
+          .download(`${session?.user?.id}/${track.name}`);
+        if (data) {
+          const text = await data.text();
+          const reactiveData = JSON.parse(text);
+          finalTrack = {
+            ...finalTrack,
+            isReactive: true,
+            layers: reactiveData.layers,
+            name: reactiveData.name || finalTrack.name,
+          };
+        }
+      } catch (e) {
+        console.error("Failed to load reactive track data:", e);
+      }
+    }
+
     const alreadyInPlaylist = playlist.some(
-      (t) => t.fileName === track.fileName
+      (t) => t.fileName === finalTrack.fileName,
     );
     if (!alreadyInPlaylist) {
-      addTrack(track);
+      addTrack(finalTrack);
       toast({
         title: "Success",
-        description: `Added "${track.name}" to playlist`,
+        description: `Added "${finalTrack.name}" to playlist`,
       });
     } else {
       toast({
@@ -72,14 +100,68 @@ export default function Customize() {
       <div className="max-w-4xl">
         <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
 
+        {/* Threat Level Control (Visible if reactive track playing) */}
+        {currentTrack?.isReactive && (
+          <div className="mb-12 p-6 bg-card rounded-xl border border-purple-500/30 shadow-lg shadow-purple-500/5">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <Zap className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">
+                  Reactive Controls
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Adjust the current threat level
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-foreground">
+                  Current Threat Level: {useMusic().threatLevel}
+                </span>
+              </div>
+              <div className="grid grid-cols-5 gap-4">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <Button
+                    key={level}
+                    variant={
+                      useMusic().threatLevel === level ? "default" : "outline"
+                    }
+                    className={cn(
+                      "h-12 text-lg font-bold",
+                      useMusic().threatLevel === level &&
+                        "bg-purple-600 hover:bg-purple-700",
+                    )}
+                    onClick={() => useMusic().setThreatLevel(level)}
+                  >
+                    {level}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground italic text-center mt-4">
+                The music layers will instantly transition based on this level.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Theme Section */}
         <div className="mb-12">
-          <h2 className="text-xl font-semibold mb-4 text-foreground">Appearance</h2>
+          <h2 className="text-xl font-semibold mb-4 text-foreground">
+            Appearance
+          </h2>
 
           <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
             <div>
-              <label className="text-foreground font-medium block">Use gradient</label>
-              <p className="text-sm text-muted-foreground">Apply a gradient background based on your theme</p>
+              <label className="text-foreground font-medium block">
+                Use gradient
+              </label>
+              <p className="text-sm text-muted-foreground">
+                Apply a gradient background based on your theme
+              </p>
             </div>
             <button
               onClick={() => setUseGradient(!useGradient)}
@@ -93,7 +175,9 @@ export default function Customize() {
             </button>
           </div>
 
-          <h3 className="text-lg font-medium mb-3 text-foreground">Theme Color</h3>
+          <h3 className="text-lg font-medium mb-3 text-foreground">
+            Theme Color
+          </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {THEMES.map((themeOption) => (
               <button
@@ -133,7 +217,9 @@ export default function Customize() {
 
         {/* Music Playlist Section */}
         <div>
-          <h2 className="text-xl font-semibold mb-4 text-foreground">Music Playlist</h2>
+          <h2 className="text-xl font-semibold mb-4 text-foreground">
+            Music Playlist
+          </h2>
 
           {/* Music Player */}
           <div className="mb-6">
@@ -157,9 +243,13 @@ export default function Customize() {
 
           {/* Playlist */}
           <div className="space-y-4 mb-6">
-            <h3 className="text-lg font-semibold text-foreground">Current Playlist</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              Current Playlist
+            </h3>
             {playlist.length === 0 ? (
-              <p className="text-muted-foreground">Your playlist is empty. Add tracks below.</p>
+              <p className="text-muted-foreground">
+                Your playlist is empty. Add tracks below.
+              </p>
             ) : (
               <div className="space-y-2">
                 {playlist.map((track) => (
@@ -172,14 +262,26 @@ export default function Customize() {
                     }`}
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">
-                        {track.name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        {track.isReactive ? (
+                          <Zap className="w-4 h-4 text-purple-500" />
+                        ) : (
+                          <Music className="w-4 h-4 text-primary" />
+                        )}
+                        <p className="font-medium text-foreground">
+                          {track.name}
+                        </p>
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {track.fileName}
                       </p>
                     </div>
-                    <button onClick={() => playTrack(track)} className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2"><Play className="w-4 h-4" /></button>
+                    <button
+                      onClick={() => playTrack(track)}
+                      className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2"
+                    >
+                      <Play className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleRemoveTrack(track.fileName)}
                       className="p-2 hover:bg-destructive/20 rounded-lg text-destructive transition-colors"
@@ -194,14 +296,20 @@ export default function Customize() {
 
           {/* Available Audio Files */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-foreground">Add from Storage</h3>
+            <h3 className="text-lg font-semibold mb-3 text-foreground">
+              Add from Storage
+            </h3>
             <StorageFileSelector
-              allowedTypes={["audio"]}
+              allowedExtensions={[".mp3", ".wav", ".ogg", ".reactive"]}
               onSelect={(file) => {
                 const track: PlaylistTrack = {
                   id: file.id,
                   fileName: file.name,
-                  name: file.name.split('/').pop()?.replace(/\.[^/.]+$/, "") || file.name,
+                  name:
+                    file.name
+                      .split("/")
+                      .pop()
+                      ?.replace(/\.[^/.]+$/, "") || file.name,
                 };
                 handleAddTrack(track);
               }}

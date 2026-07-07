@@ -3,7 +3,13 @@ import { Search, RefreshCw, ChevronRight, Book } from "lucide-react";
 import { Github } from "./GithubIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -16,7 +22,15 @@ interface GithubRepo {
   default_branch: string;
 }
 
-export function GithubImportModal({ open, onOpenChange, onImported }: { open: boolean, onOpenChange: (open: boolean) => void, onImported: () => void }) {
+export function GithubImportModal({
+  open,
+  onOpenChange,
+  onImported,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onImported: () => void;
+}) {
   const [repos, setRepos] = useState<GithubRepo[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<number | null>(null);
@@ -29,15 +43,17 @@ export function GithubImportModal({ open, onOpenChange, onImported }: { open: bo
       const githubToken = sessionData.session?.provider_token;
 
       if (!githubToken) {
-        toast.error("GitHub token not found. Please re-authenticate with GitHub.");
+        toast.error(
+          "GitHub token not found. Please re-authenticate with GitHub.",
+        );
         return;
       }
 
       const res = await fetch("/api/repos/github/list", {
         headers: {
-          "Authorization": `Bearer ${sessionData.session?.access_token}`,
-          "x-github-token": githubToken
-        }
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+          "x-github-token": githubToken,
+        },
       });
 
       if (res.ok) {
@@ -67,14 +83,14 @@ export function GithubImportModal({ open, onOpenChange, onImported }: { open: bo
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${sessionData.session?.access_token}`,
-          "x-github-token": githubToken || ""
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+          "x-github-token": githubToken || "",
         },
         body: JSON.stringify({
           fullName: repo.full_name,
-          name: repo.name.toLowerCase().replace(/[^a-z0-9._-]/g, ''),
-          description: repo.description
-        })
+          name: repo.name.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
+          description: repo.description,
+        }),
       });
 
       if (res.ok) {
@@ -92,8 +108,8 @@ export function GithubImportModal({ open, onOpenChange, onImported }: { open: bo
     }
   };
 
-  const filteredRepos = repos.filter(r =>
-    r.full_name.toLowerCase().includes(search.toLowerCase())
+  const filteredRepos = repos.filter((r) =>
+    r.full_name.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -134,8 +150,12 @@ export function GithubImportModal({ open, onOpenChange, onImported }: { open: bo
                   <div className="flex items-center gap-3 overflow-hidden">
                     <Book className="w-4 h-4 text-cyan-400 shrink-0" />
                     <div className="overflow-hidden">
-                      <p className="text-sm font-medium text-white truncate">{repo.full_name}</p>
-                      <p className="text-xs text-slate-500 truncate">{repo.description || "No description"}</p>
+                      <p className="text-sm font-medium text-white truncate">
+                        {repo.full_name}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {repo.description || "No description"}
+                      </p>
                     </div>
                   </div>
                   <Button
@@ -153,7 +173,9 @@ export function GithubImportModal({ open, onOpenChange, onImported }: { open: bo
                 </div>
               ))}
               {filteredRepos.length === 0 && !loading && (
-                <p className="text-center py-10 text-slate-500 text-sm">No repositories found.</p>
+                <p className="text-center py-10 text-slate-500 text-sm">
+                  No repositories found.
+                </p>
               )}
             </div>
           )}

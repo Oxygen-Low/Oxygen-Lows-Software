@@ -6,18 +6,18 @@ const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false
+    persistSession: false,
   },
   realtime: {
-    transport: ws as any
-  }
+    transport: ws as any,
+  },
 });
 
 export function getAuthenticatedClient(token?: string) {
   if (token && token !== supabaseAnonKey) {
     return createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false }
+      auth: { persistSession: false },
     });
   }
   return supabase;
@@ -30,7 +30,7 @@ export function getAuthenticatedClient(token?: string) {
  * appropriate RLS policies or use authenticated clients.
  */
 export function getSupabaseAdmin() {
-    return supabase;
+  return supabase;
 }
 
 /**
@@ -38,16 +38,16 @@ export function getSupabaseAdmin() {
  * Now uses the anon client as profiles are viewable by everyone.
  */
 export async function getAuthorProfile(userId: string) {
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('username, email')
-        .eq('user_id', userId)
-        .single();
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("username, email")
+    .eq("user_id", userId)
+    .single();
 
-    if (error) {
-        console.error('Error fetching author profile:', error);
-        return null;
-    }
+  if (error) {
+    console.error("Error fetching author profile:", error);
+    return null;
+  }
 
-    return profile;
+  return profile;
 }

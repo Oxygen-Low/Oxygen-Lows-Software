@@ -1,4 +1,5 @@
 # Contributing
+
 I currently don't accept contributions via code, though you may contribute by:
 
 - Hosting a server for others to use
