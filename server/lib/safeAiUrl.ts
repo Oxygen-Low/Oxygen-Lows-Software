@@ -4,14 +4,32 @@ import { lookup } from "dns/promises";
 export const isPrivateIP = (ip: string): boolean => {
   if (net.isIPv4(ip)) {
     const parts = ip.split(".").map(Number);
-    if (parts[0] === 0 || parts[0] === 127 || parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168) || (parts[0] === 169 && parts[1] === 254)) return true;
+    if (
+      parts[0] === 0 ||
+      parts[0] === 127 ||
+      parts[0] === 10 ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      (parts[0] === 169 && parts[1] === 254)
+    )
+      return true;
     return false;
   } else if (net.isIPv6(ip)) {
     const expanded = ip.toLowerCase();
     if (expanded === "::1" || expanded === "0:0:0:0:0:0:0:1") return true;
-    const v4MappedMatch = expanded.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+    const v4MappedMatch = expanded.match(
+      /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/,
+    );
     if (v4MappedMatch) return isPrivateIP(v4MappedMatch[1]);
-    if (expanded.startsWith("fc") || expanded.startsWith("fd") || expanded.startsWith("fe8") || expanded.startsWith("fe9") || expanded.startsWith("fea") || expanded.startsWith("feb")) return true;
+    if (
+      expanded.startsWith("fc") ||
+      expanded.startsWith("fd") ||
+      expanded.startsWith("fe8") ||
+      expanded.startsWith("fe9") ||
+      expanded.startsWith("fea") ||
+      expanded.startsWith("feb")
+    )
+      return true;
     return false;
   }
   return false;
@@ -20,7 +38,10 @@ export const isPrivateIP = (ip: string): boolean => {
 const LOCALHOST_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 function assertPublicHostname(hostname: string): void {
-  if (isPrivateIP(hostname) || LOCALHOST_HOSTNAMES.has(hostname.toLowerCase())) {
+  if (
+    isPrivateIP(hostname) ||
+    LOCALHOST_HOSTNAMES.has(hostname.toLowerCase())
+  ) {
     throw new Error("Public origin required");
   }
 }
@@ -35,7 +56,9 @@ export const validateAiUrl = async (baseUrl: string): Promise<void> => {
   }
 };
 
-export async function resolveCustomProviderUrl(baseUrl: string): Promise<string> {
+export async function resolveCustomProviderUrl(
+  baseUrl: string,
+): Promise<string> {
   if (baseUrl.includes("/../") || /\/%2e%2e\//i.test(baseUrl)) {
     throw new Error("Invalid path");
   }
@@ -48,7 +71,8 @@ export async function resolveCustomProviderUrl(baseUrl: string): Promise<string>
   }
 
   if (url.protocol !== "https:") throw new Error("HTTPS required");
-  if (url.username || url.password) throw new Error("Credentials in URL are not allowed");
+  if (url.username || url.password)
+    throw new Error("Credentials in URL are not allowed");
 
   assertPublicHostname(url.hostname);
 

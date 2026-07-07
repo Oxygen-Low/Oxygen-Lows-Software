@@ -1,5 +1,11 @@
 /** @vitest-environment jsdom */
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import { PointsUnlockModal } from "./PointsUnlockModal";
 import { supabase } from "@/lib/supabase";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -46,7 +52,9 @@ describe("PointsUnlockModal", () => {
     fireEvent.click(unlockButton);
 
     await waitFor(() => {
-      expect(supabase.rpc).toHaveBeenCalledWith("adjust_points", { p_amount: -100 });
+      expect(supabase.rpc).toHaveBeenCalledWith("adjust_points", {
+        p_amount: -100,
+      });
       expect(defaultProps.onSuccess).toHaveBeenCalled();
       expect(defaultProps.onClose).toHaveBeenCalled();
     });
