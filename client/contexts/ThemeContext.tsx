@@ -73,7 +73,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       "font-zilla",
       "font-vt323",
       "font-cabin",
-      "font-londrina"
+      "font-londrina",
     );
 
     // Add the new font class
@@ -156,7 +156,14 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, font, useGradient, applyTheme, lastModelId, lastProvider],
+    [
+      session?.user?.id,
+      font,
+      useGradient,
+      applyTheme,
+      lastModelId,
+      lastProvider,
+    ],
   );
 
   const setFont = useCallback(
@@ -179,7 +186,14 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, theme, useGradient, applyFont, lastModelId, lastProvider],
+    [
+      session?.user?.id,
+      theme,
+      useGradient,
+      applyFont,
+      lastModelId,
+      lastProvider,
+    ],
   );
 
   const setUseGradient = useCallback(
