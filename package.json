@@ -36,7 +36,7 @@
     "multer": "^2.2.0",
     "music-metadata-browser": "^2.5.11",
     "playwright": "^1.61.1",
-    "react-easy-crop": "^6.0.2",
+    "react-easy-crop": "^6.2.2",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
     "simple-git": "^3.36.0",
