@@ -622,6 +622,8 @@ export default function Account() {
               trigger={
                 <button
                   type="button"
+                  aria-label="Upload profile picture"
+                  title="Upload profile picture"
                   className="absolute bottom-1 right-1 p-2 bg-cyan-600 rounded-full text-white shadow-lg hover:bg-cyan-500 transition-colors"
                 >
                   <Upload className="w-5 h-5" />
