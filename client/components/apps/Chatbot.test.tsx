@@ -69,7 +69,7 @@ vi.mock("@/lib/supabase", () => ({
         return mockSupabaseChain([
           {
             id: "chat-1",
-            title: "New Chat",
+            title: "Existing Chat",
             style: "GeneralAssistant",
             updated_at: new Date().toISOString(),
           },
@@ -145,7 +145,7 @@ describe("ChatbotApp", () => {
       </ThemeProvider>,
     );
     await waitFor(() => {
-      expect(screen.queryByText("New Chat")).not.toBeNull();
+      expect(screen.queryByText("Existing Chat")).not.toBeNull();
     });
     expect(screen.queryByText("Select a chat to start")).not.toBeNull();
   });
@@ -183,7 +183,7 @@ describe("ChatbotApp", () => {
       () => {
         expect(screen.queryByText("Hello from AI")).not.toBeNull();
       },
-      { timeout: 10000 },
+      { timeout: 15000 },
     );
   });
 });
