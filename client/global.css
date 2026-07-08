@@ -9,11 +9,6 @@
     var(--font-family), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-  --font-indie: "Indie Flower", cursive;
-  --font-zilla: "Zilla Slab", serif;
-  --font-vt323: "VT323", monospace;
-  --font-cabin: "Cabin Sketch", cursive;
-  --font-londrina: "Londrina Sketch", cursive;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
