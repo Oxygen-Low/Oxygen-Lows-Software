@@ -483,7 +483,7 @@ export function ChatbotApp() {
         });
       if (userInsertError) throw userInsertError;
 
-      const response = await fetch("/api/ai", {
+      const response = await fetch("/api/ai/proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

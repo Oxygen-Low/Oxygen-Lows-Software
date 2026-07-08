@@ -109,7 +109,7 @@ vi.mock("@/lib/supabase", () => ({
 
 // Mock fetch for streaming
 global.fetch = vi.fn((url) => {
-  if (url === "/api/ai") {
+  if (url === "/api/ai/proxy") {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(
