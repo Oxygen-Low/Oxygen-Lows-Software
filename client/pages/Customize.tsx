@@ -21,22 +21,22 @@ interface PlaylistTrack {
 
 const THEMES = [
   { label: "Default", value: "default" },
-  { label: "Matrix Red", value: "red" },
-  { label: "Cyber Yellow", value: "yellow" },
-  { label: "Onyx Black", value: "black" },
-  { label: "Pure White", value: "white" },
+  { label: "Red", value: "red" },
+  { label: "Yellow", value: "yellow" },
+  { label: "Black/Dark", value: "black" },
+  { label: "White/Light", value: "white" },
 ];
 
 const FONTS = [
-  { label: "Inter (Default)", value: "font-inter" },
-  { label: "Roboto Mono", value: "font-roboto-mono" },
-  { label: "JetBrains Mono", value: "font-jetbrains" },
-  { label: "Geist Mono", value: "font-geist" },
-  { label: "Space Grotesk", value: "font-space" },
+  { label: "Indie Flower (Default)", value: "font-indie" },
+  { label: "Mozilla Text", value: "font-zilla" },
+  { label: "VT323", value: "font-vt323" },
+  { label: "Cabin Sketch", value: "font-cabin" },
+  { label: "Londrina Sketch", value: "font-londrina" },
 ];
 
 export default function Customize() {
-  const { theme, setTheme, useGradient, setUseGradient } = useTheme();
+  const { theme, setTheme, font, setFont, useGradient, setUseGradient } = useTheme();
   const {
     playlist,
     currentTrack,
@@ -50,7 +50,6 @@ export default function Customize() {
   } = useMusicContext();
   const { session } = useAuth();
   const { toast } = useToast();
-  const [font, setFont] = useState("font-inter");
 
   const handleAddTrack = async (track: any) => {
     let finalTrack: PlaylistTrack = {
