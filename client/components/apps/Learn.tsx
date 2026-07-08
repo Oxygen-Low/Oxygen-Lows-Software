@@ -914,7 +914,8 @@ export function LearnApp() {
                   Congratulations!
                 </h5>
                 <p className="text-slate-400">
-                  You have completed the "{selectedCourse.name}" course.
+                  You have completed the &quot;{selectedCourse.name}&quot;
+                  course.
                 </p>
               </div>
               <Button

@@ -1,52 +1,49 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  Send,
   Plus,
   Trash2,
-  Loader2,
   Bot,
-  User,
-  FileCode,
-  X,
+  Send,
+  Loader2,
+  Monitor,
+  Code,
   Copy,
-  ChevronRight,
-  Maximize2,
-  Minimize2,
+  X,
+  Diamond,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { useAiModels } from "@/hooks/useAiModels";
+import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { useAiModels } from "@/hooks/useAiModels";
-import { toast } from "sonner";
 import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
 import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
+import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface Chat {
   id: string;
   title: string;
-  created_at: string;
   style: string;
   llm_character_id: string | null;
   user_character_id: string | null;
-  is_encrypted?: boolean;
+  is_encrypted: boolean;
 }
 
-interface Message {
-  role: "user" | "assistant" | "system";
-  content: string;
-}
-
-interface ChatStyle {
+interface Style {
   id: string;
   title: string;
   description: string;
-  prompt: string;
 }
 
 interface Character {
@@ -62,13 +59,15 @@ interface Artifact {
   content: string;
 }
 
+const ARTIFACT_REGEX =
+  /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\|$)/g;
+
 const parseArtifacts = (content: string): Artifact[] => {
   const artifacts: Artifact[] = [];
-  const regex =
-    /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\\\\\|$)/g;
   let match;
-
-  while ((match = regex.exec(content)) !== null) {
+  // Reset regex state since it's global
+  ARTIFACT_REGEX.lastIndex = 0;
+  while ((match = ARTIFACT_REGEX.exec(content)) !== null) {
     artifacts.push({
       id: Math.random().toString(36).substr(2, 9),
       filename: match[1],
@@ -79,21 +78,11 @@ const parseArtifacts = (content: string): Artifact[] => {
   return artifacts;
 };
 
-const formatModelLabel = (provider: string, modelId: string) => {
-  if (provider === "ollama") return "ollama/" + modelId;
-  if (provider === "lmstudio") return "lmstudio/" + modelId;
-  if (provider === "koboldcpp" || provider === "kobold")
-    return "koboldcpp/" + modelId;
-  return provider + " - " + modelId;
-};
-
 /**
  * ⚡ Bolt Performance Optimization:
  * Extracting the individual chat message rendering into a `React.memo` wrapped component.
  * This prevents the extremely expensive re-renders of `ReactMarkdown` and `SyntaxHighlighter`
  * for the entire chat history on every single token received during a streaming response.
- * Without this, a long chat history with lots of code blocks would cause severe UI lag
- * during text streaming.
  */
 const ChatMessage = React.memo(
   ({
@@ -104,10 +93,7 @@ const ChatMessage = React.memo(
     setActiveArtifact: (art: Artifact) => void;
   }) => {
     const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
-    const displayContent = (m.content || "").replace(
-      /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\\\\\|$)/g,
-      "",
-    );
+    const displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
 
     return (
       <div
@@ -123,17 +109,22 @@ const ChatMessage = React.memo(
           )}
         >
           {m.role === "user" ? (
-            <User className="w-4 h-4 text-white" />
+            <div className="w-4 h-4 bg-white/20 rounded-full" />
           ) : (
             <Bot className="w-4 h-4 text-cyan-400" />
           )}
         </div>
-        <div className="flex flex-col gap-2 flex-1 min-w-0">
+        <div
+          className={cn(
+            "flex flex-col gap-2 flex-1 min-w-0",
+            m.role === "user" ? "items-end" : "",
+          )}
+        >
           <div
             className={cn(
-              "p-4 rounded-2xl text-sm prose prose-invert max-w-none",
+              "p-4 rounded-2xl text-sm",
               m.role === "user"
-                ? "bg-cyan-600/10 border border-cyan-500/20 text-white"
+                ? "bg-cyan-600 text-white"
                 : "bg-slate-900 border border-slate-800 text-slate-200",
             )}
           >
@@ -163,17 +154,15 @@ const ChatMessage = React.memo(
           </div>
           {artifacts.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
-              {artifacts.map((art, idx) => (
-                <Button
-                  key={idx}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 bg-slate-900/50 border-slate-800 hover:bg-slate-800 text-xs"
+              {artifacts.map((art) => (
+                <button
+                  key={art.id}
                   onClick={() => setActiveArtifact(art)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-cyan-500/50 transition-colors text-xs text-slate-300"
                 >
-                  <FileCode className="w-3.5 h-3.5 mr-2 text-cyan-400" />
+                  <Code className="w-3 h-3 text-cyan-400" />
                   {art.filename}
-                </Button>
+                </button>
               ))}
             </div>
           )}
@@ -190,28 +179,23 @@ const ArtifactSidebar = ({
   artifact: Artifact;
   onClose: () => void;
 }) => {
-  const [isMaximized, setIsMaximized] = useState(false);
-
   return (
-    <div
-      className={cn(
-        "border-l border-slate-800 bg-slate-900 transition-all duration-300 flex flex-col",
-        isMaximized ? "fixed inset-0 z-50" : "w-[450px]",
-      )}
-    >
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+    <div className="w-[500px] border-l border-slate-800 bg-slate-950 flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <FileCode className="w-5 h-5 text-cyan-400" />
+          <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
+            <Code className="w-4 h-4" />
+          </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">
+            <h3 className="text-sm font-bold text-white">
               {artifact.filename}
             </h3>
-            <p className="text-[10px] text-slate-500 uppercase font-mono">
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
               {artifact.language}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
@@ -227,18 +211,6 @@ const ArtifactSidebar = ({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-slate-400 hover:text-white"
-            onClick={() => setIsMaximized(!isMaximized)}
-          >
-            {isMaximized ? (
-              <Minimize2 className="w-4 h-4" />
-            ) : (
-              <Maximize2 className="w-4 h-4" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-white"
             onClick={onClose}
           >
             <X className="w-4 h-4" />
@@ -246,15 +218,15 @@ const ArtifactSidebar = ({
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-4">
+        <div className="p-0">
           <SyntaxHighlighter
-            style={vscDarkPlus}
             language={artifact.language}
+            style={vscDarkPlus}
             customStyle={{
               margin: 0,
+              padding: "24px",
               background: "transparent",
               fontSize: "13px",
-              lineHeight: "1.6",
             }}
           >
             {artifact.content}
@@ -265,7 +237,7 @@ const ArtifactSidebar = ({
   );
 };
 
-export const ChatbotApp = () => {
+export function ChatbotApp() {
   const { session } = useAuth();
   const { models, selectedModel, selectedProvider, setSelection } =
     useAiModels();
@@ -274,7 +246,8 @@ export const ChatbotApp = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [styles, setStyles] = useState<ChatStyle[]>([]);
+  const isTypingRef = useRef(false);
+  const [styles, setStyles] = useState<Style[]>([]);
   const [selectedStyle, setSelectedStyle] = useState("GeneralAssistant");
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>(
     [],
@@ -286,116 +259,121 @@ export const ChatbotApp = () => {
     string | null
   >(null);
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
-  const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] =
     useState(false);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const lastParsedLengthRef = useRef(0);
-  const isTypingRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     if (!session?.user?.id) return;
 
-    const [{ data: prefs }, { data: styleList }, { data: chars }] =
-      await Promise.all([
-        supabase
-          .from("user_preferences")
-          .select("encryption_settings")
-          .eq("user_id", session.user.id)
-          .single(),
-        supabase.rpc("get_chat_styles"),
-        supabase
-          .from("characters")
-          .select("id, name, display_name, is_encrypted")
-          .eq("user_id", session.user.id),
-      ]);
+    const { data: prefs } = await supabase
+      .from("user_preferences")
+      .select("encryption_settings")
+      .eq("user_id", session.user.id)
+      .single();
 
-    const enabled = prefs?.encryption_settings?.chats || false;
-    setIsEncryptionEnabled(enabled);
+    const encryptionEnabled = prefs?.encryption_settings?.enabled || false;
+    setIsEncryptionEnabled(encryptionEnabled);
 
-    if (styleList) setStyles(styleList);
-
-    const key = getMasterKey();
-    if (enabled && !key) {
+    const masterKey = getMasterKey();
+    if (encryptionEnabled && !masterKey) {
       setShowEncryptionUnlockModal(true);
-    } else {
-      const { data: chatList } = await supabase
-        .from("chats")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .order("updated_at", { ascending: false });
-      if (chatList) {
-        const processedChats = await Promise.all(
-          chatList.map(async (c) => {
-            if (!c.is_encrypted) return c;
-            try {
-              if (!key) throw new Error("No key");
-              return { ...c, title: await decrypt(c.title, key) };
-            } catch (e) {
-              return { ...c, title: "[Encrypted]" };
-            }
-          }),
-        );
-        setChats(processedChats);
-      }
-
-      if (chars) {
-        const processedChars = await Promise.all(
-          chars.map(async (c) => {
-            if (!c.is_encrypted) return c;
-            try {
-              if (!key) throw new Error("No key");
-              return {
-                ...c,
-                display_name: c.display_name
-                  ? await decrypt(c.display_name, key)
-                  : null,
-                name: await decrypt(c.name, key),
-              };
-            } catch (e) {
-              return { ...c, name: "[Encrypted]" };
-            }
-          }),
-        );
-        setAvailableCharacters(processedChars);
-      }
-    }
-  }, [session]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    if (!currentChatId) {
-      setMessages([]);
-      setSelectedLlmCharacter(null);
-      setSelectedUserCharacter(null);
       return;
     }
 
+    const { data: stylesData } = await supabase.rpc("get_chat_styles");
+    if (stylesData) setStyles(stylesData);
+
+    const { data: chars } = await supabase
+      .from("characters")
+      .select("id, name, display_name, is_encrypted")
+      .eq("user_id", session.user.id);
+
+    if (chars) {
+      const processedChars = await Promise.all(
+        chars.map(async (c) => {
+          if (c.is_encrypted && masterKey) {
+            try {
+              return {
+                ...c,
+                name: await decrypt(c.name, masterKey),
+                display_name: c.display_name
+                  ? await decrypt(c.display_name, masterKey)
+                  : null,
+              };
+            } catch (e) {
+              return { ...c, name: "[Encrypted]", display_name: "[Encrypted]" };
+            }
+          }
+          return c;
+        }),
+      );
+      setAvailableCharacters(processedChars);
+    }
+
+    const { data: chatsData } = await supabase
+      .from("chats")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("updated_at", { ascending: false });
+
+    if (chatsData) {
+      const processedChats = await Promise.all(
+        chatsData.map(async (c) => {
+          if (c.is_encrypted && masterKey) {
+            try {
+              return {
+                ...c,
+                title: await decrypt(c.title, masterKey),
+              };
+            } catch (e) {
+              return { ...c, title: "Encrypted Chat" };
+            }
+          }
+          return c;
+        }),
+      );
+      setChats(processedChats);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [session?.user?.id]);
+
+  useEffect(() => {
     const fetchMessages = async () => {
-      const { data: msgList } = await supabase
+      if (!currentChatId) {
+        setMessages([]);
+        return;
+      }
+
+      const { data } = await supabase
         .from("chat_messages")
-        .select("role, content, is_encrypted")
+        .select("*")
         .eq("chat_id", currentChatId)
         .order("created_at", { ascending: true });
 
-      if (msgList) {
-        const key = getMasterKey();
-        const processedMessages = await Promise.all(
-          msgList.map(async (m) => {
-            if (!m.is_encrypted) return m;
-            try {
-              if (!key) throw new Error("No key");
-              return { ...m, content: await decrypt(m.content, key) };
-            } catch (e) {
-              return { ...m, content: "[Encrypted Content]" };
+      if (data) {
+        const masterKey = getMasterKey();
+        const processed = await Promise.all(
+          data.map(async (m) => {
+            if (m.is_encrypted && masterKey) {
+              try {
+                return {
+                  role: m.role,
+                  content: await decrypt(m.content, masterKey),
+                };
+              } catch (e) {
+                return { role: m.role, content: "[Encrypted Message]" };
+              }
             }
+            return { role: m.role, content: m.content };
           }),
         );
-        setMessages(processedMessages as Message[]);
+        setMessages(processed);
       }
 
       const chat = chats.find((c) => c.id === currentChatId);
@@ -451,9 +429,16 @@ export const ChatbotApp = () => {
     if (!input.trim() || isTyping || !currentChatId || !session?.user?.id)
       return;
 
+    const key = getMasterKey();
+    if (isEncryptionEnabled && !key) {
+      setShowEncryptionUnlockModal(true);
+      return;
+    }
+
     const userMessage: Message = { role: "user", content: input };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
+    const originalInput = input;
     setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
@@ -477,142 +462,116 @@ export const ChatbotApp = () => {
       let decryptedBaseUrl = undefined;
 
       if (userInts && encryptionSettings.integrations) {
-        const masterKey = getMasterKey();
-        if (masterKey) {
+        if (key) {
           if (userInts.api_key)
-            decryptedKey = await decrypt(userInts.api_key, masterKey);
+            decryptedKey = await decrypt(userInts.api_key, key);
           if (userInts.base_url)
-            decryptedBaseUrl = await decrypt(userInts.base_url, masterKey);
+            decryptedBaseUrl = await decrypt(userInts.base_url, key);
         }
       }
 
-      const key = getMasterKey();
-      if (isEncryptionEnabled && !key) {
-        setShowEncryptionUnlockModal(true);
-        return;
-      }
       const { error: userInsertError } = await supabase
         .from("chat_messages")
         .insert({
           chat_id: currentChatId,
           role: "user",
           content:
-            isEncryptionEnabled && key ? await encrypt(input, key) : input,
+            isEncryptionEnabled && key
+              ? await encrypt(originalInput, key)
+              : originalInput,
           is_encrypted: isEncryptionEnabled,
         });
       if (userInsertError) throw userInsertError;
 
-      const style = styles.find((s) => s.id === selectedStyle);
-
-      const token = (await supabase.auth.getSession()).data.session
-        ?.access_token;
-      const response = await fetch("/api/ai/proxy", {
+      const response = await fetch("/api/ai", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           provider: selectedProvider,
           model: selectedModel,
           messages: newMessages,
-          systemPrompt: style?.prompt,
+          style: selectedStyle,
           stream: true,
-          llm_character_id: selectedLlmCharacter,
-          user_character_id: selectedUserCharacter,
           apiKey: decryptedKey,
           baseUrl: decryptedBaseUrl,
         }),
       });
 
       if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to get response");
-        } else {
-          const errorText = await response.text();
-          if (
-            errorText.includes("<!DOCTYPE html>") ||
-            errorText.includes("<html>")
-          ) {
-            throw new Error(
-              "The AI service returned an unexpected HTML error. This usually means the service is down, misconfigured, or blocked by a firewall.",
-            );
-          }
-          throw new Error(`Server error: ${errorText.substring(0, 100)}`);
-        }
+        const errorMessage = await parseAiProxyError(response);
+        throw new Error(errorMessage);
       }
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error("No reader");
-
+      const decoder = new TextDecoder();
       let fullContent = "";
-      setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-        const chunk = new TextDecoder().decode(value);
-        const lines = chunk.split("\n").filter((l) => l.trim());
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          if (line.includes("[DONE]")) continue;
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
 
-          try {
-            const data = JSON.parse(line.slice(6));
-            let delta = "";
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith("data: ")) continue;
+            const dataStr = line.replace("data: ", "");
+            if (dataStr === "[DONE]") break;
 
-            if (
-              selectedProvider === "openai" ||
-              selectedProvider === "openrouter" ||
-              selectedProvider === "grok" ||
-              selectedProvider === "custom" ||
-              selectedProvider === "stablehorde" ||
-              selectedProvider === "lmstudio" ||
-              selectedProvider === "koboldcpp" ||
-              selectedProvider === "kobold"
-            ) {
-              delta = data.choices?.[0]?.delta?.content || "";
-            } else if (selectedProvider === "anthropic") {
-              delta = data.delta?.text || "";
-            } else if (selectedProvider === "ollama") {
-              delta =
-                data.message?.content ||
-                data.output?.content ||
-                data.output?.text ||
-                "";
-            } else if (selectedProvider === "google") {
-              delta =
-                data.delta?.content ||
-                data.message?.content?.text ||
-                data.candidates?.[0]?.content?.parts?.[0]?.text ||
-                "";
-            }
+            try {
+              const data = JSON.parse(dataStr);
+              let delta = "";
 
-            if (delta) {
-              fullContent += delta;
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                return [
-                  ...prev.slice(0, -1),
-                  { ...last, content: fullContent },
-                ];
-              });
-
-              if (
-                fullContent.length - lastParsedLengthRef.current > 50 ||
-                fullContent.includes("\\\\")
+              if (selectedProvider === "anthropic") {
+                delta = data.delta?.text || "";
+              } else if (
+                selectedProvider === "openai" ||
+                selectedProvider === "openrouter" ||
+                selectedProvider === "grok" ||
+                selectedProvider === "custom" ||
+                selectedProvider === "lmstudio" ||
+                selectedProvider === "koboldcpp" ||
+                selectedProvider === "kobold"
               ) {
-                const arts = parseArtifacts(fullContent);
-                if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-                lastParsedLengthRef.current = fullContent.length;
+                delta = data.choices?.[0]?.delta?.content || "";
+              } else if (selectedProvider === "ollama") {
+                delta = data.message?.content || data.response || "";
+              } else if (selectedProvider === "google") {
+                delta =
+                  data.delta?.content ||
+                  data.message?.content?.text ||
+                  data.candidates?.[0]?.content?.parts?.[0]?.text ||
+                  "";
               }
+
+              if (delta) {
+                fullContent += delta;
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  return [
+                    ...prev.slice(0, -1),
+                    { ...last, content: fullContent },
+                  ];
+                });
+
+                if (
+                  fullContent.length - lastParsedLengthRef.current > 50 ||
+                  fullContent.includes("\\\\")
+                ) {
+                  const arts = parseArtifacts(fullContent);
+                  if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+                  lastParsedLengthRef.current = fullContent.length;
+                }
+              }
+            } catch (e) {
+              console.error("Parse error", e);
             }
-          } catch (e) {
-            console.error("Parse error", e);
           }
         }
       }
@@ -636,6 +595,9 @@ export const ChatbotApp = () => {
       if (chatUpdateError) throw chatUpdateError;
     } catch (e: any) {
       toast.error(e.message);
+      // Restore input if failed and no optimistic message saved yet?
+      // The prompt said: "otherwise preserve input and notify the user"
+      if (input === "") setInput(originalInput);
     } finally {
       setIsTyping(false);
       isTypingRef.current = false;
@@ -679,8 +641,16 @@ export const ChatbotApp = () => {
               <div
                 key={c.id}
                 onClick={() => setCurrentChatId(c.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setCurrentChatId(c.id);
+                  }
+                }}
                 className={cn(
-                  "group flex items-center justify-between p-3 rounded-lg cursor-pointer",
+                  "group flex items-center justify-between p-3 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500/50",
                   currentChatId === c.id
                     ? "bg-cyan-600/10 text-cyan-400"
                     : "text-slate-400",
@@ -699,7 +669,8 @@ export const ChatbotApp = () => {
                         if (currentChatId === c.id) setCurrentChatId(null);
                       });
                   }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400"
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-1"
+                  title="Delete chat"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -709,10 +680,14 @@ export const ChatbotApp = () => {
         </ScrollArea>
         <div className="pt-4 border-t border-slate-800 space-y-4 overflow-y-auto">
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">
+            <label
+              htmlFor="model-select"
+              className="text-[10px] font-bold text-slate-500 uppercase"
+            >
               Model
             </label>
             <select
+              id="model-select"
               className="w-full bg-slate-900 text-xs text-white p-2 rounded"
               value={`${selectedProvider}:${selectedModel}`}
               onChange={(e) => {
@@ -731,10 +706,17 @@ export const ChatbotApp = () => {
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">
+            <label
+              id="style-select-label"
+              className="text-[10px] font-bold text-slate-500 uppercase"
+            >
               Style
             </label>
-            <div className="space-y-1">
+            <div
+              className="space-y-1"
+              role="listbox"
+              aria-labelledby="style-select-label"
+            >
               {styles.map((s) => (
                 <div
                   key={s.id}
@@ -742,8 +724,18 @@ export const ChatbotApp = () => {
                     setSelectedStyle(s.id);
                     updateChatSetting({ style: s.id });
                   }}
+                  role="option"
+                  aria-selected={selectedStyle === s.id}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedStyle(s.id);
+                      updateChatSetting({ style: s.id });
+                    }
+                  }}
                   className={cn(
-                    "p-2 rounded cursor-pointer",
+                    "p-2 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-cyan-500/50",
                     selectedStyle === s.id
                       ? "bg-slate-800 ring-1 ring-cyan-500/50"
                       : "hover:bg-slate-900",
@@ -758,10 +750,14 @@ export const ChatbotApp = () => {
             </div>
           </div>
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">
+            <label
+              htmlFor="llm-character-select"
+              className="text-[10px] font-bold text-slate-500 uppercase"
+            >
               LLM Character
             </label>
             <select
+              id="llm-character-select"
               className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1"
               value={selectedLlmCharacter || ""}
               onChange={(e) => {
@@ -779,10 +775,14 @@ export const ChatbotApp = () => {
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">
+            <label
+              htmlFor="user-character-select"
+              className="text-[10px] font-bold text-slate-500 uppercase"
+            >
               User Character
             </label>
             <select
+              id="user-character-select"
               className="w-full bg-slate-900 text-xs text-white p-2 rounded mt-1"
               value={selectedUserCharacter || ""}
               onChange={(e) => {
@@ -862,6 +862,6 @@ export const ChatbotApp = () => {
       )}
     </div>
   );
-};
+}
 
 export default ChatbotApp;

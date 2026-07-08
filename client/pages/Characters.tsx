@@ -1,11 +1,15 @@
-import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
+import {
+  User,
+  Plus,
+  Edit2,
+  Trash2,
+  Image as ImageIcon,
+  Loader2,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -16,69 +20,82 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Plus,
-  User,
-  Image as ImageIcon,
-  Loader2,
-  Edit2,
-  Trash2,
-} from "lucide-react";
-import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
+import { StorageFileSelector } from "@/components/StorageFileSelector";
+import { decrypt, encrypt, getMasterKey } from "@/lib/crypto";
 import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
+
+interface Character {
+  id: string;
+  user_id: string;
+  name: string;
+  short_description: string | null;
+  display_name: string | null;
+  image_path: string | null;
+  image_url: string | null;
+  appearance: string | null;
+  personality: string | null;
+  backstory: string | null;
+  hidden_description: string | null;
+  is_encrypted: boolean;
+  is_corrupted?: boolean;
+}
 
 export default function Characters() {
   const { session } = useAuth();
   const { toast } = useToast();
-  const [characters, setCharacters] = useState<any[]>([]);
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedStoragePath, setSelectedStoragePath] = useState<string | null>(
-    null,
+  const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>(
+    {},
   );
-
-  const [currentCharacter, setCurrentCharacter] = useState<any>({});
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] =
     useState(false);
 
-  const handleStorageSelect = async (file: any) => {
-    setSelectedStoragePath(file.name);
-    if (file.name.includes("..")) {
-      throw new Error("Invalid file name");
-    }
-    const { data } = await supabase.storage
-      .from("Storage")
-      .createSignedUrl(file.name, 3600);
-    if (data?.signedUrl) {
-      setCurrentCharacter((prev) => ({
-        ...prev,
-        image_url: data.signedUrl,
-        image_path: file.name,
-      }));
+  useEffect(() => {
+    fetchInitialData();
+  }, [session?.user?.id]);
+
+  const fetchInitialData = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const { data: prefs } = await supabase
+        .from("user_preferences")
+        .select("encryption_settings")
+        .eq("user_id", session.user.id)
+        .single();
+
+      const enabled = prefs?.encryption_settings?.characters || false;
+      setIsEncryptionEnabled(enabled);
+      fetchCharacters(enabled);
+    } catch (err) {
+      console.error("Error fetching preferences", err);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (session?.user.id) {
-      checkEncryptionSettings();
-    }
-  }, [session]);
-
-  const checkEncryptionSettings = async () => {
-    const { data } = await supabase
-      .from("user_preferences")
-      .select("encryption_settings")
-      .eq("user_id", session?.user.id)
-      .single();
-    const enabled = data?.encryption_settings?.characters || false;
-    setIsEncryptionEnabled(enabled);
-    if (enabled && !getMasterKey()) {
-      setShowEncryptionUnlockModal(true);
-    } else {
-      fetchCharacters(enabled);
-    }
+  const attachSignedImageUrls = async (chars: any[]) => {
+    return Promise.all(
+      (chars || []).map(async (char) => {
+        if (char.image_path) {
+          if (char.image_path.includes("..")) return { ...char, image_url: "" };
+          const { data: urlData } = await supabase.storage
+            .from("Storage")
+            .createSignedUrl(char.image_path, 3600)
+            .catch(() => ({ data: null }));
+          if (urlData?.signedUrl)
+            return { ...char, image_url: urlData.signedUrl };
+          else return { ...char, image_url: "" };
+        }
+        return char;
+      }),
+    );
   };
 
   const fetchCharacters = async (overrideEncryptionEnabled?: boolean) => {
@@ -94,14 +111,16 @@ export default function Characters() {
 
       if (error) throw error;
 
+      let processedData = data || [];
+
       if (encryptionEnabled) {
         const key = getMasterKey();
         if (!key) {
           setShowEncryptionUnlockModal(true);
           return;
         }
-        const decryptedData = await Promise.all(
-          (data || []).map(async (char) => {
+        processedData = await Promise.all(
+          processedData.map(async (char) => {
             if (!char.is_encrypted) return char;
             try {
               return {
@@ -128,46 +147,23 @@ export default function Characters() {
               };
             } catch (e) {
               console.error("Failed to decrypt character", char.id, e);
-              return { ...char, name: "[Encrypted]", is_corrupted: true };
+              return {
+                ...char,
+                name: "[Encrypted]",
+                display_name: "[Encrypted]",
+                short_description: "[Encrypted]",
+                appearance: "[Encrypted]",
+                personality: "[Encrypted]",
+                backstory: "[Encrypted]",
+                hidden_description: "[Encrypted]",
+                is_corrupted: true,
+              };
             }
           }),
         );
-        const charsWithSignedUrls = await Promise.all(
-          (decryptedData || []).map(async (char) => {
-            if (char.image_path) {
-              if (char.image_path.includes(".."))
-                throw new Error("Invalid file path");
-              const { data: urlData } = await supabase.storage
-                .from("Storage")
-                .createSignedUrl(char.image_path, 3600)
-                .catch(() => ({ data: null }));
-              if (urlData?.signedUrl)
-                return { ...char, image_url: urlData.signedUrl };
-              else return { ...char, image_url: "" };
-            }
-            return char;
-          }),
-        );
-        setCharacters(charsWithSignedUrls);
-      } else {
-        const charsWithSignedUrls = await Promise.all(
-          (data || []).map(async (char) => {
-            if (char.image_path) {
-              if (char.image_path.includes(".."))
-                throw new Error("Invalid file path");
-              const { data: urlData } = await supabase.storage
-                .from("Storage")
-                .createSignedUrl(char.image_path, 3600)
-                .catch(() => ({ data: null }));
-              if (urlData?.signedUrl)
-                return { ...char, image_url: urlData.signedUrl };
-              else return { ...char, image_url: "" };
-            }
-            return char;
-          }),
-        );
-        setCharacters(charsWithSignedUrls);
       }
+      const charsWithUrls = await attachSignedImageUrls(processedData);
+      setCharacters(charsWithUrls);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -180,78 +176,63 @@ export default function Characters() {
   };
 
   const handleSave = async () => {
+    if (!session?.user?.id) return;
     try {
-      if (!currentCharacter.name) {
-        toast({
-          title: "Error",
-          description: "Name is required",
-          variant: "destructive",
-        });
+      const key = getMasterKey();
+      if (isEncryptionEnabled && !key) {
+        setShowEncryptionUnlockModal(true);
         return;
       }
 
-      let charData = {
-        ...currentCharacter,
-        user_id: session?.user.id,
+      const payload = {
+        user_id: session.user.id,
+        name: isEncryptionEnabled
+          ? await encrypt(currentCharacter.name || "", key!)
+          : currentCharacter.name,
+        short_description:
+          isEncryptionEnabled && currentCharacter.short_description
+            ? await encrypt(currentCharacter.short_description, key!)
+            : currentCharacter.short_description,
+        display_name:
+          isEncryptionEnabled && currentCharacter.display_name
+            ? await encrypt(currentCharacter.display_name, key!)
+            : currentCharacter.display_name,
+        appearance:
+          isEncryptionEnabled && currentCharacter.appearance
+            ? await encrypt(currentCharacter.appearance, key!)
+            : currentCharacter.appearance,
+        personality:
+          isEncryptionEnabled && currentCharacter.personality
+            ? await encrypt(currentCharacter.personality, key!)
+            : currentCharacter.personality,
+        backstory:
+          isEncryptionEnabled && currentCharacter.backstory
+            ? await encrypt(currentCharacter.backstory, key!)
+            : currentCharacter.backstory,
+        hidden_description:
+          isEncryptionEnabled && currentCharacter.hidden_description
+            ? await encrypt(currentCharacter.hidden_description, key!)
+            : currentCharacter.hidden_description,
+        image_path: currentCharacter.image_path,
+        is_encrypted: isEncryptionEnabled,
       };
 
-      if (isEncryptionEnabled) {
-        const key = getMasterKey();
-        if (!key) {
-          setShowEncryptionUnlockModal(true);
-          return;
-        }
-        charData = {
-          ...charData,
-          name: await encrypt(charData.name, key),
-          short_description: charData.short_description
-            ? await encrypt(charData.short_description, key)
-            : null,
-          display_name: charData.display_name
-            ? await encrypt(charData.display_name, key)
-            : null,
-          appearance: charData.appearance
-            ? await encrypt(charData.appearance, key)
-            : null,
-          personality: charData.personality
-            ? await encrypt(charData.personality, key)
-            : null,
-          backstory: charData.backstory
-            ? await encrypt(charData.backstory, key)
-            : null,
-          hidden_description: charData.hidden_description
-            ? await encrypt(charData.hidden_description, key)
-            : null,
-          is_encrypted: true,
-        };
-      } else {
-        charData.is_encrypted = false;
-      }
-
-      let error;
       if (currentCharacter.id) {
-        const { error: updateError } = await supabase
+        const { error } = await supabase
           .from("characters")
-          .update(charData)
+          .update(payload)
           .eq("id", currentCharacter.id);
-        error = updateError;
+        if (error) throw error;
       } else {
-        const { error: insertError } = await supabase
-          .from("characters")
-          .insert([charData]);
-        error = insertError;
+        const { error } = await supabase.from("characters").insert(payload);
+        if (error) throw error;
       }
-
-      if (error) throw error;
 
       toast({
         title: "Success",
-        description: currentCharacter.id
-          ? "Character updated"
-          : "Character created",
+        description: "Character saved successfully",
       });
       setIsEditing(false);
-      setCurrentCharacter({});
       fetchCharacters();
     } catch (error: any) {
       toast({
@@ -263,35 +244,17 @@ export default function Characters() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!session?.user?.id) return;
     if (!confirm("Are you sure you want to delete this character?")) return;
     try {
-      // Get character first to get image_path
-      const { data: char, error: fetchError } = await supabase
-        .from("characters")
-        .select("image_path")
-        .eq("id", id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      if (char?.image_path) {
-        if (char.image_path.includes("..")) {
-          throw new Error("Invalid file path");
-        }
-        const { error: storageError } = await supabase.storage
-          .from("Storage")
-          .remove([char.image_path]);
-        if (storageError)
-          console.error("Failed to delete character image:", storageError);
-      }
-
       const { error } = await supabase
         .from("characters")
         .delete()
-        .match({ id: id, user_id: session.user.id });
+        .match({ id, user_id: session.user.id });
       if (error) throw error;
-      toast({ title: "Success", description: "Character deleted" });
-      fetchCharacters();
+
+      setCharacters(characters.filter((c) => c.id !== id));
+      toast({ title: "Character deleted" });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -301,24 +264,45 @@ export default function Characters() {
     }
   };
 
+  const handleStorageSelect = async (file: any) => {
+    setCurrentCharacter((prev) => ({
+      ...prev,
+      image_path: file.name,
+    }));
+    const { data } = await supabase.storage
+      .from("Storage")
+      .createSignedUrl(file.name, 3600);
+    if (data?.signedUrl) {
+      setCurrentCharacter((prev) => ({
+        ...prev,
+        image_url: data.signedUrl,
+      }));
+    }
+  };
+
   return (
     <Layout>
-      <EncryptionUnlockModal
-        isOpen={showEncryptionUnlockModal}
-        onClose={() => setShowEncryptionUnlockModal(false)}
-        onUnlock={() => {
-          setShowEncryptionUnlockModal(false);
-          fetchCharacters(true);
-        }}
-      />
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <div className="flex justify-between items-center">
+      <div className="max-w-6xl mx-auto space-y-8 pb-20">
+        <EncryptionUnlockModal
+          isOpen={showEncryptionUnlockModal}
+          onClose={() => setShowEncryptionUnlockModal(false)}
+          onUnlock={() => {
+            setShowEncryptionUnlockModal(false);
+            fetchInitialData();
+          }}
+        />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">
-              Characters
-            </h2>
-            <p className="text-slate-400">
-              Create and manage characters for your chats.
+            <h1 className="text-3xl font-bold text-white tracking-tight">
+              My Characters
+            </h1>
+            <p className="text-slate-400 mt-1">
+              Create and manage your AI personas.
+              {isEncryptionEnabled && (
+                <span className="ml-2 text-cyan-400 inline-flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> Encrypted
+                </span>
+              )}
             </p>
           </div>
           <Dialog
@@ -360,6 +344,7 @@ export default function Characters() {
                       allowedTypes={["image"]}
                       trigger={
                         <button
+                          type="button"
                           className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                           aria-label="Select character image"
                         />
@@ -367,8 +352,11 @@ export default function Characters() {
                     />
                   </div>
                   <div className="flex-1 space-y-2">
-                    <label className="text-sm font-medium">Name</label>
+                    <label htmlFor="char-name" className="text-sm font-medium">
+                      Name
+                    </label>
                     <Input
+                      id="char-name"
                       value={currentCharacter.name || ""}
                       onChange={(e) =>
                         setCurrentCharacter((prev) => ({
@@ -384,10 +372,14 @@ export default function Characters() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">
+                    <label
+                      htmlFor="char-short-desc"
+                      className="text-sm font-medium"
+                    >
                       Short Description
                     </label>
                     <Input
+                      id="char-short-desc"
                       value={currentCharacter.short_description || ""}
                       onChange={(e) =>
                         setCurrentCharacter((prev) => ({
@@ -400,8 +392,14 @@ export default function Characters() {
                     />
                   </div>
                   <div className="space-y-2 text-cyan-400">
-                    <label className="text-sm font-medium">Display Name</label>
+                    <label
+                      htmlFor="char-display-name"
+                      className="text-sm font-medium"
+                    >
+                      Display Name
+                    </label>
                     <Input
+                      id="char-display-name"
                       value={currentCharacter.display_name || ""}
                       onChange={(e) =>
                         setCurrentCharacter((prev) => ({
@@ -416,8 +414,14 @@ export default function Characters() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Appearance</label>
+                  <label
+                    htmlFor="char-appearance"
+                    className="text-sm font-medium"
+                  >
+                    Appearance
+                  </label>
                   <Textarea
+                    id="char-appearance"
                     value={currentCharacter.appearance || ""}
                     onChange={(e) =>
                       setCurrentCharacter((prev) => ({
@@ -431,8 +435,14 @@ export default function Characters() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Personality</label>
+                  <label
+                    htmlFor="char-personality"
+                    className="text-sm font-medium"
+                  >
+                    Personality
+                  </label>
                   <Textarea
+                    id="char-personality"
                     value={currentCharacter.personality || ""}
                     onChange={(e) =>
                       setCurrentCharacter((prev) => ({
@@ -446,8 +456,14 @@ export default function Characters() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Backstory</label>
+                  <label
+                    htmlFor="char-backstory"
+                    className="text-sm font-medium"
+                  >
+                    Backstory
+                  </label>
                   <Textarea
+                    id="char-backstory"
                     value={currentCharacter.backstory || ""}
                     onChange={(e) =>
                       setCurrentCharacter((prev) => ({
@@ -461,8 +477,14 @@ export default function Characters() {
                 </div>
 
                 <div className="space-y-2 text-cyan-400">
-                  <label className="text-sm font-medium">Private Notes</label>
+                  <label
+                    htmlFor="char-hidden-desc"
+                    className="text-sm font-medium"
+                  >
+                    Private Notes
+                  </label>
                   <Textarea
+                    id="char-hidden-desc"
                     value={currentCharacter.hidden_description || ""}
                     onChange={(e) =>
                       setCurrentCharacter((prev) => ({

@@ -104,11 +104,18 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   if (authError || !user)
     return res.status(401).json({ error: "Invalid token" });
 
-  let { data: integration } = await supabase
+  let { data: integration, error: integrationError } = await supabase
     .from("user_integrations")
     .select("api_key, base_url")
     .eq("provider", provider)
     .single();
+
+  if (integrationError && integrationError.code !== "PGRST116") {
+    console.error("Integration lookup error:", integrationError);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch integration settings" });
+  }
 
   if (apiKey) {
     integration = { ...integration, api_key: apiKey };
@@ -298,37 +305,45 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
             baseURL: "https://generativelanguage.googleapis.com",
             url: "/v1beta/models/" + model + ":generateContent",
             data: {
-              contents: processedMessages.map((m: any) => {
-                const role = m.role === "assistant" ? "model" : "user";
-                let parts = [];
-                if (Array.isArray(m.content)) {
-                  parts = m.content
-                    .map((part: any) => {
-                      if (part.type === "text") return { text: part.text };
-                      if (part.type === "image_url") {
-                        const url = part.image_url?.url || part.image_url;
-                        if (typeof url === "string" && url.includes(",")) {
-                          const [header, base64Data] = url.split(",");
-                          const mimeType =
-                            header.split(";")[0].split(":")[1] || "image/jpeg";
-                          if (base64Data) {
-                            return {
-                              inline_data: {
-                                mime_type: mimeType,
-                                data: base64Data,
-                              },
-                            };
+              systemInstruction: {
+                parts: processedMessages
+                  .filter((m: any) => m.role === "system")
+                  .map((m: any) => ({ text: m.content })),
+              },
+              contents: processedMessages
+                .filter((m: any) => m.role !== "system")
+                .map((m: any) => {
+                  const role = m.role === "assistant" ? "model" : "user";
+                  let parts = [];
+                  if (Array.isArray(m.content)) {
+                    parts = m.content
+                      .map((part: any) => {
+                        if (part.type === "text") return { text: part.text };
+                        if (part.type === "image_url") {
+                          const url = part.image_url?.url || part.image_url;
+                          if (typeof url === "string" && url.includes(",")) {
+                            const [header, base64Data] = url.split(",");
+                            const mimeType =
+                              header.split(";")[0].split(":")[1] ||
+                              "image/jpeg";
+                            if (base64Data) {
+                              return {
+                                inline_data: {
+                                  mime_type: mimeType,
+                                  data: base64Data,
+                                },
+                              };
+                            }
                           }
                         }
-                      }
-                      return null;
-                    })
-                    .filter(Boolean);
-                } else {
-                  parts = [{ text: m.content }];
-                }
-                return { role, parts };
-              }),
+                        return null;
+                      })
+                      .filter(Boolean);
+                  } else {
+                    parts = [{ text: m.content }];
+                  }
+                  return { role, parts };
+                }),
             },
             params: { key: integration?.api_key },
             ...axiosOptions,

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Request, Response, NextFunction } from "express";
-import { getSupabaseAdmin, supabase as anonClient } from "./supabase";
+import { getAnonClient, supabase as anonClient } from "./supabase";
 
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";

@@ -109,7 +109,7 @@ vi.mock("@/lib/supabase", () => ({
 
 // Mock fetch for streaming
 global.fetch = vi.fn((url) => {
-  if (url === "/api/ai/proxy") {
+  if (url === "/api/ai") {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(
@@ -159,8 +159,8 @@ describe("ChatbotApp", () => {
 
     // Wait for initial load - find current chat title in sidebar
     // It's in a list of chats, we wait for it to appear
-    const chatInSidebar = await screen.findByText("New Chat", {
-      selector: "span",
+    const chatInSidebar = await screen.findByRole("button", {
+      name: "New Chat",
     });
     fireEvent.click(chatInSidebar);
 
