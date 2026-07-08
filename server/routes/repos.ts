@@ -5,7 +5,7 @@ import path from "path";
 import { repoManager } from "../lib/repoManager";
 import { authenticateRepoRequest, authorizeRepoAccess } from "../lib/repoAuth";
 import {
-  getSupabaseAdmin,
+  getAnonClient,
   getAuthorProfile,
   getAuthenticatedClient,
 } from "../lib/supabase";
@@ -248,6 +248,18 @@ router.post(
         const relative = path.relative(base, target);
         if (relative.startsWith("..") || path.isAbsolute(relative))
           return res.status(400).json({ error: "Invalid file path" });
+
+        // Ensure no symlink escapes
+        const parentDir = path.dirname(target);
+        if (parentDir !== base) {
+          const realParent = await fs.promises.realpath(parentDir);
+          const realBase = await fs.promises.realpath(base);
+          if (!realParent.startsWith(realBase)) {
+            return res
+              .status(400)
+              .json({ error: "Invalid file path (traversal)" });
+          }
+        }
         const fullPath = target;
         await fs.ensureDir(path.dirname(fullPath));
         await fs.writeFile(fullPath, content);
@@ -256,10 +268,11 @@ router.post(
 
         if (githubToken) {
           const remoteUrl = `https://x-access-token:${githubToken}@github.com/${repo.github_repo_full_name}.git`;
+          // Push to our local bare repo first to keep it in sync
+          await tempGit.push("origin", branch);
+          // Push to GitHub second
           await tempGit.addRemote("github", remoteUrl);
           await tempGit.push("github", branch);
-          // Also push to our local bare repo to keep it in sync
-          await tempGit.push("origin", branch);
         } else {
           // If no github token, we can only update the local bare repo.
           // This might be desired if the user just wants to "save" locally for now,

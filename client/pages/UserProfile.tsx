@@ -87,25 +87,25 @@ export default function UserProfile() {
       const [friendsRes, followersRes, followingRes] = await Promise.all([
         supabase
           .from("friendships")
-          .select("count")
+          .select("*", { count: "exact", head: true })
           .eq("status", "accepted")
           .or(
             `user_id.eq.${profileData.user_id},friend_id.eq.${profileData.user_id}`,
           ),
         supabase
           .from("follows")
-          .select("count")
+          .select("*", { count: "exact", head: true })
           .eq("following_id", profileData.user_id),
         supabase
           .from("follows")
-          .select("count")
+          .select("*", { count: "exact", head: true })
           .eq("follower_id", profileData.user_id),
       ]);
 
       setStats({
-        friends: (friendsRes.data as any)?.[0]?.count || 0,
-        followers: (followersRes.data as any)?.[0]?.count || 0,
-        following: (followingRes.data as any)?.[0]?.count || 0,
+        friends: friendsRes.count || 0,
+        followers: followersRes.count || 0,
+        following: followingRes.count || 0,
       });
 
       if (currentUser && currentUser.id !== profileData.user_id) {
@@ -444,7 +444,7 @@ export default function UserProfile() {
                             ? "text-red-500 bg-red-500/10"
                             : "text-slate-500 hover:text-red-400 hover:bg-red-400/10",
                         )}
-                        title={isBlocked ? "Unblock" : "Blocked"}
+                        title={isBlocked ? "Unblock" : "Block"}
                       >
                         {isBlocked ? (
                           <ShieldCheck className="w-5 h-5" />
@@ -463,9 +463,7 @@ export default function UserProfile() {
                 </h3>
                 <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
                   <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {profile.bio ||
-                      "This user hasn't written a bio yet." ||
-                      "This user hasn't written a bio yet."}
+                    {profile.bio || "This user hasn't written a bio yet."}
                   </p>
                 </div>
               </div>

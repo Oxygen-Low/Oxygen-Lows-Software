@@ -66,18 +66,23 @@ export function OauthApp() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // @ts-ignore
-      const { data: clientsData, error: clientsError } = await (
-        supabase.auth as any
-      ).oauth.listClients();
-      if (clientsError) throw clientsError;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const clientsRes = await fetch("/api/oauth-admin/clients", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!clientsRes.ok) throw new Error(await clientsRes.text());
+      const clientsData = await clientsRes.json();
       setClients(clientsData || []);
 
-      // @ts-ignore
-      const { data: grantsData, error: grantsError } = await (
-        supabase.auth as any
-      ).oauth.listAuthorizedApps();
-      if (grantsError) throw grantsError;
+      const grantsRes = await fetch("/api/oauth-admin/authorized-apps", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!grantsRes.ok) throw new Error(await grantsRes.text());
+      const grantsData = await grantsRes.json();
       setGrants(grantsData || []);
     } catch (error: any) {
       toast({
@@ -93,14 +98,26 @@ export function OauthApp() {
   const handleCreateClient = async () => {
     setIsSubmitting(true);
     try {
-      // @ts-ignore
-      const { data, error } = await supabase.auth.oauth.createClient({
-        name: newName,
-        type: newType,
-        redirect_uris: newRedirectUris.split(",").map((uri) => uri.trim()),
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const res = await fetch("/api/oauth-admin/clients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          name: newName,
+          type: newType,
+          redirect_uris: newRedirectUris.split(",").map((uri) => uri.trim()),
+        }),
       });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
 
       setCreatedSecret(data.client_secret);
       fetchData();
@@ -123,9 +140,16 @@ export function OauthApp() {
     if (!confirm("Are you sure you want to delete this item?")) return;
     setIsSubmitting(true);
     try {
-      // @ts-ignore
-      const { error } = await supabase.auth.oauth.deleteClient(id);
-      if (error) throw error;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const res = await fetch(`/api/oauth-admin/clients/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
 
       fetchData();
       toast({
@@ -146,14 +170,21 @@ export function OauthApp() {
   const handleRevokeGrant = async (id: string) => {
     setIsSubmitting(true);
     try {
-      // @ts-ignore
-      const { error } = await supabase.auth.oauth.revokeAuthorization(id);
-      if (error) throw error;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const res = await fetch(`/api/oauth-admin/revoke-authorization/${id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
 
       fetchData();
       toast({
         title: "Success",
-        description: "Authorization revoked",
+        description: "Access revoked",
       });
     } catch (error: any) {
       toast({
@@ -169,53 +200,57 @@ export function OauthApp() {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "Copied to clipboard",
+      title: "Copied",
       description: `${label} copied to clipboard`,
     });
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">
-          OAuth Applications
-        </h2>
-        <p className="text-slate-400">
-          Manage your OAuth clients and authorized applications.
-        </p>
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            OAuth Applications
+          </h1>
+          <p className="text-slate-400 mt-1">
+            Manage your OAuth2 clients and authorized applications.
+          </p>
+        </div>
       </div>
 
       <Tabs defaultValue="clients" className="w-full">
-        <TabsList className="bg-slate-900 border-slate-800">
-          <TabsTrigger value="clients">My Clients</TabsTrigger>
-          <TabsTrigger value="authorized">Authorized Apps</TabsTrigger>
+        <TabsList className="bg-slate-900 border border-slate-800 p-1">
+          <TabsTrigger value="clients" className="gap-2">
+            <Key className="w-4 h-4" />
+            Developer Clients
+          </TabsTrigger>
+          <TabsTrigger value="authorized" className="gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            Authorized Apps
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="clients" className="mt-6 space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-white">My Clients</h3>
-            <Dialog
-              open={isCreateOpen}
-              onOpenChange={(open) => {
-                setIsCreateOpen(open);
-                if (!open) {
-                  setNewName("");
-                  setNewRedirectUris("");
-                  setCreatedSecret(null);
-                }
-              }}
-            >
+            <div>
+              <h3 className="text-lg font-semibold text-white">Your Clients</h3>
+              <p className="text-sm text-slate-400">
+                Register applications to use this platform as an OAuth2
+                provider.
+              </p>
+            </div>
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-cyan-600 hover:bg-cyan-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Register New App
+                <Button className="bg-cyan-600 hover:bg-cyan-700 gap-2">
+                  <Plus className="w-4 h-4" />
+                  New Client
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-slate-900 border-slate-800 text-white">
+              <DialogContent className="bg-slate-950 border-slate-800 text-white sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Register New App</DialogTitle>
+                  <DialogTitle>Register New Application</DialogTitle>
                   <DialogDescription className="text-slate-400">
-                    Create a new OAuth application to integrate with Oxygen Low.
+                    Create a new OAuth2 client to integrate with our platform.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -225,58 +260,73 @@ export function OauthApp() {
                       <Label htmlFor="name">Application Name</Label>
                       <Input
                         id="name"
+                        placeholder="My Awesome App"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
-                        placeholder="My Awesome App"
-                        className="bg-slate-800 border-slate-700"
+                        className="bg-slate-900 border-slate-800 focus:ring-cyan-500"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="uris">
-                        Redirect URIs (comma separated)
-                      </Label>
-                      <Input
-                        id="uris"
-                        value={newRedirectUris}
-                        onChange={(e) => setNewRedirectUris(e.target.value)}
-                        placeholder="http://localhost:3000/callback"
-                        className="bg-slate-800 border-slate-700"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Application Type</Label>
+                      <Label htmlFor="type">Client Type</Label>
                       <Select
                         value={newType}
                         onValueChange={(val: any) => setNewType(val)}
                       >
-                        <SelectTrigger className="bg-slate-800 border-slate-700">
-                          <SelectValue />
+                        <SelectTrigger
+                          id="type"
+                          className="bg-slate-900 border-slate-800"
+                        >
+                          <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-slate-800 text-white">
                           <SelectItem value="confidential">
-                            Confidential (Server-side)
+                            <div className="flex items-center gap-2">
+                              <Lock className="w-4 h-4" />
+                              <div>
+                                <p className="font-medium">Confidential</p>
+                                <p className="text-[10px] text-slate-500">
+                                  For server-side apps (Next.js, Express)
+                                </p>
+                              </div>
+                            </div>
                           </SelectItem>
                           <SelectItem value="public">
-                            Public (SPA / Mobile)
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-4 h-4" />
+                              <div>
+                                <p className="font-medium">Public</p>
+                                <p className="text-[10px] text-slate-500">
+                                  For SPAs or Mobile apps
+                                </p>
+                              </div>
+                            </div>
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-slate-500">
-                        {newType === "confidential"
-                          ? "Requires a client secret. Best for secure server apps."
-                          : "No client secret required. Best for SPAs or mobile apps."}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="redirect_uris">
+                        Redirect URIs (comma separated)
+                      </Label>
+                      <Input
+                        id="redirect_uris"
+                        placeholder="http://localhost:3000/api/auth/callback"
+                        value={newRedirectUris}
+                        onChange={(e) => setNewRedirectUris(e.target.value)}
+                        className="bg-slate-900 border-slate-800 focus:ring-cyan-500"
+                      />
+                      <p className="text-[10px] text-slate-500">
+                        The allowed callback URLs for your application.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4 py-4">
-                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                      <p className="text-yellow-500 text-sm font-medium flex items-center gap-2">
-                        <Key className="w-4 h-4" />
-                        IMPORTANT: Store your client secret!
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        It won't be shown again. You can reset it later if lost.
+                  <div className="space-y-6 py-4">
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex gap-3">
+                      <ShieldAlert className="w-5 h-5 text-yellow-500 shrink-0" />
+                      <p className="text-xs text-yellow-500/80 leading-relaxed">
+                        Store this client secret securely. It will never be
+                        shown again. You can reset it later if lost.
                       </p>
                     </div>
                     <div className="space-y-2">

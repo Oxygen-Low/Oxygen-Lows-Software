@@ -29,7 +29,7 @@ export function getAuthenticatedClient(token?: string) {
  * Database operations formerly relying on bypassing RLS should now be covered by
  * appropriate RLS policies or use authenticated clients.
  */
-export function getSupabaseAdmin() {
+export function getAnonClient() {
   return supabase;
 }
 

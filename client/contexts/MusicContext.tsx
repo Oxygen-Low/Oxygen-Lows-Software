@@ -1,23 +1,21 @@
 import React, {
   createContext,
   useContext,
-  useEffect,
   useState,
-  useCallback,
+  useEffect,
   useRef,
-  ReactNode,
+  useCallback,
 } from "react";
-import { useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export interface PlaylistTrack {
-  id: string;
-  fileName: string;
   name: string;
-  playbackUrl?: string;
+  artist?: string;
+  fileName: string;
   isReactive?: boolean;
-  layers?: { fileName: string; levels: number[] }[];
+  layers?: Array<{ fileName: string; levels: number[] }>;
 }
 
 interface MusicContextType {
@@ -27,37 +25,28 @@ interface MusicContextType {
   isPlaying: boolean;
   shuffle: boolean;
   isLoading: boolean;
-  threatLevel: number;
-  audioRef: React.RefObject<HTMLAudioElement | null>;
+  audioRef: React.RefObject<HTMLAudioElement>;
   play: () => Promise<void>;
   pause: () => void;
   playTrack: (
     track: PlaylistTrack,
-    overridePlaylist?: PlaylistTrack[],
+    playlist?: PlaylistTrack[],
   ) => Promise<void>;
   playNext: () => Promise<void>;
   playPrev: () => Promise<void>;
   addTrack: (track: PlaylistTrack) => Promise<void>;
   removeTrack: (trackFileName: string) => Promise<void>;
-  toggleShuffle: (newShuffleState: boolean) => Promise<void>;
+  toggleShuffle: (shuffle: boolean) => Promise<void>;
+  threatLevel: number;
   setThreatLevel: (level: number) => void;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
-export const MusicProvider = ({ children }: { children: ReactNode }) => {
+export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { session } = useAuth();
-  const location = useLocation();
-
-  useEffect(() => {
-    // Automatically change threat level based on page
-    const path = location.pathname;
-    if (path === "/storage") setThreatLevel(2);
-    else if (path === "/customize") setThreatLevel(3);
-    else if (path === "/apps") setThreatLevel(4);
-    else if (path.startsWith("/repositories")) setThreatLevel(5);
-    else setThreatLevel(1);
-  }, [location.pathname]);
   const [playlist, setPlaylistState] = useState<PlaylistTrack[]>([]);
   const [currentTrack, setCurrentTrackState] = useState<PlaylistTrack | null>(
     null,
@@ -70,132 +59,78 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const reactiveAudiosRef = useRef<HTMLAudioElement[]>([]);
-  const currentPositionRef = useRef<number>(0);
   const playlistRef = useRef<PlaylistTrack[]>([]);
   const currentTrackRef = useRef<PlaylistTrack | null>(null);
-  const shuffleRef = useRef<boolean>(false);
-  const playNextRef = useRef<() => Promise<void>>();
+  const isPlayingRef = useRef(false);
+  const shuffleRef = useRef(false);
+  const currentPositionRef = useRef(0);
+  const playNextRef = useRef<() => void>();
+  const playTokenRef = useRef(0);
 
-  // Sync refs with state to keep callbacks stable
   useEffect(() => {
     playlistRef.current = playlist;
-  }, [playlist]);
-  useEffect(() => {
     currentTrackRef.current = currentTrack;
-  }, [currentTrack]);
-  useEffect(() => {
+    isPlayingRef.current = isPlaying;
     shuffleRef.current = shuffle;
-  }, [shuffle]);
+  }, [playlist, currentTrack, isPlaying, shuffle]);
 
-  const resolvePlaybackUrl = useCallback(async (fileName: string) => {
-    try {
-      console.log(`Resolving playback URL for: ${fileName}`);
-      if (fileName.includes("..")) {
-        throw new Error("Invalid file name");
-      }
-      const { data, error } = await supabase.storage
+  const resolvePlaybackUrl = useCallback(
+    async (fileName: string) => {
+      if (!session?.user?.id) return null;
+      // If fileName already starts with user id prefix, don't add it again
+      const path = fileName.startsWith(session.user.id + "/")
+        ? fileName
+        : `${session.user.id}/${fileName}`;
+      const { data } = await supabase.storage
         .from("Storage")
-        .createSignedUrl(fileName, 3600);
-
-      if (error) {
-        console.warn(`Failed to create signed URL for ${fileName}:`, error);
-        throw error;
-      }
-
-      if (!data?.signedUrl) {
-        console.warn(`No signed URL returned for ${fileName}`);
-        throw new Error("No signed URL returned");
-      }
-
-      console.log(`Successfully created signed URL for ${fileName}`);
-      return data.signedUrl;
-    } catch (error) {
-      console.warn(
-        `Signed URL creation failed for ${fileName}, attempting blob fallback:`,
-        error,
-      );
-      try {
-        if (fileName.includes("..")) {
-          throw new Error("Invalid file name");
-        }
-        const { data: blob, error: downloadError } = await supabase.storage
-          .from("Storage")
-          .download(fileName);
-
-        if (downloadError) {
-          console.error(`Blob download failed for ${fileName}:`, downloadError);
-          throw downloadError;
-        }
-
-        if (!blob) {
-          console.error(`No blob data returned for ${fileName}`);
-          throw new Error("No blob data returned");
-        }
-
-        const blobUrl = URL.createObjectURL(blob);
-        console.log(`Successfully created blob URL for ${fileName}`);
-        return blobUrl;
-      } catch (blobError) {
-        console.error(
-          `Failed to resolve playback URL for ${fileName}:`,
-          blobError,
-        );
-      }
-    }
-    return null;
-  }, []);
-
-  const savePreferences = useCallback(
-    async (
-      overrides?: Partial<{
-        playlist: PlaylistTrack[];
-        currentTrack: PlaylistTrack | null;
-        currentPosition: number;
-        shuffle: boolean;
-      }>,
-    ) => {
-      if (!session?.user?.id) return;
-
-      const p_playlist = overrides?.playlist ?? playlistRef.current;
-      const p_track = overrides?.hasOwnProperty("currentTrack")
-        ? overrides.currentTrack
-        : currentTrackRef.current;
-      const p_pos = overrides?.currentPosition ?? currentPositionRef.current;
-      const p_shuffle = overrides?.shuffle ?? shuffleRef.current;
-
-      try {
-        await supabase.rpc("upsert_user_preferences", {
-          p_user_id: session.user.id,
-          p_music_playlist: p_playlist,
-          p_current_music_track: p_track?.fileName || null,
-          p_current_music_position: Math.floor(p_pos),
-          p_shuffle_enabled: p_shuffle,
-        });
-      } catch (error) {
-        console.error("Failed to save music preferences:", error);
-      }
+        .createSignedUrl(path, 3600);
+      return data?.signedUrl || null;
     },
     [session?.user?.id],
   );
 
-  // Load music preferences from Supabase and handle cleanup on sign-out
-  useEffect(() => {
-    if (!session?.user?.id) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-      }
-      setPlaylistState([]);
-      setCurrentTrackState(null);
-      setCurrentPositionState(0);
-      currentPositionRef.current = 0;
-      setIsPlayingState(false);
-      setIsLoading(false);
-      return;
-    }
+  const savePreferences = useCallback(
+    async (overrides: any = {}) => {
+      if (!session?.user?.id) return;
 
+      const music_playlist =
+        overrides.playlist !== undefined
+          ? overrides.playlist
+          : playlistRef.current;
+      const current_music_track =
+        overrides.currentTrack !== undefined
+          ? overrides.currentTrack?.fileName || null
+          : currentTrackRef.current?.fileName || null;
+      const current_music_position =
+        overrides.currentPosition !== undefined
+          ? overrides.currentPosition
+          : Math.floor(currentPositionRef.current);
+      const shuffle_enabled =
+        overrides.shuffle !== undefined
+          ? overrides.shuffle
+          : shuffleRef.current;
+
+      await supabase.from("user_preferences").upsert(
+        {
+          user_id: session.user.id,
+          music_playlist,
+          current_music_track,
+          current_music_position,
+          shuffle_enabled,
+        },
+        { onConflict: "user_id" },
+      );
+    },
+    [session?.user?.id],
+  );
+
+  useEffect(() => {
     const loadMusicPreferences = async () => {
-      setIsLoading(true);
+      if (!session?.user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from("user_preferences")
@@ -255,12 +190,35 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     loadMusicPreferences();
   }, [session?.user?.id, resolvePlaybackUrl]);
 
+  const handleReactiveTimeUpdate = useCallback(() => {
+    if (reactiveAudiosRef.current.length > 0) {
+      const pos = reactiveAudiosRef.current[0].currentTime * 1000;
+      setCurrentPositionState(pos);
+      currentPositionRef.current = pos;
+    }
+  }, []);
+
+  const applyThreatMuting = useCallback(
+    (track: PlaylistTrack, audios: HTMLAudioElement[], level: number) => {
+      if (!track.isReactive || !track.layers) return;
+      track.layers.forEach((layer, index) => {
+        const audio = audios[index];
+        if (audio) {
+          audio.muted = !layer.levels.includes(level);
+        }
+      });
+    },
+    [],
+  );
+
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
       if (!audioRef.current) {
         console.error("Audio ref is not available");
         return;
       }
+
+      const currentToken = ++playTokenRef.current;
 
       console.log(`Playing track: ${track.name} (${track.fileName})`);
       setCurrentTrackState(track);
@@ -277,28 +235,52 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       reactiveAudiosRef.current = [];
 
       if (track.isReactive && track.layers) {
+        // Resolve all URLs in parallel
+        const urls = await Promise.all(
+          track.layers.map((l) => resolvePlaybackUrl(l.fileName)),
+        );
+
+        if (currentToken !== playTokenRef.current) {
+          return;
+        }
+
         const audios: HTMLAudioElement[] = [];
-        for (const layer of track.layers) {
-          const url = await resolvePlaybackUrl(layer.fileName);
+        urls.forEach((url, index) => {
           if (url) {
             const audio = new Audio(url);
             audio.crossOrigin = "anonymous";
-            audio.loop = false; // We use the first one to trigger next
+            audio.loop = false;
             audios.push(audio);
+          } else {
+            console.error(
+              `Failed to resolve layer ${index} for reactive track`,
+            );
+            // Add a placeholder audio to maintain index alignment
+            const placeholder = new Audio();
+            audios.push(placeholder);
           }
+        });
+
+        if (audios.every((a) => !a.src)) {
+          console.error("All layers failed to resolve.");
+          toast.error("Failed to load reactive track layers.");
+          return;
         }
+
         reactiveAudiosRef.current = audios;
+        applyThreatMuting(track, audios, threatLevel);
 
         if (audios.length > 0) {
-          audios[0].addEventListener("ended", () => playNextRef.current?.());
-          audios[0].addEventListener("timeupdate", () => {
-            const pos = audios[0].currentTime * 1000;
-            setCurrentPositionState(pos);
-            currentPositionRef.current = pos;
-          });
+          const firstValid = audios.find((a) => a.src);
+          if (firstValid) {
+            firstValid.addEventListener("ended", () => playNextRef.current?.());
+            firstValid.addEventListener("timeupdate", handleReactiveTimeUpdate);
+          }
 
           try {
-            await Promise.all(audios.map((a) => a.play()));
+            await Promise.all(
+              audios.map((a) => (a.src ? a.play() : Promise.resolve())),
+            );
             setIsPlayingState(true);
           } catch (e) {
             console.error("Failed to play reactive layers:", e);
@@ -306,6 +288,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         }
       } else {
         const url = await resolvePlaybackUrl(track.fileName);
+        if (currentToken !== playTokenRef.current) return;
+
         if (!url) {
           console.error(`Failed to resolve URL for track: ${track.fileName}`);
           return;
@@ -327,7 +311,13 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         playlist: overridePlaylist || playlistRef.current,
       });
     },
-    [resolvePlaybackUrl, savePreferences],
+    [
+      resolvePlaybackUrl,
+      savePreferences,
+      handleReactiveTimeUpdate,
+      applyThreatMuting,
+      threatLevel,
+    ],
   );
 
   const playNext = useCallback(async () => {
@@ -369,17 +359,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       currentPositionRef.current = pos;
     };
 
-    const handleReactiveTimeUpdate = () => {
-      if (
-        currentTrackRef.current?.isReactive &&
-        reactiveAudiosRef.current.length > 0
-      ) {
-        const firstAudio = reactiveAudiosRef.current[0];
-        const pos = firstAudio.currentTime * 1000;
-        setCurrentPositionState(pos);
-        currentPositionRef.current = pos;
-      }
-    };
     const handleEnded = () => {
       playNextRef.current?.();
     };
@@ -405,20 +384,20 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }, [isPlaying, session?.user?.id, savePreferences]);
 
   useEffect(() => {
-    if (!currentTrack?.isReactive || !reactiveAudiosRef.current.length) return;
-    currentTrack.layers?.forEach((layer, index) => {
-      const audio = reactiveAudiosRef.current[index];
-      if (audio) {
-        audio.muted = !layer.levels.includes(threatLevel);
-      }
-    });
-  }, [threatLevel, currentTrack]);
+    if (currentTrack?.isReactive && reactiveAudiosRef.current.length) {
+      applyThreatMuting(currentTrack, reactiveAudiosRef.current, threatLevel);
+    }
+  }, [threatLevel, currentTrack, applyThreatMuting]);
 
   const play = useCallback(async () => {
     if (!currentTrack) return;
     try {
       if (currentTrack.isReactive) {
-        await Promise.all(reactiveAudiosRef.current.map((a) => a.play()));
+        await Promise.all(
+          reactiveAudiosRef.current.map((a) =>
+            a.src ? a.play() : Promise.resolve(),
+          ),
+        );
       } else if (audioRef.current) {
         await audioRef.current.play();
       }
@@ -427,6 +406,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       console.error("Failed to play audio:", error);
     }
   }, [currentTrack]);
+
   const pause = useCallback(() => {
     if (currentTrack?.isReactive) {
       reactiveAudiosRef.current.forEach((a) => a.pause());
@@ -436,6 +416,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     setIsPlayingState(false);
     savePreferences();
   }, [savePreferences, currentTrack]);
+
   const playPrev = useCallback(async () => {
     const currentT = currentTrackRef.current;
     const playlistArr = playlistRef.current;
@@ -478,7 +459,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (currentTrack?.fileName === trackFileName) {
         if (updatedPlaylist.length > 0) {
           nextTrack = updatedPlaylist[0];
-          // playTrack handles resolution, setup, and persistence as requested in feedback
           if (wasPlaying) {
             await playTrack(nextTrack, updatedPlaylist);
           } else {
@@ -510,7 +490,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
           });
         }
       } else {
-        // If the removed track is not the current one, just save the updated playlist
         savePreferences({ playlist: updatedPlaylist });
       }
     },

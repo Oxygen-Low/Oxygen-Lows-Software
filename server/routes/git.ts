@@ -164,17 +164,16 @@ router.all(
             if (githubToken) {
               const git = repoManager.git(repoPath);
               const remoteUrl = `https://x-access-token:${githubToken}@github.com/${repo.github_repo_full_name}.git`;
+              const tempRemote = `temp-github-${Date.now()}`;
 
-              // Add/update github remote
               try {
-                await git.removeRemote("github");
-              } catch (e) {}
-              await git.addRemote("github", remoteUrl);
-
-              // We don't know which branch was pushed, but git-receive-pack updated our bare repo.
-              // To be safe, we'd need to parse the push or just push everything.
-              // For simplicity, let's try to push all branches.
-              await git.push(["github", "--all"]);
+                await git.addRemote(tempRemote, remoteUrl);
+                await git.push([tempRemote, "--all"]);
+              } finally {
+                try {
+                  await git.removeRemote(tempRemote);
+                } catch (e) {}
+              }
             }
           } catch (err) {
             console.error("Sync to GitHub error:", err);
