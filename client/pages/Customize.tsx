@@ -36,7 +36,8 @@ const FONTS = [
 ];
 
 export default function Customize() {
-  const { theme, setTheme, font, setFont, useGradient, setUseGradient } = useTheme();
+  const { theme, setTheme, font, setFont, useGradient, setUseGradient } =
+    useTheme();
   const {
     playlist,
     currentTrack,

@@ -60,7 +60,6 @@ class RepoManager {
   private async checkGit() {
     try {
       await simpleGit({ binary: GIT_BINARY }).version();
-      console.log(`Git check successful: using "${GIT_BINARY}"`);
     } catch (err) {
       console.error(
         `Git check failed: Could not find or execute git at "${GIT_BINARY}". Please ensure git is installed and in your PATH, or set the GIT_PATH environment variable.`,
