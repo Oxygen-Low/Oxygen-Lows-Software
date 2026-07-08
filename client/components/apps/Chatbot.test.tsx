@@ -157,12 +157,11 @@ describe("ChatbotApp", () => {
       </ThemeProvider>,
     );
 
-    // Wait for initial load - find current chat title in sidebar
-    // It's in a list of chats, we wait for it to appear
-    const chatInSidebar = await screen.findByRole("button", {
+    // Create a new chat instead of relying on the mocked initial list
+    const newChatButton = await screen.findByRole("button", {
       name: "New Chat",
     });
-    fireEvent.click(chatInSidebar);
+    fireEvent.click(newChatButton);
 
     // Verify input is now visible
     const input = await screen.findByPlaceholderText("Ask anything...");
