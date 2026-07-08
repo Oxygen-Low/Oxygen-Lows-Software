@@ -1,63 +1,98 @@
-import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import Layout from "@/components/Layout";
-import { useTheme, Theme } from "@/hooks/useTheme";
-import { useFont, FontOption } from "@/hooks/useFont";
-import { useMusic, PlaylistTrack } from "@/hooks/useMusic";
-import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useMusicContext } from "@/contexts/MusicContext";
 import { MusicPlayer } from "@/components/MusicPlayer";
-import { Trash2, Plus, Play, Music, Zap, Sliders } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
+import { Button } from "@/components/ui/button";
+import { Zap, Music, Trash2, Play } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
-const THEMES: { label: string; value: Theme }[] = [
-  { label: "Default/Oxygen", value: "default" },
-  { label: "Red", value: "red" },
-  { label: "Yellow", value: "yellow" },
-  { label: "Black/Dark", value: "black" },
-  { label: "White/Light", value: "white" },
+interface PlaylistTrack {
+  id: string;
+  name: string;
+  fileName: string;
+  isReactive?: boolean;
+  layers?: Array<{ fileName: string; levels: number[] }>;
+}
+
+const THEMES = [
+  { label: "Default", value: "default" },
+  { label: "Matrix Red", value: "red" },
+  { label: "Cyber Yellow", value: "yellow" },
+  { label: "Onyx Black", value: "black" },
+  { label: "Pure White", value: "white" },
 ];
 
-const FONTS: { label: string; value: FontOption }[] = [
-  { label: "Indie Flower", value: "default" },
-  { label: "Poppins", value: "poppins" },
-  { label: "Roboto", value: "roboto" },
-  { label: "Playfair Display", value: "playfair-display" },
-  { label: "Plex Mono", value: "ibm-plex-mono" },
+const FONTS = [
+  { label: "Inter (Default)", value: "font-inter" },
+  { label: "Roboto Mono", value: "font-roboto-mono" },
+  { label: "JetBrains Mono", value: "font-jetbrains" },
+  { label: "Geist Mono", value: "font-geist" },
+  { label: "Space Grotesk", value: "font-space" },
 ];
 
 export default function Customize() {
   const { theme, setTheme, useGradient, setUseGradient } = useTheme();
-  const { font, setFont } = useFont();
-  const { session } = useAuth();
-  const { toast } = useToast();
   const {
     playlist,
     currentTrack,
-    shuffle,
     addTrack,
     removeTrack,
-    toggleShuffle,
     playTrack,
-  } = useMusic();
+    shuffle,
+    toggleShuffle,
+    threatLevel,
+    setThreatLevel,
+  } = useMusicContext();
+  const { session } = useAuth();
+  const { toast } = useToast();
+  const [font, setFont] = useState("font-inter");
 
   const handleAddTrack = async (track: any) => {
     let finalTrack: PlaylistTrack = {
       id: track.id,
       fileName: track.name,
-      name: track.name.split("/").pop() || track.name,
+      name:
+        track.name
+          .split("/")
+          .pop()
+          ?.replace(/\.[^/.]+$/, "") || track.name,
     };
 
     if (track.name.endsWith(".reactive")) {
       try {
-        const { data } = await supabase.storage
+        const { data, error } = await supabase.storage
           .from("Storage")
           .download(`${session?.user?.id}/${track.name}`);
+
+        if (error) throw error;
+
         if (data) {
           const text = await data.text();
           const reactiveData = JSON.parse(text);
+
+          if (!Array.isArray(reactiveData.layers)) {
+            throw new Error(
+              "Invalid reactive manifest: layers must be an array",
+            );
+          }
+
+          // Validate layers
+          reactiveData.layers.forEach((layer: any) => {
+            if (typeof layer.fileName !== "string")
+              throw new Error("Invalid layer filename");
+            if (!Array.isArray(layer.levels))
+              throw new Error("Invalid layer levels");
+            // Security: Restricted to current user's storage prefix implicitly by resolvePlaybackUrl,
+            // but we can enforce it doesn't have traversal
+            if (layer.fileName.includes(".."))
+              throw new Error("Invalid layer filename path");
+          });
+
           finalTrack = {
             ...finalTrack,
             isReactive: true,
@@ -65,8 +100,14 @@ export default function Customize() {
             name: reactiveData.name || finalTrack.name,
           };
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to load reactive track data:", e);
+        toast({
+          title: "Error",
+          description: `Failed to load reactive track: ${e.message}`,
+          variant: "destructive",
+        });
+        return; // Abort
       }
     }
 
@@ -120,22 +161,20 @@ export default function Customize() {
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-foreground">
-                  Current Threat Level: {useMusic().threatLevel}
+                  Current Threat Level: {threatLevel}
                 </span>
               </div>
               <div className="grid grid-cols-5 gap-4">
                 {[1, 2, 3, 4, 5].map((level) => (
                   <Button
                     key={level}
-                    variant={
-                      useMusic().threatLevel === level ? "default" : "outline"
-                    }
+                    variant={threatLevel === level ? "default" : "outline"}
                     className={cn(
                       "h-12 text-lg font-bold",
-                      useMusic().threatLevel === level &&
+                      threatLevel === level &&
                         "bg-purple-600 hover:bg-purple-700",
                     )}
-                    onClick={() => useMusic().setThreatLevel(level)}
+                    onClick={() => setThreatLevel(level)}
                   >
                     {level}
                   </Button>
@@ -182,7 +221,7 @@ export default function Customize() {
             {THEMES.map((themeOption) => (
               <button
                 key={themeOption.value}
-                onClick={() => setTheme(themeOption.value)}
+                onClick={() => setTheme(themeOption.value as any)}
                 className={`p-4 rounded-lg border-2 transition-all font-medium text-sm ${
                   theme === themeOption.value
                     ? "border-primary bg-primary/10 text-primary"
@@ -302,14 +341,9 @@ export default function Customize() {
             <StorageFileSelector
               allowedExtensions={[".mp3", ".wav", ".ogg", ".reactive"]}
               onSelect={(file) => {
-                const track: PlaylistTrack = {
+                const track = {
                   id: file.id,
-                  fileName: file.name,
-                  name:
-                    file.name
-                      .split("/")
-                      .pop()
-                      ?.replace(/\.[^/.]+$/, "") || file.name,
+                  name: file.name,
                 };
                 handleAddTrack(track);
               }}

@@ -193,11 +193,12 @@ export function FriendsApp() {
   };
 
   const handleUnblock = async (id: string) => {
+    if (!session?.user?.id) return;
     try {
       const { error } = await supabase
         .from("blocks")
         .delete()
-        .eq("blocker_id", session?.user.id)
+        .eq("blocker_id", session.user.id)
         .eq("blocked_id", id);
       if (error) throw error;
       toast.success("User unblocked");

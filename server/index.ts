@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { oauthAdminRouter } from "./routes/oauthAdmin";
 import {
   handleProxyAiRequest,
   handleGetLocalProviders,
@@ -48,7 +49,6 @@ export function createServer() {
             "'self'",
             "data:",
             "https://vqmukrmpgvavscsyefqd.supabase.co",
-            "*",
           ],
           "media-src": [
             "'self'",
@@ -77,6 +77,7 @@ export function createServer() {
 
   app.use("/api/repos", reposRouter);
   app.use("/api/git", gitRouter);
+  app.use("/api/oauth-admin", oauthAdminRouter);
 
   return app;
 }

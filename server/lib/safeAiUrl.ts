@@ -76,10 +76,16 @@ export async function resolveCustomProviderUrl(
   assertPublicHostname(url.hostname);
 
   const addresses = await lookup(url.hostname, { all: true });
-  for (const { address } of addresses) {
-    if (isPrivateIP(address)) throw new Error("Public origin required");
+  const firstAddress = addresses.find((a) => !isPrivateIP(a.address));
+
+  if (!firstAddress) {
+    throw new Error("Public origin required");
   }
 
+  // Pin the IP address to mitigate DNS rebinding
+  url.hostname = firstAddress.address;
+
   url.pathname = url.pathname.replace(/\/+$/, "") + "/chat/completions";
+
   return url.href;
 }

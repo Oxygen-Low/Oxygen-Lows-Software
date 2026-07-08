@@ -5,6 +5,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -178,19 +179,31 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     [session?.user?.id, theme, useGradient],
   );
 
+  const contextValue = useMemo(
+    () => ({
+      theme,
+      useGradient,
+      lastModelId,
+      lastProvider,
+      setTheme,
+      setUseGradient,
+      setModelPreference,
+      isLoading,
+    }),
+    [
+      theme,
+      useGradient,
+      lastModelId,
+      lastProvider,
+      setTheme,
+      setUseGradient,
+      setModelPreference,
+      isLoading,
+    ],
+  );
+
   return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        useGradient,
-        lastModelId,
-        lastProvider,
-        setTheme,
-        setUseGradient,
-        setModelPreference,
-        isLoading,
-      }}
-    >
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

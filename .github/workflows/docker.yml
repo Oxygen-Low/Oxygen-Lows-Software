@@ -6,6 +6,9 @@ on:
 
 jobs:
   build-and-push:
+    concurrency:
+      group: docker-build-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
