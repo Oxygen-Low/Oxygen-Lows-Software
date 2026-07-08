@@ -95,7 +95,7 @@ describe("Account Component", () => {
 
   it("renders with correct header", async () => {
     render(<Account />);
-    const headers = screen.getAllByText("Account", { selector: "h1" });
+    const headers = screen.getAllByText("Your Account", { selector: "h1" });
     expect(headers.length).toBeGreaterThan(0);
   });
 });

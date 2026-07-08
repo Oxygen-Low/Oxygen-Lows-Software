@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
-import { Monitor, Play, StopCircle, Loader2, Bot, Info } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Monitor, Play, StopCircle, Bot, Loader2, Info } from "lucide-react";
 import {
   Card,
-  CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
+  CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,8 +13,11 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import { useAiModels } from "@/hooks/useAiModels";
 import { toast } from "sonner";
+import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 
 interface Message {
   role: "user" | "assistant";
@@ -30,14 +31,6 @@ interface Style {
   title: string;
   description: string;
 }
-
-const formatModelLabel = (provider: string, modelId: string) => {
-  if (provider === "ollama") return "ollama/" + modelId;
-  if (provider === "lmstudio") return "lmstudio/" + modelId;
-  if (provider === "koboldcpp" || provider === "kobold")
-    return "koboldcpp/" + modelId;
-  return provider + " - " + modelId;
-};
 
 export function AiScreenshareApp() {
   const { session } = useAuth();
@@ -115,89 +108,42 @@ export function AiScreenshareApp() {
     if (!videoRef.current || !streamRef.current) return null;
 
     const video = videoRef.current;
-    const canvas = document.createElement("canvas");
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas");
+    }
+    const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Convert to JPEG with quality reduction if needed
-    let quality = 0.8;
-    let dataUrl = canvas.toDataURL("image/jpeg", quality);
-
-    // Server limit check (e.g. 50MB payload limit mentioned in memory)
-    while (dataUrl.length > 50 * 1024 * 1024 && quality > 0.1) {
-      quality -= 0.1;
-      dataUrl = canvas.toDataURL("image/jpeg", quality);
-    }
-
-    return dataUrl;
+    return canvas.toDataURL("image/jpeg", 0.7);
   };
 
   const analyzeFrame = async () => {
-    if (!streamRef.current || !session?.user?.id) return;
+    if (!streamRef.current) return;
 
-    let success = false;
+    const base64Image = captureFrame();
+    if (!base64Image) {
+      analysisTimeoutRef.current = setTimeout(analyzeFrame, 5000);
+      return;
+    }
+
+    setIsTyping(true);
+
     try {
-      const { data: userInts } = await supabase
-        .from("user_integrations")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .eq("provider", selectedProvider)
-        .single();
-      const { data: prefs } = await supabase
-        .from("user_preferences")
-        .select("encryption_settings")
-        .eq("user_id", session.user.id)
-        .single();
-      const encryptionSettings = prefs?.encryption_settings || {};
-
-      let decryptedKey = undefined;
-      let decryptedBaseUrl = undefined;
-
-      if (userInts && encryptionSettings.integrations) {
-        const { decrypt, getMasterKey } = await import("@/lib/crypto");
-        const masterKey = getMasterKey();
-        if (masterKey) {
-          if (userInts.api_key)
-            decryptedKey = await decrypt(userInts.api_key, masterKey);
-          if (userInts.base_url)
-            decryptedBaseUrl = await decrypt(userInts.base_url, masterKey);
-        }
-      }
-      const frame = captureFrame();
-      if (!frame) return; // Will be rescheduled by finally
-
-      setIsTyping(true);
       const {
-        data: { session: authSession },
+        data: { session },
       } = await supabase.auth.getSession();
-      const token = authSession?.access_token;
+      const token = session?.access_token;
 
-      // Prepare multi-modal message
-      const userMessage: Message = {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "React to what is happening on my screen based on your style.",
-          },
-          { type: "image_url", image_url: { url: frame } },
-        ],
-      };
+      if (!token) throw new Error("Not authenticated");
 
-      // Use messagesRef to get the latest state
-      const historyForAi = messagesRef.current.map((m) => {
-        if (Array.isArray(m.content)) {
-          const textPart = m.content.find((p) => p.type === "text");
-          return { role: m.role, content: textPart?.text || "" };
-        }
-        return m;
-      });
+      const currentMessages = messagesRef.current;
+      const history = currentMessages.slice(-5);
 
-      const response = await fetch("/api/ai/proxy", {
+      const response = await fetch("/api/ai", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -207,45 +153,30 @@ export function AiScreenshareApp() {
           provider: selectedProvider,
           model: selectedModel,
           style: selectedStyle,
-          messages: [...historyForAi, userMessage],
-          stream: false,
-          apiKey: decryptedKey,
-          baseUrl: decryptedBaseUrl,
+          messages: [
+            ...history,
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Look at this screenshot and react to what is happening. Be brief and helpful.",
+                },
+                { type: "image_url", image_url: { url: base64Image } },
+              ],
+            },
+          ],
         }),
       });
 
       if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const error = await response.json();
-          throw new Error(
-            error.error || `AI request failed with status ${response.status}`,
-          );
-        } else {
-          const errorText = await response.text();
-          if (response.status === 413) {
-            throw new Error(
-              "Payload too large. The screenshot or chat history exceeds the server limit.",
-            );
-          }
-          if (
-            errorText.includes("<!DOCTYPE html>") ||
-            errorText.includes("<html>")
-          ) {
-            throw new Error(
-              "The AI service returned an unexpected HTML error. This usually means the service is down, misconfigured, or blocked by a firewall.",
-            );
-          }
-          throw new Error(
-            `Server error (${response.status}): ${errorText.substring(0, 100)}...`,
-          );
-        }
+        const errorMessage = await parseAiProxyError(response);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       let assistantContent = "";
 
-      // Handle different provider response formats
       if (
         selectedProvider === "openai" ||
         selectedProvider === "openrouter" ||
@@ -271,14 +202,12 @@ export function AiScreenshareApp() {
           { role: "assistant", content: assistantContent },
         ]);
       }
-      success = true;
     } catch (err: any) {
       console.error("Analysis error:", err);
       toast.error(`Analysis error: ${err.message}`);
       stopSharing();
     } finally {
       setIsTyping(false);
-      // ALWAYS reschedule the loop if still sharing, even on capture failure
       if (streamRef.current) {
         analysisTimeoutRef.current = setTimeout(analyzeFrame, 5000);
       }
@@ -300,10 +229,14 @@ export function AiScreenshareApp() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="vision-model-select"
+                className="text-xs font-bold text-slate-500 uppercase"
+              >
                 Vision Model
               </label>
               <select
+                id="vision-model-select"
                 className="w-full bg-slate-950 text-sm text-white p-2 rounded border border-slate-800"
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
@@ -325,16 +258,35 @@ export function AiScreenshareApp() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">
+              <label
+                id="style-label"
+                className="text-xs font-bold text-slate-500 uppercase"
+              >
                 Style
               </label>
-              <div className="grid grid-cols-1 gap-2">
+              <div
+                className="grid grid-cols-1 gap-2"
+                role="listbox"
+                aria-labelledby="style-label"
+              >
                 {styles.map((s) => (
                   <div
                     key={s.id}
                     onClick={() => !isAnalyzing && setSelectedStyle(s.id)}
+                    role="option"
+                    aria-selected={selectedStyle === s.id}
+                    tabIndex={isAnalyzing ? -1 : 0}
+                    onKeyDown={(e) => {
+                      if (
+                        !isAnalyzing &&
+                        (e.key === "Enter" || e.key === " ")
+                      ) {
+                        e.preventDefault();
+                        setSelectedStyle(s.id);
+                      }
+                    }}
                     className={cn(
-                      "p-3 rounded-lg border cursor-pointer transition-all",
+                      "p-3 rounded-lg border cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500",
                       selectedStyle === s.id
                         ? "bg-cyan-500/10 border-cyan-500/50 text-cyan-400"
                         : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700",

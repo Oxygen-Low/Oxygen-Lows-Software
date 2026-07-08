@@ -21,7 +21,7 @@ import { chromium } from "playwright";
     const profileResponse = await page.goto(
       "http://localhost:8080/users/testuser",
     );
-    if (profileResponse && profileResponse.status() >= 500) {
+    if (!profileResponse || profileResponse.status() >= 400) {
       throw new Error(`Profile page status: ${profileResponse.status()}`);
     }
     await page.waitForTimeout(2000);

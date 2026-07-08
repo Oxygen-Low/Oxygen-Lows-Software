@@ -154,11 +154,16 @@ export default function Storage() {
       return;
     }
 
+    if (reactiveSongName.includes("..")) {
+      toast.error("Invalid reactive song name");
+      return;
+    }
+
     const reactiveData = {
       name: reactiveSongName,
       isReactive: true,
       layers: selectedAudioFiles.map((fileName) => ({
-        fileName,
+        fileName: `${session.user.id}/${fileName}`,
         levels: layerLevels[fileName] || [1],
       })),
     };

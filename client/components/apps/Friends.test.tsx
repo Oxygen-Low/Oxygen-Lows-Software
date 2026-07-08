@@ -116,7 +116,7 @@ describe("FriendsApp", () => {
 
   it("sends a friend request with correct payload", async () => {
     (supabase.from as any).mockImplementation((table: string) => {
-      if (table === "user_preferences") {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
@@ -124,8 +124,6 @@ describe("FriendsApp", () => {
             data: {
               user_id: "other-user-id",
               username: "otheruser",
-              theme: "default",
-              language: "English",
             },
             error: null,
           }),
@@ -155,7 +153,7 @@ describe("FriendsApp", () => {
     fireEvent.click(addButtons[0]);
 
     await waitFor(() => {
-      expect(supabase.from).toHaveBeenCalledWith("follows");
+      expect(supabase.from).toHaveBeenCalledWith("friendships");
     });
   });
 });
