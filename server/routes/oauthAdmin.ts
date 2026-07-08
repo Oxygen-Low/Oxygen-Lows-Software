@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { getAuthenticatedClient } from "../lib/supabase";
+import { apiLimiter } from "../lib/limiter";
 
 const router = Router();
+
+// Apply rate limiter to all admin routes
+router.use(apiLimiter);
 
 router.get("/clients", async (req, res) => {
   try {
