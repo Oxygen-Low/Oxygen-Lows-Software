@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, RefreshCw, ChevronRight, Book } from "lucide-react";
 import { Github } from "./GithubIcon";
 import { Button } from "@/components/ui/button";
@@ -108,9 +108,10 @@ export function GithubImportModal({
     }
   };
 
-  const filteredRepos = repos.filter((r) =>
-    r.full_name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredRepos = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return repos.filter((r) => r.full_name.toLowerCase().includes(searchLower));
+  }, [repos, search]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

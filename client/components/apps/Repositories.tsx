@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Book,
   Plus,
@@ -65,11 +65,14 @@ export function RepositoriesApp() {
     fetchRepos();
   }, []);
 
-  const filteredRepos = repos.filter(
-    (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.description?.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredRepos = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return repos.filter(
+      (r) =>
+        r.name.toLowerCase().includes(searchLower) ||
+        r.description?.toLowerCase().includes(searchLower),
+    );
+  }, [repos, search]);
 
   if (selectedRepo) {
     return (
