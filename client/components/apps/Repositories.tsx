@@ -375,8 +375,10 @@ function RepoDetail({ repo, onBack }: { repo: any; onBack: () => void }) {
                   {tree.map((item) => (
                     <button
                       key={item.path}
+                      aria-label={`Open file ${item.name}`}
+                      title={`Open file ${item.name}`}
                       onClick={() => loadFile(item.path)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors ${selectedFile === item.path ? "bg-cyan-900/30 text-cyan-400" : "text-slate-400 hover:bg-slate-900 hover:text-white"}`}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none ${selectedFile === item.path ? "bg-cyan-900/30 text-cyan-400" : "text-slate-400 hover:bg-slate-900 hover:text-white"}`}
                     >
                       <FileCode className="w-4 h-4 shrink-0" />
                       <span className="truncate">{item.name}</span>

@@ -185,6 +185,8 @@ export function StorageFileSelector({
                       return (
                         <button
                           key={item.id || item.name}
+                          aria-label={`Select ${isFolder ? "folder" : "file"} ${item.name}`}
+                          title={`Select ${isFolder ? "folder" : "file"} ${item.name}`}
                           onClick={() => {
                             if (isFolder) {
                               setCurrentPath([...currentPath, item.name]);
@@ -198,7 +200,7 @@ export function StorageFileSelector({
                               setOpen(false);
                             }
                           }}
-                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-900 transition-colors text-left group"
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-900 transition-colors text-left group focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
                         >
                           <div className="shrink-0">
                             {isFolder ? (
