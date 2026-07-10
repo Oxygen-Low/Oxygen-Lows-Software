@@ -88,8 +88,8 @@
 @utility container {
   margin-inline: auto;
   padding-inline: 2rem;
-  @media (width >= --breakpoint-2xl) {
-    max-width: --breakpoint-2xl;
+  @media (width >= 1400px) {
+    max-width: 1400px;
   }
 }
 
