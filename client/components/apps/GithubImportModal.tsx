@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, RefreshCw, ChevronRight, Book } from "lucide-react";
+import { Search, RefreshCw, ChevronRight, Book, Download } from "lucide-react";
 import { Github } from "./GithubIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +74,7 @@ export function GithubImportModal({
   }, [open]);
 
   const importRepo = async (repo: GithubRepo) => {
+    if (importing !== null) return;
     setImporting(repo.id);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -135,22 +136,24 @@ export function GithubImportModal({
           />
         </div>
 
-        <ScrollArea className="h-[300px] mt-4 pr-4">
+        <ScrollArea className="h-[400px] mt-4 pr-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-2">
               <RefreshCw className="w-6 h-6 text-cyan-500 animate-spin" />
               <p className="text-sm text-slate-500">Fetching repositories...</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 pb-4">
               {filteredRepos.map((repo) => (
-                <div
+                <button
                   key={repo.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-900/50 hover:border-slate-700 transition"
+                  disabled={importing !== null}
+                  onClick={() => importRepo(repo)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-900/50 hover:border-cyan-500/50 hover:bg-slate-900 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <Book className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <div className="overflow-hidden">
+                  <div className="flex items-center gap-3 overflow-hidden min-w-0">
+                    <Book className="w-4 h-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <div className="overflow-hidden min-w-0">
                       <p className="text-sm font-medium text-white truncate">
                         {repo.full_name}
                       </p>
@@ -159,19 +162,14 @@ export function GithubImportModal({
                       </p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => importRepo(repo)}
-                    disabled={importing !== null}
-                  >
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
                     {importing === repo.id ? (
-                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <RefreshCw className="w-4 h-4 text-cyan-500 animate-spin" />
                     ) : (
-                      "Import"
+                      <Download className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
                     )}
-                  </Button>
-                </div>
+                  </div>
+                </button>
               ))}
               {filteredRepos.length === 0 && !loading && (
                 <p className="text-center py-10 text-slate-500 text-sm">
