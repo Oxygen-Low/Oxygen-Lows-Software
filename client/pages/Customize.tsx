@@ -29,7 +29,7 @@ const THEMES = [
 
 const FONTS = [
   { label: "Indie Flower (Default)", value: "font-indie" },
-  { label: "Mozilla Text", value: "font-zilla" },
+  { label: "Zilla Slab", value: "font-zilla" },
   { label: "VT323", value: "font-vt323" },
   { label: "Cabin Sketch", value: "font-cabin" },
   { label: "Londrina Sketch", value: "font-londrina" },
