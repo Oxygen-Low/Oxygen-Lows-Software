@@ -1,4 +1,4 @@
-import "@aikidosec/firewall";
+import Zen from "@aikidosec/firewall";
 import ws from "ws";
 import "dotenv/config";
 import express from "express";
@@ -14,6 +14,7 @@ import {
 import { reposRouter } from "./routes/repos";
 import { gitRouter } from "./routes/git";
 import { apiLimiter } from "./lib/limiter";
+import { aikidoUserMiddleware } from "./lib/aikido";
 
 if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;
@@ -65,6 +66,10 @@ export function createServer() {
   app.use(cors());
   app.use(express.json({ limit: "200mb" }));
   app.use(express.urlencoded({ limit: "200mb", extended: true }));
+
+  // Aikido Zen Middleware
+  app.use(aikidoUserMiddleware);
+  Zen.addExpressMiddleware(app);
 
   app.get("/api/ping", (_req, res) => {
     const ping = process.env.PING_MESSAGE ?? "ping";
