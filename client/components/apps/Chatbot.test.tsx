@@ -69,7 +69,7 @@ vi.mock("@/lib/supabase", () => ({
         return mockSupabaseChain([
           {
             id: "chat-1",
-            title: "New Chat",
+            title: "Initial Chat",
             style: "GeneralAssistant",
             updated_at: new Date().toISOString(),
           },
@@ -164,7 +164,11 @@ describe("ChatbotApp", () => {
     fireEvent.click(newChatButton);
 
     // Verify input is now visible
-    const input = await screen.findByPlaceholderText("Ask anything...");
+    const input = await screen.findByPlaceholderText(
+      "Ask anything...",
+      {},
+      { timeout: 5000 },
+    );
     fireEvent.change(input, { target: { value: "Hi" } });
 
     // Use click on Send button

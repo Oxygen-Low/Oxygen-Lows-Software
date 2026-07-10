@@ -6,8 +6,8 @@
 
 @theme {
   --font-sans:
-    var(--font-family), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    var(--font-family), ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
 
   --color-border: hsl(var(--border));
@@ -367,11 +367,21 @@
   }
 
   /* Font Classes */
-  .font-indie { --font-family: "Indie Flower"; }
-  .font-zilla { --font-family: "Zilla Slab"; }
-  .font-vt323 { --font-family: "VT323"; }
-  .font-cabin { --font-family: "Cabin Sketch"; }
-  .font-londrina { --font-family: "Londrina Sketch"; }
+  .font-indie {
+    --font-family: "Indie Flower";
+  }
+  .font-zilla {
+    --font-family: "Zilla Slab";
+  }
+  .font-vt323 {
+    --font-family: "VT323";
+  }
+  .font-cabin {
+    --font-family: "Cabin Sketch";
+  }
+  .font-londrina {
+    --font-family: "Londrina Sketch";
+  }
 }
 
 @layer base {
