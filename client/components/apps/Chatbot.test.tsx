@@ -164,7 +164,11 @@ describe("ChatbotApp", () => {
     fireEvent.click(newChatButton);
 
     // Verify input is now visible
-    const input = await screen.findByPlaceholderText("Ask anything...", {}, { timeout: 5000 });
+    const input = await screen.findByPlaceholderText(
+      "Ask anything...",
+      {},
+      { timeout: 5000 },
+    );
     fireEvent.change(input, { target: { value: "Hi" } });
 
     // Use click on Send button
