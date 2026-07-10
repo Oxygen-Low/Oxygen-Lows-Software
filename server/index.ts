@@ -33,6 +33,7 @@ export function createServer() {
           "connect-src": [
             "'self'",
             "https://vqmukrmpgvavscsyefqd.supabase.co",
+            "wss://vqmukrmpgvavscsyefqd.supabase.co",
             "https://api.pwnedpasswords.com",
             "https://api.github.com",
             "https://api.openai.com",
@@ -51,6 +52,7 @@ export function createServer() {
             "'self'",
             "data:",
             "https://vqmukrmpgvavscsyefqd.supabase.co",
+            "https://app.aikido.dev",
           ],
           "media-src": [
             "'self'",

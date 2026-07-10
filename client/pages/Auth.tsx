@@ -134,17 +134,6 @@ export default function Auth() {
             <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
               Oxygen Low's Software
             </h1>
-            <a
-              href="https://app.aikido.dev/audit-report/external/9aTbVrarere35IKvzS2R7mBe/request"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src="https://app.aikido.dev/assets/badges/label-only-dark-theme.svg"
-                alt="Aikido Security Audit Report"
-                height="40"
-              />
-            </a>
           </div>
           <p className="text-slate-400">
             {mode === "signin"
@@ -154,7 +143,6 @@ export default function Auth() {
                 : "Set new password"}
           </p>
         </div>
-
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode !== "recovery" && (
