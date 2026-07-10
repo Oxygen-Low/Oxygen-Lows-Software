@@ -24,11 +24,14 @@ interface ThemeContextType {
   theme: Theme;
   font: string;
   useGradient: boolean;
+  backgroundImagePath: string | null;
+  backgroundImageUrl: string | null;
   lastModelId: string | null;
   lastProvider: string | null;
   setTheme: (theme: Theme) => Promise<void>;
   setFont: (font: string) => Promise<void>;
   setUseGradient: (useGradient: boolean) => Promise<void>;
+  setBackgroundImage: (path: string | null) => Promise<void>;
   setModelPreference: (modelId: string, provider: string) => Promise<void>;
   isLoading: boolean;
 }
@@ -44,11 +47,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [theme, setThemeState] = useState<Theme>("default");
   const [font, setFontState] = useState<string>("font-indie");
   const [useGradient, setUseGradientState] = useState<boolean>(true);
+  const [backgroundImagePath, setBackgroundImagePathState] = useState<string | null>(null);
+  const [backgroundImageUrl, setBackgroundImageUrlState] = useState<string | null>(null);
   const [lastModelId, setLastModelId] = useState<string | null>(null);
   const [lastProvider, setLastProvider] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const applyTheme = useCallback((newTheme: Theme, gradient: boolean) => {
+  const applyTheme = useCallback((newTheme: Theme, gradient: boolean, hasImage: boolean) => {
     // Remove all theme classes
     document.documentElement.classList.remove(
       "theme-red",
@@ -56,6 +61,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       "theme-black",
       "theme-white",
       "use-gradient",
+      "use-background-image",
       "dark",
     );
 
@@ -69,8 +75,12 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       document.documentElement.classList.add("dark");
     }
 
-    if (gradient) {
+    if (gradient && !hasImage) {
       document.documentElement.classList.add("use-gradient");
+    }
+
+    if (hasImage) {
+      document.documentElement.classList.add("use-background-image");
     }
   }, []);
 
@@ -85,6 +95,19 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     document.documentElement.classList.add(validatedFont);
   }, []);
 
+  const getSignedUrl = useCallback(async (path: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("Storage")
+        .createSignedUrl(path, 60 * 60 * 24); // 24 hours
+      if (error) throw error;
+      return data.signedUrl;
+    } catch (error) {
+      console.error("Failed to get signed URL for background image:", error);
+      return null;
+    }
+  }, []);
+
   // Load preferences from Supabase
   useEffect(() => {
     const loadPreferences = async () => {
@@ -97,9 +120,11 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         setThemeState(initialTheme);
         setFontState(initialFont);
         setUseGradientState(initialGradient);
+        setBackgroundImagePathState(null);
+        setBackgroundImageUrlState(null);
         setLastModelId(null);
         setLastProvider(null);
-        applyTheme(initialTheme, initialGradient);
+        applyTheme(initialTheme, initialGradient, false);
         applyFont(initialFont);
         setIsLoading(false);
         return;
@@ -110,7 +135,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const client = getAuthenticatedClient(session.access_token);
         const { data, error } = await client
           .from("user_preferences")
-          .select("theme, font, use_gradient, last_model_id, last_provider")
+          .select("theme, font, use_gradient, last_model_id, last_provider, background_image_path")
           .eq("user_id", session.user.id)
           .single();
 
@@ -126,13 +151,21 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const loadedGradient = data?.use_gradient ?? true;
         const loadedModelId = data?.last_model_id || null;
         const loadedProvider = data?.last_provider || null;
+        const loadedImagePath = data?.background_image_path || null;
+
+        let loadedImageUrl = null;
+        if (loadedImagePath) {
+          loadedImageUrl = await getSignedUrl(loadedImagePath);
+        }
 
         setThemeState(loadedTheme);
         setFontState(loadedFont);
         setUseGradientState(loadedGradient);
+        setBackgroundImagePathState(loadedImagePath);
+        setBackgroundImageUrlState(loadedImageUrl);
         setLastModelId(loadedModelId);
         setLastProvider(loadedProvider);
-        applyTheme(loadedTheme, loadedGradient);
+        applyTheme(loadedTheme, loadedGradient, !!loadedImagePath);
         applyFont(loadedFont);
       } catch (error) {
         console.error("Failed to load preferences:", error);
@@ -143,12 +176,12 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     };
 
     loadPreferences();
-  }, [session?.user?.id, session?.access_token, applyTheme, applyFont]);
+  }, [session?.user?.id, session?.access_token, applyTheme, applyFont, getSignedUrl]);
 
   const setTheme = useCallback(
     async (newTheme: Theme) => {
       setThemeState(newTheme);
-      applyTheme(newTheme, useGradient);
+      applyTheme(newTheme, useGradient, !!backgroundImagePath);
 
       if (session?.user?.id) {
         try {
@@ -162,7 +195,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, session?.access_token, useGradient, applyTheme],
+    [session?.user?.id, session?.access_token, useGradient, backgroundImagePath, applyTheme],
   );
 
   const setFont = useCallback(
@@ -191,7 +224,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const setUseGradient = useCallback(
     async (newGradient: boolean) => {
       setUseGradientState(newGradient);
-      applyTheme(theme, newGradient);
+      applyTheme(theme, newGradient, !!backgroundImagePath);
 
       if (session?.user?.id) {
         try {
@@ -205,7 +238,41 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, session?.access_token, theme, applyTheme],
+    [session?.user?.id, session?.access_token, theme, backgroundImagePath, applyTheme],
+  );
+
+  const setBackgroundImage = useCallback(
+    async (path: string | null) => {
+      setBackgroundImagePathState(path);
+
+      let url = null;
+      if (path) {
+        url = await getSignedUrl(path);
+      }
+      setBackgroundImageUrlState(url);
+
+      // Automatically disable gradient if setting an image
+      const newGradient = path ? false : useGradient;
+      if (path) {
+        setUseGradientState(false);
+      }
+
+      applyTheme(theme, newGradient, !!path);
+
+      if (session?.user?.id) {
+        try {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
+            p_user_id: session.user.id,
+            p_background_image_path: path,
+            p_use_gradient: newGradient,
+          });
+        } catch (error) {
+          console.error("Failed to save background image preference:", error);
+        }
+      }
+    },
+    [session?.user?.id, session?.access_token, theme, useGradient, getSignedUrl, applyTheme],
   );
 
   const setModelPreference = useCallback(
@@ -234,11 +301,14 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       theme,
       font,
       useGradient,
+      backgroundImagePath,
+      backgroundImageUrl,
       lastModelId,
       lastProvider,
       setTheme,
       setFont,
       setUseGradient,
+      setBackgroundImage,
       setModelPreference,
       isLoading,
     }),
@@ -246,11 +316,14 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       theme,
       font,
       useGradient,
+      backgroundImagePath,
+      backgroundImageUrl,
       lastModelId,
       lastProvider,
       setTheme,
       setFont,
       setUseGradient,
+      setBackgroundImage,
       setModelPreference,
       isLoading,
     ],

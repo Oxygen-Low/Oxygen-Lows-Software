@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 // Full mock of Supabase
 vi.mock("@/lib/supabase", () => ({
-  supabase: {
+  getAuthenticatedClient: vi.fn(() => ({ from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn(() => Promise.resolve({ data: {}, error: null })) })) })) })) })), supabase: {
     auth: {
       updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
       getUser: vi

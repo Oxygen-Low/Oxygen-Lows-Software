@@ -6,7 +6,28 @@ import { supabase } from "@/lib/supabase";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 vi.mock("@/hooks/useAuth");
-vi.mock("@/lib/supabase");
+vi.mock("@/lib/supabase", () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user" } }, error: null }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "test-user" } } }, error: null }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } }))
+    },
+    from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn(() => Promise.resolve({ data: {}, error: null })) })) })) })),
+    rpc: vi.fn(),
+    channel: vi.fn(),
+    removeChannel: vi.fn()
+  },
+  getAuthenticatedClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ data: {}, error: null }))
+        }))
+      }))
+    }))
+  }))
+}));
 
 describe("PointsDisplay", () => {
   beforeEach(() => {
