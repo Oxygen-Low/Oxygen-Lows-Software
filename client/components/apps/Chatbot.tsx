@@ -158,7 +158,9 @@ const ChatMessage = React.memo(
                 <button
                   key={art.id}
                   onClick={() => setActiveArtifact(art)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-cyan-500/50 transition-colors text-xs text-slate-300"
+                  aria-label={`View artifact ${art.filename}`}
+                  title={`View artifact ${art.filename}`}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-cyan-500/50 transition-colors text-xs text-slate-300 focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
                 >
                   <Code className="w-3 h-3 text-cyan-400" />
                   {art.filename}
@@ -669,8 +671,9 @@ export function ChatbotApp() {
                         if (currentChatId === c.id) setCurrentChatId(null);
                       });
                   }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-1"
-                  title="Delete chat"
+                  aria-label={`Delete chat ${c.title}`}
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-1 rounded focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
+                  title={`Delete chat ${c.title}`}
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
