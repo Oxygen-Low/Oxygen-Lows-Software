@@ -7,3 +7,8 @@
 
 **Learning:** When filtering lists based on a search string, keeping the transformation (e.g., `.toLowerCase()`) inside the `.filter()` callback forces O(N) unnecessary string re-allocations on every render.
 **Action:** Memoize filtered results with `useMemo` and extract static transformations outside the filter callback (e.g., `const searchLower = search.toLowerCase();`) to improve rendering performance without sacrificing readability.
+
+## 2026-05-25 - Persistent Font System
+
+**Learning:** Font systems in React apps should be managed via a global context (like ThemeContext) to ensure consistency across pages. Storing these preferences in Supabase allowed for session persistence.
+**Action:** Implemented a font state in ThemeContext, synchronized with Supabase, and applied via document.documentElement classes.

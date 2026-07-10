@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   Dialog,
@@ -74,34 +74,35 @@ export function StorageFileSelector({
     }
   }, [open, currentPath]);
 
-  const filteredItems = items.filter((item) => {
-    // Folders don't have id/metadata usually in .list() return
-    const isFolder = !item.id;
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  const filteredItems = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return items.filter((item) => {
+      // Folders don't have id/metadata usually in .list() return
+      const isFolder = !item.id;
+      const matchesSearch = item.name.toLowerCase().includes(searchLower);
 
-    if (isFolder) return matchesSearch;
+      if (isFolder) return matchesSearch;
 
-    const extension = item.name.split(".").pop()?.toLowerCase();
-    const mimeType = item.metadata?.mimetype || "";
+      const extension = item.name.split(".").pop()?.toLowerCase();
+      const mimeType = item.metadata?.mimetype || "";
 
-    let matchesExtension = true;
-    if (allowedExtensions && allowedExtensions.length > 0) {
-      matchesExtension = extension
-        ? allowedExtensions.includes(`.${extension}`)
-        : false;
-    }
+      let matchesExtension = true;
+      if (allowedExtensions && allowedExtensions.length > 0) {
+        matchesExtension = extension
+          ? allowedExtensions.includes(`.${extension}`)
+          : false;
+      }
 
-    let matchesType = true;
-    if (allowedTypes && allowedTypes.length > 0) {
-      matchesType = allowedTypes.some((type) =>
-        mimeType.startsWith(`${type}/`),
-      );
-    }
+      let matchesType = true;
+      if (allowedTypes && allowedTypes.length > 0) {
+        matchesType = allowedTypes.some((type) =>
+          mimeType.startsWith(`${type}/`),
+        );
+      }
 
-    return matchesSearch && matchesExtension && matchesType;
-  });
+      return matchesSearch && matchesExtension && matchesType;
+    });
+  }, [items, search, allowedExtensions, allowedTypes]);
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 B";

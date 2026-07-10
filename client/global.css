@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Indie+Flower&family=Zilla+Slab:wght@400;700&family=VT323&family=Cabin+Sketch:wght@400;700&family=Londrina+Sketch&display=swap");
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
@@ -6,8 +6,14 @@
 
 @theme {
   --font-sans:
-    "Indie Flower", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    var(--font-family), ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --font-indie: "Indie Flower", cursive;
+  --font-zilla: "Zilla Slab", serif;
+  --font-vt323: "VT323", monospace;
+  --font-cabin: "Cabin Sketch", cursive;
+  --font-londrina: "Londrina Sketch", cursive;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -94,10 +100,6 @@
 }
 
 @layer base {
-  /**
-   * Tailwind CSS theme
-   * global.css defines these as HSL values.
-  */
   :root {
     --theme-gradient: linear-gradient(
       135deg,
@@ -141,6 +143,8 @@
     --sidebar-border: 217 20% 20%;
     --sidebar-ring: 186 100% 50%;
     --radius: 0.5rem;
+
+    --font-family: "Indie Flower";
   }
 
   .dark {
@@ -365,6 +369,23 @@
     --sidebar-accent-foreground: 0 0% 0%;
     --sidebar-border: 0 0% 85%;
     --sidebar-ring: 0 0% 0%;
+  }
+
+  /* Font Classes */
+  .font-indie {
+    --font-family: "Indie Flower";
+  }
+  .font-zilla {
+    --font-family: "Zilla Slab";
+  }
+  .font-vt323 {
+    --font-family: "VT323";
+  }
+  .font-cabin {
+    --font-family: "Cabin Sketch";
+  }
+  .font-londrina {
+    --font-family: "Londrina Sketch";
   }
 }
 
