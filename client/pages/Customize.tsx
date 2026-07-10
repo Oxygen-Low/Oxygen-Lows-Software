@@ -29,7 +29,7 @@ const THEMES = [
 
 const FONTS = [
   { label: "Indie Flower (Default)", value: "font-indie" },
-  { label: "Mozilla Text", value: "font-zilla" },
+  { label: "Zilla Slab", value: "font-zilla" },
   { label: "VT323", value: "font-vt323" },
   { label: "Cabin Sketch", value: "font-cabin" },
   { label: "Londrina Sketch", value: "font-londrina" },
@@ -317,13 +317,17 @@ export default function Customize() {
                     </div>
                     <button
                       onClick={() => playTrack(track)}
-                      className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2"
+                      aria-label={`Play ${track.name}`}
+                      title={`Play ${track.name}`}
+                      className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                     >
                       <Play className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleRemoveTrack(track.fileName)}
-                      className="p-2 hover:bg-destructive/20 rounded-lg text-destructive transition-colors"
+                      aria-label={`Remove ${track.name}`}
+                      title={`Remove ${track.name}`}
+                      className="p-2 hover:bg-destructive/20 rounded-lg text-destructive transition-colors focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-none"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

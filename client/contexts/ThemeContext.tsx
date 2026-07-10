@@ -7,10 +7,18 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, getAuthenticatedClient } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 
 export type Theme = "default" | "red" | "yellow" | "black" | "white";
+
+const VALID_FONTS = [
+  "font-indie",
+  "font-zilla",
+  "font-vt323",
+  "font-cabin",
+  "font-londrina",
+];
 
 interface ThemeContextType {
   theme: Theme;
@@ -68,16 +76,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
   const applyFont = useCallback((newFont: string) => {
     // Remove all font classes
-    document.documentElement.classList.remove(
-      "font-indie",
-      "font-zilla",
-      "font-vt323",
-      "font-cabin",
-      "font-londrina",
-    );
+    document.documentElement.classList.remove(...VALID_FONTS);
 
-    // Add the new font class
-    document.documentElement.classList.add(newFont);
+    // Validate and add the new font class
+    const validatedFont = VALID_FONTS.includes(newFont)
+      ? newFont
+      : "font-indie";
+    document.documentElement.classList.add(validatedFont);
   }, []);
 
   // Load preferences from Supabase
@@ -102,7 +107,8 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        const client = getAuthenticatedClient(session.access_token);
+        const { data, error } = await client
           .from("user_preferences")
           .select("theme, font, use_gradient, last_model_id, last_provider")
           .eq("user_id", session.user.id)
@@ -113,7 +119,10 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
 
         const loadedTheme = (data?.theme as Theme) || "default";
-        const loadedFont = data?.font || "font-indie";
+        const loadedFont =
+          data?.font && VALID_FONTS.includes(data.font)
+            ? data.font
+            : "font-indie";
         const loadedGradient = data?.use_gradient ?? true;
         const loadedModelId = data?.last_model_id || null;
         const loadedProvider = data?.last_provider || null;
@@ -134,7 +143,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     };
 
     loadPreferences();
-  }, [session?.user?.id, applyTheme, applyFont]);
+  }, [session?.user?.id, session?.access_token, applyTheme, applyFont]);
 
   const setTheme = useCallback(
     async (newTheme: Theme) => {
@@ -143,57 +152,40 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
       if (session?.user?.id) {
         try {
-          await supabase.rpc("upsert_user_preferences", {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
             p_user_id: session.user.id,
             p_theme: newTheme,
-            p_font: font,
-            p_use_gradient: useGradient,
-            p_last_model_id: lastModelId,
-            p_last_provider: lastProvider,
           });
         } catch (error) {
           console.error("Failed to save theme:", error);
         }
       }
     },
-    [
-      session?.user?.id,
-      font,
-      useGradient,
-      applyTheme,
-      lastModelId,
-      lastProvider,
-    ],
+    [session?.user?.id, session?.access_token, useGradient, applyTheme],
   );
 
   const setFont = useCallback(
     async (newFont: string) => {
-      setFontState(newFont);
-      applyFont(newFont);
+      const validatedFont = VALID_FONTS.includes(newFont)
+        ? newFont
+        : "font-indie";
+      setFontState(validatedFont);
+      applyFont(validatedFont);
 
       if (session?.user?.id) {
         try {
-          await supabase.rpc("upsert_user_preferences", {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
             p_user_id: session.user.id,
-            p_theme: theme,
-            p_font: newFont,
-            p_use_gradient: useGradient,
-            p_last_model_id: lastModelId,
-            p_last_provider: lastProvider,
+            p_font: validatedFont,
           });
         } catch (error) {
           console.error("Failed to save font:", error);
         }
       }
     },
-    [
-      session?.user?.id,
-      theme,
-      useGradient,
-      applyFont,
-      lastModelId,
-      lastProvider,
-    ],
+    [session?.user?.id, session?.access_token, applyFont],
   );
 
   const setUseGradient = useCallback(
@@ -203,20 +195,17 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
       if (session?.user?.id) {
         try {
-          await supabase.rpc("upsert_user_preferences", {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
             p_user_id: session.user.id,
-            p_theme: theme,
-            p_font: font,
             p_use_gradient: newGradient,
-            p_last_model_id: lastModelId,
-            p_last_provider: lastProvider,
           });
         } catch (error) {
           console.error("Failed to save gradient preference:", error);
         }
       }
     },
-    [session?.user?.id, theme, font, applyTheme, lastModelId, lastProvider],
+    [session?.user?.id, session?.access_token, theme, applyTheme],
   );
 
   const setModelPreference = useCallback(
@@ -226,11 +215,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
       if (session?.user?.id) {
         try {
-          await supabase.rpc("upsert_user_preferences", {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
             p_user_id: session.user.id,
-            p_theme: theme,
-            p_font: font,
-            p_use_gradient: useGradient,
             p_last_model_id: modelId,
             p_last_provider: provider,
           });
@@ -239,7 +226,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, theme, font, useGradient],
+    [session?.user?.id, session?.access_token],
   );
 
   const contextValue = useMemo(
