@@ -143,7 +143,7 @@ export function AiScreenshareApp() {
       const currentMessages = messagesRef.current;
       const history = currentMessages.slice(-5);
 
-      const response = await fetch("/api/ai", {
+      const response = await fetch("/api/ai/proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

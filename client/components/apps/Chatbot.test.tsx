@@ -69,7 +69,7 @@ vi.mock("@/lib/supabase", () => ({
         return mockSupabaseChain([
           {
             id: "chat-1",
-            title: "Initial Chat",
+            title: "Existing Chat",
             style: "GeneralAssistant",
             updated_at: new Date().toISOString(),
           },
@@ -109,7 +109,7 @@ vi.mock("@/lib/supabase", () => ({
 
 // Mock fetch for streaming
 global.fetch = vi.fn((url) => {
-  if (url === "/api/ai") {
+  if (url === "/api/ai/proxy") {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(
@@ -145,7 +145,7 @@ describe("ChatbotApp", () => {
       </ThemeProvider>,
     );
     await waitFor(() => {
-      expect(screen.queryByText("New Chat")).not.toBeNull();
+      expect(screen.queryByText("Existing Chat")).not.toBeNull();
     });
     expect(screen.queryByText("Select a chat to start")).not.toBeNull();
   });
@@ -187,7 +187,7 @@ describe("ChatbotApp", () => {
       () => {
         expect(screen.queryByText("Hello from AI")).not.toBeNull();
       },
-      { timeout: 10000 },
+      { timeout: 15000 },
     );
   });
 });

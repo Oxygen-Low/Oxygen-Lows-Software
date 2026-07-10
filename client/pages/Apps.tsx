@@ -188,7 +188,9 @@ export default function Apps() {
           <div className="flex items-center gap-4 mb-8">
             <button
               onClick={() => setActiveApp(null)}
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
+              aria-label="Back to apps list"
+              title="Back to apps list"
+              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
             >
               <AppWindow className="w-6 h-6" />
             </button>
