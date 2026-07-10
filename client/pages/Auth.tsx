@@ -130,9 +130,22 @@ export default function Auth() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
-            Oxygen Low's Software
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+              Oxygen Low's Software
+            </h1>
+            <a
+              href="https://app.aikido.dev/audit-report/external/9aTbVrarere35IKvzS2R7mBe/request"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src="https://app.aikido.dev/assets/badges/label-only-dark-theme.svg"
+                alt="Aikido Security Audit Report"
+                height="40"
+              />
+            </a>
+          </div>
           <p className="text-slate-400">
             {mode === "signin"
               ? "Welcome back"
