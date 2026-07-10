@@ -14,6 +14,9 @@ importers:
 
   .:
     dependencies:
+      '@aikidosec/firewall':
+        specifier: 1.8.33
+        version: 1.8.33
       '@ffmpeg/core':
         specifier: ^0.12.10
         version: 0.12.10
@@ -353,6 +356,10 @@ packages:
 
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
+
+  '@aikidosec/firewall@1.8.33':
+    resolution: {integrity: sha512-hNqREwflthUDv0mEAW54io7A5ut4xyNX/cLEtdokwleUqNJvazLIBbXqgwF266lJj08J+etvJDfl5YXCKrCRQQ==}
+    engines: {node: '>=16'}
 
   '@asamuzakjp/css-color@5.1.11':
     resolution: {integrity: sha512-KVw6qIiCTUQhByfTd78h2yD1/00waTmm9uy/R7Ck/ctUyAPj+AEDLkQIdJW0T8+qGgj3j5bpNKK7Q3G+LedJWg==}
@@ -4166,6 +4173,8 @@ packages:
 snapshots:
 
   '@adobe/css-tools@4.5.0': {}
+
+  '@aikidosec/firewall@1.8.33': {}
 
   '@asamuzakjp/css-color@5.1.11':
     dependencies:

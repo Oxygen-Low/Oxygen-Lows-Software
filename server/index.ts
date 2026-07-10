@@ -1,3 +1,4 @@
+require("@aikidosec/firewall");
 import ws from "ws";
 import "dotenv/config";
 import express from "express";
