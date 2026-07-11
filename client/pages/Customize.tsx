@@ -36,8 +36,16 @@ const FONTS = [
 ];
 
 export default function Customize() {
-  const { theme, setTheme, font, setFont, useGradient, setUseGradient, backgroundImagePath, setBackgroundImage } =
-    useTheme();
+  const {
+    theme,
+    setTheme,
+    font,
+    setFont,
+    useGradient,
+    setUseGradient,
+    backgroundImagePath,
+    setBackgroundImage,
+  } = useTheme();
   const {
     playlist,
     currentTrack,
@@ -240,13 +248,20 @@ export default function Customize() {
               trigger={
                 <Button className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2">
                   <ImageIcon className="w-8 h-8 opacity-50" />
-                  <span>{backgroundImagePath ? 'Change Background Image' : 'Select Background Image'}</span>
-                  {backgroundImagePath && <span className="text-xs truncate max-w-full px-4">{backgroundImagePath}</span>}
+                  <span>
+                    {backgroundImagePath
+                      ? "Change Background Image"
+                      : "Select Background Image"}
+                  </span>
+                  {backgroundImagePath && (
+                    <span className="text-xs truncate max-w-full px-4">
+                      {backgroundImagePath}
+                    </span>
+                  )}
                 </Button>
               }
             />
           </div>
-
 
           <h3 className="text-lg font-medium mb-3 text-foreground">
             Theme Color

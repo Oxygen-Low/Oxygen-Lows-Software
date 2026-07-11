@@ -99,6 +99,8 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
             size="icon"
             className="h-8 w-8"
             onClick={onClose}
+            aria-label="Close sidebar"
+            title="Close sidebar"
           >
             <X className="w-4 h-4" />
           </Button>

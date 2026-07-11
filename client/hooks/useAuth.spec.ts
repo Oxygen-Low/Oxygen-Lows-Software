@@ -8,7 +8,16 @@ import { supabase } from "@/lib/supabase";
 
 // Mock supabase
 vi.mock("@/lib/supabase", () => ({
-  getAuthenticatedClient: vi.fn(() => ({ from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn(() => Promise.resolve({ data: {}, error: null })) })) })) })) })), supabase: {
+  getAuthenticatedClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+        })),
+      })),
+    })),
+  })),
+  supabase: {
     auth: {
       getSession: vi.fn(),
       onAuthStateChange: vi.fn(),
