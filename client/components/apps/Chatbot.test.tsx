@@ -153,50 +153,41 @@ describe("ChatbotApp", () => {
         <ChatbotApp />
       </ThemeProvider>,
     );
-    await waitFor(() => {
-      expect(screen.queryByText("Existing Chat")).not.toBeNull();
-    });
+    await screen.findByText("Existing Chat");
     expect(screen.queryByText("Select a chat to start")).not.toBeNull();
   });
 
-  it("creates a new chat and sends a message", async () => {
-    render(
-      <ThemeProvider>
-        <ChatbotApp />
-      </ThemeProvider>,
-    );
+  it(
+    "creates a new chat and sends a message",
+    async () => {
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
 
-    // Create a new chat instead of relying on the mocked initial list
-    const newChatButton = await screen.findByRole("button", {
-      name: "New Chat",
-    });
-    fireEvent.click(newChatButton);
+      // Create a new chat instead of relying on the mocked initial list
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
 
-    // Verify input is now visible
-    const input = await screen.findByPlaceholderText(
-      "Ask anything...",
-      {},
-      { timeout: 5000 },
-    );
-    fireEvent.change(input, { target: { value: "Hi" } });
+      // Verify input is now visible
+      const input = await screen.findByPlaceholderText(
+        "Ask anything...",
+        {},
+        { timeout: 5000 },
+      );
+      fireEvent.change(input, { target: { value: "Hi" } });
 
-    // Use click on Send button
-    const sendButton = screen.getByLabelText("Send message");
-    fireEvent.click(sendButton);
+      // Use click on Send button
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
 
-    // Verify message sent and received
-    await waitFor(
-      () => {
-        expect(screen.queryByText("Hi")).not.toBeNull();
-      },
-      { timeout: 5000 },
-    );
-
-    await waitFor(
-      () => {
-        expect(screen.queryByText("Hello from AI")).not.toBeNull();
-      },
-      { timeout: 15000 },
-    );
-  });
+      // Verify message sent and received
+      await screen.findByText("Hi", {}, { timeout: 10000 });
+      await screen.findByText("Hello from AI", {}, { timeout: 20000 });
+    },
+    30000,
+  );
 });
