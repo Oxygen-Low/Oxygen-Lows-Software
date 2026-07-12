@@ -25,8 +25,16 @@ const getSystemContentFromYaml = (filePath: string): string | null => {
   }
 };
 
+const DEFAULT_HORDE_MODELS = [
+  { provider: "horde", model_id: "Fast" },
+  { provider: "horde", model_id: "Balanced" },
+  { provider: "horde", model_id: "Smart" },
+  { provider: "horde", model_id: "Roleplay" },
+  { provider: "horde", model_id: "Code" },
+];
+
 export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
-  const localModels = [];
+  const localModels = [...DEFAULT_HORDE_MODELS];
 
   try {
     const response = await axios.get("http://127.0.0.1:11434/api/tags", {
@@ -129,7 +137,8 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     provider !== "ollama" &&
     provider !== "kobold" &&
     provider !== "koboldcpp" &&
-    provider !== "lmstudio"
+    provider !== "lmstudio" &&
+    provider !== "horde"
   ) {
     return res.status(400).json({ error: "Provider not configured" });
   }
@@ -348,6 +357,35 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
             params: { key: integration?.api_key },
             ...axiosOptions,
           }),
+        );
+        break;
+      }
+      case "horde": {
+        let hordeModel = model;
+        const modelsMap: Record<string, string[]> = {
+          Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
+          Balanced: ["Magnum-12b-v2"],
+          Smart: ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct"],
+          Roleplay: ["mradermacher/Magnum-v3-27B-GGUF"],
+          Code: ["Qwen/Qwen2.5-Coder-32B-Instruct"],
+        };
+
+        if (modelsMap[model]) {
+          hordeModel = modelsMap[model].join(",");
+        }
+
+        await handleResponse(
+          await axios.post(
+            "https://horde.koboldai.net/api/v1/chat/completions",
+            { model: hordeModel, messages: processedMessages, stream },
+            {
+              ...axiosOptions,
+              headers: {
+                ...axiosOptions.headers,
+                apikey: integration?.api_key || "0000000000",
+              },
+            },
+          ),
         );
         break;
       }
