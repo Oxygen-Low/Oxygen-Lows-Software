@@ -22,7 +22,16 @@ global.ResizeObserver = class {
 // Mock supabase
 const mockDownload = vi.fn();
 vi.mock("@/lib/supabase", () => ({
-  getAuthenticatedClient: vi.fn(() => ({ from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn(() => Promise.resolve({ data: {}, error: null })) })) })) })) })), supabase: {
+  getAuthenticatedClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+        })),
+      })),
+    })),
+  })),
+  supabase: {
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { id: "test-user" } },

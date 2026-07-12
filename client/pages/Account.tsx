@@ -72,6 +72,7 @@ const PROVIDERS = [
   { id: "google", name: "Gemini/Google" },
   { id: "grok", name: "Grok" },
   { id: "anthropic", name: "Claude/Anthropic" },
+  { id: "horde", name: "AI Horde" },
   { id: "stablehorde", name: "Stable Horde" },
   { id: "custom", name: "Custom/OpenAI-Like", hasUrl: true },
 ];

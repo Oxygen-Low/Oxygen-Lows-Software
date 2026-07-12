@@ -47,42 +47,49 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [theme, setThemeState] = useState<Theme>("default");
   const [font, setFontState] = useState<string>("font-indie");
   const [useGradient, setUseGradientState] = useState<boolean>(true);
-  const [backgroundImagePath, setBackgroundImagePathState] = useState<string | null>(null);
-  const [backgroundImageUrl, setBackgroundImageUrlState] = useState<string | null>(null);
+  const [backgroundImagePath, setBackgroundImagePathState] = useState<
+    string | null
+  >(null);
+  const [backgroundImageUrl, setBackgroundImageUrlState] = useState<
+    string | null
+  >(null);
   const [lastModelId, setLastModelId] = useState<string | null>(null);
   const [lastProvider, setLastProvider] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const applyTheme = useCallback((newTheme: Theme, gradient: boolean, hasImage: boolean) => {
-    // Remove all theme classes
-    document.documentElement.classList.remove(
-      "theme-red",
-      "theme-yellow",
-      "theme-black",
-      "theme-white",
-      "use-gradient",
-      "use-background-image",
-      "dark",
-    );
+  const applyTheme = useCallback(
+    (newTheme: Theme, gradient: boolean, hasImage: boolean) => {
+      // Remove all theme classes
+      document.documentElement.classList.remove(
+        "theme-red",
+        "theme-yellow",
+        "theme-black",
+        "theme-white",
+        "use-gradient",
+        "use-background-image",
+        "dark",
+      );
 
-    // Add the new theme class if not default
-    if (newTheme !== "default") {
-      document.documentElement.classList.add(`theme-${newTheme}`);
-    }
+      // Add the new theme class if not default
+      if (newTheme !== "default") {
+        document.documentElement.classList.add(`theme-${newTheme}`);
+      }
 
-    // Add dark class for all themes except white
-    if (newTheme !== "white") {
-      document.documentElement.classList.add("dark");
-    }
+      // Add dark class for all themes except white
+      if (newTheme !== "white") {
+        document.documentElement.classList.add("dark");
+      }
 
-    if (gradient && !hasImage) {
-      document.documentElement.classList.add("use-gradient");
-    }
+      if (gradient && !hasImage) {
+        document.documentElement.classList.add("use-gradient");
+      }
 
-    if (hasImage) {
-      document.documentElement.classList.add("use-background-image");
-    }
-  }, []);
+      if (hasImage) {
+        document.documentElement.classList.add("use-background-image");
+      }
+    },
+    [],
+  );
 
   const applyFont = useCallback((newFont: string) => {
     // Remove all font classes
@@ -135,7 +142,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const client = getAuthenticatedClient(session.access_token);
         const { data, error } = await client
           .from("user_preferences")
-          .select("theme, font, use_gradient, last_model_id, last_provider, background_image_path")
+          .select(
+            "theme, font, use_gradient, last_model_id, last_provider, background_image_path",
+          )
           .eq("user_id", session.user.id)
           .single();
 
@@ -176,7 +185,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     };
 
     loadPreferences();
-  }, [session?.user?.id, session?.access_token, applyTheme, applyFont, getSignedUrl]);
+  }, [
+    session?.user?.id,
+    session?.access_token,
+    applyTheme,
+    applyFont,
+    getSignedUrl,
+  ]);
 
   const setTheme = useCallback(
     async (newTheme: Theme) => {
@@ -195,7 +210,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, session?.access_token, useGradient, backgroundImagePath, applyTheme],
+    [
+      session?.user?.id,
+      session?.access_token,
+      useGradient,
+      backgroundImagePath,
+      applyTheme,
+    ],
   );
 
   const setFont = useCallback(
@@ -238,7 +259,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, session?.access_token, theme, backgroundImagePath, applyTheme],
+    [
+      session?.user?.id,
+      session?.access_token,
+      theme,
+      backgroundImagePath,
+      applyTheme,
+    ],
   );
 
   const setBackgroundImage = useCallback(
@@ -272,7 +299,14 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [session?.user?.id, session?.access_token, theme, useGradient, getSignedUrl, applyTheme],
+    [
+      session?.user?.id,
+      session?.access_token,
+      theme,
+      useGradient,
+      getSignedUrl,
+      applyTheme,
+    ],
   );
 
   const setModelPreference = useCallback(

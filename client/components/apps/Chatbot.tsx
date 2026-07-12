@@ -698,14 +698,32 @@ export function ChatbotApp() {
                 setSelection(m, p);
               }}
             >
-              {models.map((m) => (
-                <option
-                  key={`${m.provider}:${m.model_id}`}
-                  value={`${m.provider}:${m.model_id}`}
-                >
-                  {formatModelLabel(m.provider, m.model_id)}
-                </option>
-              ))}
+              {models.some((m) => m.provider === "horde") && (
+                <optgroup label="Default (AI Horde)">
+                  {models
+                    .filter((m) => m.provider === "horde")
+                    .map((m) => (
+                      <option
+                        key={`${m.provider}:${m.model_id}`}
+                        value={`${m.provider}:${m.model_id}`}
+                      >
+                        {formatModelLabel(m.provider, m.model_id)}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+              <optgroup label="Other Models">
+                {models
+                  .filter((m) => m.provider !== "horde")
+                  .map((m) => (
+                    <option
+                      key={`${m.provider}:${m.model_id}`}
+                      value={`${m.provider}:${m.model_id}`}
+                    >
+                      {formatModelLabel(m.provider, m.model_id)}
+                    </option>
+                  ))}
+              </optgroup>
             </select>
           </div>
           <div>
