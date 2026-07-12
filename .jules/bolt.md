@@ -12,3 +12,6 @@
 
 **Learning:** Font systems in React apps should be managed via a global context (like ThemeContext) to ensure consistency across pages. Storing these preferences in Supabase allowed for session persistence.
 **Action:** Implemented a font state in ThemeContext, synchronized with Supabase, and applied via document.documentElement classes.
+## 2026-07-12 - AI Horde Model Connectivity
+**Learning:** AI Horde models require server-side endpoint /api/ai/styles instead of Supabase RPC get_chat_styles, and user_integrations lookup should use maybeSingle() to handle anonymous mode.
+**Action:** Migrated Chatbot and AiScreenshare to use the server API and handle missing integration records.

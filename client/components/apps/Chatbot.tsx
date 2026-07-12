@@ -285,7 +285,7 @@ export function ChatbotApp() {
       return;
     }
 
-    const { data: stylesData } = await supabase.rpc("get_chat_styles");
+    const stylesRes = await fetch("/api/ai/styles"); const stylesData = await stylesRes.json();
     if (stylesData) setStyles(stylesData);
 
     const { data: chars } = await supabase
@@ -452,7 +452,7 @@ export function ChatbotApp() {
         .select("*")
         .eq("user_id", session.user.id)
         .eq("provider", selectedProvider)
-        .single();
+        .maybeSingle();
       const { data: prefs } = await supabase
         .from("user_preferences")
         .select("encryption_settings")

@@ -59,7 +59,7 @@ export function AiScreenshareApp() {
 
   useEffect(() => {
     const fetchStyles = async () => {
-      const { data } = await supabase.rpc("get_chat_styles");
+      const stylesRes = await fetch("/api/ai/styles"); const data = await stylesRes.json();
       if (data) setStyles(data);
     };
     fetchStyles();
