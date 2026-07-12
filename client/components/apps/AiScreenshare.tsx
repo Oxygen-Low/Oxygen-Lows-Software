@@ -59,7 +59,8 @@ export function AiScreenshareApp() {
 
   useEffect(() => {
     const fetchStyles = async () => {
-      const stylesRes = await fetch("/api/ai/styles"); const data = await stylesRes.json();
+      const stylesRes = await fetch("/api/ai/styles");
+      const data = await stylesRes.json();
       if (data) setStyles(data);
     };
     fetchStyles();

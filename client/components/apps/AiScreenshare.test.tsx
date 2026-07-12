@@ -49,7 +49,7 @@ vi.mock("@/lib/supabase", () => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           maybeSingle: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-    single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
         })),
       })),
     })),
@@ -99,11 +99,12 @@ global.fetch = vi.fn((url, options) => {
   if (url === "/api/ai/styles") {
     return Promise.resolve({
       ok: true,
-      json: () => Promise.resolve([
-        { id: "gaming_coach", title: "Gaming Coach", description: "Test" },
-        { id: "video_react", title: "Video React", description: "Test" },
-        { id: "viewer", title: "Viewer", description: "Test" },
-      ])
+      json: () =>
+        Promise.resolve([
+          { id: "gaming_coach", title: "Gaming Coach", description: "Test" },
+          { id: "video_react", title: "Video React", description: "Test" },
+          { id: "viewer", title: "Viewer", description: "Test" },
+        ]),
     });
   }
   return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });

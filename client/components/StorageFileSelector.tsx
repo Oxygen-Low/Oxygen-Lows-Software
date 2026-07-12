@@ -74,35 +74,54 @@ export function StorageFileSelector({
     }
   }, [open, currentPath]);
 
-  const filteredItems = useMemo(() => {
-    const searchLower = search.toLowerCase();
-    return items.filter((item) => {
-      // Folders don't have id/metadata usually in .list() return
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Pre-calculate lowercased fields and derived type matching attributes for search
+   * filtering so they are not re-evaluated on every keystroke in the O(N) filter pass.
+   */
+  const searchOptimizedItems = useMemo(() => {
+    return items.map((item) => {
       const isFolder = !item.id;
-      const matchesSearch = item.name.toLowerCase().includes(searchLower);
-
-      if (isFolder) return matchesSearch;
-
-      const extension = item.name.split(".").pop()?.toLowerCase();
-      const mimeType = item.metadata?.mimetype || "";
+      const searchName = item.name.toLowerCase();
+      const extension = isFolder
+        ? undefined
+        : item.name.split(".").pop()?.toLowerCase();
+      const mimeType = isFolder ? "" : item.metadata?.mimetype || "";
 
       let matchesExtension = true;
-      if (allowedExtensions && allowedExtensions.length > 0) {
+      if (!isFolder && allowedExtensions && allowedExtensions.length > 0) {
         matchesExtension = extension
           ? allowedExtensions.includes(`.${extension}`)
           : false;
       }
 
       let matchesType = true;
-      if (allowedTypes && allowedTypes.length > 0) {
+      if (!isFolder && allowedTypes && allowedTypes.length > 0) {
         matchesType = allowedTypes.some((type) =>
           mimeType.startsWith(`${type}/`),
         );
       }
 
-      return matchesSearch && matchesExtension && matchesType;
+      return {
+        ...item,
+        isFolder,
+        _searchName: searchName,
+        _matchesExtension: matchesExtension,
+        _matchesType: matchesType,
+      };
     });
-  }, [items, search, allowedExtensions, allowedTypes]);
+  }, [items, allowedExtensions, allowedTypes]);
+
+  const filteredItems = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return searchOptimizedItems.filter((item) => {
+      const matchesSearch = item._searchName.includes(searchLower);
+
+      if (item.isFolder) return matchesSearch;
+
+      return matchesSearch && item._matchesExtension && item._matchesType;
+    });
+  }, [searchOptimizedItems, search]);
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 B";

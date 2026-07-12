@@ -1,11 +1,11 @@
-import express from 'express';
+import express from "express";
 const app = express();
 try {
-  app.get('*', (req, res) => {
-    res.send('ok');
+  app.get("*", (req, res) => {
+    res.send("ok");
   });
-  console.log('Successfully registered * route');
+  console.log("Successfully registered * route");
 } catch (e) {
-  console.error('Failed to register * route:');
+  console.error("Failed to register * route:");
   console.error(e);
 }

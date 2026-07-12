@@ -109,10 +109,24 @@ export function GithubImportModal({
     }
   };
 
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Pre-calculate lowercased fields for search filtering so they are not
+   * re-evaluated on every keystroke in the O(N) filter pass.
+   */
+  const searchOptimizedRepos = useMemo(() => {
+    return repos.map((r) => ({
+      ...r,
+      _searchFullName: r.full_name.toLowerCase(),
+    }));
+  }, [repos]);
+
   const filteredRepos = useMemo(() => {
     const searchLower = search.toLowerCase();
-    return repos.filter((r) => r.full_name.toLowerCase().includes(searchLower));
-  }, [repos, search]);
+    return searchOptimizedRepos.filter((r) =>
+      r._searchFullName.includes(searchLower),
+    );
+  }, [searchOptimizedRepos, search]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

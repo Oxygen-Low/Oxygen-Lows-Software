@@ -65,14 +65,27 @@ export function RepositoriesApp() {
     fetchRepos();
   }, []);
 
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Pre-calculate lowercased fields for search filtering so they are not
+   * re-evaluated on every keystroke in the O(N) filter pass.
+   */
+  const searchOptimizedRepos = useMemo(() => {
+    return repos.map((r) => ({
+      ...r,
+      _searchName: r.name.toLowerCase(),
+      _searchDesc: r.description?.toLowerCase() || "",
+    }));
+  }, [repos]);
+
   const filteredRepos = useMemo(() => {
     const searchLower = search.toLowerCase();
-    return repos.filter(
+    return searchOptimizedRepos.filter(
       (r) =>
-        r.name.toLowerCase().includes(searchLower) ||
-        r.description?.toLowerCase().includes(searchLower),
+        r._searchName.includes(searchLower) ||
+        r._searchDesc.includes(searchLower),
     );
-  }, [repos, search]);
+  }, [searchOptimizedRepos, search]);
 
   if (selectedRepo) {
     return (
