@@ -15,3 +15,7 @@
 ## 2026-07-12 - AI Horde Model Connectivity
 **Learning:** AI Horde models require server-side endpoint /api/ai/styles instead of Supabase RPC get_chat_styles, and user_integrations lookup should use maybeSingle() to handle anonymous mode.
 **Action:** Migrated Chatbot and AiScreenshare to use the server API and handle missing integration records.
+
+## 2026-07-12 - [Express 5 Wildcard Route Crash]
+**Learning:** In Express 5, the wildcard route path "*" is no longer supported and throws a PathError at runtime because path-to-regexp v8 require named parameters or regular expressions for wildcards.
+**Action:** Use the regular expression /.*/ for catch-all routes (e.g., for SPA routing) instead of the string "*".
