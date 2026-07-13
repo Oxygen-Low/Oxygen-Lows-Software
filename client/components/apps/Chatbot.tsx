@@ -285,7 +285,8 @@ export function ChatbotApp() {
       return;
     }
 
-    const stylesRes = await fetch("/api/ai/styles"); const stylesData = await stylesRes.json();
+    const stylesRes = await fetch("/api/ai/styles");
+    const stylesData = await stylesRes.json();
     if (stylesData) setStyles(stylesData);
 
     const { data: chars } = await supabase
