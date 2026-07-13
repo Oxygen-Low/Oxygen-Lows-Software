@@ -512,6 +512,8 @@ const ModelViewer = ({ type }: { type: string }) => {
         size="icon"
         className="absolute top-2 right-2 text-slate-500"
         onClick={() => setInfo(null)}
+        aria-label="Info"
+        title="Info"
       >
         <Info className="w-4 h-4" />
       </Button>
@@ -763,6 +765,8 @@ export function LearnApp() {
             size="icon"
             onClick={() => setView("home")}
             className="text-slate-400"
+            aria-label="Go back"
+            title="Go back"
           >
             <ChevronLeft className="w-6 h-6" />
           </Button>
@@ -822,6 +826,8 @@ export function LearnApp() {
               size="icon"
               onClick={() => setView("home")}
               className="text-slate-400"
+              aria-label="Go back"
+              title="Go back"
             >
               <ChevronLeft className="w-6 h-6" />
             </Button>

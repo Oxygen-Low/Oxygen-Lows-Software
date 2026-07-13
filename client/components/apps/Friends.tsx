@@ -267,6 +267,8 @@ export function FriendsApp() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-slate-400"
+                          aria-label="More options"
+                          title="More options"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </Button>

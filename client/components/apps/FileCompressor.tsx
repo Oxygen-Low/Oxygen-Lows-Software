@@ -167,6 +167,8 @@ export function FileCompressorApp() {
                   size="icon"
                   onClick={() => setSelectedFile(null)}
                   className="text-slate-500 hover:text-red-500"
+                  aria-label="Delete File"
+                  title="Delete File"
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>

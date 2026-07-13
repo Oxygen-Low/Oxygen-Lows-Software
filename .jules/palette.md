@@ -7,3 +7,7 @@
 
 **Learning:** Fixed an issue where the "Import" button in the GitHub repository list was cutoff and the row itself was not clickable.
 **Action:** Transformed the repository list items into fully clickable button elements with hover states and visual feedback (download icon and loading spinner). This improves accessibility and usability on constrained screens where right-aligned buttons might be hidden.
+
+## 2024-07-26 - Missing Accessible Names on Icon-Only Buttons
+**Learning:** Found multiple instances across apps (ArtifactSidebar, FileCompressor, Friends, Learn, LlmModelFinder, Oauth) where `Button` or `<button>` components rendering only an icon lacked accessible names, preventing screen reader announcements. Using only `title` is insufficient for some assistive technologies; `aria-label` provides a robust, programmatically determinable name.
+**Action:** Always apply both `aria-label` (for screen readers) and `title` (for visual tooltip hints) when building icon-only interactive elements.

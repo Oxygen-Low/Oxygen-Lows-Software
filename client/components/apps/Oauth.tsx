@@ -343,6 +343,8 @@ export function OauthApp() {
                           onClick={() =>
                             copyToClipboard(createdSecret, "Client Secret")
                           }
+                          aria-label="Copy Client Secret"
+                          title="Copy Client Secret"
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
@@ -444,6 +446,8 @@ export function OauthApp() {
                             onClick={() =>
                               copyToClipboard(client.id, "Client ID")
                             }
+                            aria-label="Copy Client ID"
+                            title="Copy Client ID"
                           >
                             <Copy className="w-3 h-3" />
                           </Button>

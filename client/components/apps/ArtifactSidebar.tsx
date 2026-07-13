@@ -77,6 +77,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
             className="h-8 w-8"
             onClick={handleDownload}
             title={`Download as ${artifact.filename.split(".").pop()}`}
+            aria-label="Download"
           >
             <Download className="w-4 h-4" />
           </Button>
@@ -87,6 +88,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
             onClick={handleSaveToCloud}
             disabled={saving}
             title="Save"
+            aria-label="Save to cloud"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
