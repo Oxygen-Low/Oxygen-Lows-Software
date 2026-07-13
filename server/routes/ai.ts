@@ -361,7 +361,6 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       }
       case "horde": {
-        let hordeModel = model;
         const modelsMap: Record<string, string[]> = {
           Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
           Balanced: ["Magnum-12b-v2"],
@@ -370,23 +369,127 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           Code: ["Qwen/Qwen2.5-Coder-32B-Instruct"],
         };
 
-        if (modelsMap[model]) {
-          hordeModel = modelsMap[model].join(",");
+        const hordeModels = modelsMap[model] || [model];
+        const prompt =
+          processedMessages
+            .map((m: any) => {
+              const role =
+                m.role === "system"
+                  ? "### System"
+                  : m.role === "user"
+                    ? "### Instruction"
+                    : "### Response";
+              return role + ":\n" + m.content;
+            })
+            .join("\n\n") + "\n\n### Response:\n";
+        const clientAgent =
+          "OxygenLowsSoftware:0.1.1:https://github.com/Oxygen-Low/Oxygen-Lows-Software";
+        const hordeApiKey = integration?.api_key || "0000000000";
+
+        // Submit to native async API
+        const submitResponse = await axios.post(
+          "https://stablehorde.net/api/v2/generate/text/async",
+          {
+            models: hordeModels,
+            prompt,
+            params: {
+              max_context_length: 1024,
+              max_length: 500,
+            },
+          },
+          {
+            ...axiosOptions,
+            responseType: "json",
+            headers: {
+              ...axiosOptions.headers,
+              apikey: hordeApiKey,
+              "Client-Agent": clientAgent,
+            },
+          },
+        );
+
+        if (submitResponse.status >= 400) {
+          return res.status(submitResponse.status).json(submitResponse.data);
         }
 
-        await handleResponse(
-          await axios.post(
-            "https://horde.koboldai.net/api/v1/chat/completions",
-            { model: hordeModel, messages: processedMessages, stream },
+        const jobId = submitResponse.data.id;
+        let finished = false;
+        let resultText = "";
+        let attempts = 0;
+        const maxAttempts = 60;
+
+        while (!finished && attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          attempts++;
+
+          const statusResponse = await axios.get(
+            `https://stablehorde.net/api/v2/generate/text/status/${jobId}`,
             {
-              ...axiosOptions,
               headers: {
-                ...axiosOptions.headers,
-                apikey: integration?.api_key || "0000000000",
+                apikey: hordeApiKey,
+                "Client-Agent": clientAgent,
               },
+              signal: abortController.signal,
             },
-          ),
-        );
+          );
+
+          if (statusResponse.data.done) {
+            finished = true;
+            if (
+              statusResponse.data.generations &&
+              statusResponse.data.generations.length > 0
+            ) {
+              resultText = statusResponse.data.generations[0].text;
+            }
+          } else if (statusResponse.data.faulted) {
+            return res
+              .status(500)
+              .json({ error: "AI Horde generation faulted" });
+          }
+        }
+
+        if (!finished) {
+          return res
+            .status(504)
+            .json({ error: "AI Horde generation timed out" });
+        }
+
+        if (stream) {
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+
+          const chunk = {
+            id: jobId,
+            object: "chat.completion.chunk",
+            created: Math.floor(Date.now() / 1000),
+            model: hordeModels[0],
+            choices: [
+              {
+                index: 0,
+                delta: { content: resultText },
+                finish_reason: "stop",
+              },
+            ],
+          };
+          res.write("data: " + JSON.stringify(chunk) + "\n\n");
+          res.write("data: [DONE]\n\n");
+          res.end();
+        } else {
+          res.json({
+            id: jobId,
+            object: "chat.completion",
+            created: Math.floor(Date.now() / 1000),
+            model: hordeModels[0],
+            choices: [
+              {
+                index: 0,
+                message: { role: "assistant", content: resultText },
+                finish_reason: "stop",
+              },
+            ],
+          });
+        }
         break;
       }
       case "openrouter":

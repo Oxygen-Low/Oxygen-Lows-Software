@@ -20,8 +20,8 @@
 
 ## 2026-07-12 - [Express 5 Wildcard Route Crash]
 
-**Learning:** In Express 5, the wildcard route path "*" is no longer supported and throws a PathError at runtime because path-to-regexp v8 require named parameters or regular expressions for wildcards.
-**Action:** Use the regular expression /.*/ for catch-all routes (e.g., for SPA routing) instead of the string "*".
+**Learning:** In Express 5, the wildcard route path "_" is no longer supported and throws a PathError at runtime because path-to-regexp v8 require named parameters or regular expressions for wildcards.
+**Action:** Use the regular expression /._/ for catch-all routes (e.g., for SPA routing) instead of the string "*".
 
 ## 2026-07-12 - [Optimizing List Filtering Performance]
 
