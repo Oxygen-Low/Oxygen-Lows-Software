@@ -125,7 +125,7 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.185.1",
     "tsx": "^4.23.0",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vaul": "^1.1.2",
     "vite": "^8.1.4",
     "vitest": "^4.1.10"
