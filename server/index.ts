@@ -32,8 +32,8 @@ export function createServer() {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
           "connect-src": [
             "'self'",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
-            "wss://vqmukrmpgvavscsyefqd.supabase.co",
+            process.env.VITE_SUPABASE_URL!,
+            process.env.VITE_SUPABASE_URL!.replace("http", "ws"),
             "https://api.pwnedpasswords.com",
             "https://api.github.com",
             "https://api.openai.com",
@@ -51,14 +51,10 @@ export function createServer() {
           "img-src": [
             "'self'",
             "data:",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
+            process.env.VITE_SUPABASE_URL!,
             "https://app.aikido.dev",
           ],
-          "media-src": [
-            "'self'",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
-            "blob:",
-          ],
+          "media-src": ["'self'", process.env.VITE_SUPABASE_URL!, "blob:"],
           "script-src": ["'self'", "blob:"],
           "worker-src": ["'self'", "blob:"],
         },
