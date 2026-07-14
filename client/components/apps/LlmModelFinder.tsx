@@ -360,6 +360,8 @@ export const LlmModelFinderApp = () => {
                               "_blank",
                             )
                           }
+                          aria-label="Open in HuggingFace"
+                          title="Open in HuggingFace"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </Button>
