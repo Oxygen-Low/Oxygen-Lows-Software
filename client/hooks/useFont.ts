@@ -3,7 +3,11 @@ import { useAuth } from "./useAuth";
 import { supabase } from "@/lib/supabase";
 
 export type FontOption =
-  "default" | "poppins" | "roboto" | "playfair-display" | "ibm-plex-mono";
+  | "default"
+  | "poppins"
+  | "roboto"
+  | "playfair-display"
+  | "ibm-plex-mono";
 
 const fontMapping: Record<FontOption, string> = {
   default: "'Indie Flower', ui-sans-serif, system-ui, sans-serif",

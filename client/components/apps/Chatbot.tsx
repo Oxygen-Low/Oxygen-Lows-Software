@@ -206,6 +206,8 @@ const ArtifactSidebar = ({
               navigator.clipboard.writeText(artifact.content);
               toast.success("Copied to clipboard");
             }}
+            aria-label="Copy to clipboard"
+            title="Copy to clipboard"
           >
             <Copy className="w-4 h-4" />
           </Button>
@@ -214,6 +216,8 @@ const ArtifactSidebar = ({
             size="icon"
             className="h-8 w-8 text-slate-400 hover:text-white"
             onClick={onClose}
+            aria-label="Close"
+            title="Close"
           >
             <X className="w-4 h-4" />
           </Button>

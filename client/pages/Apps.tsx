@@ -33,7 +33,12 @@ import { RepositoriesApp } from "@/components/apps/Repositories";
 import { LearnApp } from "@/components/apps/Learn";
 
 type Category =
-  "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
+  | "All"
+  | "Utility"
+  | "LLM/AI"
+  | "Development"
+  | "Social"
+  | "Games";
 
 interface AppMetadata {
   id: string;
