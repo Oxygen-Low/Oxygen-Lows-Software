@@ -20,7 +20,7 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@monaco-editor/react": "^4.7.0",
-    "@supabase/supabase-js": "^2.110.5",
+    "@supabase/supabase-js": "^2.110.6",
     "@types/multer": "^2.1.0",
     "archiver": "^8.0.0",
     "axios": "^1.18.0",
