@@ -44,118 +44,123 @@ interface AppMetadata {
   component: React.ComponentType;
 }
 
+/**
+ * ⚡ Bolt Performance Optimization:
+ * Moved static configurations (`CATEGORIES` and `apps`) outside of the `Apps` component body.
+ * This prevents the recreation of these large arrays (and their internal JSX elements) on every render,
+ * saving memory allocations and preventing unnecessary recalculations in downstream useMemo hooks.
+ */
+const CATEGORIES: {
+  name: Category;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+}[] = [
+  {
+    name: "All",
+    label: "All",
+    icon: <Box className="w-5 h-5" />,
+    description: "All available applications",
+  },
+  {
+    name: "Utility",
+    label: "Utility",
+    icon: <Wrench className="w-5 h-5" />,
+    description: "Tools and utilities",
+  },
+  {
+    name: "LLM/AI",
+    label: "LLM/AI",
+    icon: <BrainCircuit className="w-5 h-5" />,
+    description: "AI powered applications",
+  },
+  {
+    name: "Development",
+    label: "Development",
+    icon: <Code className="w-5 h-5" />,
+    description: "Developer tools",
+  },
+  {
+    name: "Social",
+    label: "Social",
+    icon: <MessageSquare className="w-5 h-5" />,
+    description: "Connect with others",
+  },
+  {
+    name: "Games",
+    label: "Games",
+    icon: <Gamepad2 className="w-5 h-5" />,
+    description: "Fun and games",
+  },
+];
+
+const apps: AppMetadata[] = [
+  {
+    id: "chatbot",
+    name: "Chatbot",
+    description:
+      "Chat with state-of-the-art LLMs with memory and custom styles.",
+    categories: ["All", "LLM/AI"],
+    icon: <Bot className="w-8 h-8 text-cyan-500" />,
+    component: ChatbotApp,
+  },
+  {
+    id: "ai-screenshare",
+    name: "AI Screenshare",
+    description:
+      "Let AI watch your screen and react to what you are doing in real-time.",
+    categories: ["All", "LLM/AI"],
+    icon: <Monitor className="w-8 h-8 text-cyan-500" />,
+    component: AiScreenshareApp,
+  },
+  {
+    id: "llm-model-finder",
+    name: "LLM Model Finder",
+    description:
+      "Find the best model capable of running on your hardware for different tasks.",
+    categories: ["All", "LLM/AI"],
+    icon: <Search className="w-8 h-8 text-cyan-500" />,
+    component: LlmModelFinderApp,
+  },
+  {
+    id: "repositories",
+    name: "Repositories",
+    description:
+      "Host git repositories with issues, pull requests, and web editing.",
+    categories: ["All", "Development"],
+    icon: <GitBranch className="w-8 h-8 text-cyan-500" />,
+    component: RepositoriesApp,
+  },
+  {
+    id: "file-compressor",
+    name: "File Compressor",
+    description: "Compress images to save storage space.",
+    categories: ["All", "Utility"],
+    icon: <Box className="w-8 h-8 text-cyan-500" />,
+    component: FileCompressorApp,
+  },
+  {
+    id: "oauth",
+    name: "OAuth",
+    description:
+      "Add OAuth to your applications via Oxygen Low's Software Accounts.",
+    categories: ["All", "Development"],
+    icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
+    component: OauthApp,
+  },
+  {
+    id: "learn",
+    name: "Learn",
+    description: "Master new skills through interactive courses and 3D models.",
+    categories: ["All", "Utility"],
+    icon: <BookOpen className="w-8 h-8 text-cyan-500" />,
+    component: LearnApp,
+  },
+];
+
 export default function Apps() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
-
-  const CATEGORIES: {
-    name: Category;
-    label: string;
-    icon: React.ReactNode;
-    description: string;
-  }[] = [
-    {
-      name: "All",
-      label: "All",
-      icon: <Box className="w-5 h-5" />,
-      description: "All available applications",
-    },
-    {
-      name: "Utility",
-      label: "Utility",
-      icon: <Wrench className="w-5 h-5" />,
-      description: "Tools and utilities",
-    },
-    {
-      name: "LLM/AI",
-      label: "LLM/AI",
-      icon: <BrainCircuit className="w-5 h-5" />,
-      description: "AI powered applications",
-    },
-    {
-      name: "Development",
-      label: "Development",
-      icon: <Code className="w-5 h-5" />,
-      description: "Developer tools",
-    },
-    {
-      name: "Social",
-      label: "Social",
-      icon: <MessageSquare className="w-5 h-5" />,
-      description: "Connect with others",
-    },
-    {
-      name: "Games",
-      label: "Games",
-      icon: <Gamepad2 className="w-5 h-5" />,
-      description: "Fun and games",
-    },
-  ];
-
-  const apps: AppMetadata[] = [
-    {
-      id: "chatbot",
-      name: "Chatbot",
-      description:
-        "Chat with state-of-the-art LLMs with memory and custom styles.",
-      categories: ["All", "LLM/AI"],
-      icon: <Bot className="w-8 h-8 text-cyan-500" />,
-      component: ChatbotApp,
-    },
-    {
-      id: "ai-screenshare",
-      name: "AI Screenshare",
-      description:
-        "Let AI watch your screen and react to what you are doing in real-time.",
-      categories: ["All", "LLM/AI"],
-      icon: <Monitor className="w-8 h-8 text-cyan-500" />,
-      component: AiScreenshareApp,
-    },
-    {
-      id: "llm-model-finder",
-      name: "LLM Model Finder",
-      description:
-        "Find the best model capable of running on your hardware for different tasks.",
-      categories: ["All", "LLM/AI"],
-      icon: <Search className="w-8 h-8 text-cyan-500" />,
-      component: LlmModelFinderApp,
-    },
-    {
-      id: "repositories",
-      name: "Repositories",
-      description:
-        "Host git repositories with issues, pull requests, and web editing.",
-      categories: ["All", "Development"],
-      icon: <GitBranch className="w-8 h-8 text-cyan-500" />,
-      component: RepositoriesApp,
-    },
-    {
-      id: "file-compressor",
-      name: "File Compressor",
-      description: "Compress images to save storage space.",
-      categories: ["All", "Utility"],
-      icon: <Box className="w-8 h-8 text-cyan-500" />,
-      component: FileCompressorApp,
-    },
-    {
-      id: "oauth",
-      name: "OAuth",
-      description:
-        "Add OAuth to your applications via Oxygen Low's Software Accounts.",
-      categories: ["All", "Development"],
-      icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
-      component: OauthApp,
-    },
-    {
-      id: "learn",
-      name: "Learn",
-      description:
-        "Master new skills through interactive courses and 3D models.",
-      categories: ["All", "Utility"],
-      icon: <BookOpen className="w-8 h-8 text-cyan-500" />,
-      component: LearnApp,
-    },
-  ];
 
   const filteredApps = useMemo(() => {
     if (selectedCategory === "All") return apps;
