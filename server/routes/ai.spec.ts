@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   isPrivateIP,
   validateAiUrl,
@@ -6,6 +6,15 @@ import {
 } from "../lib/safeAiUrl";
 import fs from "fs";
 import path from "path";
+import * as dnsPromises from "dns/promises";
+
+vi.mock("dns/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("dns/promises")>();
+  return {
+    ...actual,
+    lookup: vi.fn(actual.lookup),
+  };
+});
 
 describe("SSRF Validation", () => {
   describe("isPrivateIP", () => {
@@ -76,6 +85,19 @@ describe("SSRF Validation", () => {
       const url = await resolveCustomProviderUrl("http://api.openai.com/v1");
       expect(url).toContain("http://");
       expect(url).toContain("/v1/chat/completions");
+    });
+
+    it("should correctly handle and bracket IPv6 addresses to prevent silent failure", async () => {
+      vi.mocked(dnsPromises.lookup).mockResolvedValueOnce([
+        { address: "2001:4860:4860::8888", family: 6 },
+      ] as any);
+
+      const url = await resolveCustomProviderUrl("https://example.com/api");
+      expect(url).toContain(
+        "https://[2001:4860:4860::8888]/api/chat/completions",
+      );
+
+      vi.mocked(dnsPromises.lookup).mockRestore();
     });
 
     it("should reject URLs with private IP hostnames", async () => {

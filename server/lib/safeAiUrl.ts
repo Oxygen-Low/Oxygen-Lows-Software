@@ -83,7 +83,9 @@ export async function resolveCustomProviderUrl(
   }
 
   // Pin the IP address to mitigate DNS rebinding
-  url.hostname = firstAddress.address;
+  url.hostname = net.isIPv6(firstAddress.address)
+    ? `[${firstAddress.address}]`
+    : firstAddress.address;
 
   url.pathname = url.pathname.replace(/\/+$/, "") + "/chat/completions";
 
