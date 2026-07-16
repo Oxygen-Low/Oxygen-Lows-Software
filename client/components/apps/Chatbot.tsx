@@ -84,6 +84,27 @@ const parseArtifacts = (content: string): Artifact[] => {
  * This prevents the extremely expensive re-renders of `ReactMarkdown` and `SyntaxHighlighter`
  * for the entire chat history on every single token received during a streaming response.
  */
+
+const memoizedMarkdownComponents = {
+  code({ node, inline, className, children, ...props }: any) {
+    const match = /language-(\w+)/.exec(className || "");
+    return !inline && match ? (
+      <SyntaxHighlighter
+        style={vscDarkPlus as any}
+        language={match[1]}
+        PreTag="div"
+        {...props}
+      >
+        {String(children).replace(/\n$/, "")}
+      </SyntaxHighlighter>
+    ) : (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+};
+
 const ChatMessage = React.memo(
   ({
     message: m,
@@ -129,25 +150,7 @@ const ChatMessage = React.memo(
             )}
           >
             <ReactMarkdown
-              components={{
-                code({ node, inline, className, children, ...props }: any) {
-                  const match = /language-(\w+)/.exec(className || "");
-                  return !inline && match ? (
-                    <SyntaxHighlighter
-                      style={vscDarkPlus}
-                      language={match[1]}
-                      PreTag="div"
-                      {...props}
-                    >
-                      {String(children).replace(/\n$/, "")}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  );
-                },
-              }}
+              components={memoizedMarkdownComponents}
             >
               {displayContent}
             </ReactMarkdown>
