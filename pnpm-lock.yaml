@@ -357,8 +357,8 @@ packages:
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
 
-  '@aikidosec/firewall@1.8.33':
-    resolution: {integrity: sha512-hNqREwflthUDv0mEAW54io7A5ut4xyNX/cLEtdokwleUqNJvazLIBbXqgwF266lJj08J+etvJDfl5YXCKrCRQQ==}
+  '@aikidosec/firewall@1.8.35':
+    resolution: {integrity: sha512-Vr3tifWqyc+6xUlf8JQ0s7OHnxd4JA1UwFPrSuhgpp+4N1p2lHZEhHMfyWlUDDwFVSDP7QOQcnh9SCIe7CjM+w==}
     engines: {node: '>=16'}
 
   '@asamuzakjp/css-color@5.1.11':
@@ -4152,7 +4152,7 @@ snapshots:
 
   '@adobe/css-tools@4.5.0': {}
 
-  '@aikidosec/firewall@1.8.33': {}
+  '@aikidosec/firewall@1.8.35': {}
 
   '@asamuzakjp/css-color@5.1.11':
     dependencies:
