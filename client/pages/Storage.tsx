@@ -479,6 +479,10 @@ export default function Storage() {
                                     <button
                                       key={level}
                                       onClick={() => toggleLevel(f.name, level)}
+                                      aria-pressed={(
+                                        layerLevels[f.name] || []
+                                      ).includes(level)}
+                                      aria-label={`Toggle threat level ${level} for ${f.name}`}
                                       className={cn(
                                         "w-6 h-6 rounded text-[10px] flex items-center justify-center transition-colors",
                                         (layerLevels[f.name] || []).includes(
