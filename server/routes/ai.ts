@@ -33,6 +33,37 @@ const DEFAULT_HORDE_MODELS = [
   { provider: "horde", model_id: "Code" },
 ];
 
+/**
+ * LM Studio's OpenAI-compatible endpoint currently accepts raw base64 in an
+ * image_url block, rather than the data URI used by the OpenAI API. Keep the
+ * data URI for every other provider and only remove its prefix for LM Studio.
+ */
+const normalizeLmStudioImageUrls = (messages: any[]) =>
+  messages.map((message) => {
+    if (!Array.isArray(message.content)) return message;
+
+    return {
+      ...message,
+      content: message.content.map((part: any) => {
+        if (part?.type !== "image_url") return part;
+
+        const url = part.image_url?.url || part.image_url;
+        if (typeof url !== "string") return part;
+
+        const match = url.match(/^data:image\/[a-zA-Z0-9.+-]+;base64,(.+)$/);
+        if (!match) return part;
+
+        return {
+          ...part,
+          image_url: {
+            ...(typeof part.image_url === "object" ? part.image_url : {}),
+            url: match[1],
+          },
+        };
+      }),
+    };
+  });
+
 export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
   const localModels = [...DEFAULT_HORDE_MODELS];
 
@@ -535,7 +566,11 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         await handleResponse(
           await axios.post(
             "http://127.0.0.1:1234/v1/chat/completions",
-            { model, messages: processedMessages, stream },
+            {
+              model,
+              messages: normalizeLmStudioImageUrls(processedMessages),
+              stream,
+            },
             axiosOptions,
           ),
         );
