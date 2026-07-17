@@ -79,6 +79,8 @@ export const MusicPlayer = () => {
           variant="ghost"
           onClick={playPrev}
           className="hover:text-primary"
+          title="Previous track"
+          aria-label="Previous track"
         >
           <SkipBack className="w-4 h-4" />
         </Button>
@@ -87,6 +89,8 @@ export const MusicPlayer = () => {
           size="sm"
           onClick={isPlaying ? pause : play}
           className="bg-primary hover:bg-primary/90"
+          title={isPlaying ? "Pause track" : "Play track"}
+          aria-label={isPlaying ? "Pause track" : "Play track"}
         >
           {isPlaying ? (
             <Pause className="w-4 h-4" />
@@ -100,6 +104,8 @@ export const MusicPlayer = () => {
           variant="ghost"
           onClick={playNext}
           className="hover:text-primary"
+          title="Next track"
+          aria-label="Next track"
         >
           <SkipForward className="w-4 h-4" />
         </Button>
@@ -111,6 +117,9 @@ export const MusicPlayer = () => {
           className={
             shuffle ? "bg-primary hover:bg-primary/90" : "hover:text-primary"
           }
+          title="Toggle shuffle"
+          aria-label="Toggle shuffle"
+          aria-pressed={shuffle}
         >
           <Shuffle className="w-4 h-4" />
         </Button>

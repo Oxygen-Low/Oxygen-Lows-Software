@@ -212,6 +212,7 @@ export default function Customize() {
             </div>
             <button
               onClick={() => setUseGradient(!useGradient)}
+              aria-pressed={useGradient}
               className={`px-4 py-2 rounded-lg border-2 transition-all font-medium ${
                 useGradient
                   ? "border-primary bg-primary/10 text-primary"
@@ -271,6 +272,7 @@ export default function Customize() {
               <button
                 key={themeOption.value}
                 onClick={() => setTheme(themeOption.value as any)}
+                aria-pressed={theme === themeOption.value}
                 className={`p-4 rounded-lg border-2 transition-all font-medium text-sm ${
                   theme === themeOption.value
                     ? "border-primary bg-primary/10 text-primary"
@@ -291,6 +293,7 @@ export default function Customize() {
               <button
                 key={fontOption.value}
                 onClick={() => setFont(fontOption.value)}
+                aria-pressed={font === fontOption.value}
                 className={`p-4 rounded-lg border-2 transition-all font-medium text-sm ${
                   font === fontOption.value
                     ? "border-primary bg-primary/10 text-primary"
@@ -319,6 +322,7 @@ export default function Customize() {
             <label className="text-foreground font-medium">Shuffle</label>
             <button
               onClick={() => toggleShuffle(!shuffle)}
+              aria-pressed={shuffle}
               className={`px-4 py-2 rounded-lg border-2 transition-all font-medium ${
                 shuffle
                   ? "border-primary bg-primary/10 text-primary"

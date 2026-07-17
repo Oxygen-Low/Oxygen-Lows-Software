@@ -113,13 +113,24 @@ export function AiScreenshareApp() {
       canvasRef.current = document.createElement("canvas");
     }
     const canvas = canvasRef.current;
+    // `getDisplayMedia` resolves before the video element has necessarily
+    // received frame metadata. A zero-sized canvas serializes as `data:,`,
+    // which is not an image and is rejected by vision providers.
+    if (
+      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
+    ) {
+      return null;
+    }
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.7);
+    const image = canvas.toDataURL("image/jpeg", 0.7);
+    return image.startsWith("data:image/jpeg;base64,") ? image : null;
   };
 
   const analyzeFrame = async () => {

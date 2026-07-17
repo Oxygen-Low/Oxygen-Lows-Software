@@ -55,7 +55,8 @@ export const SidebarMusicPlayer = () => {
           variant="ghost"
           onClick={playPrev}
           className="h-8 w-8 hover:text-primary"
-          title="Previous"
+          title="Previous track"
+          aria-label="Previous track"
         >
           <SkipBack className="w-4 h-4" />
         </Button>
@@ -64,7 +65,8 @@ export const SidebarMusicPlayer = () => {
           size="icon"
           onClick={isPlaying ? pause : play}
           className="h-8 w-8 bg-primary hover:bg-primary/90"
-          title={isPlaying ? "Pause" : "Play"}
+          title={isPlaying ? "Pause track" : "Play track"}
+          aria-label={isPlaying ? "Pause track" : "Play track"}
         >
           {isPlaying ? (
             <Pause className="w-4 h-4" />
@@ -78,7 +80,8 @@ export const SidebarMusicPlayer = () => {
           variant="ghost"
           onClick={playNext}
           className="h-8 w-8 hover:text-primary"
-          title="Next"
+          title="Next track"
+          aria-label="Next track"
         >
           <SkipForward className="w-4 h-4" />
         </Button>
@@ -88,7 +91,9 @@ export const SidebarMusicPlayer = () => {
           variant={shuffle ? "default" : "ghost"}
           onClick={() => toggleShuffle(!shuffle)}
           className={`h-8 w-8 ${shuffle ? "bg-primary hover:bg-primary/90" : "hover:text-primary"}`}
-          title="Shuffle"
+          title="Toggle shuffle"
+          aria-label="Toggle shuffle"
+          aria-pressed={shuffle}
         >
           <Shuffle className="w-4 h-4" />
         </Button>
