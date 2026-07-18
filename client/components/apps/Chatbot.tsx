@@ -149,9 +149,7 @@ const ChatMessage = React.memo(
                 : "bg-slate-900 border border-slate-800 text-slate-200",
             )}
           >
-            <ReactMarkdown
-              components={memoizedMarkdownComponents}
-            >
+            <ReactMarkdown components={memoizedMarkdownComponents}>
               {displayContent}
             </ReactMarkdown>
           </div>
