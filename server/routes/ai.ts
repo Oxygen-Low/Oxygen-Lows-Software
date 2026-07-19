@@ -462,11 +462,11 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
 
             if (statusResponse.status >= 400 && statusResponse.status !== 503 && statusResponse.status !== 502) {
               if (stream) {
-                res.write(`data: ${JSON.stringify({ error: \`AI Horde generation failed with status \${statusResponse.status}\` })}\n\n`);
+                res.write(`data: ${JSON.stringify({ error: `AI Horde generation failed with status ${statusResponse.status}` })}\n\n`);
                 res.write("data: [DONE]\n\n");
                 return res.end();
               }
-              return res.status(statusResponse.status).json({ error: \`AI Horde generation failed with status \${statusResponse.status}\` });
+              return res.status(statusResponse.status).json({ error: `AI Horde generation failed with status ${statusResponse.status}` });
             }
 
             if (statusResponse.data?.done) {
