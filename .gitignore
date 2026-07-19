@@ -28,3 +28,10 @@ dist-ssr
 
 # Local uploads
 uploads
+
+# .NET
+[Bb]in/
+[Oo]bj/
+app.zip
+DesktopAppOut/
+DesktopInstallerOut/

@@ -13,7 +13,7 @@ namespace DesktopApp
         private const string GitHubApiUrl = "https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/releases/latest";
         private const string CurrentVersion = "1.0.0"; // Placeholder
 
-        public async Task<(bool HasUpdate, string DownloadUrl, string Version)> CheckForUpdatesAsync()
+        public async Task<(bool HasUpdate, string? DownloadUrl, string? Version)> CheckForUpdatesAsync()
         {
             try
             {
