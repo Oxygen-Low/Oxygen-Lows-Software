@@ -527,6 +527,7 @@ export function ChatbotApp() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullContent = "";
+      let streamBuffer = "";
 
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
@@ -535,8 +536,9 @@ export function ChatbotApp() {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
+          streamBuffer += decoder.decode(value, { stream: true });
+          const lines = streamBuffer.split("\n");
+          streamBuffer = lines.pop() || "";
 
           for (const line of lines) {
             if (!line.trim() || !line.startsWith("data: ")) continue;
@@ -545,6 +547,9 @@ export function ChatbotApp() {
 
             try {
               const data = JSON.parse(dataStr);
+              if (data.error) {
+                throw new Error(data.error);
+              }
               let delta = "";
 
               if (selectedProvider === "anthropic") {
@@ -588,8 +593,12 @@ export function ChatbotApp() {
                   lastParsedLengthRef.current = fullContent.length;
                 }
               }
-            } catch (e) {
-              console.error("Parse error", e);
+            } catch (e: any) {
+              if (e.message && e.message !== "Unexpected end of JSON input" && !e.message.includes("JSON")) {
+                toast.error(e.message);
+              } else {
+                console.error("Parse error", e);
+              }
             }
           }
         }
