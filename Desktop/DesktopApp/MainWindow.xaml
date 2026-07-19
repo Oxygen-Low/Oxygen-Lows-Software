@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Oxygen Low's Software" Height="720" Width="1280">
     <Grid>
-        <TabControl>
+        <TabControl Name="tabMain" SelectionChanged="TabControl_SelectionChanged">
             <TabItem Header="Main">
                 <Border Name="webViewContainer" Background="White">
                     <TextBlock Name="txtLoading" Text="Loading..." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
@@ -17,8 +17,24 @@
                     <ProgressBar Name="progressBar" Height="20" Margin="0,10,0,0" Visibility="Collapsed" Maximum="100"/>
                 </StackPanel>
             </TabItem>
-            <TabItem Header="Other Space">
-                <TextBlock Text="Welcome to the other space." Margin="20" FontSize="16"/>
+            <TabItem Header="Authentication">
+                <StackPanel Margin="20" MaxWidth="400" HorizontalAlignment="Left">
+                    <TextBlock Text="Authentication Settings" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <TextBlock Text="Store your credentials securely on your computer to automatically sign in." Margin="0,0,0,20" TextWrapping="Wrap"/>
+
+                    <Label Content="Email Address" Margin="0,0,0,5"/>
+                    <TextBox Name="txtEmail" Height="25" Margin="0,0,0,15" VerticalContentAlignment="Center"/>
+
+                    <Label Content="Password" Margin="0,0,0,5"/>
+                    <PasswordBox Name="txtPassword" Height="25" Margin="0,0,0,20" VerticalContentAlignment="Center"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <Button Name="btnSaveCredentials" Content="Save Credentials" Width="130" Height="30" Margin="0,0,10,0" Click="BtnSaveCredentials_Click"/>
+                        <Button Name="btnClearCredentials" Content="Clear Credentials" Width="130" Height="30" Click="BtnClearCredentials_Click"/>
+                    </StackPanel>
+
+                    <TextBlock Name="txtAuthStatus" Text="" Foreground="Gray" FontWeight="Bold" TextWrapping="Wrap"/>
+                </StackPanel>
             </TabItem>
         </TabControl>
     </Grid>
