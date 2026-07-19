@@ -14,16 +14,28 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _updateManager = new UpdateManager();
-        InitializeAsync();
+        Loaded += MainWindow_Loaded;
     }
 
-    private async void InitializeAsync()
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        await InitializeWebViewAsync();
+        try
+        {
+            await InitializeWebViewAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Failed to initialize the web view:\n\n{ex.Message}\n\nThe WebView2 Runtime may not be installed.",
+                "Startup Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private async Task InitializeWebViewAsync()
     {
+        // Check if a local server is running first
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
@@ -35,7 +47,7 @@ public partial class MainWindow : Window
         }
         catch
         {
-            // Fallback to render URL
+            // Fallback to render URL — already set as default
         }
 
         await webView.EnsureCoreWebView2Async(null);
