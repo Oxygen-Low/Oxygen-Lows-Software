@@ -69,8 +69,8 @@ namespace DesktopInstaller
             Registry.CurrentUser.DeleteSubKeyTree(RegKeyPath, false);
             
             // Remove Shortcuts
-            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var shortcutPath = Path.Combine(desktopPath, $"{AppName}.lnk");
+            var programsPath = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+            var shortcutPath = Path.Combine(programsPath, $"{AppName}.lnk");
             if (File.Exists(shortcutPath)) File.Delete(shortcutPath);
         }
 
@@ -111,8 +111,8 @@ namespace DesktopInstaller
         private void CreateShortcuts(string targetPath)
         {
             var scriptPath = Path.Combine(Path.GetTempPath(), "CreateShortcut.vbs");
-            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var shortcutPath = Path.Combine(desktopPath, $"{AppName}.lnk");
+            var programsPath = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+            var shortcutPath = Path.Combine(programsPath, $"{AppName}.lnk");
             var targetExe = Path.Combine(targetPath, "DesktopApp.exe");
             
             var script = $@"
