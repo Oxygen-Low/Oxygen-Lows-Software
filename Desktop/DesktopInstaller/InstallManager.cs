@@ -105,7 +105,20 @@ namespace DesktopInstaller
         {
             using var key = Registry.CurrentUser.CreateSubKey(RegKeyPath);
             key.SetValue("InstallPath", targetPath);
-            key.SetValue("Version", "1.0.0");
+
+            string versionStr = "1.0.0";
+            try
+            {
+                var version = Assembly.GetExecutingAssembly().GetName().Version;
+                if (version != null)
+                {
+                    versionStr = $"{version.Major}.{version.Minor}.{version.Build}";
+                }
+            }
+            catch
+            {
+            }
+            key.SetValue("Version", versionStr);
         }
         
         private void CreateShortcuts(string targetPath)

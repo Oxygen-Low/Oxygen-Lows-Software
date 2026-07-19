@@ -23,7 +23,7 @@ jobs:
     - name: Publish Desktop App
       run: |
         cd Desktop/DesktopApp
-        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ../DesktopAppOut
+        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.0.${{ github.run_number }}" -o ../DesktopAppOut
 
     - name: Zip Desktop App
       run: |
@@ -32,7 +32,7 @@ jobs:
     - name: Publish Desktop Installer
       run: |
         cd Desktop/DesktopInstaller
-        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ../DesktopInstallerOut
+        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.0.${{ github.run_number }}" -o ../DesktopInstallerOut
 
     - name: Rename Installer
       run: |

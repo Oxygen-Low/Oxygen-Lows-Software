@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -11,7 +12,23 @@ namespace DesktopApp
     public class UpdateManager
     {
         private const string GitHubApiUrl = "https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/releases/latest";
-        private const string CurrentVersion = "1.0.0"; // Placeholder
+        private static readonly string CurrentVersion = GetCurrentVersion();
+
+        private static string GetCurrentVersion()
+        {
+            try
+            {
+                var version = Assembly.GetExecutingAssembly().GetName().Version;
+                if (version != null)
+                {
+                    return $"{version.Major}.{version.Minor}.{version.Build}";
+                }
+            }
+            catch
+            {
+            }
+            return "1.0.0";
+        }
 
         public async Task<(bool HasUpdate, string? DownloadUrl, string? Version)> CheckForUpdatesAsync()
         {
@@ -95,6 +112,7 @@ namespace DesktopApp
             Process.Start(new ProcessStartInfo
             {
                 FileName = tempFile,
+                Arguments = "--update",
                 UseShellExecute = true
             });
             
