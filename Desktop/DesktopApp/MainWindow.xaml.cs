@@ -2,12 +2,15 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using Microsoft.Web.WebView2.Wpf;
 
 namespace DesktopApp;
 
 public partial class MainWindow : Window
 {
     private readonly UpdateManager _updateManager;
+    private WebView2? _webView;
     private string _targetUrl = "https://oxygen-lows-software.onrender.com/auth";
     
     public MainWindow()
@@ -21,37 +24,33 @@ public partial class MainWindow : Window
     {
         try
         {
-            await InitializeWebViewAsync();
+            // Determine which URL to use
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                var response = await client.GetAsync("http://localhost:3000");
+                if (response.IsSuccessStatusCode)
+                {
+                    _targetUrl = "http://localhost:3000";
+                }
+            }
+            catch
+            {
+                // Fallback to render URL — already set as default
+            }
+
+            // Create WebView2 programmatically
+            _webView = new WebView2();
+            webViewContainer.Child = _webView;
+            txtLoading.Visibility = Visibility.Collapsed;
+
+            await _webView.EnsureCoreWebView2Async(null);
+            _webView.CoreWebView2.Navigate(_targetUrl);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
-                $"Failed to initialize the web view:\n\n{ex.Message}\n\nThe WebView2 Runtime may not be installed.",
-                "Startup Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            txtLoading.Text = $"Could not load web view:\n{ex.Message}";
         }
-    }
-
-    private async Task InitializeWebViewAsync()
-    {
-        // Check if a local server is running first
-        try
-        {
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-            var response = await client.GetAsync("http://localhost:3000");
-            if (response.IsSuccessStatusCode)
-            {
-                _targetUrl = "http://localhost:3000";
-            }
-        }
-        catch
-        {
-            // Fallback to render URL — already set as default
-        }
-
-        await webView.EnsureCoreWebView2Async(null);
-        webView.CoreWebView2.Navigate(_targetUrl);
     }
 
     private async void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
@@ -87,4 +86,4 @@ public partial class MainWindow : Window
             btnCheckUpdate.IsEnabled = true;
         }
     }
-}
+}
