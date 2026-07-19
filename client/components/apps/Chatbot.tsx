@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Plus,
   Trash2,
@@ -149,9 +149,7 @@ const ChatMessage = React.memo(
                 : "bg-slate-900 border border-slate-800 text-slate-200",
             )}
           >
-            <ReactMarkdown
-              components={memoizedMarkdownComponents}
-            >
+            <ReactMarkdown components={memoizedMarkdownComponents}>
               {displayContent}
             </ReactMarkdown>
           </div>
@@ -269,6 +267,18 @@ export function ChatbotApp() {
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const lastParsedLengthRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Memoize the filtered model arrays so we don't recalculate them
+   * in the render body on every keystroke or streaming token.
+   */
+  const { hordeModels, otherModels } = useMemo(() => {
+    return {
+      hordeModels: models.filter((m) => m.provider === "horde"),
+      otherModels: models.filter((m) => m.provider !== "horde"),
+    };
+  }, [models]);
 
   const fetchData = async () => {
     if (!session?.user?.id) return;
@@ -702,24 +712,9 @@ export function ChatbotApp() {
                 setSelection(m, p);
               }}
             >
-              {models.some((m) => m.provider === "horde") && (
+              {hordeModels.length > 0 && (
                 <optgroup label="Default (AI Horde)">
-                  {models
-                    .filter((m) => m.provider === "horde")
-                    .map((m) => (
-                      <option
-                        key={`${m.provider}:${m.model_id}`}
-                        value={`${m.provider}:${m.model_id}`}
-                      >
-                        {formatModelLabel(m.provider, m.model_id)}
-                      </option>
-                    ))}
-                </optgroup>
-              )}
-              <optgroup label="Other Models">
-                {models
-                  .filter((m) => m.provider !== "horde")
-                  .map((m) => (
+                  {hordeModels.map((m) => (
                     <option
                       key={`${m.provider}:${m.model_id}`}
                       value={`${m.provider}:${m.model_id}`}
@@ -727,6 +722,17 @@ export function ChatbotApp() {
                       {formatModelLabel(m.provider, m.model_id)}
                     </option>
                   ))}
+                </optgroup>
+              )}
+              <optgroup label="Other Models">
+                {otherModels.map((m) => (
+                  <option
+                    key={`${m.provider}:${m.model_id}`}
+                    value={`${m.provider}:${m.model_id}`}
+                  >
+                    {formatModelLabel(m.provider, m.model_id)}
+                  </option>
+                ))}
               </optgroup>
             </select>
           </div>
