@@ -73,9 +73,10 @@ export default function Customize() {
 
     if (track.name.endsWith(".reactive")) {
       try {
+        const safeName = track.name.replace(/\.\.\//g, "");
         const { data, error } = await supabase.storage
           .from("Storage")
-          .download(`${session?.user?.id}/${track.name}`);
+          .download(`${session?.user?.id}/${safeName}`);
 
         if (error) throw error;
 

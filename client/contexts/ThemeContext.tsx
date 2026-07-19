@@ -104,9 +104,10 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
   const getSignedUrl = useCallback(async (path: string) => {
     try {
+      const safePath = path.replace(/\.\.\//g, "");
       const { data, error } = await supabase.storage
         .from("Storage")
-        .createSignedUrl(path, 60 * 60 * 24); // 24 hours
+        .createSignedUrl(safePath, 60 * 60 * 24); // 24 hours
       if (error) throw error;
       return data.signedUrl;
     } catch (error) {

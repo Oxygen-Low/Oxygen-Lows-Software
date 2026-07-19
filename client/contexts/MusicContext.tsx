@@ -78,9 +78,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     async (fileName: string) => {
       if (!session?.user?.id) return null;
       // If fileName already starts with user id prefix, don't add it again
-      const path = fileName.startsWith(session.user.id + "/")
+      let path = fileName.startsWith(session.user.id + "/")
         ? fileName
         : `${session.user.id}/${fileName}`;
+      path = path.replace(/\.\.\//g, "");
       const { data } = await supabase.storage
         .from("Storage")
         .createSignedUrl(path, 3600);

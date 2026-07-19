@@ -265,13 +265,14 @@ export default function Characters() {
   };
 
   const handleStorageSelect = async (file: any) => {
+    const safeName = file.name.replace(/\.\.\//g, "");
     setCurrentCharacter((prev) => ({
       ...prev,
-      image_path: file.name,
+      image_path: safeName,
     }));
     const { data } = await supabase.storage
       .from("Storage")
-      .createSignedUrl(file.name, 3600);
+      .createSignedUrl(safeName, 3600);
     if (data?.signedUrl) {
       setCurrentCharacter((prev) => ({
         ...prev,
