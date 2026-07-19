@@ -10,15 +10,8 @@ import {
   handleProxyAiRequest,
   handleGetLocalProviders,
   handleGetChatStyles,
-  handleComfySupported,
-  handleComfyGenerate,
-  handleStt,
 } from "./routes/ai";
 import { reposRouter } from "./routes/repos";
-import multer from "multer";
-import os from "os";
-
-const upload = multer({ dest: os.tmpdir() });
 import { gitRouter } from "./routes/git";
 import { apiLimiter } from "./lib/limiter";
 import { aikidoUserMiddleware } from "./lib/aikido";
@@ -66,7 +59,7 @@ export function createServer() {
             "https://vqmukrmpgvavscsyefqd.supabase.co",
             "blob:",
           ],
-          "script-src": ["'self'", "blob:", "'unsafe-inline'"],
+          "script-src": ["'self'", "blob:"],
           "worker-src": ["'self'", "blob:"],
         },
       },
@@ -89,9 +82,6 @@ export function createServer() {
   app.post("/api/ai/proxy", apiLimiter, handleProxyAiRequest);
   app.get("/api/ai/local-providers", apiLimiter, handleGetLocalProviders);
   app.get("/api/ai/styles", apiLimiter, handleGetChatStyles);
-  app.get("/api/ai/comfy-supported", apiLimiter, handleComfySupported);
-  app.post("/api/ai/comfy-generate", apiLimiter, handleComfyGenerate);
-  app.post("/api/ai/stt", apiLimiter, upload.single("audio"), handleStt);
 
   app.use("/api/repos", reposRouter);
   app.use("/api/git", gitRouter);
