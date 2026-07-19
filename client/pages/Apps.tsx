@@ -1,5 +1,5 @@
 import { OauthApp } from "@/components/apps/Oauth";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import {
   Card,
@@ -31,8 +31,6 @@ import { ChatbotApp } from "@/components/apps/Chatbot";
 import { LlmModelFinderApp } from "@/components/apps/LlmModelFinder";
 import { RepositoriesApp } from "@/components/apps/Repositories";
 import { LearnApp } from "@/components/apps/Learn";
-import { ComfyuiApp } from "@/components/apps/Comfyui";
-import { Sparkles } from "lucide-react";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
@@ -96,7 +94,7 @@ const CATEGORIES: {
   },
 ];
 
-const STATIC_APPS: AppMetadata[] = [
+const apps: AppMetadata[] = [
   {
     id: "chatbot",
     name: "Chatbot",
@@ -163,40 +161,6 @@ const STATIC_APPS: AppMetadata[] = [
 export default function Apps() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
-  const [comfySupported, setComfySupported] = useState(false);
-
-  useEffect(() => {
-    const checkComfy = async () => {
-      try {
-        const response = await fetch("/api/ai/comfy-supported");
-        if (response.ok) {
-          const data = await response.json();
-          setComfySupported(!!data.supported);
-        }
-      } catch (e) {
-        console.error("Failed to check ComfyUI support:", e);
-      }
-    };
-    checkComfy();
-  }, []);
-
-  const apps = useMemo(() => {
-    if (comfySupported) {
-      return [
-        ...STATIC_APPS,
-        {
-          id: "comfyui",
-          name: "ComfyUI Integration",
-          description:
-            "Generate beautiful artwork using ComfyUI with speech-to-text input support.",
-          categories: ["All", "LLM/AI", "Utility"] as Category[],
-          icon: <Sparkles className="w-8 h-8 text-cyan-500" />,
-          component: ComfyuiApp,
-        },
-      ];
-    }
-    return STATIC_APPS;
-  }, [comfySupported]);
 
   const filteredApps = useMemo(() => {
     if (selectedCategory === "All") return apps;
