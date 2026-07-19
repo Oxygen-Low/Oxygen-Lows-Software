@@ -4,7 +4,7 @@ export const formatModelLabel = (provider: string, modelId: string) => {
       Fast: "Fast - Fast speed, decent quality",
       Balanced: "Balanced - Balanced speed and quality",
       Smart: "Smart - Slow but high quality",
-      Roleplay: "Roleplay - Good at roleplaying and writing",
+      Write: "Write - Good at writing and roleplaying",
       Code: "Code - Good at coding",
     };
     return labels[modelId] || "AI Horde - " + modelId;

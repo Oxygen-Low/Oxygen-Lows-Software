@@ -29,7 +29,7 @@ const DEFAULT_HORDE_MODELS = [
   { provider: "horde", model_id: "Fast" },
   { provider: "horde", model_id: "Balanced" },
   { provider: "horde", model_id: "Smart" },
-  { provider: "horde", model_id: "Roleplay" },
+  { provider: "horde", model_id: "Write" },
   { provider: "horde", model_id: "Code" },
 ];
 
@@ -365,7 +365,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
           Balanced: ["Magnum-12b-v2"],
           Smart: ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct"],
-          Roleplay: ["mradermacher/Magnum-v3-27B-GGUF"],
+          Write: ["mradermacher/Magnum-v3-27B-GGUF"],
           Code: ["Qwen/Qwen2.5-Coder-32B-Instruct"],
         };
 
@@ -447,10 +447,29 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                 },
                 timeout: 10000,
                 signal: abortController.signal,
+                validateStatus: () => true,
               },
             );
 
-            if (statusResponse.data.done) {
+            if (statusResponse.status === 404) {
+              if (stream) {
+                res.write(`data: ${JSON.stringify({ error: "AI Horde job not found or expired" })}\n\n`);
+                res.write("data: [DONE]\n\n");
+                return res.end();
+              }
+              return res.status(404).json({ error: "AI Horde job not found or expired" });
+            }
+
+            if (statusResponse.status >= 400 && statusResponse.status !== 503 && statusResponse.status !== 502) {
+              if (stream) {
+                res.write(`data: ${JSON.stringify({ error: \`AI Horde generation failed with status \${statusResponse.status}\` })}\n\n`);
+                res.write("data: [DONE]\n\n");
+                return res.end();
+              }
+              return res.status(statusResponse.status).json({ error: \`AI Horde generation failed with status \${statusResponse.status}\` });
+            }
+
+            if (statusResponse.data?.done) {
               finished = true;
               if (
                 statusResponse.data.generations &&
@@ -458,7 +477,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               ) {
                 resultText = statusResponse.data.generations[0].text;
               }
-            } else if (statusResponse.data.faulted) {
+            } else if (statusResponse.data?.faulted) {
               if (stream) {
                 res.write(`data: ${JSON.stringify({ error: "AI Horde generation faulted" })}\n\n`);
                 res.write("data: [DONE]\n\n");
