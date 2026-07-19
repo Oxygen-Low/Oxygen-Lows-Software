@@ -412,53 +412,79 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           return res.status(submitResponse.status).json(submitResponse.data);
         }
 
+        if (stream) {
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+          res.flushHeaders();
+        }
+
         const jobId = submitResponse.data.id;
         let finished = false;
         let resultText = "";
         let attempts = 0;
-        const maxAttempts = 60;
+        const maxAttempts = 300; // 10 minutes wait
 
         while (!finished && attempts < maxAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
           attempts++;
 
-          const statusResponse = await axios.get(
-            `https://stablehorde.net/api/v2/generate/text/status/${jobId}`,
-            {
-              headers: {
-                apikey: hordeApiKey,
-                "Client-Agent": clientAgent,
-              },
-              signal: abortController.signal,
-            },
-          );
-
-          if (statusResponse.data.done) {
-            finished = true;
-            if (
-              statusResponse.data.generations &&
-              statusResponse.data.generations.length > 0
-            ) {
-              resultText = statusResponse.data.generations[0].text;
+          if (stream) {
+            // Send keep-alive to prevent intermediate proxies or browser from dropping connection
+            res.write(": keepalive\n\n");
+            if (typeof (res as any).flush === "function") {
+              (res as any).flush();
             }
-          } else if (statusResponse.data.faulted) {
-            return res
-              .status(500)
-              .json({ error: "AI Horde generation faulted" });
+          }
+
+          try {
+            const statusResponse = await axios.get(
+              `https://stablehorde.net/api/v2/generate/text/status/${jobId}`,
+              {
+                headers: {
+                  apikey: hordeApiKey,
+                  "Client-Agent": clientAgent,
+                },
+                timeout: 10000,
+                signal: abortController.signal,
+              },
+            );
+
+            if (statusResponse.data.done) {
+              finished = true;
+              if (
+                statusResponse.data.generations &&
+                statusResponse.data.generations.length > 0
+              ) {
+                resultText = statusResponse.data.generations[0].text;
+              }
+            } else if (statusResponse.data.faulted) {
+              if (stream) {
+                res.write(`data: ${JSON.stringify({ error: "AI Horde generation faulted" })}\n\n`);
+                res.write("data: [DONE]\n\n");
+                return res.end();
+              }
+              return res.status(500).json({ error: "AI Horde generation faulted" });
+            }
+          } catch (err: any) {
+            // ignore timeout/network errors during polling and try again
+            if (axios.isCancel(err)) throw err;
+            console.error("AI Horde poll error:", err.message);
           }
         }
 
         if (!finished) {
+          if (stream) {
+            res.write(`data: ${JSON.stringify({ error: "AI Horde generation timed out" })}\n\n`);
+            res.write("data: [DONE]\n\n");
+            return res.end();
+          }
           return res
             .status(504)
             .json({ error: "AI Horde generation timed out" });
         }
 
         if (stream) {
-          res.setHeader("Content-Type", "text/event-stream");
-          res.setHeader("Cache-Control", "no-cache");
-          res.setHeader("Connection", "keep-alive");
-
           const chunk = {
             id: jobId,
             object: "chat.completion.chunk",
