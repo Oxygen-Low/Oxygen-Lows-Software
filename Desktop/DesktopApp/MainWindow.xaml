@@ -1,0 +1,28 @@
+<Window x:Class="DesktopApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DesktopApp"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        mc:Ignorable="d"
+        Title="Oxygen Low's Software" Height="720" Width="1280">
+    <Grid>
+        <TabControl>
+            <TabItem Header="Main">
+                <wv2:WebView2 Name="webView" />
+            </TabItem>
+            <TabItem Header="Update">
+                <StackPanel Margin="20">
+                    <TextBlock Text="Updates" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <TextBlock Name="txtUpdateStatus" Text="Checking for updates..." Margin="0,0,0,10" TextWrapping="Wrap"/>
+                    <Button Name="btnCheckUpdate" Content="Check for Updates" Width="150" HorizontalAlignment="Left" Padding="10,5" Click="BtnCheckUpdate_Click"/>
+                    <ProgressBar Name="progressBar" Height="20" Margin="0,10,0,0" Visibility="Collapsed" Maximum="100"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Other Space">
+                <TextBlock Text="Welcome to the other space." Margin="20" FontSize="16"/>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

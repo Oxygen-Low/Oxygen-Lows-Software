@@ -1,0 +1,54 @@
+name: Desktop App Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Publish Desktop App
+      run: |
+        cd Desktop/DesktopApp
+        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ../DesktopAppOut
+
+    - name: Zip Desktop App
+      run: |
+        Compress-Archive -Path Desktop/DesktopAppOut/* -DestinationPath Desktop/DesktopInstaller/app.zip
+
+    - name: Publish Desktop Installer
+      run: |
+        cd Desktop/DesktopInstaller
+        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ../DesktopInstallerOut
+
+    - name: Rename Installer
+      run: |
+        Rename-Item -Path Desktop/DesktopInstallerOut/DesktopInstaller.exe -NewName "OxygenLowsSoftware_Installer.exe"
+
+    - name: Create Tag
+      id: create_tag
+      run: |
+        $tag = "v1.0.$($env:GITHUB_RUN_NUMBER)"
+        echo "TAG_NAME=$tag" >> $env:GITHUB_ENV
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.TAG_NAME }}
+        name: Release ${{ env.TAG_NAME }}
+        files: Desktop/DesktopInstallerOut/OxygenLowsSoftware_Installer.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
