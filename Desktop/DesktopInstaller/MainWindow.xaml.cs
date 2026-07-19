@@ -27,7 +27,8 @@ public partial class MainWindow : Window
 
     private async void BtnInstall_Click(object sender, RoutedEventArgs e)
     {
-        await RunTaskAsync(() => _installManager.Install(txtInstallPath.Text), "Installing...");
+        string installPath = txtInstallPath.Text;
+        await RunTaskAsync(() => _installManager.Install(installPath), "Installing...");
     }
 
     private async void BtnUpdate_Click(object sender, RoutedEventArgs e)
