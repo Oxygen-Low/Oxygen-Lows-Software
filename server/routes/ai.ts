@@ -29,7 +29,7 @@ const DEFAULT_HORDE_MODELS = [
   { provider: "horde", model_id: "Fast" },
   { provider: "horde", model_id: "Balanced" },
   { provider: "horde", model_id: "Smart" },
-  { provider: "horde", model_id: "Roleplay" },
+  { provider: "horde", model_id: "Write" },
   { provider: "horde", model_id: "Code" },
 ];
 
@@ -365,7 +365,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
           Balanced: ["Magnum-12b-v2"],
           Smart: ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct"],
-          Roleplay: ["mradermacher/Magnum-v3-27B-GGUF"],
+          Write: ["mradermacher/Magnum-v3-27B-GGUF"],
           Code: ["Qwen/Qwen2.5-Coder-32B-Instruct"],
         };
 
