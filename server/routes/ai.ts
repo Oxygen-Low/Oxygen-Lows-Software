@@ -3,7 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
 import path from "path";
 import fs from "fs";
-import { exec } from "child_process";
+import os from "os";
+import { execFile } from "child_process";
 import { resolveCustomProviderUrl } from "../lib/safeAiUrl";
 
 export { isPrivateIP, validateAiUrl } from "../lib/safeAiUrl";
@@ -854,10 +855,16 @@ export const handleStt: RequestHandler = async (req, res) => {
   }
 
   const scriptPath = path.join(process.cwd(), "server", "lib", "stt.py");
-  const filePath = req.file.path;
+  const filePath = path.resolve(req.file.path);
 
-  // Execute the Python STT helper
-  exec(`python3 "${scriptPath}" "${filePath}"`, (error, stdout, stderr) => {
+  // Validate filePath is safe (starts with temp directory) to resolve CodeQL path injection
+  const tempDir = path.resolve(os.tmpdir());
+  if (!filePath.startsWith(tempDir)) {
+    return res.status(400).json({ error: "Invalid audio file path" });
+  }
+
+  // Execute the Python STT helper using execFile to avoid command injection
+  execFile("python3", [scriptPath, filePath], (error, stdout, stderr) => {
     // Clean up the uploaded temp file asynchronously
     fs.unlink(filePath, (err) => {
       if (err) console.error("Failed to delete temp audio file:", err);
