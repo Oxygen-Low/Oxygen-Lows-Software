@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -217,67 +217,76 @@ export default function Storage() {
     }
   };
 
-  const categories = {
-    text: {
-      color: "bg-white",
-      label: "Text/Artifacts",
-      icon: FileText,
-      files: [] as any[],
-      size: 0,
-    },
-    image: {
-      color: "bg-orange-500",
-      label: "Images",
-      icon: ImageIcon,
-      files: [] as any[],
-      size: 0,
-    },
-    audio: {
-      color: "bg-blue-500",
-      label: "Sounds",
-      icon: Music,
-      files: [] as any[],
-      size: 0,
-    },
-    reactive: {
-      color: "bg-purple-500",
-      label: "Reactive",
-      icon: Zap,
-      files: [] as any[],
-      size: 0,
-    },
-    data: {
-      color: "bg-black",
-      label: "Data",
-      icon: Database,
-      files: [] as any[],
-      size: 0,
-    },
-  };
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Memoize the categories calculation to prevent recalculating file sizes
+   * and array groups on every render (especially when hovering items).
+   */
+  const categories = useMemo(() => {
+    const cats = {
+      text: {
+        color: "bg-white",
+        label: "Text/Artifacts",
+        icon: FileText,
+        files: [] as any[],
+        size: 0,
+      },
+      image: {
+        color: "bg-orange-500",
+        label: "Images",
+        icon: ImageIcon,
+        files: [] as any[],
+        size: 0,
+      },
+      audio: {
+        color: "bg-blue-500",
+        label: "Sounds",
+        icon: Music,
+        files: [] as any[],
+        size: 0,
+      },
+      reactive: {
+        color: "bg-purple-500",
+        label: "Reactive",
+        icon: Zap,
+        files: [] as any[],
+        size: 0,
+      },
+      data: {
+        color: "bg-black",
+        label: "Data",
+        icon: Database,
+        files: [] as any[],
+        size: 0,
+      },
+    };
 
-  cloudFiles.forEach((f) => {
-    const type = f.metadata?.mimetype || "";
-    const size = f.metadata?.size || 0;
-    if (f.name.endsWith(".reactive")) {
-      categories.reactive.files.push(f);
-      categories.reactive.size += size;
-    } else if (type.startsWith("image/")) {
-      categories.image.files.push(f);
-      categories.image.size += size;
-    } else if (type.startsWith("audio/")) {
-      categories.audio.files.push(f);
-      categories.audio.size += size;
-    } else {
-      categories.text.files.push(f);
-      categories.text.size += size;
-    }
-  });
+    cloudFiles.forEach((f) => {
+      const type = f.metadata?.mimetype || "";
+      const size = f.metadata?.size || 0;
+      if (f.name.endsWith(".reactive")) {
+        cats.reactive.files.push(f);
+        cats.reactive.size += size;
+      } else if (type.startsWith("image/")) {
+        cats.image.files.push(f);
+        cats.image.size += size;
+      } else if (type.startsWith("audio/")) {
+        cats.audio.files.push(f);
+        cats.audio.size += size;
+      } else {
+        cats.text.files.push(f);
+        cats.text.size += size;
+      }
+    });
 
-  const totalDataSize = dbStats.reduce((acc, s) => acc + s.size, 0);
-  categories.data.size = totalDataSize;
-  categories.data.files = dbStats.map((s) => ({ name: s.name, size: s.size }));
+    const totalDataSize = dbStats.reduce((acc, s) => acc + s.size, 0);
+    cats.data.size = totalDataSize;
+    cats.data.files = dbStats.map((s) => ({ name: s.name, size: s.size }));
 
-  const totalAll = totalSize + totalDataSize;
+    return cats;
+  }, [cloudFiles, dbStats]);
+
+  const totalAll = totalSize + categories.data.size;
   const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024;
