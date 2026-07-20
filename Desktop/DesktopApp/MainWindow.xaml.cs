@@ -102,7 +102,7 @@ public partial class MainWindow : Window
 
         if (!isMainTabActive) return;
 
-        var (email, password) = LoadCredentials();
+        var (email, username, password) = LoadCredentials();
         if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password)) return;
 
         // Check current URL of the web view to see if it is the authentication page
@@ -115,6 +115,7 @@ public partial class MainWindow : Window
                 (function() {
                     function findAndFill() {
                         const emailInput = document.getElementById('email');
+                        const usernameInput = document.getElementById('username');
                         const passwordInput = document.getElementById('password');
 
                         if (!emailInput || !passwordInput) {
@@ -135,6 +136,18 @@ public partial class MainWindow : Window
                         } else {
                             emailInput.value = '{{email.Replace("'", "\\'")}}';
                             emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        // Fill username if input exists (e.g. on SignUp tab) and username is provided
+                        if (usernameInput && '{{username.Replace("'", "\\'")}}' !== '') {
+                            const usernameProto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+                            if (usernameProto && usernameProto.set) {
+                                usernameProto.set.call(usernameInput, '{{username.Replace("'", "\\'")}}');
+                                usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            } else {
+                                usernameInput.value = '{{username.Replace("'", "\\'")}}';
+                                usernameInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
                         }
 
                         // Fill password
@@ -180,10 +193,11 @@ public partial class MainWindow : Window
     {
         try
         {
-            var (email, password) = LoadCredentials();
+            var (email, username, password) = LoadCredentials();
             if (!string.IsNullOrEmpty(email))
             {
                 txtEmail.Text = email;
+                txtUsername.Text = username;
                 txtPassword.Password = password;
                 txtAuthStatus.Text = "Credentials are saved and will auto-login on Main tab.";
                 txtAuthStatus.Foreground = System.Windows.Media.Brushes.Green;
@@ -191,6 +205,7 @@ public partial class MainWindow : Window
             else
             {
                 txtEmail.Text = string.Empty;
+                txtUsername.Text = string.Empty;
                 txtPassword.Password = string.Empty;
                 txtAuthStatus.Text = "No saved credentials found.";
                 txtAuthStatus.Foreground = System.Windows.Media.Brushes.Gray;
@@ -203,13 +218,13 @@ public partial class MainWindow : Window
         }
     }
 
-    private (string email, string password) LoadCredentials()
+    private (string email, string username, string password) LoadCredentials()
     {
         try
         {
             if (!File.Exists(CredentialsFilePath))
             {
-                return (string.Empty, string.Empty);
+                return (string.Empty, string.Empty, string.Empty);
             }
 
             byte[] encryptedData = File.ReadAllBytes(CredentialsFilePath);
@@ -219,7 +234,7 @@ public partial class MainWindow : Window
             var creds = JsonSerializer.Deserialize<UserCreds>(json);
             if (creds != null)
             {
-                return (creds.Email ?? string.Empty, creds.Password ?? string.Empty);
+                return (creds.Email ?? string.Empty, creds.Username ?? string.Empty, creds.Password ?? string.Empty);
             }
         }
         catch
@@ -227,10 +242,10 @@ public partial class MainWindow : Window
             // Ignore decryption or file errors and return empty
         }
 
-        return (string.Empty, string.Empty);
+        return (string.Empty, string.Empty, string.Empty);
     }
 
-    private void SaveCredentials(string email, string password)
+    private void SaveCredentials(string email, string username, string password)
     {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
@@ -242,7 +257,7 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(AppDataFolder);
         }
 
-        var creds = new UserCreds { Email = email, Password = password };
+        var creds = new UserCreds { Email = email, Username = username, Password = password };
         string json = JsonSerializer.Serialize(creds);
         byte[] rawData = Encoding.UTF8.GetBytes(json);
         byte[] encryptedData = ProtectedData.Protect(rawData, null, DataProtectionScope.CurrentUser);
@@ -263,6 +278,7 @@ public partial class MainWindow : Window
         try
         {
             string email = txtEmail.Text.Trim();
+            string username = txtUsername.Text.Trim();
             string password = txtPassword.Password;
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
@@ -271,7 +287,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            SaveCredentials(email, password);
+            SaveCredentials(email, username, password);
             txtAuthStatus.Text = "Credentials saved securely!";
             txtAuthStatus.Foreground = System.Windows.Media.Brushes.Green;
 
@@ -294,6 +310,7 @@ public partial class MainWindow : Window
         {
             DeleteCredentials();
             txtEmail.Text = string.Empty;
+            txtUsername.Text = string.Empty;
             txtPassword.Password = string.Empty;
             txtAuthStatus.Text = "Credentials cleared.";
             txtAuthStatus.Foreground = System.Windows.Media.Brushes.Gray;
@@ -344,6 +361,7 @@ public partial class MainWindow : Window
     private class UserCreds
     {
         public string? Email { get; set; }
+        public string? Username { get; set; }
         public string? Password { get; set; }
     }
 }

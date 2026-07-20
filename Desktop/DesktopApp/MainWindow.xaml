@@ -79,6 +79,9 @@
                     <Label Content="Email Address" Margin="0,0,0,5"/>
                     <TextBox Name="txtEmail" Height="25" Margin="0,0,0,15" VerticalContentAlignment="Center"/>
 
+                    <Label Content="Username (Optional for Sign In, Required for Sign Up)" Margin="0,0,0,5"/>
+                    <TextBox Name="txtUsername" Height="25" Margin="0,0,0,15" VerticalContentAlignment="Center"/>
+
                     <Label Content="Password" Margin="0,0,0,5"/>
                     <PasswordBox Name="txtPassword" Height="25" Margin="0,0,0,20" VerticalContentAlignment="Center"/>
 
