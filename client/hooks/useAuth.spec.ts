@@ -26,6 +26,7 @@ vi.mock("@/lib/supabase", () => ({
       signOut: vi.fn(),
       signInWithOAuth: vi.fn(),
       linkIdentity: vi.fn(),
+      resetPasswordForEmail: vi.fn(),
     },
   },
 }));
@@ -190,6 +191,28 @@ describe("useAuth", () => {
         scopes: "email profile openid",
       },
     });
+  });
+
+  it("should handle password reset request", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: null },
+    });
+    (supabase.auth.resetPasswordForEmail as any).mockResolvedValue({
+      error: null,
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await result.current.resetPassword("test@example.com");
+    });
+
+    expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+      "test@example.com",
+      {
+        redirectTo: "http://localhost:3000/auth?type=recovery",
+      },
+    );
   });
 
   it("should handle errors", async () => {

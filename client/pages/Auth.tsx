@@ -5,12 +5,13 @@ import { isPasswordPwned } from "@/lib/hibp";
 import { supabase } from "@/lib/supabase";
 import { Mail, Lock, Loader2, Eye, EyeOff, Wand2 } from "lucide-react";
 
-type AuthMode = "signin" | "signup" | "recovery";
+type AuthMode = "signin" | "signup" | "recovery" | "forgot";
 
 export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session, loading, signUp, signIn, signInWithOAuth } = useAuth();
+  const { session, loading, signUp, signIn, resetPassword, signInWithOAuth } =
+    useAuth();
   const [mode, setMode] = useState<AuthMode>("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -101,6 +102,9 @@ export default function Auth() {
         if (recoveryError) throw recoveryError;
         setSuccessMessage("Password updated successfully!");
         setTimeout(() => setMode("signin"), 2000);
+      } else if (mode === "forgot") {
+        await resetPassword(email);
+        setSuccessMessage("Password reset email sent! Check your inbox.");
       }
     } catch (err: any) {
       setError(err.message);
@@ -140,7 +144,9 @@ export default function Auth() {
               ? "Welcome back"
               : mode === "signup"
                 ? "Create your account"
-                : "Set new password"}
+                : mode === "forgot"
+                  ? "Reset your password"
+                  : "Set new password"}
           </p>
         </div>
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl">
@@ -190,49 +196,68 @@ export default function Auth() {
               </div>
             )}
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                {mode === "recovery" ? "New Password" : "Password"}
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-500" />
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full pl-10 pr-12 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  title={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-400 transition"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
+            {mode !== "forgot" && (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-slate-300"
+                  >
+                    {mode === "recovery" ? "New Password" : "Password"}
+                  </label>
+                  {mode === "signin" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("forgot");
+                        setError(null);
+                        setSuccessMessage(null);
+                      }}
+                      className="text-xs text-cyan-400 hover:text-cyan-300 transition"
+                    >
+                      Forgot password?
+                    </button>
                   )}
-                </button>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-500" />
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full pl-10 pr-12 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    title={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-400 transition"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                {mode === "signup" && (
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="mt-2 w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    Generate & Copy Password
+                  </button>
+                )}
               </div>
-              {mode === "signup" && (
-                <button
-                  type="button"
-                  onClick={generatePassword}
-                  className="mt-2 w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
-                >
-                  <Wand2 className="w-4 h-4" />
-                  Generate & Copy Password
-                </button>
-              )}
-            </div>
+            )}
 
             {error && (
               <div className="p-3 bg-red-900/20 border border-red-800/50 rounded-lg">
@@ -260,6 +285,8 @@ export default function Auth() {
                 "Sign In"
               ) : mode === "signup" ? (
                 "Create Account"
+              ) : mode === "forgot" ? (
+                "Send Reset Link"
               ) : (
                 "Update Password"
               )}
