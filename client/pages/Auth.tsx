@@ -12,7 +12,10 @@ export default function Auth() {
   const location = useLocation();
   const { session, loading, signUp, signIn, resetPassword, signInWithOAuth } =
     useAuth();
-  const [mode, setMode] = useState<AuthMode>("signup");
+  const [mode, setMode] = useState<AuthMode>(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("type") === "recovery" ? "recovery" : "signup";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -51,7 +54,7 @@ export default function Auth() {
     );
   }
 
-  if (session) {
+  if (session && mode !== "recovery") {
     const from = (location.state as any)?.from?.pathname || "/apps";
     return <Navigate to={from} replace />;
   }
