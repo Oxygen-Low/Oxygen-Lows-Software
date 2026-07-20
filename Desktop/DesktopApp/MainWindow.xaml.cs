@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _updateManager = new UpdateManager();
+        txtCurrentVersion.Text = $"Current Version: {_updateManager.Version}";
         Loaded += MainWindow_Loaded;
     }
 
