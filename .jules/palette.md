@@ -7,3 +7,8 @@
 
 **Learning:** Icon-only buttons without `aria-label` or `title` attributes are completely inaccessible to screen readers and difficult for sighted users to identify. When adding ARIA attributes to toggle buttons (like "Shuffle"), it is important to include `aria-pressed` to communicate the active state to assistive technologies.
 **Action:** Always add `aria-label` and `title` to icon-only buttons. For stateful toggle buttons, implement `aria-pressed={state}` dynamically.
+
+## 2025-03-01 - Desktop App Dark Theme Implementation
+
+**Learning:** When styling desktop applications (like WPF) to a dark theme, simply changing the Window background is insufficient because descendant controls have hardcoded light backgrounds in their default OS templates. Additionally, setting a dark background without specifying an explicit high-contrast foreground can lead to completely unreadable text.
+**Action:** Define implicit, target-typed styles in the Window or Application Resources for standard controls (e.g., `TabControl`, `TabItem`, `TextBlock`, `Label`, `TextBox`, `PasswordBox`, `Button`) to enforce clean, readable dark backgrounds, light text, and subtle borders.
