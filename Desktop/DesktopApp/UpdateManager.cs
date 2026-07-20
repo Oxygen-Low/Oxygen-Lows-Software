@@ -14,6 +14,8 @@ namespace DesktopApp
         private const string GitHubApiUrl = "https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/releases/latest";
         private static readonly string CurrentVersion = GetCurrentVersion();
 
+        public string Version => CurrentVersion;
+
         private static string GetCurrentVersion()
         {
             try
