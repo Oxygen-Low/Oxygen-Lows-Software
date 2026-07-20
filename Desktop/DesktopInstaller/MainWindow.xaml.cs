@@ -85,6 +85,7 @@ public partial class MainWindow : Window
         pnlInstall.Visibility = Visibility.Collapsed;
         pnlManage.Visibility = Visibility.Collapsed;
         pnlStatus.Visibility = Visibility.Visible;
+        progressBar.Visibility = Visibility.Visible;
         txtStatus.Text = statusMessage;
 
         try
@@ -101,6 +102,7 @@ public partial class MainWindow : Window
             txtStatus.Text = $"Error: {ex.Message}";
         }
 
+        progressBar.Visibility = Visibility.Collapsed;
         btnClose.Visibility = Visibility.Visible;
     }
 

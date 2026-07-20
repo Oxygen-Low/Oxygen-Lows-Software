@@ -24,7 +24,7 @@
 
         <StackPanel Name="pnlStatus" Visibility="Collapsed" VerticalAlignment="Center">
             <TextBlock Name="txtStatus" Text="Working..." FontSize="16" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-            <ProgressBar IsIndeterminate="True" Height="20" Margin="0,0,0,20"/>
+            <ProgressBar Name="progressBar" IsIndeterminate="True" Height="20" Margin="0,0,0,20"/>
             <Button Name="btnClose" Content="Close" Padding="10,5" Width="100" HorizontalAlignment="Center" Click="BtnClose_Click" Visibility="Collapsed"/>
         </StackPanel>
     </Grid>
