@@ -52,17 +52,7 @@ export const Layout = ({ children }: LayoutProps) => {
             <h1 className={`${styles["logo"]} text-2xl font-bold`}>
               Oxygen Low's Software
             </h1>
-            <a
-              href="https://app.aikido.dev/audit-report/external/9aTbVrarere35IKvzS2R7mBe/request"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src="https://app.aikido.dev/assets/badges/label-only-dark-theme.svg"
-                alt="Aikido Security Audit Report"
-                height="40"
-              />
-            </a>
+
           </div>
           <div className="flex items-center gap-4">
             <span className={`${styles["user-email"]} text-sm`}>

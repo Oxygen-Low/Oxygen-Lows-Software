@@ -17,5 +17,5 @@ import { chromium } from "playwright";
   console.log(`Badge count on Auth page: ${badgeExists}`);
 
   await browser.close();
-  process.exit(badgeExists > 0 ? 0 : 1);
+  process.exit(badgeExists === 0 ? 0 : 1);
 })();
