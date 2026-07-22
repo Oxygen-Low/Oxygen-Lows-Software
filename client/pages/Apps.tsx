@@ -1,4 +1,3 @@
-import { OauthApp } from "@/components/apps/Oauth";
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import {
@@ -17,20 +16,12 @@ import {
   BrainCircuit,
   Box,
   Users,
-  ShieldCheck,
   Bot,
-  Monitor,
-  Search,
-  GitBranch,
-  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
-import { AiScreenshareApp } from "@/components/apps/AiScreenshare";
 import { ChatbotApp } from "@/components/apps/Chatbot";
-import { LlmModelFinderApp } from "@/components/apps/LlmModelFinder";
-import { RepositoriesApp } from "@/components/apps/Repositories";
-import { LearnApp } from "@/components/apps/Learn";
+
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
@@ -104,33 +95,7 @@ const apps: AppMetadata[] = [
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
   },
-  {
-    id: "ai-screenshare",
-    name: "AI Screenshare",
-    description:
-      "Let AI watch your screen and react to what you are doing in real-time.",
-    categories: ["All", "LLM/AI"],
-    icon: <Monitor className="w-8 h-8 text-cyan-500" />,
-    component: AiScreenshareApp,
-  },
-  {
-    id: "llm-model-finder",
-    name: "LLM Model Finder",
-    description:
-      "Find the best model capable of running on your hardware for different tasks.",
-    categories: ["All", "LLM/AI"],
-    icon: <Search className="w-8 h-8 text-cyan-500" />,
-    component: LlmModelFinderApp,
-  },
-  {
-    id: "repositories",
-    name: "Repositories",
-    description:
-      "Host git repositories with issues, pull requests, and web editing.",
-    categories: ["All", "Development"],
-    icon: <GitBranch className="w-8 h-8 text-cyan-500" />,
-    component: RepositoriesApp,
-  },
+
   {
     id: "file-compressor",
     name: "File Compressor",
@@ -138,23 +103,6 @@ const apps: AppMetadata[] = [
     categories: ["All", "Utility"],
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,
-  },
-  {
-    id: "oauth",
-    name: "OAuth",
-    description:
-      "Add OAuth to your applications via Oxygen Low's Software Accounts.",
-    categories: ["All", "Development"],
-    icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
-    component: OauthApp,
-  },
-  {
-    id: "learn",
-    name: "Learn",
-    description: "Master new skills through interactive courses and 3D models.",
-    categories: ["All", "Utility"],
-    icon: <BookOpen className="w-8 h-8 text-cyan-500" />,
-    component: LearnApp,
   },
 ];
 
