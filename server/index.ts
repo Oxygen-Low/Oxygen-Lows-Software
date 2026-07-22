@@ -73,6 +73,10 @@ export function createServer() {
   app.use(aikidoUserMiddleware);
   Zen.addExpressMiddleware(app);
 
+  app.get("/health", (_req, res) => {
+    res.status(200).send("OK");
+  });
+
   app.get("/api/ping", (_req, res) => {
     const ping = process.env.PING_MESSAGE ?? "ping";
     res.json({ message: ping });
