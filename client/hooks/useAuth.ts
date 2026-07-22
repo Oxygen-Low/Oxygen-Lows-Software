@@ -32,86 +32,8 @@ export const useAuth = () => {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, username: string) => {
-    try {
-      setError(null);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { username },
-        },
-      });
-      if (error) throw error;
-
-      // Initialize user preferences after signup
-      if (data.user?.id) {
-        try {
-          await supabase.rpc("upsert_user_preferences", {
-            p_user_id: data.user.id,
-          });
-        } catch (prefsError) {
-          console.error("Failed to initialize user preferences:", prefsError);
-          // Don't throw, as signup was successful
-        }
-      }
-
-      return data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Sign up failed";
-      setError(message);
-      throw err;
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      setError(null);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-      return data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Sign in failed";
-      setError(message);
-      throw err;
-    }
-  };
-
-  const resetPassword = async (email: string) => {
-    try {
-      setError(null);
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?type=recovery`,
-      });
-      if (error) throw error;
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Password reset failed";
-      setError(message);
-      throw err;
-    }
-  };
-
-  const signInWithMagicLink = async (email: string) => {
-    try {
-      setError(null);
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-      });
-      if (error) throw error;
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Magic link sign in failed";
-      setError(message);
-      throw err;
-    }
-  };
-
   const signInWithOAuth = async (
-    provider: "github" | "discord" | "gitlab" | "google",
+    provider: "google",
   ) => {
     try {
       setError(null);
@@ -119,12 +41,7 @@ export const useAuth = () => {
         provider,
         options: {
           redirectTo: window.location.origin,
-          scopes:
-            provider === "gitlab"
-              ? "read_user"
-              : provider === "google"
-                ? "email profile openid"
-                : undefined,
+          scopes: "email profile openid",
         },
       });
       if (error) throw error;
@@ -137,7 +54,7 @@ export const useAuth = () => {
   };
 
   const linkIdentity = async (
-    provider: "github" | "discord" | "gitlab" | "google",
+    provider: "google",
   ) => {
     try {
       setError(null);
@@ -145,12 +62,7 @@ export const useAuth = () => {
         provider,
         options: {
           redirectTo: `${window.location.origin}/account`,
-          scopes:
-            provider === "gitlab"
-              ? "read_user"
-              : provider === "google"
-                ? "email profile openid"
-                : undefined,
+          scopes: "email profile openid",
         },
       });
       if (error) throw error;
@@ -179,10 +91,6 @@ export const useAuth = () => {
     session,
     loading,
     error,
-    signUp,
-    signIn,
-    resetPassword,
-    signInWithMagicLink,
     signInWithOAuth,
     linkIdentity,
     signOut,

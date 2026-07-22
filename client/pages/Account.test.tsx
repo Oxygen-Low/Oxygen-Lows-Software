@@ -87,18 +87,12 @@ describe("Account Component", () => {
     });
   });
 
-  it("links identities correctly", async () => {
+  it("links google identity correctly", async () => {
     render(<Account />);
-    const githubBtn = await screen.findByText(/github/i);
-    fireEvent.click(githubBtn);
+    const googleBtn = await screen.findByText(/google/i);
+    fireEvent.click(googleBtn);
     await waitFor(() =>
-      expect(mockLinkIdentity).toHaveBeenCalledWith("github"),
-    );
-
-    const gitlabBtn = await screen.findByText(/gitlab/i);
-    fireEvent.click(gitlabBtn);
-    await waitFor(() =>
-      expect(mockLinkIdentity).toHaveBeenCalledWith("gitlab"),
+      expect(mockLinkIdentity).toHaveBeenCalledWith("google"),
     );
   });
 
