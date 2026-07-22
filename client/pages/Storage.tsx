@@ -40,7 +40,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Zap } from "lucide-react";
 
 export default function Storage() {
   const { session } = useAuth();
@@ -52,10 +51,6 @@ export default function Storage() {
   const [totalSize, setTotalSize] = useState(0);
   const [dbStats, setDbStats] = useState<any[]>([]);
   const cloudInputRef = useRef<HTMLInputElement>(null);
-  const [isReactiveDialogOpen, setIsReactiveDialogOpen] = useState(false);
-  const [reactiveSongName, setReactiveSongName] = useState("");
-  const [selectedAudioFiles, setSelectedAudioFiles] = useState<string[]>([]);
-  const [layerLevels, setLayerLevels] = useState<Record<string, number[]>>({});
 
   const fetchCloudFiles = async () => {
     if (!session?.user?.id) return;
@@ -148,61 +143,6 @@ export default function Storage() {
     }
   };
 
-  const handleCreateReactiveSong = async () => {
-    if (!reactiveSongName || selectedAudioFiles.length < 2) {
-      toast.error("Please provide a name and select at least 2 audio files");
-      return;
-    }
-
-    if (reactiveSongName.includes("..")) {
-      toast.error("Invalid reactive song name");
-      return;
-    }
-
-    const reactiveData = {
-      name: reactiveSongName,
-      isReactive: true,
-      layers: selectedAudioFiles.map((fileName) => ({
-        fileName: `${session.user.id}/${fileName}`,
-        levels: layerLevels[fileName] || [1],
-      })),
-    };
-
-    const blob = new Blob([JSON.stringify(reactiveData)], {
-      type: "application/json",
-    });
-    const file = new File([blob], `${reactiveSongName}.reactive`, {
-      type: "application/json",
-    });
-
-    try {
-      const { error } = await supabase.storage
-        .from("Storage")
-        .upload(`${session?.user?.id}/${file.name}`, file, { upsert: true });
-
-      if (error) throw error;
-      toast.success("Reactive song created!");
-      setIsReactiveDialogOpen(false);
-      setReactiveSongName("");
-      setSelectedAudioFiles([]);
-      setLayerLevels({});
-      fetchCloudFiles();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
-  const toggleLevel = (fileName: string, level: number) => {
-    setLayerLevels((prev) => {
-      const levels = prev[fileName] || [];
-      if (levels.includes(level)) {
-        return { ...prev, [fileName]: levels.filter((l) => l !== level) };
-      } else {
-        return { ...prev, [fileName]: [...levels, level].sort() };
-      }
-    });
-  };
-
   const deleteCloudFile = async (name: string) => {
     try {
       if (name.includes("..")) throw new Error("Invalid file name");
@@ -245,13 +185,6 @@ export default function Storage() {
         files: [] as any[],
         size: 0,
       },
-      reactive: {
-        color: "bg-purple-500",
-        label: "Reactive",
-        icon: Zap,
-        files: [] as any[],
-        size: 0,
-      },
       data: {
         color: "bg-black",
         label: "Data",
@@ -264,10 +197,7 @@ export default function Storage() {
     cloudFiles.forEach((f) => {
       const type = f.metadata?.mimetype || "";
       const size = f.metadata?.size || 0;
-      if (f.name.endsWith(".reactive")) {
-        cats.reactive.files.push(f);
-        cats.reactive.size += size;
-      } else if (type.startsWith("image/")) {
+      if (type.startsWith("image/")) {
         cats.image.files.push(f);
         cats.image.size += size;
       } else if (type.startsWith("audio/")) {
@@ -406,128 +336,6 @@ export default function Storage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Dialog
-                open={isReactiveDialogOpen}
-                onOpenChange={setIsReactiveDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="border-purple-500 text-purple-500 hover:bg-purple-500/10"
-                  >
-                    <Zap className="w-4 h-4 mr-2" />
-                    Create Reactive
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create Reactive Song</DialogTitle>
-                    <DialogDescription className="text-slate-400">
-                      Select 2-5 audio files and assign them to threat levels
-                      (1-5).
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Song Name</Label>
-                      <Input
-                        id="name"
-                        placeholder="My Epic Reactive Song"
-                        value={reactiveSongName}
-                        onChange={(e) => setReactiveSongName(e.target.value)}
-                        className="bg-slate-950 border-slate-800"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Select Audio Files (2-5)</Label>
-                      <div className="grid grid-cols-1 gap-2">
-                        {categories.audio.files.map((f) => (
-                          <div
-                            key={f.id}
-                            className="flex flex-col p-3 bg-slate-950 border border-slate-800 rounded-lg"
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  id={f.id}
-                                  checked={selectedAudioFiles.includes(f.name)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      if (selectedAudioFiles.length < 5) {
-                                        setSelectedAudioFiles([
-                                          ...selectedAudioFiles,
-                                          f.name,
-                                        ]);
-                                      } else {
-                                        toast.error("Max 5 layers allowed");
-                                      }
-                                    } else {
-                                      setSelectedAudioFiles(
-                                        selectedAudioFiles.filter(
-                                          (name) => name !== f.name,
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                />
-                                <Label
-                                  htmlFor={f.id}
-                                  className="cursor-pointer truncate max-w-[200px]"
-                                >
-                                  {f.name}
-                                </Label>
-                              </div>
-                            </div>
-                            {selectedAudioFiles.includes(f.name) && (
-                              <div className="flex items-center gap-4 ml-6 pt-2 border-t border-slate-800">
-                                <span className="text-xs text-slate-500 whitespace-nowrap">
-                                  Threat Levels:
-                                </span>
-                                <div className="flex gap-2">
-                                  {[1, 2, 3, 4, 5].map((level) => (
-                                    <button
-                                      key={level}
-                                      onClick={() => toggleLevel(f.name, level)}
-                                      aria-pressed={(
-                                        layerLevels[f.name] || []
-                                      ).includes(level)}
-                                      aria-label={`Toggle threat level ${level} for ${f.name}`}
-                                      className={cn(
-                                        "w-6 h-6 rounded text-[10px] flex items-center justify-center transition-colors",
-                                        (layerLevels[f.name] || []).includes(
-                                          level,
-                                        )
-                                          ? "bg-purple-600 text-white"
-                                          : "bg-slate-800 text-slate-400 hover:bg-slate-700",
-                                      )}
-                                    >
-                                      {level}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setIsReactiveDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreateReactiveSong}
-                      className="bg-purple-600 hover:bg-purple-700"
-                    >
-                      Create
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
               <Button
                 onClick={() => cloudInputRef.current?.click()}
                 disabled={uploading}
@@ -556,24 +364,7 @@ export default function Storage() {
                 className="bg-slate-950 border-slate-800 overflow-hidden group"
               >
                 <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
-                  {file.name.endsWith(".reactive") ? (
-                    <div className="flex flex-col items-center gap-2 p-4">
-                      <Zap className="w-12 h-12 text-purple-500" />
-                      <span className="text-xs text-slate-400">
-                        Reactive Song
-                      </span>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map((l) => (
-                          <div
-                            key={l}
-                            className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[8px] text-slate-500"
-                          >
-                            {l}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : file.metadata?.mimetype?.startsWith("image/") &&
+                  {file.metadata?.mimetype?.startsWith("image/") &&
                     cloudFileSignedUrls[file.id] ? (
                     <img
                       src={cloudFileSignedUrls[file.id]}

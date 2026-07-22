@@ -15,8 +15,6 @@ interface PlaylistTrack {
   id: string;
   name: string;
   fileName: string;
-  isReactive?: boolean;
-  layers?: Array<{ fileName: string; levels: number[] }>;
 }
 
 const THEMES = [
@@ -54,8 +52,6 @@ export default function Customize() {
     playTrack,
     shuffle,
     toggleShuffle,
-    threatLevel,
-    setThreatLevel,
   } = useMusicContext();
   const { session } = useAuth();
   const { toast } = useToast();
@@ -71,54 +67,6 @@ export default function Customize() {
           ?.replace(/\.[^/.]+$/, "") || track.name,
     };
 
-    if (track.name.endsWith(".reactive")) {
-      try {
-        const safeName = track.name.replace(/\.\.\//g, "");
-        const { data, error } = await supabase.storage
-          .from("Storage")
-          .download(`${session?.user?.id}/${safeName}`);
-
-        if (error) throw error;
-
-        if (data) {
-          const text = await data.text();
-          const reactiveData = JSON.parse(text);
-
-          if (!Array.isArray(reactiveData.layers)) {
-            throw new Error(
-              "Invalid reactive manifest: layers must be an array",
-            );
-          }
-
-          // Validate layers
-          reactiveData.layers.forEach((layer: any) => {
-            if (typeof layer.fileName !== "string")
-              throw new Error("Invalid layer filename");
-            if (!Array.isArray(layer.levels))
-              throw new Error("Invalid layer levels");
-            // Security: Restricted to current user's storage prefix implicitly by resolvePlaybackUrl,
-            // but we can enforce it doesn't have traversal
-            if (layer.fileName.includes(".."))
-              throw new Error("Invalid layer filename path");
-          });
-
-          finalTrack = {
-            ...finalTrack,
-            isReactive: true,
-            layers: reactiveData.layers,
-            name: reactiveData.name || finalTrack.name,
-          };
-        }
-      } catch (e: any) {
-        console.error("Failed to load reactive track data:", e);
-        toast({
-          title: "Error",
-          description: `Failed to load reactive track: ${e.message}`,
-          variant: "destructive",
-        });
-        return; // Abort
-      }
-    }
 
     const alreadyInPlaylist = playlist.some(
       (t) => t.fileName === finalTrack.fileName,
@@ -150,51 +98,6 @@ export default function Customize() {
       <div className="max-w-4xl">
         <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
 
-        {/* Threat Level Control (Visible if reactive track playing) */}
-        {currentTrack?.isReactive && (
-          <div className="mb-12 p-6 bg-card rounded-xl border border-purple-500/30 shadow-lg shadow-purple-500/5">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-purple-500/10 rounded-lg">
-                <Zap className="w-5 h-5 text-purple-500" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">
-                  Reactive Controls
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Adjust the current threat level
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-foreground">
-                  Current Threat Level: {threatLevel}
-                </span>
-              </div>
-              <div className="grid grid-cols-5 gap-4">
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <Button
-                    key={level}
-                    variant={threatLevel === level ? "default" : "outline"}
-                    className={cn(
-                      "h-12 text-lg font-bold",
-                      threatLevel === level &&
-                        "bg-purple-600 hover:bg-purple-700",
-                    )}
-                    onClick={() => setThreatLevel(level)}
-                  >
-                    {level}
-                  </Button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground italic text-center mt-4">
-                The music layers will instantly transition based on this level.
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* Theme Section */}
         <div className="mb-12">
@@ -356,11 +259,7 @@ export default function Customize() {
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        {track.isReactive ? (
-                          <Zap className="w-4 h-4 text-purple-500" />
-                        ) : (
-                          <Music className="w-4 h-4 text-primary" />
-                        )}
+                        <Music className="w-4 h-4 text-primary" />
                         <p className="font-medium text-foreground">
                           {track.name}
                         </p>
@@ -397,7 +296,7 @@ export default function Customize() {
               Add from Storage
             </h3>
             <StorageFileSelector
-              allowedExtensions={[".mp3", ".wav", ".ogg", ".reactive"]}
+              allowedExtensions={[".mp3", ".wav", ".ogg"]}
               onSelect={(file) => {
                 const track = {
                   id: file.id,
