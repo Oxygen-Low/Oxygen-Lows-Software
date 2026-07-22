@@ -12,3 +12,8 @@
 
 **Learning:** When styling desktop applications (like WPF) to a dark theme, simply changing the Window background is insufficient because descendant controls have hardcoded light backgrounds in their default OS templates. Additionally, setting a dark background without specifying an explicit high-contrast foreground can lead to completely unreadable text.
 **Action:** Define implicit, target-typed styles in the Window or Application Resources for standard controls (e.g., `TabControl`, `TabItem`, `TextBlock`, `Label`, `TextBox`, `PasswordBox`, `Button`) to enforce clean, readable dark backgrounds, light text, and subtle borders.
+
+## 2026-07-22 - [Explicit Focus States on Custom Button Lists]
+
+**Learning:** Custom lists of items implemented as buttons (e.g., repository lists, file selectors) in this application often lack explicit focus states, making keyboard navigation difficult to track for users relying on tab targeting.
+**Action:** Always append explicit focus-visible utility classes (like `focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none`) when constructing custom button lists to ensure consistent and obvious keyboard accessibility.

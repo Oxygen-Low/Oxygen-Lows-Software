@@ -163,7 +163,8 @@ export function GithubImportModal({
                   key={repo.id}
                   disabled={importing !== null}
                   onClick={() => importRepo(repo)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-900/50 hover:border-cyan-500/50 hover:bg-slate-900 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed group"
+                  aria-label={`Import repository ${repo.full_name}`}
+                  className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-900/50 hover:border-cyan-500/50 hover:bg-slate-900 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed group focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
                 >
                   <div className="flex items-center gap-3 overflow-hidden min-w-0">
                     <Book className="w-4 h-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
