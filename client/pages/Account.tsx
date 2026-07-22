@@ -652,25 +652,9 @@ export default function Account() {
                 variant="outline"
                 size="sm"
                 className="gap-2"
-                onClick={() => linkIdentity("github")}
-              >
-                <Share2 className="w-4 h-4" /> Link GitHub
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
                 onClick={() => linkIdentity("google")}
               >
                 <Globe className="w-4 h-4" /> Link Google
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => linkIdentity("gitlab")}
-              >
-                <Share2 className="w-4 h-4" /> Link GitLab
               </Button>
             </div>
           </div>
