@@ -71,4 +71,25 @@ describe("Auth Component", () => {
       expect(appsPage).toBeDefined();
     });
   });
+
+  it("returns to the validated desktop Apps URL after sign-in", async () => {
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "123", email: "test@example.com" } },
+      loading: false,
+      signInWithOAuth: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth?returnTo=%2Fapps%3Fdesktop%3D1"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/apps" element={<div>Desktop Apps Page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Desktop Apps Page")).toBeDefined();
+    });
+  });
 });

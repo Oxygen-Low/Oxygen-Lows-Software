@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import {
   Card,
@@ -26,11 +27,14 @@ import { ChatbotApp } from "@/components/apps/Chatbot";
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
+type Availability = "web-and-desktop" | "desktop-only";
+
 interface AppMetadata {
   id: string;
   name: string;
   description: string;
   categories: Category[];
+  availability: Availability;
   icon: React.ReactNode;
   component: React.ComponentType;
 }
@@ -92,6 +96,7 @@ const apps: AppMetadata[] = [
     description:
       "Chat with LLMs.",
     categories: ["All", "LLM/AI"],
+    availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
   },
@@ -101,36 +106,51 @@ const apps: AppMetadata[] = [
     name: "File Compressor",
     description: "Compress files to save storage space.",
     categories: ["All", "Utility"],
+    availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,
   },
 ];
 
 export default function Apps() {
+  const location = useLocation();
+  const isDesktopMode = new URLSearchParams(location.search).get("desktop") === "1";
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
+  const [selectedAvailability, setSelectedAvailability] =
+    useState<Availability>("web-and-desktop");
   const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
 
+  const availableApps = useMemo(
+    () =>
+      apps.filter(
+        (app) =>
+          app.availability ===
+          (isDesktopMode ? selectedAvailability : "web-and-desktop"),
+      ),
+    [isDesktopMode, selectedAvailability],
+  );
+
   const filteredApps = useMemo(() => {
-    if (selectedCategory === "All") return apps;
-    return apps.filter((app) => app.categories.includes(selectedCategory));
-  }, [selectedCategory, apps]);
+    if (selectedCategory === "All") return availableApps;
+    return availableApps.filter((app) => app.categories.includes(selectedCategory));
+  }, [selectedCategory, availableApps]);
 
   const categoryAppCounts = useMemo(() => {
     const counts: Record<Category, number> = {
-      All: apps.length,
+      All: availableApps.length,
       Utility: 0,
       "LLM/AI": 0,
       Development: 0,
       Social: 0,
       Games: 0,
     };
-    apps.forEach((app) => {
+    availableApps.forEach((app) => {
       app.categories.forEach((cat) => {
         if (cat !== "All") counts[cat]++;
       });
     });
     return counts;
-  }, [apps]);
+  }, [availableApps]);
 
   if (activeApp) {
     const AppComponent = activeApp.component;
@@ -165,12 +185,47 @@ export default function Apps() {
           </p>
         </div>
 
+        {isDesktopMode && (
+          <section aria-label="App availability" className="space-y-3">
+            <h3 className="text-xl font-semibold text-white">Availability</h3>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                aria-pressed={selectedAvailability === "web-and-desktop"}
+                onClick={() => setSelectedAvailability("web-and-desktop")}
+                className={cn(
+                  "rounded-lg border px-4 py-2 text-sm font-medium transition",
+                  selectedAvailability === "web-and-desktop"
+                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                    : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                )}
+              >
+                Web + desktop
+              </button>
+              <button
+                type="button"
+                aria-pressed={selectedAvailability === "desktop-only"}
+                onClick={() => setSelectedAvailability("desktop-only")}
+                className={cn(
+                  "rounded-lg border px-4 py-2 text-sm font-medium transition",
+                  selectedAvailability === "desktop-only"
+                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                    : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                )}
+              >
+                Desktop only
+              </button>
+            </div>
+          </section>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {CATEGORIES.map((cat) => {
             const hasApps = categoryAppCounts[cat.name] > 0;
             return (
               <Card
                 key={cat.name}
+                aria-label={`${cat.label} (${categoryAppCounts[cat.name]} apps)`}
                 className={cn(
                   "cursor-pointer transition-all border-slate-800 bg-slate-900/50 hover:bg-slate-900",
                   selectedCategory === cat.name &&
@@ -207,7 +262,7 @@ export default function Apps() {
 
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white">
-            {`${selectedCategory} Apps`}
+            {`${selectedCategory} ${isDesktopMode ? `${selectedAvailability === "desktop-only" ? "Desktop only" : "Web + desktop"} ` : ""}Apps`}
           </h3>
 
           {filteredApps.length > 0 ? (
@@ -234,7 +289,11 @@ export default function Apps() {
             </div>
           ) : (
             <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
-              <p className="text-slate-500">No apps found in this category.</p>
+              <p className="text-slate-500">
+                {isDesktopMode && selectedAvailability === "desktop-only"
+                  ? "No desktop-only apps are available yet."
+                  : "No apps found in this category."}
+              </p>
             </div>
           )}
         </div>

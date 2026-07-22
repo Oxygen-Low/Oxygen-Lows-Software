@@ -95,10 +95,15 @@
         </Style>
     </Window.Resources>
     <Grid>
-        <TabControl Name="tabMain">
-            <TabItem Header="Main">
+        <TabControl Name="tabMain" SelectionChanged="TabMain_SelectionChanged">
+            <TabItem Header="Web">
                 <Border Name="webViewContainer" Background="#1E1E1E">
                     <TextBlock Name="txtLoading" Text="Loading..." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+                </Border>
+            </TabItem>
+            <TabItem Name="appsTab" Header="Apps">
+                <Border Name="appsWebViewContainer" Background="#1E1E1E">
+                    <TextBlock Name="txtAppsLoading" Text="Open Apps to sign in and access the desktop catalogue." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" TextWrapping="Wrap" TextAlignment="Center" Margin="40"/>
                 </Border>
             </TabItem>
             <TabItem Header="Update">

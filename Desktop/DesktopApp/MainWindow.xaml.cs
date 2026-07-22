@@ -21,7 +21,9 @@ public partial class MainWindow : Window
     private const string OAuthCallbackUrl = "http://127.0.0.1:53682/oauth/callback/";
     private readonly UpdateManager _updateManager;
     private WebView2? _webView;
-    private string _targetUrl = "https://oxygen-lows-software.onrender.com/auth";
+    private WebView2? _appsWebView;
+    private CoreWebView2Environment? _webViewEnvironment;
+    private string _targetUrl = "https://oxygen-lows-software.onrender.com";
     private CancellationTokenSource? _oauthCancellation;
 
     public MainWindow()
@@ -52,14 +54,20 @@ public partial class MainWindow : Window
                 // Fallback to render URL — already set as default
             }
 
-            // Create WebView2 programmatically
+            _webViewEnvironment = await CreateSharedWebViewEnvironmentAsync();
+
+            // Create the ordinary website view. The Apps tab is created on first use.
             _webView = new WebView2();
             webViewContainer.Child = _webView;
             txtLoading.Visibility = Visibility.Collapsed;
 
-            await _webView.EnsureCoreWebView2Async(null);
-            _webView.CoreWebView2.NavigationStarting += WebView_NavigationStarting;
+            await InitializeWebViewAsync(_webView);
             _webView.CoreWebView2.Navigate(_targetUrl);
+
+            if (appsTab.IsSelected)
+            {
+                await EnsureAppsWebViewAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -72,12 +80,54 @@ public partial class MainWindow : Window
         _oauthCancellation?.Cancel();
     }
 
-    private void WebView_NavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+    private async void TabMain_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source != tabMain || !appsTab.IsSelected) return;
+        await EnsureAppsWebViewAsync();
+    }
+
+    private async Task EnsureAppsWebViewAsync()
+    {
+        if (_appsWebView is not null || _webViewEnvironment is null) return;
+
+        try
+        {
+            _appsWebView = new WebView2();
+            appsWebViewContainer.Child = _appsWebView;
+            txtAppsLoading.Visibility = Visibility.Collapsed;
+
+            await InitializeWebViewAsync(_appsWebView);
+            _appsWebView.CoreWebView2.Navigate(new Uri(new Uri(_targetUrl), "/apps?desktop=1").AbsoluteUri);
+        }
+        catch (Exception ex)
+        {
+            txtAppsLoading.Text = $"Could not load Apps:\n{ex.Message}";
+            txtAppsLoading.Visibility = Visibility.Visible;
+        }
+    }
+
+    private async Task<CoreWebView2Environment> CreateSharedWebViewEnvironmentAsync()
+    {
+        var userDataFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "OxygenLowsSoftware",
+            "WebView2");
+        Directory.CreateDirectory(userDataFolder);
+        return await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+    }
+
+    private async Task InitializeWebViewAsync(WebView2 webView)
+    {
+        await webView.EnsureCoreWebView2Async(_webViewEnvironment);
+        webView.CoreWebView2.NavigationStarting += (_, e) => WebView_NavigationStarting(webView, e);
+    }
+
+    private void WebView_NavigationStarting(WebView2 sourceWebView, CoreWebView2NavigationStartingEventArgs e)
     {
         if (!IsGoogleOAuthRequest(e.Uri)) return;
 
         e.Cancel = true;
-        _ = ContinueGoogleSignInInBrowserAsync(new Uri(e.Uri));
+        _ = ContinueGoogleSignInInBrowserAsync(sourceWebView, new Uri(e.Uri));
     }
 
     private static bool IsGoogleOAuthRequest(string url)
@@ -92,21 +142,22 @@ public partial class MainWindow : Window
         return string.Equals(GetQueryParameter(uri, "provider"), "google", StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task ContinueGoogleSignInInBrowserAsync(Uri authorizationUri)
+    private async Task ContinueGoogleSignInInBrowserAsync(WebView2 sourceWebView, Uri authorizationUri)
     {
         _oauthCancellation?.Cancel();
         _oauthCancellation?.Dispose();
         _oauthCancellation = new CancellationTokenSource();
         var cancellationToken = _oauthCancellation.Token;
 
-        var returnUrl = GetQueryParameter(authorizationUri, "redirect_to");
-        if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var callbackReturnUri))
-        {
-            callbackReturnUri = new Uri(_targetUrl);
-        }
-
         try
         {
+            var returnUrl = GetQueryParameter(authorizationUri, "redirect_to");
+            if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var callbackReturnUri) ||
+                !IsAllowedReturnUri(callbackReturnUri))
+            {
+                throw new InvalidOperationException("Google sign in returned an untrusted application redirect URL.");
+            }
+
             using var listener = new HttpListener();
             listener.Prefixes.Add(OAuthCallbackUrl);
             listener.Start();
@@ -143,7 +194,7 @@ public partial class MainWindow : Window
             }
 
             await Dispatcher.InvokeAsync(() =>
-                _webView?.CoreWebView2.Navigate(AddQueryParameter(callbackReturnUri, "code", code).AbsoluteUri));
+                sourceWebView.CoreWebView2.Navigate(AddQueryParameter(callbackReturnUri, "code", code).AbsoluteUri));
         }
         catch (HttpListenerException) when (cancellationToken.IsCancellationRequested)
         {
@@ -162,6 +213,14 @@ public partial class MainWindow : Window
                     MessageBoxButton.OK,
                     MessageBoxImage.Error));
         }
+    }
+
+    private bool IsAllowedReturnUri(Uri returnUri)
+    {
+        var targetUri = new Uri(_targetUrl);
+        return string.Equals(returnUri.Scheme, targetUri.Scheme, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(returnUri.Host, targetUri.Host, StringComparison.OrdinalIgnoreCase) &&
+               returnUri.Port == targetUri.Port;
     }
 
     private static async Task WriteOAuthResponseAsync(HttpListenerResponse response, bool isError, string? error)

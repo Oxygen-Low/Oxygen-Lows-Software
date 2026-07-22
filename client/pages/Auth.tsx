@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
 export default function Auth() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { session, loading, signInWithOAuth } = useAuth();
   const [error, setError] = useState<string | null>(null);
+
+  const requestedReturnTo = new URLSearchParams(location.search).get("returnTo");
+  const returnTo = getSafeReturnPath(requestedReturnTo);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -35,8 +37,7 @@ export default function Auth() {
   }
 
   if (session) {
-    const from = (location.state as any)?.from?.pathname || "/apps";
-    return <Navigate to={from} replace />;
+    return <Navigate to={returnTo} replace />;
   }
 
   return (
@@ -60,7 +61,12 @@ export default function Auth() {
           <div className="space-y-3">
             <button
               type="button"
-              onClick={() => signInWithOAuth("google")}
+              onClick={() =>
+                signInWithOAuth(
+                  "google",
+                  `${window.location.origin}/auth?returnTo=${encodeURIComponent(returnTo)}`,
+                )
+              }
               className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2"
             >
               Sign in with Google
@@ -70,4 +76,19 @@ export default function Auth() {
       </div>
     </div>
   );
+}
+
+/** Only allow same-origin, in-app paths to survive an OAuth round trip. */
+export function getSafeReturnPath(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/apps";
+  }
+
+  try {
+    const target = new URL(value, window.location.origin);
+    if (target.origin !== window.location.origin) return "/apps";
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return "/apps";
+  }
 }
