@@ -90,7 +90,7 @@ const apps: AppMetadata[] = [
     id: "chatbot",
     name: "Chatbot",
     description:
-      "Chat with state-of-the-art LLMs with memory and custom styles.",
+      "Chat with LLMs.",
     categories: ["All", "LLM/AI"],
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
@@ -99,7 +99,7 @@ const apps: AppMetadata[] = [
   {
     id: "file-compressor",
     name: "File Compressor",
-    description: "Compress images to save storage space.",
+    description: "Compress files to save storage space.",
     categories: ["All", "Utility"],
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,

@@ -851,9 +851,8 @@ export default function Account() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Encryption happens locally using AES-GCM. Your masterkey is
-                    never sent to our servers. If you lose your masterkey, your
-                    encrypted data will be lost forever.
+                    If you lose your masterkey, your encrypted data will be lost
+                    forever.
                   </p>
                 </div>
 

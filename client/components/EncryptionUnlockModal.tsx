@@ -87,10 +87,6 @@ export const EncryptionUnlockModal = ({
             <Lock className="w-5 h-5 text-cyan-500" />
             Unlock Encrypted Content
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
-            Enter your masterkey to access your encrypted data. This key is
-            never stored on our servers.
-          </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
           <Input
