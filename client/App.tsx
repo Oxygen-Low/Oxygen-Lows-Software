@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { MusicProvider } from "@/contexts/MusicContext";
 import Auth from "./pages/Auth";
 import Apps from "./pages/Apps";
 import Friends from "./pages/Friends";
@@ -26,6 +27,7 @@ const App = () => (
     <TooltipProvider>
       <ThemeProvider>
         <BrowserRouter>
+          <MusicProvider>
             <Toaster />
             <Sonner />
             <Routes>
@@ -98,6 +100,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+          </MusicProvider>
         </BrowserRouter>
       </ThemeProvider>
     </TooltipProvider>

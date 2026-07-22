@@ -360,23 +360,18 @@
   /* Font Classes */
   .font-indie {
     --font-family: "Indie Flower";
-    font-family: var(--font-sans);
   }
   .font-zilla {
     --font-family: "Zilla Slab";
-    font-family: var(--font-sans);
   }
   .font-vt323 {
     --font-family: "VT323";
-    font-family: var(--font-sans);
   }
   .font-cabin {
     --font-family: "Cabin Sketch";
-    font-family: var(--font-sans);
   }
   .font-londrina {
     --font-family: "Londrina Sketch";
-    font-family: var(--font-sans);
   }
 }
 
