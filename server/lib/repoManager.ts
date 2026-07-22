@@ -8,8 +8,8 @@ import crypto from "crypto";
 const REPOS_DATA_DIR =
   process.env.REPOS_DATA_DIR || path.join(os.tmpdir(), "oxygen-repos");
 const IDLE_TIMEOUT = 10 * 60 * 1000;
-const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const supabaseUrl = process.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY as string;
 const GIT_BINARY = process.env.GIT_PATH || "git";
 
 interface LoadedRepo {

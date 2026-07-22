@@ -3,8 +3,8 @@ import Zen from "@aikidosec/firewall";
 import { createClient } from "@supabase/supabase-js";
 import { getAuthorProfile } from "./supabase";
 
-const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const supabaseUrl = process.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY as string;
 
 export async function aikidoUserMiddleware(
   req: Request,
