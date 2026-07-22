@@ -5,7 +5,6 @@ import {
   Lock,
   Upload,
   Share2,
-  Globe,
   Cpu,
   Key,
   Plus,
@@ -78,7 +77,7 @@ const PROVIDERS = [
 ];
 
 export default function Account() {
-  const { session, linkIdentity } = useAuth();
+  const { session } = useAuth();
   const { toast } = useToast();
   const [profilePicture, setProfilePicture] = useState<ProfilePicture | null>(
     null,
@@ -92,7 +91,6 @@ export default function Account() {
   );
   const [fitImage, setFitImage] = useState(false);
 
-  const [identities, setIdentities] = useState<any[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
   const [displayNameInput, setDisplayNameInput] = useState("");
@@ -134,8 +132,6 @@ export default function Account() {
       setDisplayNameInput(prof.display_name || "");
       setBioInput(prof.bio || "");
     }
-    const { data: idents } = await supabase.auth.getUser();
-    if (idents.user) setIdentities(idents.user.identities || []);
     const { data: ints } = await supabase.rpc("get_my_integrations");
     const { data: prefs } = await supabase
       .from("user_preferences")
@@ -638,24 +634,6 @@ export default function Account() {
               <h1 className="text-3xl font-bold text-white">
                 {profile?.display_name || profile?.username || "Your Account"}
               </h1>
-              {identities.map((id) => (
-                <div
-                  key={id.id}
-                  className="px-3 py-1 rounded-full bg-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-widest border border-slate-700"
-                >
-                  {id.provider}
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => linkIdentity("google")}
-              >
-                <Globe className="w-4 h-4" /> Link Google
-              </Button>
             </div>
           </div>
         </div>
