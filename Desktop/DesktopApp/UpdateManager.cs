@@ -73,8 +73,8 @@ namespace DesktopApp
 
         private static bool IsNewerVersion(string latestVersion, string currentVersion)
         {
-            return Version.TryParse(latestVersion, out var latest) &&
-                   Version.TryParse(currentVersion, out var current) &&
+            return System.Version.TryParse(latestVersion, out var latest) &&
+                   System.Version.TryParse(currentVersion, out var current) &&
                    latest > current;
         }
 
