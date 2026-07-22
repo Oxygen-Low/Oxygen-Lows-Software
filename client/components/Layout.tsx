@@ -11,7 +11,6 @@ import {
   Contact,
 } from "lucide-react";
 import styles from "./Layout.module.css";
-import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
 import { PointsDisplay } from "./PointsDisplay";
 
 interface LayoutProps {
@@ -91,8 +90,6 @@ export const Layout = ({ children }: LayoutProps) => {
               );
             })}
           </nav>
-
-          <SidebarMusicPlayer />
         </aside>
 
         {/* Content Area */}
