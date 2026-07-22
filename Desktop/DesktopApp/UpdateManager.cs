@@ -36,7 +36,7 @@ namespace DesktopApp
         {
             try
             {
-                using var client = new HttpClient();
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
                 client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("DesktopApp", CurrentVersion));
                 
                 var response = await client.GetStringAsync(GitHubApiUrl);
@@ -46,7 +46,7 @@ namespace DesktopApp
                 if (!root.TryGetProperty("tag_name", out var tagElement)) return (false, null, null);
                 
                 var latestVersion = tagElement.GetString()?.TrimStart('v');
-                if (latestVersion == null || latestVersion == CurrentVersion) return (false, null, null);
+                if (latestVersion == null || !IsNewerVersion(latestVersion, CurrentVersion)) return (false, null, null);
 
                 if (!root.TryGetProperty("assets", out var assetsElement)) return (false, null, null);
                 
@@ -71,11 +71,18 @@ namespace DesktopApp
             }
         }
 
+        private static bool IsNewerVersion(string latestVersion, string currentVersion)
+        {
+            return Version.TryParse(latestVersion, out var latest) &&
+                   Version.TryParse(currentVersion, out var current) &&
+                   latest > current;
+        }
+
         public async Task DownloadAndRunInstallerAsync(string downloadUrl, Action<int>? progressCallback = null)
         {
             var tempFile = Path.Combine(Path.GetTempPath(), "DesktopInstaller.exe");
             
-            using var client = new HttpClient();
+            using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
             using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
             
