@@ -35,3 +35,4 @@ uploads
 app.zip
 DesktopAppOut/
 DesktopInstallerOut/
+/.pnpm-store
