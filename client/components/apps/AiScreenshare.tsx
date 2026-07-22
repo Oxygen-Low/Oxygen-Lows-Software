@@ -32,6 +32,59 @@ interface Style {
   description: string;
 }
 
+/**
+ * ⚡ Bolt Performance Optimization:
+ * Extracting the individual chat message rendering into a `React.memo` wrapped component.
+ * This prevents the extremely expensive re-renders of `ReactMarkdown` and `SyntaxHighlighter`
+ * for the entire chat history on every single token received during a streaming response.
+ */
+
+const memoizedMarkdownComponents = {
+  code({ node, inline, className, children, ...props }: any) {
+    const match = /language-(\w+)/.exec(className || "");
+    return !inline && match ? (
+      <SyntaxHighlighter
+        style={vscDarkPlus as any}
+        language={match[1]}
+        PreTag="div"
+        {...props}
+      >
+        {String(children).replace(/\n$/, "")}
+      </SyntaxHighlighter>
+    ) : (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+};
+
+const ChatMessage = React.memo(({ message: m }: { message: Message }) => {
+  return (
+    <div
+      className={cn(
+        "flex gap-4 max-w-[85%]",
+        m.role === "user" ? "ml-auto flex-row-reverse hidden" : "",
+      )}
+    >
+      <div
+        className={cn(
+          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-800",
+        )}
+      >
+        <Bot className="w-4 h-4 text-cyan-400" />
+      </div>
+      <div className="flex flex-col gap-2 flex-1 min-w-0">
+        <div className="p-4 rounded-2xl text-sm bg-slate-900 border border-slate-800 text-slate-200">
+          <ReactMarkdown components={memoizedMarkdownComponents}>
+            {typeof m.content === "string" ? m.content : "Capturing screen..."}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export function AiScreenshareApp() {
   const { session } = useAuth();
   const { models, selectedModel, selectedProvider, setSelection } =
@@ -365,56 +418,7 @@ export function AiScreenshareApp() {
               </div>
             )}
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex gap-4 max-w-[85%]",
-                  m.role === "user" ? "ml-auto flex-row-reverse hidden" : "",
-                )}
-              >
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-800",
-                  )}
-                >
-                  <Bot className="w-4 h-4 text-cyan-400" />
-                </div>
-                <div className="flex flex-col gap-2 flex-1 min-w-0">
-                  <div className="p-4 rounded-2xl text-sm bg-slate-900 border border-slate-800 text-slate-200">
-                    <ReactMarkdown
-                      components={{
-                        code({
-                          node,
-                          inline,
-                          className,
-                          children,
-                          ...props
-                        }: any) {
-                          const match = /language-(\w+)/.exec(className || "");
-                          return !inline && match ? (
-                            <SyntaxHighlighter
-                              style={vscDarkPlus}
-                              language={match[1]}
-                              PreTag="div"
-                              {...props}
-                            >
-                              {String(children).replace(/\n$/, "")}
-                            </SyntaxHighlighter>
-                          ) : (
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
-                      {typeof m.content === "string"
-                        ? m.content
-                        : "Capturing screen..."}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              </div>
+              <ChatMessage key={i} message={m} />
             ))}
             {isTyping && (
               <div className="flex gap-4">
