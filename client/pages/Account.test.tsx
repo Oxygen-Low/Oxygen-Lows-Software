@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import Account from "./Account";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -78,22 +78,17 @@ vi.mock("@/components/ui/tabs", () => ({
 }));
 
 describe("Account Component", () => {
-  const mockLinkIdentity = vi.fn();
   beforeEach(() => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
       session: { user: { id: "u", email: "e@e.com" } },
-      linkIdentity: mockLinkIdentity,
     });
   });
 
-  it("links google identity correctly", async () => {
+  it("renders Gemini/Google integration card in integrations tab", async () => {
     render(<Account />);
-    const googleBtn = await screen.findByText(/google/i);
-    fireEvent.click(googleBtn);
-    await waitFor(() =>
-      expect(mockLinkIdentity).toHaveBeenCalledWith("google"),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Integrations" }));
+    await screen.findByRole("heading", { name: "Gemini/Google" });
   });
 
   it("renders with correct header", async () => {
