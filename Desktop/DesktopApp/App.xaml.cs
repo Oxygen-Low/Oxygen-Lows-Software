@@ -6,12 +6,36 @@ namespace DesktopApp;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         
         DispatcherUnhandledException += App_DispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+        // Keep the dispatcher alive while the update check runs before a window exists.
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+        try
+        {
+            var updateManager = new UpdateManager();
+            var (hasUpdate, downloadUrl, _) = await updateManager.CheckForUpdatesAsync();
+
+            if (hasUpdate && !string.IsNullOrWhiteSpace(downloadUrl))
+            {
+                await updateManager.DownloadAndRunInstallerAsync(downloadUrl);
+                return;
+            }
+        }
+        catch
+        {
+            // An unavailable update service must not prevent the application from starting.
+        }
+
+        var mainWindow = new MainWindow();
+        MainWindow = mainWindow;
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
+        mainWindow.Show();
     }
 
     private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

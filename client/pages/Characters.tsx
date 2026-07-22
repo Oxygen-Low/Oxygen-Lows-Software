@@ -298,7 +298,6 @@ export default function Characters() {
               My Characters
             </h1>
             <p className="text-slate-400 mt-1">
-              Create and manage your AI personas.
               {isEncryptionEnabled && (
                 <span className="ml-2 text-cyan-400 inline-flex items-center gap-1">
                   <Lock className="w-3 h-3" /> Encrypted

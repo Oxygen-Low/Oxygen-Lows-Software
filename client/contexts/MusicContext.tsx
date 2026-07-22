@@ -14,8 +14,6 @@ export interface PlaylistTrack {
   name: string;
   artist?: string;
   fileName: string;
-  isReactive?: boolean;
-  layers?: Array<{ fileName: string; levels: number[] }>;
 }
 
 interface MusicContextType {
@@ -37,8 +35,6 @@ interface MusicContextType {
   addTrack: (track: PlaylistTrack) => Promise<void>;
   removeTrack: (trackFileName: string) => Promise<void>;
   toggleShuffle: (shuffle: boolean) => Promise<void>;
-  threatLevel: number;
-  setThreatLevel: (level: number) => void;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
@@ -55,10 +51,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isPlaying, setIsPlayingState] = useState(false);
   const [shuffle, setShuffleState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [threatLevel, setThreatLevel] = useState(1);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const reactiveAudiosRef = useRef<HTMLAudioElement[]>([]);
   const playlistRef = useRef<PlaylistTrack[]>([]);
   const currentTrackRef = useRef<PlaylistTrack | null>(null);
   const isPlayingRef = useRef(false);
@@ -191,26 +185,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     loadMusicPreferences();
   }, [session?.user?.id, resolvePlaybackUrl]);
 
-  const handleReactiveTimeUpdate = useCallback(() => {
-    if (reactiveAudiosRef.current.length > 0) {
-      const pos = reactiveAudiosRef.current[0].currentTime * 1000;
-      setCurrentPositionState(pos);
-      currentPositionRef.current = pos;
-    }
-  }, []);
-
-  const applyThreatMuting = useCallback(
-    (track: PlaylistTrack, audios: HTMLAudioElement[], level: number) => {
-      if (!track.isReactive || !track.layers) return;
-      track.layers.forEach((layer, index) => {
-        const audio = audios[index];
-        if (audio) {
-          audio.muted = !layer.levels.includes(level);
-        }
-      });
-    },
-    [],
-  );
 
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
@@ -229,81 +203,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       // Stop all current audio
       audioRef.current.pause();
       audioRef.current.src = "";
-      reactiveAudiosRef.current.forEach((a) => {
-        a.pause();
-        a.src = "";
-      });
-      reactiveAudiosRef.current = [];
 
-      if (track.isReactive && track.layers) {
-        // Resolve all URLs in parallel
-        const urls = await Promise.all(
-          track.layers.map((l) => resolvePlaybackUrl(l.fileName)),
-        );
+      const url = await resolvePlaybackUrl(track.fileName);
+      if (currentToken !== playTokenRef.current) return;
 
-        if (currentToken !== playTokenRef.current) {
-          return;
-        }
-
-        const audios: HTMLAudioElement[] = [];
-        urls.forEach((url, index) => {
-          if (url) {
-            const audio = new Audio(url);
-            audio.crossOrigin = "anonymous";
-            audio.loop = false;
-            audios.push(audio);
-          } else {
-            console.error(
-              `Failed to resolve layer ${index} for reactive track`,
-            );
-            // Add a placeholder audio to maintain index alignment
-            const placeholder = new Audio();
-            audios.push(placeholder);
-          }
-        });
-
-        if (audios.every((a) => !a.src)) {
-          console.error("All layers failed to resolve.");
-          toast.error("Failed to load reactive track layers.");
-          return;
-        }
-
-        reactiveAudiosRef.current = audios;
-        applyThreatMuting(track, audios, threatLevel);
-
-        if (audios.length > 0) {
-          const firstValid = audios.find((a) => a.src);
-          if (firstValid) {
-            firstValid.addEventListener("ended", () => playNextRef.current?.());
-            firstValid.addEventListener("timeupdate", handleReactiveTimeUpdate);
-          }
-
-          try {
-            await Promise.all(
-              audios.map((a) => (a.src ? a.play() : Promise.resolve())),
-            );
-            setIsPlayingState(true);
-          } catch (e) {
-            console.error("Failed to play reactive layers:", e);
-          }
-        }
-      } else {
-        const url = await resolvePlaybackUrl(track.fileName);
-        if (currentToken !== playTokenRef.current) return;
-
-        if (!url) {
-          console.error(`Failed to resolve URL for track: ${track.fileName}`);
-          return;
-        }
-        audioRef.current.src = url;
-        audioRef.current.currentTime = 0;
-        try {
-          await audioRef.current.play();
-          setIsPlayingState(true);
-        } catch (error) {
-          console.error(`Failed to play track ${track.name}:`, error);
-          setIsPlayingState(false);
-        }
+      if (!url) {
+        console.error(`Failed to resolve URL for track: ${track.fileName}`);
+        return;
+      }
+      audioRef.current.src = url;
+      audioRef.current.currentTime = 0;
+      try {
+        await audioRef.current.play();
+        setIsPlayingState(true);
+      } catch (error) {
+        console.error(`Failed to play track ${track.name}:`, error);
+        setIsPlayingState(false);
       }
 
       savePreferences({
@@ -315,9 +230,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     [
       resolvePlaybackUrl,
       savePreferences,
-      handleReactiveTimeUpdate,
-      applyThreatMuting,
-      threatLevel,
     ],
   );
 
@@ -384,22 +296,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => clearInterval(interval);
   }, [isPlaying, session?.user?.id, savePreferences]);
 
-  useEffect(() => {
-    if (currentTrack?.isReactive && reactiveAudiosRef.current.length) {
-      applyThreatMuting(currentTrack, reactiveAudiosRef.current, threatLevel);
-    }
-  }, [threatLevel, currentTrack, applyThreatMuting]);
 
   const play = useCallback(async () => {
     if (!currentTrack) return;
     try {
-      if (currentTrack.isReactive) {
-        await Promise.all(
-          reactiveAudiosRef.current.map((a) =>
-            a.src ? a.play() : Promise.resolve(),
-          ),
-        );
-      } else if (audioRef.current) {
+      if (audioRef.current) {
         await audioRef.current.play();
       }
       setIsPlayingState(true);
@@ -409,9 +310,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [currentTrack]);
 
   const pause = useCallback(() => {
-    if (currentTrack?.isReactive) {
-      reactiveAudiosRef.current.forEach((a) => a.pause());
-    } else if (audioRef.current) {
+    if (audioRef.current) {
       audioRef.current.pause();
     }
     setIsPlayingState(false);
@@ -531,8 +430,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         addTrack,
         removeTrack,
         toggleShuffle,
-        threatLevel,
-        setThreatLevel,
       }}
     >
       <audio ref={audioRef} crossOrigin="anonymous" />

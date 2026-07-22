@@ -21,12 +21,9 @@ vi.mock("@/lib/supabase", () => ({
     auth: {
       getSession: vi.fn(),
       onAuthStateChange: vi.fn(),
-      signInWithPassword: vi.fn(),
-      signUp: vi.fn(),
       signOut: vi.fn(),
       signInWithOAuth: vi.fn(),
       linkIdentity: vi.fn(),
-      resetPasswordForEmail: vi.fn(),
     },
   },
 }));
@@ -59,29 +56,6 @@ describe("useAuth", () => {
     expect(supabase.auth.getSession).toHaveBeenCalled();
   });
 
-  it("should handle sign in", async () => {
-    const mockSession = { user: { id: "123" } };
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: null },
-    });
-    (supabase.auth.signInWithPassword as any).mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    });
-
-    const { result } = renderHook(() => useAuth());
-
-    await act(async () => {
-      const data = await result.current.signIn("test@example.com", "password");
-      expect(data.session).toEqual(mockSession);
-    });
-
-    expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
-      email: "test@example.com",
-      password: "password",
-    });
-  });
-
   it("should handle sign out", async () => {
     (supabase.auth.getSession as any).mockResolvedValue({
       data: { session: { user: { id: "123" } } },
@@ -97,74 +71,26 @@ describe("useAuth", () => {
     expect(supabase.auth.signOut).toHaveBeenCalled();
   });
 
-  it("should handle OAuth sign in", async () => {
+  it("should handle Google OAuth sign in", async () => {
     (supabase.auth.getSession as any).mockResolvedValue({
       data: { session: null },
     });
     (supabase.auth.signInWithOAuth as any).mockResolvedValue({
-      data: { provider: "github", url: "http://localhost" },
+      data: { provider: "google", url: "http://localhost" },
       error: null,
     });
 
     const { result } = renderHook(() => useAuth());
 
     await act(async () => {
-      await result.current.signInWithOAuth("github");
+      await result.current.signInWithOAuth("google");
     });
 
     expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
-      provider: "github",
+      provider: "google",
       options: {
         redirectTo: "http://localhost:3000",
-        scopes: undefined,
-      },
-    });
-  });
-
-  it("should handle GitLab OAuth sign in", async () => {
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: null },
-    });
-    (supabase.auth.signInWithOAuth as any).mockResolvedValue({
-      data: { provider: "gitlab", url: "http://localhost" },
-      error: null,
-    });
-
-    const { result } = renderHook(() => useAuth());
-
-    await act(async () => {
-      await result.current.signInWithOAuth("gitlab");
-    });
-
-    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
-      provider: "gitlab",
-      options: {
-        redirectTo: "http://localhost:3000",
-        scopes: "read_user",
-      },
-    });
-  });
-
-  it("should handle identity linking", async () => {
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: { user: { id: "123" } } },
-    });
-    (supabase.auth.linkIdentity as any).mockResolvedValue({
-      data: { provider: "github", url: "http://localhost" },
-      error: null,
-    });
-
-    const { result } = renderHook(() => useAuth());
-
-    await act(async () => {
-      await result.current.linkIdentity("github");
-    });
-
-    expect(supabase.auth.linkIdentity).toHaveBeenCalledWith({
-      provider: "github",
-      options: {
-        redirectTo: "http://localhost:3000/account",
-        scopes: undefined,
+        scopes: "email profile openid",
       },
     });
   });
@@ -193,35 +119,12 @@ describe("useAuth", () => {
     });
   });
 
-  it("should handle password reset request", async () => {
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: null },
-    });
-    (supabase.auth.resetPasswordForEmail as any).mockResolvedValue({
-      error: null,
-    });
-
-    const { result } = renderHook(() => useAuth());
-
-    await act(async () => {
-      await result.current.resetPassword("test@example.com");
-    });
-
-    expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith(
-      "test@example.com",
-      {
-        redirectTo: "http://localhost:3000/auth?type=recovery",
-      },
-    );
-  });
-
   it("should handle errors", async () => {
-    const errorMessage = "Invalid credentials";
+    const errorMessage = "Sign out failed";
     (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: null },
+      data: { session: { user: { id: "123" } } },
     });
-    (supabase.auth.signInWithPassword as any).mockResolvedValue({
-      data: null,
+    (supabase.auth.signOut as any).mockResolvedValue({
       error: new Error(errorMessage),
     });
 
@@ -229,7 +132,7 @@ describe("useAuth", () => {
 
     await act(async () => {
       try {
-        await result.current.signIn("test@example.com", "wrong-password");
+        await result.current.signOut();
       } catch (err) {
         // Expected
       }

@@ -95,10 +95,15 @@
         </Style>
     </Window.Resources>
     <Grid>
-        <TabControl Name="tabMain" SelectionChanged="TabControl_SelectionChanged">
-            <TabItem Header="Main">
+        <TabControl Name="tabMain" SelectionChanged="TabMain_SelectionChanged">
+            <TabItem Header="Web">
                 <Border Name="webViewContainer" Background="#1E1E1E">
                     <TextBlock Name="txtLoading" Text="Loading..." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+                </Border>
+            </TabItem>
+            <TabItem Name="appsTab" Header="Apps">
+                <Border Name="appsWebViewContainer" Background="#1E1E1E">
+                    <TextBlock Name="txtAppsLoading" Text="Open Apps to sign in and access the desktop catalogue." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" TextWrapping="Wrap" TextAlignment="Center" Margin="40"/>
                 </Border>
             </TabItem>
             <TabItem Header="Update">
@@ -108,25 +113,6 @@
                     <TextBlock Name="txtUpdateStatus" Text="Click the button to check for updates." Margin="0,0,0,10" TextWrapping="Wrap"/>
                     <Button Name="btnCheckUpdate" Content="Check for Updates" Width="150" HorizontalAlignment="Left" Padding="10,5" Click="BtnCheckUpdate_Click"/>
                     <ProgressBar Name="progressBar" Height="20" Margin="0,10,0,0" Visibility="Collapsed" Maximum="100"/>
-                </StackPanel>
-            </TabItem>
-            <TabItem Header="Authentication">
-                <StackPanel Margin="20" MaxWidth="400" HorizontalAlignment="Left">
-                    <TextBlock Text="Authentication Settings" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
-                    <TextBlock Text="Store your credentials securely on your computer to automatically sign in." Margin="0,0,0,20" TextWrapping="Wrap"/>
-
-                    <Label Content="Email Address" Margin="0,0,0,5"/>
-                    <TextBox Name="txtEmail" Height="25" Margin="0,0,0,15" VerticalContentAlignment="Center"/>
-
-                    <Label Content="Password" Margin="0,0,0,5"/>
-                    <PasswordBox Name="txtPassword" Height="25" Margin="0,0,0,20" VerticalContentAlignment="Center"/>
-
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                        <Button Name="btnSaveCredentials" Content="Save Credentials" Width="130" Height="30" Margin="0,0,10,0" Click="BtnSaveCredentials_Click"/>
-                        <Button Name="btnClearCredentials" Content="Clear Credentials" Width="130" Height="30" Click="BtnClearCredentials_Click"/>
-                    </StackPanel>
-
-                    <TextBlock Name="txtAuthStatus" Text="" Foreground="Gray" FontWeight="Bold" TextWrapping="Wrap"/>
                 </StackPanel>
             </TabItem>
         </TabControl>

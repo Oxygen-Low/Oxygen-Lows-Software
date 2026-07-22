@@ -240,10 +240,6 @@ export function FileCompressorApp() {
                   Clear
                 </Button>
               </div>
-              <p className="text-xs text-slate-500">
-                If provided, we'll try to compress the file to fit within this
-                size.
-              </p>
             </div>
 
             <Button

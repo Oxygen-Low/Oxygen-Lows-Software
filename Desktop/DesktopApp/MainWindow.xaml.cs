@@ -1,9 +1,13 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,15 +18,13 @@ namespace DesktopApp;
 
 public partial class MainWindow : Window
 {
+    private const string OAuthCallbackUrl = "http://127.0.0.1:53682/oauth/callback/";
     private readonly UpdateManager _updateManager;
     private WebView2? _webView;
-    private string _targetUrl = "https://oxygen-lows-software.onrender.com/auth";
-
-    private static readonly string AppDataFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "OxygenLowsSoftware"
-    );
-    private static readonly string CredentialsFilePath = Path.Combine(AppDataFolder, "user_credentials.dat");
+    private WebView2? _appsWebView;
+    private CoreWebView2Environment? _webViewEnvironment;
+    private string _targetUrl = "https://oxygen-lows-software.onrender.com";
+    private CancellationTokenSource? _oauthCancellation;
 
     public MainWindow()
     {
@@ -30,14 +32,13 @@ public partial class MainWindow : Window
         _updateManager = new UpdateManager();
         txtCurrentVersion.Text = $"Current Version: {_updateManager.Version}";
         Loaded += MainWindow_Loaded;
+        Closing += MainWindow_Closing;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            LoadCredentialsUI();
-
             // Determine which URL to use
             try
             {
@@ -53,17 +54,20 @@ public partial class MainWindow : Window
                 // Fallback to render URL — already set as default
             }
 
-            // Create WebView2 programmatically
+            _webViewEnvironment = await CreateSharedWebViewEnvironmentAsync();
+
+            // Create the ordinary website view. The Apps tab is created on first use.
             _webView = new WebView2();
             webViewContainer.Child = _webView;
             txtLoading.Visibility = Visibility.Collapsed;
 
-            await _webView.EnsureCoreWebView2Async(null);
-
-            // Listen to navigation completions to handle automatic login injection
-            _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
-
+            await InitializeWebViewAsync(_webView);
             _webView.CoreWebView2.Navigate(_targetUrl);
+
+            if (appsTab.IsSelected)
+            {
+                await EnsureAppsWebViewAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -71,245 +75,210 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (e.IsSuccess)
-        {
-            await TryAutoLoginAsync();
-        }
+        _oauthCancellation?.Cancel();
     }
 
-    private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void TabMain_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (e.Source is TabControl && tabMain.SelectedItem is TabItem selectedTab)
-        {
-            if (selectedTab.Header?.ToString() == "Main")
-            {
-                _ = TryAutoLoginAsync();
-            }
-        }
+        if (e.Source != tabMain || !appsTab.IsSelected) return;
+        await EnsureAppsWebViewAsync();
     }
 
-    private async Task TryAutoLoginAsync()
+    private async Task EnsureAppsWebViewAsync()
     {
-        if (_webView == null || _webView.CoreWebView2 == null) return;
+        if (_appsWebView is not null || _webViewEnvironment is null) return;
 
-        // Only try automatic login if we are currently looking at the Main tab
-        bool isMainTabActive = false;
-        Dispatcher.Invoke(() =>
-        {
-            isMainTabActive = tabMain.SelectedItem is TabItem selectedTab && selectedTab.Header?.ToString() == "Main";
-        });
-
-        if (!isMainTabActive) return;
-
-        var (email, password) = LoadCredentials();
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password)) return;
-
-        // Check current URL of the web view to see if it is the authentication page
-        string currentUrl = _webView.CoreWebView2.Source;
-        if (currentUrl.Contains("/auth"))
-        {
-            // Inject script to switch form mode to 'signin' if needed, fill credentials, and submit.
-            // React handles input updates by intercepting setter actions, so we trigger native react change events.
-            string script = $$"""
-                (function() {
-                    function findAndFill() {
-                        const emailInput = document.getElementById('email');
-                        const passwordInput = document.getElementById('password');
-
-                        // Check if we are not on the Sign In page (i.e. we are on Sign Up or another page)
-                        // If we are not on the correct mode or elements are not loaded, try to switch to 'signin'
-                        const buttons = Array.from(document.querySelectorAll('button'));
-                        const signInBtn = buttons.find(b => b.textContent && b.textContent.trim() === 'Sign In');
-                        if (signInBtn && !signInBtn.classList.contains('bg-cyan-500/20')) {
-                            signInBtn.click();
-                            return false;
-                        }
-
-                        if (!emailInput || !passwordInput) {
-                            return false;
-                        }
-
-                        // Fill email
-                        const emailProto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-                        if (emailProto && emailProto.set) {
-                            emailProto.set.call(emailInput, '{{email.Replace("'", "\\'")}}');
-                            emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        } else {
-                            emailInput.value = '{{email.Replace("'", "\\'")}}';
-                            emailInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-
-                        // Fill password
-                        const passwordProto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-                        if (passwordProto && passwordProto.set) {
-                            passwordProto.set.call(passwordInput, '{{password.Replace("'", "\\'")}}');
-                            passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        } else {
-                            passwordInput.value = '{{password.Replace("'", "\\'")}}';
-                            passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-
-                        // Find the submit button and click it
-                        const form = emailInput.closest('form');
-                        if (form) {
-                            const submitBtn = form.querySelector('button[type="submit"]');
-                            if (submitBtn && !submitBtn.disabled) {
-                                submitBtn.click();
-                                return true;
-                            }
-                        }
-                        return false;
-                    }
-
-                    // Attempt immediately, and then retry if elements take a moment to load
-                    if (!findAndFill()) {
-                        let attempts = 0;
-                        const interval = setInterval(() => {
-                            attempts++;
-                            if (findAndFill() || attempts > 20) {
-                                clearInterval(interval);
-                            }
-                        }, 250);
-                    }
-                })();
-            """;
-
-            await _webView.CoreWebView2.ExecuteScriptAsync(script);
-        }
-    }
-
-    private void LoadCredentialsUI()
-    {
         try
         {
-            var (email, password) = LoadCredentials();
-            if (!string.IsNullOrEmpty(email))
-            {
-                txtEmail.Text = email;
-                txtPassword.Password = password;
-                txtAuthStatus.Text = "Credentials are saved and will auto-login on Main tab.";
-                txtAuthStatus.Foreground = System.Windows.Media.Brushes.Green;
-            }
-            else
-            {
-                txtEmail.Text = string.Empty;
-                txtPassword.Password = string.Empty;
-                txtAuthStatus.Text = "No saved credentials found.";
-                txtAuthStatus.Foreground = System.Windows.Media.Brushes.Gray;
-            }
+            _appsWebView = new WebView2();
+            appsWebViewContainer.Child = _appsWebView;
+            txtAppsLoading.Visibility = Visibility.Collapsed;
+
+            await InitializeWebViewAsync(_appsWebView);
+            _appsWebView.CoreWebView2.Navigate(new Uri(new Uri(_targetUrl), "/apps?desktop=1").AbsoluteUri);
         }
         catch (Exception ex)
         {
-            txtAuthStatus.Text = $"Failed to load credentials: {ex.Message}";
-            txtAuthStatus.Foreground = System.Windows.Media.Brushes.Red;
+            txtAppsLoading.Text = $"Could not load Apps:\n{ex.Message}";
+            txtAppsLoading.Visibility = Visibility.Visible;
         }
     }
 
-    private (string email, string password) LoadCredentials()
+    private async Task<CoreWebView2Environment> CreateSharedWebViewEnvironmentAsync()
     {
+        var userDataFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "OxygenLowsSoftware",
+            "WebView2");
+        Directory.CreateDirectory(userDataFolder);
+        return await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+    }
+
+    private async Task InitializeWebViewAsync(WebView2 webView)
+    {
+        await webView.EnsureCoreWebView2Async(_webViewEnvironment);
+        webView.CoreWebView2.NavigationStarting += (_, e) => WebView_NavigationStarting(webView, e);
+    }
+
+    private void WebView_NavigationStarting(WebView2 sourceWebView, CoreWebView2NavigationStartingEventArgs e)
+    {
+        if (!IsGoogleOAuthRequest(e.Uri)) return;
+
+        e.Cancel = true;
+        _ = ContinueGoogleSignInInBrowserAsync(sourceWebView, new Uri(e.Uri));
+    }
+
+    private static bool IsGoogleOAuthRequest(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            !uri.Host.EndsWith(".supabase.co", StringComparison.OrdinalIgnoreCase) ||
+            !uri.AbsolutePath.StartsWith("/auth/v1/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return string.Equals(GetQueryParameter(uri, "provider"), "google", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task ContinueGoogleSignInInBrowserAsync(WebView2 sourceWebView, Uri authorizationUri)
+    {
+        _oauthCancellation?.Cancel();
+        _oauthCancellation?.Dispose();
+        _oauthCancellation = new CancellationTokenSource();
+        var cancellationToken = _oauthCancellation.Token;
+
         try
         {
-            if (!File.Exists(CredentialsFilePath))
+            var returnUrl = GetQueryParameter(authorizationUri, "redirect_to");
+            if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var callbackReturnUri) ||
+                !IsAllowedReturnUri(callbackReturnUri))
             {
-                return (string.Empty, string.Empty);
+                throw new InvalidOperationException("Google sign in returned an untrusted application redirect URL.");
             }
 
-            byte[] encryptedData = File.ReadAllBytes(CredentialsFilePath);
-            byte[] decryptedData = ProtectedData.Unprotect(encryptedData, null, DataProtectionScope.CurrentUser);
-            string json = Encoding.UTF8.GetString(decryptedData);
+            using var listener = new HttpListener();
+            listener.Prefixes.Add(OAuthCallbackUrl);
+            listener.Start();
 
-            var creds = JsonSerializer.Deserialize<UserCreds>(json);
-            if (creds != null)
+            var browserUri = ReplaceQueryParameter(authorizationUri, "redirect_to", OAuthCallbackUrl);
+            Process.Start(new ProcessStartInfo
             {
-                return (creds.Email ?? string.Empty, creds.Password ?? string.Empty);
-            }
-        }
-        catch
-        {
-            // Ignore decryption or file errors and return empty
-        }
+                FileName = browserUri.AbsoluteUri,
+                UseShellExecute = true,
+            });
 
-        return (string.Empty, string.Empty);
-    }
-
-    private void SaveCredentials(string email, string password)
-    {
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-        {
-            throw new ArgumentException("Email and Password cannot be empty.");
-        }
-
-        if (!Directory.Exists(AppDataFolder))
-        {
-            Directory.CreateDirectory(AppDataFolder);
-        }
-
-        var creds = new UserCreds { Email = email, Password = password };
-        string json = JsonSerializer.Serialize(creds);
-        byte[] rawData = Encoding.UTF8.GetBytes(json);
-        byte[] encryptedData = ProtectedData.Protect(rawData, null, DataProtectionScope.CurrentUser);
-
-        File.WriteAllBytes(CredentialsFilePath, encryptedData);
-    }
-
-    private void DeleteCredentials()
-    {
-        if (File.Exists(CredentialsFilePath))
-        {
-            File.Delete(CredentialsFilePath);
-        }
-    }
-
-    private void BtnSaveCredentials_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            string email = txtEmail.Text.Trim();
-            string password = txtPassword.Password;
-
-            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+            using var registration = cancellationToken.Register(() =>
             {
-                MessageBox.Show("Please enter both Email and Password.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                if (listener.IsListening) listener.Stop();
+            });
+
+            var context = await listener.GetContextAsync();
+            var code = GetQueryParameter(context.Request.Url, "code");
+            var error = GetQueryParameter(context.Request.Url, "error_description")
+                        ?? GetQueryParameter(context.Request.Url, "error");
+
+            await WriteOAuthResponseAsync(context.Response, string.IsNullOrWhiteSpace(code), error);
+
+            if (cancellationToken.IsCancellationRequested) return;
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                throw new InvalidOperationException($"Google sign in failed: {error}");
             }
 
-            SaveCredentials(email, password);
-            txtAuthStatus.Text = "Credentials saved securely!";
-            txtAuthStatus.Foreground = System.Windows.Media.Brushes.Green;
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new InvalidOperationException("Google sign in did not return an authorization code.");
+            }
 
-            MessageBox.Show("Credentials stored securely.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-
-            // Trigger auto-login if appropriate
-            _ = TryAutoLoginAsync();
+            await Dispatcher.InvokeAsync(() =>
+                sourceWebView.CoreWebView2.Navigate(AddQueryParameter(callbackReturnUri, "code", code).AbsoluteUri));
+        }
+        catch (HttpListenerException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The app was closed or another sign-in attempt superseded this one.
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The app was closed or another sign-in attempt superseded this one.
         }
         catch (Exception ex)
         {
-            txtAuthStatus.Text = $"Failed to save credentials: {ex.Message}";
-            txtAuthStatus.Foreground = System.Windows.Media.Brushes.Red;
-            MessageBox.Show($"Failed to save credentials: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            await Dispatcher.InvokeAsync(() =>
+                MessageBox.Show(
+                    $"Google sign in could not continue in your browser.\n\n{ex.Message}",
+                    "Google sign in",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error));
         }
     }
 
-    private void BtnClearCredentials_Click(object sender, RoutedEventArgs e)
+    private bool IsAllowedReturnUri(Uri returnUri)
     {
-        try
-        {
-            DeleteCredentials();
-            txtEmail.Text = string.Empty;
-            txtPassword.Password = string.Empty;
-            txtAuthStatus.Text = "Credentials cleared.";
-            txtAuthStatus.Foreground = System.Windows.Media.Brushes.Gray;
-            MessageBox.Show("Credentials cleared successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            txtAuthStatus.Text = $"Failed to clear credentials: {ex.Message}";
-            txtAuthStatus.Foreground = System.Windows.Media.Brushes.Red;
-            MessageBox.Show($"Failed to clear credentials: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        var targetUri = new Uri(_targetUrl);
+        return string.Equals(returnUri.Scheme, targetUri.Scheme, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(returnUri.Host, targetUri.Host, StringComparison.OrdinalIgnoreCase) &&
+               returnUri.Port == targetUri.Port;
     }
+
+    private static async Task WriteOAuthResponseAsync(HttpListenerResponse response, bool isError, string? error)
+    {
+        response.StatusCode = isError ? (int)HttpStatusCode.BadRequest : (int)HttpStatusCode.OK;
+        response.ContentType = "text/html; charset=utf-8";
+        var message = isError
+            ? $"Google sign in could not be completed. {System.Net.WebUtility.HtmlEncode(error ?? "Please return to the app and try again.")}"
+            : "Google sign in is complete. You can return to Oxygen Low's Software.";
+        var body = $"<!doctype html><html><head><title>Oxygen Low's Software</title></head><body><p>{message}</p></body></html>";
+        var bytes = Encoding.UTF8.GetBytes(body);
+        response.ContentLength64 = bytes.Length;
+        await response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+        response.Close();
+    }
+
+    private static string? GetQueryParameter(Uri? uri, string parameterName)
+    {
+        if (uri is null) return null;
+
+        foreach (var part in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separatorIndex = part.IndexOf('=');
+            var encodedName = separatorIndex >= 0 ? part[..separatorIndex] : part;
+            if (!string.Equals(Uri.UnescapeDataString(encodedName), parameterName, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var encodedValue = separatorIndex >= 0 ? part[(separatorIndex + 1)..] : string.Empty;
+            return Uri.UnescapeDataString(encodedValue.Replace("+", " "));
+        }
+
+        return null;
+    }
+
+    private static Uri ReplaceQueryParameter(Uri uri, string parameterName, string value)
+    {
+        var parameters = uri.Query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(part =>
+            {
+                var separatorIndex = part.IndexOf('=');
+                var encodedName = separatorIndex >= 0 ? part[..separatorIndex] : part;
+                return !string.Equals(Uri.UnescapeDataString(encodedName), parameterName, StringComparison.OrdinalIgnoreCase);
+            })
+            .ToList();
+        parameters.Add($"{Uri.EscapeDataString(parameterName)}={Uri.EscapeDataString(value)}");
+
+        var builder = new UriBuilder(uri) { Query = string.Join("&", parameters) };
+        return builder.Uri;
+    }
+
+    private static Uri AddQueryParameter(Uri uri, string parameterName, string value)
+    {
+        var builder = new UriBuilder(uri);
+        var separator = string.IsNullOrEmpty(builder.Query) ? string.Empty : "&";
+        builder.Query = $"{builder.Query.TrimStart('?')}{separator}{Uri.EscapeDataString(parameterName)}={Uri.EscapeDataString(value)}";
+        return builder.Uri;
+    }
+
 
     private async void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
     {
@@ -343,11 +312,5 @@ public partial class MainWindow : Window
             txtUpdateStatus.Text = "You are up to date.";
             btnCheckUpdate.IsEnabled = true;
         }
-    }
-
-    private class UserCreds
-    {
-        public string? Email { get; set; }
-        public string? Password { get; set; }
     }
 }
