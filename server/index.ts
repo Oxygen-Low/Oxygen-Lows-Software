@@ -22,6 +22,8 @@ if (typeof global !== "undefined" && !global.WebSocket) {
 
 export function createServer() {
   const app = express();
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+  const supabaseWsUrl = supabaseUrl.replace("http", "ws");
 
   app.use(
     helmet({
@@ -32,8 +34,8 @@ export function createServer() {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
           "connect-src": [
             "'self'",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
-            "wss://vqmukrmpgvavscsyefqd.supabase.co",
+            supabaseUrl,
+            supabaseWsUrl,
             "https://api.pwnedpasswords.com",
             "https://api.github.com",
             "https://api.openai.com",
@@ -51,12 +53,12 @@ export function createServer() {
           "img-src": [
             "'self'",
             "data:",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
+            supabaseUrl,
             "https://app.aikido.dev",
           ],
           "media-src": [
             "'self'",
-            "https://vqmukrmpgvavscsyefqd.supabase.co",
+            supabaseUrl,
             "blob:",
           ],
           "script-src": ["'self'", "blob:"],

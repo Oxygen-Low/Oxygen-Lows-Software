@@ -1,5 +1,5 @@
-## 2024-07-17 - [SSRF Bypass via IPv6 Assignment to Node.js URL.hostname]
+## 2024-03-24 - Hardcoded Supabase Secrets in Frontend and Backend
 
-**Vulnerability:** A critical SSRF (Server-Side Request Forgery) vulnerability via DNS rebinding existed because `url.hostname` was directly assigned an IPv6 address (`firstAddress.address`) without brackets (`[]`). Node.js fails silently when setting an unbracketed IPv6 address to `url.hostname`, leaving the original hostname intact and bypassing IP pinning.
-**Learning:** In Node.js, `URL.hostname` fails silently when assigned an unbracketed IPv6 address (e.g., `url.hostname = '2606:4700::1111'`). This can leave the original domain intact and bypass IP pinning or SSRF mitigations like DNS rebinding protection.
-**Prevention:** Always use `net.isIPv6()` to bracket IPv6 addresses (e.g., `[2606:4700::1111]`) before assigning them to `url.hostname`.
+**Vulnerability:** Supabase URL and Anon Key were hardcoded across multiple frontend and backend files, as well as CSP headers.
+**Learning:** Secrets should never be hardcoded, even public ones like Anon Keys, as they hinder environment configuration and can expose specific database environments unnecessarily. The VITE_ prefix is required for Vite to expose them to the frontend, and `dotenv/config` exposes Vite-prefixed variables to the Node backend.
+**Prevention:** Always use `import.meta.env` (frontend) or `process.env` (backend) for environment variables instead of string literals.
