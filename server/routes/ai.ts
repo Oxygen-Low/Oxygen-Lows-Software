@@ -7,8 +7,8 @@ import { resolveCustomProviderUrl } from "../lib/safeAiUrl";
 
 export { isPrivateIP, validateAiUrl } from "../lib/safeAiUrl";
 
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY!;
 
 const getSystemContentFromYaml = (filePath: string): string | null => {
   try {
@@ -453,20 +453,34 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
 
             if (statusResponse.status === 404) {
               if (stream) {
-                res.write(`data: ${JSON.stringify({ error: "AI Horde job not found or expired" })}\n\n`);
+                res.write(
+                  `data: ${JSON.stringify({ error: "AI Horde job not found or expired" })}\n\n`,
+                );
                 res.write("data: [DONE]\n\n");
                 return res.end();
               }
-              return res.status(404).json({ error: "AI Horde job not found or expired" });
+              return res
+                .status(404)
+                .json({ error: "AI Horde job not found or expired" });
             }
 
-            if (statusResponse.status >= 400 && statusResponse.status !== 503 && statusResponse.status !== 502) {
+            if (
+              statusResponse.status >= 400 &&
+              statusResponse.status !== 503 &&
+              statusResponse.status !== 502
+            ) {
               if (stream) {
-                res.write(`data: ${JSON.stringify({ error: `AI Horde generation failed with status ${statusResponse.status}` })}\n\n`);
+                res.write(
+                  `data: ${JSON.stringify({ error: `AI Horde generation failed with status ${statusResponse.status}` })}\n\n`,
+                );
                 res.write("data: [DONE]\n\n");
                 return res.end();
               }
-              return res.status(statusResponse.status).json({ error: `AI Horde generation failed with status ${statusResponse.status}` });
+              return res
+                .status(statusResponse.status)
+                .json({
+                  error: `AI Horde generation failed with status ${statusResponse.status}`,
+                });
             }
 
             if (statusResponse.data?.done) {
@@ -479,11 +493,15 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               }
             } else if (statusResponse.data?.faulted) {
               if (stream) {
-                res.write(`data: ${JSON.stringify({ error: "AI Horde generation faulted" })}\n\n`);
+                res.write(
+                  `data: ${JSON.stringify({ error: "AI Horde generation faulted" })}\n\n`,
+                );
                 res.write("data: [DONE]\n\n");
                 return res.end();
               }
-              return res.status(500).json({ error: "AI Horde generation faulted" });
+              return res
+                .status(500)
+                .json({ error: "AI Horde generation faulted" });
             }
           } catch (err: any) {
             // ignore timeout/network errors during polling and try again
@@ -494,7 +512,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
 
         if (!finished) {
           if (stream) {
-            res.write(`data: ${JSON.stringify({ error: "AI Horde generation timed out" })}\n\n`);
+            res.write(
+              `data: ${JSON.stringify({ error: "AI Horde generation timed out" })}\n\n`,
+            );
             res.write("data: [DONE]\n\n");
             return res.end();
           }
