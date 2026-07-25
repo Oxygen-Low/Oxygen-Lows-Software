@@ -18,18 +18,22 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+/**
+ * ⚡ Bolt Performance Optimization:
+ * Moved static array outside of the component to prevent recreating it on every render.
+ */
+const navItems = [
+  { label: "Apps", href: "/apps", icon: Package },
+  { label: "Storage", href: "/storage", icon: HardDrive },
+  { label: "Account", href: "/account", icon: User },
+  { label: "Friends", href: "/friends", icon: Users },
+  { label: "Customize", href: "/customize", icon: Palette },
+  { label: "Characters", href: "/characters", icon: Contact },
+];
+
 export const Layout = ({ children }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
-
-  const navItems = [
-    { label: "Apps", href: "/apps", icon: Package },
-    { label: "Storage", href: "/storage", icon: HardDrive },
-    { label: "Account", href: "/account", icon: User },
-    { label: "Friends", href: "/friends", icon: Users },
-    { label: "Customize", href: "/customize", icon: Palette },
-    { label: "Characters", href: "/characters", icon: Contact },
-  ];
 
   const handleSignOut = async () => {
     try {
@@ -52,7 +56,6 @@ export const Layout = ({ children }: LayoutProps) => {
             <h1 className={`${styles["logo"]} text-2xl font-bold`}>
               Oxygen Low's Software
             </h1>
-
           </div>
           <div className="flex items-center gap-4">
             <span className={`${styles["user-email"]} text-sm`}>
