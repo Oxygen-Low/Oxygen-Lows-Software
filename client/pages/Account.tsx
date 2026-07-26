@@ -724,6 +724,7 @@ export default function Account() {
                   <Button
                     variant={profile?.show_email ? "secondary" : "outline"}
                     onClick={() => handleToggleEmail(!profile?.show_email)}
+                    aria-pressed={!!profile?.show_email}
                   >
                     {profile?.show_email ? "Visible" : "Hidden"}
                   </Button>
@@ -753,10 +754,11 @@ export default function Account() {
                     <CardContent className="space-y-4">
                       {p.hasUrl && (
                         <div className="space-y-2">
-                          <Label className="text-xs text-slate-500 uppercase">
+                          <Label htmlFor={`base-url-${p.id}`} className="text-xs text-slate-500 uppercase">
                             Base URL
                           </Label>
                           <Input
+                            id={`base-url-${p.id}`}
                             type="text"
                             placeholder="https://api.your-provider.com/v1"
                             value={baseUrlInputs[p.id] || ""}
@@ -771,10 +773,11 @@ export default function Account() {
                         </div>
                       )}
                       <div className="space-y-2">
-                        <Label className="text-xs text-slate-500 uppercase">
+                        <Label htmlFor={`api-key-${p.id}`} className="text-xs text-slate-500 uppercase">
                           API Key
                         </Label>
                         <Input
+                          id={`api-key-${p.id}`}
                           type="password"
                           placeholder="sk-..."
                           value={apiKeyInputs[p.id] || ""}
@@ -836,10 +839,11 @@ export default function Account() {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-300">
+                    <Label htmlFor="masterkey-input" className="text-sm font-medium text-slate-300">
                       Enter Masterkey to Toggle
                     </Label>
                     <Input
+                      id="masterkey-input"
                       type="password"
                       placeholder="Paste your masterkey here"
                       value={masterKeyInput}
@@ -856,6 +860,7 @@ export default function Account() {
                       }
                       onClick={() => handleToggleEncryption("characters")}
                       disabled={isMigrating}
+                      aria-pressed={!!encryptionSettings.characters}
                       className="h-16 justify-between px-6"
                     >
                       <div className="text-left">
@@ -882,6 +887,7 @@ export default function Account() {
                       }
                       onClick={() => handleToggleEncryption("chats")}
                       disabled={isMigrating}
+                      aria-pressed={!!encryptionSettings.chats}
                       className="h-16 justify-between px-6"
                     >
                       <div className="text-left">
@@ -910,6 +916,7 @@ export default function Account() {
                       }
                       onClick={() => handleToggleEncryption("integrations")}
                       disabled={isMigrating}
+                      aria-pressed={!!encryptionSettings.integrations}
                       className="h-16 justify-between px-6 sm:col-span-2"
                     >
                       <div className="text-left">
