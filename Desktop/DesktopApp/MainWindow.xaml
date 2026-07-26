@@ -93,6 +93,72 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,5"/>
         </Style>
+
+        <!-- Category Buttons Style -->
+        <Style x:Key="CategoryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="Foreground" Value="#F1F1F1"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Margin" Value="0,0,10,10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- App Cards Style -->
+        <Style x:Key="AppCardButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="Foreground" Value="#F1F1F1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2D2D30"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Borderless Button Style (Back buttons) -->
+        <Style x:Key="BorderlessButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#007ACC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="5,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <TabControl Name="tabMain" SelectionChanged="TabMain_SelectionChanged">
@@ -102,9 +168,298 @@
                 </Border>
             </TabItem>
             <TabItem Name="appsTab" Header="Apps">
-                <Border Name="appsWebViewContainer" Background="#1E1E1E">
-                    <TextBlock Name="txtAppsLoading" Text="Open Apps to sign in and access the desktop catalogue." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" TextWrapping="Wrap" TextAlignment="Center" Margin="40"/>
-                </Border>
+                <Grid Name="appsMainGrid" Background="#1E1E1E">
+                    <!-- 1. AUTH WARNING VIEW -->
+                    <Border Name="panelAuthWarning" Visibility="Visible" Background="#1E1E1E">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="500" Margin="40">
+                            <TextBlock Text="🔒 Authenticated Access Required" FontSize="20" FontWeight="Bold" Foreground="#F1F1F1" Margin="0,0,0,10" TextAlignment="Center"/>
+                            <TextBlock Text="Please sign in to your account under the 'Web' tab to access the desktop apps catalogue and your personal data." FontSize="14" Foreground="#A0A0A0" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,20"/>
+                            <Button Name="btnRetryAuth" Content="I have signed in, refresh" Width="200" Padding="10,6" Click="BtnRetryAuth_Click" Background="#2D2D2D" Foreground="#F1F1F1"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 2. APP CATALOG VIEW -->
+                    <Grid Name="panelCatalog" Visibility="Collapsed" Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                            <TextBlock Text="Desktop Apps" FontSize="28" FontWeight="Bold" Foreground="#F1F1F1" Margin="0,0,0,5"/>
+                            <TextBlock Text="Discover and use high-performance native desktop tools." FontSize="14" Foreground="#A0A0A0"/>
+                        </StackPanel>
+
+                        <!-- Category Selector -->
+                        <StackPanel Grid.Row="1" Margin="0,0,0,20">
+                            <TextBlock Text="Categories" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <ItemsControl Name="itemsCategories">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Label}" Width="110" Margin="0,0,10,10" Tag="{Binding Name}" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- App Grid -->
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Name="txtCategoryHeader" Text="All Apps" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <Grid>
+                                    <ItemsControl Name="itemsAppsList">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Width="280" Height="140" Margin="0,0,20,20" Tag="{Binding Id}" Click="AppCard_Click" Style="{StaticResource AppCardButtonStyle}">
+                                                    <StackPanel Margin="15" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="Bold" Margin="0,0,0,5"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#A0A0A0" TextWrapping="Wrap" MaxHeight="60"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Name="txtNoAppsMessage" Text="No apps found in this category." FontSize="14" Foreground="#707070" HorizontalAlignment="Left" Margin="0,15,0,0" Visibility="Collapsed"/>
+                                </Grid>
+                            </ScrollViewer>
+                        </Grid>
+                    </Grid>
+
+                    <!-- 3. CHATBOT VIEW -->
+                    <Grid Name="panelChatbot" Visibility="Collapsed" Margin="15">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Top header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Content="← Back to Catalog" Click="BtnBackToCatalog_Click" Margin="0,0,15,0" Padding="12,6" Style="{StaticResource BorderlessButtonStyle}"/>
+                            <TextBlock Grid.Column="1" Text="Chatbot App (Native)" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="240"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Left Sidebar -->
+                            <Grid Grid.Column="0" Margin="0,0,10,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Button Grid.Row="0" Content="+ New Chat" Click="BtnNewChat_Click" Margin="0,0,0,10" FontWeight="Bold" Padding="8"/>
+
+                                <ListBox Grid.Row="1" Name="lstChats" SelectionChanged="LstChats_SelectionChanged" Background="#252526" BorderBrush="#3E3E42" Foreground="#F1F1F1" Margin="0,0,0,10">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="2" Width="200">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                <Button Grid.Column="1" Content="✕" Width="20" Height="20" Click="BtnDeleteChat_Click" Tag="{Binding Id}" Margin="5,0,0,0" Background="Transparent" BorderThickness="0" Foreground="#A0A0A0"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" MaxHeight="250">
+                                    <StackPanel Margin="0,5,0,0">
+                                        <Label Content="Model:"/>
+                                        <ComboBox Name="cmbModels" DisplayMemberPath="DisplayName" SelectionChanged="CmbModels_SelectionChanged" Margin="0,0,0,8" Background="#2D2D2D" Foreground="#F1F1F1" BorderBrush="#3E3E42"/>
+
+                                        <Label Content="Style:"/>
+                                        <ComboBox Name="cmbStyles" DisplayMemberPath="title" SelectionChanged="CmbStyles_SelectionChanged" Margin="0,0,0,8" Background="#2D2D2D" Foreground="#F1F1F1" BorderBrush="#3E3E42"/>
+
+                                        <Label Content="LLM Character:"/>
+                                        <ComboBox Name="cmbLlmCharacters" DisplayMemberPath="DisplayName" SelectionChanged="CmbLlmCharacters_SelectionChanged" Margin="0,0,0,8" Background="#2D2D2D" Foreground="#F1F1F1" BorderBrush="#3E3E42"/>
+
+                                        <Label Content="User Character:"/>
+                                        <ComboBox Name="cmbUserCharacters" DisplayMemberPath="DisplayName" SelectionChanged="CmbUserCharacters_SelectionChanged" Margin="0,0,0,5" Background="#2D2D2D" Foreground="#F1F1F1" BorderBrush="#3E3E42"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+
+                            <!-- Right Conversation area -->
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <ScrollViewer Grid.Row="0" Name="scrollerMessages" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                                    <ItemsControl Name="itemsMessages">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="8" Margin="5" Padding="10" MaxWidth="600" HorizontalAlignment="{Binding Alignment}" Background="{Binding BackgroundBrush}" BorderBrush="{Binding BorderBrush}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding RoleHeader}" FontSize="11" FontWeight="Bold" Foreground="#8A8A8A" Margin="0,0,0,4"/>
+                                                        <TextBlock Text="{Binding Content}" FontSize="13" TextWrapping="Wrap" Foreground="#F1F1F1"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <!-- Send Controls -->
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="80"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Name="txtChatInput" KeyDown="TxtChatInput_KeyDown" Padding="8" Margin="0,0,5,0" Background="#2D2D2D" Foreground="#F1F1F1" BorderBrush="#3E3E42" CaretBrush="#F1F1F1"/>
+                                    <Button Grid.Column="1" Name="btnSendChat" Content="Send" Click="BtnSendChat_Click" FontWeight="Bold"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+
+                    <!-- 4. FILE COMPRESSOR VIEW -->
+                    <Grid Name="panelCompressor" Visibility="Collapsed" Margin="15">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Content="← Back to Catalog" Click="BtnBackToCatalog_Click" Margin="0,0,15,0" Padding="12,6" Style="{StaticResource BorderlessButtonStyle}"/>
+                            <TextBlock Grid.Column="1" Text="File Compressor (Native)" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Left inputs -->
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <Label Content="Source File (from Supabase storage):" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                                <Grid Margin="0,0,0,15">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="80"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Name="cmbStorageFiles" DisplayMemberPath="name" Background="#2D2D2D" Foreground="#F1F1F1" BorderBrush="#3E3E42" Padding="6"/>
+                                    <Button Grid.Column="1" Content="Refresh" Click="BtnRefreshStorageFiles_Click" Margin="5,0,0,0"/>
+                                </Grid>
+
+                                <Label Content="Compression Quality:" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Name="sliderQuality" Minimum="10" Maximum="100" Value="70" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ElementName=sliderQuality, Path=Value, StringFormat={}{0:0}%}" HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="Bold" Foreground="#29B6F6"/>
+                                </Grid>
+
+                                <UniformGrid Rows="1" Columns="4" Margin="0,0,0,15">
+                                    <Button Content="30%" Click="BtnQualityPreset_Click" Tag="30" Margin="0,0,5,0"/>
+                                    <Button Content="50%" Click="BtnQualityPreset_Click" Tag="50" Margin="0,0,5,0"/>
+                                    <Button Content="70%" Click="BtnQualityPreset_Click" Tag="70" Margin="0,0,5,0"/>
+                                    <Button Content="90%" Click="BtnQualityPreset_Click" Tag="90" Margin="0,0,0,0"/>
+                                </UniformGrid>
+
+                                <Label Content="Target Size (MB, optional):" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                                <TextBox Name="txtTargetSizeMB" Padding="6" Margin="0,0,0,15" Background="#2D2D2D" Foreground="#F1F1F1" BorderBrush="#3E3E42" CaretBrush="#F1F1F1"/>
+
+                                <Button Name="btnStartCompression" Content="Start Compression" Click="BtnStartCompression_Click" Background="#0288D1" Foreground="#F1F1F1" Padding="12" FontSize="16" FontWeight="Bold" Margin="0,10,0,0"/>
+                            </StackPanel>
+
+                            <!-- Right display: Status & Results -->
+                            <Border Grid.Column="1" Margin="10,0,0,0" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="8" Padding="15">
+                                <Grid>
+                                    <!-- Idle/Initial State -->
+                                    <StackPanel Name="panelCompressorIdle" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="Ready to compress" FontSize="18" FontWeight="SemiBold" Foreground="#A0A0A0" TextAlignment="Center" Margin="0,0,0,5"/>
+                                        <TextBlock Text="Select a file and adjust settings to see results here." FontSize="13" Foreground="#707070" TextAlignment="Center" TextWrapping="Wrap"/>
+                                    </StackPanel>
+
+                                    <!-- Working State -->
+                                    <StackPanel Name="panelCompressorRunning" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <ProgressBar Name="progressCompressor" Width="180" Height="20" IsIndeterminate="True" Margin="0,0,0,10"/>
+                                        <TextBlock Name="txtCompressorStatus" Text="Compressing your file..." FontSize="14" FontWeight="SemiBold" TextAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <!-- Success State -->
+                                    <StackPanel Name="panelCompressorSuccess" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="✓ Success" FontSize="24" FontWeight="Bold" Foreground="#4CAF50" TextAlignment="Center" Margin="0,0,0,10"/>
+                                        <TextBlock Text="File compressed and uploaded to storage." FontSize="14" Foreground="#A0A0A0" TextAlignment="Center" Margin="0,0,0,15"/>
+
+                                        <Border Background="#1E1E1E" Padding="10" CornerRadius="4" Margin="0,0,0,10" Width="280">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Original Size:" Foreground="#A0A0A0"/>
+                                                <TextBlock Grid.Column="1" Name="txtOrigSize" FontWeight="Bold"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <Border Background="#1E1E1E" Padding="10" CornerRadius="4" Margin="0,0,0,10" Width="280">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="New Size:" Foreground="#A0A0A0"/>
+                                                <TextBlock Grid.Column="1" Name="txtNewSize" FontWeight="Bold" Foreground="#4CAF50"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <Border Background="#1E1E1E" Padding="10" CornerRadius="4" Margin="0,0,0,15" Width="280">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Savings:" Foreground="#A0A0A0"/>
+                                                <TextBlock Grid.Column="1" Name="txtSavings" FontWeight="Bold" Foreground="#4CAF50"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <Button Content="Compress Another" Click="BtnCompressAnother_Click" Width="150" Padding="8"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Grid>
             </TabItem>
             <TabItem Header="Update">
                 <StackPanel Margin="20">
