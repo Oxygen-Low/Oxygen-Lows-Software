@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -31,11 +32,35 @@ public partial class MainWindow : Window
     private string _targetUrl = "https://oxygen-lows-software.onrender.com";
     private CancellationTokenSource? _oauthCancellation;
 
+    // Single shared long-lived HttpClient
+    private static readonly HttpClient _httpClient = new HttpClient();
+
+    // Static frozen SolidColorBrush fields for message UI to avoid Converter recreation
+    private static readonly SolidColorBrush UserBgBrush = FreezeBrush(new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0288D1")));
+    private static readonly SolidColorBrush UserBorderBrush = FreezeBrush(new SolidColorBrush((Color)ColorConverter.ConvertFromString("#039BE5")));
+    private static readonly SolidColorBrush AssistantBgBrush = FreezeBrush(new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D2D30")));
+    private static readonly SolidColorBrush AssistantBorderBrush = FreezeBrush(new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3E3E42")));
+
+    private static SolidColorBrush FreezeBrush(SolidColorBrush brush)
+    {
+        brush.Freeze();
+        return brush;
+    }
+
     // Supabase Session State
     private string _accessToken = "";
     private string _userId = "";
     private string _masterKey = "";
     private bool _isEncryptionEnabled = false;
+    private bool _isPreferencesLoaded = false;
+
+    // Gate Apps Tab initialization on completion of WebView navigation to _targetUrl
+    private bool _isNavigationCompleted = false;
+    private bool _isAppsTabInitialized = false;
+
+    // Data-Driven Categories and Apps selection Lists
+    private List<CategoryDescriptor> _categories = new();
+    private List<AppDescriptor> _apps = new();
 
     // Chatbot and File Compressor Collections
     private ObservableCollection<ChatItem> _chats = new();
@@ -45,6 +70,7 @@ public partial class MainWindow : Window
     private List<CharacterItem> _characters = new();
     private ChatItem? _activeChat = null;
     private string _selectedCategory = "All";
+    private string _currentLoadingChatId = "";
 
     public MainWindow()
     {
@@ -84,7 +110,9 @@ public partial class MainWindow : Window
             await InitializeWebViewAsync(_webView);
             _webView.CoreWebView2.Navigate(_targetUrl);
 
-            if (appsTab.IsSelected)
+            _webView.CoreWebView2.NavigationCompleted += WebView_NavigationCompleted;
+
+            if (appsTab.IsSelected && _isNavigationCompleted)
             {
                 await InitializeAppsTabAsync();
             }
@@ -92,6 +120,15 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             txtLoading.Text = $"Could not load web view:\n{ex.Message}";
+        }
+    }
+
+    private async void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        _isNavigationCompleted = true;
+        if (appsTab.IsSelected && !_isAppsTabInitialized)
+        {
+            await InitializeAppsTabAsync();
         }
     }
 
@@ -103,7 +140,10 @@ public partial class MainWindow : Window
     private async void TabMain_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.Source != tabMain || !appsTab.IsSelected) return;
-        await InitializeAppsTabAsync();
+        if (_isNavigationCompleted)
+        {
+            await InitializeAppsTabAsync();
+        }
     }
 
     // --- SEAMLESS SUPABASE AUTHENTICATION SHARING ---
@@ -114,11 +154,46 @@ public partial class MainWindow : Window
 
         try
         {
+            // Retrieve combined auth token chunks (<key>.0, <key>.1, etc.)
             string rawToken = await _webView.CoreWebView2.ExecuteScriptAsync("window.localStorage.getItem('sb-vqmukrmpgvavscsyefqd-auth-token')");
+            if (string.IsNullOrEmpty(rawToken) || rawToken == "null")
+            {
+                StringBuilder chunkedBuilder = new StringBuilder();
+                int chunkIndex = 0;
+                while (true)
+                {
+                    string chunk = await _webView.CoreWebView2.ExecuteScriptAsync($"window.localStorage.getItem('sb-vqmukrmpgvavscsyefqd-auth-token.{chunkIndex}')");
+                    if (string.IsNullOrEmpty(chunk) || chunk == "null") break;
+                    string? chunkVal = JsonSerializer.Deserialize<string>(chunk);
+                    if (string.IsNullOrEmpty(chunkVal)) break;
+                    chunkedBuilder.Append(chunkVal);
+                    chunkIndex++;
+                }
+                if (chunkedBuilder.Length > 0)
+                {
+                    rawToken = JsonSerializer.Serialize(chunkedBuilder.ToString());
+                }
+            }
+
             if (string.IsNullOrEmpty(rawToken) || rawToken == "null") return false;
 
             string? tokenJson = JsonSerializer.Deserialize<string>(rawToken);
             if (string.IsNullOrEmpty(tokenJson)) return false;
+
+            // Support base64-encoded session key format before deserializing
+            if (!tokenJson.Trim().StartsWith("{") && IsBase64String(tokenJson))
+            {
+                try
+                {
+                    tokenJson = Encoding.UTF8.GetString(Convert.FromBase64String(tokenJson));
+                }
+                catch
+                {
+                    // Fallback to original token string if it failed to decode or was a false positive
+                }
+            }
+
+            if (string.IsNullOrEmpty(tokenJson) || !tokenJson.Trim().StartsWith("{")) return false;
 
             using var doc = JsonDocument.Parse(tokenJson);
             if (doc.RootElement.TryGetProperty("access_token", out var accTokenProp))
@@ -132,7 +207,31 @@ public partial class MainWindow : Window
 
             if (string.IsNullOrEmpty(_accessToken) || string.IsNullOrEmpty(_userId)) return false;
 
-            // Fetch Master Key from SessionStorage
+            // Parse and validate expires_at, rejecting expired sessions
+            if (doc.RootElement.TryGetProperty("expires_at", out var expiresAtProp))
+            {
+                long expiresAtUnix = 0;
+                if (expiresAtProp.ValueKind == JsonValueKind.Number)
+                {
+                    expiresAtUnix = expiresAtProp.GetInt64();
+                }
+                else if (expiresAtProp.ValueKind == JsonValueKind.String && long.TryParse(expiresAtProp.GetString(), out long parsedUnix))
+                {
+                    expiresAtUnix = parsedUnix;
+                }
+
+                if (expiresAtUnix > 0)
+                {
+                    long currentUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    if (currentUnix >= expiresAtUnix)
+                    {
+                        Debug.WriteLine("Session has expired based on expires_at.");
+                        return false;
+                    }
+                }
+            }
+
+            // Fetch Master Key from SessionStorage using correct key matching client/lib/crypto.ts
             string rawKey = await _webView.CoreWebView2.ExecuteScriptAsync("window.sessionStorage.getItem('sb-vqmukrmpgvavscsyefqd-app-state-sync')");
             if (!string.IsNullOrEmpty(rawKey) && rawKey != "null")
             {
@@ -141,44 +240,61 @@ public partial class MainWindow : Window
 
             return true;
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error retrieving session: {ex.Message}");
+            // return false on malformed or missing data without propagating JSON errors
             return false;
         }
     }
 
+    private static bool IsBase64String(string base64)
+    {
+        Span<byte> buffer = new Span<byte>(new byte[base64.Length]);
+        return Convert.TryFromBase64String(base64, buffer, out _);
+    }
+
     private async Task FetchUserPreferencesAsync()
     {
+        _isPreferencesLoaded = false;
         try
         {
-            using var client = CreateSupabaseClient();
-            var response = await client.GetAsync($"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/user_preferences?user_id=eq.{_userId}&select=encryption_settings");
-            if (response.IsSuccessStatusCode)
+            var request = CreateSupabaseRequest(HttpMethod.Get, $"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/user_preferences?user_id=eq.{_userId}&select=encryption_settings");
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
             {
-                string json = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
+                string err = await response.Content.ReadAsStringAsync();
+                throw new Exception($"HTTP {response.StatusCode}: {err}");
+            }
+
+            string json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
+            {
+                var prefs = doc.RootElement[0];
+                if (prefs.TryGetProperty("encryption_settings", out var encProp) && encProp.ValueKind == JsonValueKind.Object)
                 {
-                    var prefs = doc.RootElement[0];
-                    if (prefs.TryGetProperty("encryption_settings", out var encProp) && encProp.ValueKind == JsonValueKind.Object)
+                    if (encProp.TryGetProperty("enabled", out var enabledProp))
                     {
-                        if (encProp.TryGetProperty("enabled", out var enabledProp))
-                        {
-                            _isEncryptionEnabled = enabledProp.GetBoolean();
-                        }
+                        _isEncryptionEnabled = enabledProp.GetBoolean();
                     }
                 }
             }
+            _isPreferencesLoaded = true;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to fetch user preferences: {ex.Message}");
+            MessageBox.Show($"Security Check Failed: Could not load user preferences.\n\nDetails: {ex.Message}\n\nChatbot operations have been disabled for security reasons to prevent plain text writes.", "Preferences Loading Failure", MessageBoxButton.OK, MessageBoxImage.Error);
+            _isPreferencesLoaded = false;
+
+            // Hard disable chatbot input controls
+            btnSendChat.IsEnabled = false;
+            txtChatInput.IsEnabled = false;
         }
     }
 
     private async Task InitializeAppsTabAsync()
     {
+        _isAppsTabInitialized = true;
         bool loggedIn = await RetrieveSessionAsync();
         if (loggedIn)
         {
@@ -187,6 +303,7 @@ public partial class MainWindow : Window
             panelChatbot.Visibility = Visibility.Collapsed;
             panelCompressor.Visibility = Visibility.Collapsed;
 
+            InitializeCatalog();
             await FetchUserPreferencesAsync();
         }
         else
@@ -198,18 +315,71 @@ public partial class MainWindow : Window
         }
     }
 
-    private HttpClient CreateSupabaseClient()
+    private HttpRequestMessage CreateSupabaseRequest(HttpMethod method, string url)
     {
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("apikey", "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q");
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Add("apikey", "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q");
         if (!string.IsNullOrEmpty(_accessToken))
         {
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
         }
-        return client;
+        return request;
     }
 
     // --- APP SELECTION CATALOG ---
+
+    private void InitializeCatalog()
+    {
+        _categories = new List<CategoryDescriptor>
+        {
+            new CategoryDescriptor { Name = "All", Label = "All" },
+            new CategoryDescriptor { Name = "Utility", Label = "Utility" },
+            new CategoryDescriptor { Name = "LLM/AI", Label = "LLM/AI" },
+            new CategoryDescriptor { Name = "Development", Label = "Development" },
+            new CategoryDescriptor { Name = "Social", Label = "Social" },
+            new CategoryDescriptor { Name = "Games", Label = "Games" }
+        };
+        itemsCategories.ItemsSource = _categories;
+
+        _apps = new List<AppDescriptor>
+        {
+            new AppDescriptor
+            {
+                Id = "chatbot",
+                DisplayName = "💬 Chatbot",
+                Description = "Chat with LLMs in real-time. Native client supporting styles, characters and history.",
+                Category = "LLM/AI",
+                LaunchAction = async () => await LaunchChatbotAsync()
+            },
+            new AppDescriptor
+            {
+                Id = "compressor",
+                DisplayName = "📦 File Compressor",
+                Description = "Compress files and images seamlessly using native WPF compression and Supabase storage.",
+                Category = "Utility",
+                LaunchAction = async () => await LaunchCompressorAsync()
+            }
+        };
+
+        UpdateCatalogView();
+    }
+
+    private void UpdateCatalogView()
+    {
+        var filtered = _apps.Where(app => _selectedCategory == "All" || app.Category == _selectedCategory).ToList();
+        itemsAppsList.ItemsSource = filtered;
+
+        if (filtered.Count == 0)
+        {
+            txtNoAppsMessage.Visibility = Visibility.Visible;
+            itemsAppsList.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            txtNoAppsMessage.Visibility = Visibility.Collapsed;
+            itemsAppsList.Visibility = Visibility.Visible;
+        }
+    }
 
     private void Category_Click(object sender, RoutedEventArgs e)
     {
@@ -218,39 +388,51 @@ public partial class MainWindow : Window
 
         _selectedCategory = btn.Tag as string ?? "All";
         txtCategoryHeader.Text = $"{_selectedCategory} Apps";
+        UpdateCatalogView();
+    }
 
-        if (_selectedCategory == "All")
+    private async void AppCard_Click(object sender, RoutedEventArgs e)
+    {
+        try
         {
-            cardChatbot.Visibility = Visibility.Visible;
-            cardCompressor.Visibility = Visibility.Visible;
+            var btn = sender as Button;
+            if (btn?.Tag is string appId)
+            {
+                var app = _apps.FirstOrDefault(a => a.Id == appId);
+                if (app != null)
+                {
+                    app.LaunchAction?.Invoke();
+                }
+            }
         }
-        else if (_selectedCategory == "Utility")
+        catch (Exception ex)
         {
-            cardChatbot.Visibility = Visibility.Collapsed;
-            cardCompressor.Visibility = Visibility.Visible;
-        }
-        else if (_selectedCategory == "LLM/AI")
-        {
-            cardChatbot.Visibility = Visibility.Visible;
-            cardCompressor.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            cardChatbot.Visibility = Visibility.Collapsed;
-            cardCompressor.Visibility = Visibility.Collapsed;
+            MessageBox.Show($"Error launching app: {ex.Message}", "Launch Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private async void CardChatbot_Click(object sender, RoutedEventArgs e)
+    private async Task LaunchChatbotAsync()
     {
         panelCatalog.Visibility = Visibility.Collapsed;
         panelChatbot.Visibility = Visibility.Visible;
+
+        // Ensure preferences were re-checked or loaded
+        if (!_isPreferencesLoaded)
+        {
+            await FetchUserPreferencesAsync();
+        }
+
+        if (_isPreferencesLoaded)
+        {
+            btnSendChat.IsEnabled = true;
+            txtChatInput.IsEnabled = true;
+        }
 
         await LoadChatbotMetadataAsync();
         await LoadChatsAsync();
     }
 
-    private async void CardCompressor_Click(object sender, RoutedEventArgs e)
+    private async Task LaunchCompressorAsync()
     {
         panelCatalog.Visibility = Visibility.Collapsed;
         panelCompressor.Visibility = Visibility.Visible;
@@ -271,9 +453,19 @@ public partial class MainWindow : Window
 
     private async void BtnRetryAuth_Click(object sender, RoutedEventArgs e)
     {
-        btnRetryAuth.IsEnabled = false;
-        await InitializeAppsTabAsync();
-        btnRetryAuth.IsEnabled = true;
+        try
+        {
+            btnRetryAuth.IsEnabled = false;
+            await InitializeAppsTabAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Retry failed: {ex.Message}", "Retry Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            btnRetryAuth.IsEnabled = true;
+        }
     }
 
     // --- NATIVE CHATBOT IMPLEMENTATION ---
@@ -282,13 +474,16 @@ public partial class MainWindow : Window
     {
         try
         {
-            using var client = CreateSupabaseClient();
+            // Fetch configs concurrently using shared Client and separate requests
+            var modelsReq = CreateSupabaseRequest(HttpMethod.Get, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/user_models?select=provider,model_id&order=provider");
+            var stylesReq = CreateSupabaseRequest(HttpMethod.Get, $"{_targetUrl}/api/ai/styles");
+            var charsReq = CreateSupabaseRequest(HttpMethod.Get, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/characters?select=id,name,display_name,is_encrypted");
+            var localModelsReq = CreateSupabaseRequest(HttpMethod.Get, $"{_targetUrl}/api/ai/local-providers");
 
-            // Fetch configs
-            var modelsTask = client.GetAsync("https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/user_models?select=provider,model_id&order=provider");
-            var stylesTask = client.GetAsync($"{_targetUrl}/api/ai/styles");
-            var charsTask = client.GetAsync("https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/characters?select=id,name,display_name,is_encrypted");
-            var localModelsTask = client.GetAsync($"{_targetUrl}/api/ai/local-providers");
+            var modelsTask = _httpClient.SendAsync(modelsReq);
+            var stylesTask = _httpClient.SendAsync(stylesReq);
+            var charsTask = _httpClient.SendAsync(charsReq);
+            var localModelsTask = _httpClient.SendAsync(localModelsReq);
 
             await Task.WhenAll(modelsTask, stylesTask, charsTask, localModelsTask);
 
@@ -319,26 +514,43 @@ public partial class MainWindow : Window
                 if (_styles.Count > 0) cmbStyles.SelectedIndex = 0;
             }
 
-            // Parse Characters
+            // Parse Characters with individual try-catch blocks and error dialogs for decryption failures
             if (charsTask.Result.IsSuccessStatusCode)
             {
                 string json = await charsTask.Result.Content.ReadAsStringAsync();
                 var rawChars = JsonSerializer.Deserialize<List<CharacterItem>>(json) ?? new();
-                _characters = rawChars;
-                foreach (var c in _characters)
+                _characters = new List<CharacterItem>();
+
+                foreach (var c in rawChars)
                 {
-                    if (c.is_encrypted && !string.IsNullOrEmpty(_masterKey))
+                    try
                     {
-                        c.name = CryptoHelper.Decrypt(c.name, _masterKey);
-                        if (c.display_name != null) c.display_name = CryptoHelper.Decrypt(c.display_name, _masterKey);
+                        if (c.is_encrypted && !string.IsNullOrEmpty(_masterKey))
+                        {
+                            c.name = CryptoHelper.Decrypt(c.name, _masterKey);
+                            if (c.display_name != null)
+                            {
+                                c.display_name = CryptoHelper.Decrypt(c.display_name, _masterKey);
+                            }
+                        }
+                        _characters.Add(c);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to decrypt profile for character '{c.name}'. {ex.Message}", "Character Decryption Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        _characters.Add(new CharacterItem { id = c.id, name = "[Undecryptable character]", display_name = "[Undecryptable character]" });
                     }
                 }
 
-                var withNone = new List<CharacterItem> { new CharacterItem { id = "", name = "None" } };
-                withNone.AddRange(_characters);
+                // Decouple Character sources for LLM and User Characters via separate collections
+                var withNoneLlm = new List<CharacterItem> { new CharacterItem { id = "", name = "None" } };
+                withNoneLlm.AddRange(_characters);
 
-                cmbLlmCharacters.ItemsSource = withNone;
-                cmbUserCharacters.ItemsSource = withNone;
+                var withNoneUser = new List<CharacterItem> { new CharacterItem { id = "", name = "None" } };
+                withNoneUser.AddRange(_characters);
+
+                cmbLlmCharacters.ItemsSource = withNoneLlm;
+                cmbUserCharacters.ItemsSource = withNoneUser;
 
                 cmbLlmCharacters.SelectedIndex = 0;
                 cmbUserCharacters.SelectedIndex = 0;
@@ -354,8 +566,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            using var client = CreateSupabaseClient();
-            var response = await client.GetAsync("https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?select=*&order=updated_at.desc");
+            var request = CreateSupabaseRequest(HttpMethod.Get, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?select=*&order=updated_at.desc");
+            var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
                 string json = await response.Content.ReadAsStringAsync();
@@ -374,18 +586,22 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to load chats: {ex.Message}");
+            MessageBox.Show($"Failed to load chats: {ex.Message}", "Load Chats Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private async Task LoadChatMessagesAsync(string chatId)
     {
+        _currentLoadingChatId = chatId;
         try
         {
-            using var client = CreateSupabaseClient();
-            var response = await client.GetAsync($"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chat_messages?chat_id=eq.{chatId}&order=created_at.asc");
+            var request = CreateSupabaseRequest(HttpMethod.Get, $"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chat_messages?chat_id=eq.{chatId}&order=created_at.asc");
+            var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
+                // Prevent stale async loads from overwriting currently selected chat
+                if (_currentLoadingChatId != chatId) return;
+
                 string json = await response.Content.ReadAsStringAsync();
                 var items = JsonSerializer.Deserialize<List<ChatMessageItem>>(json) ?? new();
 
@@ -404,22 +620,18 @@ public partial class MainWindow : Window
                         RoleHeader = isUser ? "You" : "Assistant",
                         Content = content,
                         Alignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left,
-                        BackgroundBrush = isUser
-                            ? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#0288D1")
-                            : (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#2D2D30"),
-                        BorderBrush = isUser
-                            ? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#039BE5")
-                            : (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#3E3E42")
+                        BackgroundBrush = isUser ? UserBgBrush : AssistantBgBrush,
+                        BorderBrush = isUser ? UserBorderBrush : AssistantBorderBrush
                     });
                 }
 
                 itemsMessages.ItemsSource = _messagesList;
-                scrollerMessages.ScrollToEnd();
+                ScrollMessagesToEnd();
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to load messages: {ex.Message}");
+            MessageBox.Show($"Failed to load messages: {ex.Message}", "Load Messages Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -427,9 +639,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            using var client = CreateSupabaseClient();
             string rawTitle = "New Chat (Desktop)";
-            string encryptedTitle = _isEncryptionEnabled && !string.IsNullOrEmpty(_masterKey)
+            bool useEncryption = _isEncryptionEnabled && !string.IsNullOrEmpty(_masterKey);
+            string encryptedTitle = useEncryption
                 ? CryptoHelper.Encrypt(rawTitle, _masterKey)
                 : rawTitle;
 
@@ -438,17 +650,14 @@ public partial class MainWindow : Window
                 user_id = _userId,
                 title = encryptedTitle,
                 style = "GeneralAssistant",
-                is_encrypted = _isEncryptionEnabled
+                is_encrypted = useEncryption // Derive is_encrypted properly from the encryption conditions
             };
 
-            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats")
-            {
-                Content = content
-            };
+            var request = CreateSupabaseRequest(HttpMethod.Post, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats");
             request.Headers.Add("Prefer", "return=representation");
+            request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-            var response = await client.SendAsync(request);
+            var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
                 string json = await response.Content.ReadAsStringAsync();
@@ -461,10 +670,16 @@ public partial class MainWindow : Window
                     lstChats.SelectedItem = newChat;
                 }
             }
+            else
+            {
+                // Surface response status code and body on chat creation failure
+                string errBody = await response.Content.ReadAsStringAsync();
+                MessageBox.Show($"Failed to create chat. Status: {response.StatusCode}\nError Details: {errBody}", "Chat Creation Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to create chat: {ex.Message}");
+            MessageBox.Show($"Failed to create chat: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -472,8 +687,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            using var client = CreateSupabaseClient();
-            var response = await client.DeleteAsync($"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?id=eq.{chatId}");
+            var request = CreateSupabaseRequest(HttpMethod.Delete, $"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?id=eq.{chatId}");
+            var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
                 var removed = _chats.FirstOrDefault(c => c.id == chatId);
@@ -487,7 +702,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to delete chat: {ex.Message}");
+            MessageBox.Show($"Failed to delete chat: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -496,25 +711,27 @@ public partial class MainWindow : Window
         string text = txtChatInput.Text.Trim();
         if (string.IsNullOrEmpty(text) || _activeChat == null) return;
 
+        string originalInput = text;
         txtChatInput.Text = "";
         btnSendChat.IsEnabled = false;
 
-        _messagesList.Add(new MessageViewModel
+        // Add optimistic user message to local UI list
+        var optimisticUserMsg = new MessageViewModel
         {
             RoleHeader = "You",
             Content = text,
             Alignment = HorizontalAlignment.Right,
-            BackgroundBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#0288D1"),
-            BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#039BE5")
-        });
-        scrollerMessages.ScrollToEnd();
+            BackgroundBrush = UserBgBrush,
+            BorderBrush = UserBorderBrush
+        };
+        _messagesList.Add(optimisticUserMsg);
+        ScrollMessagesToEnd();
 
         try
         {
-            using var client = CreateSupabaseClient();
-
-            // Save user message
-            string encryptedUserText = _isEncryptionEnabled && !string.IsNullOrEmpty(_masterKey)
+            // Save user message to Supabase
+            bool useEncryption = _isEncryptionEnabled && !string.IsNullOrEmpty(_masterKey);
+            string encryptedUserText = useEncryption
                 ? CryptoHelper.Encrypt(text, _masterKey)
                 : text;
 
@@ -523,13 +740,18 @@ public partial class MainWindow : Window
                 chat_id = _activeChat.id,
                 role = "user",
                 content = encryptedUserText,
-                is_encrypted = _isEncryptionEnabled
+                is_encrypted = useEncryption
             };
 
-            var msgContent = new StringContent(JsonSerializer.Serialize(msgPayload), Encoding.UTF8, "application/json");
-            var msgResponse = await client.PostAsync("https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chat_messages", msgContent);
+            var msgRequest = CreateSupabaseRequest(HttpMethod.Post, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chat_messages");
+            msgRequest.Content = new StringContent(JsonSerializer.Serialize(msgPayload), Encoding.UTF8, "application/json");
+
+            var msgResponse = await _httpClient.SendAsync(msgRequest);
             if (!msgResponse.IsSuccessStatusCode)
             {
+                // Rollback optimistic user entry and restore input on user insert fail
+                _messagesList.Remove(optimisticUserMsg);
+                txtChatInput.Text = originalInput;
                 throw new Exception($"Failed to save message: {await msgResponse.Content.ReadAsStringAsync()}");
             }
 
@@ -557,8 +779,9 @@ public partial class MainWindow : Window
                 style = styleSelection?.id
             };
 
-            var proxyRequest = new HttpRequestMessage(HttpMethod.Post, $"{_targetUrl}/api/ai/proxy");
-            proxyRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+            // Use InfiniteTimeSpan with per-request CancellationTokenSource to keep SSE stream open
+            using var cts = new CancellationTokenSource();
+            var proxyRequest = CreateSupabaseRequest(HttpMethod.Post, $"{_targetUrl}/api/ai/proxy");
             proxyRequest.Content = new StringContent(JsonSerializer.Serialize(proxyPayload), Encoding.UTF8, "application/json");
 
             var assistantMsg = new MessageViewModel
@@ -566,17 +789,22 @@ public partial class MainWindow : Window
                 RoleHeader = "Assistant",
                 Content = "...",
                 Alignment = HorizontalAlignment.Left,
-                BackgroundBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#2D2D30"),
-                BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#3E3E42")
+                BackgroundBrush = AssistantBgBrush,
+                BorderBrush = AssistantBorderBrush
             };
             _messagesList.Add(assistantMsg);
-            scrollerMessages.ScrollToEnd();
+            ScrollMessagesToEnd();
 
-            var proxyResponse = await client.SendAsync(proxyRequest, HttpCompletionOption.ResponseHeadersRead);
+            var proxyResponse = await _httpClient.SendAsync(proxyRequest, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             if (!proxyResponse.IsSuccessStatusCode)
             {
+                // Rollback optimistic entries on proxy error
+                _messagesList.Remove(optimisticUserMsg);
+                _messagesList.Remove(assistantMsg);
+                txtChatInput.Text = originalInput;
+
                 string errText = await proxyResponse.Content.ReadAsStringAsync();
-                assistantMsg.Content = $"Error calling proxy: {errText}";
+                MessageBox.Show($"Error calling proxy: {errText}", "Proxy Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -586,9 +814,12 @@ public partial class MainWindow : Window
             StringBuilder fullResponse = new StringBuilder();
             assistantMsg.Content = "";
 
-            while (!reader.EndOfStream)
+            // Repeatedly await ReadLineAsync and continue processing non-null lines
+            while (true)
             {
                 string? line = await reader.ReadLineAsync();
+                if (line == null) break; // Terminate when returns null
+
                 if (string.IsNullOrEmpty(line)) continue;
                 if (!line.StartsWith("data: ")) continue;
 
@@ -616,7 +847,7 @@ public partial class MainWindow : Window
                     {
                         fullResponse.Append(delta);
                         assistantMsg.Content = fullResponse.ToString();
-                        scrollerMessages.ScrollToEnd();
+                        ScrollMessagesToEnd();
                     }
                 }
                 catch
@@ -625,8 +856,8 @@ public partial class MainWindow : Window
                 }
             }
 
-            // Save assistant message
-            string encryptedAssistantText = _isEncryptionEnabled && !string.IsNullOrEmpty(_masterKey)
+            // Save assistant message to Supabase
+            string encryptedAssistantText = useEncryption
                 ? CryptoHelper.Encrypt(fullResponse.ToString(), _masterKey)
                 : fullResponse.ToString();
 
@@ -635,26 +866,33 @@ public partial class MainWindow : Window
                 chat_id = _activeChat.id,
                 role = "assistant",
                 content = encryptedAssistantText,
-                is_encrypted = _isEncryptionEnabled
+                is_encrypted = useEncryption
             };
 
-            var saveContent = new StringContent(JsonSerializer.Serialize(assistantSavePayload), Encoding.UTF8, "application/json");
-            await client.PostAsync("https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chat_messages", saveContent);
+            var saveRequest = CreateSupabaseRequest(HttpMethod.Post, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chat_messages");
+            saveRequest.Content = new StringContent(JsonSerializer.Serialize(assistantSavePayload), Encoding.UTF8, "application/json");
+            var saveResponse = await _httpClient.SendAsync(saveRequest);
+            if (!saveResponse.IsSuccessStatusCode)
+            {
+                // Trigger rollback if assistant save fails
+                _messagesList.Remove(optimisticUserMsg);
+                _messagesList.Remove(assistantMsg);
+                txtChatInput.Text = originalInput;
+                throw new Exception($"Failed to persist assistant message: {await saveResponse.Content.ReadAsStringAsync()}");
+            }
 
             // Update chat updated_at
             var updatePayload = new
             {
                 updated_at = DateTime.UtcNow.ToString("o")
             };
-            var updateContent = new StringContent(JsonSerializer.Serialize(updatePayload), Encoding.UTF8, "application/json");
-            await client.SendAsync(new HttpRequestMessage(HttpMethod.Patch, $"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?id=eq.{_activeChat.id}")
-            {
-                Content = updateContent
-            });
+            var updateRequest = CreateSupabaseRequest(HttpMethod.Patch, $"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?id=eq.{_activeChat.id}");
+            updateRequest.Content = new StringContent(JsonSerializer.Serialize(updatePayload), Encoding.UTF8, "application/json");
+            await _httpClient.SendAsync(updateRequest);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error: {ex.Message}");
+            MessageBox.Show($"Error: {ex.Message}", "Message Flow Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -663,18 +901,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ScrollMessagesToEnd()
+    {
+        // Scroll via Background priority so it executes after layout engine updates
+        Dispatcher.BeginInvoke(new Action(() => scrollerMessages.ScrollToEnd()), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
     private async Task UpdateChatConfigurationAsync(object patchPayload)
     {
         if (_activeChat == null) return;
         try
         {
-            using var client = CreateSupabaseClient();
-            var content = new StringContent(JsonSerializer.Serialize(patchPayload), Encoding.UTF8, "application/json");
-            var request = new HttpRequestMessage(HttpMethod.Patch, $"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?id=eq.{_activeChat.id}")
-            {
-                Content = content
-            };
-            await client.SendAsync(request);
+            var request = CreateSupabaseRequest(HttpMethod.Patch, $"https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/chats?id=eq.{_activeChat.id}");
+            request.Content = new StringContent(JsonSerializer.Serialize(patchPayload), Encoding.UTF8, "application/json");
+            await _httpClient.SendAsync(request);
         }
         catch (Exception ex)
         {
@@ -684,87 +924,147 @@ public partial class MainWindow : Window
 
     private void LstChats_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _activeChat = lstChats.SelectedItem as ChatItem;
-        if (_activeChat != null)
+        try
         {
-            _ = LoadChatMessagesAsync(_activeChat.id);
+            _activeChat = lstChats.SelectedItem as ChatItem;
+            if (_activeChat != null)
+            {
+                _ = LoadChatMessagesAsync(_activeChat.id);
 
-            var s = _styles.FirstOrDefault(st => st.id == _activeChat.style);
-            if (s != null) cmbStyles.SelectedItem = s;
+                // When style, LLM character, or user character lookup returns null, explicitly reset to index-0/None
+                var s = _styles.FirstOrDefault(st => st.id == _activeChat.style);
+                if (s != null) cmbStyles.SelectedItem = s;
+                else cmbStyles.SelectedIndex = 0;
 
-            var llmChar = cmbLlmCharacters.Items.Cast<CharacterItem>().FirstOrDefault(c => c.id == _activeChat.llm_character_id);
-            if (llmChar != null) cmbLlmCharacters.SelectedItem = llmChar;
+                var llmChar = cmbLlmCharacters.Items.Cast<CharacterItem>().FirstOrDefault(c => c.id == _activeChat.llm_character_id);
+                if (llmChar != null) cmbLlmCharacters.SelectedItem = llmChar;
+                else cmbLlmCharacters.SelectedIndex = 0;
 
-            var userChar = cmbUserCharacters.Items.Cast<CharacterItem>().FirstOrDefault(c => c.id == _activeChat.user_character_id);
-            if (userChar != null) cmbUserCharacters.SelectedItem = userChar;
+                var userChar = cmbUserCharacters.Items.Cast<CharacterItem>().FirstOrDefault(c => c.id == _activeChat.user_character_id);
+                if (userChar != null) cmbUserCharacters.SelectedItem = userChar;
+                else cmbUserCharacters.SelectedIndex = 0;
+            }
+            else
+            {
+                _messagesList.Clear();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _messagesList.Clear();
+            MessageBox.Show($"Selection error: {ex.Message}");
         }
     }
 
     private void BtnDeleteChat_Click(object sender, RoutedEventArgs e)
     {
-        var btn = sender as Button;
-        if (btn?.Tag is string chatId)
+        try
         {
-            e.Handled = true;
-            var result = MessageBox.Show("Are you sure you want to delete this chat?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result == MessageBoxResult.Yes)
+            var btn = sender as Button;
+            if (btn?.Tag is string chatId)
             {
-                _ = DeleteChatAsync(chatId);
+                e.Handled = true;
+                var result = MessageBox.Show("Are you sure you want to delete this chat?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    _ = DeleteChatAsync(chatId);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Delete chat failed: {ex.Message}");
         }
     }
 
     private void BtnNewChat_Click(object sender, RoutedEventArgs e)
     {
-        _ = CreateNewChatAsync();
+        try
+        {
+            _ = CreateNewChatAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"New Chat trigger failed: {ex.Message}");
+        }
     }
 
     private void TxtChatInput_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
-            _ = SendMessageAsync();
+            try
+            {
+                _ = SendMessageAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Send message failed: {ex.Message}");
+            }
         }
     }
 
     private void BtnSendChat_Click(object sender, RoutedEventArgs e)
     {
-        _ = SendMessageAsync();
+        try
+        {
+            _ = SendMessageAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Send failed: {ex.Message}");
+        }
     }
 
     private void CmbModels_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
 
     private async void CmbStyles_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var item = cmbStyles.SelectedItem as StyleItem;
-        if (item != null && _activeChat != null && _activeChat.style != item.id)
+        try
         {
-            _activeChat.style = item.id;
-            await UpdateChatConfigurationAsync(new { style = item.id });
+            var item = cmbStyles.SelectedItem as StyleItem;
+            if (item != null && _activeChat != null && _activeChat.style != item.id)
+            {
+                _activeChat.style = item.id;
+                await UpdateChatConfigurationAsync(new { style = item.id });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Style update failed: {ex.Message}");
         }
     }
 
     private async void CmbLlmCharacters_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var item = cmbLlmCharacters.SelectedItem as CharacterItem;
-        if (item != null && _activeChat != null && _activeChat.llm_character_id != item.id)
+        try
         {
-            _activeChat.llm_character_id = string.IsNullOrEmpty(item.id) ? null : item.id;
-            await UpdateChatConfigurationAsync(new { llm_character_id = _activeChat.llm_character_id });
+            var item = cmbLlmCharacters.SelectedItem as CharacterItem;
+            if (item != null && _activeChat != null && _activeChat.llm_character_id != item.id)
+            {
+                _activeChat.llm_character_id = string.IsNullOrEmpty(item.id) ? null : item.id;
+                await UpdateChatConfigurationAsync(new { llm_character_id = _activeChat.llm_character_id });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"LLM character update failed: {ex.Message}");
         }
     }
 
     private async void CmbUserCharacters_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var item = cmbUserCharacters.SelectedItem as CharacterItem;
-        if (item != null && _activeChat != null && _activeChat.user_character_id != item.id)
+        try
         {
-            _activeChat.user_character_id = string.IsNullOrEmpty(item.id) ? null : item.id;
-            await UpdateChatConfigurationAsync(new { user_character_id = _activeChat.user_character_id });
+            var item = cmbUserCharacters.SelectedItem as CharacterItem;
+            if (item != null && _activeChat != null && _activeChat.user_character_id != item.id)
+            {
+                _activeChat.user_character_id = string.IsNullOrEmpty(item.id) ? null : item.id;
+                await UpdateChatConfigurationAsync(new { user_character_id = _activeChat.user_character_id });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"User character update failed: {ex.Message}");
         }
     }
 
@@ -774,32 +1074,58 @@ public partial class MainWindow : Window
     {
         try
         {
-            using var client = CreateSupabaseClient();
-            var payload = new
-            {
-                prefix = "",
-                limit = 100,
-                sortBy = new { column = "name", order = "asc" }
-            };
+            var allFiles = new List<StorageFileItem>();
+            int limit = 100;
+            int offset = 0;
 
-            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var response = await client.PostAsync("https://vqmukrmpgvavscsyefqd.supabase.co/storage/v1/object/list/Storage", content);
-            if (response.IsSuccessStatusCode)
+            // Paginate through all available objects before applying filters
+            while (true)
             {
+                var payload = new
+                {
+                    prefix = "",
+                    limit = limit,
+                    offset = offset,
+                    sortBy = new { column = "name", order = "asc" }
+                };
+
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                var request = CreateSupabaseRequest(HttpMethod.Post, "https://vqmukrmpgvavscsyefqd.supabase.co/storage/v1/object/list/Storage");
+                request.Content = content;
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errBody = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Failed to list files. Status: {response.StatusCode}\nDetails: {errBody}");
+                }
+
                 string json = await response.Content.ReadAsStringAsync();
                 var files = JsonSerializer.Deserialize<List<StorageFileItem>>(json) ?? new();
-                var imageFiles = files.Where(f => f.metadata?.mimetype?.StartsWith("image/") == true).ToList();
+                if (files.Count == 0) break;
 
-                cmbStorageFiles.ItemsSource = imageFiles;
-                if (imageFiles.Count > 0)
-                {
-                    cmbStorageFiles.SelectedIndex = 0;
-                }
+                allFiles.AddRange(files);
+                if (files.Count < limit) break;
+
+                offset += limit;
+            }
+
+            var imageFiles = allFiles.Where(f => f.metadata?.mimetype?.StartsWith("image/") == true).ToList();
+            cmbStorageFiles.ItemsSource = imageFiles;
+
+            if (imageFiles.Count > 0)
+            {
+                cmbStorageFiles.SelectedIndex = 0;
+            }
+            else
+            {
+                // Show clear "no images found" state when completed image list is empty
+                MessageBox.Show("No image files found in your storage bucket.", "No Images Found", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to load storage files: {ex.Message}");
+            MessageBox.Show($"Failed to load storage files: {ex.Message}", "Error Loading Files", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -813,6 +1139,8 @@ public partial class MainWindow : Window
         }
 
         double quality = sliderQuality.Value;
+        double targetSizeMB = 0;
+        bool hasTargetSize = !string.IsNullOrEmpty(txtTargetSizeMB.Text.Trim()) && double.TryParse(txtTargetSizeMB.Text.Trim(), out targetSizeMB) && targetSizeMB > 0;
 
         panelCompressorIdle.Visibility = Visibility.Collapsed;
         panelCompressorSuccess.Visibility = Visibility.Collapsed;
@@ -821,11 +1149,10 @@ public partial class MainWindow : Window
 
         try
         {
-            using var client = CreateSupabaseClient();
-
             // 1. Download
             txtCompressorStatus.Text = "Downloading file...";
-            var downloadResponse = await client.GetAsync($"https://vqmukrmpgvavscsyefqd.supabase.co/storage/v1/object/Storage/{Uri.EscapeDataString(selectedFile.name)}");
+            var downloadReq = CreateSupabaseRequest(HttpMethod.Get, $"https://vqmukrmpgvavscsyefqd.supabase.co/storage/v1/object/Storage/{Uri.EscapeDataString(selectedFile.name)}");
+            var downloadResponse = await _httpClient.SendAsync(downloadReq);
             if (!downloadResponse.IsSuccessStatusCode)
             {
                 throw new Exception($"Download failed: {await downloadResponse.Content.ReadAsStringAsync()}");
@@ -833,40 +1160,79 @@ public partial class MainWindow : Window
 
             byte[] originalBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
 
-            // 2. Compress locally
+            // 2. Compress locally on background worker thread to keep UI responsive
             txtCompressorStatus.Text = "Compressing image locally...";
-            byte[] compressedBytes;
-            using (var inStream = new MemoryStream(originalBytes))
+            byte[] compressedBytes = await Task.Run(() =>
             {
-                var decoder = BitmapDecoder.Create(inStream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-                var frame = decoder.Frames[0];
-
-                using (var outStream = new MemoryStream())
+                using (var inStream = new MemoryStream(originalBytes))
                 {
-                    var encoder = new JpegBitmapEncoder();
-                    encoder.QualityLevel = (int)quality;
-                    encoder.Frames.Add(BitmapFrame.Create(frame));
-                    encoder.Save(outStream);
-                    compressedBytes = outStream.ToArray();
+                    var decoder = BitmapDecoder.Create(inStream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                    var frame = decoder.Frames[0];
+                    frame.Freeze(); // Freeze frame to make it thread-safe before thread handoff
+
+                    if (hasTargetSize)
+                    {
+                        double targetSizeBytes = targetSizeMB * 1024 * 1024;
+                        byte[] currentCompressed = originalBytes;
+                        bool success = false;
+
+                        // Iteratively reduce JPEG quality and re-encode until output fits or q reaches 5
+                        for (int q = (int)quality; q >= 5; q -= 5)
+                        {
+                            using (var outStream = new MemoryStream())
+                            {
+                                var encoder = new JpegBitmapEncoder();
+                                encoder.QualityLevel = q;
+                                encoder.Frames.Add(BitmapFrame.Create(frame));
+                                encoder.Save(outStream);
+                                byte[] temp = outStream.ToArray();
+                                if (temp.Length <= targetSizeBytes)
+                                {
+                                    currentCompressed = temp;
+                                    success = true;
+                                    break;
+                                }
+                                currentCompressed = temp; // Best effort
+                            }
+                        }
+
+                        if (!success)
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                MessageBox.Show($"Warning: Could not compress file to fit within target size of {targetSizeMB} MB. Best effort compression was applied.", "Target Size Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            });
+                        }
+
+                        return currentCompressed;
+                    }
+                    else
+                    {
+                        using (var outStream = new MemoryStream())
+                        {
+                            var encoder = new JpegBitmapEncoder();
+                            encoder.QualityLevel = (int)quality;
+                            encoder.Frames.Add(BitmapFrame.Create(frame));
+                            encoder.Save(outStream);
+                            return outStream.ToArray();
+                        }
+                    }
                 }
-            }
+            });
 
             // 3. Upload
             txtCompressorStatus.Text = "Uploading compressed file...";
-            string ext = Path.GetExtension(selectedFile.name);
             string baseName = Path.GetFileNameWithoutExtension(selectedFile.name);
-            string newFileName = $"{baseName}_compressed{ext}";
+            string newFileName = $"{baseName}_compressed.jpg"; // Always use .jpg extension
 
             var uploadContent = new ByteArrayContent(compressedBytes);
             uploadContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
 
-            var uploadRequest = new HttpRequestMessage(HttpMethod.Post, $"https://vqmukrmpgvavscsyefqd.supabase.co/storage/v1/object/Storage/{Uri.EscapeDataString(newFileName)}")
-            {
-                Content = uploadContent
-            };
+            var uploadRequest = CreateSupabaseRequest(HttpMethod.Post, $"https://vqmukrmpgvavscsyefqd.supabase.co/storage/v1/object/Storage/{Uri.EscapeDataString(newFileName)}");
+            uploadRequest.Content = uploadContent;
             uploadRequest.Headers.Add("x-upsert", "true");
 
-            var uploadResponse = await client.SendAsync(uploadRequest);
+            var uploadResponse = await _httpClient.SendAsync(uploadRequest);
             if (!uploadResponse.IsSuccessStatusCode)
             {
                 throw new Exception($"Upload failed: {await uploadResponse.Content.ReadAsStringAsync()}");
@@ -874,15 +1240,24 @@ public partial class MainWindow : Window
 
             txtOrigSize.Text = FormatSize(originalBytes.Length);
             txtNewSize.Text = FormatSize(compressedBytes.Length);
+
             double savings = (1.0 - (double)compressedBytes.Length / originalBytes.Length) * 100.0;
-            txtSavings.Text = $"Saved {savings:0}%";
+            if (savings < 0)
+            {
+                // Clamp or relabel negative savings as size increase
+                txtSavings.Text = $"Size increased by {Math.Abs(savings):0}%";
+            }
+            else
+            {
+                txtSavings.Text = $"Saved {savings:0}%";
+            }
 
             panelCompressorRunning.Visibility = Visibility.Collapsed;
             panelCompressorSuccess.Visibility = Visibility.Visible;
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Compression failed: {ex.Message}");
+            MessageBox.Show($"Compression failed: {ex.Message}", "Compression Error", MessageBoxButton.OK, MessageBoxImage.Error);
             panelCompressorRunning.Visibility = Visibility.Collapsed;
             panelCompressorIdle.Visibility = Visibility.Visible;
         }
@@ -908,16 +1283,30 @@ public partial class MainWindow : Window
 
     private void BtnQualityPreset_Click(object sender, RoutedEventArgs e)
     {
-        var btn = sender as Button;
-        if (btn?.Tag is string valStr && double.TryParse(valStr, out double val))
+        try
         {
-            sliderQuality.Value = val;
+            var btn = sender as Button;
+            if (btn?.Tag is string valStr && double.TryParse(valStr, out double val))
+            {
+                sliderQuality.Value = val;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error setting quality preset: {ex.Message}");
         }
     }
 
     private void BtnStartCompression_Click(object sender, RoutedEventArgs e)
     {
-        _ = CompressAndUploadFileAsync();
+        try
+        {
+            _ = CompressAndUploadFileAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error during compression: {ex.Message}");
+        }
     }
 
     private void BtnCompressAnother_Click(object sender, RoutedEventArgs e)
@@ -929,7 +1318,14 @@ public partial class MainWindow : Window
 
     private void BtnRefreshStorageFiles_Click(object sender, RoutedEventArgs e)
     {
-        _ = LoadStorageFilesAsync();
+        try
+        {
+            _ = LoadStorageFilesAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Refresh failed: {ex.Message}");
+        }
     }
 
     // --- OTHER WEBVIEW & HELPER LOGIC ---
@@ -1142,8 +1538,24 @@ public partial class MainWindow : Window
 
 // --- VIEW MODEL AND DTO CLASSES ---
 
-public class ChatItem
+public class CategoryDescriptor
 {
+    public string Name { get; set; } = "";
+    public string Label { get; set; } = "";
+}
+
+public class AppDescriptor
+{
+    public string Id { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Category { get; set; } = "";
+    public Action LaunchAction { get; set; } = () => { };
+}
+
+public class ChatItem : INotifyPropertyChanged
+{
+    private string _title = "";
     public string id { get; set; } = "";
     public string title { get; set; } = "";
     public string style { get; set; } = "GeneralAssistant";
@@ -1152,8 +1564,17 @@ public class ChatItem
     public bool is_encrypted { get; set; }
     public string updated_at { get; set; } = "";
 
-    public string Title { get; set; } = "";
-    public string Id => id;
+    public string Title
+    {
+        get => _title;
+        set { _title = value; OnPropertyChanged(); }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? name = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 }
 
 public class ChatMessageItem

@@ -195,14 +195,18 @@
                         <!-- Category Selector -->
                         <StackPanel Grid.Row="1" Margin="0,0,0,20">
                             <TextBlock Text="Categories" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            <WrapPanel Name="wrapCategories">
-                                <Button Content="All" Width="100" Margin="0,0,10,0" Tag="All" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
-                                <Button Content="Utility" Width="100" Margin="0,0,10,0" Tag="Utility" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
-                                <Button Content="LLM/AI" Width="100" Margin="0,0,10,0" Tag="LLM/AI" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
-                                <Button Content="Development" Width="120" Margin="0,0,10,0" Tag="Development" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
-                                <Button Content="Social" Width="100" Margin="0,0,10,0" Tag="Social" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
-                                <Button Content="Games" Width="100" Margin="0,0,10,0" Tag="Games" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
-                            </WrapPanel>
+                            <ItemsControl Name="itemsCategories">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Label}" Width="110" Margin="0,0,10,10" Tag="{Binding Name}" Click="Category_Click" Style="{StaticResource CategoryButtonStyle}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
 
                         <!-- App Grid -->
@@ -214,21 +218,26 @@
                             <TextBlock Grid.Row="0" Name="txtCategoryHeader" Text="All Apps" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
 
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                <WrapPanel Name="wrapAppsList" Margin="0,10,0,0">
-                                    <Button Name="cardChatbot" Width="280" Height="140" Margin="0,0,20,20" Click="CardChatbot_Click" Style="{StaticResource AppCardButtonStyle}">
-                                        <StackPanel Margin="15" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                            <TextBlock Text="💬 Chatbot" FontSize="18" FontWeight="Bold" Margin="0,0,0,5"/>
-                                            <TextBlock Text="Chat with LLMs in real-time. Native client supporting styles, characters and history." FontSize="11" Foreground="#A0A0A0" TextWrapping="Wrap" MaxHeight="60"/>
-                                        </StackPanel>
-                                    </Button>
-
-                                    <Button Name="cardCompressor" Width="280" Height="140" Margin="0,0,20,20" Click="CardCompressor_Click" Style="{StaticResource AppCardButtonStyle}">
-                                        <StackPanel Margin="15" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                            <TextBlock Text="📦 File Compressor" FontSize="18" FontWeight="Bold" Margin="0,0,0,5"/>
-                                            <TextBlock Text="Compress files and images seamlessly using native WPF compression and Supabase storage." FontSize="11" Foreground="#A0A0A0" TextWrapping="Wrap" MaxHeight="60"/>
-                                        </StackPanel>
-                                    </Button>
-                                </WrapPanel>
+                                <Grid>
+                                    <ItemsControl Name="itemsAppsList">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Width="280" Height="140" Margin="0,0,20,20" Tag="{Binding Id}" Click="AppCard_Click" Style="{StaticResource AppCardButtonStyle}">
+                                                    <StackPanel Margin="15" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="Bold" Margin="0,0,0,5"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#A0A0A0" TextWrapping="Wrap" MaxHeight="60"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Name="txtNoAppsMessage" Text="No apps found in this category." FontSize="14" Foreground="#707070" HorizontalAlignment="Left" Margin="0,15,0,0" Visibility="Collapsed"/>
+                                </Grid>
                             </ScrollViewer>
                         </Grid>
                     </Grid>
