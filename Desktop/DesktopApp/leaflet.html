@@ -88,7 +88,7 @@
       marker.bindPopup(`<b style="color: #333;">${escapedName}</b><br/><span style="color: #666;">IP: ${escapedIP}</span><br/><span style="color: #666;">Status: ${escapedStatus}</span>`);
 
       marker.on('click', () => {
-        selectServer(escapedId);
+        selectServer(id);
       });
 
       markers[id] = marker;

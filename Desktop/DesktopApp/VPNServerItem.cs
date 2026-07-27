@@ -45,6 +45,7 @@ public class VPNServerItem : INotifyPropertyChanged
     public Brush StatusColor => Status switch
     {
         "connected" => Brushes.LimeGreen,
+        "online" => Brushes.DeepSkyBlue,
         "loading" => Brushes.Orange,
         _ => Brushes.Red
     };

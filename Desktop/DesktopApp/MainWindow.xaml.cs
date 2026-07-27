@@ -150,7 +150,8 @@ public partial class MainWindow : Window
         {
             if (_isVPNConnected && _selectedVPNServer != null)
             {
-                _ = VPNConnectionManager.DisconnectAsync(_selectedVPNServer.Name);
+                var disconnectTask = VPNConnectionManager.DisconnectAsync(_selectedVPNServer.Name);
+                disconnectTask.Wait(5000); // Wait synchronously up to 5s bounded timeout
             }
         }
         catch (Exception ex)
@@ -817,11 +818,6 @@ public partial class MainWindow : Window
                 _selectedVPNServer.Status = "loading";
                 UpdateServerMarkerOnMap(_selectedVPNServer);
 
-                if (chkVPNKillswitch.IsChecked == true)
-                {
-                    VPNKillswitchManager.SetKillswitchActive(true);
-                }
-
                 VPNConnectionManager.CreateOrUpdateVPNProfile(_selectedVPNServer.Name, _selectedVPNServer.BaseUrl);
                 bool success = await VPNConnectionManager.ConnectAsync(_selectedVPNServer.Name, _userId, _accessToken);
 
@@ -834,7 +830,11 @@ public partial class MainWindow : Window
                     btnVPNToggleConnection.Content = "Disconnect";
                     btnVPNToggleConnection.Background = Brushes.Crimson;
 
-                    VPNKillswitchManager.SetKillswitchActive(false);
+                    if (chkVPNKillswitch.IsChecked == true)
+                    {
+                        VPNKillswitchManager.SetKillswitchActive(true);
+                    }
+
                     StartVPNTimers();
                 }
                 else
@@ -910,17 +910,20 @@ public partial class MainWindow : Window
 
     private async void VPNDataTimer_Tick(object? sender, EventArgs e)
     {
+        if (_selectedVPNServer == null) return;
+
         long currentBytes = 0;
+        bool resolved = false;
         try
         {
             var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces();
             foreach (var ni in interfaces)
             {
-                if (ni.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
-                    (ni.Description.Contains("WAN Miniport") || ni.Description.Contains("SSTP") || ni.Name.Contains("VPN")))
+                if (ni.Name == _selectedVPNServer.Name || ni.Description == _selectedVPNServer.Name)
                 {
                     var stats = ni.GetIPStatistics();
                     currentBytes += stats.BytesReceived + stats.BytesSent;
+                    resolved = true;
                 }
             }
         }
@@ -929,10 +932,9 @@ public partial class MainWindow : Window
             Debug.WriteLine($"Error querying network stats: {ex.Message}");
         }
 
-        if (currentBytes == 0)
+        if (!resolved)
         {
-            // Fallback mock accumulation if no matching interfaces are currently discovered
-            currentBytes = _vpnBaselineBytes == -1 ? 0 : _vpnBaselineBytes + 85000;
+            return;
         }
 
         if (_vpnBaselineBytes == -1)

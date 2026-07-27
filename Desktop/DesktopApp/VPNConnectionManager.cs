@@ -73,25 +73,12 @@ public static class VPNConnectionManager
         {
             try
             {
-                // Stage credentials securely using cmdkey / generic windows credentials manager
-                // cmdkey /generic:target /user:username /pass:token
-                string targetName = $"OxygenLowsSoftwareVPN_{connectionName}";
-                var psiCmdKey = new ProcessStartInfo
-                {
-                    FileName = "cmdkey.exe",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-                psiCmdKey.ArgumentList.Add($"/generic:{targetName}");
-                psiCmdKey.ArgumentList.Add($"/user:{username}");
-                psiCmdKey.ArgumentList.Add($"/pass:{token}");
+                // Write standard Windows generic credentials for Rasdial targets securely
+                string target1 = connectionName;
+                string target2 = $"Microsoft_RAS_{connectionName}";
 
-                using (var procCmdKey = Process.Start(psiCmdKey))
-                {
-                    if (procCmdKey == null || !procCmdKey.WaitForExit(10000)) return false;
-                }
+                CredentialHelper.WriteCredential(target1, username, token);
+                CredentialHelper.WriteCredential(target2, username, token);
 
                 var psi = new ProcessStartInfo
                 {
@@ -102,10 +89,8 @@ public static class VPNConnectionManager
                     CreateNoWindow = true
                 };
 
-                // Use ArgumentList with rasdial target name directly to quote arguments securely
+                // Use ArgumentList with rasdial target name directly to quote arguments securely without token
                 psi.ArgumentList.Add(connectionName);
-                psi.ArgumentList.Add(username);
-                psi.ArgumentList.Add(token);
 
                 using var process = Process.Start(psi);
                 if (process == null) return false;
@@ -142,6 +127,14 @@ public static class VPNConnectionManager
     /// </summary>
     public static async Task<bool> DisconnectAsync(string connectionName)
     {
+        // Cleanup credential targets securely on disconnect
+        try
+        {
+            CredentialHelper.DeleteCredential(connectionName);
+            CredentialHelper.DeleteCredential($"Microsoft_RAS_{connectionName}");
+        }
+        catch { }
+
         return await Task.Run(() =>
         {
             try

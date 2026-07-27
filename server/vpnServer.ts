@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import axios from "axios";
 
 config();
 
@@ -15,19 +16,6 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "";
 
 const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-function getAuthenticatedClient(token?: string) {
-  if (token) {
-    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    });
-  }
-  return anonClient;
-}
 
 const app = express();
 const server = createServer(app);
@@ -55,21 +43,22 @@ app.post("/api/vpn/auth", async (req, res) => {
   }
 
   try {
-    const authClient = getAuthenticatedClient(access_token);
-    const { data: { user }, error } = await authClient.auth.getUser();
+    const { data: { user }, error } = await anonClient.auth.getUser(access_token);
 
     if (error || !user || user.id !== user_id) {
       return res.status(401).json({ success: false, error: "Invalid credentials or unauthorized token." });
     }
 
-    const { data: preferences } = await authClient
-      .from("user_preferences")
-      .select("vpn_usage_bytes, vpn_usage_last_date")
-      .eq("user_id", user_id)
-      .single();
+    const resp = await axios.get(`${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user_id}&select=vpn_usage_bytes,vpn_usage_last_date`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${access_token}`
+      }
+    });
 
     const todayStr = new Date().toISOString().split("T")[0];
-    if (preferences) {
+    if (resp.data && resp.data.length > 0) {
+      const preferences = resp.data[0];
       const isToday = preferences.vpn_usage_last_date === todayStr;
       const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
       if (usage >= 50 * 1024 * 1024) {
@@ -94,21 +83,22 @@ app.all("/sstdp", async (req, res) => {
   }
 
   try {
-    const authClient = getAuthenticatedClient(token);
-    const { data: { user }, error } = await authClient.auth.getUser();
+    const { data: { user }, error } = await anonClient.auth.getUser(token);
 
     if (error || !user || user.id !== userId) {
       return res.status(401).json({ success: false, error: "Authentication failed." });
     }
 
-    const { data: preferences } = await authClient
-      .from("user_preferences")
-      .select("vpn_usage_bytes, vpn_usage_last_date")
-      .eq("user_id", userId)
-      .single();
+    const resp = await axios.get(`${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${userId}&select=vpn_usage_bytes,vpn_usage_last_date`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`
+      }
+    });
 
     const todayStr = new Date().toISOString().split("T")[0];
-    if (preferences) {
+    if (resp.data && resp.data.length > 0) {
+      const preferences = resp.data[0];
       const isToday = preferences.vpn_usage_last_date === todayStr;
       const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
       if (usage >= 50 * 1024 * 1024) {
@@ -128,6 +118,59 @@ app.all("/sstdp", async (req, res) => {
 wss.on("connection", (ws: WebSocket) => {
   let authenticated = false;
   let userId = "";
+  let accessToken = "";
+  let accumulatedBytes = 0;
+  let intervalId: any = null;
+
+  async function flushUsage() {
+    if (accumulatedBytes > 0 && userId && accessToken) {
+      const bytesToSave = accumulatedBytes;
+      accumulatedBytes = 0;
+
+      try {
+        const todayStr = new Date().toISOString().split("T")[0];
+
+        const getUrl = `${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${userId}&select=vpn_usage_bytes`;
+        const resp = await axios.get(getUrl, {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+
+        let currentUsage = 0;
+        if (resp.data && resp.data.length > 0) {
+          currentUsage = Number(resp.data[0].vpn_usage_bytes || 0);
+        }
+
+        const newTotal = currentUsage + bytesToSave;
+
+        const fullPayload = {
+          p_user_id: userId,
+          p_vpn_usage_bytes: newTotal,
+          p_vpn_usage_last_date: todayStr
+        };
+
+        await axios.post(`${SUPABASE_URL}/rest/v1/rpc/upsert_user_preferences`, fullPayload, {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
+        });
+      } catch (err: any) {
+        console.error(`Error flushing usage: ${err.message}`);
+        accumulatedBytes += bytesToSave;
+      }
+    }
+  }
+
+  intervalId = setInterval(flushUsage, 15000);
+
+  ws.on("close", async () => {
+    clearInterval(intervalId);
+    await flushUsage();
+  });
 
   ws.on("message", async (message: string) => {
     try {
@@ -135,8 +178,7 @@ wss.on("connection", (ws: WebSocket) => {
 
       if (data.type === "auth") {
         const { user_id, access_token } = data.payload;
-        const authClient = getAuthenticatedClient(access_token);
-        const { data: { user }, error } = await authClient.auth.getUser();
+        const { data: { user }, error } = await anonClient.auth.getUser(access_token);
 
         if (error || !user || user.id !== user_id) {
           ws.send(JSON.stringify({ type: "auth_response", success: false, error: "Authentication failed." }));
@@ -144,14 +186,16 @@ wss.on("connection", (ws: WebSocket) => {
           return;
         }
 
-        const { data: preferences } = await authClient
-          .from("user_preferences")
-          .select("vpn_usage_bytes, vpn_usage_last_date")
-          .eq("user_id", user_id)
-          .single();
+        const resp = await axios.get(`${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user_id}&select=vpn_usage_bytes,vpn_usage_last_date`, {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${access_token}`
+          }
+        });
 
         const todayStr = new Date().toISOString().split("T")[0];
-        if (preferences) {
+        if (resp.data && resp.data.length > 0) {
+          const preferences = resp.data[0];
           const isToday = preferences.vpn_usage_last_date === todayStr;
           const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
           if (usage >= 50 * 1024 * 1024) {
@@ -163,6 +207,7 @@ wss.on("connection", (ws: WebSocket) => {
 
         authenticated = true;
         userId = user_id;
+        accessToken = access_token;
         ws.send(JSON.stringify({ type: "auth_response", success: true }));
         return;
       }
@@ -175,6 +220,7 @@ wss.on("connection", (ws: WebSocket) => {
 
       if (data.type === "traffic") {
         const bytes = Buffer.byteLength(JSON.stringify(data.payload));
+        accumulatedBytes += bytes;
         ws.send(JSON.stringify({ type: "traffic_ack", bytes }));
       }
     } catch (err) {

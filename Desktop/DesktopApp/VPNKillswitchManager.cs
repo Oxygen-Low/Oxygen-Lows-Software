@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace DesktopApp;
@@ -9,62 +8,74 @@ namespace DesktopApp;
 public static class VPNKillswitchManager
 {
     private static bool _isKillswitchEnabled = false;
-    private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+    private static readonly object _lock = new object();
+    private static Task _taskQueue = Task.CompletedTask;
 
     /// <summary>
     /// Configures the local system-wide loopback block or firewall rules.
-    /// When VPN is supposed to be connected but is offline, we completely disable internet access.
-    /// This uses native netsh commands to block non-VPN outgoing traffic, or blocks interface metrics.
-    /// Uses a SemaphoreSlim to serialize execution and prevent out of order toggles.
+    /// Uses a single chained task queue so toggle operations execute in request order.
     /// </summary>
-    public static void SetKillswitchActive(bool activate)
+    public static Task<bool> SetKillswitchActiveAsync(bool activate)
     {
         _isKillswitchEnabled = activate;
-        Task.Run(async () =>
+        lock (_lock)
         {
-            await _semaphore.WaitAsync();
-            try
+            var tcs = new TaskCompletionSource<bool>();
+            _taskQueue = _taskQueue.ContinueWith(async (prev) =>
             {
-                if (activate)
+                try
                 {
-                    // Block all outbound traffic except what we specifically whitelist or standard VPN routes
-                    await RunNetshCommandAsync("advfirewall firewall add rule name=\"VPN_KILLSWITCH_BLOCK\" dir=out action=block protocol=ANY");
+                    bool result = false;
+                    if (activate)
+                    {
+                        result = await RunNetshCommandAsync("advfirewall firewall add rule name=\"VPN_KILLSWITCH_BLOCK\" dir=out action=block protocol=ANY");
+                    }
+                    else
+                    {
+                        result = await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_BLOCK\"");
+                    }
+                    tcs.SetResult(result);
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Remove outbound block rules
-                    await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_BLOCK\"");
+                    Debug.WriteLine($"Killswitch Netsh Exception: {ex.Message}");
+                    tcs.SetResult(false);
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Killswitch Netsh Exception: {ex.Message}");
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        });
+            });
+            return tcs.Task;
+        }
     }
 
     /// <summary>
-    /// Safe verification that cleans up any active Windows Firewall block on close or application exit,
-    /// preventing a permanent lockout for the user's host machine.
+    /// Backwards compatible method signature
+    /// </summary>
+    public static void SetKillswitchActive(bool activate)
+    {
+        _ = SetKillswitchActiveAsync(activate);
+    }
+
+    /// <summary>
+    /// Safe verification that cleans up any active Windows Firewall block on close or application exit.
+    /// Waits for any pending operations in the queue before cleaning up.
     /// </summary>
     public static void CleanUpActiveRulesOnExit()
     {
         try
         {
-            _semaphore.Wait();
-            RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_BLOCK\"").Wait();
+            Task cleanupTask;
+            lock (_lock)
+            {
+                _taskQueue = _taskQueue.ContinueWith(async (prev) =>
+                {
+                    await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_BLOCK\"");
+                });
+                cleanupTask = _taskQueue;
+            }
+            cleanupTask.Wait(5000); // 5s timeout on close
         }
         catch
         {
             // Fail silent on cleanup
-        }
-        finally
-        {
-            try { _semaphore.Release(); } catch { }
         }
     }
 
