@@ -85,18 +85,31 @@ export function FriendsApp() {
       ]);
 
       if (fData) {
-        setFriends(fData.filter((f: any) => f.status === "accepted"));
-        setPendingIncoming(
-          fData.filter(
-            (f: any) =>
-              f.status === "pending" && f.friend_id === session.user.id,
-          ),
+        /**
+         * ⚡ Bolt Performance Optimization:
+         * Replaced 3 separate O(N) array `.filter()` passes with a single O(N) `.reduce()` loop
+         * to categorize friendships. Reduces CPU cycles and memory allocations when processing
+         * large friend lists during initial load.
+         */
+        const categorized = fData.reduce(
+          (acc: any, f: any) => {
+            if (f.status === "accepted") {
+              acc.friends.push(f);
+            } else if (f.status === "pending") {
+              if (f.friend_id === session.user.id) {
+                acc.incoming.push(f);
+              } else if (f.user_id === session.user.id) {
+                acc.outgoing.push(f);
+              }
+            }
+            return acc;
+          },
+          { friends: [], incoming: [], outgoing: [] },
         );
-        setPendingOutgoing(
-          fData.filter(
-            (f: any) => f.status === "pending" && f.user_id === session.user.id,
-          ),
-        );
+
+        setFriends(categorized.friends);
+        setPendingIncoming(categorized.incoming);
+        setPendingOutgoing(categorized.outgoing);
       }
       if (folData)
         setFollowing(
