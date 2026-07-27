@@ -365,7 +365,7 @@ export default function Storage() {
               >
                 <div className="aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
                   {file.metadata?.mimetype?.startsWith("image/") &&
-                    cloudFileSignedUrls[file.id] ? (
+                  cloudFileSignedUrls[file.id] ? (
                     <img
                       src={cloudFileSignedUrls[file.id]}
                       alt={file.name}
@@ -425,6 +425,8 @@ export default function Storage() {
                     variant="destructive"
                     size="icon"
                     onClick={() => deleteCloudFile(file.name)}
+                    aria-label="Delete file"
+                    title="Delete file"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
