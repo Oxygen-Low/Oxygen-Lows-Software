@@ -459,6 +459,127 @@
                             </Border>
                         </Grid>
                     </Grid>
+
+                    <!-- 5. VPN CLIENT VIEW -->
+                    <Grid Name="panelVPN" Visibility="Collapsed" Margin="15">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header with Experimental Warning -->
+                        <Grid Grid.Row="0" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Content="← Back to Catalog" Click="BtnBackToCatalog_Click" Margin="0,0,15,0" Padding="12,6" Style="{StaticResource BorderlessButtonStyle}"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Oxygen Low's VPN" FontSize="20" FontWeight="Bold"/>
+                                <Border Background="#D32F2F" CornerRadius="4" Margin="15,0,0,0" Padding="6,2">
+                                    <TextBlock Text="EXPERIMENTAL: Limit 50MB/day" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Remaining Data: " Foreground="#A0A0A0" VerticalAlignment="Center"/>
+                                <TextBlock Name="txtVPNRemainingData" Text="50.00 MB" FontWeight="Bold" Foreground="#4CAF50" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Separator Grid.Row="1" Background="#3E3E42" Margin="0,0,0,10"/>
+
+                        <!-- Core Split Layout -->
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="320"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Map and Status -->
+                            <Grid Grid.Column="0" Margin="0,0,15,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Leaflet Map container -->
+                                <Border Grid.Row="0" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="8" Background="#1E1E1E">
+                                    <Grid Name="vpnMapContainer">
+                                        <!-- Leaflet web map dynamically added here -->
+                                    </Grid>
+                                </Border>
+
+                                <!-- Connection and Settings Controls -->
+                                <Grid Grid.Row="1" Margin="0,15,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="1*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Connection Button & Info -->
+                                    <Border Grid.Column="0" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,10,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Name="txtVPNSelectedServer" Text="No Server Selected" FontSize="16" FontWeight="Bold" Margin="0,0,0,4"/>
+                                                <TextBlock Name="txtVPNServerIP" Text="IP: --.--.--.--" FontSize="12" Foreground="#A0A0A0"/>
+                                                <TextBlock Name="txtVPNConnectionDuration" Text="Uptime: 00:00:00" FontSize="11" Foreground="#707070" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Name="btnVPNToggleConnection" Content="Connect" Click="BtnVPNToggleConnection_Click" Width="120" Height="45" Background="#2196F3" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Quick Settings -->
+                                    <Border Grid.Column="1" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="8" Padding="15">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="VPN Settings" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                                            <CheckBox Name="chkVPNKillswitch" Content="Killswitch" Checked="ChkVPNKillswitchChanged" Unchecked="ChkVPNKillswitchChanged" Foreground="White" Margin="0,0,0,8" ToolTip="Completely disable internet when selected VPN is loading or unavailable."/>
+                                            <CheckBox Name="chkVPNLimit" Content="Enforce 50MB Limit" Checked="ChkVPNLimitChanged" Unchecked="ChkVPNLimitChanged" Foreground="White" IsChecked="True" ToolTip="Disconnect and apply Killswitch when daily data usage exceeds 50MB."/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Servers Sidebar -->
+                            <Border Grid.Column="1" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="8" Padding="15">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Select Location" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
+                                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl Name="itemsVPNServers">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Margin="0,0,0,10" Tag="{Binding Id}" Click="BtnVPNServerSelect_Click" Style="{StaticResource AppCardButtonStyle}" Padding="10">
+                                                        <Grid Width="250">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Grid.Column="0" Width="10" Height="10" CornerRadius="5" Background="{Binding StatusColor}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                            <StackPanel Grid.Column="1">
+                                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"/>
+                                                                <TextBlock Text="{Binding DisplayIP}" FontSize="11" Foreground="#A0A0A0" Margin="0,2,0,0"/>
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="2" Text="{Binding LatencyText}" FontSize="11" Foreground="#707070" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
                 </Grid>
             </TabItem>
             <TabItem Header="Update">
