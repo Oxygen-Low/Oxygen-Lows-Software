@@ -9,14 +9,24 @@ config();
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function getAuthenticatedClient(token?: string) {
+  if (token) {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+  }
+  return anonClient;
+}
 
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true });
-
-// Port config
-const PORT = process.env.VPN_PORT || process.env.PORT || 4000;
 
 app.use(express.json());
 
@@ -40,15 +50,14 @@ app.post("/api/vpn/auth", async (req, res) => {
   }
 
   try {
-    // Verify access token using Supabase client auth
-    const { data: { user }, error } = await supabase.auth.getUser(access_token);
+    const authClient = getAuthenticatedClient(access_token);
+    const { data: { user }, error } = await authClient.auth.getUser();
 
     if (error || !user || user.id !== user_id) {
       return res.status(401).json({ success: false, error: "Invalid credentials or unauthorized token." });
     }
 
-    // Check if user exceeded the 50MB limit
-    const { data: preferences } = await supabase
+    const { data: preferences } = await authClient
       .from("user_preferences")
       .select("vpn_usage_bytes, vpn_usage_last_date")
       .eq("user_id", user_id)
@@ -69,81 +78,118 @@ app.post("/api/vpn/auth", async (req, res) => {
   }
 });
 
-// SSTP over HTTPS handshake and negotiation emulator endpoint
-app.all("/sstdp", (req, res) => {
-  // Handle SSTP protocol handshake messages and control packets
-  res.setHeader("Content-Type", "application/octet-stream");
-  // Send back SSTP control packet sequence success status for rasdial authentication phase
-  const controlSSTPResponse = Buffer.from([0x10, 0x01, 0x00, 0x08, 0x00, 0x02, 0x00, 0x00]);
-  res.send(controlSSTPResponse);
+// SSTP over HTTPS handshake and negotiation emulator endpoint with authentication check
+app.all("/sstdp", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : undefined;
+  const userId = req.headers["x-user-id"] as string;
+
+  if (!token || !userId) {
+    return res.status(401).json({ success: false, error: "Unauthorized SSTP connection request." });
+  }
+
+  try {
+    const authClient = getAuthenticatedClient(token);
+    const { data: { user }, error } = await authClient.auth.getUser();
+
+    if (error || !user || user.id !== userId) {
+      return res.status(401).json({ success: false, error: "Authentication failed." });
+    }
+
+    const { data: preferences } = await authClient
+      .from("user_preferences")
+      .select("vpn_usage_bytes, vpn_usage_last_date")
+      .eq("user_id", userId)
+      .single();
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (preferences) {
+      const isToday = preferences.vpn_usage_last_date === todayStr;
+      const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
+      if (usage >= 50 * 1024 * 1024) {
+        return res.status(403).json({ success: false, error: "VPN limit reached." });
+      }
+    }
+
+    res.setHeader("Content-Type", "application/octet-stream");
+    const controlSSTPResponse = Buffer.from([0x10, 0x01, 0x00, 0x08, 0x00, 0x02, 0x00, 0x00]);
+    res.send(controlSSTPResponse);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
-// Handle upgrade for secure WebSocket VPN Tunneling
-server.on("upgrade", (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.on("connection", (ws: WebSocket) => {
-      let authenticated = false;
-      let userId = "";
+// Set up directly to avoid upgrade listener accumulation
+wss.on("connection", (ws: WebSocket) => {
+  let authenticated = false;
+  let userId = "";
 
-      ws.on("message", async (message: string) => {
-        try {
-          const data = JSON.parse(message);
+  ws.on("message", async (message: string) => {
+    try {
+      const data = JSON.parse(message);
 
-          if (data.type === "auth") {
-            const { user_id, access_token } = data.payload;
-            const { data: { user }, error } = await supabase.auth.getUser(access_token);
+      if (data.type === "auth") {
+        const { user_id, access_token } = data.payload;
+        const authClient = getAuthenticatedClient(access_token);
+        const { data: { user }, error } = await authClient.auth.getUser();
 
-            if (error || !user || user.id !== user_id) {
-              ws.send(JSON.stringify({ type: "auth_response", success: false, error: "Authentication failed." }));
-              ws.close();
-              return;
-            }
+        if (error || !user || user.id !== user_id) {
+          ws.send(JSON.stringify({ type: "auth_response", success: false, error: "Authentication failed." }));
+          ws.close();
+          return;
+        }
 
-            // Verify limits
-            const { data: preferences } = await supabase
-              .from("user_preferences")
-              .select("vpn_usage_bytes, vpn_usage_last_date")
-              .eq("user_id", user_id)
-              .single();
+        const { data: preferences } = await authClient
+          .from("user_preferences")
+          .select("vpn_usage_bytes, vpn_usage_last_date")
+          .eq("user_id", user_id)
+          .single();
 
-            const todayStr = new Date().toISOString().split("T")[0];
-            if (preferences) {
-              const isToday = preferences.vpn_usage_last_date === todayStr;
-              const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
-              if (usage >= 50 * 1024 * 1024) {
-                ws.send(JSON.stringify({ type: "auth_response", success: false, error: "Daily limit reached." }));
-                ws.close();
-                return;
-              }
-            }
-
-            authenticated = true;
-            userId = user_id;
-            ws.send(JSON.stringify({ type: "auth_response", success: true }));
-            return;
-          }
-
-          if (!authenticated) {
-            ws.send(JSON.stringify({ type: "error", message: "Not authenticated." }));
+        const todayStr = new Date().toISOString().split("T")[0];
+        if (preferences) {
+          const isToday = preferences.vpn_usage_last_date === todayStr;
+          const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
+          if (usage >= 50 * 1024 * 1024) {
+            ws.send(JSON.stringify({ type: "auth_response", success: false, error: "Daily limit reached." }));
             ws.close();
             return;
           }
-
-          // Handle VPN Traffic tunnel encapsulation packets
-          if (data.type === "traffic") {
-            // Enact tunneling / proxy behavior on host
-            // Simply echo back acknowledgment with bytes handled
-            const bytes = Buffer.byteLength(JSON.stringify(data.payload));
-            ws.send(JSON.stringify({ type: "traffic_ack", bytes }));
-          }
-        } catch (err) {
-          ws.send(JSON.stringify({ type: "error", message: "Invalid payload format." }));
         }
-      });
-    });
+
+        authenticated = true;
+        userId = user_id;
+        ws.send(JSON.stringify({ type: "auth_response", success: true }));
+        return;
+      }
+
+      if (!authenticated) {
+        ws.send(JSON.stringify({ type: "error", message: "Not authenticated." }));
+        ws.close();
+        return;
+      }
+
+      if (data.type === "traffic") {
+        const bytes = Buffer.byteLength(JSON.stringify(data.payload));
+        ws.send(JSON.stringify({ type: "traffic_ack", bytes }));
+      }
+    } catch (err) {
+      ws.send(JSON.stringify({ type: "error", message: "Invalid payload format." }));
+    }
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`VPN server running on port ${PORT}`);
+server.on("upgrade", (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit("connection", ws, request);
+  });
 });
+
+// Guard server.listen behind module entrypoint checks for clean testing
+if (process.argv[1] === import.meta.filename || process.argv[1]?.endsWith("vpnServer.ts")) {
+  const PORT = process.env.VPN_PORT || process.env.PORT || 4000;
+  server.listen(PORT, () => {
+    console.log(`VPN server running on port ${PORT}`);
+  });
+}
+
+export { app, server };

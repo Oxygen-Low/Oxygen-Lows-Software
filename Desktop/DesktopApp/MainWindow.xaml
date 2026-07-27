@@ -538,8 +538,8 @@
                                     <Border Grid.Column="1" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="8" Padding="15">
                                         <StackPanel VerticalAlignment="Center">
                                             <TextBlock Text="VPN Settings" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
-                                            <CheckBox Name="chkVPNKillswitch" Content="Killswitch" Checked="ChkVPNSettingChanged" Unchecked="ChkVPNSettingChanged" Foreground="White" Margin="0,0,0,8" ToolTip="Completely disable internet when selected VPN is loading or unavailable."/>
-                                            <CheckBox Name="chkVPNLimit" Content="Enforce 50MB Limit" Checked="ChkVPNSettingChanged" Unchecked="ChkVPNSettingChanged" Foreground="White" IsChecked="True" ToolTip="Disconnect and apply Killswitch when daily data usage exceeds 50MB."/>
+                                            <CheckBox Name="chkVPNKillswitch" Content="Killswitch" Checked="ChkVPNKillswitchChanged" Unchecked="ChkVPNKillswitchChanged" Foreground="White" Margin="0,0,0,8" ToolTip="Completely disable internet when selected VPN is loading or unavailable."/>
+                                            <CheckBox Name="chkVPNLimit" Content="Enforce 50MB Limit" Checked="ChkVPNLimitChanged" Unchecked="ChkVPNLimitChanged" Foreground="White" IsChecked="True" ToolTip="Disconnect and apply Killswitch when daily data usage exceeds 50MB."/>
                                         </StackPanel>
                                     </Border>
                                 </Grid>

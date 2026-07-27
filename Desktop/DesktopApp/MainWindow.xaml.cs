@@ -146,7 +146,26 @@ public partial class MainWindow : Window
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _oauthCancellation?.Cancel();
-        VPNKillswitchManager.CleanUpActiveRulesOnExit();
+        try
+        {
+            if (_isVPNConnected && _selectedVPNServer != null)
+            {
+                _ = VPNConnectionManager.DisconnectAsync(_selectedVPNServer.Name);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error disconnecting VPN on exit: {ex.Message}");
+        }
+
+        try
+        {
+            VPNKillswitchManager.CleanUpActiveRulesOnExit();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error cleaning up active rules on exit: {ex.Message}");
+        }
     }
 
     private async void TabMain_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -482,17 +501,30 @@ public partial class MainWindow : Window
         // Initialize embedded Leaflet map in WebView2
         if (_vpnMapView == null)
         {
-            _vpnMapView = new WebView2();
-            vpnMapContainer.Children.Clear();
-            vpnMapContainer.Children.Add(_vpnMapView);
-
-            await _vpnMapView.EnsureCoreWebView2Async(_webViewEnvironment);
-            _vpnMapView.CoreWebView2.WebMessageReceived += VpnMapView_WebMessageReceived;
-
-            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "leaflet.html");
-            if (File.Exists(htmlPath))
+            try
             {
-                _vpnMapView.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
+                _vpnMapView = new WebView2();
+                vpnMapContainer.Children.Clear();
+                vpnMapContainer.Children.Add(_vpnMapView);
+
+                await _vpnMapView.EnsureCoreWebView2Async(_webViewEnvironment);
+                _vpnMapView.CoreWebView2.WebMessageReceived += VpnMapView_WebMessageReceived;
+
+                string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "leaflet.html");
+                if (File.Exists(htmlPath))
+                {
+                    _vpnMapView.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
+                }
+                else
+                {
+                    MessageBox.Show("Leaflet map resources (leaflet.html) are missing.", "Initialization Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                _vpnMapView = null;
+                vpnMapContainer.Children.Clear();
+                MessageBox.Show($"Failed to initialize Map Viewer: {ex.Message}", "Map Load Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -514,7 +546,7 @@ public partial class MainWindow : Window
         _vpnServers.Add(new VPNServerItem { Id = "sg", Name = "🇸🇬 Singapore", BaseUrl = "https://oxygen-lows-software-vpn-singapore.onrender.com", Latitude = 1.3521, Longitude = 103.8198 });
         _vpnServers.Add(new VPNServerItem { Id = "oh", Name = "🇺🇸 US East (Ohio)", BaseUrl = "https://oxygen-lows-software-vpn-ohio.onrender.com", Latitude = 40.4173, Longitude = -82.9071 });
         _vpnServers.Add(new VPNServerItem { Id = "or", Name = "🇺🇸 US West (Oregon)", BaseUrl = "https://oxygen-lows-software-vpn-oregon.onrender.com", Latitude = 43.8041, Longitude = -120.5542 });
-        _vpnServers.Add(new VPNServerItem { Id = "fr", Name = "🇩🇪 Germany (Frankfurt)", BaseUrl = "https://oxygen-lows-software-vpn-frankurt.onrender.com", Latitude = 50.1109, Longitude = 8.6821 });
+        _vpnServers.Add(new VPNServerItem { Id = "fr", Name = "🇩🇪 Germany (Frankfurt)", BaseUrl = "https://oxygen-lows-software-vpn-frankfurt.onrender.com", Latitude = 50.1109, Longitude = 8.6821 });
 
         itemsVPNServers.ItemsSource = _vpnServers;
     }
@@ -563,12 +595,6 @@ public partial class MainWindow : Window
         try
         {
             string todayStr = DateTime.UtcNow.ToString("yyyy-MM-dd");
-            var patchPayload = new
-            {
-                vpn_usage_bytes = _vpnTodayBytes,
-                vpn_usage_last_date = todayStr
-            };
-
             var fullPayload = new
             {
                 p_user_id = _userId,
@@ -579,7 +605,12 @@ public partial class MainWindow : Window
             // Call upsert preference stored procedure RPC/rest
             var request = CreateSupabaseRequest(HttpMethod.Post, "https://vqmukrmpgvavscsyefqd.supabase.co/rest/v1/rpc/upsert_user_preferences");
             request.Content = new StringContent(JsonSerializer.Serialize(fullPayload), Encoding.UTF8, "application/json");
-            await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                string respDetails = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"Failed to persist daily usage RPC: {response.StatusCode} - {respDetails}");
+            }
         }
         catch (Exception ex)
         {
@@ -609,68 +640,80 @@ public partial class MainWindow : Window
 
     private async Task QueryVPNServersAsync()
     {
+        var probeTasks = new List<Task>();
+
         foreach (var server in _vpnServers)
         {
             server.Status = "loading";
             UpdateServerMarkerOnMap(server);
 
-            _ = Task.Run(async () =>
+            var probeTask = Task.Run(async () =>
             {
                 Stopwatch sw = Stopwatch.StartNew();
                 try
                 {
-                    // Fetch real server details or use fallback estimations
                     var response = await _httpClient.GetAsync(server.BaseUrl);
                     sw.Stop();
 
+                    string ip = "";
                     if (response.IsSuccessStatusCode)
                     {
                         string body = await response.Content.ReadAsStringAsync();
                         using var doc = JsonDocument.Parse(body);
-                        string ip = "";
                         if (doc.RootElement.TryGetProperty("ip", out var ipProp)) ip = ipProp.GetString() ?? "";
+                    }
 
-                        Dispatcher.Invoke(() =>
+                    try
+                    {
+                        await Dispatcher.InvokeAsync(() =>
                         {
-                            server.Status = "offline"; // Ready for connection but currently offline
+                            server.Status = "offline";
                             server.IP = string.IsNullOrEmpty(ip) ? EstimateIPByName(server.Name) : ip;
-                            server.LatencyText = $"{sw.ElapsedMilliseconds} ms";
+                            server.LatencyText = response.IsSuccessStatusCode ? $"{sw.ElapsedMilliseconds} ms" : "Offline";
                             UpdateServerMarkerOnMap(server);
                         });
                     }
-                    else
-                    {
-                        throw new Exception("Render server spinning up");
-                    }
+                    catch (TaskCanceledException) { }
                 }
                 catch
                 {
-                    Dispatcher.Invoke(() =>
+                    try
                     {
-                        server.Status = "offline";
-                        server.IP = EstimateIPByName(server.Name);
-                        server.LatencyText = "Offline";
-                        UpdateServerMarkerOnMap(server);
-                    });
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            server.Status = "offline";
+                            server.IP = EstimateIPByName(server.Name);
+                            server.LatencyText = "Offline";
+                            UpdateServerMarkerOnMap(server);
+                        });
+                    }
+                    catch (TaskCanceledException) { }
                 }
             });
+
+            probeTasks.Add(probeTask);
+        }
+
+        try
+        {
+            await Task.WhenAll(probeTasks);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"VPN Server Probing tasks failure: {ex.Message}");
         }
     }
 
     private string EstimateIPByName(string name)
     {
-        if (name.Contains("Virginia")) return "52.23.210.19";
-        if (name.Contains("Singapore")) return "18.136.12.193";
-        if (name.Contains("Ohio")) return "3.13.120.25";
-        if (name.Contains("Oregon")) return "44.224.120.5";
-        if (name.Contains("Germany") || name.Contains("Frankfurt")) return "3.120.120.5";
-        return "127.0.0.1";
+        return "Unavailable";
     }
 
     private void UpdateServerMarkerOnMap(VPNServerItem server)
     {
         if (_vpnMapView?.CoreWebView2 == null) return;
-        string script = $"window.addServerMarker('{server.Id}', '{server.Name}', {server.Latitude}, {server.Longitude}, '{server.IP}', '{server.Status}')";
+        string argsJson = JsonSerializer.Serialize(new object[] { server.Id, server.Name, server.Latitude, server.Longitude, server.IP, server.Status });
+        string script = $"window.addServerMarker.apply(null, {argsJson})";
         _vpnMapView.CoreWebView2.ExecuteScriptAsync(script);
     }
 
@@ -678,6 +721,8 @@ public partial class MainWindow : Window
     {
         try
         {
+            if (_isVPNConnected) return; // Prevent map interactions while connected
+
             string raw = e.TryGetWebMessageAsString();
             using var doc = JsonDocument.Parse(raw);
             if (doc.RootElement.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "select_server")
@@ -698,6 +743,8 @@ public partial class MainWindow : Window
 
     private void SelectVPNServer(VPNServerItem server)
     {
+        if (_isVPNConnected) return; // Prevent reselection while VPN is connected
+
         _selectedVPNServer = server;
         txtVPNSelectedServer.Text = server.Name;
         txtVPNServerIP.Text = $"IP: {server.IP}";
@@ -705,13 +752,21 @@ public partial class MainWindow : Window
         // Center map view on selected server
         if (_vpnMapView?.CoreWebView2 != null)
         {
-            string centerScript = $"window.centerMap({server.Latitude}, {server.Longitude}, 6)";
+            string latStr = server.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string lngStr = server.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string centerScript = $"window.centerMap({latStr}, {lngStr}, 6)";
             _vpnMapView.CoreWebView2.ExecuteScriptAsync(centerScript);
         }
     }
 
     private void BtnVPNServerSelect_Click(object sender, RoutedEventArgs e)
     {
+        if (_isVPNConnected)
+        {
+            MessageBox.Show("Please disconnect from the active VPN server before changing locations.", "VPN Connected", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         var btn = sender as Button;
         if (btn?.Tag is string serverId)
         {
@@ -737,78 +792,85 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_isVPNConnected)
+        btnVPNToggleConnection.IsEnabled = false;
+
+        try
         {
-            // Disconnect Flow
-            btnVPNToggleConnection.IsEnabled = false;
-            btnVPNToggleConnection.Content = "Disconnecting...";
-
-            await VPNConnectionManager.DisconnectAsync(_selectedVPNServer.Name);
-
-            _selectedVPNServer.Status = "offline";
-            UpdateServerMarkerOnMap(_selectedVPNServer);
-
-            _isVPNConnected = false;
-            btnVPNToggleConnection.Content = "Connect";
-            btnVPNToggleConnection.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2196F3"));
-            btnVPNToggleConnection.IsEnabled = true;
-
-            StopVPNTimers();
-            VPNKillswitchManager.SetKillswitchActive(false);
-        }
-        else
-        {
-            // Connect Flow
-            btnVPNToggleConnection.IsEnabled = false;
-            btnVPNToggleConnection.Content = "Connecting...";
-            _selectedVPNServer.Status = "loading";
-            UpdateServerMarkerOnMap(_selectedVPNServer);
-
-            // If killswitch is available/checked, trigger block until successfully connected
-            if (chkVPNKillswitch.IsChecked == true)
+            if (_isVPNConnected)
             {
-                VPNKillswitchManager.SetKillswitchActive(true);
-            }
+                btnVPNToggleConnection.Content = "Disconnecting...";
+                bool success = await VPNConnectionManager.DisconnectAsync(_selectedVPNServer.Name);
 
-            // Provision PBK profile locally
-            VPNConnectionManager.CreateOrUpdateVPNProfile(_selectedVPNServer.Name, _selectedVPNServer.BaseUrl);
-
-            // Connect system-wide VPN via rasdial
-            bool success = await VPNConnectionManager.ConnectAsync(_selectedVPNServer.Name, _userId, _accessToken);
-
-            if (success)
-            {
-                _selectedVPNServer.Status = "connected";
+                _selectedVPNServer.Status = "offline";
                 UpdateServerMarkerOnMap(_selectedVPNServer);
 
-                _isVPNConnected = true;
-                btnVPNToggleConnection.Content = "Disconnect";
-                btnVPNToggleConnection.Background = Brushes.Crimson;
+                _isVPNConnected = false;
+                btnVPNToggleConnection.Content = "Connect";
+                btnVPNToggleConnection.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2196F3"));
 
-                // Deactivate block upon successful connection
+                StopVPNTimers();
                 VPNKillswitchManager.SetKillswitchActive(false);
-
-                StartVPNTimers();
             }
             else
             {
-                _selectedVPNServer.Status = "offline";
+                btnVPNToggleConnection.Content = "Connecting...";
+                _selectedVPNServer.Status = "loading";
                 UpdateServerMarkerOnMap(_selectedVPNServer);
-                MessageBox.Show("Failed to establish device-wide VPN connection. Server may be sleeping, please try again in a few moments.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Error);
 
-                // Keep killswitch block active if enabled
                 if (chkVPNKillswitch.IsChecked == true)
                 {
                     VPNKillswitchManager.SetKillswitchActive(true);
                 }
+
+                VPNConnectionManager.CreateOrUpdateVPNProfile(_selectedVPNServer.Name, _selectedVPNServer.BaseUrl);
+                bool success = await VPNConnectionManager.ConnectAsync(_selectedVPNServer.Name, _userId, _accessToken);
+
+                if (success)
+                {
+                    _selectedVPNServer.Status = "connected";
+                    UpdateServerMarkerOnMap(_selectedVPNServer);
+
+                    _isVPNConnected = true;
+                    btnVPNToggleConnection.Content = "Disconnect";
+                    btnVPNToggleConnection.Background = Brushes.Crimson;
+
+                    VPNKillswitchManager.SetKillswitchActive(false);
+                    StartVPNTimers();
+                }
                 else
                 {
-                    VPNKillswitchManager.SetKillswitchActive(false);
+                    _selectedVPNServer.Status = "offline";
+                    UpdateServerMarkerOnMap(_selectedVPNServer);
+                    MessageBox.Show("Failed to establish device-wide VPN connection. Server may be sleeping, please try again in a few moments.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                    if (chkVPNKillswitch.IsChecked == true)
+                    {
+                        VPNKillswitchManager.SetKillswitchActive(true);
+                    }
+                    else
+                    {
+                        VPNKillswitchManager.SetKillswitchActive(false);
+                    }
+
+                    btnVPNToggleConnection.Content = "Connect";
                 }
-
-                btnVPNToggleConnection.Content = "Connect";
             }
-
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"VPN State Toggle Error: {ex.Message}", "Tunnel Operation Failure", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (chkVPNKillswitch.IsChecked == true)
+            {
+                VPNKillswitchManager.SetKillswitchActive(true);
+            }
+            else
+            {
+                VPNKillswitchManager.SetKillswitchActive(false);
+            }
+            btnVPNToggleConnection.Content = _isVPNConnected ? "Disconnect" : "Connect";
+        }
+        finally
+        {
             btnVPNToggleConnection.IsEnabled = true;
         }
     }
@@ -843,54 +905,133 @@ public partial class MainWindow : Window
         txtVPNConnectionDuration.Text = $"Uptime: {duration.Hours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
     }
 
+    private long _vpnBaselineBytes = -1;
+    private int _vpnTicksSinceFlush = 0;
+
     private async void VPNDataTimer_Tick(object? sender, EventArgs e)
     {
-        // Simulate/accumulate data usage based on real-time connected system streams
-        // Adds 45-120 KB per interval of active continuous tunneling
-        Random rand = new Random();
-        long addedBytes = rand.Next(45000, 120000);
-
-        _vpnTodayBytes += addedBytes;
-        await UpdateVPNDailyUsageAsync(_vpnTodayBytes);
-
-        if (_vpnTodayBytes >= VPNDailyLimitBytes && chkVPNLimit.IsChecked == true)
+        long currentBytes = 0;
+        try
         {
-            // Limit runout behavior: Immediately Disconnect & optionally trigger Killswitch
-            StopVPNTimers();
-
-            if (_selectedVPNServer != null)
+            var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces();
+            foreach (var ni in interfaces)
             {
-                await VPNConnectionManager.DisconnectAsync(_selectedVPNServer.Name);
-                _selectedVPNServer.Status = "offline";
-                UpdateServerMarkerOnMap(_selectedVPNServer);
+                if (ni.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
+                    (ni.Description.Contains("WAN Miniport") || ni.Description.Contains("SSTP") || ni.Name.Contains("VPN")))
+                {
+                    var stats = ni.GetIPStatistics();
+                    currentBytes += stats.BytesReceived + stats.BytesSent;
+                }
             }
-
-            _isVPNConnected = false;
-            btnVPNToggleConnection.Content = "Connect";
-            btnVPNToggleConnection.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2196F3"));
-
-            if (chkVPNKillswitch.IsChecked == true)
-            {
-                VPNKillswitchManager.SetKillswitchActive(true);
-            }
-
-            MessageBox.Show("You have hit your daily VPN data usage limit of 50MB. Disconnecting device-wide tunnel.", "Limit Exceeded", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-    }
-
-    private void ChkVPNSettingChanged(object sender, RoutedEventArgs e)
-    {
-        if (chkVPNKillswitch == null) return;
-
-        // Sync local settings state with Killswitch
-        if (chkVPNKillswitch.IsChecked == true && (_selectedVPNServer == null || _selectedVPNServer.Status != "connected"))
+        catch (Exception ex)
         {
-            VPNKillswitchManager.SetKillswitchActive(true);
+            Debug.WriteLine($"Error querying network stats: {ex.Message}");
+        }
+
+        if (currentBytes == 0)
+        {
+            // Fallback mock accumulation if no matching interfaces are currently discovered
+            currentBytes = _vpnBaselineBytes == -1 ? 0 : _vpnBaselineBytes + 85000;
+        }
+
+        if (_vpnBaselineBytes == -1)
+        {
+            _vpnBaselineBytes = currentBytes;
+        }
+
+        long delta = Math.Max(0, currentBytes - _vpnBaselineBytes);
+        _vpnBaselineBytes = currentBytes;
+        _vpnTodayBytes += delta;
+
+        _vpnTicksSinceFlush++;
+        if (_vpnTicksSinceFlush >= 10) // Flush every 10 ticks (~30s)
+        {
+            _vpnTicksSinceFlush = 0;
+            await UpdateVPNDailyUsageAsync(_vpnTodayBytes);
         }
         else
         {
-            VPNKillswitchManager.SetKillswitchActive(false);
+            UpdateVPNRemainingDataUI();
         }
+
+        if (_vpnTodayBytes >= VPNDailyLimitBytes && chkVPNLimit.IsChecked == true)
+        {
+            StopVPNTimers();
+
+            try
+            {
+                if (_selectedVPNServer != null)
+                {
+                    bool success = await VPNConnectionManager.DisconnectAsync(_selectedVPNServer.Name);
+                    if (success)
+                    {
+                        _selectedVPNServer.Status = "offline";
+                        UpdateServerMarkerOnMap(_selectedVPNServer);
+
+                        _isVPNConnected = false;
+                        btnVPNToggleConnection.Content = "Connect";
+                        btnVPNToggleConnection.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2196F3"));
+
+                        if (chkVPNKillswitch.IsChecked == true)
+                        {
+                            VPNKillswitchManager.SetKillswitchActive(true);
+                        }
+
+                        MessageBox.Show("You have hit your daily VPN data usage limit of 50MB. Disconnecting device-wide tunnel.", "Limit Exceeded", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    else
+                    {
+                        // Explicitly reconcile and report failure
+                        _selectedVPNServer.Status = "offline";
+                        UpdateServerMarkerOnMap(_selectedVPNServer);
+                        _isVPNConnected = false;
+                        btnVPNToggleConnection.Content = "Connect";
+                        btnVPNToggleConnection.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2196F3"));
+
+                        if (chkVPNKillswitch.IsChecked == true)
+                        {
+                            VPNKillswitchManager.SetKillswitchActive(true);
+                        }
+
+                        MessageBox.Show("Limit reached but disconnection failed. System VPN tunnel remains connected, but limit settings have been activated.", "Disconnect Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Limit teardown failure: {ex.Message}");
+            }
+        }
+    }
+
+    private void ChkVPNKillswitchChanged(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return; // Prevent early triggers before component layout load completion
+        if (chkVPNKillswitch == null) return;
+
+        try
+        {
+            if (chkVPNKillswitch.IsChecked == true && (_selectedVPNServer == null || _selectedVPNServer.Status != "connected"))
+            {
+                VPNKillswitchManager.SetKillswitchActive(true);
+            }
+            else
+            {
+                VPNKillswitchManager.SetKillswitchActive(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Killswitch configuration state error: {ex.Message}");
+        }
+    }
+
+    private void ChkVPNLimitChanged(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        // Limit checkboxes specifically configured without firewall killswitch side effects
+        Debug.WriteLine($"Limit configuration changed to: {chkVPNLimit.IsChecked}");
     }
 
     private async void BtnRetryAuth_Click(object sender, RoutedEventArgs e)

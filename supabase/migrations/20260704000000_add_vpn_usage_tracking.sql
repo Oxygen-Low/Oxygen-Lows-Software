@@ -7,6 +7,7 @@ ADD COLUMN IF NOT EXISTS vpn_usage_bytes BIGINT DEFAULT 0,
 ADD COLUMN IF NOT EXISTS vpn_usage_last_date DATE DEFAULT CURRENT_DATE;
 
 -- Update upsert_user_preferences to support vpn tracking
+-- Validates caller context is server-side or validates inputs securely
 CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_user_id UUID,
   p_theme TEXT DEFAULT NULL,
@@ -23,9 +24,23 @@ CREATE OR REPLACE FUNCTION public.upsert_user_preferences(
   p_vpn_usage_last_date DATE DEFAULT NULL
 )
 RETURNS VOID AS $$
+DECLARE
+  v_existing_bytes BIGINT;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
   IF p_user_id IS NOT NULL AND p_user_id != auth.uid() THEN RAISE EXCEPTION 'User ID mismatch'; END IF;
+
+  -- Read current persisted usage to block client-supplied usage reductions
+  SELECT COALESCE(vpn_usage_bytes, 0) INTO v_existing_bytes
+  FROM public.user_preferences
+  WHERE user_id = auth.uid();
+
+  -- Prevent clients from resetting or lowering usage unless it is a new day
+  IF p_vpn_usage_bytes IS NOT NULL AND p_vpn_usage_last_date = CURRENT_DATE THEN
+    IF p_vpn_usage_bytes < v_existing_bytes THEN
+       p_vpn_usage_bytes := v_existing_bytes;
+    END IF;
+  END IF;
 
   INSERT INTO public.user_preferences (
     user_id, theme, font, music_playlist, current_music_track, current_music_position,

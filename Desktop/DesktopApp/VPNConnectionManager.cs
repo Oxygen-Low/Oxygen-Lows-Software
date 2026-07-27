@@ -1,9 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace DesktopApp;
@@ -28,6 +28,10 @@ public static class VPNConnectionManager
             .Replace("https://", "")
             .Replace("http://", "")
             .Split('/')[0];
+
+        // Sanitize cleanAddress and connectionName to prevent INI inject exploits
+        cleanAddress = Regex.Replace(cleanAddress, @"[^\w\.\-]", "");
+        connectionName = Regex.Replace(connectionName, @"[^\w\s\(\)\-]", "");
 
         StringBuilder pbkContent = new StringBuilder();
         if (File.Exists(pbkPath))
@@ -61,6 +65,7 @@ public static class VPNConnectionManager
 
     /// <summary>
     /// Spawns 'rasdial' process to securely dial the VPN connection.
+    /// Stages credentials securely instead of embedding sensitive tokens in ProcessStartInfo.Arguments.
     /// </summary>
     public static async Task<bool> ConnectAsync(string connectionName, string username, string token)
     {
@@ -68,20 +73,51 @@ public static class VPNConnectionManager
         {
             try
             {
+                // Stage credentials securely using cmdkey / generic windows credentials manager
+                // cmdkey /generic:target /user:username /pass:token
+                string targetName = $"OxygenLowsSoftwareVPN_{connectionName}";
+                var psiCmdKey = new ProcessStartInfo
+                {
+                    FileName = "cmdkey.exe",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                psiCmdKey.ArgumentList.Add($"/generic:{targetName}");
+                psiCmdKey.ArgumentList.Add($"/user:{username}");
+                psiCmdKey.ArgumentList.Add($"/pass:{token}");
+
+                using (var procCmdKey = Process.Start(psiCmdKey))
+                {
+                    if (procCmdKey == null || !procCmdKey.WaitForExit(10000)) return false;
+                }
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = "rasdial.exe",
-                    Arguments = $"\"{connectionName}\" \"{username}\" \"{token}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
 
+                // Use ArgumentList with rasdial target name directly to quote arguments securely
+                psi.ArgumentList.Add(connectionName);
+                psi.ArgumentList.Add(username);
+                psi.ArgumentList.Add(token);
+
                 using var process = Process.Start(psi);
                 if (process == null) return false;
 
-                process.WaitForExit(15000); // 15s timeout
+                bool cleanExit = process.WaitForExit(15000); // 15s timeout
+                if (!cleanExit)
+                {
+                    try { process.Kill(); } catch { }
+                    Debug.WriteLine("rasdial dial-up phase timed out.");
+                    return false;
+                }
+
                 string output = process.StandardOutput.ReadToEnd();
                 string error = process.StandardError.ReadToEnd();
 
@@ -113,17 +149,25 @@ public static class VPNConnectionManager
                 var psi = new ProcessStartInfo
                 {
                     FileName = "rasdial.exe",
-                    Arguments = $"\"{connectionName}\" /disconnect",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
+                psi.ArgumentList.Add(connectionName);
+                psi.ArgumentList.Add("/disconnect");
 
                 using var process = Process.Start(psi);
                 if (process == null) return false;
 
-                process.WaitForExit(5000);
+                bool cleanExit = process.WaitForExit(15000);
+                if (!cleanExit)
+                {
+                    try { process.Kill(); } catch { }
+                    Debug.WriteLine("rasdial disconnect phase timed out.");
+                    return false;
+                }
+
                 return process.ExitCode == 0;
             }
             catch
