@@ -93,6 +93,57 @@ export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
   res.json(localModels);
 };
 
+const HORDE_MODELS_MAP: Record<string, string[]> = {
+  Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
+  Balanced: ["Magnum-12b-v2"],
+  Smart: ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct"],
+  Write: ["mradermacher/Magnum-v3-27B-GGUF"],
+  Code: ["Qwen/Qwen2.5-Coder-32B-Instruct"],
+};
+
+export const handleGetHordeStatus: RequestHandler = async (_req, res) => {
+  try {
+    const response = await axios.get(
+      "https://stablehorde.net/api/v2/status/models?type=text",
+      { timeout: 10000 },
+    );
+    const allModels: any[] = response.data || [];
+
+    const statusByName: Record<string, any> = {};
+    for (const m of allModels) {
+      if (m.name) statusByName[m.name] = m;
+    }
+
+    const result: Record<
+      string,
+      { workers: number; queued: number; speed: string; eta: number }
+    > = {};
+
+    for (const [modelId, hordeNames] of Object.entries(HORDE_MODELS_MAP)) {
+      let workers = 0;
+      let queued = 0;
+      let speed = "";
+      let eta = 0;
+
+      for (const name of hordeNames) {
+        const info = statusByName[name];
+        if (info) {
+          workers += info.count || 0;
+          queued += info.queued || 0;
+          if (!speed && info.performance) speed = String(info.performance);
+          eta = Math.max(eta, info.eta || 0);
+        }
+      }
+
+      result[modelId] = { workers, queued, speed, eta };
+    }
+
+    res.json(result);
+  } catch (e) {
+    res.json({});
+  }
+};
+
 export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   const { provider, model, messages, stream, style, apiKey, baseUrl } =
     req.body;

@@ -10,6 +10,7 @@ import {
   handleProxyAiRequest,
   handleGetLocalProviders,
   handleGetChatStyles,
+  handleGetHordeStatus,
 } from "./routes/ai";
 import { reposRouter } from "./routes/repos";
 import { gitRouter } from "./routes/git";
@@ -86,6 +87,7 @@ export function createServer() {
   app.post("/api/ai/proxy", apiLimiter, handleProxyAiRequest);
   app.get("/api/ai/local-providers", apiLimiter, handleGetLocalProviders);
   app.get("/api/ai/styles", apiLimiter, handleGetChatStyles);
+  app.get("/api/ai/horde-status", apiLimiter, handleGetHordeStatus);
 
   app.use("/api/repos", reposRouter);
   app.use("/api/git", gitRouter);
