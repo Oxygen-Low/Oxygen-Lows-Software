@@ -6,6 +6,11 @@ import { config } from "dotenv";
 
 config();
 
+// Polyfill native WebSocket constructor for Supabase realtime-js client under Node < 22 (e.g. CI Node 20)
+if (typeof globalThis.WebSocket === "undefined") {
+  (globalThis as any).WebSocket = WebSocket;
+}
+
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "";
 
