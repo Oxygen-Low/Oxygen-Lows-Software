@@ -35,6 +35,12 @@ public partial class MainWindow : Window
     // Single shared long-lived HttpClient
     private static readonly HttpClient _httpClient = new HttpClient();
 
+    // List of trusted OAuth hostnames to prevent command or process starting redirection exploits
+    private static readonly HashSet<string> AllowedOAuthHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "vqmukrmpgvavscsyefqd.supabase.co"
+    };
+
     // Static frozen SolidColorBrush fields for message UI to avoid Converter recreation
     private static readonly SolidColorBrush UserBgBrush = FreezeBrush(new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0288D1")));
     private static readonly SolidColorBrush UserBorderBrush = FreezeBrush(new SolidColorBrush((Color)ColorConverter.ConvertFromString("#039BE5")));
@@ -1972,6 +1978,23 @@ public partial class MainWindow : Window
             listener.Start();
 
             var browserUri = ReplaceQueryParameter(authorizationUri, "redirect_to", OAuthCallbackUrl);
+
+            // Strict URL validation to prevent potential Process.Start OS command or process injection exploits
+            if (!string.Equals(browserUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Invalid OAuth URL scheme. Only HTTPS is allowed.");
+            }
+
+            if (!AllowedOAuthHosts.Contains(browserUri.Host))
+            {
+                throw new InvalidOperationException("Untrusted host for OAuth redirection.");
+            }
+
+            if (!browserUri.AbsolutePath.StartsWith("/auth/v1/", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Invalid OAuth path.");
+            }
+
             Process.Start(new ProcessStartInfo
             {
                 FileName = browserUri.AbsoluteUri,
