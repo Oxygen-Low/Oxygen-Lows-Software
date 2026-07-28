@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { roleRegistry } from "../../../shared/roleRegistry";
+import { roleRegistry, Faction, Subalignment, RoleDef } from "../../../shared/roleRegistry";
 import {
   Users,
   MessageSquare,
@@ -21,13 +21,58 @@ import {
   BookOpen
 } from "lucide-react";
 
+export interface Player {
+  seat: number;
+  name: string;
+  isAi: boolean;
+  role: string;
+  faction: Faction;
+  subalignment: Subalignment;
+  isAlive: boolean;
+  will: string;
+  deathReason?: string;
+}
+
+export interface GameMessage {
+  senderSeat: number;
+  senderName: string;
+  text: string;
+  isFactionOnly: boolean;
+  round: number;
+  phase: string;
+  day: number;
+}
+
+export interface GameLog {
+  day: number;
+  phase: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface GameRoomState {
+  roomId: string;
+  creatorId: string;
+  players: Player[];
+  phase: string;
+  day: number;
+  logs: GameLog[];
+  messages: GameMessage[];
+  defendantSeat: number | null;
+  trialVoters: { [voterSeat: number]: "Guilty" | "Innocent" | "Abstain" };
+  lastWills: { [seat: number]: string };
+  aiModel: string;
+  isAiRunning: boolean;
+  winner?: string;
+}
+
 export function TOSLLMsApp() {
   const { session } = useAuth();
   const { toast } = useToast();
 
   const [roomId, setRoomId] = useState("");
   const [inRoomId, setInRoomId] = useState<string | null>(null);
-  const [roomState, setRoomState] = useState<any>(null);
+  const [roomState, setRoomState] = useState<GameRoomState | null>(null);
   const [selectedModel, setSelectedModel] = useState("Smart");
   const [numPlayers, setNumPlayers] = useState(10);
 
@@ -35,54 +80,81 @@ export function TOSLLMsApp() {
   const [chatMessage, setChatMessage] = useState("");
   const [lastWill, setLastWill] = useState("");
   const [isFactionOnly, setIsFactionOnly] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingState, setIsSyncingState] = useState(false);
 
-  const syncInterval = useRef<NodeJS.Timeout | null>(null);
+  // Use refs for the latest token, isSyncing, and myPlayer to prevent recreating polling effect
+  const latestToken = useRef<string | undefined>(undefined);
+  const latestIsSyncing = useRef<boolean>(false);
+  const activeRoomId = useRef<string | null>(null);
+  const syncInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const token = session?.access_token;
+  useEffect(() => {
+    latestToken.current = session?.access_token;
+  }, [session?.access_token]);
 
   // Retrieve current user details from lobby
-  const myPlayer = useMemo(() => {
+  const myPlayer = useMemo<Player | null>(() => {
     if (!roomState || !session?.user) return null;
-    return roomState.players.find((p: any) => p.authUserId === session.user.id) || null;
+    return roomState.players.find((p) => p.authUserId === session.user.id) || null;
   }, [roomState, session]);
 
-  // Sync state with server
-  const syncRoom = async (targetId: string) => {
-    if (!token || isSyncing) return;
-    setIsSyncing(true);
+  // Sync state with server using abort controller to prevent race conditions or cross-room pollution
+  const syncRoom = async (targetId: string, abortSignal?: AbortSignal) => {
+    const token = latestToken.current;
+    if (!token || latestIsSyncing.current) return;
+    latestIsSyncing.current = true;
+    setIsSyncingState(true);
+
     try {
       const res = await fetch(`/api/social-deduction/sync?roomId=${targetId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        signal: abortSignal
       });
       if (res.ok) {
         const data = await res.json();
-        setRoomState(data.room);
-        if (data.room?.lastWills && myPlayer) {
-          setLastWill(data.room.lastWills[myPlayer.seat] || "");
+        // Check that targetId still matches the active roomId to reject stale room responses
+        if (activeRoomId.current === targetId) {
+          setRoomState(data.room);
+          if (data.room?.lastWills && myPlayer) {
+            setLastWill(data.room.lastWills[myPlayer.seat] || "");
+          }
         }
       }
-    } catch (err) {
-      console.error("Sync error:", err);
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("Sync error:", err);
+      }
     } finally {
-      setIsSyncing(false);
+      latestIsSyncing.current = false;
+      setIsSyncingState(false);
     }
   };
 
-  // Start polling
+  // Start polling effect using stable state pattern and abort controller cleanup
   useEffect(() => {
+    activeRoomId.current = inRoomId;
     if (inRoomId) {
-      syncRoom(inRoomId);
+      const controller = new AbortController();
+      syncRoom(inRoomId, controller.signal);
+
       syncInterval.current = setInterval(() => {
-        syncRoom(inRoomId);
+        syncRoom(inRoomId, controller.signal);
       }, 3000);
+
+      return () => {
+        controller.abort();
+        if (syncInterval.current) {
+          clearInterval(syncInterval.current);
+          syncInterval.current = null;
+        }
+      };
+    } else {
+      setRoomState(null);
     }
-    return () => {
-      if (syncInterval.current) clearInterval(syncInterval.current);
-    };
   }, [inRoomId]);
 
   const handleCreate = async () => {
+    const token = latestToken.current;
     if (!token) return;
     try {
       const res = await fetch("/api/social-deduction/create", {
@@ -107,6 +179,7 @@ export function TOSLLMsApp() {
   };
 
   const handleJoin = async () => {
+    const token = latestToken.current;
     if (!token || !roomId) return;
     try {
       const res = await fetch("/api/social-deduction/join", {
@@ -131,6 +204,7 @@ export function TOSLLMsApp() {
   };
 
   const handleStartGame = async () => {
+    const token = latestToken.current;
     if (!token || !inRoomId) return;
     try {
       const res = await fetch("/api/social-deduction/start", {
@@ -155,6 +229,7 @@ export function TOSLLMsApp() {
 
   const handleSendSpeech = async (e: React.FormEvent) => {
     e.preventDefault();
+    const token = latestToken.current;
     if (!token || !inRoomId || !chatMessage.trim()) return;
     try {
       const res = await fetch("/api/social-deduction/speak", {
@@ -176,6 +251,7 @@ export function TOSLLMsApp() {
   };
 
   const handleSaveWill = async () => {
+    const token = latestToken.current;
     if (!token || !inRoomId) return;
     try {
       const res = await fetch("/api/social-deduction/will", {
@@ -195,6 +271,7 @@ export function TOSLLMsApp() {
   };
 
   const handleVoteTrial = async (targetSeat: number) => {
+    const token = latestToken.current;
     if (!token || !inRoomId) return;
     try {
       const res = await fetch("/api/social-deduction/vote", {
@@ -216,6 +293,7 @@ export function TOSLLMsApp() {
   };
 
   const handleVerdict = async (verdict: "Guilty" | "Innocent" | "Abstain") => {
+    const token = latestToken.current;
     if (!token || !inRoomId) return;
     try {
       const res = await fetch("/api/social-deduction/verdict", {
@@ -237,6 +315,7 @@ export function TOSLLMsApp() {
   };
 
   const handleNightAction = async (targetSeat: number) => {
+    const token = latestToken.current;
     if (!token || !inRoomId || !myPlayer) return;
     const ability = roleRegistry[myPlayer.role]?.nightAbility || "visit";
     try {
@@ -252,6 +331,8 @@ export function TOSLLMsApp() {
       if (res.ok) {
         setRoomState(data.room);
         toast({ title: "Action Selected", description: `Target: Seat ${targetSeat}` });
+      } else {
+        toast({ title: "Action Blocked", description: data.error || "Cannot select action" });
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message });
@@ -259,6 +340,7 @@ export function TOSLLMsApp() {
   };
 
   const handleAdvancePhase = async () => {
+    const token = latestToken.current;
     if (!token || !inRoomId) return;
     toast({ title: "Advancing Phase...", description: "Executing state machine transitions and generating LLM statements..." });
     try {
@@ -273,6 +355,8 @@ export function TOSLLMsApp() {
       const data = await res.json();
       if (res.ok) {
         setRoomState(data.room);
+      } else {
+        toast({ title: "Error", description: data.error || "Cannot advance game" });
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message });
@@ -360,7 +444,7 @@ export function TOSLLMsApp() {
       {/* HEADER HERO BAR */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900 p-6 rounded-xl border border-slate-800 gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-cyan-400">TOS LLMs</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-cyan-400 font-zilla">TOS LLMs</h2>
           <p className="text-sm text-slate-400">
             Room Code: <span className="font-mono text-cyan-300 font-bold">{roomState.roomId}</span> | Day: <span className="text-white font-semibold">{roomState.day}</span> | Phase: <span className="text-yellow-400 font-bold">{roomState.phase}</span>
           </p>
@@ -375,7 +459,7 @@ export function TOSLLMsApp() {
 
           {!isLobby && (
             <Button onClick={handleAdvancePhase} disabled={roomState.isAiRunning} className="bg-yellow-600 hover:bg-yellow-500 font-bold text-slate-950">
-              <RotateCcw className="w-4 h-4 mr-1 animate-spin-slow" /> {roomState.isAiRunning ? "AI Thinking..." : "Advance Game Phase"}
+              <RotateCcw className="w-4 h-4 mr-1" /> {roomState.isAiRunning ? "AI Thinking..." : "Advance Game Phase"}
             </Button>
           )}
 
@@ -396,9 +480,9 @@ export function TOSLLMsApp() {
               </CardTitle>
             </CardHeader>
             <CardContent className="divide-y divide-slate-800 space-y-2 max-h-[500px] overflow-y-auto">
-              {roomState.players.map((p: any) => {
+              {roomState.players.map((p) => {
                 const isMe = p.authUserId === session?.user?.id;
-                const activeRoleDef = roleRegistry[p.role];
+                const canSelfTarget = roleRegistry[myPlayer?.role || ""]?.mechanics?.canSelfTarget;
 
                 return (
                   <div key={p.seat} className={`py-3 flex flex-col gap-1 ${p.isAlive ? "text-slate-100" : "opacity-40 text-slate-500"}`}>
@@ -421,15 +505,15 @@ export function TOSLLMsApp() {
                     )}
 
                     {/* VOTE TRIGGER BUTTONS FOR ACTIVE GAME PHASES */}
-                    {p.isAlive && !isLobby && myPlayer?.isAlive && !isMe && (
+                    {p.isAlive && !isLobby && myPlayer?.isAlive && (
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {roomState.phase === "Voting" && (
+                        {roomState.phase === "Voting" && !isMe && (
                           <Button size="sm" onClick={() => handleVoteTrial(p.seat)} className="bg-yellow-600 hover:bg-yellow-500 text-xs px-2.5 py-1 text-slate-950">
                             Vote up to stand
                           </Button>
                         )}
 
-                        {roomState.phase === "NightAction" && (
+                        {roomState.phase === "NightAction" && (!isMe || canSelfTarget) && (
                           <Button size="sm" onClick={() => handleNightAction(p.seat)} className="bg-indigo-600 hover:bg-indigo-500 text-xs px-2.5 py-1">
                             Target tonight
                           </Button>
@@ -493,7 +577,7 @@ export function TOSLLMsApp() {
         <div className="lg:col-span-8 space-y-6">
           <Card className="bg-slate-900 border-slate-800 text-white flex flex-col h-[500px]">
             <CardHeader className="py-3 border-b border-slate-800 flex flex-row justify-between items-center">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2 font-zilla">
                 <MessageSquare className="w-5 h-5 text-cyan-500" /> Live Chat & Dialogue Log
               </CardTitle>
               {roomState.phase.includes("Night") && (
@@ -512,10 +596,10 @@ export function TOSLLMsApp() {
               {roomState.messages.length === 0 ? (
                 <div className="text-center text-slate-500 text-sm py-12">No chat statements yet.</div>
               ) : (
-                roomState.messages.map((m: any, idx: number) => (
+                roomState.messages.map((m, idx) => (
                   <div key={idx} className="bg-slate-950 p-3 rounded-lg border border-slate-850">
                     <div className="flex justify-between text-xs text-slate-500 mb-1">
-                      <span className="font-bold text-cyan-400">
+                      <span className="font-bold text-cyan-400 font-mono">
                         Seat {m.senderSeat}: {m.senderName}
                       </span>
                       <span>
@@ -554,7 +638,7 @@ export function TOSLLMsApp() {
               {roomState.logs.length === 0 ? (
                 <div className="text-slate-500 italic">No events logged yet.</div>
               ) : (
-                roomState.logs.map((log: any, idx: number) => (
+                roomState.logs.map((log, idx) => (
                   <div key={idx} className="border-b border-slate-850 pb-1 flex gap-2">
                     <span className="text-cyan-500">[{log.phase} D{log.day}]</span>
                     <span>{log.message}</span>

@@ -19,6 +19,7 @@ export interface Player {
   nightActionAbility?: string; // action name
   voteTarget?: number | null; // seat index voted for trial or guilty/innocent/abstain
   defenseVotes?: "Guilty" | "Innocent" | "Abstain" | null;
+  secondaryTarget?: number; // for Witch/Coven Leader redirects
 }
 
 export interface GameLog {
@@ -30,15 +31,15 @@ export interface GameLog {
 
 export type GamePhase =
   | "Lobby"
-  | "DayTalk1" // First talk round (Seat 1 to N speaks)
-  | "DayTalk2" // Second talk round (Seat 1 to N speaks, can trigger day abilities)
-  | "Voting" // Vote someone to trial
-  | "TrialDefense" // Defendant speaks twice in a row
-  | "TrialTalk" // Everyone talks twice in a row before trial voting
-  | "TrialVote" // Deciding Guilty, Abstain, or Innocent
-  | "TrialExecution" // Results of trial and execution processing
-  | "NightCoordination" // Faction chat coord or simple prep
-  | "NightAction" // Trigger night actions
+  | "DayTalk1"
+  | "DayTalk2"
+  | "Voting"
+  | "TrialDefense"
+  | "TrialTalk"
+  | "TrialVote"
+  | "TrialExecution"
+  | "NightCoordination"
+  | "NightAction"
   | "GameOver";
 
 export interface GameRoom {
@@ -49,24 +50,36 @@ export interface GameRoom {
   day: number;
   logs: GameLog[];
   messages: {
-    senderSeat: number; // 1-indexed
+    senderSeat: number;
     senderName: string;
     text: string;
-    isFactionOnly: boolean; // only visible to same faction at night
-    round: number; // 1 or 2
+    isFactionOnly: boolean;
+    round: number;
     phase: GamePhase;
     day: number;
   }[];
-  defendantSeat: number | null; // seat currently on trial
+  defendantSeat: number | null;
   trialVoters: { [voterSeat: number]: "Guilty" | "Innocent" | "Abstain" };
   lastWills: { [seat: number]: string };
-  aiModel: string; // fallback model
-  isAiRunning: boolean; // lock to prevent overlapping runs
-  winner?: string; // Faction name or player name
+  aiModel: string;
+  isAiRunning: boolean;
+  winner?: string;
+  lastActivity: number; // for room eviction sweeps
 }
 
 // Global active games database stored in memory
 export const activeRooms: Map<string, GameRoom> = new Map();
+
+// Evict rooms inactive for more than 1 hour (3600000 ms)
+const ROOM_INACTIVITY_TTL = 3600000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of activeRooms.entries()) {
+    if (now - room.lastActivity > ROOM_INACTIVITY_TTL || room.phase === "GameOver") {
+      activeRooms.delete(roomId);
+    }
+  }
+}, 60000); // Check every minute
 
 /**
  * Creates a unique room code
@@ -79,6 +92,7 @@ export function generateRoomId(): string {
  * Log an event to the game
  */
 export function logGameEvent(room: GameRoom, message: string) {
+  room.lastActivity = Date.now();
   room.logs.push({
     day: room.day,
     phase: room.phase,
@@ -100,20 +114,55 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /**
- * Initialize / Start the game room
+ * Initialize / Start the game room with balanced factions
  */
 export function startGame(room: GameRoom) {
+  room.lastActivity = Date.now();
   if (room.players.length < 5) {
     throw new Error("Lobby needs at least 5 players to start.");
   }
 
-  // Get active roles in ToS2 registry
-  const availableRoles = Object.keys(roleRegistry);
-  const shuffledRoles = shuffleArray(availableRoles);
+  // Build a seat-sized role pool balanced across factions
+  const poolSize = room.players.length;
+  const rolePool: string[] = [];
+
+  // Exclude some complex incompatible neutral/apocalypse combinations
+  const allRoles = Object.keys(roleRegistry);
+  const townRoles = allRoles.filter(r => roleRegistry[r].faction === "Town");
+  const mafiaRoles = allRoles.filter(r => roleRegistry[r].faction === "Mafia");
+  const covenRoles = allRoles.filter(r => roleRegistry[r].faction === "Coven");
+  const neutralRoles = allRoles.filter(r => roleRegistry[r].faction === "Neutral");
+
+  // Balance distribution: ~50-60% Town, remaining are evil/neutrals
+  const targetTownCount = Math.max(3, Math.floor(poolSize * 0.6));
+  const remainingCount = poolSize - targetTownCount;
+
+  // Pick Town roles
+  const shuffledTown = shuffleArray(townRoles);
+  for (let i = 0; i < targetTownCount; i++) {
+    rolePool.push(shuffledTown[i % shuffledTown.length]);
+  }
+
+  // Distribute remaining amongst Mafia, Coven, and Neutral
+  const shuffledMafia = shuffleArray(mafiaRoles);
+  const shuffledCoven = shuffleArray(covenRoles);
+  const shuffledNeutral = shuffleArray(neutralRoles);
+
+  for (let i = 0; i < remainingCount; i++) {
+    if (i % 3 === 0) {
+      rolePool.push(shuffledMafia[i % shuffledMafia.length]);
+    } else if (i % 3 === 1) {
+      rolePool.push(shuffledCoven[i % shuffledCoven.length]);
+    } else {
+      rolePool.push(shuffledNeutral[i % shuffledNeutral.length]);
+    }
+  }
+
+  const randomizedPool = shuffleArray(rolePool);
 
   // Assign roles
   room.players.forEach((player, idx) => {
-    const assignedRoleName = shuffledRoles[idx % shuffledRoles.length];
+    const assignedRoleName = randomizedPool[idx];
     const roleDef = roleRegistry[assignedRoleName];
 
     player.role = roleDef.name;
@@ -121,6 +170,7 @@ export function startGame(room: GameRoom) {
     player.subalignment = roleDef.subalignment;
     player.isAlive = true;
     player.will = "";
+    player.canConvert = roleDef.canConvert;
   });
 
   room.day = 1;
@@ -139,45 +189,51 @@ export function startGame(room: GameRoom) {
  * Evaluates win condition after deaths or trials
  */
 export function checkWinConditions(room: GameRoom): boolean {
+  room.lastActivity = Date.now();
   const alivePlayers = room.players.filter((p) => p.isAlive);
   const townCount = alivePlayers.filter((p) => p.faction === "Town").length;
   const mafiaCount = alivePlayers.filter((p) => p.faction === "Mafia").length;
   const covenCount = alivePlayers.filter((p) => p.faction === "Coven").length;
   const neutralCount = alivePlayers.filter((p) => p.faction === "Neutral").length;
 
-  // 1. Town Wins
-  if (mafiaCount === 0 && covenCount === 0 && alivePlayers.every(p => p.faction === "Town" || p.role === "Survivor" || p.role === "Guardian Angel")) {
+  // Identify hostile neutrals (anyone neutral who can kill or oppose town/evil victory)
+  const hostileNeutrals = alivePlayers.filter(
+    (p) =>
+      p.faction === "Neutral" &&
+      ["Arsonist", "Serial Killer", "Werewolf", "Juggernaut", "Shroud", "Vampire"].includes(p.role)
+  );
+
+  // 1. Town Wins (must also eliminate all hostile neutrals)
+  if (mafiaCount === 0 && covenCount === 0 && hostileNeutrals.length === 0) {
     room.phase = "GameOver";
     room.winner = "Town";
     logGameEvent(room, "Game Over! The Town has successfully eliminated all threats!");
     return true;
   }
 
-  // 2. Mafia Wins
-  if (townCount === 0 && covenCount === 0 && mafiaCount > 0) {
+  // 2. Mafia Wins (must also eliminate coven and hostile neutrals)
+  if (townCount === 0 && covenCount === 0 && hostileNeutrals.length === 0 && mafiaCount > 0) {
     room.phase = "GameOver";
     room.winner = "Mafia";
     logGameEvent(room, "Game Over! The Mafia reigns supreme!");
     return true;
   }
 
-  // 3. Coven Wins
-  if (townCount === 0 && mafiaCount === 0 && covenCount > 0) {
+  // 3. Coven Wins (must also eliminate mafia and hostile neutrals)
+  if (townCount === 0 && mafiaCount === 0 && hostileNeutrals.length === 0 && covenCount > 0) {
     room.phase = "GameOver";
     room.winner = "Coven";
     logGameEvent(room, "Game Over! The Coven has completed their absolute conquest!");
     return true;
   }
 
-  // 4. Solo Neutral Wins (e.g. Serial Killer, Arsonist, Juggernaut)
+  // 4. Solo Neutral Wins
   if (alivePlayers.length === 1) {
     const solo = alivePlayers[0];
-    if (solo.faction === "Neutral" || solo.faction === "Mafia" || solo.faction === "Coven") {
-      room.phase = "GameOver";
-      room.winner = solo.name + ` (${solo.role})`;
-      logGameEvent(room, `Game Over! ${solo.name} wins as the victorious ${solo.role}!`);
-      return true;
-    }
+    room.phase = "GameOver";
+    room.winner = solo.name + ` (${solo.role})`;
+    logGameEvent(room, `Game Over! ${solo.name} wins as the victorious ${solo.role}!`);
+    return true;
   }
 
   // 5. Stalemate fallback
@@ -192,6 +248,13 @@ export function checkWinConditions(room: GameRoom): boolean {
 }
 
 /**
+ * Escapes characters for RegExp
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Private helper to issue LLM speech or decision requests
  */
 export async function runLlmTurn(
@@ -202,10 +265,11 @@ export async function runLlmTurn(
 ): Promise<string> {
   const modelToUse = player.aiModel || room.aiModel || "Smart";
   const provider = modelToUse.includes("/") ? "openrouter" : "horde";
+  const proxyUrl = process.env.AI_PROXY_URL || "http://127.0.0.1:3000/api/ai/proxy";
 
   try {
     const response = await axios.post(
-      "http://127.0.0.1:3000/api/ai/proxy",
+      proxyUrl,
       {
         provider,
         model: modelToUse,
@@ -230,13 +294,18 @@ Game Details: There are other players in the lobby (some human, some LLM AI). Yo
       {
         headers: {
           Authorization: `Bearer ${token}`
-        }
+        },
+        timeout: 10000 // finite 10 second timeout for LLM calls
       }
     );
 
     let output = response.data?.choices?.[0]?.message?.content || "";
-    // Clean up LLM naming prefixes
-    output = output.replace(/^Seat \d+:\s*/gi, "").replace(new RegExp(`^${player.name}:\\s*`, "gi"), "");
+    output = output.replace(/^Seat \d+:\s*/gi, "");
+
+    // Safely escape and replace player.name prefix
+    const namePattern = new RegExp(`^${escapeRegExp(player.name)}:\\s*`, "gi");
+    output = output.replace(namePattern, "");
+
     return output.trim();
   } catch (error: any) {
     console.error(`LLM fail for ${player.name}:`, error.message);
@@ -245,21 +314,23 @@ Game Details: There are other players in the lobby (some human, some LLM AI). Yo
 }
 
 /**
+ * Maps defense and attack tiers to numbers for proper comparisons
+ */
+const TIER_MAP: Record<string, number> = {
+  None: 0,
+  Basic: 1,
+  Powerful: 2,
+  Unstoppable: 3
+};
+
+/**
  * Evaluates the full set of submitted night actions deterministically
  */
 export function resolveNightActions(room: GameRoom) {
+  room.lastActivity = Date.now();
   logGameEvent(room, `--- Night ${room.day} is coming to a close. Resolving night actions! ---`);
 
   const activePlayers = room.players.filter((p) => p.isAlive);
-  const actionMap = new Map<number, { target: number; ability?: string }>();
-
-  // Gather actions
-  activePlayers.forEach((p) => {
-    if (p.nightActionTarget) {
-      actionMap.set(p.seat, { target: p.nightActionTarget, ability: p.nightActionAbility });
-    }
-  });
-
   const roleblocked = new Set<number>();
   const redirected = new Map<number, number>();
   const protectedPlayers = new Set<number>();
@@ -267,7 +338,6 @@ export function resolveNightActions(room: GameRoom) {
 
   // 1. Roleblocks (Escort, Tavern Keeper, Consort, Bootlegger)
   activePlayers.forEach((p) => {
-    const def = roleRegistry[p.role];
     if (
       p.nightActionTarget &&
       (p.role === "Escort" || p.role === "Tavern Keeper" || p.role === "Consort" || p.role === "Bootlegger")
@@ -284,7 +354,7 @@ export function resolveNightActions(room: GameRoom) {
     }
   });
 
-  // 2. Redirects (Witch, Coven Leader)
+  // 2. Redirects (Witch, Coven Leader) using submitted secondary target
   activePlayers.forEach((p) => {
     if (
       p.nightActionTarget &&
@@ -292,12 +362,13 @@ export function resolveNightActions(room: GameRoom) {
       (p.role === "Witch" || p.role === "Coven Leader")
     ) {
       const targetSeat = p.nightActionTarget;
-      const targetPlayer = room.players.find((pl) => pl.seat === targetSeat);
-      if (targetPlayer && targetPlayer.isAlive) {
-        // Find a secondary target to redirect to
-        const secondarySeat = Math.max(1, (targetSeat + 2) % room.players.length + 1);
-        redirected.set(targetSeat, secondarySeat);
-        logGameEvent(room, `Seat ${targetSeat} (${targetPlayer.name}) was controlled to visit Seat ${secondarySeat}!`);
+      const secondarySeat = p.secondaryTarget;
+      if (secondarySeat) {
+        const secPlayer = room.players.find((pl) => pl.seat === secondarySeat);
+        if (secPlayer && secPlayer.isAlive) {
+          redirected.set(targetSeat, secondarySeat);
+          logGameEvent(room, `Seat ${targetSeat} was controlled to visit Seat ${secondarySeat}!`);
+        }
       }
     }
   });
@@ -313,7 +384,7 @@ export function resolveNightActions(room: GameRoom) {
     }
   });
 
-  // 4. Attacks / Killing (Godfather, Mafioso, Serial Killer, Vigilante, Coven Leader, Werewolf, Arsonist, etc.)
+  // 4. Attacks / Killing (Comparing numeric attack and defense tiers)
   activePlayers.forEach((p) => {
     if (p.nightActionTarget && !roleblocked.has(p.seat)) {
       const targetSeat = redirected.get(p.seat) || p.nightActionTarget;
@@ -333,20 +404,26 @@ export function resolveNightActions(room: GameRoom) {
         if (targetPlayer && targetPlayer.isAlive) {
           const targetDef = roleRegistry[targetPlayer.role];
 
-          // Check protection / defense
+          // Compute effective attack tier and target defense tier
+          const attackPower = TIER_MAP[def?.attack || "None"] || 0;
+          let defensePower = TIER_MAP[targetDef?.defense || "None"] || 0;
+
+          // Temporary buffs
           if (protectedPlayers.has(targetSeat)) {
-            logGameEvent(room, `Seat ${targetSeat} (${targetPlayer.name}) was attacked but survived due to protection!`);
-          } else if (targetDef?.defense !== "None" && p.role !== "Arsonist") {
-            logGameEvent(room, `Seat ${targetSeat} (${targetPlayer.name}) was attacked but their defense was too strong!`);
-          } else {
+            defensePower = Math.max(defensePower, 2); // Doctor protection gives Powerful defense
+          }
+
+          if (attackPower >= defensePower && defensePower < 3) {
             deadTonight.set(targetSeat, `Killed by an evil force (${p.role})`);
+          } else {
+            logGameEvent(room, `Seat ${targetSeat} (${targetPlayer.name}) was attacked but survived due to high defense!`);
           }
         }
       }
     }
   });
 
-  // 5. Conversions / Transformations (Vampire, Plaguebearer, Amnesiac)
+  // 5. Conversions / Transformations (Vampire, Plaguebearer)
   activePlayers.forEach((p) => {
     if (p.nightActionTarget && !roleblocked.has(p.seat)) {
       const targetSeat = redirected.get(p.seat) || p.nightActionTarget;
@@ -354,7 +431,9 @@ export function resolveNightActions(room: GameRoom) {
 
       if (p.role === "Vampire" && targetPlayer && targetPlayer.isAlive) {
         const targetDef = roleRegistry[targetPlayer.role];
-        if (targetDef?.defense === "None" && !targetPlayer.canConvert && targetPlayer.faction === "Town") {
+        const canBeConverted = targetDef ? targetDef.canConvert : false;
+
+        if (targetDef?.defense === "None" && canBeConverted) {
           targetPlayer.role = "Vampire";
           targetPlayer.faction = "Neutral";
           targetPlayer.subalignment = "Chaos";
@@ -384,6 +463,7 @@ export function resolveNightActions(room: GameRoom) {
     p.nightActionAbility = undefined;
     p.voteTarget = undefined;
     p.defenseVotes = null;
+    p.secondaryTarget = undefined;
   });
 
   room.defendantSeat = null;
@@ -393,21 +473,26 @@ export function resolveNightActions(room: GameRoom) {
 /**
  * Run standard background state transitions & AI dialogue generations automatically
  */
-export async function advanceGamePhase(room: GameRoom, token: string) {
-  if (room.isAiRunning) return;
+export async function advanceGamePhase(
+  room: GameRoom,
+  token: string
+): Promise<{ advanced: boolean; error?: string }> {
+  room.lastActivity = Date.now();
+  if (room.isAiRunning) {
+    return { advanced: false, error: "AI is already running" };
+  }
   room.isAiRunning = true;
 
   try {
     if (checkWinConditions(room)) {
       room.isAiRunning = false;
-      return;
+      return { advanced: true };
     }
 
     const alivePlayers = room.players.filter((p) => p.isAlive);
 
     switch (room.phase) {
       case "DayTalk1": {
-        // AI speaks for Round 1
         logGameEvent(room, `--- Day ${room.day}: Talk Round 1 ---`);
         for (const player of room.players) {
           if (!player.isAlive) continue;
@@ -431,7 +516,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "DayTalk2": {
-        // AI speaks for Round 2 and selects day abilities if applicable
         logGameEvent(room, `--- Day ${room.day}: Talk Round 2 & Day Abilities ---`);
         for (const player of room.players) {
           if (!player.isAlive) continue;
@@ -439,7 +523,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
             const prompt = `It is Day ${room.day}, Talk Round 2. Respond to the previous statements or state any roles you claim. If you have a day ability (like Mayor reveal, Deputy shoot, Conjuror meteor, Monarch knight), output "[ABILITY: Mayor]" or "[ABILITY: shoot Seat 2]" or simply make your comment. Keep under 2 sentences.`;
             const speech = await runLlmTurn(room, player, prompt, token);
 
-            // Mock check for day ability usage in the speech
             if (speech.includes("[ABILITY:")) {
               logGameEvent(room, `🔥 Seat ${player.seat} (${player.name}) triggered a day ability: ${speech}`);
             }
@@ -461,14 +544,12 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "Voting": {
-        // Gather AI and Human voting targets
         logGameEvent(room, `--- Day ${room.day}: Voting Phase ---`);
-        const votes: Record<number, number> = {}; // seat -> voteCount
+        const votes: Record<number, number> = {};
 
         for (const player of room.players) {
           if (!player.isAlive) continue;
           if (player.isAi) {
-            // Pick a suspicious seat
             const otherAlives = alivePlayers.filter((p) => p.seat !== player.seat);
             if (otherAlives.length > 0) {
               const pick = otherAlives[Math.floor(Math.random() * otherAlives.length)];
@@ -477,14 +558,12 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
               logGameEvent(room, `🗳️ Seat ${player.seat} (${player.name}) voted to stand Seat ${pick.seat} (${pick.name}).`);
             }
           } else {
-            // Human player
             if (player.voteTarget) {
               votes[player.voteTarget] = (votes[player.voteTarget] || 0) + 1;
             }
           }
         }
 
-        // Find majority candidate
         const majorityNeeded = Math.floor(alivePlayers.length / 2) + 1;
         let candidate: number | null = null;
         for (const [seatStr, count] of Object.entries(votes)) {
@@ -507,7 +586,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "TrialDefense": {
-        // Defendant sends two messages in a row defending themselves
         const defSeat = room.defendantSeat;
         if (defSeat !== null) {
           const defendant = room.players.find((p) => p.seat === defSeat);
@@ -545,7 +623,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "TrialTalk": {
-        // Everyone else talks 2 times before deciding guilty/innocent/abstain
         logGameEvent(room, `--- Trial: Discussion Round (2 talking turns each) ---`);
         for (let round = 1; round <= 2; round++) {
           for (const player of room.players) {
@@ -571,7 +648,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "TrialVote": {
-        // Decide Guilty, Abstain, or Innocent
         logGameEvent(room, `--- Trial stand: Voting Verdict ---`);
         let guiltyCount = 0;
         let innocentCount = 0;
@@ -579,7 +655,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
         for (const player of room.players) {
           if (!player.isAlive || player.seat === room.defendantSeat) continue;
           if (player.isAi) {
-            // Pick randomly or heuristically
             const verdict = Math.random() > 0.45 ? "Guilty" : "Innocent";
             player.defenseVotes = verdict;
             room.trialVoters[player.seat] = verdict;
@@ -587,7 +662,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
             else innocentCount++;
             logGameEvent(room, `⚖️ Seat ${player.seat} (${player.name}) voted: ${verdict}`);
           } else {
-            // Human player
             const hVote = player.defenseVotes || "Abstain";
             room.trialVoters[player.seat] = hVote;
             if (hVote === "Guilty") guiltyCount++;
@@ -613,7 +687,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "TrialExecution": {
-        // Processing aftermath of a trial and transitioning to Night Coordination
         room.defendantSeat = null;
         room.trialVoters = {};
         room.phase = "NightCoordination";
@@ -622,7 +695,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "NightCoordination": {
-        // Evil faction chats (Mafia & Coven) coordinate
         logGameEvent(room, `--- Night ${room.day}: Evil Faction Coordination ---`);
         for (const faction of ["Mafia", "Coven"]) {
           const members = room.players.filter((p) => p.isAlive && p.faction === faction);
@@ -649,7 +721,6 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
       }
 
       case "NightAction": {
-        // AI selects their abilities & actions for the night
         logGameEvent(room, `--- Night ${room.day}: Action Phase ---`);
         for (const player of room.players) {
           if (!player.isAlive) continue;
@@ -664,10 +735,8 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
           }
         }
 
-        // Evaluate night action results
         resolveNightActions(room);
 
-        // Day starts
         room.day += 1;
         room.phase = "DayTalk1";
         logGameEvent(room, `🌅 Day ${room.day} breaks! The Town awakens.`);
@@ -679,8 +748,10 @@ export async function advanceGamePhase(room: GameRoom, token: string) {
     }
 
     checkWinConditions(room);
-  } catch (error) {
+    return { advanced: true };
+  } catch (error: any) {
     console.error("Advance Game phase error:", error);
+    return { advanced: false, error: error.message };
   } finally {
     room.isAiRunning = false;
   }

@@ -21,8 +21,10 @@ describe("Apps", () => {
     expect(screen.getByRole("heading", { name: "Availability" })).toBeDefined();
     expect(screen.getByLabelText("All (3 apps)")).toBeDefined();
     expect(screen.getByLabelText("LLM/AI (1 apps)")).toBeDefined();
+    expect(screen.getByLabelText("Games (1 apps)")).toBeDefined();
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.getByText("File Compressor")).toBeDefined();
+    expect(screen.getByText("TOS LLMs")).toBeDefined();
   });
 
   it("filters the catalogue by category and desktop availability", () => {

@@ -1,32 +1,17 @@
-// Canonical role registry for TOS LLMs containing exactly 60 roles spanning Town, Mafia, Coven, and Neutral alignments.
-// All rule logic is represented as structured data so that the authoritative engine and LLM prompts can consume it.
+// Canonical role registry types and role definitions for TOS LLMs.
+// This is now structured as a discriminated union keyed by faction with faction-specific subalignments.
 
 export type Faction = "Town" | "Mafia" | "Coven" | "Neutral";
 
-export type Subalignment =
-  // Town
-  | "Investigative"
-  | "Protective"
-  | "Support"
-  | "Killing"
-  | "Power"
-  // Mafia
-  | "Deception"
-  | "Utility"
-  | "Killing"
-  // Coven
-  | "Evil"
-  // Neutral
-  | "Benign"
-  | "Evil"
-  | "Chaos"
-  | "Killing"
-  | "Apocalypse";
+export type TownSubalignment = "Investigative" | "Protective" | "Support" | "Killing" | "Power";
+export type MafiaSubalignment = "Deception" | "Utility" | "Killing" | "Support";
+export type CovenSubalignment = "Evil";
+export type NeutralSubalignment = "Benign" | "Evil" | "Chaos" | "Killing" | "Apocalypse";
 
-export interface RoleDef {
+export type Subalignment = TownSubalignment | MafiaSubalignment | CovenSubalignment | NeutralSubalignment;
+
+export interface BaseRoleDef {
   name: string;
-  faction: Faction;
-  subalignment: Subalignment;
   winCondition: string;
   defense: "None" | "Basic" | "Powerful" | "Unstoppable";
   attack: "None" | "Basic" | "Powerful" | "Unstoppable";
@@ -42,15 +27,38 @@ export interface RoleDef {
     charges?: number;
     cooldown?: number;
     specialInteraction?: string;
+    canSelfTarget?: boolean;
   };
 }
 
-export const roleRegistry: Record<string, RoleDef> = {
+export interface TownRoleDef extends BaseRoleDef {
+  faction: "Town";
+  subalignment: TownSubalignment;
+}
+
+export interface MafiaRoleDef extends BaseRoleDef {
+  faction: "Mafia";
+  subalignment: MafiaSubalignment;
+}
+
+export interface CovenRoleDef extends BaseRoleDef {
+  faction: "Coven";
+  subalignment: CovenSubalignment;
+}
+
+export interface NeutralRoleDef extends BaseRoleDef {
+  faction: "Neutral";
+  subalignment: NeutralSubalignment;
+}
+
+export type RoleDef = TownRoleDef | MafiaRoleDef | CovenRoleDef | NeutralRoleDef;
+
+export const roleRegistry = {
   // --- TOWN ROLES (22 Roles) ---
   Bodyguard: {
-    name: "Bodyguard",
     faction: "Town",
     subalignment: "Protective",
+    name: "Bodyguard",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "Powerful",
@@ -58,12 +66,12 @@ export const roleRegistry: Record<string, RoleDef> = {
     hasFactionChat: false,
     canConvert: false,
     description: "Guard a target at night. If they are attacked, you fight back, killing the attacker and dying yourself.",
-    mechanics: { charges: 1 }
+    mechanics: { charges: 1, canSelfTarget: true }
   },
   Doctor: {
-    name: "Doctor",
     faction: "Town",
     subalignment: "Protective",
+    name: "Doctor",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -71,12 +79,12 @@ export const roleRegistry: Record<string, RoleDef> = {
     hasFactionChat: false,
     canConvert: false,
     description: "Heal a target, preventing them from dying of Basic/Powerful attacks. You learn if they were attacked.",
-    mechanics: { charges: 1 }
+    mechanics: { charges: 1, canSelfTarget: true }
   },
   Escort: {
-    name: "Escort",
     faction: "Town",
     subalignment: "Support",
+    name: "Escort",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -87,9 +95,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { roleblockImmune: true }
   },
   "Tavern Keeper": {
-    name: "Tavern Keeper",
     faction: "Town",
     subalignment: "Support",
+    name: "Tavern Keeper",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -100,9 +108,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { roleblockImmune: true }
   },
   Jailor: {
-    name: "Jailor",
     faction: "Town",
     subalignment: "Power",
+    name: "Jailor",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "Unstoppable",
@@ -114,9 +122,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 3, roleblockImmune: true, controlImmune: true }
   },
   Lookout: {
-    name: "Lookout",
     faction: "Town",
     subalignment: "Investigative",
+    name: "Lookout",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -127,9 +135,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Mayor: {
-    name: "Mayor",
     faction: "Town",
     subalignment: "Power",
+    name: "Mayor",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -140,9 +148,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Medium: {
-    name: "Medium",
     faction: "Town",
     subalignment: "Support",
+    name: "Medium",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -153,9 +161,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 1 }
   },
   Retributionist: {
-    name: "Retributionist",
     faction: "Town",
     subalignment: "Support",
+    name: "Retributionist",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -166,9 +174,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Sheriff: {
-    name: "Sheriff",
     faction: "Town",
     subalignment: "Investigative",
+    name: "Sheriff",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -179,9 +187,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Spy: {
-    name: "Spy",
     faction: "Town",
     subalignment: "Investigative",
+    name: "Spy",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -192,9 +200,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Transporter: {
-    name: "Transporter",
     faction: "Town",
     subalignment: "Support",
+    name: "Transporter",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -205,9 +213,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { controlImmune: true }
   },
   "Vampire Hunter": {
-    name: "Vampire Hunter",
     faction: "Town",
     subalignment: "Killing",
+    name: "Vampire Hunter",
     winCondition: "Eliminate all Vampires and other evils.",
     defense: "None",
     attack: "Basic",
@@ -218,22 +226,22 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Veteran: {
-    name: "Veteran",
     faction: "Town",
     subalignment: "Killing",
+    name: "Veteran",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
-    defense: "None", // Basic when on alert
+    defense: "None",
     attack: "Powerful",
     nightAbility: "Go on alert, shooting anyone who visits you.",
     hasFactionChat: false,
     canConvert: false,
     description: "Go on alert up to 3 times. While on alert, you have Basic defense and shoot everyone who visits you.",
-    mechanics: { charges: 3, roleblockImmune: true, controlImmune: true }
+    mechanics: { charges: 3, roleblockImmune: true, controlImmune: true, canSelfTarget: true }
   },
   Vigilante: {
-    name: "Vigilante",
     faction: "Town",
     subalignment: "Killing",
+    name: "Vigilante",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "Basic",
@@ -244,9 +252,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 3 }
   },
   Crusader: {
-    name: "Crusader",
     faction: "Town",
     subalignment: "Protective",
+    name: "Crusader",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "Basic",
@@ -257,9 +265,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Tracker: {
-    name: "Tracker",
     faction: "Town",
     subalignment: "Investigative",
+    name: "Tracker",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -270,9 +278,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Trapper: {
-    name: "Trapper",
     faction: "Town",
     subalignment: "Protective",
+    name: "Trapper",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "Basic",
@@ -283,9 +291,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Psychic: {
-    name: "Psychic",
     faction: "Town",
     subalignment: "Investigative",
+    name: "Psychic",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -296,9 +304,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Investigator: {
-    name: "Investigator",
     faction: "Town",
     subalignment: "Investigative",
+    name: "Investigator",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -309,9 +317,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Monarch: {
-    name: "Monarch",
     faction: "Town",
     subalignment: "Power",
+    name: "Monarch",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "None",
@@ -322,9 +330,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 2 }
   },
   Deputy: {
-    name: "Deputy",
     faction: "Town",
     subalignment: "Killing",
+    name: "Deputy",
     winCondition: "Eliminate all evils & neutrals that oppose the Town.",
     defense: "None",
     attack: "Powerful",
@@ -337,9 +345,9 @@ export const roleRegistry: Record<string, RoleDef> = {
 
   // --- MAFIA ROLES (12 Roles) ---
   Blackmailer: {
-    name: "Blackmailer",
     faction: "Mafia",
     subalignment: "Deception",
+    name: "Blackmailer",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -350,9 +358,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Consigliere: {
-    name: "Consigliere",
     faction: "Mafia",
-    subalignment: "Investigative",
+    subalignment: "Support", // Faction specific Mafia subalignments: Deception, Utility, Killing, Support
+    name: "Consigliere",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -363,9 +371,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Bootlegger: {
-    name: "Bootlegger",
     faction: "Mafia",
     subalignment: "Utility",
+    name: "Bootlegger",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -376,9 +384,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { roleblockImmune: true }
   },
   Disguiser: {
-    name: "Disguiser",
     faction: "Mafia",
     subalignment: "Deception",
+    name: "Disguiser",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -389,9 +397,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Forger: {
-    name: "Forger",
     faction: "Mafia",
     subalignment: "Deception",
+    name: "Forger",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -402,9 +410,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 2 }
   },
   Framer: {
-    name: "Framer",
     faction: "Mafia",
     subalignment: "Deception",
+    name: "Framer",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -415,9 +423,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Godfather: {
-    name: "Godfather",
     faction: "Mafia",
     subalignment: "Killing",
+    name: "Godfather",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "Basic",
     attack: "Basic",
@@ -428,9 +436,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { detectionImmune: true }
   },
   Janitor: {
-    name: "Janitor",
     faction: "Mafia",
     subalignment: "Utility",
+    name: "Janitor",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -441,9 +449,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 2 }
   },
   Mafioso: {
-    name: "Mafioso",
     faction: "Mafia",
     subalignment: "Killing",
+    name: "Mafioso",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "Basic",
@@ -454,9 +462,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Hypnotist: {
-    name: "Hypnotist",
     faction: "Mafia",
     subalignment: "Deception",
+    name: "Hypnotist",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -467,9 +475,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Ambusher: {
-    name: "Ambusher",
     faction: "Mafia",
     subalignment: "Killing",
+    name: "Ambusher",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "Basic",
@@ -480,9 +488,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Consort: {
-    name: "Consort",
     faction: "Mafia",
     subalignment: "Support",
+    name: "Consort",
     winCondition: "Eliminate the Town and any opposing evils/neutrals.",
     defense: "None",
     attack: "None",
@@ -495,11 +503,11 @@ export const roleRegistry: Record<string, RoleDef> = {
 
   // --- COVEN ROLES (12 Roles) ---
   "Coven Leader": {
-    name: "Coven Leader",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Coven Leader",
     winCondition: "Eliminate all who oppose the Coven.",
-    defense: "Basic", // Basic with Necronomicon
+    defense: "Basic",
     attack: "Basic",
     nightAbility: "Control a player to target someone else. Gain Necronomicon first.",
     hasFactionChat: true,
@@ -508,9 +516,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { controlImmune: true }
   },
   "Potion Master": {
-    name: "Potion Master",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Potion Master",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "Basic",
@@ -521,12 +529,12 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { cooldown: 1 }
   },
   "Hex Master": {
-    name: "Hex Master",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Hex Master",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
-    attack: "Basic", // Astral when having Necronomicon
+    attack: "Basic",
     nightAbility: "Apply a hex to a player. If all living non-coven are hexed, kill them all.",
     hasFactionChat: true,
     canConvert: false,
@@ -534,9 +542,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Necromancer: {
-    name: "Necromancer",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Necromancer",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "Basic",
@@ -547,9 +555,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Poisoner: {
-    name: "Poisoner",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Poisoner",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "Basic",
@@ -560,9 +568,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Medusa: {
-    name: "Medusa",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Medusa",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "Powerful",
@@ -573,9 +581,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 3 }
   },
   Witch: {
-    name: "Witch",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Witch",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "None",
@@ -586,9 +594,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Enchanter: {
-    name: "Enchanter",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Enchanter",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "None",
@@ -599,9 +607,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Conjuror: {
-    name: "Conjuror",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Conjuror",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "Powerful",
@@ -612,9 +620,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { charges: 1 }
   },
   "Wildling": {
-    name: "Wildling",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Wildling",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "None",
@@ -625,9 +633,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Dreamweaver: {
-    name: "Dreamweaver",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Dreamweaver",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "None",
@@ -638,9 +646,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Illusionist: {
-    name: "Illusionist",
     faction: "Coven",
     subalignment: "Evil",
+    name: "Illusionist",
     winCondition: "Eliminate all who oppose the Coven.",
     defense: "None",
     attack: "None",
@@ -653,9 +661,9 @@ export const roleRegistry: Record<string, RoleDef> = {
 
   // --- NEUTRAL ROLES (14 Roles) ---
   Amnesiac: {
-    name: "Amnesiac",
     faction: "Neutral",
     subalignment: "Benign",
+    name: "Amnesiac",
     winCondition: "Remember a role and fulfill that role's win condition.",
     defense: "None",
     attack: "None",
@@ -666,9 +674,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Arsonist: {
-    name: "Arsonist",
     faction: "Neutral",
     subalignment: "Killing",
+    name: "Arsonist",
     winCondition: "Douse and burn everyone alive.",
     defense: "Basic",
     attack: "Unstoppable",
@@ -679,9 +687,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { roleblockImmune: true }
   },
   Executioner: {
-    name: "Executioner",
     faction: "Neutral",
     subalignment: "Evil",
+    name: "Executioner",
     winCondition: "Get your target lynched on trial.",
     defense: "Basic",
     attack: "None",
@@ -691,9 +699,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   "Guardian Angel": {
-    name: "Guardian Angel",
     faction: "Neutral",
     subalignment: "Benign",
+    name: "Guardian Angel",
     winCondition: "Keep your target alive until the end of the game.",
     defense: "None",
     attack: "None",
@@ -702,27 +710,27 @@ export const roleRegistry: Record<string, RoleDef> = {
     hasFactionChat: false,
     canConvert: false,
     description: "You are assigned a target. You can shield them twice, curing and protecting them.",
-    mechanics: { charges: 2 }
+    mechanics: { charges: 2, canSelfTarget: true }
   },
   Jester: {
-    name: "Jester",
     faction: "Neutral",
     subalignment: "Evil",
+    name: "Jester",
     winCondition: "Get yourself executed on trial.",
     defense: "None",
-    attack: "Unstoppable", // Guilt execution on a voter
+    attack: "Unstoppable",
     hasFactionChat: false,
     canConvert: false,
     description: "Trick the Town into voting you guilty. If you die on trial, kill one guilty/abstaining voter at night.",
     mechanics: {}
   },
   Juggernaut: {
-    name: "Juggernaut",
     faction: "Neutral",
     subalignment: "Killing",
+    name: "Juggernaut",
     winCondition: "Eliminate everyone who opposes you.",
-    defense: "Basic", // upgrades to Powerful
-    attack: "Basic", // upgrades to Powerful/Unstoppable
+    defense: "Basic",
+    attack: "Basic",
     nightAbility: "Attack a target, growing in strength with every kill.",
     hasFactionChat: false,
     canConvert: false,
@@ -730,9 +738,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Pirate: {
-    name: "Pirate",
     faction: "Neutral",
     subalignment: "Chaos",
+    name: "Pirate",
     winCondition: "Successfully plunder two players in duels.",
     defense: "None",
     attack: "Powerful",
@@ -743,9 +751,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Plaguebearer: {
-    name: "Plaguebearer",
     faction: "Neutral",
     subalignment: "Chaos",
+    name: "Plaguebearer",
     winCondition: "Infect everyone to transform into Pestilence.",
     defense: "Basic",
     attack: "None",
@@ -756,9 +764,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   "Serial Killer": {
-    name: "Serial Killer",
     faction: "Neutral",
     subalignment: "Killing",
+    name: "Serial Killer",
     winCondition: "Murder everyone in the town.",
     defense: "Basic",
     attack: "Basic",
@@ -769,9 +777,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { roleblockImmune: false }
   },
   Survivor: {
-    name: "Survivor",
     faction: "Neutral",
     subalignment: "Benign",
+    name: "Survivor",
     winCondition: "Live to see the end of the game.",
     defense: "None",
     attack: "None",
@@ -779,12 +787,12 @@ export const roleRegistry: Record<string, RoleDef> = {
     hasFactionChat: false,
     canConvert: false,
     description: "You have no team. Simply survive the chaos by donning vests.",
-    mechanics: { charges: 4 }
+    mechanics: { charges: 4, canSelfTarget: true }
   },
   Vampire: {
-    name: "Vampire",
     faction: "Neutral",
     subalignment: "Chaos",
+    name: "Vampire",
     winCondition: "Convert or eliminate all opposing factions.",
     defense: "None",
     attack: "Basic",
@@ -795,9 +803,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: { cooldown: 1 }
   },
   Werewolf: {
-    name: "Werewolf",
     faction: "Neutral",
     subalignment: "Killing",
+    name: "Werewolf",
     winCondition: "Ravage everyone in town.",
     defense: "Basic",
     attack: "Powerful",
@@ -808,9 +816,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Doomsday: {
-    name: "Doomsday",
     faction: "Neutral",
     subalignment: "Chaos",
+    name: "Doomsday",
     winCondition: "Correctly predict 3 player deaths to ascend.",
     defense: "Basic",
     attack: "None",
@@ -821,9 +829,9 @@ export const roleRegistry: Record<string, RoleDef> = {
     mechanics: {}
   },
   Shroud: {
-    name: "Shroud",
     faction: "Neutral",
     subalignment: "Killing",
+    name: "Shroud",
     winCondition: "Kill all players who oppose you.",
     defense: "Basic",
     attack: "Basic",
@@ -833,4 +841,4 @@ export const roleRegistry: Record<string, RoleDef> = {
     description: "Force other players to perform your killings indirectly.",
     mechanics: {}
   }
-};
+} satisfies Record<string, RoleDef>;

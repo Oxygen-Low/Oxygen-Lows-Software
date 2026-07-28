@@ -93,7 +93,7 @@ export function createServer() {
   app.use("/api/repos", reposRouter);
   app.use("/api/git", gitRouter);
   app.use("/api/oauth-admin", oauthAdminRouter);
-  app.use("/api/social-deduction", gameRouter);
+  app.use("/api/social-deduction", apiLimiter, gameRouter);
 
   return app;
 }
