@@ -85,18 +85,29 @@ export function FriendsApp() {
       ]);
 
       if (fData) {
-        setFriends(fData.filter((f: any) => f.status === "accepted"));
-        setPendingIncoming(
-          fData.filter(
-            (f: any) =>
-              f.status === "pending" && f.friend_id === session.user.id,
-          ),
-        );
-        setPendingOutgoing(
-          fData.filter(
-            (f: any) => f.status === "pending" && f.user_id === session.user.id,
-          ),
-        );
+        /**
+         * ⚡ Bolt Performance Optimization:
+         * Replaced three separate O(N) Array.filter() calls with a single O(N) pass.
+         */
+        const accFriends: Friendship[] = [];
+        const incPending: Friendship[] = [];
+        const outPending: Friendship[] = [];
+
+        fData.forEach((f: any) => {
+          if (f.status === "accepted") {
+            accFriends.push(f);
+          } else if (f.status === "pending") {
+            if (f.friend_id === session.user.id) {
+              incPending.push(f);
+            } else if (f.user_id === session.user.id) {
+              outPending.push(f);
+            }
+          }
+        });
+
+        setFriends(accFriends);
+        setPendingIncoming(incPending);
+        setPendingOutgoing(outPending);
       }
       if (folData)
         setFollowing(
