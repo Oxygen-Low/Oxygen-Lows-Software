@@ -31,6 +31,7 @@ export interface Player {
   isAlive: boolean;
   will: string;
   deathReason?: string;
+  authUserId?: string;
 }
 
 export interface GameMessage {
