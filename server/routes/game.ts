@@ -66,6 +66,7 @@ const authenticateUser: RequestHandler = async (req, res, next) => {
  * Viewer-aware redaction helper
  * Hides other active players' roles, factions, and secret night actions,
  * and masks faction-only messages the requester is not allowed to see.
+ * Additionally sanitizes lastWills and trialVoters maps for living other players.
  */
 export function redactRoomState(room: GameRoom, userId: string): GameRoom {
   const requester = room.players.find((p) => p.authUserId === userId);
@@ -99,10 +100,28 @@ export function redactRoomState(room: GameRoom, userId: string): GameRoom {
     return sender.faction === requester.faction;
   });
 
+  // Redact global lastWills and trialVoters entries for other living players
+  const sanitizedLastWills: { [seat: number]: string } = {};
+  const sanitizedTrialVoters: { [voterSeat: number]: "Guilty" | "Innocent" | "Abstain" } = {};
+
+  room.players.forEach((p) => {
+    const isMe = p.authUserId === userId;
+    if (isMe || !p.isAlive) {
+      if (room.lastWills[p.seat] !== undefined) {
+        sanitizedLastWills[p.seat] = room.lastWills[p.seat];
+      }
+      if (room.trialVoters[p.seat] !== undefined) {
+        sanitizedTrialVoters[p.seat] = room.trialVoters[p.seat];
+      }
+    }
+  });
+
   return {
     ...room,
     players: sanitizedPlayers,
-    messages: sanitizedMessages
+    messages: sanitizedMessages,
+    lastWills: sanitizedLastWills,
+    trialVoters: sanitizedTrialVoters
   };
 }
 
@@ -526,7 +545,7 @@ gameRouter.post("/action", authenticateUser, (req, res) => {
     validateRequestFields({
       targetSeat: { type: "number", value: targetSeat, required: true },
       secondaryTarget: { type: "number", value: secondaryTarget },
-      ability: { type: "string", value: ability }
+      ability: { type: "string", value: ability, required: true }
     });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -547,6 +566,13 @@ gameRouter.post("/action", authenticateUser, (req, res) => {
   const player = room.players.find((p) => p.authUserId === user.id);
   if (!player || !player.isAlive) {
     res.status(403).json({ error: "Only active players can take night actions." });
+    return;
+  }
+
+  // Validate the ability matches roleRegistry[player.role]?.nightAbility
+  const expectedAbility = roleRegistry[player.role]?.nightAbility;
+  if (!ability || ability !== expectedAbility) {
+    res.status(400).json({ error: `Invalid action ability. Expected: ${expectedAbility || "visit"}` });
     return;
   }
 
@@ -604,10 +630,13 @@ gameRouter.post("/will", authenticateUser, (req, res) => {
   }
 
   const player = room.players.find((p) => p.authUserId === user.id);
-  if (player) {
-    player.will = will;
-    room.lastWills[player.seat] = will;
+  if (!player) {
+    res.status(403).json({ error: "You must be a member of the lobby to update your last will." });
+    return;
   }
+
+  player.will = will;
+  room.lastWills[player.seat] = will;
 
   res.json({ room: redactRoomState(room, user.id) });
 });
@@ -615,8 +644,9 @@ gameRouter.post("/will", authenticateUser, (req, res) => {
 /**
  * POST /api/social-deduction/advance
  * Manually advance phase (for humans playing, triggering AI speech and state transition)
+ * Note: Long-running AI turns are enqueued asynchronously to return 202 immediately.
  */
-gameRouter.post("/advance", authenticateUser, async (req, res) => {
+gameRouter.post("/advance", authenticateUser, (req, res) => {
   const user = (req as any).user;
   const { roomId } = req.body;
   const token = (req as any).token;
@@ -642,17 +672,16 @@ gameRouter.post("/advance", authenticateUser, async (req, res) => {
     return;
   }
 
-  const result = await advanceGamePhase(room, token);
-
-  if (!result.advanced) {
-    if (result.error === "AI is already running") {
-      res.status(409).json({ error: result.error });
-      return;
-    }
-    res.status(500).json({ error: result.error || "Failed to advance phase." });
+  if (room.isAiRunning) {
+    res.status(409).json({ error: "AI is already running" });
     return;
   }
 
-  res.json({ room: redactRoomState(room, user.id) });
+  // Trigger phase advance asynchronously and return 202 accepted immediately
+  advanceGamePhase(room, token).catch((err) => {
+    console.error("Asynchronous phase advance failure:", err);
+  });
+
+  res.status(202).json({ message: "Phase advancement enqueued successfully.", room: redactRoomState(room, user.id) });
 });
 export default gameRouter;

@@ -86,6 +86,9 @@ describe("TOS LLMs Game Engine and State Machine", () => {
 
     resolveNightActions(room);
 
+    // Assert that the roleblock event is logged
+    const hasRoleblockLog = room.logs.some((l) => l.message.includes("was roleblocked tonight"));
+    expect(hasRoleblockLog).toBe(true);
     expect(room.players[2].isAlive).toBe(true);
 
     // SCENARIO B: Control scenario where Mafioso is NOT roleblocked, Doctor dies
@@ -96,5 +99,35 @@ describe("TOS LLMs Game Engine and State Machine", () => {
     resolveNightActions(room);
 
     expect(room.players[2].isAlive).toBe(false);
+  });
+
+  it("should enforce combat logic based on attack and defense tiers", () => {
+    // Godfather (Basic defense) attacked by a Mafioso (Basic attack): attack (1) does NOT strictly exceed defense (1)
+    room.players[0].role = "Godfather";
+    room.players[0].faction = "Mafia";
+    room.players[0].isAlive = true;
+
+    room.players[1].role = "Mafioso";
+    room.players[1].faction = "Mafia";
+    room.players[1].isAlive = true;
+
+    room.players[1].nightActionTarget = 1; // Mafioso attacks Godfather
+    resolveNightActions(room);
+
+    expect(room.players[0].isAlive).toBe(true); // Survives!
+
+    // Non-attacker roles (like Witch with attack "None") should not cause any kills
+    room.players[2].role = "Witch";
+    room.players[2].faction = "Coven";
+    room.players[2].isAlive = true;
+
+    room.players[3].role = "Escort";
+    room.players[3].faction = "Town";
+    room.players[3].isAlive = true;
+
+    room.players[2].nightActionTarget = 4; // Witch visits Escort
+    resolveNightActions(room);
+
+    expect(room.players[3].isAlive).toBe(true); // Remains alive!
   });
 });

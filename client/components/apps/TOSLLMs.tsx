@@ -89,6 +89,9 @@ export function TOSLLMsApp() {
   const activeRoomId = useRef<string | null>(null);
   const syncInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Keep a stable ref for the current player's state
+  const myPlayerRef = useRef<Player | null>(null);
+
   useEffect(() => {
     latestToken.current = session?.access_token;
   }, [session?.access_token]);
@@ -96,7 +99,9 @@ export function TOSLLMsApp() {
   // Retrieve current user details from lobby
   const myPlayer = useMemo<Player | null>(() => {
     if (!roomState || !session?.user) return null;
-    return roomState.players.find((p) => p.authUserId === session.user.id) || null;
+    const player = roomState.players.find((p) => p.authUserId === session.user.id) || null;
+    myPlayerRef.current = player;
+    return player;
   }, [roomState, session]);
 
   // Sync state with server using abort controller to prevent race conditions or cross-room pollution
@@ -116,8 +121,9 @@ export function TOSLLMsApp() {
         // Check that targetId still matches the active roomId to reject stale room responses
         if (activeRoomId.current === targetId) {
           setRoomState(data.room);
-          if (data.room?.lastWills && myPlayer) {
-            setLastWill(data.room.lastWills[myPlayer.seat] || "");
+          const activePlayer = myPlayerRef.current;
+          if (data.room?.lastWills && activePlayer) {
+            setLastWill(data.room.lastWills[activePlayer.seat] || "");
           }
         }
       }
@@ -486,7 +492,7 @@ export function TOSLLMsApp() {
                 const canSelfTarget = roleRegistry[myPlayer?.role || ""]?.mechanics?.canSelfTarget;
 
                 return (
-                  <div key={p.seat} className={`py-3 flex flex-col gap-1 ${p.isAlive ? "text-slate-100" : "opacity-40 text-slate-500"}`}>
+                  <div key={`player-seat-${p.seat}-${p.name}`} className={`py-3 flex flex-col gap-1 ${p.isAlive ? "text-slate-100" : "opacity-40 text-slate-500"}`}>
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-sm flex items-center gap-2">
                         <span className="bg-slate-800 text-slate-300 rounded px-1.5 py-0.5 text-xs font-mono">{p.seat}</span>
@@ -583,8 +589,11 @@ export function TOSLLMsApp() {
               </CardTitle>
               {roomState.phase.includes("Night") && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400">Faction Chat Only</span>
+                  <label htmlFor="faction-chat-checkbox" className="text-xs text-slate-400 cursor-pointer select-none">
+                    Faction Chat Only
+                  </label>
                   <input
+                    id="faction-chat-checkbox"
                     type="checkbox"
                     checked={isFactionOnly}
                     onChange={(e) => setIsFactionOnly(e.target.checked)}
@@ -597,19 +606,22 @@ export function TOSLLMsApp() {
               {roomState.messages.length === 0 ? (
                 <div className="text-center text-slate-500 text-sm py-12">No chat statements yet.</div>
               ) : (
-                roomState.messages.map((m, idx) => (
-                  <div key={idx} className="bg-slate-950 p-3 rounded-lg border border-slate-850">
-                    <div className="flex justify-between text-xs text-slate-500 mb-1">
-                      <span className="font-bold text-cyan-400 font-mono">
-                        Seat {m.senderSeat}: {m.senderName}
-                      </span>
-                      <span>
-                        Day {m.day} ({m.phase}) {m.isFactionOnly ? <span className="text-indigo-400 font-semibold">[Faction Chat]</span> : ""}
-                      </span>
+                roomState.messages.map((m) => {
+                  const messageId = `msg-${m.day}-${m.phase}-${m.senderSeat}-${m.round}-${m.text.substring(0, 15)}`;
+                  return (
+                    <div key={messageId} className="bg-slate-950 p-3 rounded-lg border border-slate-850">
+                      <div className="flex justify-between text-xs text-slate-500 mb-1">
+                        <span className="font-bold text-cyan-400 font-mono">
+                          Seat {m.senderSeat}: {m.senderName}
+                        </span>
+                        <span>
+                          Day {m.day} ({m.phase}) {m.isFactionOnly ? <span className="text-indigo-400 font-semibold">[Faction Chat]</span> : ""}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-200">{m.text}</p>
                     </div>
-                    <p className="text-sm text-slate-200">{m.text}</p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </CardContent>
 
@@ -639,12 +651,15 @@ export function TOSLLMsApp() {
               {roomState.logs.length === 0 ? (
                 <div className="text-slate-500 italic">No events logged yet.</div>
               ) : (
-                roomState.logs.map((log, idx) => (
-                  <div key={idx} className="border-b border-slate-850 pb-1 flex gap-2">
-                    <span className="text-cyan-500">[{log.phase} D{log.day}]</span>
-                    <span>{log.message}</span>
-                  </div>
-                ))
+                roomState.logs.map((log) => {
+                  const logId = `log-${log.day}-${log.phase}-${log.timestamp}-${log.message.substring(0, 15)}`;
+                  return (
+                    <div key={logId} className="border-b border-slate-850 pb-1 flex gap-2">
+                      <span className="text-cyan-500">[{log.phase} D{log.day}]</span>
+                      <span>{log.message}</span>
+                    </div>
+                  );
+                })
               )}
             </CardContent>
           </Card>

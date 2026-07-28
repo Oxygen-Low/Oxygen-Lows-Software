@@ -70,16 +70,28 @@ export interface GameRoom {
 // Global active games database stored in memory
 export const activeRooms: Map<string, GameRoom> = new Map();
 
-// Evict rooms inactive for more than 1 hour (3600000 ms)
+// Evict rooms inactive for more than 1 hour (3600000 ms) or GameOver rooms after a 5 minute grace period
 const ROOM_INACTIVITY_TTL = 3600000;
-setInterval(() => {
+const GAMEOVER_GRACE_PERIOD = 300000; // 5 minutes grace
+
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [roomId, room] of activeRooms.entries()) {
-    if (now - room.lastActivity > ROOM_INACTIVITY_TTL || room.phase === "GameOver") {
+    const elapsed = now - room.lastActivity;
+    if (room.phase === "GameOver") {
+      if (elapsed > GAMEOVER_GRACE_PERIOD) {
+        activeRooms.delete(roomId);
+      }
+    } else if (elapsed > ROOM_INACTIVITY_TTL) {
       activeRooms.delete(roomId);
     }
   }
-}, 60000); // Check every minute
+}, 60000);
+
+// Unref the cleanup interval handle so it does not keep Node or Vitest hanging
+if (typeof cleanupInterval.unref === "function") {
+  cleanupInterval.unref();
+}
 
 /**
  * Creates a unique room code
@@ -126,7 +138,6 @@ export function startGame(room: GameRoom) {
   const poolSize = room.players.length;
   const rolePool: string[] = [];
 
-  // Exclude some complex incompatible neutral/apocalypse combinations
   const allRoles = Object.keys(roleRegistry);
   const townRoles = allRoles.filter(r => roleRegistry[r].faction === "Town");
   const mafiaRoles = allRoles.filter(r => roleRegistry[r].faction === "Mafia");
@@ -203,8 +214,8 @@ export function checkWinConditions(room: GameRoom): boolean {
       ["Arsonist", "Serial Killer", "Werewolf", "Juggernaut", "Shroud", "Vampire"].includes(p.role)
   );
 
-  // 1. Town Wins (must also eliminate all hostile neutrals)
-  if (mafiaCount === 0 && covenCount === 0 && hostileNeutrals.length === 0) {
+  // 1. Town Wins (must also eliminate all hostile neutrals AND have at least one living Town member)
+  if (townCount > 0 && mafiaCount === 0 && covenCount === 0 && hostileNeutrals.length === 0) {
     room.phase = "GameOver";
     room.winner = "Town";
     logGameEvent(room, "Game Over! The Town has successfully eliminated all threats!");
@@ -390,14 +401,8 @@ export function resolveNightActions(room: GameRoom) {
       const targetSeat = redirected.get(p.seat) || p.nightActionTarget;
       const def = roleRegistry[p.role];
 
-      const isAttacker =
-        p.role === "Godfather" ||
-        p.role === "Mafioso" ||
-        p.role === "Serial Killer" ||
-        p.role === "Vigilante" ||
-        p.role === "Juggernaut" ||
-        p.faction === "Coven" ||
-        p.role === "Arsonist";
+      // Narrow isAttacker so only roles with non-"None" registered attack tier can attack
+      const isAttacker = def && def.attack !== "None";
 
       if (isAttacker) {
         const targetPlayer = room.players.find((pl) => pl.seat === targetSeat);
@@ -405,7 +410,7 @@ export function resolveNightActions(room: GameRoom) {
           const targetDef = roleRegistry[targetPlayer.role];
 
           // Compute effective attack tier and target defense tier
-          const attackPower = TIER_MAP[def?.attack || "None"] || 0;
+          const attackPower = TIER_MAP[def.attack] || 0;
           let defensePower = TIER_MAP[targetDef?.defense || "None"] || 0;
 
           // Temporary buffs
@@ -413,7 +418,7 @@ export function resolveNightActions(room: GameRoom) {
             defensePower = Math.max(defensePower, 2); // Doctor protection gives Powerful defense
           }
 
-          if (attackPower >= defensePower && defensePower < 3) {
+          if (attackPower > defensePower) {
             deadTonight.set(targetSeat, `Killed by an evil force (${p.role})`);
           } else {
             logGameEvent(room, `Seat ${targetSeat} (${targetPlayer.name}) was attacked but survived due to high defense!`);
