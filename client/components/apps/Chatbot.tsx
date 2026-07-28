@@ -202,19 +202,23 @@ const ArtifactSidebar = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-white"
+            className="h-8 w-8 text-slate-400 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
             onClick={() => {
               navigator.clipboard.writeText(artifact.content);
               toast.success("Copied to clipboard");
             }}
+            aria-label="Copy to clipboard"
+            title="Copy to clipboard"
           >
             <Copy className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-white"
+            className="h-8 w-8 text-slate-400 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
             onClick={onClose}
+            aria-label="Close"
+            title="Close"
           >
             <X className="w-4 h-4" />
           </Button>
