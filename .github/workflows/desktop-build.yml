@@ -13,10 +13,10 @@ jobs:
       
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
         dotnet-version: '8.0.x'
 
@@ -45,7 +45,7 @@ jobs:
         echo "TAG_NAME=$tag" >> $env:GITHUB_ENV
         
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
       with:
         tag_name: ${{ env.TAG_NAME }}
         name: Release ${{ env.TAG_NAME }}
