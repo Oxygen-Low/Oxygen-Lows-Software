@@ -244,6 +244,27 @@ const ArtifactSidebar = ({
   );
 };
 
+interface QueueStatus {
+  eta: number;
+  position: number;
+  workers: number;
+  totalInQueue: number;
+}
+
+const formatHordeEta = (seconds: number): string => {
+  if (seconds <= 0) return "0s";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+
+  const parts = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (s > 0) parts.push(`${s}s`);
+
+  return parts.join(" ") || "0s";
+};
+
 export function ChatbotApp() {
   const { session } = useAuth();
   const { models, selectedModel, selectedProvider, setSelection } =
@@ -254,6 +275,7 @@ export function ChatbotApp() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const isTypingRef = useRef(false);
+  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [styles, setStyles] = useState<Style[]>([]);
   const [selectedStyle, setSelectedStyle] = useState("GeneralAssistant");
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>(
@@ -466,6 +488,7 @@ export function ChatbotApp() {
     setIsTyping(true);
     isTypingRef.current = true;
     lastParsedLengthRef.current = 0;
+    setQueueStatus(null);
 
     try {
       const { data: userInts } = await supabase
@@ -554,6 +577,9 @@ export function ChatbotApp() {
               if (data.error) {
                 throw new Error(data.error);
               }
+              if (data.queue_info) {
+                setQueueStatus(data.queue_info);
+              }
               let delta = "";
 
               if (selectedProvider === "anthropic") {
@@ -580,6 +606,7 @@ export function ChatbotApp() {
               }
 
               if (delta) {
+                setQueueStatus(null);
                 fullContent += delta;
                 setMessages((prev) => {
                   const last = prev[prev.length - 1];
@@ -599,7 +626,11 @@ export function ChatbotApp() {
                 }
               }
             } catch (e: any) {
-              if (e.message && e.message !== "Unexpected end of JSON input" && !e.message.includes("JSON")) {
+              if (
+                e.message &&
+                e.message !== "Unexpected end of JSON input" &&
+                !e.message.includes("JSON")
+              ) {
                 toast.error(e.message);
               } else {
                 console.error("Parse error", e);
@@ -634,6 +665,7 @@ export function ChatbotApp() {
     } finally {
       setIsTyping(false);
       isTypingRef.current = false;
+      setQueueStatus(null);
     }
   };
 
@@ -873,7 +905,16 @@ export function ChatbotApp() {
                       <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
                     </div>
                     <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                      <span className="animate-pulse">...</span>
+                      {queueStatus ? (
+                        <span className="text-slate-400 font-medium">
+                          Queue Position: {queueStatus.position} | ETA:{" "}
+                          {formatHordeEta(queueStatus.eta)} | Workers:{" "}
+                          {queueStatus.workers} | People in Queue:{" "}
+                          {queueStatus.totalInQueue}
+                        </span>
+                      ) : (
+                        <span className="animate-pulse">...</span>
+                      )}
                     </div>
                   </div>
                 )}
