@@ -93,6 +93,49 @@ export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
   res.json(localModels);
 };
 
+export function matchesHordeModel(apiName: string, mapName: string): boolean {
+  const normApi = apiName.toLowerCase();
+  const normMap = mapName.toLowerCase();
+
+  // Direct exact or inclusion match
+  if (normApi.includes(normMap) || normMap.includes(normApi)) return true;
+
+  // Ensure "coder" matches specifically
+  if (normMap.includes("coder") !== normApi.includes("coder")) {
+    return false;
+  }
+
+  const tokenize = (s: string) => {
+    const clean = s.replace(/^(koboldcpp|aphrodite|gooseai|horde)\//, "");
+    return clean.split(/[\/\-_.\s]+/).filter(t => t.length > 0);
+  };
+
+  const apiTokens = tokenize(normApi);
+  const mapTokens = tokenize(normMap);
+
+  // Filter out minor helper tokens
+  const ignoreWords = new Set(["meta", "mradermacher", "instruct", "gguf", "v2", "v3"]);
+  const coreMapTokens = mapTokens.filter(t => !ignoreWords.has(t));
+
+  if (coreMapTokens.length === 0) return false;
+
+  const allCorePresent = coreMapTokens.every(t => {
+    return apiTokens.some(at => at === t || at.includes(t) || t.includes(at));
+  });
+
+  if (allCorePresent) {
+    const sizeRegex = /\b\d+b\b/g;
+    const mapSizes = normMap.match(sizeRegex) || [];
+    const apiSizes = normApi.match(sizeRegex) || [];
+    if (mapSizes.length > 0 && apiSizes.length > 0) {
+      return mapSizes.some(ms => apiSizes.includes(ms));
+    }
+    return true;
+  }
+
+  return false;
+}
+
 const HORDE_MODELS_MAP: Record<string, string[]> = {
   Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
   Balanced: ["Magnum-12b-v2"],
@@ -109,11 +152,6 @@ export const handleGetHordeStatus: RequestHandler = async (_req, res) => {
     );
     const allModels: any[] = response.data || [];
 
-    const statusByName: Record<string, any> = {};
-    for (const m of allModels) {
-      if (m.name) statusByName[m.name] = m;
-    }
-
     const result: Record<
       string,
       { workers: number; queued: number; speed: string; eta: number }
@@ -125,13 +163,14 @@ export const handleGetHordeStatus: RequestHandler = async (_req, res) => {
       let speed = "";
       let eta = 0;
 
-      for (const name of hordeNames) {
-        const info = statusByName[name];
-        if (info) {
-          workers += info.count || 0;
-          queued += info.queued || 0;
-          if (!speed && info.performance) speed = String(info.performance);
-          eta = Math.max(eta, info.eta || 0);
+      for (const mapName of hordeNames) {
+        for (const m of allModels) {
+          if (m.name && matchesHordeModel(m.name, mapName)) {
+            workers += m.count || 0;
+            queued += m.queued || 0;
+            if (!speed && m.performance) speed = String(m.performance);
+            eta = Math.max(eta, m.eta || 0);
+          }
         }
       }
 
@@ -477,7 +516,8 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         const maxAttempts = 300; // 10 minutes wait
 
         while (!finished && attempts < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          // Poll every 6 seconds to respect rate limits (max 10 requests per minute)
+          await new Promise((resolve) => setTimeout(resolve, 6000));
           attempts++;
 
           if (stream) {
@@ -508,6 +548,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                   `data: ${JSON.stringify({ error: "AI Horde job not found or expired" })}\n\n`,
                 );
                 res.write("data: [DONE]\n\n");
+                if (typeof (res as any).flush === "function") {
+                  (res as any).flush();
+                }
                 return res.end();
               }
               return res
@@ -518,13 +561,18 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
             if (
               statusResponse.status >= 400 &&
               statusResponse.status !== 503 &&
-              statusResponse.status !== 502
+              statusResponse.status !== 502 &&
+              statusResponse.status !== 504 &&
+              statusResponse.status !== 429
             ) {
               if (stream) {
                 res.write(
                   `data: ${JSON.stringify({ error: `AI Horde generation failed with status ${statusResponse.status}` })}\n\n`,
                 );
                 res.write("data: [DONE]\n\n");
+                if (typeof (res as any).flush === "function") {
+                  (res as any).flush();
+                }
                 return res.end();
               }
               return res
@@ -532,6 +580,11 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                 .json({
                   error: `AI Horde generation failed with status ${statusResponse.status}`,
                 });
+            }
+
+            if (statusResponse.status >= 400) {
+              // Retriable error status (429, 502, 503, 504), skip sending chunk and wait for next poll
+              continue;
             }
 
             if (statusResponse.data?.done) {
@@ -564,15 +617,12 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                   );
                   const allModels = modelStatusRes.data || [];
                   const hordeNames = HORDE_MODELS_MAP[model] || [model];
-                  const statusByName: Record<string, any> = {};
-                  for (const m of allModels) {
-                    if (m.name) statusByName[m.name] = m;
-                  }
-                  for (const name of hordeNames) {
-                    const info = statusByName[name];
-                    if (info) {
-                      workers += info.count || 0;
-                      queued += info.queued || 0;
+                  for (const mapName of hordeNames) {
+                    for (const m of allModels) {
+                      if (m.name && matchesHordeModel(m.name, mapName)) {
+                        workers += m.count || 0;
+                        queued += m.queued || 0;
+                      }
                     }
                   }
                 } catch (e) {
@@ -639,6 +689,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
           };
           res.write("data: " + JSON.stringify(chunk) + "\n\n");
           res.write("data: [DONE]\n\n");
+          if (typeof (res as any).flush === "function") {
+            (res as any).flush();
+          }
           res.end();
         } else {
           res.json({

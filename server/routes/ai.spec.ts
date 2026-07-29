@@ -104,6 +104,58 @@ describe("SSRF Validation", () => {
   });
 });
 
+import { matchesHordeModel } from "./ai";
+
+describe("matchesHordeModel", () => {
+  it("should match models case-insensitively and regardless of prefixes", () => {
+    expect(
+      matchesHordeModel(
+        "koboldcpp/mini-magnum-12b-v1.1",
+        "Magnum-12b-v2",
+      ),
+    ).toBe(true);
+
+    expect(
+      matchesHordeModel(
+        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+        "meta-llama/Llama-3.1-8B-Instruct",
+      ),
+    ).toBe(true);
+  });
+
+  it("should not match models with different parameter sizes", () => {
+    expect(
+      matchesHordeModel(
+        "koboldcpp/mini-magnum-12b-v1.1",
+        "mradermacher/Magnum-v3-27B-GGUF",
+      ),
+    ).toBe(false);
+
+    expect(
+      matchesHordeModel(
+        "koboldcpp/Qwen/Qwen2.5-32B-Instruct",
+        "Qwen/Qwen2.5-72B-Instruct",
+      ),
+    ).toBe(false);
+  });
+
+  it("should specifically distinguish coder vs non-coder models", () => {
+    expect(
+      matchesHordeModel(
+        "koboldcpp/Qwen/Qwen2.5-Coder-32B-Instruct",
+        "Qwen/Qwen2.5-32B-Instruct",
+      ),
+    ).toBe(false);
+
+    expect(
+      matchesHordeModel(
+        "koboldcpp/Qwen/Qwen2.5-Coder-32B-Instruct",
+        "Qwen/Qwen2.5-Coder-32B-Instruct",
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("Path Traversal Protection", () => {
   describe("path validation logic", () => {
     it("should detect path traversal with dot-dot-slash", () => {
