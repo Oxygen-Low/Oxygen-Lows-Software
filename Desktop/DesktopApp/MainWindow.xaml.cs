@@ -89,7 +89,8 @@ public partial class MainWindow : Window
                     
                     if (!string.IsNullOrEmpty(configData))
                     {
-                        await VPNConnectionManager.ConnectAsync(serverName, configData);
+                        VPNConnectionManager.CreateOrUpdateVPNProfile(serverName, baseUrl);
+                        await VPNConnectionManager.ConnectAsync(serverName, "dummy_user", "dummy_token");
                         SendWebMessage(new { type = "vpn_status", status = "connected", serverName });
                     }
                     else

@@ -13,6 +13,26 @@ public static class VPNConnectionManager
     private static readonly HttpClient _client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
     /// <summary>
+    /// Fetches server configuration or pings the server to ensure it is online.
+    /// </summary>
+    public static async Task<string> FetchServerConfigAsync(string baseUrl)
+    {
+        try
+        {
+            var response = await _client.GetAsync(baseUrl);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"FetchServerConfig Exception: {ex.Message}");
+        }
+        return "";
+    }
+
+    /// <summary>
     /// Creates or updates a local Windows PBK (Phonebook) VPN connection profile.
     /// Since SSTP is the safest/most secure option supported natively on Windows and Render,
     /// we build a custom PBK configuration.
