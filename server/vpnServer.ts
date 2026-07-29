@@ -5,6 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import axios from "axios";
 
+const helmet = require("helmet"); 
+app.use(helmet());
+
 config();
 
 // Polyfill native WebSocket constructor for Supabase realtime-js client under Node < 22 (e.g. CI Node 20)
