@@ -565,7 +565,8 @@ export function ChatbotApp() {
                 selectedProvider === "custom" ||
                 selectedProvider === "lmstudio" ||
                 selectedProvider === "koboldcpp" ||
-                selectedProvider === "kobold"
+                selectedProvider === "kobold" ||
+                selectedProvider === "horde"
               ) {
                 delta = data.choices?.[0]?.delta?.content || "";
               } else if (selectedProvider === "ollama") {
