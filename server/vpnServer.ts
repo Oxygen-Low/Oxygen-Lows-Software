@@ -4,9 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import axios from "axios";
-
-const helmet = require("helmet"); 
-app.use(helmet());
+import helmet from "helmet";
 
 config();
 
@@ -24,6 +22,7 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
+app.use(helmet());
 app.use(express.json());
 
 // Root path to return server status and details
