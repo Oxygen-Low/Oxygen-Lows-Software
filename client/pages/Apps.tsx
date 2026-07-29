@@ -18,11 +18,13 @@ import {
   Box,
   Users,
   Bot,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { TOSLLMsApp } from "@/components/apps/TOSLLMs";
+import { VPNApp } from "@/components/apps/VPN";
 
 
 type Category =
@@ -119,6 +121,15 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Gamepad2 className="w-8 h-8 text-yellow-500" />,
     component: TOSLLMsApp,
+  },
+  {
+    id: "vpn",
+    name: "VPN Client",
+    description: "Fast, secure, and device-wide VPN with built-in server locations.",
+    categories: ["All", "Utility"],
+    availability: "desktop-only",
+    icon: <Globe className="w-8 h-8 text-blue-500" />,
+    component: VPNApp,
   },
 ];
 
