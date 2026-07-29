@@ -202,4 +202,60 @@ describe("ChatbotApp", () => {
     await screen.findByText("Hi", {}, { timeout: 10000 });
     await screen.findByText("Hello from AI", {}, { timeout: 20000 });
   }, 30000);
+
+  it("displays queue status when receiving queue_info on horde default model", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn((url) => {
+      if (url === "/api/ai/proxy") {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                'data: {"choices":[{"delta":{}}],"queue_info":{"position":2,"eta":75,"workers":5,"totalInQueue":12}}\n',
+              ),
+            );
+            controller.enqueue(
+              new TextEncoder().encode(
+                'data: {"choices":[{"delta":{"content":"Hi from queue"}}]}\n',
+              ),
+            );
+            controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+            controller.close();
+          },
+        });
+        return Promise.resolve({
+          ok: true,
+          body: stream,
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    }) as any;
+
+    render(
+      <ThemeProvider>
+        <ChatbotApp />
+      </ThemeProvider>,
+    );
+
+    const newChatButton = await screen.findByRole("button", {
+      name: "New Chat",
+    });
+    fireEvent.click(newChatButton);
+
+    const input = await screen.findByPlaceholderText("Ask anything...");
+    fireEvent.change(input, { target: { value: "Hello Queue" } });
+
+    const sendButton = screen.getByLabelText("Send message");
+    fireEvent.click(sendButton);
+
+    await screen.findByText(
+      /Queue Position: 2 \| ETA: 1m 15s \| Workers: 5 \| People in Queue: 12/,
+      {},
+      { timeout: 10000 },
+    );
+
+    await screen.findByText("Hi from queue", {}, { timeout: 10000 });
+
+    global.fetch = originalFetch;
+  }, 30000);
 });
