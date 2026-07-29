@@ -475,6 +475,8 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         let resultText = "";
         let attempts = 0;
         const maxAttempts = 300; // 10 minutes wait
+        let lastWorkers = 0;
+        let lastQueued = 0;
 
         while (!finished && attempts < maxAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -555,28 +557,39 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                 .json({ error: "AI Horde generation faulted" });
             } else {
               if (stream) {
-                let workers = 0;
-                let queued = 0;
-                try {
-                  const modelStatusRes = await axios.get(
-                    "https://stablehorde.net/api/v2/status/models?type=text",
-                    { timeout: 5000, signal: abortController.signal },
-                  );
-                  const allModels = modelStatusRes.data || [];
-                  const hordeNames = HORDE_MODELS_MAP[model] || [model];
-                  const statusByName: Record<string, any> = {};
-                  for (const m of allModels) {
-                    if (m.name) statusByName[m.name] = m;
-                  }
-                  for (const name of hordeNames) {
-                    const info = statusByName[name];
-                    if (info) {
-                      workers += info.count || 0;
-                      queued += info.queued || 0;
+                const pollThrottleInterval = 5;
+                if ((attempts - 1) % pollThrottleInterval === 0) {
+                  try {
+                    const modelStatusRes = await axios.get(
+                      "https://stablehorde.net/api/v2/status/models?type=text",
+                      {
+                        timeout: 5000,
+                        signal: abortController.signal,
+                        headers: {
+                          "Client-Agent": clientAgent,
+                        },
+                      },
+                    );
+                    const allModels = modelStatusRes.data || [];
+                    const hordeNames = HORDE_MODELS_MAP[model] || [model];
+                    const statusByName: Record<string, any> = {};
+                    for (const m of allModels) {
+                      if (m.name) statusByName[m.name] = m;
                     }
+                    let currentWorkers = 0;
+                    let currentQueued = 0;
+                    for (const name of hordeNames) {
+                      const info = statusByName[name];
+                      if (info) {
+                        currentWorkers += info.count || 0;
+                        currentQueued += info.queued || 0;
+                      }
+                    }
+                    lastWorkers = currentWorkers;
+                    lastQueued = currentQueued;
+                  } catch (e) {
+                    // Ignore errors, keep the last known workers & queued
                   }
-                } catch (e) {
-                  // Ignore errors, keep workers & queued as 0
                 }
 
                 const chunk = {
@@ -593,8 +606,8 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                   queue_info: {
                     eta: statusResponse.data?.wait_time ?? 0,
                     position: statusResponse.data?.queue_position ?? 0,
-                    workers,
-                    totalInQueue: queued,
+                    workers: lastWorkers,
+                    totalInQueue: lastQueued,
                   },
                 };
                 res.write("data: " + JSON.stringify(chunk) + "\n\n");
