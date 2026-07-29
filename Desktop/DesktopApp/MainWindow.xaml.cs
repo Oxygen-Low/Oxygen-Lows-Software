@@ -553,7 +553,7 @@ public partial class MainWindow : Window
         _vpnServers.Add(new VPNServerItem { Id = "sg", Name = "🇸🇬 Singapore", BaseUrl = "https://oxygen-lows-software-vpn-singapore.onrender.com", Latitude = 1.3521, Longitude = 103.8198 });
         _vpnServers.Add(new VPNServerItem { Id = "oh", Name = "🇺🇸 US East (Ohio)", BaseUrl = "https://oxygen-lows-software-vpn-ohio.onrender.com", Latitude = 40.4173, Longitude = -82.9071 });
         _vpnServers.Add(new VPNServerItem { Id = "or", Name = "🇺🇸 US West (Oregon)", BaseUrl = "https://oxygen-lows-software-vpn-oregon.onrender.com", Latitude = 43.8041, Longitude = -120.5542 });
-        _vpnServers.Add(new VPNServerItem { Id = "fr", Name = "🇩🇪 Germany (Frankfurt)", BaseUrl = "https://oxygen-lows-software-vpn-frankfurt.onrender.com", Latitude = 50.1109, Longitude = 8.6821 });
+        _vpnServers.Add(new VPNServerItem { Id = "fr", Name = "🇩🇪 Germany (Frankfurt)", BaseUrl = "https://oxygen-lows-software-vpn-frankurt.onrender.com", Latitude = 50.1109, Longitude = 8.6821 });
 
         itemsVPNServers.ItemsSource = _vpnServers;
     }
