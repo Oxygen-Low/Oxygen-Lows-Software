@@ -12,7 +12,6 @@ import {
   AppWindow,
   Wrench,
   MessageSquare,
-  Gamepad2,
   Code,
   BrainCircuit,
   Box,
@@ -23,7 +22,6 @@ import {
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
-import { TOSLLMsApp } from "@/components/apps/TOSLLMs";
 import { VPNApp } from "@/components/apps/VPN";
 
 
@@ -112,15 +110,6 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,
-  },
-  {
-    id: "tos-llms",
-    name: "TOS LLMs",
-    description: "Standalone in-app social deduction game inspired by Town of Salem 2 filled with human and AI players.",
-    categories: ["All", "Games"],
-    availability: "web-and-desktop",
-    icon: <Gamepad2 className="w-8 h-8 text-yellow-500" />,
-    component: TOSLLMsApp,
   },
   {
     id: "vpn",

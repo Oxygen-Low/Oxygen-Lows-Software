@@ -14,7 +14,6 @@ import {
 } from "./routes/ai";
 import { reposRouter } from "./routes/repos";
 import { gitRouter } from "./routes/git";
-import { gameRouter } from "./routes/game";
 import { apiLimiter } from "./lib/limiter";
 import { aikidoUserMiddleware } from "./lib/aikido";
 
@@ -93,7 +92,6 @@ export function createServer() {
   app.use("/api/repos", reposRouter);
   app.use("/api/git", gitRouter);
   app.use("/api/oauth-admin", oauthAdminRouter);
-  app.use("/api/social-deduction", apiLimiter, gameRouter);
 
   return app;
 }
