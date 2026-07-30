@@ -158,20 +158,7 @@ namespace DesktopInstaller
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            if (Directory.Exists(nodeExtractedDir))
-            {
-                var pathKey = "PATH";
-                foreach (var key in installPsi.Environment.Keys)
-                {
-                    if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
-                    {
-                        pathKey = key;
-                        break;
-                    }
-                }
-                var existingPath = installPsi.Environment.ContainsKey(pathKey) ? installPsi.Environment[pathKey] : null;
-                installPsi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? nodeExtractedDir : $"{nodeExtractedDir}{Path.PathSeparator}{existingPath}";
-            }
+            PrependToPath(installPsi, nodeExtractedDir);
             Process.Start(installPsi)?.WaitForExit();
 
             // Run build
@@ -183,10 +170,16 @@ namespace DesktopInstaller
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            if (Directory.Exists(nodeExtractedDir))
+            PrependToPath(buildPsi, nodeExtractedDir);
+            Process.Start(buildPsi)?.WaitForExit();
+        }
+
+        private static void PrependToPath(ProcessStartInfo psi, string directory)
+        {
+            if (Directory.Exists(directory))
             {
                 var pathKey = "PATH";
-                foreach (var key in buildPsi.Environment.Keys)
+                foreach (var key in psi.Environment.Keys)
                 {
                     if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
                     {
@@ -194,10 +187,9 @@ namespace DesktopInstaller
                         break;
                     }
                 }
-                var existingPath = buildPsi.Environment.ContainsKey(pathKey) ? buildPsi.Environment[pathKey] : null;
-                buildPsi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? nodeExtractedDir : $"{nodeExtractedDir}{Path.PathSeparator}{existingPath}";
+                var existingPath = psi.Environment.ContainsKey(pathKey) ? psi.Environment[pathKey] : null;
+                psi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? directory : $"{directory}{Path.PathSeparator}{existingPath}";
             }
-            Process.Start(buildPsi)?.WaitForExit();
         }
 
         private void CreateRegistryKeys(string targetPath)

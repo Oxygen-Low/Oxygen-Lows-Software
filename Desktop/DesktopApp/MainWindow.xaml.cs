@@ -77,7 +77,7 @@ public partial class MainWindow : Window
         try
         {
             var exeDir = AppDomain.CurrentDomain.BaseDirectory;
-            var installDir = Directory.GetParent(exeDir)?.FullName ?? exeDir;
+            var installDir = exeDir;
             
             var nodeDir = Path.Combine(installDir, "node", "node-v20.15.0-win-x64");
             var repoDir = Path.Combine(installDir, "repo");
