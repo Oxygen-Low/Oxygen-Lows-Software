@@ -153,7 +153,7 @@ namespace DesktopInstaller
             var installPsi = new ProcessStartInfo(npmPath, "install")
             {
                 WorkingDirectory = repoPath,
-                UseShellExecute = false,
+                UseShellExecute = true,
                 CreateNoWindow = true
             };
             Process.Start(installPsi)?.WaitForExit();
@@ -162,7 +162,7 @@ namespace DesktopInstaller
             var buildPsi = new ProcessStartInfo(npmPath, "run build")
             {
                 WorkingDirectory = repoPath,
-                UseShellExecute = false,
+                UseShellExecute = true,
                 CreateNoWindow = true
             };
             Process.Start(buildPsi)?.WaitForExit();

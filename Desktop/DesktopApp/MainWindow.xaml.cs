@@ -54,20 +54,33 @@ public partial class MainWindow : Window
                 repoDir = Directory.GetParent(exeDir)?.Parent?.Parent?.Parent?.Parent?.FullName ?? repoDir;
             }
 
+            Debug.WriteLine($"Starting node server from: {repoDir}");
+            Debug.WriteLine($"npm command: {npmCmd}");
+
             var psi = new ProcessStartInfo
             {
                 FileName = npmCmd,
                 Arguments = "start",
                 WorkingDirectory = repoDir,
-                UseShellExecute = false,
+                UseShellExecute = true,
                 CreateNoWindow = true
             };
             
             _nodeProcess = Process.Start(psi);
+            
+            if (_nodeProcess != null)
+            {
+                Debug.WriteLine($"Node server process started with PID: {_nodeProcess.Id}");
+            }
+            else
+            {
+                Debug.WriteLine("Failed to start node server process");
+            }
         }
         catch (Exception ex)
         {
             Debug.WriteLine("Failed to start node server: " + ex.Message);
+            Debug.WriteLine(ex.StackTrace);
         }
     }
 
