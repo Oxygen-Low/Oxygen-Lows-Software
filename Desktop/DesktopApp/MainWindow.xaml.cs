@@ -12,6 +12,7 @@ namespace DesktopApp;
 public partial class MainWindow : Window
 {
     private Process? _nodeProcess;
+    private bool _serverStarted = false;
 
     public MainWindow()
     {
@@ -24,16 +25,53 @@ public partial class MainWindow : Window
     {
         StartNodeServer();
 
+        // Wait for the server to actually start before navigating
+        if (!WaitForServerToStart())
+        {
+            Debug.WriteLine("Server failed to start within timeout period");
+        }
+
         var userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OxygenLowsSoftware", "WebView2");
         var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
         await webView.EnsureCoreWebView2Async(environment);
         
         webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
-        // Give the node server a bit of time to start up before navigating
-        await Task.Delay(2000); 
+        // Give additional time for WebView2 to initialize
+        await Task.Delay(1000); 
         
         webView.CoreWebView2.Navigate("http://localhost:3000?desktop=1");
+    }
+
+    private bool WaitForServerToStart(int timeoutSeconds = 30, int retryIntervalMs = 500)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        while (stopwatch.Elapsed.TotalSeconds < timeoutSeconds)
+        {
+            try
+            {
+                using var client = new System.Net.Sockets.TcpClient();
+                client.Connect("127.0.0.1", 3000);
+                
+                if (client.Connected)
+                {
+                    Debug.WriteLine($"Server is ready on port 3000 after {stopwatch.Elapsed.TotalSeconds:F1f} seconds");
+                    _serverStarted = true;
+                    client.Close();
+                    return true;
+                }
+            }
+            catch
+            {
+                // Port not open yet, keep waiting
+            }
+            
+            Thread.Sleep(retryIntervalMs);
+        }
+        
+        Debug.WriteLine($"Server failed to start within {timeoutSeconds} seconds");
+        return false;
     }
 
     private void StartNodeServer()
@@ -57,12 +95,15 @@ public partial class MainWindow : Window
             Debug.WriteLine($"Starting node server from: {repoDir}");
             Debug.WriteLine($"npm command: {npmCmd}");
 
+            // We need to run npm start through cmd.exe because npm.cmd is a batch file
             var psi = new ProcessStartInfo
             {
-                FileName = npmCmd,
-                Arguments = "start",
+                FileName = "cmd.exe",
+                Arguments = $"/c cd /d \"{repoDir}\" && npm start",
                 WorkingDirectory = repoDir,
-                UseShellExecute = true,
+                UseShellExecute = false,  // cmd.exe is an executable (.exe), so this works
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 CreateNoWindow = true
             };
             
@@ -71,6 +112,21 @@ public partial class MainWindow : Window
             if (_nodeProcess != null)
             {
                 Debug.WriteLine($"Node server process started with PID: {_nodeProcess.Id}");
+                
+                // Read output asynchronously to prevent deadlocks
+                _nodeProcess.OutputDataReceived += (s, e) => 
+                { 
+                    if (!string.IsNullOrEmpty(e.Data))
+                        Debug.WriteLine($"[Server Output] {e.Data}"); 
+                };
+                _nodeProcess.ErrorDataReceived += (s, e) => 
+                { 
+                    if (!string.IsNullOrEmpty(e.Data))
+                        Debug.WriteLine($"[Server Error] {e.Data}"); 
+                };
+                
+                _nodeProcess.BeginOutputReadLine();
+                _nodeProcess.BeginErrorReadLine();
             }
             else
             {
