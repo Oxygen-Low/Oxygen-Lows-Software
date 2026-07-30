@@ -12,7 +12,6 @@ namespace DesktopApp;
 public partial class MainWindow : Window
 {
     private Process? _nodeProcess;
-    private bool _serverStarted = false;
 
     public MainWindow()
     {
@@ -57,7 +56,6 @@ public partial class MainWindow : Window
                 if (client.Connected)
                 {
                     Debug.WriteLine($"Server is ready on port 3000 after {stopwatch.Elapsed.TotalSeconds:F1f} seconds");
-                    _serverStarted = true;
                     client.Close();
                     return true;
                 }
@@ -107,6 +105,22 @@ public partial class MainWindow : Window
                 CreateNoWindow = true
             };
             
+            // Add the node directory to PATH so that npm start can find node.exe
+            if (Directory.Exists(nodeDir))
+            {
+                var pathKey = "PATH";
+                foreach (var key in psi.Environment.Keys)
+                {
+                    if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pathKey = key;
+                        break;
+                    }
+                }
+                var existingPath = psi.Environment.ContainsKey(pathKey) ? psi.Environment[pathKey] : null;
+                psi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? nodeDir : $"{nodeDir}{Path.PathSeparator}{existingPath}";
+            }
+
             _nodeProcess = Process.Start(psi);
             
             if (_nodeProcess != null)

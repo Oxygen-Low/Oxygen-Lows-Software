@@ -150,21 +150,53 @@ namespace DesktopInstaller
             
             // Run npm install
             var npmPath = Path.Combine(nodeExtractedDir, "npm.cmd");
-            var installPsi = new ProcessStartInfo(npmPath, "install")
+            var installPsi = new ProcessStartInfo
             {
+                FileName = "cmd.exe",
+                Arguments = $"/c \"{npmPath}\" install",
                 WorkingDirectory = repoPath,
-                UseShellExecute = true,
+                UseShellExecute = false,
                 CreateNoWindow = true
             };
+            if (Directory.Exists(nodeExtractedDir))
+            {
+                var pathKey = "PATH";
+                foreach (var key in installPsi.Environment.Keys)
+                {
+                    if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pathKey = key;
+                        break;
+                    }
+                }
+                var existingPath = installPsi.Environment.ContainsKey(pathKey) ? installPsi.Environment[pathKey] : null;
+                installPsi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? nodeExtractedDir : $"{nodeExtractedDir}{Path.PathSeparator}{existingPath}";
+            }
             Process.Start(installPsi)?.WaitForExit();
 
             // Run build
-            var buildPsi = new ProcessStartInfo(npmPath, "run build")
+            var buildPsi = new ProcessStartInfo
             {
+                FileName = "cmd.exe",
+                Arguments = $"/c \"{npmPath}\" run build",
                 WorkingDirectory = repoPath,
-                UseShellExecute = true,
+                UseShellExecute = false,
                 CreateNoWindow = true
             };
+            if (Directory.Exists(nodeExtractedDir))
+            {
+                var pathKey = "PATH";
+                foreach (var key in buildPsi.Environment.Keys)
+                {
+                    if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pathKey = key;
+                        break;
+                    }
+                }
+                var existingPath = buildPsi.Environment.ContainsKey(pathKey) ? buildPsi.Environment[pathKey] : null;
+                buildPsi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? nodeExtractedDir : $"{nodeExtractedDir}{Path.PathSeparator}{existingPath}";
+            }
             Process.Start(buildPsi)?.WaitForExit();
         }
 
