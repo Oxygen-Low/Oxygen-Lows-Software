@@ -22,6 +22,9 @@ global.ResizeObserver = class {
 // Mock scrollIntoView
 window.HTMLElement.prototype.scrollIntoView = function () {};
 
+// Mock chats list
+let mockChats: any[] = [];
+
 // Mock supabase
 const mockSupabaseChain = (data: any) => {
   const builder: any = {
@@ -40,6 +43,73 @@ const mockSupabaseChain = (data: any) => {
     ),
     then: vi.fn((onFulfilled) => {
       const res = { data, error: null };
+      return onFulfilled
+        ? Promise.resolve(res).then(onFulfilled)
+        : Promise.resolve(res);
+    }),
+  };
+  return builder;
+};
+
+const createChatsChain = () => {
+  let currentResult: any = mockChats;
+  const builder: any = {
+    select: vi.fn(() => builder),
+    insert: vi.fn((payload: any) => {
+      const items = Array.isArray(payload) ? payload : [payload];
+      const inserted = items.map((item) => ({
+        id: "chat-" + Math.random().toString(36).substr(2, 9),
+        updated_at: new Date().toISOString(),
+        is_encrypted: false,
+        llm_character_id: null,
+        user_character_id: null,
+        ...item,
+      }));
+      mockChats.push(...inserted);
+      currentResult = inserted;
+      return builder;
+    }),
+    update: vi.fn((updates: any) => {
+      builder._updates = updates;
+      return builder;
+    }),
+    delete: vi.fn(() => {
+      builder._isDelete = true;
+      return builder;
+    }),
+    eq: vi.fn((field: string, value: any) => {
+      if (builder._updates) {
+        mockChats = mockChats.map((c) => {
+          if (c[field] === value) {
+            return { ...c, ...builder._updates };
+          }
+          return c;
+        });
+        currentResult = mockChats.filter((c) => c[field] === value);
+      } else if (builder._isDelete) {
+        mockChats = mockChats.filter((c) => c[field] !== value);
+        currentResult = [];
+      } else {
+        currentResult = mockChats.filter((c) => c[field] === value);
+      }
+      return builder;
+    }),
+    order: vi.fn(() => {
+      currentResult = [...mockChats].sort((a, b) =>
+        b.updated_at.localeCompare(a.updated_at),
+      );
+      return builder;
+    }),
+    maybeSingle: vi.fn(() => {
+      const item = Array.isArray(currentResult) ? currentResult[0] : currentResult;
+      return Promise.resolve({ data: item || null, error: null });
+    }),
+    single: vi.fn(() => {
+      const item = Array.isArray(currentResult) ? currentResult[0] : currentResult;
+      return Promise.resolve({ data: item || null, error: null });
+    }),
+    then: vi.fn((onFulfilled) => {
+      const res = { data: currentResult, error: null };
       return onFulfilled
         ? Promise.resolve(res).then(onFulfilled)
         : Promise.resolve(res);
@@ -76,15 +146,7 @@ vi.mock("@/lib/supabase", () => ({
       })),
     },
     from: vi.fn((table) => {
-      if (table === "chats")
-        return mockSupabaseChain([
-          {
-            id: "chat-1",
-            title: "Existing Chat",
-            style: "GeneralAssistant",
-            updated_at: new Date().toISOString(),
-          },
-        ]);
+      if (table === "chats") return createChatsChain();
       if (table === "user_models")
         return mockSupabaseChain([{ provider: "openai", model_id: "gpt-4" }]);
       if (table === "chat_messages") return mockSupabaseChain([]);
@@ -157,6 +219,14 @@ global.fetch = vi.fn((url) => {
 describe("ChatbotApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockChats = [
+      {
+        id: "chat-1",
+        title: "Existing Chat",
+        style: "GeneralAssistant",
+        updated_at: new Date().toISOString(),
+      },
+    ];
   });
 
   afterEach(() => {
