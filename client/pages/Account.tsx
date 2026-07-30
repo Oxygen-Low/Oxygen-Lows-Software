@@ -754,7 +754,10 @@ export default function Account() {
                     <CardContent className="space-y-4">
                       {p.hasUrl && (
                         <div className="space-y-2">
-                          <Label htmlFor={`base-url-${p.id}`} className="text-xs text-slate-500 uppercase">
+                          <Label
+                            htmlFor={`base-url-${p.id}`}
+                            className="text-xs text-slate-500 uppercase"
+                          >
                             Base URL
                           </Label>
                           <Input
@@ -773,7 +776,10 @@ export default function Account() {
                         </div>
                       )}
                       <div className="space-y-2">
-                        <Label htmlFor={`api-key-${p.id}`} className="text-xs text-slate-500 uppercase">
+                        <Label
+                          htmlFor={`api-key-${p.id}`}
+                          className="text-xs text-slate-500 uppercase"
+                        >
                           API Key
                         </Label>
                         <Input
@@ -839,7 +845,10 @@ export default function Account() {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="masterkey-input" className="text-sm font-medium text-slate-300">
+                    <Label
+                      htmlFor="masterkey-input"
+                      className="text-sm font-medium text-slate-300"
+                    >
                       Enter Masterkey to Toggle
                     </Label>
                     <Input
@@ -966,6 +975,7 @@ export default function Account() {
                     onChange={(e) =>
                       setSelectedProviderForModel(e.target.value)
                     }
+                    aria-label="Select Model Provider"
                     className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm"
                   >
                     {PROVIDERS.map((p) => (
@@ -976,6 +986,7 @@ export default function Account() {
                   </select>
                   <Input
                     placeholder="Model ID"
+                    aria-label="Model ID"
                     value={newModelInput}
                     onChange={(e) => setNewModelInput(e.target.value)}
                     className="bg-slate-950"
@@ -1054,8 +1065,14 @@ export default function Account() {
                   </Button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-xs text-slate-400">Zoom</span>
+                  <Label
+                    htmlFor="zoom-input"
+                    className="text-xs text-slate-400"
+                  >
+                    Zoom
+                  </Label>
                   <input
+                    id="zoom-input"
                     type="range"
                     min={fitImage ? 0.1 : 1}
                     max={3}
