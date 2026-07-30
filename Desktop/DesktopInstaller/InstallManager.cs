@@ -150,22 +150,46 @@ namespace DesktopInstaller
             
             // Run npm install
             var npmPath = Path.Combine(nodeExtractedDir, "npm.cmd");
-            var installPsi = new ProcessStartInfo(npmPath, "install")
+            var installPsi = new ProcessStartInfo
             {
+                FileName = "cmd.exe",
+                Arguments = $"/c \"{npmPath}\" install",
                 WorkingDirectory = repoPath,
-                UseShellExecute = true,
+                UseShellExecute = false,
                 CreateNoWindow = true
             };
+            PrependToPath(installPsi, nodeExtractedDir);
             Process.Start(installPsi)?.WaitForExit();
 
             // Run build
-            var buildPsi = new ProcessStartInfo(npmPath, "run build")
+            var buildPsi = new ProcessStartInfo
             {
+                FileName = "cmd.exe",
+                Arguments = $"/c \"{npmPath}\" run build",
                 WorkingDirectory = repoPath,
-                UseShellExecute = true,
+                UseShellExecute = false,
                 CreateNoWindow = true
             };
+            PrependToPath(buildPsi, nodeExtractedDir);
             Process.Start(buildPsi)?.WaitForExit();
+        }
+
+        private static void PrependToPath(ProcessStartInfo psi, string directory)
+        {
+            if (Directory.Exists(directory))
+            {
+                var pathKey = "PATH";
+                foreach (var key in psi.Environment.Keys)
+                {
+                    if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pathKey = key;
+                        break;
+                    }
+                }
+                var existingPath = psi.Environment.ContainsKey(pathKey) ? psi.Environment[pathKey] : null;
+                psi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? directory : $"{directory}{Path.PathSeparator}{existingPath}";
+            }
         }
 
         private void CreateRegistryKeys(string targetPath)
