@@ -18,6 +18,7 @@ import {
   Users,
   Bot,
   Globe,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
