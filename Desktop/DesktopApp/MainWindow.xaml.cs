@@ -99,7 +99,7 @@ public partial class MainWindow : Window
             var psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = $"/c cd /d \"{repoDir}\" && npm start",
+                Arguments = $"/c cd /d \"{repoDir}\" && \"{npmCmd}\" start",
                 WorkingDirectory = repoDir,
                 UseShellExecute = false,  // cmd.exe is an executable (.exe), so this works
                 RedirectStandardOutput = true,
