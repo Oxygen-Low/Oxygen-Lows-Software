@@ -21,10 +21,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (!session) {
     const returnTo = `${location.pathname}${location.search}${location.hash}`;
     return (
-      <Navigate
-        to={`/auth?returnTo=${encodeURIComponent(returnTo)}`}
-        replace
-      />
+      <Navigate to={`/auth?returnTo=${encodeURIComponent(returnTo)}`} replace />
     );
   }
 

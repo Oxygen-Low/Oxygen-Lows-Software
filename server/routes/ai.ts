@@ -529,11 +529,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                 res.write("data: [DONE]\n\n");
                 return res.end();
               }
-              return res
-                .status(statusResponse.status)
-                .json({
-                  error: `AI Horde generation failed with status ${statusResponse.status}`,
-                });
+              return res.status(statusResponse.status).json({
+                error: `AI Horde generation failed with status ${statusResponse.status}`,
+              });
             }
 
             if (statusResponse.data?.done) {

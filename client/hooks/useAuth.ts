@@ -32,10 +32,7 @@ export const useAuth = () => {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signInWithOAuth = async (
-    provider: "google",
-    redirectTo?: string,
-  ) => {
+  const signInWithOAuth = async (provider: "google", redirectTo?: string) => {
     try {
       setError(null);
       const { error } = await supabase.auth.signInWithOAuth({
@@ -54,9 +51,7 @@ export const useAuth = () => {
     }
   };
 
-  const linkIdentity = async (
-    provider: "google",
-  ) => {
+  const linkIdentity = async (provider: "google") => {
     try {
       setError(null);
       const { data, error } = await supabase.auth.linkIdentity({

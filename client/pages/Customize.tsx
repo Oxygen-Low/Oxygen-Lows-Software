@@ -67,7 +67,6 @@ export default function Customize() {
           ?.replace(/\.[^/.]+$/, "") || track.name,
     };
 
-
     const alreadyInPlaylist = playlist.some(
       (t) => t.fileName === finalTrack.fileName,
     );
@@ -97,7 +96,6 @@ export default function Customize() {
     <Layout>
       <div className="max-w-4xl">
         <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
-
 
         {/* Theme Section */}
         <div className="mb-12">

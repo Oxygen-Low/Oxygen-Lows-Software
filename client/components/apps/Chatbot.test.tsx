@@ -101,11 +101,15 @@ const createChatsChain = () => {
       return builder;
     }),
     maybeSingle: vi.fn(() => {
-      const item = Array.isArray(currentResult) ? currentResult[0] : currentResult;
+      const item = Array.isArray(currentResult)
+        ? currentResult[0]
+        : currentResult;
       return Promise.resolve({ data: item || null, error: null });
     }),
     single: vi.fn(() => {
-      const item = Array.isArray(currentResult) ? currentResult[0] : currentResult;
+      const item = Array.isArray(currentResult)
+        ? currentResult[0]
+        : currentResult;
       return Promise.resolve({ data: item || null, error: null });
     }),
     then: vi.fn((onFulfilled) => {

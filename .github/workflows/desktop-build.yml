@@ -10,45 +10,45 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
-      
+
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "8.0.x"
 
-    - name: Publish Desktop App
-      run: |
-        cd Desktop/DesktopApp
-        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.0.${{ github.run_number }}" -o ../DesktopAppOut
+      - name: Publish Desktop App
+        run: |
+          cd Desktop/DesktopApp
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.0.${{ github.run_number }}" -o ../DesktopAppOut
 
-    - name: Zip Desktop App
-      run: |
-        Compress-Archive -Path Desktop/DesktopAppOut/* -DestinationPath Desktop/DesktopInstaller/app.zip
+      - name: Zip Desktop App
+        run: |
+          Compress-Archive -Path Desktop/DesktopAppOut/* -DestinationPath Desktop/DesktopInstaller/app.zip
 
-    - name: Publish Desktop Installer
-      run: |
-        cd Desktop/DesktopInstaller
-        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.0.${{ github.run_number }}" -o ../DesktopInstallerOut
+      - name: Publish Desktop Installer
+        run: |
+          cd Desktop/DesktopInstaller
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.0.${{ github.run_number }}" -o ../DesktopInstallerOut
 
-    - name: Rename Installer
-      run: |
-        Rename-Item -Path Desktop/DesktopInstallerOut/DesktopInstaller.exe -NewName "OxygenLowsSoftware_Installer.exe"
+      - name: Rename Installer
+        run: |
+          Rename-Item -Path Desktop/DesktopInstallerOut/DesktopInstaller.exe -NewName "OxygenLowsSoftware_Installer.exe"
 
-    - name: Create Tag
-      id: create_tag
-      run: |
-        $tag = "v1.0.$($env:GITHUB_RUN_NUMBER)"
-        echo "TAG_NAME=$tag" >> $env:GITHUB_ENV
-        
-    - name: Create Release
-      uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
-      with:
-        tag_name: ${{ env.TAG_NAME }}
-        name: Release ${{ env.TAG_NAME }}
-        files: Desktop/DesktopInstallerOut/OxygenLowsSoftware_Installer.exe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Tag
+        id: create_tag
+        run: |
+          $tag = "v1.0.$($env:GITHUB_RUN_NUMBER)"
+          echo "TAG_NAME=$tag" >> $env:GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
+          files: Desktop/DesktopInstallerOut/OxygenLowsSoftware_Installer.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

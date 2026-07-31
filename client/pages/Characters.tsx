@@ -80,22 +80,49 @@ export default function Characters() {
     }
   };
 
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Replaced N+1 API calls for image signing with a single bulk createSignedUrls call.
+   * This significantly reduces network overhead and speeds up the render time
+   * when users have multiple characters.
+   */
   const attachSignedImageUrls = async (chars: any[]) => {
-    return Promise.all(
-      (chars || []).map(async (char) => {
-        if (char.image_path) {
-          if (char.image_path.includes("..")) return { ...char, image_url: "" };
-          const { data: urlData } = await supabase.storage
-            .from("Storage")
-            .createSignedUrl(char.image_path, 3600)
-            .catch(() => ({ data: null }));
-          if (urlData?.signedUrl)
-            return { ...char, image_url: urlData.signedUrl };
-          else return { ...char, image_url: "" };
+    if (!chars || chars.length === 0) return [];
+
+    const pathsToSign = chars
+      .filter((c) => c.image_path && !c.image_path.includes(".."))
+      .map((c) => c.image_path);
+
+    if (pathsToSign.length === 0) {
+      return chars.map((char) => {
+        if (char.image_path && char.image_path.includes("..")) {
+          return { ...char, image_url: "" };
         }
         return char;
-      }),
-    );
+      });
+    }
+
+    const { data: urlData } = await supabase.storage
+      .from("Storage")
+      .createSignedUrls(pathsToSign, 3600)
+      .catch(() => ({ data: null }));
+
+    const urlMap = new Map();
+    if (urlData) {
+      urlData.forEach((item: any) => {
+        urlMap.set(item.path, item.signedUrl);
+      });
+    }
+
+    return chars.map((char) => {
+      if (char.image_path) {
+        if (char.image_path.includes("..")) return { ...char, image_url: "" };
+        const signedUrl = urlMap.get(char.image_path);
+        if (signedUrl) return { ...char, image_url: signedUrl };
+        return { ...char, image_url: "" };
+      }
+      return char;
+    });
   };
 
   const fetchCharacters = async (overrideEncryptionEnabled?: boolean) => {
