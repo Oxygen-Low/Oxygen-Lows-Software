@@ -60,7 +60,9 @@ export function createServer() {
             "https://vqmukrmpgvavscsyefqd.supabase.co",
             "blob:",
           ],
-          "script-src": ["'self'", "blob:"],
+          "script-src": process.env.NODE_ENV === "production"
+            ? ["'self'", "blob:", "https://keepandroidopen.org"]
+            : ["'self'", "blob:", "https://keepandroidopen.org", "'unsafe-inline'", "'unsafe-eval'"],
           "worker-src": ["'self'", "blob:"],
         },
       },
