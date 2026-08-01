@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
@@ -11,6 +12,8 @@ namespace DesktopApp;
 
 public partial class MainWindow : Window
 {
+    private HttpListener? _httpListener;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -18,8 +21,85 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
     }
 
+    private void StartLocalServer()
+    {
+        try
+        {
+            _httpListener = new HttpListener();
+            _httpListener.Prefixes.Add("http://localhost:50321/");
+            _httpListener.Start();
+
+            _ = Task.Run(async () =>
+            {
+                while (_httpListener != null && _httpListener.IsListening)
+                {
+                    try
+                    {
+                        var context = await _httpListener.GetContextAsync();
+                        var request = context.Request;
+                        var response = context.Response;
+
+                        var query = request.Url?.Query;
+                        if (!string.IsNullOrEmpty(query))
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                try
+                                {
+                                    if (webView != null && webView.CoreWebView2 != null)
+                                    {
+                                        var currentOrigin = webView.Source.GetLeftPart(UriPartial.Authority);
+                                        webView.CoreWebView2.Navigate($"{currentOrigin}/auth{query}");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine("Navigation Error: " + ex.Message);
+                                }
+                            });
+                        }
+
+                        string responseString = "<html><body style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2>Authentication successful!</h2><p>You can close this tab and return to the desktop app.</p></body></html>";
+                        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                        response.ContentLength64 = buffer.Length;
+                        using var output = response.OutputStream;
+                        await output.WriteAsync(buffer, 0, buffer.Length);
+                    }
+                    catch (HttpListenerException)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("HttpListener Exception: " + ex.Message);
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Failed to start HttpListener: " + ex.Message);
+        }
+    }
+
+    private void StopLocalServer()
+    {
+        try
+        {
+            if (_httpListener != null)
+            {
+                _httpListener.Stop();
+                _httpListener.Close();
+                _httpListener = null;
+            }
+        }
+        catch { }
+    }
+
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        StartLocalServer();
+
         var userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OxygenLowsSoftware", "WebView2");
         var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
         await webView.EnsureCoreWebView2Async(environment);
@@ -65,6 +145,18 @@ public partial class MainWindow : Window
                     await VPNConnectionManager.DisconnectAsync(serverName);
                     SendWebMessage(new { type = "vpn_status", status = "disconnected" });
                 }
+                else if (cmd == "open_browser")
+                {
+                    string url = doc.RootElement.GetProperty("url").GetString() ?? "";
+                    if (!string.IsNullOrEmpty(url))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = url,
+                            UseShellExecute = true
+                        });
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -86,6 +178,8 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        StopLocalServer();
+
         // Disconnect VPN on exit just in case
         try
         {
