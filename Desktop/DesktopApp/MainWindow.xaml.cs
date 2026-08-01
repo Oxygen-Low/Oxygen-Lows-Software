@@ -11,8 +11,6 @@ namespace DesktopApp;
 
 public partial class MainWindow : Window
 {
-    private Process? _nodeProcess;
-
     public MainWindow()
     {
         InitializeComponent();
@@ -22,14 +20,6 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        StartNodeServer();
-
-        // Wait for the server to actually start before navigating
-        if (!WaitForServerToStart())
-        {
-            Debug.WriteLine("Server failed to start within timeout period");
-        }
-
         var userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OxygenLowsSoftware", "WebView2");
         var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
         await webView.EnsureCoreWebView2Async(environment);
@@ -39,119 +29,7 @@ public partial class MainWindow : Window
         // Give additional time for WebView2 to initialize
         await Task.Delay(1000); 
         
-        webView.CoreWebView2.Navigate("http://localhost:3000?desktop=1");
-    }
-
-    private bool WaitForServerToStart(int timeoutSeconds = 30, int retryIntervalMs = 500)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        
-        while (stopwatch.Elapsed.TotalSeconds < timeoutSeconds)
-        {
-            try
-            {
-                using var client = new System.Net.Sockets.TcpClient();
-                client.Connect("127.0.0.1", 3000);
-                
-                if (client.Connected)
-                {
-                    Debug.WriteLine($"Server is ready on port 3000 after {stopwatch.Elapsed.TotalSeconds:F1f} seconds");
-                    client.Close();
-                    return true;
-                }
-            }
-            catch
-            {
-                // Port not open yet, keep waiting
-            }
-            
-            Thread.Sleep(retryIntervalMs);
-        }
-        
-        Debug.WriteLine($"Server failed to start within {timeoutSeconds} seconds");
-        return false;
-    }
-
-    private void StartNodeServer()
-    {
-        try
-        {
-            var exeDir = AppDomain.CurrentDomain.BaseDirectory;
-            var installDir = exeDir;
-            
-            var nodeDir = Path.Combine(installDir, "node", "node-v20.15.0-win-x64");
-            var repoDir = Path.Combine(installDir, "repo");
-            
-            // Fallback for development (running directly in repo)
-            var npmCmd = Path.Combine(nodeDir, "npm.cmd");
-            if (!File.Exists(npmCmd)) 
-            {
-                npmCmd = "npm.cmd";
-                repoDir = Directory.GetParent(exeDir)?.Parent?.Parent?.Parent?.Parent?.FullName ?? repoDir;
-            }
-
-            Debug.WriteLine($"Starting node server from: {repoDir}");
-            Debug.WriteLine($"npm command: {npmCmd}");
-
-            // We need to run npm start through cmd.exe because npm.cmd is a batch file
-            var psi = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c cd /d \"{repoDir}\" && \"{npmCmd}\" start",
-                WorkingDirectory = repoDir,
-                UseShellExecute = false,  // cmd.exe is an executable (.exe), so this works
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-            
-            // Add the node directory to PATH so that npm start can find node.exe
-            if (Directory.Exists(nodeDir))
-            {
-                var pathKey = "PATH";
-                foreach (var key in psi.Environment.Keys)
-                {
-                    if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
-                    {
-                        pathKey = key;
-                        break;
-                    }
-                }
-                var existingPath = psi.Environment.ContainsKey(pathKey) ? psi.Environment[pathKey] : null;
-                psi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? nodeDir : $"{nodeDir}{Path.PathSeparator}{existingPath}";
-            }
-
-            _nodeProcess = Process.Start(psi);
-            
-            if (_nodeProcess != null)
-            {
-                Debug.WriteLine($"Node server process started with PID: {_nodeProcess.Id}");
-                
-                // Read output asynchronously to prevent deadlocks
-                _nodeProcess.OutputDataReceived += (s, e) => 
-                { 
-                    if (!string.IsNullOrEmpty(e.Data))
-                        Debug.WriteLine($"[Server Output] {e.Data}"); 
-                };
-                _nodeProcess.ErrorDataReceived += (s, e) => 
-                { 
-                    if (!string.IsNullOrEmpty(e.Data))
-                        Debug.WriteLine($"[Server Error] {e.Data}"); 
-                };
-                
-                _nodeProcess.BeginOutputReadLine();
-                _nodeProcess.BeginErrorReadLine();
-            }
-            else
-            {
-                Debug.WriteLine("Failed to start node server process");
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine("Failed to start node server: " + ex.Message);
-            Debug.WriteLine(ex.StackTrace);
-        }
+        webView.CoreWebView2.Navigate("https://oxygen-lows-software.onrender.com/?desktop=1");
     }
 
     private async void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -214,20 +92,5 @@ public partial class MainWindow : Window
             VPNKillswitchManager.CleanUpActiveRulesOnExit();
         }
         catch { }
-
-        // Terminate Node server
-        if (_nodeProcess != null && !_nodeProcess.HasExited)
-        {
-            try
-            {
-                var killPsi = new ProcessStartInfo("taskkill", $"/T /F /PID {_nodeProcess.Id}")
-                {
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                Process.Start(killPsi)?.WaitForExit();
-            }
-            catch { }
-        }
     }
 }

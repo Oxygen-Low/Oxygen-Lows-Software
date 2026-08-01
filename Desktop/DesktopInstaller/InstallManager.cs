@@ -29,7 +29,6 @@ namespace DesktopInstaller
         public void Install(string targetPath)
         {
             ExtractApp(targetPath);
-            InstallDependenciesAsync(targetPath).Wait();
             CreateRegistryKeys(targetPath);
             CreateShortcuts(targetPath);
         }
@@ -38,7 +37,6 @@ namespace DesktopInstaller
         {
             var path = GetInstallPath();
             ExtractApp(path);
-            InstallDependenciesAsync(path).Wait();
         }
 
         public void Repair()
@@ -103,93 +101,6 @@ namespace DesktopInstaller
 
             ZipFile.ExtractToDirectory(tempZip, targetPath, true);
             File.Delete(tempZip);
-        }
-
-        private async Task InstallDependenciesAsync(string targetPath)
-        {
-            // Clone repo
-            var repoPath = Path.Combine(targetPath, "repo");
-            if (!Directory.Exists(repoPath))
-            {
-                var psi = new ProcessStartInfo("git", $"clone https://github.com/Oxygen-Low/Oxygen-Lows-Software.git \"{repoPath}\"")
-                {
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                Process.Start(psi)?.WaitForExit();
-            }
-            else
-            {
-                var psi = new ProcessStartInfo("git", "pull")
-                {
-                    WorkingDirectory = repoPath,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                Process.Start(psi)?.WaitForExit();
-            }
-
-            // Download Node.js
-            var nodeDir = Path.Combine(targetPath, "node");
-            var nodeExtractedDir = Path.Combine(nodeDir, "node-v20.15.0-win-x64");
-            if (!Directory.Exists(nodeDir))
-            {
-                Directory.CreateDirectory(nodeDir);
-                var nodeZip = Path.Combine(Path.GetTempPath(), "node.zip");
-                using (var client = new HttpClient())
-                {
-                    var response = await client.GetAsync("https://nodejs.org/dist/v20.15.0/node-v20.15.0-win-x64.zip");
-                    using (var fs = new FileStream(nodeZip, FileMode.Create))
-                    {
-                        await response.Content.CopyToAsync(fs);
-                    }
-                }
-                ZipFile.ExtractToDirectory(nodeZip, nodeDir, true);
-                File.Delete(nodeZip);
-            }
-            
-            // Run npm install
-            var npmPath = Path.Combine(nodeExtractedDir, "npm.cmd");
-            var installPsi = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c \"{npmPath}\" install",
-                WorkingDirectory = repoPath,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            PrependToPath(installPsi, nodeExtractedDir);
-            Process.Start(installPsi)?.WaitForExit();
-
-            // Run build
-            var buildPsi = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c \"{npmPath}\" run build",
-                WorkingDirectory = repoPath,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            PrependToPath(buildPsi, nodeExtractedDir);
-            Process.Start(buildPsi)?.WaitForExit();
-        }
-
-        private static void PrependToPath(ProcessStartInfo psi, string directory)
-        {
-            if (Directory.Exists(directory))
-            {
-                var pathKey = "PATH";
-                foreach (var key in psi.Environment.Keys)
-                {
-                    if (string.Equals(key, "PATH", StringComparison.OrdinalIgnoreCase))
-                    {
-                        pathKey = key;
-                        break;
-                    }
-                }
-                var existingPath = psi.Environment.ContainsKey(pathKey) ? psi.Environment[pathKey] : null;
-                psi.Environment[pathKey] = string.IsNullOrEmpty(existingPath) ? directory : $"{directory}{Path.PathSeparator}{existingPath}";
-            }
         }
 
         private void CreateRegistryKeys(string targetPath)
