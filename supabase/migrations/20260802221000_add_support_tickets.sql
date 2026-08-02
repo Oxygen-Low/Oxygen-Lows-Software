@@ -1,7 +1,7 @@
 -- Create support tickets table
 CREATE TABLE public.support_tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
     priority TEXT NOT NULL CHECK (priority IN ('Highest', 'High', 'Medium', 'Low')),
@@ -15,7 +15,7 @@ CREATE TABLE public.support_tickets (
 CREATE TABLE public.support_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_id UUID NOT NULL REFERENCES public.support_tickets(id) ON DELETE CASCADE,
-    sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
     message TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
