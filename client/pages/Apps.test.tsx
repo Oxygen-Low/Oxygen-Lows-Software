@@ -8,7 +8,10 @@ vi.mock("@/components/Layout", () => ({
   Layout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  sessionStorage.clear();
+});
 
 describe("Apps", () => {
   it("shows the current catalogue and category counts in desktop mode", () => {

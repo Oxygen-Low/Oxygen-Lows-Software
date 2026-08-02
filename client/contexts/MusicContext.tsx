@@ -58,7 +58,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const isPlayingRef = useRef(false);
   const shuffleRef = useRef(false);
   const currentPositionRef = useRef(0);
-  const playNextRef = useRef<() => void>();
+  const playNextRef = useRef<(() => void) | undefined>(undefined);
   const playTokenRef = useRef(0);
 
   useEffect(() => {

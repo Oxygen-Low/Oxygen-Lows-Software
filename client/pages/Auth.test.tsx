@@ -26,6 +26,7 @@ describe("Auth Component", () => {
 
   afterEach(() => {
     cleanup();
+    sessionStorage.clear();
   });
 
   it("should render the google sign in button when no session exists", async () => {

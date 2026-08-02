@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import {
@@ -125,7 +125,20 @@ const apps: AppMetadata[] = [
 
 export default function Apps() {
   const location = useLocation();
-  const isDesktopMode = new URLSearchParams(location.search).get("desktop") === "1";
+  const searchParams = new URLSearchParams(location.search);
+  const hasDesktopParam = searchParams.get("desktop") === "1";
+
+  const [isDesktopMode, setIsDesktopMode] = useState(() => {
+    return hasDesktopParam || sessionStorage.getItem("desktopMode") === "1";
+  });
+
+  useEffect(() => {
+    if (hasDesktopParam) {
+      sessionStorage.setItem("desktopMode", "1");
+      setIsDesktopMode(true);
+    }
+  }, [hasDesktopParam]);
+
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
