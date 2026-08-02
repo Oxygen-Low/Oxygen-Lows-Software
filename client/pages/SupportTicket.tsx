@@ -97,7 +97,7 @@ export default function SupportTicket() {
         supabase.from("support_tickets").select("*").eq("id", id).single(),
         supabase
           .from("support_messages")
-          .select(`*, profiles:sender_id(username, avatar_url)`)
+          .select("*")
           .eq("ticket_id", id)
           .order("created_at", { ascending: true }),
       ]);
@@ -105,8 +105,21 @@ export default function SupportTicket() {
       if (ticketRes.error) throw ticketRes.error;
       if (messagesRes.error) throw messagesRes.error;
 
+      const messages = messagesRes.data || [];
+      const senderIds = [...new Set(messages.map((m: any) => m.sender_id).filter(Boolean))];
+      
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, avatar_url")
+        .in("user_id", senderIds);
+
+      const messagesWithProfiles = messages.map((m: any) => ({
+        ...m,
+        profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null
+      }));
+
       setTicket(ticketRes.data);
-      setMessages(messagesRes.data || []);
+      setMessages(messagesWithProfiles);
     } catch (error: any) {
       toast({
         title: "Error fetching ticket",
@@ -132,12 +145,18 @@ export default function SupportTicket() {
           sender_id: session?.user?.id,
           message: newMessage,
         })
-        .select(`*, profiles:sender_id(username, avatar_url)`)
+        .select("*")
         .single();
 
       if (error) throw error;
 
-      setMessages((prev) => [...prev, data]);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("user_id", session?.user?.id)
+        .single();
+
+      setMessages((prev) => [...prev, { ...data, profiles: profile || undefined }]);
       setNewMessage("");
     } catch (error: any) {
       toast({
