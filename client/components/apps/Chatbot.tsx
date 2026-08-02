@@ -229,8 +229,19 @@ const ChatMessage = React.memo(
     setActiveArtifact: (art: Artifact) => void;
   }) => {
     const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
-    const displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
+    let displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
     const [reasoningExpanded, setReasoningExpanded] = useState(false);
+
+    if (m.role === "assistant" && displayContent.includes("<tool_call>")) {
+        displayContent = displayContent.replace(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/, (match, jsonStr) => {
+            try {
+               const data = JSON.parse(jsonStr);
+               return `🔨 **Using Tool: ${data.name}**\n\`\`\`json\n${JSON.stringify(data.args, null, 2)}\n\`\`\``;
+            } catch (e) {
+               return match;
+            }
+        });
+    }
 
     if (m.role === "user") {
       return (
@@ -241,6 +252,28 @@ const ChatMessage = React.memo(
               <ReactMarkdown components={memoizedMarkdownComponents}>
                 {displayContent}
               </ReactMarkdown>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (m.role === "system") {
+      return (
+        <div className="flex gap-4 w-full mt-4 animate-[fade-in_0.3s_ease-out_0.2s_both] ai-message-container mb-4 opacity-80 hover:opacity-100 transition-opacity">
+          <div className="shrink-0 pt-7">
+            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[16px] text-slate-400 font-family-material">build</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 max-w-[85%] w-full">
+            <p className="text-slate-400 text-sm font-display font-medium ml-1">System / Tool Result</p>
+            <div className="w-full">
+              <div className="text-[13px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900/50 border border-slate-800 text-slate-300 font-mono overflow-auto max-h-[300px]">
+                <ReactMarkdown components={memoizedMarkdownComponents}>
+                  {displayContent}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         </div>
@@ -842,111 +875,119 @@ export function ChatbotApp() {
         ];
       };
 
-      if (isReasoningEnabled) {
-          // Request reasoning
-          const reasoningMessages = [...newMessages, { role: "user", content: "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts." } as Message];
-          
-          reasoningContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(reasoningMessages), controller.signal, (content) => {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                return [...prev.slice(0, -1), { ...last, reasoning: content }];
-              });
-          });
-          
-          // Next request
-          const finalMessages = [...newMessages, { role: "assistant", content: `My internal reasoning: \n${reasoningContent}` } as Message, { role: "user", content: "Great. Now based on your reasoning, provide the final response." } as Message];
-          finalContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(finalMessages), controller.signal, (content) => {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                return [...prev.slice(0, -1), { ...last, content }];
-              });
-              
-              if (content.length - lastParsedLengthRef.current > 50 || content.includes("\\\\")) {
-                const arts = parseArtifacts(content);
-                if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-                lastParsedLengthRef.current = content.length;
-              }
-          });
-          
-      } else {
-          // Standard request
-          finalContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(newMessages), controller.signal, (content) => {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                return [...prev.slice(0, -1), { ...last, content }];
-              });
-              
-              if (content.length - lastParsedLengthRef.current > 50 || content.includes("\\\\")) {
-                const arts = parseArtifacts(content);
-                if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-                lastParsedLengthRef.current = content.length;
-              }
-          });
-      }
+      let currentMessages = [...newMessages];
+      let iterations = 0;
+      let shouldContinue = true;
 
-      // 4. Save Assistant Message
-      const { error: assistantInsertError } = await supabase
-        .from("chat_messages")
-        .insert({
-          chat_id: activeChatId,
-          role: "assistant",
-          content: isEncryptionEnabled && key ? await encrypt(finalContent, key) : finalContent,
-          reasoning: isEncryptionEnabled && key && reasoningContent ? await encrypt(reasoningContent, key) : (reasoningContent || null),
-          is_encrypted: isEncryptionEnabled,
-        });
-      if (assistantInsertError) throw assistantInsertError;
-      
-      const { error: chatUpdateError } = await supabase
-        .from("chats")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", activeChatId);
-      if (chatUpdateError) throw chatUpdateError;
+      while (shouldContinue && iterations < 5) {
+        iterations++;
+        shouldContinue = false;
+        
+        let finalContent = "";
+        let reasoningContent = "";
 
-      const toolCallMatch = finalContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
-      if (toolCallMatch) {
-         let parsedData;
-         try {
-           parsedData = JSON.parse(toolCallMatch[1]);
-         } catch (e) {
-           console.error("Invalid tool json", e);
-         }
-         
-         if (parsedData && parsedData.name) {
-           const toolName = parsedData.name;
-           const toolArgs = parsedData.args || {};
-           
-           let toolServer: MCPServer | undefined;
-           for (const s of mcpServers) {
-             if (s.tools.some(t => t.name === toolName)) {
-               toolServer = s;
-               break;
-             }
+        if (isReasoningEnabled) {
+            const reasoningMessages = [...currentMessages, { role: "user", content: "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts." } as Message];
+            
+            reasoningContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(reasoningMessages), controller.signal, (content) => {
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  return [...prev.slice(0, -1), { ...last, reasoning: content }];
+                });
+            });
+            
+            const finalMessages = [...currentMessages, { role: "assistant", content: `My internal reasoning: \n${reasoningContent}` } as Message, { role: "user", content: "Great. Now based on your reasoning, provide the final response." } as Message];
+            finalContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(finalMessages), controller.signal, (content) => {
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  return [...prev.slice(0, -1), { ...last, content }];
+                });
+                
+                if (content.length - lastParsedLengthRef.current > 50 || content.includes("\\\\")) {
+                  const arts = parseArtifacts(content);
+                  if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+                  lastParsedLengthRef.current = content.length;
+                }
+            });
+        } else {
+            finalContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(currentMessages), controller.signal, (content) => {
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  return [...prev.slice(0, -1), { ...last, content }];
+                });
+                
+                if (content.length - lastParsedLengthRef.current > 50 || content.includes("\\\\")) {
+                  const arts = parseArtifacts(content);
+                  if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+                  lastParsedLengthRef.current = content.length;
+                }
+            });
+        }
+
+        const { error: assistantInsertError } = await supabase
+          .from("chat_messages")
+          .insert({
+            chat_id: activeChatId,
+            role: "assistant",
+            content: isEncryptionEnabled && key ? await encrypt(finalContent, key) : finalContent,
+            reasoning: isEncryptionEnabled && key && reasoningContent ? await encrypt(reasoningContent, key) : (reasoningContent || null),
+            is_encrypted: isEncryptionEnabled,
+          });
+        if (assistantInsertError) throw assistantInsertError;
+        
+        const { error: chatUpdateError } = await supabase
+          .from("chats")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", activeChatId);
+        if (chatUpdateError) throw chatUpdateError;
+
+        const toolCallMatch = finalContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+        if (toolCallMatch) {
+           let parsedData;
+           try {
+             parsedData = JSON.parse(toolCallMatch[1]);
+           } catch (e) {
+             console.error("Invalid tool json", e);
            }
            
-           if (toolServer) {
-             let result = "";
-             try {
-               result = await toolServer.execute(toolName, toolArgs);
-             } catch (e: any) {
-               result = `Error executing tool: ${e.message}`;
+           if (parsedData && parsedData.name) {
+             const toolName = parsedData.name;
+             const toolArgs = parsedData.args || {};
+             
+             let toolServer: MCPServer | undefined;
+             for (const s of mcpServers) {
+               if (s.tools.some(t => t.name === toolName)) {
+                 toolServer = s;
+                 break;
+               }
              }
              
-             const toolResultMessage = `Tool ${toolName} returned:\n${result}`;
-             const { error: toolInsertError } = await supabase
-              .from("chat_messages")
-              .insert({
-                chat_id: activeChatId,
-                role: "system",
-                content: isEncryptionEnabled && key ? await encrypt(toolResultMessage, key) : toolResultMessage,
-                is_encrypted: isEncryptionEnabled,
-              });
-             if (toolInsertError) throw toolInsertError;
-             
-             setMessages((prev) => [...prev, { role: "system", content: toolResultMessage }]);
-             // We do not auto-loop to avoid infinite loops, user must trigger next step.
-             toast.success(`Tool ${toolName} executed. Send a message to continue.`);
+             if (toolServer) {
+               let result = "";
+               try {
+                 result = await toolServer.execute(toolName, toolArgs);
+               } catch (e: any) {
+                 result = `Error executing tool: ${e.message}`;
+               }
+               
+               const toolResultMessage = `Tool ${toolName} returned:\n${result}`;
+               const { error: toolInsertError } = await supabase
+                .from("chat_messages")
+                .insert({
+                  chat_id: activeChatId,
+                  role: "system",
+                  content: isEncryptionEnabled && key ? await encrypt(toolResultMessage, key) : toolResultMessage,
+                  is_encrypted: isEncryptionEnabled,
+                });
+               if (toolInsertError) throw toolInsertError;
+               
+               currentMessages = [...currentMessages, { role: "assistant", content: finalContent, reasoning: reasoningContent }, { role: "system", content: toolResultMessage }];
+               setMessages((prev) => [...prev, { role: "system", content: toolResultMessage }, { role: "assistant", content: "" }]);
+               shouldContinue = true;
+               toast.success(`Tool ${toolName} executed. Generating response...`);
+             }
            }
-         }
+        }
       }
       
     } catch (e: any) {
