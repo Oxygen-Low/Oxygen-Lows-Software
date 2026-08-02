@@ -341,7 +341,7 @@ export default function Customize() {
             </h3>
             {playlist.length === 0 ? (
               <p className="text-muted-foreground">
-                Your playlist is empty. Add tracks below.
+                Your playlist is empty right now. Add some of your favorite tracks below to get started!
               </p>
             ) : (
               <div className="space-y-2">

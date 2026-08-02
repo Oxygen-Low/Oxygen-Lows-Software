@@ -93,7 +93,7 @@ const apps: AppMetadata[] = [
   {
     id: "chatbot",
     name: "Chatbot",
-    description: "Chat with LLMs.",
+    description: "Chat and brainstorm with intelligent AI assistants.",
     categories: ["All", "LLM/AI"],
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
@@ -102,7 +102,7 @@ const apps: AppMetadata[] = [
   {
     id: "file-compressor",
     name: "File Compressor",
-    description: "Compress files to save storage space.",
+    description: "Easily compress your files to free up storage space.",
     categories: ["All", "Utility"],
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
@@ -194,7 +194,7 @@ export default function Apps() {
         <div>
           <h2 className="text-3xl font-bold text-white mb-2">Apps</h2>
           <p className="text-slate-400">
-            Discover and use various applications within the platform.
+            Explore and try out our collection of awesome tools!
           </p>
         </div>
 

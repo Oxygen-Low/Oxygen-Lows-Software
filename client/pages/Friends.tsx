@@ -9,7 +9,7 @@ export default function Friends() {
           <h2 className="text-3xl font-bold tracking-tight text-white">
             Friends
           </h2>
-          <p className="text-slate-400">Social</p>
+          <p className="text-slate-400">Connect with your friends here!</p>
         </div>
         <FriendsApp />
       </div>

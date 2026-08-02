@@ -463,7 +463,7 @@ export default function UserProfile() {
                 </h3>
                 <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
                   <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {profile.bio || "This user hasn't written a bio yet."}
+                    {profile.bio || "This user hasn't written a bio yet, but we're sure they're great!"}
                   </p>
                 </div>
               </div>

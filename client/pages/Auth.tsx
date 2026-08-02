@@ -51,7 +51,7 @@ export default function Auth() {
               Oxygen Low's Software
             </h1>
           </div>
-          <p className="text-slate-400">Welcome back</p>
+          <p className="text-slate-400">Welcome back!</p>
         </div>
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl">
           {error && (

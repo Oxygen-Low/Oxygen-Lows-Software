@@ -708,7 +708,7 @@ export default function Account() {
                   Email Settings
                 </CardTitle>
                 <CardDescription>
-                  Manage how your email is displayed to others
+                  Choose how others see your email
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

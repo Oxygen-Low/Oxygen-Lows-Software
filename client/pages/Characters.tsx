@@ -347,8 +347,8 @@ export default function Characters() {
                 </DialogTitle>
                 <DialogDescription className="text-slate-400">
                   {currentCharacter.is_universe || activeTab === "universes"
-                    ? "Define your universe's lore and setting."
-                    : "Define your character's traits and backstory."}
+                    ? "Tell us a bit about your new universe and its lore."
+                    : "Tell us a bit about your character and what makes them unique."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -628,10 +628,9 @@ export default function Characters() {
             ).length === 0 && (
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
                 <p className="text-slate-500">
-                  No {activeTab === "characters" ? "characters" : "universes"}{" "}
-                  created yet. Click "New{" "}
-                  {activeTab === "characters" ? "Character" : "Universe"}" to
-                  begin.
+                  {activeTab === "characters"
+                    ? "No characters here yet! Click \"New Character\" to get started and add some to your collection."
+                    : "No universes here yet! Click \"New Universe\" to start building your own world."}
                 </p>
               </div>
             )}

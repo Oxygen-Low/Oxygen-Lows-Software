@@ -232,7 +232,7 @@ export default function Storage() {
           <h2 className="text-3xl font-bold tracking-tight text-white">
             Storage
           </h2>
-          <p className="text-slate-400">Manage your files and data usage.</p>
+          <p className="text-slate-400">Keep track of your uploaded files and data usage.</p>
         </div>
 
         <Card className="bg-slate-900/50 border-slate-800">
@@ -332,7 +332,7 @@ export default function Storage() {
             <div>
               <h3 className="text-lg font-medium text-white">Files</h3>
               <p className="text-sm text-slate-400">
-                Your uploaded files and artifacts.
+                Your uploaded files and saved artifacts.
               </p>
             </div>
             <div className="flex gap-2">
