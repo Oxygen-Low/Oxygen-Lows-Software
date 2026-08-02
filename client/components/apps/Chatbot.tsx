@@ -25,6 +25,7 @@ import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
 import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
+import { fetchAllMCPServers, MCPServer } from "@/lib/mcp";
 
 const InteractiveBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -369,6 +370,7 @@ export function ChatbotApp() {
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
   
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -400,6 +402,9 @@ export function ChatbotApp() {
       setShowEncryptionUnlockModal(true);
       return;
     }
+
+    const mcpData = await fetchAllMCPServers(session.user.id);
+    setMcpServers(mcpData);
 
     const stylesRes = await fetch("/api/ai/styles");
     const stylesData = await stylesRes.json();
@@ -624,6 +629,7 @@ export function ChatbotApp() {
           stream: true,
           apiKey: decryptedKey,
           baseUrl: decryptedBaseUrl,
+          tools: mcpServers.length > 0 ? mcpServers.flatMap(s => s.tools) : undefined,
         }),
       });
 
@@ -656,11 +662,39 @@ export function ChatbotApp() {
               if (data.queue_info) setQueueStatus(data.queue_info);
               
               let delta = "";
-              if (provider === "anthropic") delta = data.delta?.text || "";
-              else if (["openai", "openrouter", "grok", "custom", "lmstudio", "koboldcpp", "kobold", "horde"].includes(provider)) {
+              if (provider === "anthropic") {
+                delta = data.delta?.text || "";
+                if (data.type === "content_block_start" && data.content_block?.type === "tool_use") {
+                  delta += `{[${data.content_block.name}], `;
+                } else if (data.type === "content_block_delta" && data.delta?.type === "input_json_delta") {
+                  delta += data.delta.partial_json || "";
+                }
+                // We'll just rely on Anthropic's output. Wait, Anthropic doesn't emit content_block_stop with the tool type easily.
+                // We might need to track tool state, but for basic, let's just let it stream.
+              } else if (["openai", "openrouter", "grok", "custom", "lmstudio", "koboldcpp", "kobold", "horde"].includes(provider)) {
                 delta = data.choices?.[0]?.delta?.content || "";
-              } else if (provider === "ollama") delta = data.message?.content || data.response || "";
-              else if (provider === "google") delta = data.delta?.content || data.message?.content?.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
+                if (tc) {
+                  if (tc.function?.name) delta += `{[${tc.function.name}], `;
+                  if (tc.function?.arguments) delta += tc.function.arguments;
+                }
+                if (data.choices?.[0]?.finish_reason === "tool_calls") {
+                  delta += `}`;
+                }
+              } else if (provider === "ollama") {
+                delta = data.message?.content || data.response || "";
+              } else if (provider === "google") {
+                delta = data.delta?.content || data.message?.content?.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                const fc = data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+                if (fc) {
+                  delta += `{[${fc.name}], ${JSON.stringify(fc.args)}}`;
+                }
+              }
+
+              // Simple fix for Anthropic closing brace (since we can't easily track state across chunks here without a ref)
+              if (provider === "anthropic" && data.type === "message_delta" && data.delta?.stop_reason === "tool_use") {
+                delta += `}`;
+              }
 
               if (delta) {
                 setQueueStatus(null);
@@ -792,6 +826,16 @@ export function ChatbotApp() {
         }
       }
 
+      if (mcpServers.length > 0) {
+        injectedSystemMessage += `\n\nYou have access to the following tools:\n`;
+        mcpServers.forEach(server => {
+          server.tools.forEach(tool => {
+            injectedSystemMessage += `- ${tool.name}: ${tool.description}\n  Parameters: ${JSON.stringify(tool.parameters)}\n`;
+          });
+        });
+        injectedSystemMessage += `\nTo use a tool, output EXACTLY the following JSON format on a new line: {[tool_name], {"arg1": "value"}}\nDo not add any text before or after the tool call on that line.\n`;
+      }
+
       const getApiMessages = (baseMessages: Message[]): Message[] => {
         if (!injectedSystemMessage) return baseMessages;
         return [
@@ -859,6 +903,48 @@ export function ChatbotApp() {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", activeChatId);
       if (chatUpdateError) throw chatUpdateError;
+
+      const toolCallMatch = finalContent.match(/\{\[([^\]]+)\],\s*(\{.*?\})\}/);
+      if (toolCallMatch) {
+         const toolName = toolCallMatch[1];
+         let toolArgs = {};
+         try {
+           toolArgs = JSON.parse(toolCallMatch[2]);
+         } catch (e) {
+           console.error("Invalid tool args", e);
+         }
+         let toolServer: MCPServer | undefined;
+         for (const s of mcpServers) {
+           if (s.tools.some(t => t.name === toolName)) {
+             toolServer = s;
+             break;
+           }
+         }
+         
+         if (toolServer) {
+           let result = "";
+           try {
+             result = await toolServer.execute(toolName, toolArgs);
+           } catch (e: any) {
+             result = `Error executing tool: ${e.message}`;
+           }
+           
+           const toolResultMessage = `Tool ${toolName} returned:\n${result}`;
+           const { error: toolInsertError } = await supabase
+            .from("chat_messages")
+            .insert({
+              chat_id: activeChatId,
+              role: "system",
+              content: isEncryptionEnabled && key ? await encrypt(toolResultMessage, key) : toolResultMessage,
+              is_encrypted: isEncryptionEnabled,
+            });
+           if (toolInsertError) throw toolInsertError;
+           
+           setMessages((prev) => [...prev, { role: "system", content: toolResultMessage }]);
+           // We do not auto-loop to avoid infinite loops, user must trigger next step.
+           toast.success(`Tool ${toolName} executed. Send a message to continue.`);
+         }
+      }
       
     } catch (e: any) {
       toast.error(e.message);

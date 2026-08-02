@@ -24,7 +24,8 @@ import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { VPNApp } from "@/components/apps/VPN";
-
+import { MCPServersApp } from "@/components/apps/MCPServers";
+import { Server } from "lucide-react";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
@@ -102,7 +103,15 @@ const apps: AppMetadata[] = [
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
   },
-
+  {
+    id: "mcp-servers",
+    name: "MCP Servers",
+    description: "Download and manage MCP tools for the Chatbot.",
+    categories: ["All", "Utility", "LLM/AI"],
+    availability: "web-and-desktop",
+    icon: <Server className="w-8 h-8 text-cyan-500" />,
+    component: MCPServersApp,
+  },
   {
     id: "file-compressor",
     name: "File Compressor",

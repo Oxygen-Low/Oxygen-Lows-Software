@@ -155,7 +155,7 @@ export const handleGetHordeStatus: RequestHandler = async (_req, res) => {
 };
 
 export const handleProxyAiRequest: RequestHandler = async (req, res) => {
-  const { provider, model, messages, stream, style, apiKey, baseUrl } =
+  const { provider, model, messages, stream, style, apiKey, baseUrl, tools } =
     req.body;
   const authHeader = req.headers.authorization;
   if (!authHeader)
@@ -296,7 +296,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         await handleResponse(
           await axios.post(
             "https://api.openai.com/v1/chat/completions",
-            { model, messages: processedMessages, stream },
+            { model, messages: processedMessages, stream, tools },
             {
               ...axiosOptions,
               headers: {
@@ -354,6 +354,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               max_tokens: 4096,
               stream,
               system: systemContent || undefined,
+              tools,
             },
             {
               ...axiosOptions,
@@ -416,6 +417,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                   }
                   return { role, parts };
                 }),
+              tools: tools ? tools.map((t: any) => ({ function_declarations: [t.function] })) : undefined,
             },
             params: { key: integration?.api_key },
             ...axiosOptions,
