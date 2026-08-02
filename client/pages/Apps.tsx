@@ -17,14 +17,11 @@ import {
   Box,
   Users,
   Bot,
-  Globe,
   Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
-import { VPNApp } from "@/components/apps/VPN";
-import { MCPServersApp } from "@/components/apps/MCPServers";
 import { Server } from "lucide-react";
 
 type Category =
@@ -103,15 +100,6 @@ const apps: AppMetadata[] = [
     component: ChatbotApp,
   },
   {
-    id: "mcp-servers",
-    name: "MCP Servers",
-    description: "Download and manage MCP tools for the Chatbot.",
-    categories: ["All", "Utility", "LLM/AI"],
-    availability: "web-and-desktop",
-    icon: <Server className="w-8 h-8 text-cyan-500" />,
-    component: MCPServersApp,
-  },
-  {
     id: "file-compressor",
     name: "File Compressor",
     description: "Compress files to save storage space.",
@@ -119,16 +107,6 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,
-  },
-  {
-    id: "vpn",
-    name: "VPN Client",
-    description:
-      "Fast, secure, and device-wide VPN with built-in server locations.",
-    categories: ["All", "Utility"],
-    availability: "desktop-only",
-    icon: <Globe className="w-8 h-8 text-blue-500" />,
-    component: VPNApp,
   },
 ];
 

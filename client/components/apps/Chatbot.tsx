@@ -31,7 +31,6 @@ import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
 import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
-import { fetchAllMCPServers, MCPServer } from "@/lib/mcp";
 
 const InteractiveBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -440,7 +439,6 @@ export function ChatbotApp() {
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
-  const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -478,9 +476,6 @@ export function ChatbotApp() {
       setShowEncryptionUnlockModal(true);
       return;
     }
-
-    const mcpData = await fetchAllMCPServers(session.user.id);
-    setMcpServers(mcpData);
 
     const { data: chars } = await supabase
       .from("characters")
@@ -732,10 +727,6 @@ export function ChatbotApp() {
         stream: true,
         apiKey: decryptedKey,
         baseUrl: decryptedBaseUrl,
-        tools:
-          mcpServers.length > 0
-            ? mcpServers.flatMap((s) => s.tools)
-            : undefined,
       }),
     });
 
@@ -981,16 +972,6 @@ export function ChatbotApp() {
         }
       }
 
-      if (mcpServers.length > 0) {
-        injectedSystemMessage += `\n\nYou have access to the following tools:\n`;
-        mcpServers.forEach((server) => {
-          server.tools.forEach((tool) => {
-            injectedSystemMessage += `- ${tool.name}: ${tool.description}\n  Parameters: ${JSON.stringify(tool.parameters)}\n`;
-          });
-        });
-        injectedSystemMessage += `\nTo use a tool, output EXACTLY the following format:\n<tool_call>\n{"name": "tool_name", "args": {"arg1": "value"}}\n</tool_call>\nDo not add any text before or after the tool call block.\n`;
-      }
-
       const getApiMessages = (baseMessages: Message[]): Message[] => {
         if (!injectedSystemMessage) return baseMessages;
         return [
@@ -1131,79 +1112,6 @@ export function ChatbotApp() {
           .update({ updated_at: new Date().toISOString() })
           .eq("id", activeChatId);
         if (chatUpdateError) throw chatUpdateError;
-
-        const toolCallMatch = finalContent.match(
-          /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/,
-        );
-        if (toolCallMatch) {
-          let parsedData;
-          try {
-            parsedData = JSON.parse(toolCallMatch[1]);
-          } catch (e) {
-            console.error("Invalid tool json", e);
-          }
-
-          if (parsedData && parsedData.name) {
-            const toolName = parsedData.name;
-            const toolArgs = parsedData.args || {};
-
-            let toolServer: MCPServer | undefined;
-            for (const s of mcpServers) {
-              if (s.tools.some((t) => t.name === toolName)) {
-                toolServer = s;
-                break;
-              }
-            }
-
-            if (toolServer) {
-              let result = "";
-              try {
-                result = await toolServer.execute(toolName, toolArgs);
-              } catch (e: any) {
-                result = `Error executing tool: ${e.message}`;
-              }
-
-              const toolResultMessage = `Tool ${toolName} returned:\n${result}`;
-              const { error: toolInsertError } = await supabase
-                .from("chat_messages")
-                .insert({
-                  chat_id: activeChatId,
-                  role: "system",
-                  content:
-                    isEncryptionEnabled && key
-                      ? await encrypt(toolResultMessage, key)
-                      : toolResultMessage,
-                  is_encrypted: isEncryptionEnabled,
-                });
-              if (toolInsertError) throw toolInsertError;
-
-              // Append to LLM context as 'user' to maintain alternating roles (especially for Gemini)
-              currentMessages = [
-                ...currentMessages,
-                {
-                  role: "assistant",
-                  content: finalContent,
-                  reasoning: reasoningContent,
-                },
-                {
-                  role: "user",
-                  content: `[SYSTEM: Tool Execution Result]\n${toolResultMessage}`,
-                },
-              ];
-
-              // But append to UI state as 'system'
-              setMessages((prev) => [
-                ...prev,
-                { role: "system", content: toolResultMessage },
-                { role: "assistant", content: "" },
-              ]);
-              shouldContinue = true;
-              toast.success(
-                `Tool ${toolName} executed. Generating response...`,
-              );
-            }
-          }
-        }
       }
     } catch (e: any) {
       toast.error(e.message);
