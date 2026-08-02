@@ -56,6 +56,41 @@ export default function SupportTicket() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!id) return;
+    
+    const channel = supabase
+      .channel(`user_ticket_${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+          filter: `ticket_id=eq.${id}`,
+        },
+        async (payload) => {
+          const newMsg = payload.new as Message;
+          // Fetch the profile for the sender
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('user_id', newMsg.sender_id)
+            .single();
+
+          setMessages((prev) => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            return [...prev, { ...newMsg, profiles: profile || undefined }];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   const fetchTicketData = async () => {
     try {
       const [ticketRes, messagesRes] = await Promise.all([
