@@ -15,17 +15,25 @@ adminSupportRouter.get("/tickets", async (req, res) => {
   try {
     const supabase = getAdminSupabase();
     
-    // We fetch the tickets and join with profiles to get user info if possible
     const { data: tickets, error } = await supabase
       .from("support_tickets")
-      .select(`
-        *,
-        profiles:user_id ( username, avatar_url )
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    res.json({ tickets });
+
+    const userIds = [...new Set(tickets.map((t: any) => t.user_id).filter(Boolean))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, username, avatar_url")
+      .in("user_id", userIds);
+
+    const ticketsWithProfiles = tickets.map((t: any) => ({
+      ...t,
+      profiles: profiles?.find((p: any) => p.user_id === t.user_id) || null
+    }));
+
+    res.json({ tickets: ticketsWithProfiles });
   } catch (error: any) {
     console.error("Error fetching support tickets:", error);
     res.status(500).json({ error: error.message });
@@ -40,15 +48,23 @@ adminSupportRouter.get("/tickets/:id", async (req, res) => {
 
     const { data: ticket, error } = await supabase
       .from("support_tickets")
-      .select(`
-        *,
-        profiles:user_id ( username, avatar_url )
-      `)
+      .select("*")
       .eq("id", id)
       .single();
 
     if (error) throw error;
-    res.json({ ticket });
+
+    let profile = null;
+    if (ticket.user_id) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("user_id", ticket.user_id)
+        .single();
+      profile = data;
+    }
+
+    res.json({ ticket: { ...ticket, profiles: profile } });
   } catch (error: any) {
     console.error("Error fetching specific ticket:", error);
     res.status(500).json({ error: error.message });
@@ -63,15 +79,24 @@ adminSupportRouter.get("/tickets/:id/messages", async (req, res) => {
 
     const { data: messages, error } = await supabase
       .from("support_messages")
-      .select(`
-        *,
-        profiles:sender_id ( username, avatar_url )
-      `)
+      .select("*")
       .eq("ticket_id", id)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
-    res.json({ messages });
+
+    const senderIds = [...new Set(messages.map((m: any) => m.sender_id).filter(Boolean))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, username, avatar_url")
+      .in("user_id", senderIds);
+
+    const messagesWithProfiles = messages.map((m: any) => ({
+      ...m,
+      profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null
+    }));
+
+    res.json({ messages: messagesWithProfiles });
   } catch (error: any) {
     console.error("Error fetching ticket messages:", error);
     res.status(500).json({ error: error.message });
