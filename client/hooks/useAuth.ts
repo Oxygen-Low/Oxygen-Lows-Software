@@ -38,14 +38,23 @@ export const useAuth = () => {
   ) => {
     try {
       setError(null);
-      const { error } = await supabase.auth.signInWithOAuth({
+      const isWebView = typeof window !== "undefined" && (window as any).chrome?.webview != null;
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: redirectTo ?? window.location.origin,
+          redirectTo: isWebView ? "http://localhost:50321/" : (redirectTo ?? window.location.origin),
           scopes: "email profile openid",
+          ...(isWebView ? { skipBrowserRedirect: true } : {}),
         },
       });
       if (error) throw error;
+
+      if (isWebView && data?.url) {
+        (window as any).chrome.webview.postMessage(JSON.stringify({
+          command: "open_browser",
+          url: data.url,
+        }));
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : `${provider} sign in failed`;
@@ -59,14 +68,23 @@ export const useAuth = () => {
   ) => {
     try {
       setError(null);
+      const isWebView = typeof window !== "undefined" && (window as any).chrome?.webview != null;
       const { data, error } = await supabase.auth.linkIdentity({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/account`,
+          redirectTo: isWebView ? "http://localhost:50321/" : `${window.location.origin}/account`,
           scopes: "email profile openid",
+          ...(isWebView ? { skipBrowserRedirect: true } : {}),
         },
       });
       if (error) throw error;
+
+      if (isWebView && data?.url) {
+        (window as any).chrome.webview.postMessage(JSON.stringify({
+          command: "open_browser",
+          url: data.url,
+        }));
+      }
       return data;
     } catch (err) {
       const message =
