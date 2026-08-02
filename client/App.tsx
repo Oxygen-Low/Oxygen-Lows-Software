@@ -19,8 +19,6 @@ import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import OauthConsent from "./pages/OauthConsent";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import GameLibrary from "./pages/GameSyncer/GameLibrary";
-import GameDetail from "./pages/GameSyncer/GameDetail";
 
 const queryClient = new QueryClient();
 
@@ -100,8 +98,6 @@ const App = () => (
               <Route path="/oauth/consent" element={<OauthConsent />} />
               <Route path="/auth" element={<Auth />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="/game-syncer" element={<ProtectedRoute><GameLibrary /></ProtectedRoute>} />
-              <Route path="/game-syncer/:id" element={<ProtectedRoute><GameDetail /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MusicProvider>

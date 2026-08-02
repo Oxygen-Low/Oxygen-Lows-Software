@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -163,59 +162,6 @@ public partial class MainWindow : Window
                             FileName = url,
                             UseShellExecute = true
                         });
-                    }
-                }
-                else if (cmd == "scan_directory")
-                {
-                    string path = doc.RootElement.TryGetProperty("path", out var p) ? p.GetString() ?? "" : "";
-                    string requestId = doc.RootElement.TryGetProperty("requestId", out var r) ? r.GetString() ?? "" : "";
-                    
-                    try
-                    {
-                        if (Directory.Exists(path))
-                        {
-                            var directories = Directory.GetDirectories(path);
-                            var files = Directory.GetFiles(path);
-                            SendWebMessage(new { type = "scan_result", success = true, directories, files, requestId });
-                        }
-                        else
-                        {
-                            SendWebMessage(new { type = "scan_result", success = false, error = "Directory not found", requestId });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        SendWebMessage(new { type = "scan_result", success = false, error = ex.Message, requestId });
-                    }
-                }
-                else if (cmd == "zip_directory")
-                {
-                    string path = doc.RootElement.TryGetProperty("path", out var p) ? p.GetString() ?? "" : "";
-                    string requestId = doc.RootElement.TryGetProperty("requestId", out var r) ? r.GetString() ?? "" : "";
-                    
-                    try
-                    {
-                        if (Directory.Exists(path))
-                        {
-                            string tempFolder = Path.GetTempPath();
-                            string zipFileName = $"gamesave_{Guid.NewGuid().ToString().Substring(0, 8)}.zip";
-                            string zipPath = Path.Combine(tempFolder, zipFileName);
-                            
-                            if (File.Exists(zipPath))
-                                File.Delete(zipPath);
-                                
-                            ZipFile.CreateFromDirectory(path, zipPath);
-                            
-                            SendWebMessage(new { type = "zip_result", success = true, zipPath, requestId });
-                        }
-                        else
-                        {
-                            SendWebMessage(new { type = "zip_result", success = false, error = "Directory not found", requestId });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        SendWebMessage(new { type = "zip_result", success = false, error = ex.Message, requestId });
                     }
                 }
             }
