@@ -155,7 +155,7 @@ export const handleGetHordeStatus: RequestHandler = async (_req, res) => {
 };
 
 export const handleProxyAiRequest: RequestHandler = async (req, res) => {
-  const { provider, model, messages, stream, style, apiKey, baseUrl, tools } =
+  const { provider, model, messages, stream, apiKey, baseUrl, tools } =
     req.body;
   const authHeader = req.headers.authorization;
   if (!authHeader)
@@ -279,17 +279,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   };
 
   try {
-    if (style) {
-      const base = path.resolve(process.cwd(), "prompts", "chat");
-      const target = path.resolve(base, `${style}.prompt.yml`);
-      const relative = path.relative(base, target);
-      if (relative.startsWith("..") || path.isAbsolute(relative)) {
-        throw new Error("Invalid file path");
-      }
-      const styleContent = getSystemContentFromYaml(target);
-      if (styleContent)
-        processedMessages.unshift({ role: "system", content: styleContent });
-    }
+
 
     switch (provider) {
       case "openai":
@@ -818,32 +808,6 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       return res.status(504).json({ error: "Upstream request timed out" });
     res.status(500).json({ error: error.message });
   }
-};
-
-export const handleGetChatStyles: RequestHandler = async (_req, res) => {
-  const stylesDir = path.join(process.cwd(), "prompts", "chat");
-  try {
-    if (!fs.existsSync(stylesDir)) return res.json([]);
-    const files = fs.readdirSync(stylesDir);
-    const styles = [];
-    for (const file of files) {
-      if (
-        file.endsWith(".prompt.yml") &&
-        file !== "base_artifacts.prompt.yml"
-      ) {
-        const id = file.replace(".prompt.yml", "");
-        const descFile = path.join(stylesDir, `${id}.description`);
-        let title = id,
-          description = "";
-        if (fs.existsSync(descFile)) {
-          const content = fs.readFileSync(descFile, "utf-8");
-          const lines = content.split("\n");
-          title =
-            lines
-              .find((l) => l.startsWith("Title:"))
-              ?.split(":")[1]
-              ?.trim() || id;
-          description =
             lines
               .find((l) => l.startsWith("Description:"))
               ?.split(":")[1]
