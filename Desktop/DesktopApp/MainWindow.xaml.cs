@@ -121,38 +121,7 @@ public partial class MainWindow : Window
             {
                 var cmd = cmdProp.GetString();
                 
-                if (cmd == "vpn_connect")
-                {
-                    string serverName = doc.RootElement.TryGetProperty("serverName", out var s) ? s.GetString() ?? "" : "";
-                    string baseUrl = doc.RootElement.TryGetProperty("baseUrl", out var b) ? b.GetString() ?? "" : "";
-                    string userId = doc.RootElement.TryGetProperty("userId", out var u) ? u.GetString() ?? "" : "";
-                    string accessToken = doc.RootElement.TryGetProperty("accessToken", out var a) ? a.GetString() ?? "" : "";
-                    
-                    string configData = await VPNConnectionManager.FetchServerConfigAsync(baseUrl);
-                    
-                    if (!string.IsNullOrEmpty(configData))
-                    {
-                        bool success = await VPNConnectionManager.ConnectAsync(baseUrl, userId, accessToken);
-                        if (success)
-                        {
-                            SendWebMessage(new { type = "vpn_status", status = "connected", serverName });
-                        }
-                        else
-                        {
-                            SendWebMessage(new { type = "vpn_status", status = "error", error = "Failed to connect via WebSocket" });
-                        }
-                    }
-                    else
-                    {
-                        SendWebMessage(new { type = "vpn_status", status = "error", error = "Failed to fetch config" });
-                    }
-                }
-                else if (cmd == "vpn_disconnect")
-                {
-                    await VPNConnectionManager.DisconnectAsync();
-                    SendWebMessage(new { type = "vpn_status", status = "disconnected" });
-                }
-                else if (cmd == "open_browser")
+                if (cmd == "open_browser")
                 {
                     string url = doc.RootElement.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
                     if (!string.IsNullOrEmpty(url))
@@ -169,7 +138,6 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine("WebMessage Error: " + ex.Message);
-            SendWebMessage(new { type = "vpn_status", status = "error", error = ex.Message });
         }
     }
 
@@ -186,12 +154,5 @@ public partial class MainWindow : Window
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
         StopLocalServer();
-
-        try
-        {
-            VPNConnectionManager.DisconnectAsync().GetAwaiter().GetResult();
-            VPNKillswitchManager.CleanUpActiveRulesOnExit();
-        }
-        catch { }
     }
 }
