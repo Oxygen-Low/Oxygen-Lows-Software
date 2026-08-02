@@ -43,7 +43,8 @@ export default function AdminSupport() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch tickets. Make sure you are an admin.");
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to fetch tickets (Status ${response.status})`);
       }
 
       const data = await response.json();
