@@ -51,7 +51,9 @@ export default function Characters() {
   const { session } = useAuth();
   const { toast } = useToast();
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [activeTab, setActiveTab] = useState<'characters' | 'universes'>('characters');
+  const [activeTab, setActiveTab] = useState<"characters" | "universes">(
+    "characters",
+  );
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>(
@@ -235,7 +237,9 @@ export default function Characters() {
 
       toast({
         title: "Success",
-        description: currentCharacter.is_universe ? "Universe saved successfully" : "Character saved successfully",
+        description: currentCharacter.is_universe
+          ? "Universe saved successfully"
+          : "Character saved successfully",
       });
       setIsEditing(false);
       fetchCharacters();
@@ -301,14 +305,14 @@ export default function Characters() {
           <div>
             <div className="flex gap-4 items-center">
               <button
-                onClick={() => setActiveTab('characters')}
-                className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === 'characters' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                onClick={() => setActiveTab("characters")}
+                className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "characters" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
               >
                 My Characters
               </button>
               <button
-                onClick={() => setActiveTab('universes')}
-                className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === 'universes' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                onClick={() => setActiveTab("universes")}
+                className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "universes" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
               >
                 My Universes
               </button>
@@ -331,28 +335,40 @@ export default function Characters() {
             <DialogTrigger asChild>
               <Button className="bg-cyan-600 hover:bg-cyan-700">
                 <Plus className="w-4 h-4 mr-2" />
-                {activeTab === 'characters' ? "New Character" : "New Universe"}
+                {activeTab === "characters" ? "New Character" : "New Universe"}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
               <DialogHeader>
                 <DialogTitle>
-                  {currentCharacter.id ? `Edit ${currentCharacter.is_universe ? 'Universe' : 'Character'}` : `Create ${activeTab === 'characters' ? 'Character' : 'Universe'}`}
+                  {currentCharacter.id
+                    ? `Edit ${currentCharacter.is_universe ? "Universe" : "Character"}`
+                    : `Create ${activeTab === "characters" ? "Character" : "Universe"}`}
                 </DialogTitle>
                 <DialogDescription className="text-slate-400">
-                  {currentCharacter.is_universe || activeTab === 'universes' ? "Define your universe's lore and setting." : "Define your character's traits and backstory."}
+                  {currentCharacter.is_universe || activeTab === "universes"
+                    ? "Define your universe's lore and setting."
+                    : "Define your character's traits and backstory."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <input 
-                    type="checkbox" 
-                    id="is_universe" 
+                  <input
+                    type="checkbox"
+                    id="is_universe"
                     checked={currentCharacter.is_universe || false}
-                    onChange={(e) => setCurrentCharacter(prev => ({ ...prev, is_universe: e.target.checked }))}
+                    onChange={(e) =>
+                      setCurrentCharacter((prev) => ({
+                        ...prev,
+                        is_universe: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
                   />
-                  <label htmlFor="is_universe" className="text-sm font-medium text-slate-300">
+                  <label
+                    htmlFor="is_universe"
+                    className="text-sm font-medium text-slate-300"
+                  >
                     This is a Universe (setting/lore)
                   </label>
                 </div>
@@ -550,59 +566,72 @@ export default function Characters() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {characters.filter(c => activeTab === 'characters' ? !c.is_universe : c.is_universe).map((char) => (
-              <Card
-                key={char.id}
-                className="bg-slate-900/50 border-slate-800 overflow-hidden hover:border-cyan-500/50 transition-colors group"
-              >
-                <div className="aspect-square bg-slate-800 relative overflow-hidden">
-                  {char.image_url ? (
-                    <img
-                      src={char.image_url}
-                      alt={char.name}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-700">
-                      {char.is_universe ? <Globe className="w-16 h-16" /> : <User className="w-16 h-16" />}
+            {characters
+              .filter((c) =>
+                activeTab === "characters" ? !c.is_universe : c.is_universe,
+              )
+              .map((char) => (
+                <Card
+                  key={char.id}
+                  className="bg-slate-900/50 border-slate-800 overflow-hidden hover:border-cyan-500/50 transition-colors group"
+                >
+                  <div className="aspect-square bg-slate-800 relative overflow-hidden">
+                    {char.image_url ? (
+                      <img
+                        src={char.image_url}
+                        alt={char.name}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-700">
+                        {char.is_universe ? (
+                          <Globe className="w-16 h-16" />
+                        ) : (
+                          <User className="w-16 h-16" />
+                        )}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <h3 className="text-xl font-bold text-white truncate">
+                        {char.display_name || char.name}
+                      </h3>
+                      <p className="text-sm text-slate-300 truncate">
+                        {char.short_description || "No description"}
+                      </p>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <h3 className="text-xl font-bold text-white truncate">
-                      {char.display_name || char.name}
-                    </h3>
-                    <p className="text-sm text-slate-300 truncate">
-                      {char.short_description || "No description"}
-                    </p>
                   </div>
-                </div>
-                <CardContent className="p-4 flex gap-2">
-                  <Button
-                    variant="secondary"
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
-                    onClick={() => {
-                      setCurrentCharacter(char);
-                      setIsEditing(true);
-                    }}
-                  >
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => handleDelete(char.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-            {characters.filter(c => activeTab === 'characters' ? !c.is_universe : c.is_universe).length === 0 && (
+                  <CardContent className="p-4 flex gap-2">
+                    <Button
+                      variant="secondary"
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
+                      onClick={() => {
+                        setCurrentCharacter(char);
+                        setIsEditing(true);
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(char.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            {characters.filter((c) =>
+              activeTab === "characters" ? !c.is_universe : c.is_universe,
+            ).length === 0 && (
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
                 <p className="text-slate-500">
-                  No {activeTab === 'characters' ? 'characters' : 'universes'} created yet. Click "New {activeTab === 'characters' ? 'Character' : 'Universe'}" to begin.
+                  No {activeTab === "characters" ? "characters" : "universes"}{" "}
+                  created yet. Click "New{" "}
+                  {activeTab === "characters" ? "Character" : "Universe"}" to
+                  begin.
                 </p>
               </div>
             )}

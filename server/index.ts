@@ -4,6 +4,8 @@ import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
+import session from "express-session";
+import crypto from "crypto";
 import { handleDemo } from "./routes/demo";
 import { oauthAdminRouter } from "./routes/oauthAdmin";
 import {
@@ -16,6 +18,7 @@ import { gitRouter } from "./routes/git";
 import { proxyRouter } from "./routes/proxy";
 import { apiLimiter } from "./lib/limiter";
 import { aikidoUserMiddleware } from "./lib/aikido";
+import { auditMiddleware } from "./lib/auditLogger";
 
 if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;
@@ -60,9 +63,16 @@ export function createServer() {
             "https://vqmukrmpgvavscsyefqd.supabase.co",
             "blob:",
           ],
-          "script-src": process.env.NODE_ENV === "production"
-            ? ["'self'", "blob:", "https://keepandroidopen.org"]
-            : ["'self'", "blob:", "https://keepandroidopen.org", "'unsafe-inline'", "'unsafe-eval'"],
+          "script-src":
+            process.env.NODE_ENV === "production"
+              ? ["'self'", "blob:", "https://keepandroidopen.org"]
+              : [
+                  "'self'",
+                  "blob:",
+                  "https://keepandroidopen.org",
+                  "'unsafe-inline'",
+                  "'unsafe-eval'",
+                ],
           "worker-src": ["'self'", "blob:"],
         },
       },
@@ -72,8 +82,26 @@ export function createServer() {
   app.use(express.json({ limit: "200mb" }));
   app.use(express.urlencoded({ limit: "200mb", extended: true }));
 
+  app.use(
+    session({
+      secret:
+        process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
+      resave: false,
+      saveUninitialized: false,
+      name: "sessionId",
+      genid: () => crypto.randomUUID(),
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        sameSite: "strict",
+        maxAge: 1000 * 60 * 60 * 24, // 24 hours
+      },
+    }),
+  );
+
   // Aikido Zen Middleware
   app.use(aikidoUserMiddleware);
+  app.use(auditMiddleware);
   Zen.addExpressMiddleware(app);
 
   app.get("/health", (_req, res) => {

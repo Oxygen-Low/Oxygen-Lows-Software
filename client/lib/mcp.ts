@@ -40,13 +40,13 @@ export const builtinFetchServer: MCPServer = {
         const response = await fetch("/api/proxy/fetch", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ url: args.url })
+          body: JSON.stringify({ url: args.url }),
         });
         if (!response.ok) {
-           const errText = await response.text();
-           return `Error: HTTP ${response.status} ${response.statusText}\n${errText}`;
+          const errText = await response.text();
+          return `Error: HTTP ${response.status} ${response.statusText}\n${errText}`;
         }
         const text = await response.text();
         return text.substring(0, 10000); // Limit size
@@ -58,7 +58,11 @@ export const builtinFetchServer: MCPServer = {
   },
 };
 
-export const loadMCPServerFromString = (id: string, name: string, code: string): MCPServer => {
+export const loadMCPServerFromString = (
+  id: string,
+  name: string,
+  code: string,
+): MCPServer => {
   try {
     // Provide a safe-ish context for eval, though it's client-side so user has control.
     // The code should end with: return { tools: [...], execute: async (...) => {...} }
@@ -76,7 +80,9 @@ export const loadMCPServerFromString = (id: string, name: string, code: string):
   }
 };
 
-export const fetchAllMCPServers = async (userId: string): Promise<MCPServer[]> => {
+export const fetchAllMCPServers = async (
+  userId: string,
+): Promise<MCPServer[]> => {
   const servers: MCPServer[] = [builtinFetchServer];
 
   try {

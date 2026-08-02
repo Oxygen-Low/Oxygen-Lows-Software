@@ -18,7 +18,7 @@ proxyRouter.post("/fetch", async (req: Request, res: Response) => {
       responseType: "text", // We want raw text
       validateStatus: () => true, // Don't throw on 4xx/5xx
     });
-    
+
     res.status(response.status).send(response.data);
   } catch (error: any) {
     console.error("Proxy fetch error:", error);

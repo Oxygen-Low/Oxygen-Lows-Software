@@ -41,7 +41,9 @@ describe("Apps", () => {
     expect(screen.queryByText("File Compressor")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Desktop only" }));
-    expect(screen.getByText("No desktop-only apps are available yet.")).toBeDefined();
+    expect(
+      screen.getByText("No desktop-only apps are available yet."),
+    ).toBeDefined();
     expect(screen.getByLabelText("LLM/AI (0 apps)")).toBeDefined();
   });
 

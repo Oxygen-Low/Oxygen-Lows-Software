@@ -96,8 +96,7 @@ const apps: AppMetadata[] = [
   {
     id: "chatbot",
     name: "Chatbot",
-    description:
-      "Chat with LLMs.",
+    description: "Chat with LLMs.",
     categories: ["All", "LLM/AI"],
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
@@ -124,7 +123,8 @@ const apps: AppMetadata[] = [
   {
     id: "vpn",
     name: "VPN Client",
-    description: "Fast, secure, and device-wide VPN with built-in server locations.",
+    description:
+      "Fast, secure, and device-wide VPN with built-in server locations.",
     categories: ["All", "Utility"],
     availability: "desktop-only",
     icon: <Globe className="w-8 h-8 text-blue-500" />,
@@ -165,7 +165,9 @@ export default function Apps() {
 
   const filteredApps = useMemo(() => {
     if (selectedCategory === "All") return availableApps;
-    return availableApps.filter((app) => app.categories.includes(selectedCategory));
+    return availableApps.filter((app) =>
+      app.categories.includes(selectedCategory),
+    );
   }, [selectedCategory, availableApps]);
 
   const categoryAppCounts = useMemo(() => {

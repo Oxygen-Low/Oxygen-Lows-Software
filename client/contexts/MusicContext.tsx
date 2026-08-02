@@ -185,7 +185,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     loadMusicPreferences();
   }, [session?.user?.id, resolvePlaybackUrl]);
 
-
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
       if (!audioRef.current) {
@@ -227,10 +226,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         playlist: overridePlaylist || playlistRef.current,
       });
     },
-    [
-      resolvePlaybackUrl,
-      savePreferences,
-    ],
+    [resolvePlaybackUrl, savePreferences],
   );
 
   const playNext = useCallback(async () => {
@@ -295,7 +291,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => clearInterval(interval);
   }, [isPlaying, session?.user?.id, savePreferences]);
-
 
   const play = useCallback(async () => {
     if (!currentTrack) return;

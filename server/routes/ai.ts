@@ -37,19 +37,37 @@ export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
   const localModels = [...DEFAULT_HORDE_MODELS];
 
   const results = await Promise.allSettled([
-    axios.get("http://127.0.0.1:11434/api/tags", { timeout: 2000 })
-      .then(r => (r.data.models || []).map((m: any) => ({ provider: "ollama", model_id: m.name }))),
-    axios.get("http://127.0.0.1:1234/v1/models", { timeout: 2000 })
-      .then(r => (r.data.data || []).map((m: any) => ({ provider: "lmstudio", model_id: m.id }))),
-    axios.get("http://127.0.0.1:5001/v1/models", { timeout: 2000 })
-      .then(r => {
-        const models = (r.data.data || []).map((m: any) => ({ provider: "koboldcpp", model_id: m.id }));
+    axios.get("http://127.0.0.1:11434/api/tags", { timeout: 2000 }).then((r) =>
+      (r.data.models || []).map((m: any) => ({
+        provider: "ollama",
+        model_id: m.name,
+      })),
+    ),
+    axios.get("http://127.0.0.1:1234/v1/models", { timeout: 2000 }).then((r) =>
+      (r.data.data || []).map((m: any) => ({
+        provider: "lmstudio",
+        model_id: m.id,
+      })),
+    ),
+    axios
+      .get("http://127.0.0.1:5001/v1/models", { timeout: 2000 })
+      .then((r) => {
+        const models = (r.data.data || []).map((m: any) => ({
+          provider: "koboldcpp",
+          model_id: m.id,
+        }));
         if (!models.length) throw new Error("No models");
         return models;
       })
-      .catch(() => axios.get("http://127.0.0.1:5001/api/v1/model", { timeout: 2000 })
-        .then(r => r.data?.result ? [{ provider: "koboldcpp", model_id: r.data.result }] : [])
-      )
+      .catch(() =>
+        axios
+          .get("http://127.0.0.1:5001/api/v1/model", { timeout: 2000 })
+          .then((r) =>
+            r.data?.result
+              ? [{ provider: "koboldcpp", model_id: r.data.result }]
+              : [],
+          ),
+      ),
   ]);
 
   for (const result of results) {
@@ -69,7 +87,7 @@ const HORDE_MODELS_MAP: Record<string, string[]> = {
     "koboldcpp/Qwen_Qwen3-0.6B-IQ4_XS",
     "koboldcpp/Qwen/Qwen3.5-0.8B",
     "koboldcpp/mradermacher/Cerebras-GPT-111M-instruction-GGUF",
-    "koboldcpp/mradermacher/pythia-70m-deduped.f16.gguf"
+    "koboldcpp/mradermacher/pythia-70m-deduped.f16.gguf",
   ],
   Balanced: [
     "google/gemma-4-31b",
@@ -77,14 +95,14 @@ const HORDE_MODELS_MAP: Record<string, string[]> = {
     "aphrodite/TheDrummer/Cydonia-24B-v4.3",
     "koboldcpp/TheDrummer/Cydonia-24B-v4.3",
     "koboldcpp/Magidonia-24B-v4.3",
-    "koboldcpp/Laguna-XS-2.1"
+    "koboldcpp/Laguna-XS-2.1",
   ],
   Smart: [
     "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
     "google/gemma-4-31b",
     "koboldcpp/Sprinkle-Vanilla-Gemma-4-31B.i1-Q4_K_M.gguf",
     "neroued/Qwen3.6-27B-nvfp4-NInfer",
-    "aphrodite/TheDrummer/Skyfall-31B-v4.2"
+    "aphrodite/TheDrummer/Skyfall-31B-v4.2",
   ],
   Write: [
     "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
@@ -97,7 +115,7 @@ const HORDE_MODELS_MAP: Record<string, string[]> = {
     "koboldcpp/L3-8B-Stheno-v3.2-Q8_0",
     "koboldcpp/L3-8B-Stheno-v3.2",
     "aphrodite/SicariusSicariiStuff/Impish_Bloodmoon_12B",
-    "koboldcpp/Izuku Midoriya (Before U.A.)"
+    "koboldcpp/Izuku Midoriya (Before U.A.)",
   ],
   Code: [
     "Qwen3-Coder-480B-A35B-Instruct",
@@ -107,8 +125,8 @@ const HORDE_MODELS_MAP: Record<string, string[]> = {
     "google/gemma-4-31b",
     "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
     "koboldcpp/Llama-3.2-3B",
-    "koboldcpp/Meta-Llama-3-2-3B-Instruct.Q4_K_M"
-  ]
+    "koboldcpp/Meta-Llama-3-2-3B-Instruct.Q4_K_M",
+  ],
 };
 
 export const handleGetHordeStatus: RequestHandler = async (_req, res) => {
@@ -215,7 +233,6 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   if (baseContent)
     processedMessages.unshift({ role: "system", content: baseContent });
 
-
   const abortController = new AbortController();
   const axiosOptions: any = {
     headers: { "Content-Type": "application/json" },
@@ -279,8 +296,6 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   };
 
   try {
-
-
     switch (provider) {
       case "openai":
         await handleResponse(
@@ -298,8 +313,12 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         );
         break;
       case "anthropic": {
-        const systemMessages = processedMessages.filter((m: any) => m.role === "system");
-        const systemContent = systemMessages.map((m: any) => m.content).join("\n\n");
+        const systemMessages = processedMessages.filter(
+          (m: any) => m.role === "system",
+        );
+        const systemContent = systemMessages
+          .map((m: any) => m.content)
+          .join("\n\n");
         const transformedMessages = processedMessages
           .filter((m: any) => m.role !== "system")
           .map((m: any) => {
@@ -407,7 +426,11 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                   }
                   return { role, parts };
                 }),
-              tools: tools ? tools.map((t: any) => ({ function_declarations: [t.function] })) : undefined,
+              tools: tools
+                ? tools.map((t: any) => ({
+                    function_declarations: [t.function],
+                  }))
+                : undefined,
             },
             params: { key: integration?.api_key },
             ...axiosOptions,
@@ -417,21 +440,31 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       }
       case "horde": {
         let hordeModels = HORDE_MODELS_MAP[model] || [model];
-        
+
         try {
-          const statusRes = await axios.get("https://stablehorde.net/api/v2/status/models?type=text", { timeout: 5000 });
+          const statusRes = await axios.get(
+            "https://stablehorde.net/api/v2/status/models?type=text",
+            { timeout: 5000 },
+          );
           if (statusRes.data && Array.isArray(statusRes.data)) {
             const modelStats = statusRes.data.reduce((acc: any, m: any) => {
-              if (m.name) acc[m.name] = { eta: m.eta || 0, count: m.count || 0 };
+              if (m.name)
+                acc[m.name] = { eta: m.eta || 0, count: m.count || 0 };
               return acc;
             }, {});
 
             let bestModel = null;
             if (model === "Fast") {
-              const onlineFastModels = hordeModels.filter((m: string) => modelStats[m] && modelStats[m].count > 0);
+              const onlineFastModels = hordeModels.filter(
+                (m: string) => modelStats[m] && modelStats[m].count > 0,
+              );
               if (onlineFastModels.length > 0) {
-                const minEta = Math.min(...onlineFastModels.map((m: string) => modelStats[m].eta));
-                const fastestModels = onlineFastModels.filter((m: string) => modelStats[m].eta === minEta);
+                const minEta = Math.min(
+                  ...onlineFastModels.map((m: string) => modelStats[m].eta),
+                );
+                const fastestModels = onlineFastModels.filter(
+                  (m: string) => modelStats[m].eta === minEta,
+                );
                 bestModel = fastestModels[0];
               }
             } else {
@@ -447,7 +480,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
             if (bestModel) {
               hordeModels = [bestModel];
             } else {
-              const onlineModels = hordeModels.filter(m => modelStats[m] && modelStats[m].count > 0);
+              const onlineModels = hordeModels.filter(
+                (m) => modelStats[m] && modelStats[m].count > 0,
+              );
               if (onlineModels.length > 0) {
                 hordeModels = [onlineModels[0]];
               }
@@ -564,11 +599,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                 res.write("data: [DONE]\n\n");
                 return res.end();
               }
-              return res
-                .status(statusResponse.status)
-                .json({
-                  error: `AI Horde generation failed with status ${statusResponse.status}`,
-                });
+              return res.status(statusResponse.status).json({
+                error: `AI Horde generation failed with status ${statusResponse.status}`,
+              });
             }
 
             if (statusResponse.data?.done) {
@@ -598,9 +631,9 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
                 res.write("data: [DONE]\n\n");
                 return res.end();
               }
-              return res
-                .status(503)
-                .json({ error: "AI Horde generation is not possible (no workers)" });
+              return res.status(503).json({
+                error: "AI Horde generation is not possible (no workers)",
+              });
             } else {
               if (stream) {
                 const pollThrottleInterval = 5;

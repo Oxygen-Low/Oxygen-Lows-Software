@@ -41,7 +41,9 @@ interface ThemeProviderProps {
 }
 
 export function hexToHSL(hex: string): { h: number; s: number; l: number } {
-  let r = 0, g = 0, b = 0;
+  let r = 0,
+    g = 0,
+    b = 0;
   if (hex.length === 4) {
     r = parseInt(hex[1] + hex[1], 16);
     g = parseInt(hex[2] + hex[2], 16);
@@ -54,24 +56,36 @@ export function hexToHSL(hex: string): { h: number; s: number; l: number } {
   r /= 255;
   g /= 255;
   b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0, l = (max + min) / 2;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  let h = 0,
+    s = 0,
+    l = (max + min) / 2;
   if (max === min) {
     h = s = 0; // achromatic
   } else {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
     }
     h /= 6;
   }
   return { h: h * 360, s: s * 100, l: l * 100 };
 }
 
-export function adjustLightness(hsl: { h: number; s: number; l: number }, amount: number) {
+export function adjustLightness(
+  hsl: { h: number; s: number; l: number },
+  amount: number,
+) {
   return `hsl(${hsl.h}, ${hsl.s}%, ${Math.max(0, Math.min(100, hsl.l + amount))}%)`;
 }
 
@@ -84,121 +98,130 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [lastProvider, setLastProvider] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const applyTheme = useCallback(
-    (newTheme: Theme, gradient: boolean) => {
-      // Remove all theme classes
-      document.documentElement.classList.remove(
-        "theme-red",
-        "theme-yellow",
-        "theme-black",
-        "theme-white",
-        "use-gradient",
-        "use-background-image",
-        "dark",
-        "theme-custom"
-      );
+  const applyTheme = useCallback((newTheme: Theme, gradient: boolean) => {
+    // Remove all theme classes
+    document.documentElement.classList.remove(
+      "theme-red",
+      "theme-yellow",
+      "theme-black",
+      "theme-white",
+      "use-gradient",
+      "use-background-image",
+      "dark",
+      "theme-custom",
+    );
 
-      // Clean up previous custom styles
-      document.documentElement.style.removeProperty('--primary');
-      document.documentElement.style.removeProperty('--primary-foreground');
-      document.documentElement.style.removeProperty('--ring');
-      document.documentElement.style.removeProperty('--background');
-      document.documentElement.style.removeProperty('--foreground');
-      document.documentElement.style.removeProperty('--theme-gradient');
+    // Clean up previous custom styles
+    document.documentElement.style.removeProperty("--primary");
+    document.documentElement.style.removeProperty("--primary-foreground");
+    document.documentElement.style.removeProperty("--ring");
+    document.documentElement.style.removeProperty("--background");
+    document.documentElement.style.removeProperty("--foreground");
+    document.documentElement.style.removeProperty("--theme-gradient");
 
-      if (newTheme.startsWith("custom:")) {
-        document.documentElement.classList.add("theme-custom");
+    if (newTheme.startsWith("custom:")) {
+      document.documentElement.classList.add("theme-custom");
+      document.documentElement.classList.add("dark");
+
+      const colorsStr = newTheme.replace("custom:", "");
+      const [primaryHex, bgHex] = colorsStr.split("-");
+
+      if (primaryHex) {
+        const hsl = hexToHSL(primaryHex);
+        const hslString = `${hsl.h} ${hsl.s}% ${hsl.l}%`;
+        document.documentElement.style.setProperty("--primary", hslString);
+        document.documentElement.style.setProperty("--ring", hslString);
+        // Set foreground for primary
+        document.documentElement.style.setProperty(
+          "--primary-foreground",
+          hsl.l > 50 ? "0 0% 0%" : "0 0% 100%",
+        );
+      }
+
+      if (bgHex) {
+        const bgHsl = hexToHSL(bgHex);
+        const bgHslString = `${bgHsl.h} ${bgHsl.s}% ${bgHsl.l}%`;
+        document.documentElement.style.setProperty("--background", bgHslString);
+        // Calculate a gradient if enabled
+        if (gradient) {
+          const darkerBg = adjustLightness(bgHsl, -10);
+          const normalBg = `hsl(${bgHsl.h}, ${bgHsl.s}%, ${bgHsl.l}%)`;
+          document.documentElement.style.setProperty(
+            "--theme-gradient",
+            `linear-gradient(135deg, ${darkerBg} 0%, ${normalBg} 50%, ${darkerBg} 100%)`,
+          );
+        }
+      }
+    } else {
+      // Add the new theme class if not default
+      if (newTheme !== "default") {
+        document.documentElement.classList.add(`theme-${newTheme}`);
+      }
+
+      // Add dark class for all themes except white
+      if (newTheme !== "white") {
         document.documentElement.classList.add("dark");
-        
-        const colorsStr = newTheme.replace("custom:", "");
-        const [primaryHex, bgHex] = colorsStr.split("-");
-        
-        if (primaryHex) {
-          const hsl = hexToHSL(primaryHex);
-          const hslString = `${hsl.h} ${hsl.s}% ${hsl.l}%`;
-          document.documentElement.style.setProperty('--primary', hslString);
-          document.documentElement.style.setProperty('--ring', hslString);
-          // Set foreground for primary
-          document.documentElement.style.setProperty('--primary-foreground', hsl.l > 50 ? '0 0% 0%' : '0 0% 100%');
-        }
-        
-        if (bgHex) {
-           const bgHsl = hexToHSL(bgHex);
-           const bgHslString = `${bgHsl.h} ${bgHsl.s}% ${bgHsl.l}%`;
-           document.documentElement.style.setProperty('--background', bgHslString);
-           // Calculate a gradient if enabled
-           if (gradient) {
-             const darkerBg = adjustLightness(bgHsl, -10);
-             const normalBg = `hsl(${bgHsl.h}, ${bgHsl.s}%, ${bgHsl.l}%)`;
-             document.documentElement.style.setProperty('--theme-gradient', `linear-gradient(135deg, ${darkerBg} 0%, ${normalBg} 50%, ${darkerBg} 100%)`);
-           }
-        }
-      } else {
-        // Add the new theme class if not default
-        if (newTheme !== "default") {
-          document.documentElement.classList.add(`theme-${newTheme}`);
-        }
-
-        // Add dark class for all themes except white
-        if (newTheme !== "white") {
-          document.documentElement.classList.add("dark");
-        }
       }
-
-      if (gradient) {
-        document.documentElement.classList.add("use-gradient");
-      }
-    },
-    [],
-  );
-
-  const applyFont = useCallback(async (newFont: string, sessionUserId?: string) => {
-    // Remove all standard font classes
-    document.documentElement.classList.remove(...VALID_FONTS, "font-custom");
-    
-    // Remove old custom font style if exists
-    const existingStyle = document.getElementById("custom-font-style");
-    if (existingStyle) {
-      existingStyle.remove();
     }
-    document.documentElement.style.removeProperty('--font-family');
 
-    if (newFont.startsWith("font-custom:") && sessionUserId) {
-      const fileName = newFont.replace("font-custom:", "");
-      try {
-        let path = fileName.startsWith(sessionUserId + "/")
-          ? fileName
-          : `${sessionUserId}/${fileName}`;
-        path = path.replace(/\.\.\//g, "");
-        const { data } = await supabase.storage
-          .from("Storage")
-          .createSignedUrl(path, 3600);
-        
-        if (data?.signedUrl) {
-          const style = document.createElement("style");
-          style.id = "custom-font-style";
-          style.innerHTML = `
+    if (gradient) {
+      document.documentElement.classList.add("use-gradient");
+    }
+  }, []);
+
+  const applyFont = useCallback(
+    async (newFont: string, sessionUserId?: string) => {
+      // Remove all standard font classes
+      document.documentElement.classList.remove(...VALID_FONTS, "font-custom");
+
+      // Remove old custom font style if exists
+      const existingStyle = document.getElementById("custom-font-style");
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+      document.documentElement.style.removeProperty("--font-family");
+
+      if (newFont.startsWith("font-custom:") && sessionUserId) {
+        const fileName = newFont.replace("font-custom:", "");
+        try {
+          let path = fileName.startsWith(sessionUserId + "/")
+            ? fileName
+            : `${sessionUserId}/${fileName}`;
+          path = path.replace(/\.\.\//g, "");
+          const { data } = await supabase.storage
+            .from("Storage")
+            .createSignedUrl(path, 3600);
+
+          if (data?.signedUrl) {
+            const style = document.createElement("style");
+            style.id = "custom-font-style";
+            style.innerHTML = `
             @font-face {
               font-family: 'CustomUserFont';
               src: url('${data.signedUrl}');
             }
           `;
-          document.head.appendChild(style);
-          document.documentElement.style.setProperty('--font-family', "'CustomUserFont'");
-          document.documentElement.classList.add("font-custom");
+            document.head.appendChild(style);
+            document.documentElement.style.setProperty(
+              "--font-family",
+              "'CustomUserFont'",
+            );
+            document.documentElement.classList.add("font-custom");
+          }
+        } catch (error) {
+          console.error("Failed to load custom font", error);
+          document.documentElement.classList.add("font-indie");
         }
-      } catch (error) {
-        console.error("Failed to load custom font", error);
-        document.documentElement.classList.add("font-indie");
+      } else {
+        // Validate and add the new font class
+        const validatedFont = VALID_FONTS.includes(newFont)
+          ? newFont
+          : "font-indie";
+        document.documentElement.classList.add(validatedFont);
       }
-    } else {
-      // Validate and add the new font class
-      const validatedFont = VALID_FONTS.includes(newFont)
-        ? newFont
-        : "font-indie";
-      document.documentElement.classList.add(validatedFont);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Load preferences from Supabase
   useEffect(() => {
@@ -225,9 +248,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const client = getAuthenticatedClient(session.access_token);
         const { data, error } = await client
           .from("user_preferences")
-          .select(
-            "theme, font, use_gradient, last_model_id, last_provider",
-          )
+          .select("theme, font, use_gradient, last_model_id, last_provider")
           .eq("user_id", session.user.id)
           .single();
 
@@ -257,12 +278,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     };
 
     loadPreferences();
-  }, [
-    session?.user?.id,
-    session?.access_token,
-    applyTheme,
-    applyFont,
-  ]);
+  }, [session?.user?.id, session?.access_token, applyTheme, applyFont]);
 
   const setTheme = useCallback(
     async (newTheme: Theme) => {
@@ -281,21 +297,16 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [
-      session?.user?.id,
-      session?.access_token,
-      useGradient,
-      applyTheme,
-    ],
+    [session?.user?.id, session?.access_token, useGradient, applyTheme],
   );
 
   const setFont = useCallback(
     async (newFont: string) => {
       let validatedFont = "font-indie";
       if (newFont.startsWith("font-custom:")) {
-         validatedFont = newFont;
+        validatedFont = newFont;
       } else if (VALID_FONTS.includes(newFont)) {
-         validatedFont = newFont;
+        validatedFont = newFont;
       }
       setFontState(validatedFont);
       applyFont(validatedFont, session?.user?.id);
@@ -332,12 +343,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [
-      session?.user?.id,
-      session?.access_token,
-      theme,
-      applyTheme,
-    ],
+    [session?.user?.id, session?.access_token, theme, applyTheme],
   );
 
   const setModelPreference = useCallback(

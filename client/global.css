@@ -417,10 +417,10 @@
     background-clip: text;
   }
   .dropdown-glass {
-    background-color: #1A1A1E;
+    background-color: #1a1a1e;
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
   }
 }

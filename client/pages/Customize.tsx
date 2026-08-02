@@ -5,7 +5,14 @@ import { useMusicContext } from "@/contexts/MusicContext";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Button } from "@/components/ui/button";
-import { Zap, Music, Trash2, Play, Image as ImageIcon, Type } from "lucide-react";
+import {
+  Zap,
+  Music,
+  Trash2,
+  Play,
+  Image as ImageIcon,
+  Type,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,31 +25,63 @@ interface PlaylistTrack {
 }
 
 const THEMES = [
-  { label: "Default", value: "default", bg: "hsl(218, 21%, 7%)", fg: "hsl(186, 100%, 50%)", text: "hsl(210, 40%, 98%)" },
-  { label: "Red", value: "red", bg: "hsl(0, 0%, 7%)", fg: "hsl(0, 84%, 60%)", text: "hsl(0, 0%, 98%)" },
-  { label: "Yellow", value: "yellow", bg: "hsl(45, 100%, 6%)", fg: "hsl(45, 100%, 50%)", text: "hsl(45, 100%, 98%)" },
-  { label: "Black/Dark", value: "black", bg: "hsl(0, 0%, 0%)", fg: "hsl(0, 0%, 100%)", text: "hsl(0, 0%, 100%)" },
-  { label: "White/Light", value: "white", bg: "hsl(0, 0%, 100%)", fg: "hsl(0, 0%, 0%)", text: "hsl(0, 0%, 0%)" },
+  {
+    label: "Default",
+    value: "default",
+    bg: "hsl(218, 21%, 7%)",
+    fg: "hsl(186, 100%, 50%)",
+    text: "hsl(210, 40%, 98%)",
+  },
+  {
+    label: "Red",
+    value: "red",
+    bg: "hsl(0, 0%, 7%)",
+    fg: "hsl(0, 84%, 60%)",
+    text: "hsl(0, 0%, 98%)",
+  },
+  {
+    label: "Yellow",
+    value: "yellow",
+    bg: "hsl(45, 100%, 6%)",
+    fg: "hsl(45, 100%, 50%)",
+    text: "hsl(45, 100%, 98%)",
+  },
+  {
+    label: "Black/Dark",
+    value: "black",
+    bg: "hsl(0, 0%, 0%)",
+    fg: "hsl(0, 0%, 100%)",
+    text: "hsl(0, 0%, 100%)",
+  },
+  {
+    label: "White/Light",
+    value: "white",
+    bg: "hsl(0, 0%, 100%)",
+    fg: "hsl(0, 0%, 0%)",
+    text: "hsl(0, 0%, 0%)",
+  },
 ];
 
 const FONTS = [
-  { label: "Indie Flower (Default)", value: "font-indie", family: "'Indie Flower'" },
+  {
+    label: "Indie Flower (Default)",
+    value: "font-indie",
+    family: "'Indie Flower'",
+  },
   { label: "Zilla Slab", value: "font-zilla", family: "'Zilla Slab'" },
   { label: "VT323", value: "font-vt323", family: "'VT323'" },
   { label: "Cabin Sketch", value: "font-cabin", family: "'Cabin Sketch'" },
-  { label: "Londrina Sketch", value: "font-londrina", family: "'Londrina Sketch'" },
+  {
+    label: "Londrina Sketch",
+    value: "font-londrina",
+    family: "'Londrina Sketch'",
+  },
 ];
 
 export default function Customize() {
-  const {
-    theme,
-    setTheme,
-    font,
-    setFont,
-    useGradient,
-    setUseGradient,
-  } = useTheme();
-  
+  const { theme, setTheme, font, setFont, useGradient, setUseGradient } =
+    useTheme();
+
   const {
     playlist,
     currentTrack,
@@ -52,7 +91,7 @@ export default function Customize() {
     shuffle,
     toggleShuffle,
   } = useMusicContext();
-  
+
   const { session } = useAuth();
   const { toast } = useToast();
 
@@ -63,7 +102,7 @@ export default function Customize() {
     }
     return "#00ffff";
   });
-  
+
   const [customBgColor, setCustomBgColor] = useState(() => {
     if (theme && theme.startsWith("custom:")) {
       const parts = theme.replace("custom:", "").split("-");
@@ -181,8 +220,12 @@ export default function Customize() {
           <div className="p-4 bg-card rounded-lg border border-border space-y-4">
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <label className="text-foreground font-medium block">Primary Accent Color</label>
-                <p className="text-sm text-muted-foreground">Used for buttons, highlights, and icons</p>
+                <label className="text-foreground font-medium block">
+                  Primary Accent Color
+                </label>
+                <p className="text-sm text-muted-foreground">
+                  Used for buttons, highlights, and icons
+                </p>
               </div>
               <input
                 type="color"
@@ -196,8 +239,13 @@ export default function Customize() {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <label className="text-foreground font-medium block">Background Color</label>
-                <p className="text-sm text-muted-foreground">Main background color of the app. A gradient is generated if enabled.</p>
+                <label className="text-foreground font-medium block">
+                  Background Color
+                </label>
+                <p className="text-sm text-muted-foreground">
+                  Main background color of the app. A gradient is generated if
+                  enabled.
+                </p>
               </div>
               <input
                 type="color"
@@ -253,9 +301,9 @@ export default function Customize() {
             }
           />
           {font && font.startsWith("font-custom:") && (
-             <p className="text-sm text-primary mt-2 text-center">
-                Currently using custom font: {font.replace("font-custom:", "")}
-             </p>
+            <p className="text-sm text-primary mt-2 text-center">
+              Currently using custom font: {font.replace("font-custom:", "")}
+            </p>
           )}
         </div>
 

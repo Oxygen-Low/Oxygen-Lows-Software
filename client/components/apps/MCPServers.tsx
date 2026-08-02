@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Server, Trash2, Download } from "lucide-react";
@@ -39,8 +45,8 @@ export function MCPServersApp() {
       const res = await fetch(downloadUrl);
       if (!res.ok) throw new Error("Failed to fetch script");
       const code = await res.text();
-      
-      const filename = downloadUrl.split('/').pop() || "server.mcp.js";
+
+      const filename = downloadUrl.split("/").pop() || "server.mcp.js";
       let finalName = filename;
       if (!finalName.endsWith(".mcp.js")) finalName += ".mcp.js";
 
@@ -79,7 +85,8 @@ export function MCPServersApp() {
         <CardHeader>
           <CardTitle className="text-white">Download MCP Server</CardTitle>
           <CardDescription className="text-slate-400">
-            Enter a URL to a raw JavaScript file (.mcp.js) to download it into your storage.
+            Enter a URL to a raw JavaScript file (.mcp.js) to download it into
+            your storage.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -95,7 +102,11 @@ export function MCPServersApp() {
               disabled={downloading || !downloadUrl}
               className="bg-cyan-500 hover:bg-cyan-600 text-white"
             >
-              {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              {downloading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
               Download
             </Button>
           </div>
@@ -133,9 +144,16 @@ export function MCPServersApp() {
               <CardContent>
                 <div className="space-y-2">
                   {server.tools.map((tool) => (
-                    <div key={tool.name} className="p-3 bg-slate-900 rounded-lg border border-slate-800">
-                      <div className="font-mono text-sm text-cyan-400 font-bold mb-1">{tool.name}</div>
-                      <div className="text-xs text-slate-400">{tool.description}</div>
+                    <div
+                      key={tool.name}
+                      className="p-3 bg-slate-900 rounded-lg border border-slate-800"
+                    >
+                      <div className="font-mono text-sm text-cyan-400 font-bold mb-1">
+                        {tool.name}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {tool.description}
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -34,7 +34,7 @@ app.get("/", (req, res) => {
     message: "Oxygen Low's Software VPN Server is operational.",
     version: "1.0.0",
     protocol: "websocket-vpn-tunnel",
-    ip: req.ip
+    ip: req.ip,
   });
 });
 
@@ -43,22 +43,33 @@ app.post("/api/vpn/auth", async (req, res) => {
   const { user_id, access_token } = req.body;
 
   if (!user_id || !access_token) {
-    return res.status(400).json({ success: false, error: "Missing authentication parameters." });
+    return res
+      .status(400)
+      .json({ success: false, error: "Missing authentication parameters." });
   }
 
   try {
-    const { data: { user }, error } = await anonClient.auth.getUser(access_token);
+    const {
+      data: { user },
+      error,
+    } = await anonClient.auth.getUser(access_token);
 
     if (error || !user || user.id !== user_id) {
-      return res.status(401).json({ success: false, error: "Invalid credentials or unauthorized token." });
+      return res.status(401).json({
+        success: false,
+        error: "Invalid credentials or unauthorized token.",
+      });
     }
 
-    const resp = await axios.get(`${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user_id}&select=vpn_usage_bytes,vpn_usage_last_date`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${access_token}`
-      }
-    });
+    const resp = await axios.get(
+      `${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user_id}&select=vpn_usage_bytes,vpn_usage_last_date`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${access_token}`,
+        },
+      },
+    );
 
     const todayStr = new Date().toISOString().split("T")[0];
     if (resp.data && resp.data.length > 0) {
@@ -66,7 +77,9 @@ app.post("/api/vpn/auth", async (req, res) => {
       const isToday = preferences.vpn_usage_last_date === todayStr;
       const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
       if (usage >= 50 * 1024 * 1024) {
-        return res.status(403).json({ success: false, error: "VPN Limit of 50MB/day reached." });
+        return res
+          .status(403)
+          .json({ success: false, error: "VPN Limit of 50MB/day reached." });
       }
     }
 
@@ -98,8 +111,8 @@ wss.on("connection", (ws: WebSocket) => {
         const resp = await axios.get(getUrl, {
           headers: {
             apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${accessToken}`
-          }
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
 
         let currentUsage = 0;
@@ -112,16 +125,20 @@ wss.on("connection", (ws: WebSocket) => {
         const fullPayload = {
           p_user_id: userId,
           p_vpn_usage_bytes: newTotal,
-          p_vpn_usage_last_date: todayStr
+          p_vpn_usage_last_date: todayStr,
         };
 
-        await axios.post(`${SUPABASE_URL}/rest/v1/rpc/upsert_user_preferences`, fullPayload, {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          }
-        });
+        await axios.post(
+          `${SUPABASE_URL}/rest/v1/rpc/upsert_user_preferences`,
+          fullPayload,
+          {
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
       } catch (err: any) {
         console.error(`Error flushing usage: ${err.message}`);
         accumulatedBytes += bytesToSave;
@@ -133,13 +150,13 @@ wss.on("connection", (ws: WebSocket) => {
 
   ws.on("close", async () => {
     clearInterval(intervalId);
-    
+
     // Destroy all active tunnels
     for (const [id, socket] of tunnels.entries()) {
       socket.destroy();
     }
     tunnels.clear();
-    
+
     await flushUsage();
   });
 
@@ -149,20 +166,32 @@ wss.on("connection", (ws: WebSocket) => {
 
       if (data.type === "auth") {
         const { user_id, access_token } = data.payload;
-        const { data: { user }, error } = await anonClient.auth.getUser(access_token);
+        const {
+          data: { user },
+          error,
+        } = await anonClient.auth.getUser(access_token);
 
         if (error || !user || user.id !== user_id) {
-          ws.send(JSON.stringify({ type: "auth_response", success: false, error: "Authentication failed." }));
+          ws.send(
+            JSON.stringify({
+              type: "auth_response",
+              success: false,
+              error: "Authentication failed.",
+            }),
+          );
           ws.close();
           return;
         }
 
-        const resp = await axios.get(`${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user_id}&select=vpn_usage_bytes,vpn_usage_last_date`, {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${access_token}`
-          }
-        });
+        const resp = await axios.get(
+          `${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user_id}&select=vpn_usage_bytes,vpn_usage_last_date`,
+          {
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${access_token}`,
+            },
+          },
+        );
 
         const todayStr = new Date().toISOString().split("T")[0];
         if (resp.data && resp.data.length > 0) {
@@ -170,7 +199,13 @@ wss.on("connection", (ws: WebSocket) => {
           const isToday = preferences.vpn_usage_last_date === todayStr;
           const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
           if (usage >= 50 * 1024 * 1024) {
-            ws.send(JSON.stringify({ type: "auth_response", success: false, error: "Daily limit reached." }));
+            ws.send(
+              JSON.stringify({
+                type: "auth_response",
+                success: false,
+                error: "Daily limit reached.",
+              }),
+            );
             ws.close();
             return;
           }
@@ -184,27 +219,37 @@ wss.on("connection", (ws: WebSocket) => {
       }
 
       if (!authenticated) {
-        ws.send(JSON.stringify({ type: "error", message: "Not authenticated." }));
+        ws.send(
+          JSON.stringify({ type: "error", message: "Not authenticated." }),
+        );
         ws.close();
         return;
       }
 
       if (data.type === "proxy_request") {
         if (proxyRequestCount >= 20) {
-          ws.send(JSON.stringify({ type: "proxy_error", id: data.id, error: "Too many concurrent proxy requests." }));
+          ws.send(
+            JSON.stringify({
+              type: "proxy_error",
+              id: data.id,
+              error: "Too many concurrent proxy requests.",
+            }),
+          );
           return;
         }
         proxyRequestCount++;
 
         const requestHeaders = { ...data.headers };
         delete requestHeaders.host;
-        
+
         const clientIp = (ws as any)._clientIp;
         if (clientIp) {
           requestHeaders["X-Forwarded-For"] = clientIp;
         }
 
-        const requestData = data.body ? Buffer.from(data.body, "base64") : undefined;
+        const requestData = data.body
+          ? Buffer.from(data.body, "base64")
+          : undefined;
 
         axios({
           method: data.method,
@@ -213,27 +258,35 @@ wss.on("connection", (ws: WebSocket) => {
           data: requestData,
           responseType: "arraybuffer",
           timeout: 30000,
-          validateStatus: () => true
+          validateStatus: () => true,
         })
           .then((resp) => {
             const respBuffer = Buffer.from(resp.data);
             const reqBytes = requestData ? requestData.byteLength : 0;
-            accumulatedBytes += (respBuffer.byteLength + reqBytes);
+            accumulatedBytes += respBuffer.byteLength + reqBytes;
 
             if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({
-                type: "proxy_response",
-                id: data.id,
-                status: resp.status,
-                statusText: resp.statusText,
-                headers: resp.headers,
-                body: respBuffer.toString("base64")
-              }));
+              ws.send(
+                JSON.stringify({
+                  type: "proxy_response",
+                  id: data.id,
+                  status: resp.status,
+                  statusText: resp.statusText,
+                  headers: resp.headers,
+                  body: respBuffer.toString("base64"),
+                }),
+              );
             }
           })
           .catch((err) => {
             if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: "proxy_error", id: data.id, error: err.message }));
+              ws.send(
+                JSON.stringify({
+                  type: "proxy_error",
+                  id: data.id,
+                  error: err.message,
+                }),
+              );
             }
           })
           .finally(() => {
@@ -244,12 +297,24 @@ wss.on("connection", (ws: WebSocket) => {
 
       if (data.type === "tunnel_open") {
         if (tunnels.size >= 10) {
-          ws.send(JSON.stringify({ type: "tunnel_error", id: data.id, error: "Too many concurrent tunnels." }));
+          ws.send(
+            JSON.stringify({
+              type: "tunnel_error",
+              id: data.id,
+              error: "Too many concurrent tunnels.",
+            }),
+          );
           return;
         }
         const port = Number(data.port);
         if (isNaN(port) || port < 1 || port > 65535 || !data.host) {
-          ws.send(JSON.stringify({ type: "tunnel_error", id: data.id, error: "Invalid host or port." }));
+          ws.send(
+            JSON.stringify({
+              type: "tunnel_error",
+              id: data.id,
+              error: "Invalid host or port.",
+            }),
+          );
           return;
         }
 
@@ -264,13 +329,25 @@ wss.on("connection", (ws: WebSocket) => {
         socket.on("data", (socketData) => {
           accumulatedBytes += socketData.byteLength;
           if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "tunnel_data", id: data.id, data: socketData.toString("base64") }));
+            ws.send(
+              JSON.stringify({
+                type: "tunnel_data",
+                id: data.id,
+                data: socketData.toString("base64"),
+              }),
+            );
           }
         });
 
         socket.on("error", (err) => {
           if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "tunnel_error", id: data.id, error: err.message }));
+            ws.send(
+              JSON.stringify({
+                type: "tunnel_error",
+                id: data.id,
+                error: err.message,
+              }),
+            );
           }
           tunnels.delete(data.id);
         });
@@ -303,9 +380,10 @@ wss.on("connection", (ws: WebSocket) => {
         }
         return;
       }
-
     } catch (err) {
-      ws.send(JSON.stringify({ type: "error", message: "Invalid payload format." }));
+      ws.send(
+        JSON.stringify({ type: "error", message: "Invalid payload format." }),
+      );
     }
   });
 });
@@ -318,7 +396,10 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 // Guard server.listen behind module entrypoint checks for clean testing
-if (process.argv[1] === import.meta.filename || process.argv[1]?.endsWith("vpnServer.ts")) {
+if (
+  process.argv[1] === import.meta.filename ||
+  process.argv[1]?.endsWith("vpnServer.ts")
+) {
   const PORT = process.env.VPN_PORT || process.env.PORT || 4000;
   server.listen(PORT, () => {
     console.log(`VPN server running on port ${PORT}`);
