@@ -327,7 +327,7 @@ wss.on("connection", (ws: WebSocket) => {
         tunnels.set(data.id, socket);
 
         socket.on("data", (socketData) => {
-          accumulatedBytes += socketData.byteLength;
+          accumulatedBytes += socketData.length;
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
