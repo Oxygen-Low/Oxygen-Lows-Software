@@ -924,16 +924,27 @@ export function ChatbotApp() {
             });
         }
 
+        let insertData: any = {
+          chat_id: activeChatId,
+          role: "assistant",
+          content: isEncryptionEnabled && key ? await encrypt(finalContent, key) : finalContent,
+          reasoning: isEncryptionEnabled && key && reasoningContent ? await encrypt(reasoningContent, key) : (reasoningContent || null),
+          is_encrypted: isEncryptionEnabled,
+        };
+
         const { error: assistantInsertError } = await supabase
           .from("chat_messages")
-          .insert({
-            chat_id: activeChatId,
-            role: "assistant",
-            content: isEncryptionEnabled && key ? await encrypt(finalContent, key) : finalContent,
-            reasoning: isEncryptionEnabled && key && reasoningContent ? await encrypt(reasoningContent, key) : (reasoningContent || null),
-            is_encrypted: isEncryptionEnabled,
-          });
-        if (assistantInsertError) throw assistantInsertError;
+          .insert(insertData);
+          
+        if (assistantInsertError) {
+          if (assistantInsertError.message?.includes("reasoning") || assistantInsertError.details?.includes("reasoning")) {
+            delete insertData.reasoning;
+            const { error: retryError } = await supabase.from("chat_messages").insert(insertData);
+            if (retryError) throw retryError;
+          } else {
+            throw assistantInsertError;
+          }
+        }
         
         const { error: chatUpdateError } = await supabase
           .from("chats")
