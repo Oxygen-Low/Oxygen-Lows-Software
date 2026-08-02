@@ -94,11 +94,53 @@ export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
 };
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
-  Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
-  Balanced: ["Magnum-12b-v2"],
-  Smart: ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct"],
-  Write: ["mradermacher/Magnum-v3-27B-GGUF"],
-  Code: ["Qwen/Qwen2.5-Coder-32B-Instruct"],
+  Fast: [
+    "koboldcpp/Llama-3.2-3B",
+    "koboldcpp/Meta-Llama-3-2-3B-Instruct.Q4_K_M",
+    "koboldcpp/digo-prayudha/unsloth-llama-3.2-1b-gguf",
+    "koboldcpp/Qwen_Qwen3-0.6B-IQ4_XS",
+    "koboldcpp/Qwen/Qwen3.5-0.8B",
+    "koboldcpp/mradermacher/Cerebras-GPT-111M-instruction-GGUF",
+    "koboldcpp/mradermacher/pythia-70m-deduped.f16.gguf"
+  ],
+  Balanced: [
+    "google/gemma-4-31b",
+    "neroued/Qwen3.6-27B-nvfp4-NInfer",
+    "aphrodite/TheDrummer/Cydonia-24B-v4.3",
+    "koboldcpp/TheDrummer/Cydonia-24B-v4.3",
+    "koboldcpp/Magidonia-24B-v4.3",
+    "koboldcpp/Laguna-XS-2.1"
+  ],
+  Smart: [
+    "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
+    "google/gemma-4-31b",
+    "koboldcpp/Sprinkle-Vanilla-Gemma-4-31B.i1-Q4_K_M.gguf",
+    "neroued/Qwen3.6-27B-nvfp4-NInfer",
+    "aphrodite/TheDrummer/Skyfall-31B-v4.2"
+  ],
+  Write: [
+    "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
+    "aphrodite/TheDrummer/Skyfall-31B-v4.2",
+    "aphrodite/TheDrummer/Cydonia-24B-v4.3",
+    "koboldcpp/TheDrummer/Cydonia-24B-v4.3",
+    "koboldcpp/Magidonia-24B-v4.3",
+    "google/gemma-4-31b",
+    "koboldcpp/L3-Super-Nova-RP-8B",
+    "koboldcpp/L3-8B-Stheno-v3.2-Q8_0",
+    "koboldcpp/L3-8B-Stheno-v3.2",
+    "aphrodite/SicariusSicariiStuff/Impish_Bloodmoon_12B",
+    "koboldcpp/Izuku Midoriya (Before U.A.)"
+  ],
+  Code: [
+    "Qwen3-Coder-480B-A35B-Instruct",
+    "Qwen3-Coder-Next",
+    "koboldcpp/Laguna-XS-2.1",
+    "neroued/Qwen3.6-27B-nvfp4-NInfer",
+    "google/gemma-4-31b",
+    "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
+    "koboldcpp/Llama-3.2-3B",
+    "koboldcpp/Meta-Llama-3-2-3B-Instruct.Q4_K_M"
+  ]
 };
 
 export const handleGetHordeStatus: RequestHandler = async (_req, res) => {
@@ -412,15 +454,46 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         break;
       }
       case "horde": {
-        const modelsMap: Record<string, string[]> = {
-          Fast: ["meta-llama/Llama-3.1-8B-Instruct"],
-          Balanced: ["Magnum-12b-v2"],
-          Smart: ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct"],
-          Write: ["mradermacher/Magnum-v3-27B-GGUF"],
-          Code: ["Qwen/Qwen2.5-Coder-32B-Instruct"],
-        };
+        let hordeModels = HORDE_MODELS_MAP[model] || [model];
+        
+        try {
+          const statusRes = await axios.get("https://stablehorde.net/api/v2/status/models?type=text", { timeout: 5000 });
+          if (statusRes.data && Array.isArray(statusRes.data)) {
+            const modelStats = statusRes.data.reduce((acc: any, m: any) => {
+              if (m.name) acc[m.name] = { eta: m.eta || 0, count: m.count || 0 };
+              return acc;
+            }, {});
 
-        const hordeModels = modelsMap[model] || [model];
+            let bestModel = null;
+            if (model === "Fast") {
+              const onlineFastModels = hordeModels.filter((m: string) => modelStats[m] && modelStats[m].count > 0);
+              if (onlineFastModels.length > 0) {
+                const minEta = Math.min(...onlineFastModels.map((m: string) => modelStats[m].eta));
+                const fastestModels = onlineFastModels.filter((m: string) => modelStats[m].eta === minEta);
+                bestModel = fastestModels[0];
+              }
+            } else {
+              for (const m of hordeModels) {
+                const stats = modelStats[m];
+                if (stats && stats.count > 0 && stats.eta <= 30) {
+                  bestModel = m;
+                  break;
+                }
+              }
+            }
+
+            if (bestModel) {
+              hordeModels = [bestModel];
+            } else {
+              const onlineModels = hordeModels.filter(m => modelStats[m] && modelStats[m].count > 0);
+              if (onlineModels.length > 0) {
+                hordeModels = [onlineModels[0]];
+              }
+            }
+          }
+        } catch (e) {
+          // Keep hordeModels as default if API fails
+        }
         const prompt =
           processedMessages
             .map((m: any) => {

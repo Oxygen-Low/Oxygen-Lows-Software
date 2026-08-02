@@ -482,7 +482,7 @@ export function ChatbotApp() {
 
     const userMessage: Message = { role: "user", content: input };
     const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages([...newMessages, { role: "assistant", content: "" }]);
     const originalInput = input;
     setInput("");
     setIsTyping(true);
@@ -555,8 +555,6 @@ export function ChatbotApp() {
       const decoder = new TextDecoder();
       let fullContent = "";
       let streamBuffer = "";
-
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       if (reader) {
         while (true) {
@@ -662,6 +660,13 @@ export function ChatbotApp() {
       // Restore input if failed and no optimistic message saved yet?
       // The prompt said: "otherwise preserve input and notify the user"
       if (input === "") setInput(originalInput);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "assistant" && !last.content) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
     } finally {
       setIsTyping(false);
       isTypingRef.current = false;
@@ -892,32 +897,45 @@ export function ChatbotApp() {
           <>
             <ScrollArea className="flex-1 pr-4">
               <div className="space-y-6 py-4">
-                {messages.map((m, i) => (
-                  <ChatMessage
-                    key={i}
-                    message={m}
-                    setActiveArtifact={setActiveArtifact}
-                  />
-                ))}
-                {isTyping && (
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
-                      <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-                    </div>
-                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                      {queueStatus ? (
-                        <span className="text-slate-400 font-medium">
-                          Queue Position: {queueStatus.position} | ETA:{" "}
-                          {formatHordeEta(queueStatus.eta)} | Workers:{" "}
-                          {queueStatus.workers} | People in Queue:{" "}
-                          {queueStatus.totalInQueue}
-                        </span>
-                      ) : (
-                        <span className="animate-pulse">...</span>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {messages.map((m, i) => {
+                  const isLastAssistant = i === messages.length - 1 && m.role === "assistant";
+
+                  if (isLastAssistant && isTyping && !m.content) {
+                    return (
+                      <div key={i} className="flex gap-4 max-w-[85%]">
+                        <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+                          {queueStatus ? (
+                            <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                          ) : (
+                            <Bot className="w-4 h-4 text-cyan-400" />
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 flex-1 min-w-0">
+                          <div className="p-4 rounded-2xl text-sm bg-slate-900 border border-slate-800 text-slate-200">
+                            {queueStatus ? (
+                              <span className="text-slate-400 font-medium">
+                                Queue Position: {queueStatus.position} | ETA:{" "}
+                                {formatHordeEta(queueStatus.eta)} | Workers:{" "}
+                                {queueStatus.workers} | People in Queue:{" "}
+                                {queueStatus.totalInQueue}
+                              </span>
+                            ) : (
+                              <span className="animate-pulse">...</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <ChatMessage
+                      key={i}
+                      message={m}
+                      setActiveArtifact={setActiveArtifact}
+                    />
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
