@@ -665,21 +665,19 @@ export function ChatbotApp() {
               if (provider === "anthropic") {
                 delta = data.delta?.text || "";
                 if (data.type === "content_block_start" && data.content_block?.type === "tool_use") {
-                  delta += `{[${data.content_block.name}], `;
+                  delta += `<tool_call>\n{"name": "${data.content_block.name}", "args": `;
                 } else if (data.type === "content_block_delta" && data.delta?.type === "input_json_delta") {
                   delta += data.delta.partial_json || "";
                 }
-                // We'll just rely on Anthropic's output. Wait, Anthropic doesn't emit content_block_stop with the tool type easily.
-                // We might need to track tool state, but for basic, let's just let it stream.
               } else if (["openai", "openrouter", "grok", "custom", "lmstudio", "koboldcpp", "kobold", "horde"].includes(provider)) {
                 delta = data.choices?.[0]?.delta?.content || "";
                 const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
                 if (tc) {
-                  if (tc.function?.name) delta += `{[${tc.function.name}], `;
+                  if (tc.function?.name) delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
                   if (tc.function?.arguments) delta += tc.function.arguments;
                 }
                 if (data.choices?.[0]?.finish_reason === "tool_calls") {
-                  delta += `}`;
+                  delta += `\n}</tool_call>`;
                 }
               } else if (provider === "ollama") {
                 delta = data.message?.content || data.response || "";
@@ -687,13 +685,13 @@ export function ChatbotApp() {
                 delta = data.delta?.content || data.message?.content?.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "";
                 const fc = data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
                 if (fc) {
-                  delta += `{[${fc.name}], ${JSON.stringify(fc.args)}}`;
+                  delta += `<tool_call>\n{"name": "${fc.name}", "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
                 }
               }
 
-              // Simple fix for Anthropic closing brace (since we can't easily track state across chunks here without a ref)
+              // Simple fix for Anthropic closing brace
               if (provider === "anthropic" && data.type === "message_delta" && data.delta?.stop_reason === "tool_use") {
-                delta += `}`;
+                delta += `\n}</tool_call>`;
               }
 
               if (delta) {
@@ -833,7 +831,7 @@ export function ChatbotApp() {
             injectedSystemMessage += `- ${tool.name}: ${tool.description}\n  Parameters: ${JSON.stringify(tool.parameters)}\n`;
           });
         });
-        injectedSystemMessage += `\nTo use a tool, output EXACTLY the following JSON format on a new line: {[tool_name], {"arg1": "value"}}\nDo not add any text before or after the tool call on that line.\n`;
+        injectedSystemMessage += `\nTo use a tool, output EXACTLY the following format:\n<tool_call>\n{"name": "tool_name", "args": {"arg1": "value"}}\n</tool_call>\nDo not add any text before or after the tool call block.\n`;
       }
 
       const getApiMessages = (baseMessages: Message[]): Message[] => {
@@ -904,45 +902,50 @@ export function ChatbotApp() {
         .eq("id", activeChatId);
       if (chatUpdateError) throw chatUpdateError;
 
-      const toolCallMatch = finalContent.match(/\{\[([^\]]+)\],\s*(\{.*?\})\}/);
+      const toolCallMatch = finalContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
       if (toolCallMatch) {
-         const toolName = toolCallMatch[1];
-         let toolArgs = {};
+         let parsedData;
          try {
-           toolArgs = JSON.parse(toolCallMatch[2]);
+           parsedData = JSON.parse(toolCallMatch[1]);
          } catch (e) {
-           console.error("Invalid tool args", e);
-         }
-         let toolServer: MCPServer | undefined;
-         for (const s of mcpServers) {
-           if (s.tools.some(t => t.name === toolName)) {
-             toolServer = s;
-             break;
-           }
+           console.error("Invalid tool json", e);
          }
          
-         if (toolServer) {
-           let result = "";
-           try {
-             result = await toolServer.execute(toolName, toolArgs);
-           } catch (e: any) {
-             result = `Error executing tool: ${e.message}`;
+         if (parsedData && parsedData.name) {
+           const toolName = parsedData.name;
+           const toolArgs = parsedData.args || {};
+           
+           let toolServer: MCPServer | undefined;
+           for (const s of mcpServers) {
+             if (s.tools.some(t => t.name === toolName)) {
+               toolServer = s;
+               break;
+             }
            }
            
-           const toolResultMessage = `Tool ${toolName} returned:\n${result}`;
-           const { error: toolInsertError } = await supabase
-            .from("chat_messages")
-            .insert({
-              chat_id: activeChatId,
-              role: "system",
-              content: isEncryptionEnabled && key ? await encrypt(toolResultMessage, key) : toolResultMessage,
-              is_encrypted: isEncryptionEnabled,
-            });
-           if (toolInsertError) throw toolInsertError;
-           
-           setMessages((prev) => [...prev, { role: "system", content: toolResultMessage }]);
-           // We do not auto-loop to avoid infinite loops, user must trigger next step.
-           toast.success(`Tool ${toolName} executed. Send a message to continue.`);
+           if (toolServer) {
+             let result = "";
+             try {
+               result = await toolServer.execute(toolName, toolArgs);
+             } catch (e: any) {
+               result = `Error executing tool: ${e.message}`;
+             }
+             
+             const toolResultMessage = `Tool ${toolName} returned:\n${result}`;
+             const { error: toolInsertError } = await supabase
+              .from("chat_messages")
+              .insert({
+                chat_id: activeChatId,
+                role: "system",
+                content: isEncryptionEnabled && key ? await encrypt(toolResultMessage, key) : toolResultMessage,
+                is_encrypted: isEncryptionEnabled,
+              });
+             if (toolInsertError) throw toolInsertError;
+             
+             setMessages((prev) => [...prev, { role: "system", content: toolResultMessage }]);
+             // We do not auto-loop to avoid infinite loops, user must trigger next step.
+             toast.success(`Tool ${toolName} executed. Send a message to continue.`);
+           }
          }
       }
       
