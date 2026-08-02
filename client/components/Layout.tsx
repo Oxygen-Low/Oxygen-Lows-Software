@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -31,9 +31,68 @@ const navItems = [
   { label: "Characters", href: "/characters", icon: Contact },
 ];
 
+/** Minimum horizontal swipe distance (px) to open sidebar on mobile */
+const TOUCH_EDGE_ZONE = 30;
+const SWIPE_THRESHOLD = 40;
+
 export const Layout = ({ children }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ── Touch handling for mobile edge-swipe ──
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    const x = e.touches[0].clientX;
+    if (x <= TOUCH_EDGE_ZONE) {
+      touchStartX.current = x;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    if (dx > SWIPE_THRESHOLD) {
+      setSidebarOpen(true);
+      touchStartX.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartX.current = null;
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    document.addEventListener("touchmove", handleTouchMove, { passive: true });
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+
+  // ── Desktop hover trigger ──
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openSidebar = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setSidebarOpen(true);
+  }, []);
+
+  const scheduleSidebarClose = useCallback(() => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setSidebarOpen(false);
+    }, 300);
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -71,12 +130,26 @@ export const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Main Layout */}
-      <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={`${styles["sidebar"]} w-64 border-r sticky top-[73px] h-[calc(100vh-73px)] flex flex-col`}
-        >
+      {/* Invisible hover trigger zone along left edge */}
+      <div
+        className={styles["sidebar-trigger"]}
+        onMouseEnter={openSidebar}
+      />
+
+      {/* Sidebar overlay container */}
+      <div
+        className={`${styles["sidebar-container"]}${sidebarOpen ? ` ${styles["open"]}` : ""}`}
+        onMouseEnter={openSidebar}
+        onMouseLeave={scheduleSidebarClose}
+      >
+        {/* Backdrop – click to close */}
+        <div
+          className={styles["sidebar-backdrop"]}
+          onClick={() => setSidebarOpen(false)}
+        />
+
+        {/* Sidebar panel */}
+        <aside className={styles["sidebar"]}>
           <PointsDisplay />
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto pt-2">
             {navItems.map((item) => {
@@ -86,6 +159,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 <Link
                   key={item.href}
                   to={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={`${styles["nav-link"]} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
                 >
                   <Icon className="w-5 h-5" />
@@ -97,12 +171,16 @@ export const Layout = ({ children }: LayoutProps) => {
 
           <SidebarMusicPlayer />
         </aside>
-
-        {/* Content Area */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-12">{children}</main>
       </div>
+
+      {/* Subtle edge hint when sidebar is closed */}
+      <div className={styles["sidebar-edge-hint"]} />
+
+      {/* Content Area – now full width */}
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-12">{children}</main>
     </div>
   );
 };
 
 export default Layout;
+
