@@ -36,9 +36,14 @@ export const builtinFetchServer: MCPServer = {
   execute: async (toolName, args) => {
     if (toolName === "fetch_url") {
       try {
-        // Use a CORS proxy to bypass browser restrictions on client-side fetch
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(args.url)}`;
-        const response = await fetch(proxyUrl);
+        // Route fetch through our backend proxy to avoid CORS and adblocker issues
+        const response = await fetch("/api/proxy/fetch", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ url: args.url })
+        });
         if (!response.ok) return `Error: HTTP ${response.status} ${response.statusText}`;
         const text = await response.text();
         return text.substring(0, 10000); // Limit size
