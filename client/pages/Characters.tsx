@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Lock,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,12 +44,14 @@ interface Character {
   hidden_description: string | null;
   is_encrypted: boolean;
   is_corrupted?: boolean;
+  is_universe?: boolean;
 }
 
 export default function Characters() {
   const { session } = useAuth();
   const { toast } = useToast();
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [activeTab, setActiveTab] = useState<'characters' | 'universes'>('characters');
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>(
@@ -157,6 +160,7 @@ export default function Characters() {
                 backstory: "[Encrypted]",
                 hidden_description: "[Encrypted]",
                 is_corrupted: true,
+                is_universe: char.is_universe,
               };
             }
           }),
@@ -215,6 +219,7 @@ export default function Characters() {
             : currentCharacter.hidden_description,
         image_path: currentCharacter.image_path,
         is_encrypted: isEncryptionEnabled,
+        is_universe: currentCharacter.is_universe || false,
       };
 
       if (currentCharacter.id) {
@@ -230,7 +235,7 @@ export default function Characters() {
 
       toast({
         title: "Success",
-        description: "Character saved successfully",
+        description: currentCharacter.is_universe ? "Universe saved successfully" : "Character saved successfully",
       });
       setIsEditing(false);
       fetchCharacters();
@@ -294,9 +299,20 @@ export default function Characters() {
         />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-              My Characters
-            </h1>
+            <div className="flex gap-4 items-center">
+              <button
+                onClick={() => setActiveTab('characters')}
+                className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === 'characters' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                My Characters
+              </button>
+              <button
+                onClick={() => setActiveTab('universes')}
+                className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === 'universes' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                My Universes
+              </button>
+            </div>
             <p className="text-slate-400 mt-1">
               {isEncryptionEnabled && (
                 <span className="ml-2 text-cyan-400 inline-flex items-center gap-1">
@@ -315,19 +331,31 @@ export default function Characters() {
             <DialogTrigger asChild>
               <Button className="bg-cyan-600 hover:bg-cyan-700">
                 <Plus className="w-4 h-4 mr-2" />
-                New Character
+                {activeTab === 'characters' ? "New Character" : "New Universe"}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
               <DialogHeader>
                 <DialogTitle>
-                  {currentCharacter.id ? "Edit Character" : "Create Character"}
+                  {currentCharacter.id ? `Edit ${currentCharacter.is_universe ? 'Universe' : 'Character'}` : `Create ${activeTab === 'characters' ? 'Character' : 'Universe'}`}
                 </DialogTitle>
                 <DialogDescription className="text-slate-400">
-                  Define your character's traits and backstory.
+                  {currentCharacter.is_universe || activeTab === 'universes' ? "Define your universe's lore and setting." : "Define your character's traits and backstory."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <input 
+                    type="checkbox" 
+                    id="is_universe" 
+                    checked={currentCharacter.is_universe || false}
+                    onChange={(e) => setCurrentCharacter(prev => ({ ...prev, is_universe: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                  />
+                  <label htmlFor="is_universe" className="text-sm font-medium text-slate-300">
+                    This is a Universe (setting/lore)
+                  </label>
+                </div>
                 <div className="flex gap-4">
                   <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
                     {currentCharacter.image_url ? (
@@ -509,7 +537,7 @@ export default function Characters() {
                   onClick={handleSave}
                   className="bg-cyan-600 hover:bg-cyan-700"
                 >
-                  Save Character
+                  Save {currentCharacter.is_universe ? "Universe" : "Character"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -522,7 +550,7 @@ export default function Characters() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {characters.map((char) => (
+            {characters.filter(c => activeTab === 'characters' ? !c.is_universe : c.is_universe).map((char) => (
               <Card
                 key={char.id}
                 className="bg-slate-900/50 border-slate-800 overflow-hidden hover:border-cyan-500/50 transition-colors group"
@@ -536,7 +564,7 @@ export default function Characters() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-700">
-                      <User className="w-16 h-16" />
+                      {char.is_universe ? <Globe className="w-16 h-16" /> : <User className="w-16 h-16" />}
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
@@ -571,10 +599,10 @@ export default function Characters() {
                 </CardContent>
               </Card>
             ))}
-            {characters.length === 0 && (
+            {characters.filter(c => activeTab === 'characters' ? !c.is_universe : c.is_universe).length === 0 && (
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
                 <p className="text-slate-500">
-                  No characters created yet. Click "New Character" to begin.
+                  No {activeTab === 'characters' ? 'characters' : 'universes'} created yet. Click "New {activeTab === 'characters' ? 'Character' : 'Universe'}" to begin.
                 </p>
               </div>
             )}

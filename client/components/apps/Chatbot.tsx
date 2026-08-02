@@ -142,7 +142,7 @@ const InteractiveBackground = () => {
 };
 
 interface Message {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   reasoning?: string;
 }
@@ -153,6 +153,7 @@ interface Chat {
   style: string;
   llm_character_id: string | null;
   user_character_id: string | null;
+  universe_id: string | null;
   is_encrypted: boolean;
 }
 
@@ -166,6 +167,11 @@ interface Character {
   id: string;
   name: string;
   display_name: string | null;
+  is_universe: boolean;
+  short_description?: string | null;
+  appearance?: string | null;
+  personality?: string | null;
+  backstory?: string | null;
 }
 
 interface Artifact {
@@ -342,6 +348,7 @@ export function ChatbotApp() {
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>([]);
   const [selectedLlmCharacter, setSelectedLlmCharacter] = useState<string | null>(null);
   const [selectedUserCharacter, setSelectedUserCharacter] = useState<string | null>(null);
+  const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null);
   
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] = useState(false);
@@ -400,7 +407,7 @@ export function ChatbotApp() {
 
     const { data: chars } = await supabase
       .from("characters")
-      .select("id, name, display_name, is_encrypted")
+      .select("*")
       .eq("user_id", session.user.id);
 
     if (chars) {
@@ -411,9 +418,11 @@ export function ChatbotApp() {
               return {
                 ...c,
                 name: await decrypt(c.name, masterKey),
-                display_name: c.display_name
-                  ? await decrypt(c.display_name, masterKey)
-                  : null,
+                display_name: c.display_name ? await decrypt(c.display_name, masterKey) : null,
+                short_description: c.short_description ? await decrypt(c.short_description, masterKey) : null,
+                appearance: c.appearance ? await decrypt(c.appearance, masterKey) : null,
+                personality: c.personality ? await decrypt(c.personality, masterKey) : null,
+                backstory: c.backstory ? await decrypt(c.backstory, masterKey) : null,
               };
             } catch (e) {
               return { ...c, name: "[Encrypted]", display_name: "[Encrypted]" };
@@ -499,6 +508,7 @@ export function ChatbotApp() {
         setSelectedStyle(chat.style);
         setSelectedLlmCharacter(chat.llm_character_id);
         setSelectedUserCharacter(chat.user_character_id);
+        setSelectedUniverse(chat.universe_id);
       }
     };
 
@@ -690,6 +700,7 @@ export function ChatbotApp() {
           style: selectedStyle,
           llm_character_id: selectedLlmCharacter,
           user_character_id: selectedUserCharacter,
+          universe_id: selectedUniverse,
           is_encrypted: isEncryptionEnabled,
         })
         .select()
@@ -749,11 +760,51 @@ export function ChatbotApp() {
       let reasoningContent = "";
 
       // 3. Reasoning System Logic
+      let injectedSystemMessage = "";
+      if (selectedLlmCharacter) {
+        const char = availableCharacters.find(c => c.id === selectedLlmCharacter);
+        if (char) {
+          injectedSystemMessage += `You are playing the role of: ${char.display_name || char.name}.\n`;
+          if (char.short_description) injectedSystemMessage += `Description: ${char.short_description}\n`;
+          if (char.appearance) injectedSystemMessage += `Appearance: ${char.appearance}\n`;
+          if (char.personality) injectedSystemMessage += `Personality: ${char.personality}\n`;
+          if (char.backstory) injectedSystemMessage += `Backstory: ${char.backstory}\n`;
+        }
+      }
+      if (selectedUserCharacter) {
+        const char = availableCharacters.find(c => c.id === selectedUserCharacter);
+        if (char) {
+          injectedSystemMessage += `\nThe user is playing the role of: ${char.display_name || char.name}.\n`;
+          if (char.short_description) injectedSystemMessage += `Description: ${char.short_description}\n`;
+          if (char.appearance) injectedSystemMessage += `Appearance: ${char.appearance}\n`;
+          if (char.personality) injectedSystemMessage += `Personality: ${char.personality}\n`;
+          if (char.backstory) injectedSystemMessage += `Backstory: ${char.backstory}\n`;
+        }
+      }
+      if (selectedUniverse) {
+        const uni = availableCharacters.find(c => c.id === selectedUniverse);
+        if (uni) {
+          injectedSystemMessage += `\nThis interaction takes place in the universe of: ${uni.display_name || uni.name}.\n`;
+          if (uni.short_description) injectedSystemMessage += `Description: ${uni.short_description}\n`;
+          if (uni.appearance) injectedSystemMessage += `Setting details: ${uni.appearance}\n`;
+          if (uni.personality) injectedSystemMessage += `Tone/Atmosphere: ${uni.personality}\n`;
+          if (uni.backstory) injectedSystemMessage += `Lore/History: ${uni.backstory}\n`;
+        }
+      }
+
+      const getApiMessages = (baseMessages: Message[]): Message[] => {
+        if (!injectedSystemMessage) return baseMessages;
+        return [
+          { role: "system", content: `[SYSTEM INSTRUCTIONS]\n${injectedSystemMessage.trim()}\n[END SYSTEM INSTRUCTIONS]` },
+          ...baseMessages
+        ];
+      };
+
       if (isReasoningEnabled) {
           // Request reasoning
           const reasoningMessages = [...newMessages, { role: "user", content: "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts." } as Message];
           
-          reasoningContent = await callAiStream(selectedProvider, selectedModel, reasoningMessages, controller.signal, (content) => {
+          reasoningContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(reasoningMessages), controller.signal, (content) => {
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 return [...prev.slice(0, -1), { ...last, reasoning: content }];
@@ -762,7 +813,7 @@ export function ChatbotApp() {
           
           // Next request
           const finalMessages = [...newMessages, { role: "assistant", content: `My internal reasoning: \n${reasoningContent}` } as Message, { role: "user", content: "Great. Now based on your reasoning, provide the final response." } as Message];
-          finalContent = await callAiStream(selectedProvider, selectedModel, finalMessages, controller.signal, (content) => {
+          finalContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(finalMessages), controller.signal, (content) => {
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 return [...prev.slice(0, -1), { ...last, content }];
@@ -777,7 +828,7 @@ export function ChatbotApp() {
           
       } else {
           // Standard request
-          finalContent = await callAiStream(selectedProvider, selectedModel, newMessages, controller.signal, (content) => {
+          finalContent = await callAiStream(selectedProvider, selectedModel, getApiMessages(newMessages), controller.signal, (content) => {
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 return [...prev.slice(0, -1), { ...last, content }];
@@ -1081,7 +1132,7 @@ export function ChatbotApp() {
                           }}
                         >
                           <option value="">None</option>
-                          {availableCharacters.map((c) => (
+                          {availableCharacters.filter(c => !c.is_universe).map((c) => (
                             <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
                           ))}
                         </select>
@@ -1098,7 +1149,24 @@ export function ChatbotApp() {
                           }}
                         >
                           <option value="">None</option>
-                          {availableCharacters.map((c) => (
+                          {availableCharacters.filter(c => !c.is_universe).map((c) => (
+                            <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="px-3 pt-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Universe</label>
+                        <select
+                          className="w-full bg-black/50 text-xs text-white p-2 rounded mt-1 border border-white/10 focus:ring-1 focus:ring-primary outline-none"
+                          value={selectedUniverse || ""}
+                          onChange={(e) => {
+                            const val = e.target.value || null;
+                            setSelectedUniverse(val);
+                            updateChatSetting({ universe_id: val });
+                          }}
+                        >
+                          <option value="">None</option>
+                          {availableCharacters.filter(c => c.is_universe).map((c) => (
                             <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
                           ))}
                         </select>

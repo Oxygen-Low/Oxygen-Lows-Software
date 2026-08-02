@@ -110,7 +110,7 @@ export const Layout = ({ children }: LayoutProps) => {
       <header
         className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-10`}
       >
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className={`${styles["logo"]} text-2xl font-bold`}>
               Oxygen Low's Software
