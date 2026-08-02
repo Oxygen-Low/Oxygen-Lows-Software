@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,8 @@ export function StorageFileSelector({
   allowedTypes,
   trigger,
 }: StorageFileSelectorProps) {
+  const { session } = useAuth();
+  const userId = session?.user?.id;
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -56,7 +59,9 @@ export function StorageFileSelector({
 
   const fetchFiles = async (path: string = "") => {
     setLoading(true);
-    const { data, error } = await supabase.storage.from("Storage").list(path, {
+    const basePath = userId ? `${userId}` : "";
+    const fullPath = path ? `${basePath}/${path}` : basePath;
+    const { data, error } = await supabase.storage.from("Storage").list(fullPath, {
       sortBy: { column: "name", order: "asc" },
     });
 
@@ -212,10 +217,13 @@ export function StorageFileSelector({
                               setCurrentPath([...currentPath, item.name]);
                             } else {
                               // Ensure the name includes the full path for the consumer
-                              const fullName =
+                              const relativeName =
                                 currentPath.length > 0
                                   ? `${currentPath.join("/")}/${item.name}`
                                   : item.name;
+                              const fullName = userId
+                                ? `${userId}/${relativeName}`
+                                : relativeName;
                               onSelect({ ...item, name: fullName });
                               setOpen(false);
                             }
