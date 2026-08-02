@@ -808,16 +808,3 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       return res.status(504).json({ error: "Upstream request timed out" });
     res.status(500).json({ error: error.message });
   }
-            lines
-              .find((l) => l.startsWith("Description:"))
-              ?.split(":")[1]
-              ?.trim() || "";
-        }
-        styles.push({ id, title, description });
-      }
-    }
-    res.json(styles);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to load styles" });
-  }
-};
