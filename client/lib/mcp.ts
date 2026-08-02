@@ -44,7 +44,10 @@ export const builtinFetchServer: MCPServer = {
           },
           body: JSON.stringify({ url: args.url })
         });
-        if (!response.ok) return `Error: HTTP ${response.status} ${response.statusText}`;
+        if (!response.ok) {
+           const errText = await response.text();
+           return `Error: HTTP ${response.status} ${response.statusText}\n${errText}`;
+        }
         const text = await response.text();
         return text.substring(0, 10000); // Limit size
       } catch (e: any) {

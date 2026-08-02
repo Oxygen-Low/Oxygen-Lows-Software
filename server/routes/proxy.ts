@@ -1,4 +1,5 @@
 import { Request, Response, Router } from "express";
+import axios from "axios";
 
 export const proxyRouter = Router();
 
@@ -9,14 +10,18 @@ proxyRouter.post("/fetch", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing url" });
     }
 
-    const response = await fetch(url, options);
+    const response = await axios({
+      url,
+      method: options?.method || "GET",
+      headers: options?.headers,
+      data: options?.body,
+      responseType: "text", // We want raw text
+      validateStatus: () => true, // Don't throw on 4xx/5xx
+    });
     
-    // We only care about text content for the AI fetcher
-    const text = await response.text();
-    
-    res.status(response.status).send(text);
+    res.status(response.status).send(response.data);
   } catch (error: any) {
     console.error("Proxy fetch error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || "Unknown error" });
   }
 });
