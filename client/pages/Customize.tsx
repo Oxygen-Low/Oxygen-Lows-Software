@@ -18,19 +18,19 @@ interface PlaylistTrack {
 }
 
 const THEMES = [
-  { label: "Default", value: "default" },
-  { label: "Red", value: "red" },
-  { label: "Yellow", value: "yellow" },
-  { label: "Black/Dark", value: "black" },
-  { label: "White/Light", value: "white" },
+  { label: "Default", value: "default", bg: "hsl(218, 21%, 7%)", fg: "hsl(186, 100%, 50%)", text: "hsl(210, 40%, 98%)" },
+  { label: "Red", value: "red", bg: "hsl(0, 0%, 7%)", fg: "hsl(0, 84%, 60%)", text: "hsl(0, 0%, 98%)" },
+  { label: "Yellow", value: "yellow", bg: "hsl(45, 100%, 6%)", fg: "hsl(45, 100%, 50%)", text: "hsl(45, 100%, 98%)" },
+  { label: "Black/Dark", value: "black", bg: "hsl(0, 0%, 0%)", fg: "hsl(0, 0%, 100%)", text: "hsl(0, 0%, 100%)" },
+  { label: "White/Light", value: "white", bg: "hsl(0, 0%, 100%)", fg: "hsl(0, 0%, 0%)", text: "hsl(0, 0%, 0%)" },
 ];
 
 const FONTS = [
-  { label: "Indie Flower (Default)", value: "font-indie" },
-  { label: "Zilla Slab", value: "font-zilla" },
-  { label: "VT323", value: "font-vt323" },
-  { label: "Cabin Sketch", value: "font-cabin" },
-  { label: "Londrina Sketch", value: "font-londrina" },
+  { label: "Indie Flower (Default)", value: "font-indie", family: "'Indie Flower'" },
+  { label: "Zilla Slab", value: "font-zilla", family: "'Zilla Slab'" },
+  { label: "VT323", value: "font-vt323", family: "'VT323'" },
+  { label: "Cabin Sketch", value: "font-cabin", family: "'Cabin Sketch'" },
+  { label: "Londrina Sketch", value: "font-londrina", family: "'Londrina Sketch'" },
 ];
 
 export default function Customize() {
@@ -93,7 +93,7 @@ export default function Customize() {
 
   return (
     <Layout>
-      <div className="max-w-4xl">
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
 
 
@@ -137,9 +137,14 @@ export default function Customize() {
                 aria-pressed={theme === themeOption.value}
                 className={`p-4 rounded-lg border-2 transition-all font-medium text-sm ${
                   theme === themeOption.value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card text-foreground hover:border-primary/50"
+                    ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                    : "hover:opacity-80"
                 }`}
+                style={{
+                  backgroundColor: themeOption.bg,
+                  color: themeOption.text,
+                  borderColor: themeOption.fg,
+                }}
               >
                 {themeOption.label}
               </button>
@@ -156,11 +161,12 @@ export default function Customize() {
                 key={fontOption.value}
                 onClick={() => setFont(fontOption.value)}
                 aria-pressed={font === fontOption.value}
-                className={`p-4 rounded-lg border-2 transition-all font-medium text-sm ${
+                className={`p-4 rounded-lg border-2 transition-all text-sm ${
                   font === fontOption.value
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border bg-card text-foreground hover:border-primary/50"
                 }`}
+                style={{ fontFamily: fontOption.family }}
               >
                 {fontOption.label}
               </button>
