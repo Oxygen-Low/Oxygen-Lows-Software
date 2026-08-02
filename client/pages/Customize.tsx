@@ -41,8 +41,6 @@ export default function Customize() {
     setFont,
     useGradient,
     setUseGradient,
-    backgroundImagePath,
-    setBackgroundImage,
   } = useTheme();
   const {
     playlist,
@@ -126,47 +124,7 @@ export default function Customize() {
               {useGradient ? "Enabled" : "Disabled"}
             </button>
           </div>
-          <div className="mb-6 p-4 bg-card rounded-lg border border-border">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <label className="text-foreground font-medium block">
-                  Background Image
-                </label>
-                <p className="text-sm text-muted-foreground">
-                  Pick an image from storage to use as your background
-                </p>
-              </div>
-              {backgroundImagePath && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setBackgroundImage(null)}
-                >
-                  Remove Image
-                </Button>
-              )}
-            </div>
 
-            <StorageFileSelector
-              allowedTypes={["image"]}
-              onSelect={(file) => setBackgroundImage(file.name)}
-              trigger={
-                <Button className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2">
-                  <ImageIcon className="w-8 h-8 opacity-50" />
-                  <span>
-                    {backgroundImagePath
-                      ? "Change Background Image"
-                      : "Select Background Image"}
-                  </span>
-                  {backgroundImagePath && (
-                    <span className="text-xs truncate max-w-full px-4">
-                      {backgroundImagePath}
-                    </span>
-                  )}
-                </Button>
-              }
-            />
-          </div>
 
           <h3 className="text-lg font-medium mb-3 text-foreground">
             Theme Color
