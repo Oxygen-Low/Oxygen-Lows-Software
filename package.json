@@ -8,7 +8,7 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:public": "cross-env VITE_PUBLIC_MODE=true npm run build",
-    "build:admin": "cross-env ADMIN_VERSION=true VITE_ADMIN_VERSION=true npm run build",
+    "build:admin": "cross-env ADMIN_VERSION=true VITE_ADMIN_VERSION=true vite build && cross-env ADMIN_VERSION=true VITE_ADMIN_VERSION=true vite build --config vite.config.server.ts",
     "build:server": "vite build --config vite.config.server.ts",
     "start": "cross-env NODE_OPTIONS=\"--max-old-space-size=256\" node --import @aikidosec/firewall/instrument dist/server/node-build.mjs",
     "public": "cross-env NODE_OPTIONS=\"--max-old-space-size=256\" VITE_PUBLIC_MODE=true node --import @aikidosec/firewall/instrument dist/server/node-build.mjs",
