@@ -89,7 +89,9 @@ export async function resolveCustomProviderUrl(
     url.hostname = firstAddress.address;
   }
 
-  url.pathname = url.pathname.replace(/\/+$/, "") + "/chat/completions";
+  if (!url.pathname.endsWith("/chat/completions")) {
+    url.pathname = url.pathname.replace(/\/+$/, "") + "/chat/completions";
+  }
 
   return url.href;
 }

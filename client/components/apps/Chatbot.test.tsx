@@ -240,7 +240,7 @@ describe("ChatbotApp", () => {
       </ThemeProvider>,
     );
     await screen.findByText("Existing Chat");
-    expect(screen.queryByText("Select a chat to start")).not.toBeNull();
+    expect(screen.queryByText("How can I help you?")).not.toBeNull();
   });
 
   it("creates a new chat and sends a message", async () => {
@@ -258,7 +258,7 @@ describe("ChatbotApp", () => {
 
     // Verify input is now visible
     const input = await screen.findByPlaceholderText(
-      "Ask anything...",
+      "Type a message...",
       {},
       { timeout: 5000 },
     );
@@ -313,7 +313,7 @@ describe("ChatbotApp", () => {
       });
       fireEvent.click(newChatButton);
 
-      const input = await screen.findByPlaceholderText("Ask anything...");
+      const input = await screen.findByPlaceholderText("Type a message...");
       fireEvent.change(input, { target: { value: "Hello Queue" } });
 
       const sendButton = screen.getByLabelText("Send message");

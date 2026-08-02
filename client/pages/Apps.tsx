@@ -133,11 +133,11 @@ export default function Apps() {
 
   const availableApps = useMemo(
     () =>
-      apps.filter(
-        (app) =>
-          app.availability ===
-          (isDesktopMode ? selectedAvailability : "web-and-desktop"),
-      ),
+      apps.filter((app) => {
+        if (!isDesktopMode) return app.availability === "web-and-desktop";
+        if (selectedAvailability === "web-and-desktop") return true;
+        return app.availability === "desktop-only";
+      }),
     [isDesktopMode, selectedAvailability],
   );
 

@@ -9,11 +9,20 @@ export const formatModelLabel = (provider: string, modelId: string) => {
     };
     return labels[modelId] || "AI Horde - " + modelId;
   }
-  if (provider === "ollama") return "ollama/" + modelId;
-  if (provider === "lmstudio") return "lmstudio/" + modelId;
+  if (provider === "ollama") return "Ollama/" + modelId;
+  if (provider === "lmstudio") return "LMStudio/" + modelId;
   if (provider === "koboldcpp" || provider === "kobold")
-    return "koboldcpp/" + modelId;
-  return provider + " - " + modelId;
+    return "Koboldcpp/" + modelId;
+
+  const displayProvider = 
+    provider === "openai" ? "OpenAI" :
+    provider === "anthropic" ? "Anthropic" :
+    provider === "google" ? "Google" :
+    provider === "openrouter" ? "OpenRouter" :
+    provider === "grok" ? "Grok" :
+    provider.charAt(0).toUpperCase() + provider.slice(1);
+
+  return displayProvider + " - " + modelId;
 };
 
 export const parseAiProxyError = async (response: Response) => {
@@ -41,5 +50,5 @@ export const parseAiProxyError = async (response: Response) => {
   } catch (e) {
     errorMessage = "Error parsing error response";
   }
-  return errorMessage;
+  return typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage);
 };

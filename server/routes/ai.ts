@@ -12,7 +12,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 const getSystemContentFromYaml = (filePath: string): string | null => {
   try {
-    if (filePath.includes("..") || path.isAbsolute(filePath)) {
+    if (filePath.includes("..")) {
       return null;
     }
     const content = fs.readFileSync(filePath, "utf-8");
@@ -36,57 +36,25 @@ const DEFAULT_HORDE_MODELS = [
 export const handleGetLocalProviders: RequestHandler = async (_req, res) => {
   const localModels = [...DEFAULT_HORDE_MODELS];
 
-  try {
-    const response = await axios.get("http://127.0.0.1:11434/api/tags", {
-      timeout: 2000,
-    });
-    const models = (response.data.models || []).map((m: any) => ({
-      provider: "ollama",
-      model_id: m.name,
-    }));
-    localModels.push(...models);
-  } catch (error) {
-    // Ignore Ollama errors
-  }
+  const results = await Promise.allSettled([
+    axios.get("http://127.0.0.1:11434/api/tags", { timeout: 2000 })
+      .then(r => (r.data.models || []).map((m: any) => ({ provider: "ollama", model_id: m.name }))),
+    axios.get("http://127.0.0.1:1234/v1/models", { timeout: 2000 })
+      .then(r => (r.data.data || []).map((m: any) => ({ provider: "lmstudio", model_id: m.id }))),
+    axios.get("http://127.0.0.1:5001/v1/models", { timeout: 2000 })
+      .then(r => {
+        const models = (r.data.data || []).map((m: any) => ({ provider: "koboldcpp", model_id: m.id }));
+        if (!models.length) throw new Error("No models");
+        return models;
+      })
+      .catch(() => axios.get("http://127.0.0.1:5001/api/v1/model", { timeout: 2000 })
+        .then(r => r.data?.result ? [{ provider: "koboldcpp", model_id: r.data.result }] : [])
+      )
+  ]);
 
-  try {
-    const response = await axios.get("http://127.0.0.1:1234/v1/models", {
-      timeout: 2000,
-    });
-    const models = (response.data.data || []).map((m: any) => ({
-      provider: "lmstudio",
-      model_id: m.id,
-    }));
-    localModels.push(...models);
-  } catch (error) {
-    // Ignore LMStudio errors
-  }
-
-  try {
-    const response = await axios.get("http://127.0.0.1:5001/v1/models", {
-      timeout: 2000,
-    });
-    const models = (response.data.data || []).map((m: any) => ({
-      provider: "koboldcpp",
-      model_id: m.id,
-    }));
-    if (!models.length)
-      throw new Error("No Kobold.cpp OpenAI-compatible models found");
-    localModels.push(...models);
-  } catch (error) {
-    try {
-      const response = await axios.get("http://127.0.0.1:5001/api/v1/model", {
-        timeout: 2000,
-      });
-      const modelId = response.data?.result;
-      if (modelId) {
-        localModels.push({
-          provider: "koboldcpp",
-          model_id: modelId,
-        });
-      }
-    } catch (fallbackError) {
-      // Ignore Kobold.cpp errors
+  for (const result of results) {
+    if (result.status === "fulfilled" && Array.isArray(result.value)) {
+      localModels.push(...result.value);
     }
   }
 
@@ -236,7 +204,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
     return res.status(400).json({ error: "Provider not configured" });
   }
 
-  const processedMessages = (messages || []).slice(-11);
+  const processedMessages = (messages || []).slice(-20);
   const basePromptFile = path.join(
     process.cwd(),
     "prompts",
@@ -247,22 +215,11 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   if (baseContent)
     processedMessages.unshift({ role: "system", content: baseContent });
 
-  if (style) {
-    const base = path.resolve(process.cwd(), "prompts", "chat");
-    const target = path.resolve(base, `${style}.prompt.yml`);
-    const relative = path.relative(base, target);
-    if (relative.startsWith("..") || path.isAbsolute(relative)) {
-      throw new Error("Invalid file path");
-    }
-    const styleContent = getSystemContentFromYaml(target);
-    if (styleContent)
-      processedMessages.unshift({ role: "system", content: styleContent });
-  }
 
   const abortController = new AbortController();
   const axiosOptions: any = {
     headers: { "Content-Type": "application/json" },
-    timeout: 30000,
+    timeout: 120000,
     validateStatus: () => true,
     signal: abortController.signal,
   };
@@ -322,6 +279,18 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
   };
 
   try {
+    if (style) {
+      const base = path.resolve(process.cwd(), "prompts", "chat");
+      const target = path.resolve(base, `${style}.prompt.yml`);
+      const relative = path.relative(base, target);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) {
+        throw new Error("Invalid file path");
+      }
+      const styleContent = getSystemContentFromYaml(target);
+      if (styleContent)
+        processedMessages.unshift({ role: "system", content: styleContent });
+    }
+
     switch (provider) {
       case "openai":
         await handleResponse(
@@ -339,7 +308,8 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
         );
         break;
       case "anthropic": {
-        const s = processedMessages.find((m: any) => m.role === "system");
+        const systemMessages = processedMessages.filter((m: any) => m.role === "system");
+        const systemContent = systemMessages.map((m: any) => m.content).join("\n\n");
         const transformedMessages = processedMessages
           .filter((m: any) => m.role !== "system")
           .map((m: any) => {
@@ -383,7 +353,7 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               messages: transformedMessages,
               max_tokens: 4096,
               stream,
-              system: s?.content,
+              system: systemContent || undefined,
             },
             {
               ...axiosOptions,
