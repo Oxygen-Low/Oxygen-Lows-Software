@@ -19,9 +19,9 @@ describe("Apps", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Availability" })).toBeDefined();
-    expect(screen.getByLabelText("All (2 apps)")).toBeDefined();
+    expect(screen.getByLabelText("All (3 apps)")).toBeDefined();
     expect(screen.getByLabelText("LLM/AI (1 apps)")).toBeDefined();
-    expect(screen.getByLabelText("Utility (1 apps)")).toBeDefined();
+    expect(screen.getByLabelText("Utility (2 apps)")).toBeDefined();
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.getByText("File Compressor")).toBeDefined();
   });

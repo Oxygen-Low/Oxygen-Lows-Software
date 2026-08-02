@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Button } from "@/components/ui/button";
-import { Zap, Music, Trash2, Play, Image as ImageIcon } from "lucide-react";
+import { Zap, Music, Trash2, Play, Image as ImageIcon, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +42,7 @@ export default function Customize() {
     useGradient,
     setUseGradient,
   } = useTheme();
+  
   const {
     playlist,
     currentTrack,
@@ -51,8 +52,34 @@ export default function Customize() {
     shuffle,
     toggleShuffle,
   } = useMusicContext();
+  
   const { session } = useAuth();
   const { toast } = useToast();
+
+  const [customPrimaryColor, setCustomPrimaryColor] = useState(() => {
+    if (theme && theme.startsWith("custom:")) {
+      const parts = theme.replace("custom:", "").split("-");
+      return parts[0] || "#00ffff";
+    }
+    return "#00ffff";
+  });
+  
+  const [customBgColor, setCustomBgColor] = useState(() => {
+    if (theme && theme.startsWith("custom:")) {
+      const parts = theme.replace("custom:", "").split("-");
+      return parts[1] || "#0f172a";
+    }
+    return "#0f172a";
+  });
+
+  // Keep state in sync if theme changes externally
+  useEffect(() => {
+    if (theme && theme.startsWith("custom:")) {
+      const parts = theme.replace("custom:", "").split("-");
+      if (parts[0]) setCustomPrimaryColor(parts[0]);
+      if (parts[1]) setCustomBgColor(parts[1]);
+    }
+  }, [theme]);
 
   const handleAddTrack = async (track: any) => {
     let finalTrack: PlaylistTrack = {
@@ -64,7 +91,6 @@ export default function Customize() {
           .pop()
           ?.replace(/\.[^/.]+$/, "") || track.name,
     };
-
 
     const alreadyInPlaylist = playlist.some(
       (t) => t.fileName === finalTrack.fileName,
@@ -96,7 +122,6 @@ export default function Customize() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
 
-
         {/* Theme Section */}
         <div className="mb-12">
           <h2 className="text-xl font-semibold mb-4 text-foreground">
@@ -125,7 +150,6 @@ export default function Customize() {
             </button>
           </div>
 
-
           <h3 className="text-lg font-medium mb-3 text-foreground">
             Theme Color
           </h3>
@@ -150,6 +174,42 @@ export default function Customize() {
               </button>
             ))}
           </div>
+
+          <h3 className="text-lg font-medium mb-3 mt-8 text-foreground">
+            Custom Theme
+          </h3>
+          <div className="p-4 bg-card rounded-lg border border-border space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label className="text-foreground font-medium block">Primary Accent Color</label>
+                <p className="text-sm text-muted-foreground">Used for buttons, highlights, and icons</p>
+              </div>
+              <input
+                type="color"
+                value={customPrimaryColor}
+                onChange={(e) => {
+                  setCustomPrimaryColor(e.target.value);
+                  setTheme(`custom:${e.target.value}-${customBgColor}`);
+                }}
+                className="w-12 h-12 rounded cursor-pointer border-0 bg-transparent p-0"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label className="text-foreground font-medium block">Background Color</label>
+                <p className="text-sm text-muted-foreground">Main background color of the app. A gradient is generated if enabled.</p>
+              </div>
+              <input
+                type="color"
+                value={customBgColor}
+                onChange={(e) => {
+                  setCustomBgColor(e.target.value);
+                  setTheme(`custom:${customPrimaryColor}-${e.target.value}`);
+                }}
+                className="w-12 h-12 rounded cursor-pointer border-0 bg-transparent p-0"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Font Section */}
@@ -172,6 +232,31 @@ export default function Customize() {
               </button>
             ))}
           </div>
+
+          <h3 className="text-lg font-medium mb-3 mt-8 text-foreground">
+            Custom Font
+          </h3>
+          <StorageFileSelector
+            allowedExtensions={[".ttf", ".woff", ".woff2", ".otf"]}
+            onSelect={(file) => {
+              setFont(`font-custom:${file.name}`);
+              toast({
+                title: "Success",
+                description: `Custom font loaded: ${file.name}`,
+              });
+            }}
+            trigger={
+              <Button className="w-full h-16 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center gap-2">
+                <Type className="w-5 h-5 opacity-50" />
+                <span>Select Font from Storage</span>
+              </Button>
+            }
+          />
+          {font && font.startsWith("font-custom:") && (
+             <p className="text-sm text-primary mt-2 text-center">
+                Currently using custom font: {font.replace("font-custom:", "")}
+             </p>
+          )}
         </div>
 
         {/* Music Playlist Section */}
