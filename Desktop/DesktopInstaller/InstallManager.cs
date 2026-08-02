@@ -108,7 +108,7 @@ namespace DesktopInstaller
             using var key = Registry.CurrentUser.CreateSubKey(RegKeyPath);
             key.SetValue("InstallPath", targetPath);
 
-            string versionStr = "1.0.0";
+            string versionStr = "1.1.0";
             try
             {
                 var version = Assembly.GetExecutingAssembly().GetName().Version;

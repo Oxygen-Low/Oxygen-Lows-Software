@@ -29,7 +29,7 @@ namespace DesktopApp
             catch
             {
             }
-            return "1.0.0";
+            return "1.1.0";
         }
 
         public async Task<(bool HasUpdate, string? DownloadUrl, string? Version)> CheckForUpdatesAsync()
