@@ -161,18 +161,7 @@ vi.mock("@/lib/supabase", () => ({
       return mockSupabaseChain(null);
     }),
     rpc: vi.fn((name) => {
-      if (name === "get_chat_styles")
-        return Promise.resolve({
-          data: [
-            {
-              id: "GeneralAssistant",
-              title: "Assistant",
-              description: "Helpful",
-              prompt: "",
-            },
-          ],
-          error: null,
-        });
+
       if (name === "upsert_user_preferences")
         return Promise.resolve({ data: null, error: null });
       return Promise.resolve({ data: null, error: null });
@@ -199,20 +188,7 @@ global.fetch = vi.fn((url) => {
       body: stream,
     });
   }
-  if (url === "/api/ai/styles") {
-    return Promise.resolve({
-      ok: true,
-      json: () =>
-        Promise.resolve([
-          {
-            id: "GeneralAssistant",
-            title: "Assistant",
-            description: "Helpful",
-            prompt: "",
-          },
-        ]),
-    });
-  }
+
   return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
 }) as any;
 
@@ -223,7 +199,7 @@ describe("ChatbotApp", () => {
       {
         id: "chat-1",
         title: "Existing Chat",
-        style: "GeneralAssistant",
+
         updated_at: new Date().toISOString(),
       },
     ];

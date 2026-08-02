@@ -151,18 +151,13 @@ interface Message {
 interface Chat {
   id: string;
   title: string;
-  style: string;
   llm_character_id: string | null;
   user_character_id: string | null;
   universe_id: string | null;
   is_encrypted: boolean;
 }
 
-interface Style {
-  id: string;
-  title: string;
-  description: string;
-}
+
 
 interface Character {
   id: string;
@@ -377,8 +372,7 @@ export function ChatbotApp() {
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   
-  const [styles, setStyles] = useState<Style[]>([]);
-  const [selectedStyle, setSelectedStyle] = useState("GeneralAssistant");
+
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>([]);
   const [selectedLlmCharacter, setSelectedLlmCharacter] = useState<string | null>(null);
   const [selectedUserCharacter, setSelectedUserCharacter] = useState<string | null>(null);
@@ -439,9 +433,7 @@ export function ChatbotApp() {
     const mcpData = await fetchAllMCPServers(session.user.id);
     setMcpServers(mcpData);
 
-    const stylesRes = await fetch("/api/ai/styles");
-    const stylesData = await stylesRes.json();
-    if (stylesData) setStyles(stylesData);
+
 
     const { data: chars } = await supabase
       .from("characters")
@@ -543,7 +535,7 @@ export function ChatbotApp() {
 
       const chat = chats.find((c) => c.id === currentChatId);
       if (chat) {
-        setSelectedStyle(chat.style);
+
         setSelectedLlmCharacter(chat.llm_character_id);
         setSelectedUserCharacter(chat.user_character_id);
         setSelectedUniverse(chat.universe_id);
@@ -658,7 +650,6 @@ export function ChatbotApp() {
           provider: provider,
           model: model,
           messages: msgs,
-          style: selectedStyle,
           stream: true,
           apiKey: decryptedKey,
           baseUrl: decryptedBaseUrl,
@@ -762,7 +753,6 @@ export function ChatbotApp() {
         .insert({
           user_id: session.user.id,
           title: isEncryptionEnabled ? await encrypt(title, key!) : title,
-          style: selectedStyle,
           llm_character_id: selectedLlmCharacter,
           user_character_id: selectedUserCharacter,
           universe_id: selectedUniverse,
@@ -1263,7 +1253,7 @@ export function ChatbotApp() {
                         </div>
                       </button>
                       
-                      {/* Character / Style Selections */}
+                      {/* Character Selections */}
                       <div className="px-3 pt-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">User Character</label>
                         <select
@@ -1298,7 +1288,7 @@ export function ChatbotApp() {
                           ))}
                         </select>
                       </div>
-                      <div className="px-3 pt-2">
+                      <div className="px-3 pt-2 pb-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">Universe</label>
                         <select
                           className="w-full bg-black/50 text-xs text-white p-2 rounded mt-1 border border-white/10 focus:ring-1 focus:ring-primary outline-none"
@@ -1312,21 +1302,6 @@ export function ChatbotApp() {
                           <option value="">None</option>
                           {availableCharacters.filter(c => c.is_universe).map((c) => (
                             <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="px-3 pt-2 pb-2">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Style</label>
-                        <select
-                          className="w-full bg-black/50 text-xs text-white p-2 rounded mt-1 border border-white/10 focus:ring-1 focus:ring-primary outline-none"
-                          value={selectedStyle}
-                          onChange={(e) => {
-                            setSelectedStyle(e.target.value);
-                            updateChatSetting({ style: e.target.value });
-                          }}
-                        >
-                          {styles.map((s) => (
-                            <option key={s.id} value={s.id}>{s.title}</option>
                           ))}
                         </select>
                       </div>

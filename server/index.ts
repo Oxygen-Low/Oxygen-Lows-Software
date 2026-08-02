@@ -9,7 +9,6 @@ import { oauthAdminRouter } from "./routes/oauthAdmin";
 import {
   handleProxyAiRequest,
   handleGetLocalProviders,
-  handleFetchWebpage,
   handleGetHordeStatus,
 } from "./routes/ai";
 import { reposRouter } from "./routes/repos";
@@ -88,7 +87,7 @@ export function createServer() {
 
   app.get("/api/demo", handleDemo);
   app.post("/api/ai/proxy", apiLimiter, handleProxyAiRequest);
-  app.post("/api/ai/web", apiLimiter, handleFetchWebpage);
+
   app.get("/api/ai/local-providers", apiLimiter, handleGetLocalProviders);
   app.get("/api/ai/horde-status", apiLimiter, handleGetHordeStatus);
 

@@ -1,6 +1,0 @@
-messages:
-  - role: system
-    content: You are a helpful general assistant.
-  - role: user
-    content: How many R's are in Strawberry?
-model: openai/gpt-4o

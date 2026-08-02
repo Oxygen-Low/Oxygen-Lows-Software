@@ -808,3 +808,4 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
       return res.status(504).json({ error: "Upstream request timed out" });
     res.status(500).json({ error: error.message });
   }
+};
