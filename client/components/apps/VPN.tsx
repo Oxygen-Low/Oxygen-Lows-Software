@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Globe, Shield, ShieldAlert, ShieldCheck, MapPin } from "lucide-react";
+import { Globe, Shield, ShieldAlert, ShieldCheck, MapPin, Info, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface VPNServer {
   id: string;
@@ -17,7 +18,7 @@ const VPN_SERVERS: VPNServer[] = [
   { id: "sg", name: "🇸🇬 Singapore", baseUrl: "https://oxygen-lows-software-vpn-singapore.onrender.com", lat: 1.3521, lng: 103.8198 },
   { id: "oh", name: "🇺🇸 US East (Ohio)", baseUrl: "https://oxygen-lows-software-vpn-ohio.onrender.com", lat: 40.4173, lng: -82.9071 },
   { id: "or", name: "🇺🇸 US West (Oregon)", baseUrl: "https://oxygen-lows-software-vpn-oregon.onrender.com", lat: 43.8041, lng: -120.5542 },
-  { id: "fr", name: "🇩🇪 Germany (Frankfurt)", baseUrl: "https://oxygen-lows-software-vpn-frankurt.onrender.com", lat: 50.1109, lng: 8.6821 }
+  { id: "fr", name: "🇩🇪 Germany (Frankfurt)", baseUrl: "https://oxygen-lows-software-vpn-frankfurt.onrender.com", lat: 50.1109, lng: 8.6821 }
 ];
 
 export function VPNApp() {
@@ -63,7 +64,7 @@ export function VPNApp() {
     };
   }, []);
 
-  const toggleConnection = () => {
+  const toggleConnection = async () => {
     if (status === "connected" || status === "connecting") {
       setStatus("disconnected");
       if (window.chrome && window.chrome.webview) {
@@ -74,13 +75,23 @@ export function VPNApp() {
       }
     } else {
       if (!selectedServer) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setErrorMessage("Please sign in to use the VPN.");
+        setStatus("disconnected");
+        return;
+      }
+
       setStatus("connecting");
       setErrorMessage("");
       if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage(JSON.stringify({
           command: "vpn_connect",
           serverName: selectedServer.name,
-          baseUrl: selectedServer.baseUrl
+          baseUrl: selectedServer.baseUrl,
+          userId: session.user.id,
+          accessToken: session.access_token
         }));
       } else {
         // Fallback for debugging in browser
@@ -169,6 +180,57 @@ export function VPNApp() {
           </div>
         </Card>
       </div>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Info className="w-5 h-5 text-cyan-500" />
+            What's Covered
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-300 mb-2">Supported</h4>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2 text-emerald-400">
+                  <Check className="w-4 h-4 flex-shrink-0" />
+                  <span>Web browsing & privacy</span>
+                </li>
+                <li className="flex items-center gap-2 text-emerald-400">
+                  <Check className="w-4 h-4 flex-shrink-0" />
+                  <span>Geo-blocked websites</span>
+                </li>
+                <li className="flex items-center gap-2 text-emerald-400">
+                  <Check className="w-4 h-4 flex-shrink-0" />
+                  <span>Streaming services</span>
+                </li>
+                <li className="flex items-center gap-2 text-emerald-400">
+                  <Check className="w-4 h-4 flex-shrink-0" />
+                  <span>Secure public WiFi</span>
+                </li>
+              </ul>
+            </div>
+            <div className="space-y-3">
+              <h4 className="font-semibold text-slate-300 mb-2">Not Supported</h4>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2 text-amber-400">
+                  <X className="w-4 h-4 flex-shrink-0" />
+                  <span>Online gaming</span>
+                </li>
+                <li className="flex items-center gap-2 text-amber-400">
+                  <X className="w-4 h-4 flex-shrink-0" />
+                  <span>VoIP / video calls</span>
+                </li>
+                <li className="flex items-center gap-2 text-amber-400">
+                  <X className="w-4 h-4 flex-shrink-0" />
+                  <span>Torrenting</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

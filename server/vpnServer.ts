@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import axios from "axios";
 import helmet from "helmet";
+import net from "net";
 
 config();
 
@@ -27,6 +28,7 @@ app.use(express.json());
 
 // Root path to return server status and details
 app.get("/", (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*");
   res.json({
     status: "online",
     message: "Oxygen Low's Software VPN Server is operational.",
@@ -74,48 +76,6 @@ app.post("/api/vpn/auth", async (req, res) => {
   }
 });
 
-// SSTP over HTTPS handshake and negotiation emulator endpoint with authentication check
-app.all("/sstdp", async (req, res) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : undefined;
-  const userId = req.headers["x-user-id"] as string;
-
-  if (!token || !userId) {
-    return res.status(401).json({ success: false, error: "Unauthorized SSTP connection request." });
-  }
-
-  try {
-    const { data: { user }, error } = await anonClient.auth.getUser(token);
-
-    if (error || !user || user.id !== userId) {
-      return res.status(401).json({ success: false, error: "Authentication failed." });
-    }
-
-    const resp = await axios.get(`${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${userId}&select=vpn_usage_bytes,vpn_usage_last_date`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    const todayStr = new Date().toISOString().split("T")[0];
-    if (resp.data && resp.data.length > 0) {
-      const preferences = resp.data[0];
-      const isToday = preferences.vpn_usage_last_date === todayStr;
-      const usage = isToday ? Number(preferences.vpn_usage_bytes || 0) : 0;
-      if (usage >= 50 * 1024 * 1024) {
-        return res.status(403).json({ success: false, error: "VPN limit reached." });
-      }
-    }
-
-    res.setHeader("Content-Type", "application/octet-stream");
-    const controlSSTPResponse = Buffer.from([0x10, 0x01, 0x00, 0x08, 0x00, 0x02, 0x00, 0x00]);
-    res.send(controlSSTPResponse);
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 // Set up directly to avoid upgrade listener accumulation
 wss.on("connection", (ws: WebSocket) => {
   let authenticated = false;
@@ -123,6 +83,8 @@ wss.on("connection", (ws: WebSocket) => {
   let accessToken = "";
   let accumulatedBytes = 0;
   let intervalId: any = null;
+  let proxyRequestCount = 0;
+  const tunnels = new Map<string, net.Socket>();
 
   async function flushUsage() {
     if (accumulatedBytes > 0 && userId && accessToken) {
@@ -171,6 +133,13 @@ wss.on("connection", (ws: WebSocket) => {
 
   ws.on("close", async () => {
     clearInterval(intervalId);
+    
+    // Destroy all active tunnels
+    for (const [id, socket] of tunnels.entries()) {
+      socket.destroy();
+    }
+    tunnels.clear();
+    
     await flushUsage();
   });
 
@@ -220,11 +189,121 @@ wss.on("connection", (ws: WebSocket) => {
         return;
       }
 
-      if (data.type === "traffic") {
-        const bytes = Buffer.byteLength(JSON.stringify(data.payload));
-        accumulatedBytes += bytes;
-        ws.send(JSON.stringify({ type: "traffic_ack", bytes }));
+      if (data.type === "proxy_request") {
+        if (proxyRequestCount >= 20) {
+          ws.send(JSON.stringify({ type: "proxy_error", id: data.id, error: "Too many concurrent proxy requests." }));
+          return;
+        }
+        proxyRequestCount++;
+
+        const requestHeaders = { ...data.headers };
+        delete requestHeaders.host;
+        
+        const clientIp = (ws as any)._clientIp;
+        if (clientIp) {
+          requestHeaders["X-Forwarded-For"] = clientIp;
+        }
+
+        const requestData = data.body ? Buffer.from(data.body, "base64") : undefined;
+
+        axios({
+          method: data.method,
+          url: data.url,
+          headers: requestHeaders,
+          data: requestData,
+          responseType: "arraybuffer",
+          timeout: 30000,
+          validateStatus: () => true
+        })
+          .then((resp) => {
+            const respBuffer = Buffer.from(resp.data);
+            const reqBytes = requestData ? requestData.byteLength : 0;
+            accumulatedBytes += (respBuffer.byteLength + reqBytes);
+
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: "proxy_response",
+                id: data.id,
+                status: resp.status,
+                statusText: resp.statusText,
+                headers: resp.headers,
+                body: respBuffer.toString("base64")
+              }));
+            }
+          })
+          .catch((err) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "proxy_error", id: data.id, error: err.message }));
+            }
+          })
+          .finally(() => {
+            proxyRequestCount--;
+          });
+        return;
       }
+
+      if (data.type === "tunnel_open") {
+        if (tunnels.size >= 10) {
+          ws.send(JSON.stringify({ type: "tunnel_error", id: data.id, error: "Too many concurrent tunnels." }));
+          return;
+        }
+        const port = Number(data.port);
+        if (isNaN(port) || port < 1 || port > 65535 || !data.host) {
+          ws.send(JSON.stringify({ type: "tunnel_error", id: data.id, error: "Invalid host or port." }));
+          return;
+        }
+
+        const socket = net.createConnection({ host: data.host, port }, () => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "tunnel_opened", id: data.id }));
+          }
+        });
+
+        tunnels.set(data.id, socket);
+
+        socket.on("data", (socketData) => {
+          accumulatedBytes += socketData.byteLength;
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "tunnel_data", id: data.id, data: socketData.toString("base64") }));
+          }
+        });
+
+        socket.on("error", (err) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "tunnel_error", id: data.id, error: err.message }));
+          }
+          tunnels.delete(data.id);
+        });
+
+        socket.on("close", () => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "tunnel_close", id: data.id }));
+          }
+          tunnels.delete(data.id);
+        });
+
+        return;
+      }
+
+      if (data.type === "tunnel_data") {
+        const socket = tunnels.get(data.id);
+        if (socket && !socket.destroyed) {
+          const buf = Buffer.from(data.data, "base64");
+          accumulatedBytes += buf.byteLength;
+          socket.write(buf);
+        }
+        return;
+      }
+
+      if (data.type === "tunnel_close") {
+        const socket = tunnels.get(data.id);
+        if (socket) {
+          socket.destroy();
+          tunnels.delete(data.id);
+        }
+        return;
+      }
+
     } catch (err) {
       ws.send(JSON.stringify({ type: "error", message: "Invalid payload format." }));
     }
@@ -233,6 +312,7 @@ wss.on("connection", (ws: WebSocket) => {
 
 server.on("upgrade", (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
+    (ws as any)._clientIp = request.socket.remoteAddress;
     wss.emit("connection", ws, request);
   });
 });

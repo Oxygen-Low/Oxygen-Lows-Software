@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace DesktopApp;
@@ -11,10 +10,6 @@ public static class VPNKillswitchManager
     private static readonly object _lock = new object();
     private static Task _taskQueue = Task.CompletedTask;
 
-    /// <summary>
-    /// Configures the local system-wide loopback block or firewall rules.
-    /// Uses a single chained task queue so toggle operations execute in request order.
-    /// </summary>
     public static Task<bool> SetKillswitchActiveAsync(bool activate)
     {
         _isKillswitchEnabled = activate;
@@ -25,14 +20,18 @@ public static class VPNKillswitchManager
             {
                 try
                 {
-                    bool result = false;
+                    bool result = true;
                     if (activate)
                     {
-                        result = await RunNetshCommandAsync("advfirewall firewall add rule name=\"VPN_KILLSWITCH_BLOCK\" dir=out action=block protocol=ANY");
+                        result &= await RunNetshCommandAsync("advfirewall firewall add rule name=\"VPN_KILLSWITCH_BLOCK\" dir=out action=block protocol=ANY");
+                        result &= await RunNetshCommandAsync("advfirewall firewall add rule name=\"VPN_KILLSWITCH_ALLOW_PROXY\" dir=out action=allow remoteip=127.0.0.1 protocol=TCP remoteport=9090");
+                        result &= await RunNetshCommandAsync("advfirewall firewall add rule name=\"VPN_KILLSWITCH_ALLOW_VPN\" dir=out action=allow program=ANY protocol=TCP remoteport=443");
                     }
                     else
                     {
-                        result = await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_BLOCK\"");
+                        await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_BLOCK\"");
+                        await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_ALLOW_PROXY\"");
+                        await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_ALLOW_VPN\"");
                     }
                     tcs.SetResult(result);
                 }
@@ -46,18 +45,11 @@ public static class VPNKillswitchManager
         }
     }
 
-    /// <summary>
-    /// Backwards compatible method signature
-    /// </summary>
     public static void SetKillswitchActive(bool activate)
     {
         _ = SetKillswitchActiveAsync(activate);
     }
 
-    /// <summary>
-    /// Safe verification that cleans up any active Windows Firewall block on close or application exit.
-    /// Waits for any pending operations in the queue before cleaning up.
-    /// </summary>
     public static void CleanUpActiveRulesOnExit()
     {
         try
@@ -68,15 +60,14 @@ public static class VPNKillswitchManager
                 _taskQueue = _taskQueue.ContinueWith(async (prev) =>
                 {
                     await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_BLOCK\"");
+                    await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_ALLOW_PROXY\"");
+                    await RunNetshCommandAsync("advfirewall firewall delete rule name=\"VPN_KILLSWITCH_ALLOW_VPN\"");
                 });
                 cleanupTask = _taskQueue;
             }
-            cleanupTask.Wait(5000); // 5s timeout on close
+            cleanupTask.Wait(5000);
         }
-        catch
-        {
-            // Fail silent on cleanup
-        }
+        catch { }
     }
 
     private static async Task<bool> RunNetshCommandAsync(string arguments)
@@ -102,18 +93,9 @@ public static class VPNKillswitchManager
                 if (!cleanExit)
                 {
                     try { proc.Kill(); } catch { }
-                    Debug.WriteLine("netsh process timed out.");
                     return false;
                 }
-
-                string err = proc.StandardError.ReadToEnd();
-                if (proc.ExitCode != 0)
-                {
-                    Debug.WriteLine($"netsh command failed with code {proc.ExitCode}: {err}");
-                    return false;
-                }
-
-                return true;
+                return proc.ExitCode == 0;
             }
             catch (Exception ex)
             {

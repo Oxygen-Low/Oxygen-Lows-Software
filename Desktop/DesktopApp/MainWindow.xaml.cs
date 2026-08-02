@@ -106,7 +106,6 @@ public partial class MainWindow : Window
         
         webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
-        // Give additional time for WebView2 to initialize
         await Task.Delay(1000); 
         
         webView.CoreWebView2.Navigate("https://oxygen-lows-software.onrender.com/?desktop=1");
@@ -124,15 +123,24 @@ public partial class MainWindow : Window
                 
                 if (cmd == "vpn_connect")
                 {
-                    string serverName = doc.RootElement.GetProperty("serverName").GetString() ?? "";
-                    string baseUrl = doc.RootElement.GetProperty("baseUrl").GetString() ?? "";
+                    string serverName = doc.RootElement.TryGetProperty("serverName", out var s) ? s.GetString() ?? "" : "";
+                    string baseUrl = doc.RootElement.TryGetProperty("baseUrl", out var b) ? b.GetString() ?? "" : "";
+                    string userId = doc.RootElement.TryGetProperty("userId", out var u) ? u.GetString() ?? "" : "";
+                    string accessToken = doc.RootElement.TryGetProperty("accessToken", out var a) ? a.GetString() ?? "" : "";
+                    
                     string configData = await VPNConnectionManager.FetchServerConfigAsync(baseUrl);
                     
                     if (!string.IsNullOrEmpty(configData))
                     {
-                        VPNConnectionManager.CreateOrUpdateVPNProfile(serverName, baseUrl);
-                        await VPNConnectionManager.ConnectAsync(serverName, "dummy_user", "dummy_token");
-                        SendWebMessage(new { type = "vpn_status", status = "connected", serverName });
+                        bool success = await VPNConnectionManager.ConnectAsync(baseUrl, userId, accessToken);
+                        if (success)
+                        {
+                            SendWebMessage(new { type = "vpn_status", status = "connected", serverName });
+                        }
+                        else
+                        {
+                            SendWebMessage(new { type = "vpn_status", status = "error", error = "Failed to connect via WebSocket" });
+                        }
                     }
                     else
                     {
@@ -141,13 +149,12 @@ public partial class MainWindow : Window
                 }
                 else if (cmd == "vpn_disconnect")
                 {
-                    string serverName = doc.RootElement.GetProperty("serverName").GetString() ?? "";
-                    await VPNConnectionManager.DisconnectAsync(serverName);
+                    await VPNConnectionManager.DisconnectAsync();
                     SendWebMessage(new { type = "vpn_status", status = "disconnected" });
                 }
                 else if (cmd == "open_browser")
                 {
-                    string url = doc.RootElement.GetProperty("url").GetString() ?? "";
+                    string url = doc.RootElement.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
                     if (!string.IsNullOrEmpty(url))
                     {
                         Process.Start(new ProcessStartInfo
@@ -180,9 +187,9 @@ public partial class MainWindow : Window
     {
         StopLocalServer();
 
-        // Disconnect VPN on exit just in case
         try
         {
+            VPNConnectionManager.DisconnectAsync().GetAwaiter().GetResult();
             VPNKillswitchManager.CleanUpActiveRulesOnExit();
         }
         catch { }
