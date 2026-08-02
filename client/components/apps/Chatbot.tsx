@@ -992,7 +992,10 @@ export function ChatbotApp() {
                 });
                if (toolInsertError) throw toolInsertError;
                
-               currentMessages = [...currentMessages, { role: "assistant", content: finalContent, reasoning: reasoningContent }, { role: "system", content: toolResultMessage }];
+               // Append to LLM context as 'user' to maintain alternating roles (especially for Gemini)
+               currentMessages = [...currentMessages, { role: "assistant", content: finalContent, reasoning: reasoningContent }, { role: "user", content: `[SYSTEM: Tool Execution Result]\n${toolResultMessage}` }];
+               
+               // But append to UI state as 'system'
                setMessages((prev) => [...prev, { role: "system", content: toolResultMessage }, { role: "assistant", content: "" }]);
                shouldContinue = true;
                toast.success(`Tool ${toolName} executed. Generating response...`);
