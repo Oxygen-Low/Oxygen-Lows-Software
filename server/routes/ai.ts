@@ -555,6 +555,17 @@ export const handleProxyAiRequest: RequestHandler = async (req, res) => {
               return res
                 .status(500)
                 .json({ error: "AI Horde generation faulted" });
+            } else if (statusResponse.data?.is_possible === false) {
+              if (stream) {
+                res.write(
+                  `data: ${JSON.stringify({ error: "AI Horde generation is not possible (no workers)" })}\n\n`,
+                );
+                res.write("data: [DONE]\n\n");
+                return res.end();
+              }
+              return res
+                .status(503)
+                .json({ error: "AI Horde generation is not possible (no workers)" });
             } else {
               if (stream) {
                 const pollThrottleInterval = 5;
