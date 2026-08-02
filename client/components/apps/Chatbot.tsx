@@ -1237,7 +1237,7 @@ export function ChatbotApp() {
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white/70 transition-all duration-200" title="Toggle Options">
                     <span className="material-symbols-outlined text-[20px] font-family-material">add</span>
                   </button>
-                  <div className={cn("absolute left-0 top-[-10px] -translate-y-full w-64 bg-[#1A1A1E]/90 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-200 z-[100] shadow-2xl origin-bottom-left", optionsDropdownOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none")}>
+                  <div className={cn("absolute left-0 w-64 bg-[#1A1A1E]/90 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-200 z-[100] shadow-2xl", appStateClass === "state-empty" ? "top-[calc(100%+10px)] origin-top-left" : "top-[-10px] -translate-y-full origin-bottom-left", optionsDropdownOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none")}>
                     <div className="p-2 space-y-2 max-h-[400px] overflow-y-auto no-scrollbar">
                       {/* Reasoning Toggle */}
                       <button 
@@ -1338,7 +1338,7 @@ export function ChatbotApp() {
                     <span>{formatModelLabel(selectedProvider, selectedModel).split(' - ')[0]}</span>
                     <span className="material-symbols-outlined text-[18px] font-family-material">expand_more</span>
                   </button>
-                  <div className={cn("absolute right-0 top-[-10px] -translate-y-full w-72 bg-[#1A1A1E]/90 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-200 z-[100] shadow-2xl origin-bottom-right", modelDropdownOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none")}>
+                  <div className={cn("absolute right-0 w-72 bg-[#1A1A1E]/90 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-200 z-[100] shadow-2xl", appStateClass === "state-empty" ? "top-[calc(100%+10px)] origin-top-right" : "top-[-10px] -translate-y-full origin-bottom-right", modelDropdownOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none")}>
                     <div className="max-h-[300px] overflow-y-auto no-scrollbar pb-2">
                       {hasHordeModels && (
                          <>
