@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { spawn } from "child_process";
 import path from "path";
-import { repoManager } from "../lib/repoManager";
-import { authenticateRepoRequest } from "../lib/repoAuth";
+import { repoManager } from "../lib/repoManager.ts";
+import { authenticateRepoRequest } from "../lib/repoAuth.ts";
 import { createClient } from "@supabase/supabase-js";
-import { apiLimiter } from "../lib/limiter";
-import { getAuthorProfile } from "../lib/supabase";
+import { apiLimiter } from "../lib/limiter.ts";
+import { getAuthorProfile } from "../lib/supabase.ts";
 
 const router = Router();
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";

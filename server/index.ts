@@ -6,19 +6,19 @@ import helmet from "helmet";
 import cors from "cors";
 import session from "express-session";
 import crypto from "crypto";
-import { handleDemo } from "./routes/demo";
-import { oauthAdminRouter } from "./routes/oauthAdmin";
+import { handleDemo } from "./routes/demo.ts";
+import { oauthAdminRouter } from "./routes/oauthAdmin.ts";
 import {
   handleProxyAiRequest,
   handleGetLocalProviders,
   handleGetHordeStatus,
-} from "./routes/ai";
-import { reposRouter } from "./routes/repos";
-import { gitRouter } from "./routes/git";
-import { proxyRouter } from "./routes/proxy";
-import { apiLimiter } from "./lib/limiter";
-import { aikidoUserMiddleware } from "./lib/aikido";
-import { auditMiddleware } from "./lib/auditLogger";
+} from "./routes/ai.ts";
+import { reposRouter } from "./routes/repos.ts";
+import { gitRouter } from "./routes/git.ts";
+import { proxyRouter } from "./routes/proxy.ts";
+import { apiLimiter } from "./lib/limiter.ts";
+import { aikidoUserMiddleware } from "./lib/aikido.ts";
+import { auditMiddleware } from "./lib/auditLogger.ts";
 
 if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;

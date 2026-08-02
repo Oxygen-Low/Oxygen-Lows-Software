@@ -49,8 +49,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss(), expressPlugin()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./client"),
-      "@shared": path.resolve(__dirname, "./shared"),
+      "@": path.resolve(import.meta.dirname, "./client"),
+      "@shared": path.resolve(import.meta.dirname, "./shared"),
     },
   },
 }));
@@ -60,7 +60,7 @@ function expressPlugin(): Plugin {
     name: "express-plugin",
     apply: "serve", // Only apply during development (serve mode)
     async configureServer(server) {
-      const { createServer } = await import("./server");
+      const { createServer } = await import("./server/index.ts");
       const app = createServer();
 
       // Add Express app as middleware to Vite dev server

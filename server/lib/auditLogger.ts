@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { getAnonClient } from "./supabase";
+import { getAnonClient } from "./supabase.ts";
 
 export async function logAudit(
   eventType: string,

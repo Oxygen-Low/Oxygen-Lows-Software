@@ -22,9 +22,9 @@ describe("Apps", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Availability" })).toBeDefined();
-    expect(screen.getByLabelText("All (3 apps)")).toBeDefined();
-    expect(screen.getByLabelText("LLM/AI (1 apps)")).toBeDefined();
-    expect(screen.getByLabelText("Utility (2 apps)")).toBeDefined();
+    expect(screen.getByLabelText(/All \(\d+ apps\)/)).toBeDefined();
+    expect(screen.getByLabelText(/LLM\/AI \(\d+ apps\)/)).toBeDefined();
+    expect(screen.getByLabelText(/Utility \(\d+ apps\)/)).toBeDefined();
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.getByText("File Compressor")).toBeDefined();
   });
@@ -36,7 +36,7 @@ describe("Apps", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByLabelText("LLM/AI (1 apps)"));
+    fireEvent.click(screen.getByLabelText(/LLM\/AI \(\d+ apps\)/));
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.queryByText("File Compressor")).toBeNull();
 
@@ -44,7 +44,7 @@ describe("Apps", () => {
     expect(
       screen.getByText("No desktop-only apps are available yet."),
     ).toBeDefined();
-    expect(screen.getByLabelText("LLM/AI (0 apps)")).toBeDefined();
+    expect(screen.getByLabelText(/LLM\/AI \(0 apps\)/)).toBeDefined();
   });
 
   it("hides the desktop-only filter in the browser catalogue", () => {

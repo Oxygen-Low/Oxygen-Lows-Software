@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { getAuthenticatedClient } from "../lib/supabase";
-import { apiLimiter } from "../lib/limiter";
+import { getAuthenticatedClient } from "../lib/supabase.ts";
+import { apiLimiter } from "../lib/limiter.ts";
 
 const router = Router();
 

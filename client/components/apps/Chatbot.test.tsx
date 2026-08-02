@@ -169,12 +169,24 @@ vi.mock("@/lib/supabase", () => ({
         return Promise.resolve({ data: null, error: null });
       return Promise.resolve({ data: null, error: null });
     }),
+    storage: {
+      from: vi.fn(() => ({
+        list: vi.fn().mockResolvedValue({ data: [], error: null }),
+        download: vi.fn().mockResolvedValue({ data: null, error: null }),
+      })),
+    },
   },
 }));
 
 // Mock fetch for streaming
-global.fetch = vi.fn((url) => {
+global.fetch = vi.fn((url, options: any) => {
   if (url === "/api/ai/proxy") {
+    if (options?.body && options.body.includes('"stream":false')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ choices: [{ message: { content: "Mock Title" } }] })
+      });
+    }
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(
@@ -255,15 +267,22 @@ describe("ChatbotApp", () => {
   it("displays queue status when receiving queue_info on horde default model", async () => {
     const originalFetch = global.fetch;
     try {
-      global.fetch = vi.fn((url) => {
+      global.fetch = vi.fn((url, options: any) => {
         if (url === "/api/ai/proxy") {
+          if (options?.body && options.body.includes('"stream":false')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ choices: [{ message: { content: "Mock Title" } }] })
+            });
+          }
           const stream = new ReadableStream({
-            start(controller) {
+            async start(controller) {
               controller.enqueue(
                 new TextEncoder().encode(
                   'data: {"choices":[{"delta":{}}],"queue_info":{"position":2,"eta":75,"workers":5,"totalInQueue":12}}\n',
                 ),
               );
+              await new Promise((resolve) => setTimeout(resolve, 100));
               controller.enqueue(
                 new TextEncoder().encode(
                   'data: {"choices":[{"delta":{"content":"Hi from queue"}}]}\n',

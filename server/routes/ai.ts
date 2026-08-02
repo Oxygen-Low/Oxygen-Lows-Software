@@ -3,9 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
 import path from "path";
 import fs from "fs";
-import { resolveCustomProviderUrl } from "../lib/safeAiUrl";
+import { resolveCustomProviderUrl } from "../lib/safeAiUrl.ts";
 
-export { isPrivateIP, validateAiUrl } from "../lib/safeAiUrl";
+export { isPrivateIP, validateAiUrl } from "../lib/safeAiUrl.ts";
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";

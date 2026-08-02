@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
-import { PointsDisplay } from "./PointsDisplay";
 
 interface LayoutProps {
   children: ReactNode;
@@ -147,7 +146,6 @@ export const Layout = ({ children }: LayoutProps) => {
 
         {/* Sidebar panel */}
         <aside className={styles["sidebar"]}>
-          <PointsDisplay />
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto pt-2">
             {navItems.map((item) => {
               const Icon = item.icon;

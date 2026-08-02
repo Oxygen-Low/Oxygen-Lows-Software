@@ -2,14 +2,14 @@ import { Router } from "express";
 import crypto from "crypto";
 import fs from "fs-extra";
 import path from "path";
-import { repoManager } from "../lib/repoManager";
-import { authenticateRepoRequest, authorizeRepoAccess } from "../lib/repoAuth";
+import { repoManager } from "../lib/repoManager.ts";
+import { authenticateRepoRequest, authorizeRepoAccess } from "../lib/repoAuth.ts";
 import {
   getAnonClient,
   getAuthorProfile,
   getAuthenticatedClient,
-} from "../lib/supabase";
-import { apiLimiter } from "../lib/limiter";
+} from "../lib/supabase.ts";
+import { apiLimiter } from "../lib/limiter.ts";
 
 const router = Router();
 
