@@ -9,6 +9,8 @@ import {
   HardDrive,
   Palette,
   Contact,
+  LifeBuoy,
+  ShieldAlert,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -28,7 +30,12 @@ const navItems = [
   { label: "Friends", href: "/friends", icon: Users },
   { label: "Customize", href: "/customize", icon: Palette },
   { label: "Characters", href: "/characters", icon: Contact },
+  { label: "Support", href: "/support", icon: LifeBuoy },
 ];
+
+if (import.meta.env.VITE_ADMIN_VERSION === "true") {
+  navItems.push({ label: "Admin Support", href: "/admin/support", icon: ShieldAlert });
+}
 
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */
 const TOUCH_EDGE_ZONE = 30;

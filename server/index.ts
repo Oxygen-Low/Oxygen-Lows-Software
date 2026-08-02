@@ -15,6 +15,7 @@ import {
 } from "./routes/ai.ts";
 import { reposRouter } from "./routes/repos.ts";
 import { gitRouter } from "./routes/git.ts";
+import { adminSupportRouter } from "./routes/adminSupport.ts";
 import { proxyRouter } from "./routes/proxy.ts";
 import { apiLimiter } from "./lib/limiter.ts";
 import { aikidoUserMiddleware } from "./lib/aikido.ts";
@@ -138,6 +139,11 @@ export function createServer() {
   app.use("/api/repos", reposRouter);
   app.use("/api/git", gitRouter);
   app.use("/api/oauth-admin", oauthAdminRouter);
+  
+  if (process.env.ADMIN_VERSION === "true") {
+    app.use("/api/admin/support", adminSupportRouter);
+  }
+  
   app.use("/api/proxy", proxyRouter);
 
   return app;

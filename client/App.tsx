@@ -18,6 +18,10 @@ import Characters from "./pages/Characters";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import OauthConsent from "./pages/OauthConsent";
+import Support from "./pages/Support";
+import SupportTicket from "./pages/SupportTicket";
+import AdminSupport from "./pages/AdminSupport";
+import AdminTicket from "./pages/AdminTicket";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -97,6 +101,38 @@ const App = () => (
               />
               <Route path="/oauth/consent" element={<OauthConsent />} />
               <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/support"
+                element={
+                  <ProtectedRoute>
+                    <Support />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/support/:id"
+                element={
+                  <ProtectedRoute>
+                    <SupportTicket />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/support"
+                element={
+                  <ProtectedRoute>
+                    <AdminSupport />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/support/:id"
+                element={
+                  <ProtectedRoute>
+                    <AdminTicket />
+                  </ProtectedRoute>
+                }
+              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
