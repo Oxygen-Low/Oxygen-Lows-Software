@@ -20,7 +20,6 @@ adminSupportRouter.get("/tickets", async (req, res) => {
       .from("support_tickets")
       .select(`
         *,
-        user:user_id ( id, email ),
         profiles:user_id ( username, avatar_url )
       `)
       .order("created_at", { ascending: false });
@@ -43,7 +42,6 @@ adminSupportRouter.get("/tickets/:id", async (req, res) => {
       .from("support_tickets")
       .select(`
         *,
-        user:user_id ( id, email ),
         profiles:user_id ( username, avatar_url )
       `)
       .eq("id", id)
