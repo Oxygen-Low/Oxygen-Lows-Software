@@ -41,7 +41,7 @@ export async function aikidoUserMiddleware(
         });
       }
     } catch (error) {
-      // Ignore errors in user identification for firewall
+      console.error("Aikido firewall user identification error:", error);
     }
   }
 

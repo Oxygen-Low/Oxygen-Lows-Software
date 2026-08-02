@@ -17,6 +17,7 @@ router.get("/clients", async (req, res) => {
     if (error) throw error;
     res.json(data);
   } catch (err: any) {
+    console.error("OAuth admin error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -33,6 +34,7 @@ router.get("/authorized-apps", async (req, res) => {
     if (error) throw error;
     res.json(data);
   } catch (err: any) {
+    console.error("OAuth admin error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -52,6 +54,7 @@ router.post("/clients", async (req, res) => {
     if (error) throw error;
     res.json(data);
   } catch (err: any) {
+    console.error("OAuth admin error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -67,6 +70,7 @@ router.delete("/clients/:id", async (req, res) => {
     if (error) throw error;
     res.json({ success: true });
   } catch (err: any) {
+    console.error("OAuth admin error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -84,6 +88,7 @@ router.post("/revoke-authorization/:id", async (req, res) => {
     if (error) throw error;
     res.json({ success: true });
   } catch (err: any) {
+    console.error("OAuth admin error:", err);
     res.status(500).json({ error: err.message });
   }
 });

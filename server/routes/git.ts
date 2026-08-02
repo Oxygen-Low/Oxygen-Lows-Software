@@ -184,6 +184,7 @@ router.all(
 
       req.pipe(gitBackend.stdin);
     } catch (err: any) {
+      console.error("Git request error:", err);
       res.status(500).json({ error: err.message });
     }
   },
