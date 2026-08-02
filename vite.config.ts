@@ -7,7 +7,7 @@ import path from "node:path";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: process.env.PORT ? parseInt(process.env.PORT, 10) : 8080,
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
