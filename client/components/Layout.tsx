@@ -131,10 +131,7 @@ export const Layout = ({ children }: LayoutProps) => {
       </header>
 
       {/* Invisible hover trigger zone along left edge */}
-      <div
-        className={styles["sidebar-trigger"]}
-        onMouseEnter={openSidebar}
-      />
+      <div className={styles["sidebar-trigger"]} onMouseEnter={openSidebar} />
 
       {/* Sidebar overlay container */}
       <div
@@ -177,10 +174,11 @@ export const Layout = ({ children }: LayoutProps) => {
       <div className={styles["sidebar-edge-hint"]} />
 
       {/* Content Area – now full width, centered */}
-      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-12">{children}</main>
+      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
+        {children}
+      </main>
     </div>
   );
 };
 
 export default Layout;
-

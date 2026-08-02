@@ -25,7 +25,6 @@ import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { VPNApp } from "@/components/apps/VPN";
 
-
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
@@ -95,8 +94,7 @@ const apps: AppMetadata[] = [
   {
     id: "chatbot",
     name: "Chatbot",
-    description:
-      "Chat with LLMs.",
+    description: "Chat with LLMs.",
     categories: ["All", "LLM/AI"],
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
@@ -115,7 +113,8 @@ const apps: AppMetadata[] = [
   {
     id: "vpn",
     name: "VPN Client",
-    description: "Fast, secure, and device-wide VPN with built-in server locations.",
+    description:
+      "Fast, secure, and device-wide VPN with built-in server locations.",
     categories: ["All", "Utility"],
     availability: "desktop-only",
     icon: <Globe className="w-8 h-8 text-blue-500" />,
@@ -125,7 +124,8 @@ const apps: AppMetadata[] = [
 
 export default function Apps() {
   const location = useLocation();
-  const isDesktopMode = new URLSearchParams(location.search).get("desktop") === "1";
+  const isDesktopMode =
+    new URLSearchParams(location.search).get("desktop") === "1";
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
@@ -143,7 +143,9 @@ export default function Apps() {
 
   const filteredApps = useMemo(() => {
     if (selectedCategory === "All") return availableApps;
-    return availableApps.filter((app) => app.categories.includes(selectedCategory));
+    return availableApps.filter((app) =>
+      app.categories.includes(selectedCategory),
+    );
   }, [selectedCategory, availableApps]);
 
   const categoryAppCounts = useMemo(() => {

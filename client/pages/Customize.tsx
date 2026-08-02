@@ -18,30 +18,62 @@ interface PlaylistTrack {
 }
 
 const THEMES = [
-  { label: "Default", value: "default", bg: "hsl(218, 21%, 7%)", fg: "hsl(186, 100%, 50%)", text: "hsl(210, 40%, 98%)" },
-  { label: "Red", value: "red", bg: "hsl(0, 0%, 7%)", fg: "hsl(0, 84%, 60%)", text: "hsl(0, 0%, 98%)" },
-  { label: "Yellow", value: "yellow", bg: "hsl(45, 100%, 6%)", fg: "hsl(45, 100%, 50%)", text: "hsl(45, 100%, 98%)" },
-  { label: "Black/Dark", value: "black", bg: "hsl(0, 0%, 0%)", fg: "hsl(0, 0%, 100%)", text: "hsl(0, 0%, 100%)" },
-  { label: "White/Light", value: "white", bg: "hsl(0, 0%, 100%)", fg: "hsl(0, 0%, 0%)", text: "hsl(0, 0%, 0%)" },
+  {
+    label: "Default",
+    value: "default",
+    bg: "hsl(218, 21%, 7%)",
+    fg: "hsl(186, 100%, 50%)",
+    text: "hsl(210, 40%, 98%)",
+  },
+  {
+    label: "Red",
+    value: "red",
+    bg: "hsl(0, 0%, 7%)",
+    fg: "hsl(0, 84%, 60%)",
+    text: "hsl(0, 0%, 98%)",
+  },
+  {
+    label: "Yellow",
+    value: "yellow",
+    bg: "hsl(45, 100%, 6%)",
+    fg: "hsl(45, 100%, 50%)",
+    text: "hsl(45, 100%, 98%)",
+  },
+  {
+    label: "Black/Dark",
+    value: "black",
+    bg: "hsl(0, 0%, 0%)",
+    fg: "hsl(0, 0%, 100%)",
+    text: "hsl(0, 0%, 100%)",
+  },
+  {
+    label: "White/Light",
+    value: "white",
+    bg: "hsl(0, 0%, 100%)",
+    fg: "hsl(0, 0%, 0%)",
+    text: "hsl(0, 0%, 0%)",
+  },
 ];
 
 const FONTS = [
-  { label: "Indie Flower (Default)", value: "font-indie", family: "'Indie Flower'" },
+  {
+    label: "Indie Flower (Default)",
+    value: "font-indie",
+    family: "'Indie Flower'",
+  },
   { label: "Zilla Slab", value: "font-zilla", family: "'Zilla Slab'" },
   { label: "VT323", value: "font-vt323", family: "'VT323'" },
   { label: "Cabin Sketch", value: "font-cabin", family: "'Cabin Sketch'" },
-  { label: "Londrina Sketch", value: "font-londrina", family: "'Londrina Sketch'" },
+  {
+    label: "Londrina Sketch",
+    value: "font-londrina",
+    family: "'Londrina Sketch'",
+  },
 ];
 
 export default function Customize() {
-  const {
-    theme,
-    setTheme,
-    font,
-    setFont,
-    useGradient,
-    setUseGradient,
-  } = useTheme();
+  const { theme, setTheme, font, setFont, useGradient, setUseGradient } =
+    useTheme();
   const {
     playlist,
     currentTrack,
@@ -64,7 +96,6 @@ export default function Customize() {
           .pop()
           ?.replace(/\.[^/.]+$/, "") || track.name,
     };
-
 
     const alreadyInPlaylist = playlist.some(
       (t) => t.fileName === finalTrack.fileName,
@@ -96,7 +127,6 @@ export default function Customize() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
 
-
         {/* Theme Section */}
         <div className="mb-12">
           <h2 className="text-xl font-semibold mb-4 text-foreground">
@@ -124,7 +154,6 @@ export default function Customize() {
               {useGradient ? "Enabled" : "Disabled"}
             </button>
           </div>
-
 
           <h3 className="text-lg font-medium mb-3 text-foreground">
             Theme Color

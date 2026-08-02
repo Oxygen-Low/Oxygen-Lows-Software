@@ -8,7 +8,9 @@ export default function Auth() {
   const { session, loading, signInWithOAuth } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
-  const requestedReturnTo = new URLSearchParams(location.search).get("returnTo");
+  const requestedReturnTo = new URLSearchParams(location.search).get(
+    "returnTo",
+  );
   const returnTo = getSafeReturnPath(requestedReturnTo);
 
   useEffect(() => {

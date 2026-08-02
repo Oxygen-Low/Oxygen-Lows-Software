@@ -93,7 +93,9 @@
   border-radius: 0 4px 4px 0;
   background: hsl(var(--primary) / 0.25);
   z-index: 48;
-  transition: opacity 300ms ease, background 300ms ease;
+  transition:
+    opacity 300ms ease,
+    background 300ms ease;
   opacity: 1;
 }
 

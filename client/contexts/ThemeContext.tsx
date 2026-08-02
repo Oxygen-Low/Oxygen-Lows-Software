@@ -48,35 +48,32 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [lastProvider, setLastProvider] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const applyTheme = useCallback(
-    (newTheme: Theme, gradient: boolean) => {
-      // Remove all theme classes
-      document.documentElement.classList.remove(
-        "theme-red",
-        "theme-yellow",
-        "theme-black",
-        "theme-white",
-        "use-gradient",
-        "use-background-image",
-        "dark",
-      );
+  const applyTheme = useCallback((newTheme: Theme, gradient: boolean) => {
+    // Remove all theme classes
+    document.documentElement.classList.remove(
+      "theme-red",
+      "theme-yellow",
+      "theme-black",
+      "theme-white",
+      "use-gradient",
+      "use-background-image",
+      "dark",
+    );
 
-      // Add the new theme class if not default
-      if (newTheme !== "default") {
-        document.documentElement.classList.add(`theme-${newTheme}`);
-      }
+    // Add the new theme class if not default
+    if (newTheme !== "default") {
+      document.documentElement.classList.add(`theme-${newTheme}`);
+    }
 
-      // Add dark class for all themes except white
-      if (newTheme !== "white") {
-        document.documentElement.classList.add("dark");
-      }
+    // Add dark class for all themes except white
+    if (newTheme !== "white") {
+      document.documentElement.classList.add("dark");
+    }
 
-      if (gradient) {
-        document.documentElement.classList.add("use-gradient");
-      }
-    },
-    [],
-  );
+    if (gradient) {
+      document.documentElement.classList.add("use-gradient");
+    }
+  }, []);
 
   const applyFont = useCallback((newFont: string) => {
     // Remove all font classes
@@ -88,8 +85,6 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       : "font-indie";
     document.documentElement.classList.add(validatedFont);
   }, []);
-
-
 
   // Load preferences from Supabase
   useEffect(() => {
@@ -116,9 +111,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const client = getAuthenticatedClient(session.access_token);
         const { data, error } = await client
           .from("user_preferences")
-          .select(
-            "theme, font, use_gradient, last_model_id, last_provider",
-          )
+          .select("theme, font, use_gradient, last_model_id, last_provider")
           .eq("user_id", session.user.id)
           .single();
 
@@ -151,12 +144,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     };
 
     loadPreferences();
-  }, [
-    session?.user?.id,
-    session?.access_token,
-    applyTheme,
-    applyFont,
-  ]);
+  }, [session?.user?.id, session?.access_token, applyTheme, applyFont]);
 
   const setTheme = useCallback(
     async (newTheme: Theme) => {
@@ -175,12 +163,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [
-      session?.user?.id,
-      session?.access_token,
-      useGradient,
-      applyTheme,
-    ],
+    [session?.user?.id, session?.access_token, useGradient, applyTheme],
   );
 
   const setFont = useCallback(
@@ -223,15 +206,8 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
       }
     },
-    [
-      session?.user?.id,
-      session?.access_token,
-      theme,
-      applyTheme,
-    ],
+    [session?.user?.id, session?.access_token, theme, applyTheme],
   );
-
-
 
   const setModelPreference = useCallback(
     async (modelId: string, provider: string) => {

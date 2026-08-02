@@ -32,17 +32,18 @@ export const useAuth = () => {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signInWithOAuth = async (
-    provider: "google",
-    redirectTo?: string,
-  ) => {
+  const signInWithOAuth = async (provider: "google", redirectTo?: string) => {
     try {
       setError(null);
-      const isWebView = typeof window !== "undefined" && (window as any).chrome?.webview != null;
+      const isWebView =
+        typeof window !== "undefined" &&
+        (window as any).chrome?.webview != null;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: isWebView ? "http://localhost:50321/" : (redirectTo ?? window.location.origin),
+          redirectTo: isWebView
+            ? "http://localhost:50321/"
+            : (redirectTo ?? window.location.origin),
           scopes: "email profile openid",
           ...(isWebView ? { skipBrowserRedirect: true } : {}),
         },
@@ -50,10 +51,12 @@ export const useAuth = () => {
       if (error) throw error;
 
       if (isWebView && data?.url) {
-        (window as any).chrome.webview.postMessage(JSON.stringify({
-          command: "open_browser",
-          url: data.url,
-        }));
+        (window as any).chrome.webview.postMessage(
+          JSON.stringify({
+            command: "open_browser",
+            url: data.url,
+          }),
+        );
       }
     } catch (err) {
       const message =
@@ -63,16 +66,18 @@ export const useAuth = () => {
     }
   };
 
-  const linkIdentity = async (
-    provider: "google",
-  ) => {
+  const linkIdentity = async (provider: "google") => {
     try {
       setError(null);
-      const isWebView = typeof window !== "undefined" && (window as any).chrome?.webview != null;
+      const isWebView =
+        typeof window !== "undefined" &&
+        (window as any).chrome?.webview != null;
       const { data, error } = await supabase.auth.linkIdentity({
         provider,
         options: {
-          redirectTo: isWebView ? "http://localhost:50321/" : `${window.location.origin}/account`,
+          redirectTo: isWebView
+            ? "http://localhost:50321/"
+            : `${window.location.origin}/account`,
           scopes: "email profile openid",
           ...(isWebView ? { skipBrowserRedirect: true } : {}),
         },
@@ -80,10 +85,12 @@ export const useAuth = () => {
       if (error) throw error;
 
       if (isWebView && data?.url) {
-        (window as any).chrome.webview.postMessage(JSON.stringify({
-          command: "open_browser",
-          url: data.url,
-        }));
+        (window as any).chrome.webview.postMessage(
+          JSON.stringify({
+            command: "open_browser",
+            url: data.url,
+          }),
+        );
       }
       return data;
     } catch (err) {

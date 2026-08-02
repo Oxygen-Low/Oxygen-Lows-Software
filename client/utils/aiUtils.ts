@@ -14,13 +14,18 @@ export const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "koboldcpp" || provider === "kobold")
     return "Koboldcpp/" + modelId;
 
-  const displayProvider = 
-    provider === "openai" ? "OpenAI" :
-    provider === "anthropic" ? "Anthropic" :
-    provider === "google" ? "Google" :
-    provider === "openrouter" ? "OpenRouter" :
-    provider === "grok" ? "Grok" :
-    provider.charAt(0).toUpperCase() + provider.slice(1);
+  const displayProvider =
+    provider === "openai"
+      ? "OpenAI"
+      : provider === "anthropic"
+        ? "Anthropic"
+        : provider === "google"
+          ? "Google"
+          : provider === "openrouter"
+            ? "OpenRouter"
+            : provider === "grok"
+              ? "Grok"
+              : provider.charAt(0).toUpperCase() + provider.slice(1);
 
   return displayProvider + " - " + modelId;
 };
@@ -50,5 +55,7 @@ export const parseAiProxyError = async (response: Response) => {
   } catch (e) {
     errorMessage = "Error parsing error response";
   }
-  return typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage);
+  return typeof errorMessage === "string"
+    ? errorMessage
+    : JSON.stringify(errorMessage);
 };
