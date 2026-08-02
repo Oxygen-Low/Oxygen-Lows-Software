@@ -24,6 +24,11 @@ if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;
 }
 
+if (process.env.ADMIN_VERSION === "true" && !process.env.SUPABASE_SECRET) {
+  console.error("SUPABASE_SECRET environment variable is missing. Cannot start Admin Version.");
+  process.exit(1);
+}
+
 export function createServer() {
   const app = express();
 
@@ -101,6 +106,17 @@ export function createServer() {
 
   // Aikido Zen Middleware
   app.use(aikidoUserMiddleware);
+
+  if (process.env.ADMIN_VERSION === "true") {
+    app.use("/api", (req, res, next) => {
+      const user = res.locals.user;
+      if (!user || user.id !== "3cb76293-8c6c-49b9-b431-1ff5fce471ee") {
+        return res.status(403).json({ error: "Forbidden: Admin access only" });
+      }
+      next();
+    });
+  }
+
   app.use(auditMiddleware);
   Zen.addExpressMiddleware(app);
 

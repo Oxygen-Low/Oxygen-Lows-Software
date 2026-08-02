@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "admin": "cross-env ADMIN_VERSION=true npm run dev",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:public": "cross-env VITE_PUBLIC_MODE=true npm run build",

@@ -34,6 +34,7 @@ export async function aikidoUserMiddleware(
       } = await supabase.auth.getUser(token);
 
       if (user) {
+        res.locals.user = user;
         const profile = await getAuthorProfile(user.id);
         Zen.setUser({
           id: user.id,
