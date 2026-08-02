@@ -333,71 +333,7 @@ export default function Account() {
       const isEnabling = !encryptionSettings[target];
       const key = inputKey;
 
-      if (target === "characters") {
-        const { data: chars } = await supabase
-          .from("characters")
-          .select("*")
-          .eq("user_id", session?.user?.id);
-        if (chars) {
-          for (const char of chars) {
-            if (isEnabling && !char.is_encrypted) {
-              const encryptedChar = {
-                name: await encrypt(char.name || "", key),
-                short_description: char.short_description
-                  ? await encrypt(char.short_description, key)
-                  : null,
-                display_name: char.display_name
-                  ? await encrypt(char.display_name, key)
-                  : null,
-                appearance: char.appearance
-                  ? await encrypt(char.appearance, key)
-                  : null,
-                personality: char.personality
-                  ? await encrypt(char.personality, key)
-                  : null,
-                backstory: char.backstory
-                  ? await encrypt(char.backstory, key)
-                  : null,
-                hidden_description: char.hidden_description
-                  ? await encrypt(char.hidden_description, key)
-                  : null,
-                is_encrypted: true,
-              };
-              await supabase
-                .from("characters")
-                .update(encryptedChar)
-                .eq("id", char.id);
-            } else if (!isEnabling && char.is_encrypted) {
-              const decryptedChar = {
-                name: await decrypt(char.name, key),
-                short_description: char.short_description
-                  ? await decrypt(char.short_description, key)
-                  : null,
-                display_name: char.display_name
-                  ? await decrypt(char.display_name, key)
-                  : null,
-                appearance: char.appearance
-                  ? await decrypt(char.appearance, key)
-                  : null,
-                personality: char.personality
-                  ? await decrypt(char.personality, key)
-                  : null,
-                backstory: char.backstory
-                  ? await decrypt(char.backstory, key)
-                  : null,
-                hidden_description: char.hidden_description
-                  ? await decrypt(char.hidden_description, key)
-                  : null,
-                is_encrypted: false,
-              };
-              await supabase
-                .from("characters")
-                .update(decryptedChar)
-                .eq("id", char.id);
-            }
-          }
-        }
-      }
+
 
       if (target === "chats") {
         const { data: chats } = await supabase
@@ -491,7 +427,6 @@ export default function Account() {
       }
 
       const allDisabled =
-        !newSettings.characters &&
         !newSettings.chats &&
         !newSettings.integrations;
       if (allDisabled) {
@@ -862,32 +797,6 @@ export default function Account() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Button
-                      type="button"
-                      variant={
-                        encryptionSettings.characters ? "secondary" : "outline"
-                      }
-                      onClick={() => handleToggleEncryption("characters")}
-                      disabled={isMigrating}
-                      aria-pressed={!!encryptionSettings.characters}
-                      className="h-16 justify-between px-6"
-                    >
-                      <div className="text-left">
-                        <div className="font-semibold">Characters</div>
-                        <div className="text-xs text-slate-500">
-                          {encryptionSettings.characters
-                            ? "Encrypted"
-                            : "Unencrypted"}
-                        </div>
-                      </div>
-                      {isMigrating ? (
-                        <RefreshCw className="w-5 h-5 animate-spin" />
-                      ) : encryptionSettings.characters ? (
-                        <ShieldCheck className="w-5 h-5 text-green-500" />
-                      ) : (
-                        <ShieldAlert className="w-5 h-5 text-slate-600" />
-                      )}
-                    </Button>
 
                     <Button
                       type="button"
@@ -926,7 +835,7 @@ export default function Account() {
                       onClick={() => handleToggleEncryption("integrations")}
                       disabled={isMigrating}
                       aria-pressed={!!encryptionSettings.integrations}
-                      className="h-16 justify-between px-6 sm:col-span-2"
+                      className="h-16 justify-between px-6"
                     >
                       <div className="text-left">
                         <div className="font-semibold">Integrations</div>

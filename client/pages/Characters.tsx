@@ -59,7 +59,6 @@ export default function Characters() {
   const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>(
     {},
   );
-  const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] =
     useState(false);
 
@@ -70,17 +69,9 @@ export default function Characters() {
   const fetchInitialData = async () => {
     if (!session?.user?.id) return;
     try {
-      const { data: prefs } = await supabase
-        .from("user_preferences")
-        .select("encryption_settings")
-        .eq("user_id", session.user.id)
-        .single();
-
-      const enabled = prefs?.encryption_settings?.characters || false;
-      setIsEncryptionEnabled(enabled);
-      fetchCharacters(enabled);
+      fetchCharacters();
     } catch (err) {
-      console.error("Error fetching preferences", err);
+      console.error("Error fetching characters", err);
       setLoading(false);
     }
   };
@@ -103,11 +94,7 @@ export default function Characters() {
     );
   };
 
-  const fetchCharacters = async (overrideEncryptionEnabled?: boolean) => {
-    const encryptionEnabled =
-      overrideEncryptionEnabled !== undefined
-        ? overrideEncryptionEnabled
-        : isEncryptionEnabled;
+  const fetchCharacters = async () => {
     try {
       const { data, error } = await supabase
         .from("characters")
@@ -117,8 +104,9 @@ export default function Characters() {
       if (error) throw error;
 
       let processedData = data || [];
+      const hasEncrypted = processedData.some((c) => c.is_encrypted);
 
-      if (encryptionEnabled) {
+      if (hasEncrypted) {
         const key = getMasterKey();
         if (!key) {
           setShowEncryptionUnlockModal(true);
@@ -184,43 +172,17 @@ export default function Characters() {
   const handleSave = async () => {
     if (!session?.user?.id) return;
     try {
-      const key = getMasterKey();
-      if (isEncryptionEnabled && !key) {
-        setShowEncryptionUnlockModal(true);
-        return;
-      }
-
       const payload = {
         user_id: session.user.id,
-        name: isEncryptionEnabled
-          ? await encrypt(currentCharacter.name || "", key!)
-          : currentCharacter.name,
-        short_description:
-          isEncryptionEnabled && currentCharacter.short_description
-            ? await encrypt(currentCharacter.short_description, key!)
-            : currentCharacter.short_description,
-        display_name:
-          isEncryptionEnabled && currentCharacter.display_name
-            ? await encrypt(currentCharacter.display_name, key!)
-            : currentCharacter.display_name,
-        appearance:
-          isEncryptionEnabled && currentCharacter.appearance
-            ? await encrypt(currentCharacter.appearance, key!)
-            : currentCharacter.appearance,
-        personality:
-          isEncryptionEnabled && currentCharacter.personality
-            ? await encrypt(currentCharacter.personality, key!)
-            : currentCharacter.personality,
-        backstory:
-          isEncryptionEnabled && currentCharacter.backstory
-            ? await encrypt(currentCharacter.backstory, key!)
-            : currentCharacter.backstory,
-        hidden_description:
-          isEncryptionEnabled && currentCharacter.hidden_description
-            ? await encrypt(currentCharacter.hidden_description, key!)
-            : currentCharacter.hidden_description,
+        name: currentCharacter.name,
+        short_description: currentCharacter.short_description,
+        display_name: currentCharacter.display_name,
+        appearance: currentCharacter.appearance,
+        personality: currentCharacter.personality,
+        backstory: currentCharacter.backstory,
+        hidden_description: currentCharacter.hidden_description,
         image_path: currentCharacter.image_path,
-        is_encrypted: isEncryptionEnabled,
+        is_encrypted: false,
         is_universe: currentCharacter.is_universe || false,
       };
 
@@ -318,11 +280,6 @@ export default function Characters() {
               </button>
             </div>
             <p className="text-slate-400 mt-1">
-              {isEncryptionEnabled && (
-                <span className="ml-2 text-cyan-400 inline-flex items-center gap-1">
-                  <Lock className="w-3 h-3" /> Encrypted
-                </span>
-              )}
             </p>
           </div>
           <Dialog
