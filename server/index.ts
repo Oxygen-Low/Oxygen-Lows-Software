@@ -25,9 +25,8 @@ if (typeof global !== "undefined" && !global.WebSocket) {
   (global as any).WebSocket = ws;
 }
 
-if (process.env.ADMIN_VERSION === "true" && !process.env.SUPABASE_SECRET) {
-  console.error("SUPABASE_SECRET environment variable is missing. Cannot start Admin Version.");
-  process.exit(1);
+if (!process.env.SUPABASE_SECRET) {
+  console.warn("SUPABASE_SECRET environment variable is missing. Admin features may not work.");
 }
 
 export function createServer() {
@@ -108,15 +107,19 @@ export function createServer() {
   // Aikido Zen Middleware
   app.use(aikidoUserMiddleware);
 
-  if (process.env.ADMIN_VERSION === "true") {
-    app.use("/api", (req, res, next) => {
-      const user = res.locals.user;
-      if (!user || user.id !== "3cb76293-8c6c-49b9-b431-1ff5fce471ee") {
-        return res.status(403).json({ error: "Forbidden: Admin access only" });
+  const adminGuard = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const user = res.locals.user;
+    if (!user || user.id !== "3cb76293-8c6c-49b9-b431-1ff5fce471ee") {
+      if (req.path.startsWith("/api/")) {
+        return res.status(401).json({ error: "Unauthorized: Admin access only" });
       }
-      next();
-    });
-  }
+      return res.status(401).send("Unauthorized");
+    }
+    next();
+  };
+
+  app.use("/admin", adminGuard);
+  app.use("/api/admin", adminGuard);
 
   app.use(auditMiddleware);
   Zen.addExpressMiddleware(app);
@@ -140,9 +143,7 @@ export function createServer() {
   app.use("/api/git", gitRouter);
   app.use("/api/oauth-admin", oauthAdminRouter);
   
-  if (process.env.ADMIN_VERSION === "true") {
-    app.use("/api/admin/support", adminSupportRouter);
-  }
+  app.use("/api/admin/support", adminSupportRouter);
   
   app.use("/api/proxy", proxyRouter);
 

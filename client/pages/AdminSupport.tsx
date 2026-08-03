@@ -62,8 +62,15 @@ export default function AdminSupport() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Admin Support Panel</h1>
+      <div className="flex items-center space-x-4">
+        <button 
+          onClick={() => navigate("/admin")}
+          className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+          title="Back to Admin Panel"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        </button>
+        <h1 className="text-3xl font-bold tracking-tight">Admin Support</h1>
       </div>
 
       <Card>

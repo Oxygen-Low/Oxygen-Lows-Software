@@ -33,9 +33,7 @@ const navItems = [
   { label: "Support", href: "/support", icon: LifeBuoy },
 ];
 
-if (import.meta.env.VITE_ADMIN_VERSION === "true") {
-  navItems.push({ label: "Admin Support", href: "/admin/support", icon: ShieldAlert });
-}
+
 
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */
 const TOUCH_EDGE_ZONE = 30;
