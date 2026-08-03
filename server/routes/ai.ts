@@ -20,7 +20,7 @@ const DEFAULT_MODELS = [
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
   Fast: [
-    "google/gemma-4-31b",
+    "koboldcpp/Llama-3.2-1B-Instruct",
   ],
   Smart: [
     "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
