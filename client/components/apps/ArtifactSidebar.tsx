@@ -62,7 +62,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
   };
 
   return (
-    <div className="w-[400px] border-l border-slate-800 bg-slate-900/50 flex flex-col animate-in slide-in-from-right duration-300">
+    <div className="w-full md:w-[400px] absolute md:relative inset-0 md:inset-auto z-50 md:z-auto h-full border-l border-slate-800 bg-slate-900/95 md:bg-slate-900/50 flex flex-col animate-in slide-in-from-right duration-300">
       <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
         <div className="flex items-center gap-2 min-w-0">
           <FileCode className="w-4 h-4 text-cyan-400" />

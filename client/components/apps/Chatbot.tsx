@@ -15,6 +15,7 @@ import {
   Copy,
   X,
   Check,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -547,6 +548,7 @@ export function ChatbotApp() {
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [optionsDropdownOpen, setOptionsDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const skipNextFetchRef = useRef<string | null>(null);
 
   const hordeModels = useMemo(
@@ -1738,10 +1740,23 @@ export function ChatbotApp() {
       </div>
 
       {/* Sidebar Trigger */}
-      <div className="absolute inset-y-0 right-0 z-40 group flex justify-end pointer-events-none">
-        <div className="w-12 h-full pointer-events-auto"></div>
+      <div className={cn(
+        "absolute inset-y-0 right-0 z-50 group flex justify-end pointer-events-none md:block",
+        mobileSidebarOpen ? "block" : "hidden md:flex"
+      )}>
+        <div className="w-12 h-full pointer-events-auto hidden md:block"></div>
+        {mobileSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto z-[-1] md:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+            style={{ width: '100vw', height: '100vh', left: 0, top: 0 }}
+          />
+        )}
         {/* Sidebar */}
-        <div className="h-full w-[280px] translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between absolute right-0 shadow-2xl">
+        <div className={cn(
+          "h-full w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between absolute right-0 shadow-2xl",
+          mobileSidebarOpen ? "translate-x-0" : "translate-x-full md:group-hover:translate-x-0"
+        )}>
           <div className="flex flex-col gap-6 h-full overflow-hidden">
             <div className="flex flex-col gap-4 h-full">
               <button
@@ -1767,7 +1782,10 @@ export function ChatbotApp() {
                           ? "bg-white/10 text-white"
                           : "hover:bg-white/5 text-slate-400 hover:text-white",
                       )}
-                      onClick={() => setCurrentChatId(c.id)}
+                      onClick={() => {
+                        setCurrentChatId(c.id);
+                        setMobileSidebarOpen(false);
+                      }}
                     >
                       <Bot className="w-5 h-5 opacity-70" />
                       <span className="text-sm font-medium truncate flex-1 font-body">
@@ -1819,6 +1837,13 @@ export function ChatbotApp() {
             {chats.find((c) => c.id === currentChatId)?.title ||
               "New Conversation"}
           </h2>
+          <button
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="md:hidden p-2 text-white/80 hover:text-white"
+            aria-label="Toggle sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
         </header>
 
         {/* Chat Scrolling Area */}
