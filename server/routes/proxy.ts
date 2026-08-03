@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { validateAiUrl } from "../lib/safeAiUrl.ts";
 
 export const proxyRouter = new Hono();
 
@@ -8,6 +9,10 @@ proxyRouter.post("/fetch", async (c) => {
     if (!url) {
       return c.json({ error: "Missing url" }, 400);
     }
+
+    // Protect against Server-Side Request Forgery (SSRF)
+    // Ensures URL is HTTPS and does not point to internal/private IPs
+    await validateAiUrl(url);
 
     // In Cloudflare Workers, fetch is natively available and preferred over axios
     const response = await fetch(url, {
