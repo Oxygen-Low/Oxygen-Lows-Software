@@ -36,3 +36,4 @@ app.zip
 DesktopAppOut/
 DesktopInstallerOut/
 /.pnpm-store
+.wrangler
