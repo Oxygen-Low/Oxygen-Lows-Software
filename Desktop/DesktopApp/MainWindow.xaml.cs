@@ -39,9 +39,14 @@ public partial class MainWindow : Window
                         var request = context.Request;
                         var response = context.Response;
 
-                        var query = request.Url?.Query;
-                        if (!string.IsNullOrEmpty(query))
+                        if (request.HttpMethod == "POST" && request.Url?.AbsolutePath == "/callback")
                         {
+                            using var reader = new StreamReader(request.InputStream);
+                            var url = await reader.ReadToEndAsync();
+                            var uri = new Uri(url);
+                            var fragment = uri.Fragment;
+                            var queryParams = uri.Query;
+                            
                             Dispatcher.Invoke(() =>
                             {
                                 try
@@ -49,7 +54,7 @@ public partial class MainWindow : Window
                                     if (webView != null && webView.CoreWebView2 != null)
                                     {
                                         var currentOrigin = webView.Source.GetLeftPart(UriPartial.Authority);
-                                        webView.CoreWebView2.Navigate($"{currentOrigin}/auth{query}");
+                                        webView.CoreWebView2.Navigate($"{currentOrigin}/auth{queryParams}{fragment}");
                                     }
                                 }
                                 catch (Exception ex)
@@ -57,9 +62,16 @@ public partial class MainWindow : Window
                                     Debug.WriteLine("Navigation Error: " + ex.Message);
                                 }
                             });
+
+                            var okResponse = "OK";
+                            byte[] okBuffer = System.Text.Encoding.UTF8.GetBytes(okResponse);
+                            response.ContentLength64 = okBuffer.Length;
+                            using var okOutput = response.OutputStream;
+                            await okOutput.WriteAsync(okBuffer, 0, okBuffer.Length);
+                            continue;
                         }
 
-                        string responseString = "<html><body style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2>Authentication successful!</h2><p>You can close this tab and return to the desktop app.</p></body></html>";
+                        string responseString = @"<html><body style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2 id='msg'>Completing authentication...</h2><script>fetch('http://localhost:50321/callback', {method: 'POST', body: window.location.href}).then(() => {document.getElementById('msg').innerText = 'Authentication successful! You can close this tab and return to the desktop app.'}).catch(() => {document.getElementById('msg').innerText = 'Authentication failed.'});</script></body></html>";
                         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
                         response.ContentLength64 = buffer.Length;
                         using var output = response.OutputStream;
