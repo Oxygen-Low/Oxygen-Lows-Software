@@ -272,43 +272,6 @@ const ChatMessage = React.memo(
                 {displayContent}
               </ReactMarkdown>
             </div>
-            {siblings.length > 0 && (
-              <div className="flex items-center gap-2 mt-2 ml-1 text-slate-400 text-xs">
-                <button
-                  onClick={() => onNavigate?.(activeSiblingIndex - 1)}
-                  disabled={activeSiblingIndex === 0}
-                  className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[16px] font-family-material">
-                    chevron_left
-                  </span>
-                </button>
-                <span className="font-mono select-none">
-                  {activeSiblingIndex + 1} / {siblings.length}
-                </span>
-                <button
-                  onClick={() => {
-                    if (activeSiblingIndex < siblings.length - 1) {
-                      onNavigate?.(activeSiblingIndex + 1);
-                    } else {
-                      onRegenerate?.();
-                    }
-                  }}
-                  className="hover:text-white p-1 flex items-center justify-center transition-colors"
-                  title={
-                    activeSiblingIndex < siblings.length - 1
-                      ? "Next"
-                      : "Regenerate"
-                  }
-                >
-                  <span className="material-symbols-outlined text-[16px] font-family-material">
-                    {activeSiblingIndex < siblings.length - 1
-                      ? "chevron_right"
-                      : "refresh"}
-                  </span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       );
@@ -392,6 +355,43 @@ const ChatMessage = React.memo(
                 {displayContent}
               </ReactMarkdown>
             </div>
+            {siblings.length > 0 && (
+              <div className="flex items-center gap-2 mt-2 ml-1 text-slate-400 text-xs">
+                <button
+                  onClick={() => onNavigate?.(activeSiblingIndex - 1)}
+                  disabled={activeSiblingIndex === 0}
+                  className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px] font-family-material">
+                    chevron_left
+                  </span>
+                </button>
+                <span className="font-mono select-none">
+                  {activeSiblingIndex + 1} / {siblings.length}
+                </span>
+                <button
+                  onClick={() => {
+                    if (activeSiblingIndex < siblings.length - 1) {
+                      onNavigate?.(activeSiblingIndex + 1);
+                    } else {
+                      onRegenerate?.();
+                    }
+                  }}
+                  className="hover:text-white p-1 flex items-center justify-center transition-colors"
+                  title={
+                    activeSiblingIndex < siblings.length - 1
+                      ? "Next"
+                      : "Regenerate"
+                  }
+                >
+                  <span className="material-symbols-outlined text-[16px] font-family-material">
+                    {activeSiblingIndex < siblings.length - 1
+                      ? "chevron_right"
+                      : "refresh"}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
           {artifacts.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -499,8 +499,6 @@ export function ChatbotApp() {
       if (updater.length === 0) {
         setAllMessages([]);
         setActiveChildren({});
-      } else {
-        setAllMessages(updater);
       }
     }
   };
@@ -1073,11 +1071,11 @@ export function ChatbotApp() {
       role: "user",
       content: input,
     };
-    const newMessages = [...messages, userMessage];
     const isFirstMessage = messages.length === 0;
 
-    setMessages([
-      ...newMessages,
+    setAllMessages((prev) => [
+      ...prev,
+      userMessage,
       {
         id: "temp-streaming",
         parent_id: "temp-user",
@@ -1085,6 +1083,11 @@ export function ChatbotApp() {
         content: "",
       },
     ]);
+    setActiveChildren((prev) => ({
+      ...prev,
+      [lastMessageId || "root"]: "temp-user",
+      "temp-user": "temp-streaming",
+    }));
     setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
@@ -1195,7 +1198,7 @@ export function ChatbotApp() {
         ];
       };
 
-      let currentMessages = [...newMessages];
+      let currentMessages = [...messages, userMessage];
       let iterations = 0;
       let shouldContinue = true;
 
@@ -1356,13 +1359,9 @@ export function ChatbotApp() {
     } catch (e: any) {
       toast.error(e.message);
       if (input === "") setInput(originalInput);
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === "assistant" && !last.content) {
-          return prev.slice(0, -1);
-        }
-        return prev;
-      });
+      setAllMessages((prev) =>
+        prev.filter((m) => m.id !== "temp-streaming" && m.id !== "temp-user"),
+      );
     } finally {
       setIsTyping(false);
       isTypingRef.current = false;
@@ -1388,8 +1387,8 @@ export function ChatbotApp() {
     const controller = new AbortController();
     setAbortController(controller);
 
-    setMessages([
-      ...messages,
+    setAllMessages((prev) => [
+      ...prev,
       {
         id: "temp-streaming",
         parent_id: lastUserMessage.id,
@@ -1397,6 +1396,10 @@ export function ChatbotApp() {
         content: "",
       },
     ]);
+    setActiveChildren((prev) => ({
+      ...prev,
+      [lastUserMessage.id]: "temp-streaming",
+    }));
     setIsTyping(true);
     isTypingRef.current = true;
     lastParsedLengthRef.current = 0;
@@ -1531,7 +1534,7 @@ export function ChatbotApp() {
       }));
     } catch (e: any) {
       toast.error(e.message);
-      setMessages((prev) => prev.slice(0, -1));
+      setAllMessages((prev) => prev.filter((m) => m.id !== "temp-streaming"));
     } finally {
       setIsTyping(false);
       isTypingRef.current = false;
