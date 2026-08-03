@@ -156,7 +156,14 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
          return c.json({ error: "Insufficient points" }, 402);
       }
       
-      const { AccountID, CloudflareAPIToken } = env<{ AccountID?: string; CloudflareAPIToken?: string }>(c);
+      const bindings = env<{ 
+        AccountID?: string; CloudflareAPIToken?: string;
+        ACCOUNT_ID?: string; CLOUDFLARE_API_TOKEN?: string;
+      }>(c);
+      
+      const AccountID = bindings.AccountID || bindings.ACCOUNT_ID || process?.env?.ACCOUNT_ID || process?.env?.AccountID;
+      const CloudflareAPIToken = bindings.CloudflareAPIToken || bindings.CLOUDFLARE_API_TOKEN || process?.env?.CLOUDFLARE_API_TOKEN || process?.env?.CloudflareAPIToken;
+
       if (!AccountID || !CloudflareAPIToken) {
         return c.json({ error: "Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing" }, 500);
       }
