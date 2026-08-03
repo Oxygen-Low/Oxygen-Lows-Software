@@ -161,12 +161,14 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         ACCOUNT_ID?: string; CLOUDFLARE_API_TOKEN?: string;
       }>(c);
       
+      const rawEnv = (c.env || {}) as any;
       const procEnv = typeof process !== 'undefined' ? process.env : {} as any;
-      const AccountID = bindings.AccountID || bindings.ACCOUNT_ID || procEnv.ACCOUNT_ID || procEnv.AccountID;
-      const CloudflareAPIToken = bindings.CloudflareAPIToken || bindings.CLOUDFLARE_API_TOKEN || procEnv.CLOUDFLARE_API_TOKEN || procEnv.CloudflareAPIToken;
+      
+      const AccountID = bindings.AccountID || bindings.ACCOUNT_ID || rawEnv.AccountID || rawEnv.ACCOUNT_ID || procEnv.ACCOUNT_ID || procEnv.AccountID;
+      const CloudflareAPIToken = bindings.CloudflareAPIToken || bindings.CLOUDFLARE_API_TOKEN || rawEnv.CloudflareAPIToken || rawEnv.CLOUDFLARE_API_TOKEN || procEnv.CLOUDFLARE_API_TOKEN || procEnv.CloudflareAPIToken;
 
       if (!AccountID || !CloudflareAPIToken) {
-        return c.json({ error: "Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing" }, 500);
+        return c.json({ error: `Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing. Found environment keys: ${Object.keys(rawEnv).join(', ')}` }, 500);
       }
       
       targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/run/${model}`;
