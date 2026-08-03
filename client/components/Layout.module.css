@@ -5,7 +5,7 @@
 }
 
 .header {
-  border-bottom-color: hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
   background-color: hsl(var(--background) / 0.5);
 }
 
@@ -27,10 +27,10 @@
 /* ── Auto-hide sidebar ── */
 .sidebar-trigger {
   position: fixed;
-  top: 0;
+  top: 65px;
   left: 0;
   width: 18px;
-  height: 100vh;
+  height: calc(100vh - 65px);
   z-index: 49;
 }
 
@@ -63,9 +63,11 @@
 
 .sidebar {
   position: relative;
+  margin-top: 65px;
   width: 16rem; /* w-64 */
-  height: 100vh;
+  height: calc(100vh - 65px);
   border-right: 1px solid hsl(var(--border));
+  border-top: 1px solid hsl(var(--border));
   background-color: hsl(var(--background) / 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
