@@ -1095,11 +1095,12 @@ export function ChatbotApp() {
         content: "",
       },
     ]);
-    setActiveChildren((prev) => ({
-      ...prev,
+    activeChildrenRef.current = {
+      ...activeChildrenRef.current,
       [lastMessageId || "root"]: "temp-user",
       "temp-user": "temp-streaming",
-    }));
+    };
+    setActiveChildren(activeChildrenRef.current);
     setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
@@ -1408,10 +1409,12 @@ export function ChatbotApp() {
         content: "",
       },
     ]);
-    setActiveChildren((prev) => ({
-      ...prev,
+    const previousActiveChild = activeChildrenRef.current[lastUserMessage.id];
+    activeChildrenRef.current = {
+      ...activeChildrenRef.current,
       [lastUserMessage.id]: "temp-streaming",
-    }));
+    };
+    setActiveChildren(activeChildrenRef.current);
     setIsTyping(true);
     isTypingRef.current = true;
     lastParsedLengthRef.current = 0;
@@ -1541,12 +1544,18 @@ export function ChatbotApp() {
           m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
         ),
       );
-      setActiveChildren((prev) => ({
-        ...prev,
+      activeChildrenRef.current = {
+        ...activeChildrenRef.current,
         [lastUserMessage.id]: assistantMsgData.id,
-      }));
+      };
+      setActiveChildren(activeChildrenRef.current);
     } catch (e: any) {
       toast.error(e.message);
+      activeChildrenRef.current = {
+        ...activeChildrenRef.current,
+        [lastUserMessage.id]: previousActiveChild,
+      };
+      setActiveChildren(activeChildrenRef.current);
       setAllMessages((prev) => prev.filter((m) => m.id !== "temp-streaming"));
     } finally {
       setIsTyping(false);
