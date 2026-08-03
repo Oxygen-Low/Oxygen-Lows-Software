@@ -557,6 +557,8 @@ export function ChatbotApp() {
         skipNextFetchRef.current = null;
         return;
       }
+      
+      if (isTypingRef.current) return;
 
       const { data } = await supabase
         .from("chat_messages")
@@ -585,16 +587,20 @@ export function ChatbotApp() {
         );
         setMessages(processed);
       }
+    };
 
+    fetchMessages();
+  }, [currentChatId]);
+
+  useEffect(() => {
+    if (currentChatId) {
       const chat = chats.find((c) => c.id === currentChatId);
       if (chat) {
         setSelectedLlmCharacter(chat.llm_character_id);
         setSelectedUserCharacter(chat.user_character_id);
         setSelectedUniverse(chat.universe_id);
       }
-    };
-
-    fetchMessages();
+    }
   }, [currentChatId, chats]);
 
   useEffect(() => {
