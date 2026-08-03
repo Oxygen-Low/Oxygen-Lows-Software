@@ -667,10 +667,23 @@ export function ChatbotApp() {
         .single();
       const encryptionSettings = prefs?.encryption_settings || {};
 
-      if (userInts && encryptionSettings.integrations && key) {
-        if (userInts.api_key) decryptedKey = await decrypt(userInts.api_key, key);
+      if (userInts && encryptionSettings.integrations) {
+        if (key && userInts.api_key) {
+          decryptedKey = await decrypt(userInts.api_key, key);
+        } else if (userInts.api_key) {
+          // If we have an encrypted key but no master key to decrypt it,
+          // we must override it with the anonymous key so the proxy doesn't
+          // send the encrypted string to AI Horde.
+          decryptedKey = "0000000000";
+        }
       } else if (userInts?.api_key) {
         decryptedKey = userInts.api_key;
+      }
+
+      // If we still don't have a decrypted key, explicitly set it to anonymous
+      // so the backend doesn't fall back to an encrypted database key.
+      if (!decryptedKey) {
+        decryptedKey = "0000000000";
       }
 
       const response = await fetch("/api/ai/proxy", {
