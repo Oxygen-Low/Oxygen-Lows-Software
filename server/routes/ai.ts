@@ -145,7 +145,9 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       requestBody = { ...requestBody, model, messages: processedMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "horde") {
-      return c.json({ error: "Horde streaming not supported directly in edge via this simplified proxy yet." }, 501);
+      targetUrl = "https://oai.stablehorde.net/v1/chat/completions";
+      requestBody = { ...requestBody, model, messages: processedMessages };
+      fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key || "0000000000"}`;
     } else {
         return c.json({ error: "Unsupported provider" }, 400);
     }

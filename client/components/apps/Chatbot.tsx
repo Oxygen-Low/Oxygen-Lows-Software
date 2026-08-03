@@ -1604,7 +1604,12 @@ export function ChatbotApp() {
                               Default Models
                             </p>
                           </div>
-                          <div className="px-2">
+                          <div className="px-3 pb-1">
+                            <p className="text-[11px] text-muted font-display font-medium">
+                              AI Horde
+                            </p>
+                          </div>
+                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
                             {hordeModels.map((m) => (
                               <button
                                 key={m.model_id}
