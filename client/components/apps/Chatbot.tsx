@@ -15,7 +15,6 @@ import {
   Copy,
   X,
   Check,
-  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -548,8 +547,63 @@ export function ChatbotApp() {
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [optionsDropdownOpen, setOptionsDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const skipNextFetchRef = useRef<string | null>(null);
+
+  // ── Touch handling for right-edge-swipe ──
+  const TOUCH_EDGE_ZONE = 30;
+  const SWIPE_THRESHOLD = 40;
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    const x = e.touches[0].clientX;
+    if (window.innerWidth - x <= TOUCH_EDGE_ZONE) {
+      touchStartX.current = x;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - e.touches[0].clientX; // swipe left from right edge
+    if (dx > SWIPE_THRESHOLD) {
+      setSidebarOpen(true);
+      touchStartX.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartX.current = null;
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    document.addEventListener("touchmove", handleTouchMove, { passive: true });
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+
+  // ── Desktop hover trigger ──
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openSidebar = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setSidebarOpen(true);
+  }, []);
+
+  const scheduleSidebarClose = useCallback(() => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setSidebarOpen(false);
+    }, 300);
+  }, []);
 
   const hordeModels = useMemo(
     () => models.filter((m) => m.provider === "horde"),
@@ -1739,25 +1793,32 @@ export function ChatbotApp() {
         <div className="absolute bottom-[-20%] right-[-10%] w-[900px] h-[900px] orb-2 rounded-full animate-blob-reverse mix-blend-screen"></div>
       </div>
 
-      {/* Sidebar Trigger */}
-      <div className={cn(
-        "absolute inset-y-0 right-0 z-50 group flex justify-end pointer-events-none md:block",
-        mobileSidebarOpen ? "block" : "hidden md:flex"
-      )}>
-        <div className="w-12 h-full pointer-events-auto hidden md:block"></div>
-        {mobileSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto z-[-1] md:hidden"
-            onClick={() => setMobileSidebarOpen(false)}
-            style={{ width: '100vw', height: '100vh', left: 0, top: 0 }}
-          />
+      {/* Invisible hover trigger zone along right edge (Desktop) */}
+      <div 
+        className="fixed top-0 right-0 w-[18px] h-[100vh] z-[49] hidden md:block" 
+        onMouseEnter={openSidebar} 
+        onMouseLeave={scheduleSidebarClose}
+      />
+
+      {/* Sidebar Backdrop – click to close */}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-[50]",
+          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
-        {/* Sidebar */}
-        <div className={cn(
-          "h-full w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between absolute right-0 shadow-2xl",
-          mobileSidebarOpen ? "translate-x-0" : "translate-x-full md:group-hover:translate-x-0"
-        )}>
-          <div className="flex flex-col gap-6 h-full overflow-hidden">
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed top-0 right-0 h-[100vh] w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between shadow-2xl z-[51]",
+          sidebarOpen ? "translate-x-0" : "translate-x-full"
+        )}
+        onMouseEnter={openSidebar}
+        onMouseLeave={scheduleSidebarClose}
+      >
+        <div className="flex flex-col gap-6 h-full overflow-hidden">
             <div className="flex flex-col gap-4 h-full">
               <button
                 onClick={handleNewChatClick}
@@ -1784,7 +1845,7 @@ export function ChatbotApp() {
                       )}
                       onClick={() => {
                         setCurrentChatId(c.id);
-                        setMobileSidebarOpen(false);
+                        setSidebarOpen(false);
                       }}
                     >
                       <Bot className="w-5 h-5 opacity-70" />
@@ -1837,14 +1898,15 @@ export function ChatbotApp() {
             {chats.find((c) => c.id === currentChatId)?.title ||
               "New Conversation"}
           </h2>
-          <button
-            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            className="md:hidden p-2 text-white/80 hover:text-white"
-            aria-label="Toggle sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
         </header>
+
+        {/* Subtle edge hint when sidebar is closed */}
+        <div 
+          className={cn(
+            "fixed top-1/2 right-0 -translate-y-1/2 w-1 h-12 rounded-l-md bg-primary/25 z-[48] transition-all duration-300 pointer-events-none",
+            sidebarOpen ? "opacity-0" : "opacity-100"
+          )} 
+        />
 
         {/* Chat Scrolling Area */}
         <div

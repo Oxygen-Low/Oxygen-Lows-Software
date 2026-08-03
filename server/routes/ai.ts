@@ -122,6 +122,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     headers: {
       "Content-Type": "application/json",
     },
+    signal: c.req.raw.signal,
   };
 
   try {

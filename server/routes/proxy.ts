@@ -14,6 +14,7 @@ proxyRouter.post("/fetch", async (c) => {
       method: options?.method || "GET",
       headers: options?.headers,
       body: options?.body ? JSON.stringify(options.body) : undefined,
+      signal: c.req.raw.signal,
     });
 
     const text = await response.text();
