@@ -401,6 +401,7 @@ export function ChatbotApp() {
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
+  const [availablePoints, setAvailablePoints] = useState<number | null>(null);
 
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>(
     [],
@@ -430,11 +431,25 @@ export function ChatbotApp() {
     () => models.filter((m) => m.provider === "horde"),
     [models],
   );
+  const cloudflareModels = useMemo(
+    () => models.filter((m) => m.provider === "cloudflare"),
+    [models],
+  );
   const otherModels = useMemo(
-    () => models.filter((m) => m.provider !== "horde"),
+    () => models.filter((m) => m.provider !== "horde" && m.provider !== "cloudflare"),
     [models],
   );
   const hasHordeModels = hordeModels.length > 0;
+  const hasCloudflareModels = cloudflareModels.length > 0;
+
+  useEffect(() => {
+    const fetchPoints = async () => {
+      if (!session?.user?.id) return;
+      const { data } = await supabase.rpc('get_available_points', { p_user_id: session.user.id });
+      if (data !== null) setAvailablePoints(data);
+    };
+    fetchPoints();
+  }, [session?.user?.id, messages]);
 
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
@@ -1662,37 +1677,82 @@ export function ChatbotApp() {
                         </>
                       )}
 
-                      <div className="px-3 pt-3 pb-1">
-                        <p className="text-[10px] uppercase tracking-wider text-muted font-display font-medium">
-                          Other Models
-                        </p>
-                      </div>
-                      <div className="px-2">
-                        {otherModels.map((m) => (
-                          <button
-                            key={`${m.provider}-${m.model_id}`}
-                            onClick={() => {
-                              setSelection(m.model_id, m.provider);
-                              setModelDropdownOpen(false);
-                            }}
-                            className={cn(
-                              "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                              selectedModel === m.model_id &&
-                                selectedProvider === m.provider
-                                ? "bg-white/5"
-                                : "",
+                      {hasCloudflareModels && (
+                        <>
+                          <div className="px-3 pt-3 pb-1 flex justify-between items-center">
+                            <p className="text-[10px] uppercase tracking-wider text-muted font-display font-medium">
+                              Cloudflare
+                            </p>
+                            {availablePoints !== null && (
+                              <span className="text-xs font-mono text-cyan-400">
+                                {availablePoints} Points
+                              </span>
                             )}
-                          >
-                            <div className="text-sm text-white font-medium truncate pr-4">
-                              {formatModelLabel(m.provider, m.model_id)}
-                            </div>
-                            {selectedModel === m.model_id &&
-                              selectedProvider === m.provider && (
-                                <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                              )}
-                          </button>
-                        ))}
-                      </div>
+                          </div>
+                          <div className="px-2 pb-2">
+                            {cloudflareModels.map((m) => (
+                              <button
+                                key={`${m.provider}-${m.model_id}`}
+                                onClick={() => {
+                                  setSelection(m.model_id, m.provider);
+                                  setModelDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                  selectedModel === m.model_id &&
+                                    selectedProvider === m.provider
+                                    ? "bg-white/5"
+                                    : "",
+                                )}
+                              >
+                                <div className="text-sm text-white font-medium truncate pr-4">
+                                  {formatModelLabel(m.provider, m.model_id)}
+                                </div>
+                                {selectedModel === m.model_id &&
+                                  selectedProvider === m.provider && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {otherModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1">
+                            <p className="text-[10px] uppercase tracking-wider text-muted font-display font-medium">
+                              Other Models
+                            </p>
+                          </div>
+                          <div className="px-2">
+                            {otherModels.map((m) => (
+                              <button
+                                key={`${m.provider}-${m.model_id}`}
+                                onClick={() => {
+                                  setSelection(m.model_id, m.provider);
+                                  setModelDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                  selectedModel === m.model_id &&
+                                    selectedProvider === m.provider
+                                    ? "bg-white/5"
+                                    : "",
+                                )}
+                              >
+                                <div className="text-sm text-white font-medium truncate pr-4">
+                                  {formatModelLabel(m.provider, m.model_id)}
+                                </div>
+                                {selectedModel === m.model_id &&
+                                  selectedProvider === m.provider && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

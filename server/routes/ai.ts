@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { env } from "hono/adapter";
 import { createClient } from "@supabase/supabase-js";
 
 export const aiRouter = new Hono();
@@ -6,9 +7,10 @@ export const aiRouter = new Hono();
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
-const DEFAULT_HORDE_MODELS = [
+const DEFAULT_MODELS = [
   { provider: "horde", model_id: "Fast" },
   { provider: "horde", model_id: "Smart" },
+  { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b" },
 ];
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
@@ -25,9 +27,7 @@ const apiLimiter = async (c: any, next: any) => {
 };
 
 aiRouter.get("/local-providers", apiLimiter, async (c) => {
-  // Edge workers cannot reach local network providers reliably.
-  // We only return the default horde models.
-  return c.json([...DEFAULT_HORDE_MODELS]);
+  return c.json([...DEFAULT_MODELS]);
 });
 
 aiRouter.get("/horde-status", apiLimiter, async (c) => {
@@ -149,6 +149,24 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       const actualModel = HORDE_MODELS_MAP[model]?.[0] || model;
       requestBody = { ...requestBody, model: actualModel, messages: processedMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key || "0000000000"}`;
+    } else if (provider === "cloudflare") {
+      // Deduct points first
+      const { data: success, error: rpcError } = await supabase.rpc('spend_points', { p_amount: 50 });
+      if (rpcError || !success) {
+         return c.json({ error: "Insufficient points" }, 402);
+      }
+      
+      const { AccountID, CloudflareAPIToken } = env<{ AccountID?: string; CloudflareAPIToken?: string }>(c);
+      if (!AccountID || !CloudflareAPIToken) {
+        return c.json({ error: "Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing" }, 500);
+      }
+      
+      targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/run/${model}`;
+      requestBody = { messages: processedMessages };
+      if (stream) {
+        requestBody.stream = true;
+      }
+      fetchOptions.headers["Authorization"] = `Bearer ${CloudflareAPIToken}`;
     } else {
         return c.json({ error: "Unsupported provider" }, 400);
     }
