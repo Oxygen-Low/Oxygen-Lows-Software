@@ -108,7 +108,7 @@ public partial class MainWindow : Window
 
         await Task.Delay(1000); 
         
-        webView.CoreWebView2.Navigate("https://oxygen-lows-software.onrender.com/?desktop=1");
+        webView.CoreWebView2.Navigate("https://main.oxygen-lows-software.workers.dev/?desktop=1");
     }
 
     private async void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)

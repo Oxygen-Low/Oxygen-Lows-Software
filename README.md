@@ -24,4 +24,4 @@ Most user-data is stored on the cloud, so there's almost no need to transfer dat
 
 ### You get 30MB of image, document, and audio storage on the cloud at no cost.
 
-### Don't want to self-host it? You can access it via the [Render server](https://oxygen-lows-software.onrender.com).
+### Don't want to self-host it? You can access it via the [web app](https://main.oxygen-lows-software.workers.dev/).
