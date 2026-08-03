@@ -94,7 +94,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     integration = { ...integration, base_url: baseUrl };
   }
 
-  if (!integration?.api_key && provider !== "horde") {
+  if (!integration?.api_key && provider !== "horde" && provider !== "cloudflare") {
     return c.json({ error: "Provider not configured" }, 400);
   }
 
