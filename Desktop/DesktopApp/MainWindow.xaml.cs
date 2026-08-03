@@ -3,7 +3,9 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
@@ -12,7 +14,8 @@ namespace DesktopApp;
 
 public partial class MainWindow : Window
 {
-    private HttpListener? _httpListener;
+    private TcpListener? _tcpListener;
+    private CancellationTokenSource? _serverCts;
 
     public MainWindow()
     {
@@ -25,74 +28,82 @@ public partial class MainWindow : Window
     {
         try
         {
-            _httpListener = new HttpListener();
-            _httpListener.Prefixes.Add("http://localhost:50321/");
-            _httpListener.Prefixes.Add("http://127.0.0.1:50321/");
-            _httpListener.Start();
-
+            _tcpListener = new TcpListener(IPAddress.Loopback, 50321);
+            _tcpListener.Start();
+            _serverCts = new CancellationTokenSource();
+            
             _ = Task.Run(async () =>
             {
-                while (_httpListener != null && _httpListener.IsListening)
+                while (_serverCts != null && !_serverCts.Token.IsCancellationRequested)
                 {
                     try
                     {
-                        var context = await _httpListener.GetContextAsync();
-                        var request = context.Request;
-                        var response = context.Response;
-
-                        // Add CORS headers for any response
-                        response.Headers.Add("Access-Control-Allow-Origin", "*");
-                        response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-
-                        // Handle OPTIONS preflight
-                        if (request.HttpMethod == "OPTIONS")
-                        {
-                            response.StatusCode = 204;
-                            response.Close();
-                            continue;
-                        }
-
-                        // Extract auth code from query string (PKCE flow)
-                        var query = request.Url?.Query;
-                        if (!string.IsNullOrEmpty(query))
-                        {
-                            Dispatcher.Invoke(() =>
-                            {
-                                try
-                                {
-                                    if (webView != null && webView.CoreWebView2 != null)
-                                    {
-                                        var currentOrigin = webView.Source.GetLeftPart(UriPartial.Authority);
-                                        webView.CoreWebView2.Navigate($"{currentOrigin}/auth/callback{query}");
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    Debug.WriteLine("Navigation Error: " + ex.Message);
-                                }
-                            });
-                        }
-
-                        string responseString = "<html><body style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2>Authentication successful!</h2><p>You can close this tab and return to the desktop app.</p></body></html>";
-                        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-                        response.ContentLength64 = buffer.Length;
-                        using var output = response.OutputStream;
-                        await output.WriteAsync(buffer, 0, buffer.Length);
+                        var client = await _tcpListener.AcceptTcpClientAsync(_serverCts.Token);
+                        _ = HandleClientAsync(client);
                     }
-                    catch (HttpListenerException)
-                    {
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine("HttpListener Exception: " + ex.Message);
-                    }
+                    catch (OperationCanceledException) { break; }
+                    catch (Exception ex) { Debug.WriteLine("Accept Error: " + ex.Message); }
                 }
             });
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("Failed to start HttpListener: " + ex.Message);
+            Debug.WriteLine("Failed to start TcpListener: " + ex.Message);
+        }
+    }
+
+    private async Task HandleClientAsync(TcpClient client)
+    {
+        try
+        {
+            using (client)
+            using (var stream = client.GetStream())
+            using (var reader = new StreamReader(stream, System.Text.Encoding.ASCII, leaveOpen: true))
+            {
+                var requestLine = await reader.ReadLineAsync();
+                if (string.IsNullOrEmpty(requestLine)) return;
+                
+                var parts = requestLine.Split(' ');
+                if (parts.Length >= 2 && parts[0] == "GET")
+                {
+                    var pathAndQuery = parts[1];
+                    var queryIndex = pathAndQuery.IndexOf('?');
+                    if (queryIndex != -1)
+                    {
+                        var query = pathAndQuery.Substring(queryIndex);
+                        Dispatcher.Invoke(() =>
+                        {
+                            try
+                            {
+                                if (webView != null && webView.CoreWebView2 != null)
+                                {
+                                    var currentOrigin = webView.Source.GetLeftPart(UriPartial.Authority);
+                                    webView.CoreWebView2.Navigate($"{currentOrigin}/auth/callback{query}");
+                                }
+                            }
+                            catch (Exception ex) { Debug.WriteLine("Nav error: " + ex.Message); }
+                        });
+                    }
+
+                    string responseString = "<html><body style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2>Authentication successful!</h2><p>You can close this tab and return to the desktop app.</p><script>window.close();</script></body></html>";
+                    byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(responseString);
+                    
+                    var responseHeader = "HTTP/1.1 200 OK\r\n" +
+                                         "Content-Type: text/html; charset=utf-8\r\n" +
+                                         "Connection: close\r\n" +
+                                         $"Content-Length: {bodyBytes.Length}\r\n" +
+                                         "\r\n";
+                    
+                    byte[] headerBytes = System.Text.Encoding.ASCII.GetBytes(responseHeader);
+                    
+                    await stream.WriteAsync(headerBytes, 0, headerBytes.Length);
+                    await stream.WriteAsync(bodyBytes, 0, bodyBytes.Length);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("HandleClient Error: " + ex.Message);
         }
     }
 
@@ -100,12 +111,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (_httpListener != null)
-            {
-                _httpListener.Stop();
-                _httpListener.Close();
-                _httpListener = null;
-            }
+            _serverCts?.Cancel();
+            _tcpListener?.Stop();
         }
         catch { }
     }
