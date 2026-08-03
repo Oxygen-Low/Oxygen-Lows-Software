@@ -1754,7 +1754,7 @@ export function ChatbotApp() {
                     <div
                       key={c.id}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg group text-left cursor-pointer transition-colors",
+                        "flex items-center gap-3 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors",
                         currentChatId === c.id
                           ? "bg-white/10 text-white"
                           : "hover:bg-white/5 text-slate-400 hover:text-white",
@@ -1778,7 +1778,9 @@ export function ChatbotApp() {
                                 setCurrentChatId(null);
                             });
                         }}
-                        className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-1"
+                        className="md:opacity-0 md:group-hover/chat:opacity-100 opacity-100 hover:text-red-400 p-1 transition-opacity"
+                        aria-label="Delete chat"
+                        title="Delete chat"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>

@@ -920,7 +920,7 @@ export default function Account() {
                         type="button"
                         onClick={() => handleRemoveCustomModel(m)}
                         aria-label={`Remove ${m.model_id} (${m.provider})`}
-                        className="p-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"
+                        className="p-2 text-slate-500 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
