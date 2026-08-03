@@ -658,6 +658,21 @@ export function ChatbotApp() {
         .eq("provider", "horde")
         .maybeSingle();
 
+      const key = getMasterKey();
+      let decryptedKey = undefined;
+      const { data: prefs } = await supabase
+        .from("user_preferences")
+        .select("encryption_settings")
+        .eq("user_id", session?.user?.id)
+        .single();
+      const encryptionSettings = prefs?.encryption_settings || {};
+
+      if (userInts && encryptionSettings.integrations && key) {
+        if (userInts.api_key) decryptedKey = await decrypt(userInts.api_key, key);
+      } else if (userInts?.api_key) {
+        decryptedKey = userInts.api_key;
+      }
+
       const response = await fetch("/api/ai/proxy", {
         method: "POST",
         headers: {
@@ -674,7 +689,7 @@ export function ChatbotApp() {
             },
           ],
           stream: false,
-          apiKey: userInts?.api_key,
+          apiKey: decryptedKey,
         }),
       });
 
@@ -920,7 +935,7 @@ export function ChatbotApp() {
       // 1. Title generation on first message
       let titlePromise = null;
       if (isFirstMessage) {
-        titlePromise = generateChatTitle(currentChatId, originalInput);
+        titlePromise = generateChatTitle(activeChatId, originalInput);
         // If the user's primary selection is also horde, we should await the title generation
         // to prevent queuing conflicts with AI Horde's rate limiting.
         if (selectedProvider === "horde") {
