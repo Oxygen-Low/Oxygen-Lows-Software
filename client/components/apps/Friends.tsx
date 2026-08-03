@@ -12,6 +12,7 @@ import {
   ExternalLink,
   ShieldAlert,
   Loader2,
+  Gift,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -54,6 +63,8 @@ export function FriendsApp() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("friends");
   const [loading, setLoading] = useState(true);
+  const [givePointsUser, setGivePointsUser] = useState<SocialProfile | null>(null);
+  const [pointsToGive, setPointsToGive] = useState("");
 
   const fetchData = async () => {
     if (!session?.user?.id) return;
@@ -219,6 +230,33 @@ export function FriendsApp() {
     }
   };
 
+  const handleGivePoints = async () => {
+    if (!givePointsUser || !pointsToGive) return;
+    const amount = parseInt(pointsToGive);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid positive number");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase.rpc("give_points", {
+        p_receiver_id: givePointsUser.user_id,
+        p_amount: amount,
+      });
+
+      if (error) throw error;
+      
+      toast.success(`Successfully gave ${amount} points to ${givePointsUser.display_name || givePointsUser.username}`);
+      setGivePointsUser(null);
+      setPointsToGive("");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
@@ -301,7 +339,14 @@ export function FriendsApp() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                          className="text-cyan-400 focus:bg-cyan-500/10 focus:text-cyan-400 cursor-pointer"
+                          onClick={() => setGivePointsUser(friend.profile)}
+                        >
+                          <Gift className="w-4 h-4 mr-2" />
+                          Give Points
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
                           onClick={() => handleDeleteFriendship(friend.id)}
                         >
                           <UserMinus className="w-4 h-4 mr-2" />
@@ -468,6 +513,34 @@ export function FriendsApp() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!givePointsUser} onOpenChange={(open) => !open && setGivePointsUser(null)}>
+        <DialogContent className="bg-slate-950 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Give Points to {givePointsUser?.display_name || givePointsUser?.username}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Transfer some of your daily points allowance to your friend. These points will expire at midnight UTC.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="number"
+              placeholder="Amount of points"
+              value={pointsToGive}
+              onChange={(e) => setPointsToGive(e.target.value)}
+              className="bg-slate-900 border-slate-800 text-white"
+              min="1"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setGivePointsUser(null)}>Cancel</Button>
+            <Button className="bg-cyan-600 hover:bg-cyan-700 text-white" onClick={handleGivePoints} disabled={loading || !pointsToGive}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Gift className="w-4 h-4 mr-2" />}
+              Give Points
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
