@@ -1877,8 +1877,7 @@ export function ChatbotApp() {
               </ScrollArea>
             </div>
           </div>
-        </div>
-      </div>
+      </aside>
 
       {/* Main Area */}
       <main
