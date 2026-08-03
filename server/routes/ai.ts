@@ -18,7 +18,8 @@ const DEFAULT_MODELS = [
 ];
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
-  Fast: ["koboldcpp/Llama-3.2-1B-Instruct"],
+  TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
+  Fast: ["google/gemma-4-31b"],
   Smart: ["koboldcpp/Behemoth-128B-v3b-Q4_K_M"],
 };
 

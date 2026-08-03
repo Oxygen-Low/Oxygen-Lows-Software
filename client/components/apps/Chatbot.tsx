@@ -844,10 +844,8 @@ export function ChatbotApp() {
   };
 
   const generateChatTitle = async (chatId: string, firstMsg: string) => {
-    // We prompt the "Fast" model to generate a title
-    const fastModel = models.find(
-      (m) => m.provider === "horde" && m.model_id === "Fast",
-    ) || { provider: "horde", model_id: "Fast" };
+    // We prompt the "TitleGen" model to generate a title
+    const titleModel = { provider: "horde", model_id: "TitleGen" };
 
     try {
       const { data: userInts } = await supabase
@@ -892,8 +890,8 @@ export function ChatbotApp() {
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          provider: fastModel.provider,
-          model: fastModel.model_id,
+          provider: titleModel.provider,
+          model: titleModel.model_id,
           messages: [
             {
               role: "user",
