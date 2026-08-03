@@ -1238,10 +1238,9 @@ export function ChatbotApp() {
             getApiMessages(reasoningMessages),
             controller.signal,
             (content) => {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                return [...prev.slice(0, -1), { ...last, reasoning: content }];
-              });
+              setAllMessages((prevAll) => 
+                prevAll.map(m => m.id === "temp-streaming" ? { ...m, reasoning: content } : m)
+              );
             },
           );
 
@@ -1263,10 +1262,9 @@ export function ChatbotApp() {
             getApiMessages(finalMessages),
             controller.signal,
             (content) => {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                return [...prev.slice(0, -1), { ...last, content }];
-              });
+              setAllMessages((prevAll) => 
+                prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+              );
 
               if (
                 content.length - lastParsedLengthRef.current > 50 ||
@@ -1285,10 +1283,9 @@ export function ChatbotApp() {
             getApiMessages(currentMessages),
             controller.signal,
             (content) => {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                return [...prev.slice(0, -1), { ...last, content }];
-              });
+              setAllMessages((prevAll) => 
+                prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+              );
 
               if (
                 content.length - lastParsedLengthRef.current > 50 ||
@@ -1470,10 +1467,9 @@ export function ChatbotApp() {
           getApiMessages(reasoningMessages),
           controller.signal,
           (content) => {
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              return [...prev.slice(0, -1), { ...last, reasoning: content }];
-            });
+            setAllMessages((prevAll) => 
+              prevAll.map(m => m.id === "temp-streaming" ? { ...m, reasoning: content } : m)
+            );
           },
         );
         const finalMessages = [
@@ -1494,10 +1490,9 @@ export function ChatbotApp() {
           getApiMessages(finalMessages),
           controller.signal,
           (content) => {
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              return [...prev.slice(0, -1), { ...last, content }];
-            });
+            setAllMessages((prevAll) => 
+              prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+            );
           },
         );
       } else {
@@ -1507,10 +1502,9 @@ export function ChatbotApp() {
           getApiMessages(currentMessages),
           controller.signal,
           (content) => {
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              return [...prev.slice(0, -1), { ...last, content }];
-            });
+            setAllMessages((prevAll) => 
+              prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+            );
           },
         );
       }
