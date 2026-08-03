@@ -1632,7 +1632,7 @@ export function ChatbotApp() {
 
   return (
     <div
-      className="w-full h-[calc(100vh-200px)] relative overflow-hidden rounded-xl"
+      className="w-full h-[calc(100vh-200px)] flex relative overflow-hidden rounded-xl"
       id="chatbot-app-root"
     >
       {/* Dark theme background color overriding */}
@@ -1738,7 +1738,7 @@ export function ChatbotApp() {
       </div>
 
       {/* Sidebar Trigger */}
-      <div className="fixed inset-y-0 right-0 z-40 group flex justify-end pointer-events-none">
+      <div className="absolute inset-y-0 right-0 z-40 group flex justify-end pointer-events-none">
         <div className="w-12 h-full pointer-events-auto"></div>
         {/* Sidebar */}
         <div className="h-full w-[280px] translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between absolute right-0 shadow-2xl">
