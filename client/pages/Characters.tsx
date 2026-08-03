@@ -312,30 +312,28 @@ export default function Characters() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="flex gap-4">
-                  {!currentCharacter.is_universe && (
-                    <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
-                      {currentCharacter.image_url ? (
-                        <img
-                          src={currentCharacter.image_url}
-                          alt="Character"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <ImageIcon className="w-8 h-8 text-slate-600" />
-                      )}
-                      <StorageFileSelector
-                        onSelect={handleStorageSelect}
-                        allowedTypes={["image"]}
-                        trigger={
-                          <button
-                            type="button"
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                            aria-label="Select character image"
-                          />
-                        }
+                  <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
+                    {currentCharacter.image_url ? (
+                      <img
+                        src={currentCharacter.image_url}
+                        alt="Character"
+                        className="w-full h-full object-cover"
                       />
-                    </div>
-                  )}
+                    ) : (
+                      <ImageIcon className="w-8 h-8 text-slate-600" />
+                    )}
+                    <StorageFileSelector
+                      onSelect={handleStorageSelect}
+                      allowedTypes={["image"]}
+                      trigger={
+                        <button
+                          type="button"
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          aria-label="Select character image"
+                        />
+                      }
+                    />
+                  </div>
                   <div className="flex-1 space-y-2">
                     <label htmlFor="char-name" className="text-sm font-medium">
                       Name
