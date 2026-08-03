@@ -715,7 +715,6 @@ export function ChatbotApp() {
           .replace(/^["']|["']$/g, "");
       }
 
-      const key = getMasterKey();
       const encryptedTitle =
         isEncryptionEnabled && key ? await encrypt(title, key) : title;
       await supabase
