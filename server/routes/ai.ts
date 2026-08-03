@@ -271,7 +271,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       // Deduct points first
       const { data: success, error: rpcError } = await supabase.rpc(
         "spend_points",
-        { p_amount: 50 },
+        { p_amount: 100 },
       );
       if (rpcError || !success) {
         return c.json({ error: "Insufficient points" }, 402);
