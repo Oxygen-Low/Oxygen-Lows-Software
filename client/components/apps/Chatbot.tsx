@@ -1145,10 +1145,12 @@ export function ChatbotApp() {
           return m;
         }),
       );
-      setActiveChildren((prev) => ({
-        ...prev,
+      activeChildrenRef.current = {
+        ...activeChildrenRef.current,
         [lastMessageId || "root"]: userMsgData.id,
-      }));
+        [userMsgData.id]: "temp-streaming",
+      };
+      setActiveChildren(activeChildrenRef.current);
 
       let finalContent = "";
       let reasoningContent = "";
@@ -1341,10 +1343,11 @@ export function ChatbotApp() {
                 m.id === "temp-streaming" ? { ...m, id: retryData.id } : m,
               ),
             );
-            setActiveChildren((prev) => ({
-              ...prev,
+            activeChildrenRef.current = {
+              ...activeChildrenRef.current,
               [userMsgData.id]: retryData.id,
-            }));
+            };
+            setActiveChildren(activeChildrenRef.current);
             if (retryError) throw retryError;
           } else {
             throw assistantInsertError;
@@ -1356,10 +1359,11 @@ export function ChatbotApp() {
               m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
             ),
           );
-          setActiveChildren((prev) => ({
-            ...prev,
+          activeChildrenRef.current = {
+            ...activeChildrenRef.current,
             [userMsgData.id]: assistantMsgData.id,
-          }));
+          };
+          setActiveChildren(activeChildrenRef.current);
         }
 
         const { error: chatUpdateError } = await supabase
@@ -1600,16 +1604,18 @@ export function ChatbotApp() {
         );
 
         if (e.key === "ArrowLeft" && currentIndex > 0) {
-          setActiveChildren((prev) => ({
-            ...prev,
+          activeChildrenRef.current = {
+            ...activeChildrenRef.current,
             [parentId]: siblings[currentIndex - 1].id!,
-          }));
+          };
+          setActiveChildren(activeChildrenRef.current);
         } else if (e.key === "ArrowRight") {
           if (currentIndex < siblings.length - 1) {
-            setActiveChildren((prev) => ({
-              ...prev,
+            activeChildrenRef.current = {
+              ...activeChildrenRef.current,
               [parentId]: siblings[currentIndex + 1].id!,
-            }));
+            };
+            setActiveChildren(activeChildrenRef.current);
           } else {
             handleRegenerate();
           }
@@ -1885,10 +1891,11 @@ export function ChatbotApp() {
                   onNavigate={(index) => {
                     const sibling = siblings[index];
                     if (sibling && sibling.id) {
-                      setActiveChildren((prev) => ({
-                        ...prev,
+                      activeChildrenRef.current = {
+                        ...activeChildrenRef.current,
                         [m.parent_id || "root"]: sibling.id!,
-                      }));
+                      };
+                      setActiveChildren(activeChildrenRef.current);
                     }
                   }}
                   onRegenerate={handleRegenerate}
