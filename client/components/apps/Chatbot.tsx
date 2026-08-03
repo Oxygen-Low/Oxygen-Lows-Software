@@ -1139,9 +1139,11 @@ export function ChatbotApp() {
 
       // Update temp-user id to real id in messages
       setAllMessages((prev) =>
-        prev.map((m) =>
-          m.id === "temp-user" ? { ...m, id: userMsgData.id } : m,
-        ),
+        prev.map((m) => {
+          if (m.id === "temp-user") return { ...m, id: userMsgData.id };
+          if (m.parent_id === "temp-user") return { ...m, parent_id: userMsgData.id };
+          return m;
+        }),
       );
       setActiveChildren((prev) => ({
         ...prev,
