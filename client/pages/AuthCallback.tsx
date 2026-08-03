@@ -18,34 +18,32 @@ export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const code = params.get("code");
-
-    if (!code) {
-      setError("No authorization code received.");
-      return;
-    }
-
-    const exchange = async () => {
-      try {
-        const { error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code);
-
-        if (exchangeError) {
-          setError(exchangeError.message);
-          return;
-        }
-
-        // Session established — redirect to the main app
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
         navigate("/apps", { replace: true });
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to complete sign in.",
-        );
       }
     };
 
-    exchange();
+    checkSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          navigate("/apps", { replace: true });
+        }
+      }
+    );
+
+    // Timeout if it takes too long
+    const timeout = setTimeout(() => {
+      setError("Authentication timed out. Please try again.");
+    }, 10000);
+
+    return () => {
+      authListener.subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [location.search, navigate]);
 
   if (error) {
