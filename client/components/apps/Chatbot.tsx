@@ -815,7 +815,7 @@ export function ChatbotApp() {
               if (data.choices?.[0]?.finish_reason === "tool_calls") {
                 delta += `\n}</tool_call>`;
               }
-            } else if (provider === "ollama") {
+            } else if (provider === "ollama" || provider === "cloudflare") {
               delta = data.message?.content || data.response || "";
             } else if (provider === "google") {
               delta =
