@@ -1,27 +1,17 @@
-### Oxygen Low's Software is a self-hostable website with many different features and apps built in for you to use.
+# Oxygen Low's Software
 
-Most user-data is stored on the cloud, so there's almost no need to transfer data between servers.
+Oxygen Low's Software is a feature-rich web and desktop application suite with many different tools and apps built in for you to use.
 
-## Setup
+All user data is stored securely on the cloud, allowing you to access your content seamlessly across devices.
 
-### [Docker](https://hub.docker.com/r/oxygenlow/oxygen-lows-software)
+## Access the App
 
-`docker pull oxygenlow/oxygen-lows-software:latest`
+You can access the official web application here: [Oxygen Low's Software Web App](https://main.oxygen-lows-software.workers.dev/)
 
-`docker run -p 3000:3000 oxygenlow/oxygen-lows-software:latest`
+*Note: This project was originally designed as a self-hostable website, but it has now migrated to a cloud-hosted model and is no longer intended for self-hosting.*
 
-### Pnpm/Npm/Github
+## Features
 
-`git clone https://github.com/Oxygen-Low/Oxygen-Lows-Software`
-
-`pnpm install`
-
-`pnpm build`
-
-`pnpm start`
-
-## Features/Extra
-
-### You get 30MB of image, document, and audio storage on the cloud at no cost.
-
-### Don't want to self-host it? You can access it via the [web app](https://main.oxygen-lows-software.workers.dev/).
+- **Cloud Storage:** You get 30MB of image, document, and audio storage on the cloud at no cost.
+- **Cross-Platform:** Access your data anywhere via the web app or the desktop client.
+- **Tools & Apps:** Various built-in applications and tools are provided out of the box.
