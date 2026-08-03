@@ -9,6 +9,13 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        if (!SingleInstance.InitializeAsFirstInstance(e.Args))
+        {
+            // Exit if another instance is already running
+            Shutdown();
+            return;
+        }
         
         DispatcherUnhandledException += App_DispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;

@@ -9,6 +9,8 @@
     <UseWPF>true</UseWPF>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <AssemblyTitle>Oxygen Lows Software Desktop</AssemblyTitle>
+    <Product>Oxygen Lows Software Desktop</Product>
   </PropertyGroup>
 
   <ItemGroup>
