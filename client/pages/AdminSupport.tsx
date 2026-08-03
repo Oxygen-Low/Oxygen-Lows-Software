@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -64,7 +65,8 @@ export default function AdminSupport() {
   };
 
   return (
-    <div className="space-y-6">
+    <Layout>
+      <div className="space-y-6">
       <div className="flex items-center space-x-4">
         <button
           onClick={() => navigate("/admin")}
@@ -148,5 +150,6 @@ export default function AdminSupport() {
         </CardContent>
       </Card>
     </div>
+    </Layout>
   );
 }

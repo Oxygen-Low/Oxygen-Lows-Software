@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { LifeBuoy, Settings, Users, Database } from "lucide-react";
+import { Layout } from "@/components/Layout";
 import {
   Card,
   CardHeader,
@@ -22,7 +23,8 @@ export default function AdminPanel() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+    <Layout>
+      <div className="min-h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-slate-200 p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
           Admin Control Panel
@@ -61,5 +63,6 @@ export default function AdminPanel() {
         })}
       </div>
     </div>
+    </Layout>
   );
 }

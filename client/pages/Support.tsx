@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -112,7 +113,8 @@ export default function Support() {
   };
 
   return (
-    <div className="space-y-6">
+    <Layout>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Support Tickets</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -236,5 +238,6 @@ export default function Support() {
         </CardContent>
       </Card>
     </div>
+    </Layout>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -176,22 +177,27 @@ export default function SupportTicket() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
-        Loading ticket...
-      </div>
+      <Layout>
+        <div className="p-8 text-center text-muted-foreground">
+          Loading ticket...
+        </div>
+      </Layout>
     );
   }
 
   if (!ticket) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
-        Ticket not found.
-      </div>
+      <Layout>
+        <div className="p-8 text-center text-muted-foreground">
+          Ticket not found.
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <Layout>
+      <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
@@ -310,5 +316,6 @@ export default function SupportTicket() {
         </CardContent>
       </Card>
     </div>
+    </Layout>
   );
 }
