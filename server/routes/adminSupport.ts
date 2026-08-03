@@ -3,6 +3,35 @@ import { getAuthenticatedClient } from "../lib/supabase.ts";
 
 export const adminSupportRouter = new Hono();
 
+// Middleware to check if user is admin
+adminSupportRouter.use("*", async (c, next) => {
+  try {
+    const token = c.req.header("authorization")?.split(" ")[1];
+    if (!token) return c.json({ error: "Unauthorized" }, 401);
+    const supabase = getAuthenticatedClient(token);
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profileError || !profile?.is_admin) {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    await next();
+  } catch (error) {
+    console.error("Error in admin middleware:", error);
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
+});
+
 // Get all support tickets
 adminSupportRouter.get("/tickets", async (c) => {
   try {
