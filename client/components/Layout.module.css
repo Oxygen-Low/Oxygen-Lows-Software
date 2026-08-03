@@ -67,7 +67,6 @@
   width: 16rem; /* w-64 */
   height: calc(100vh - 65px);
   border-right: 1px solid hsl(var(--border));
-  border-top: 1px solid hsl(var(--border));
   background-color: hsl(var(--background) / 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

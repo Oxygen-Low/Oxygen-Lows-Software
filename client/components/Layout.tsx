@@ -110,7 +110,7 @@ export const Layout = ({ children }: LayoutProps) => {
       <div className={styles["background-gradient"]} />
       {/* Header */}
       <header
-        className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-10`}
+        className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-[60]`}
       >
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -133,13 +133,15 @@ export const Layout = ({ children }: LayoutProps) => {
       </header>
 
       {/* Invisible hover trigger zone along left edge */}
-      <div className={styles["sidebar-trigger"]} onMouseEnter={openSidebar} />
+      <div 
+        className={styles["sidebar-trigger"]} 
+        onMouseEnter={openSidebar} 
+        onMouseLeave={scheduleSidebarClose}
+      />
 
       {/* Sidebar overlay container */}
       <div
         className={`${styles["sidebar-container"]}${sidebarOpen ? ` ${styles["open"]}` : ""}`}
-        onMouseEnter={openSidebar}
-        onMouseLeave={scheduleSidebarClose}
       >
         {/* Backdrop – click to close */}
         <div
@@ -148,7 +150,11 @@ export const Layout = ({ children }: LayoutProps) => {
         />
 
         {/* Sidebar panel */}
-        <aside className={styles["sidebar"]}>
+        <aside 
+          className={styles["sidebar"]}
+          onMouseEnter={openSidebar}
+          onMouseLeave={scheduleSidebarClose}
+        >
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto pt-2">
             {navItems.map((item) => {
               const Icon = item.icon;
