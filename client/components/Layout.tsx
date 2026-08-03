@@ -17,6 +17,7 @@ import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
 
 interface LayoutProps {
   children: ReactNode;
+  fullWidth?: boolean;
 }
 
 /**
@@ -37,7 +38,7 @@ const navItems = [
 const TOUCH_EDGE_ZONE = 30;
 const SWIPE_THRESHOLD = 40;
 
-export const Layout = ({ children }: LayoutProps) => {
+export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -191,8 +192,8 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* Subtle edge hint when sidebar is closed */}
       <div className={styles["sidebar-edge-hint"]} />
 
-      {/* Content Area – now full width, centered */}
-      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
+      {/* Content Area */}
+      <main className={fullWidth ? "w-full h-[calc(100vh-73px)]" : "mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-12"}>
         {children}
       </main>
     </div>

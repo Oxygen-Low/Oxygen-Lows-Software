@@ -178,21 +178,24 @@ export default function Apps() {
 
   if (activeApp) {
     const AppComponent = activeApp.component;
+    const isChatbot = activeApp.id === "chatbot";
 
     return (
-      <Layout>
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 mb-8">
-            <button
-              onClick={() => setActiveApp(null)}
-              aria-label="Back to apps list"
-              title="Back to apps list"
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
-            >
-              <AppWindow className="w-6 h-6" />
-            </button>
-            <h2 className="text-2xl font-bold text-white">{activeApp.name}</h2>
-          </div>
+      <Layout fullWidth={isChatbot}>
+        <div className={isChatbot ? "h-full w-full flex flex-col" : "space-y-6"}>
+          {!isChatbot && (
+            <div className="flex items-center gap-4 mb-8">
+              <button
+                onClick={() => setActiveApp(null)}
+                aria-label="Back to apps list"
+                title="Back to apps list"
+                className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
+              >
+                <AppWindow className="w-6 h-6" />
+              </button>
+              <h2 className="text-2xl font-bold text-white">{activeApp.name}</h2>
+            </div>
+          )}
           <AppComponent />
         </div>
       </Layout>

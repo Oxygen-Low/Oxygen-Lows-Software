@@ -1632,7 +1632,7 @@ export function ChatbotApp() {
 
   return (
     <div
-      className="w-full h-[calc(100vh-200px)] flex relative overflow-hidden rounded-xl"
+      className="w-full h-full flex relative overflow-hidden"
       id="chatbot-app-root"
     >
       {/* Dark theme background color overriding */}
