@@ -976,7 +976,7 @@ export function ChatbotApp() {
                 "cloudflare",
               ].includes(provider)
             ) {
-              delta = data.choices?.[0]?.delta?.content || "";
+              delta = data.choices?.[0]?.delta?.content || data.response || "";
               const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
               if (tc) {
                 if (tc.function?.name)

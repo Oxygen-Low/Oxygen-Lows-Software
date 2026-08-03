@@ -154,7 +154,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["x-api-key"] = integration?.api_key;
       fetchOptions.headers["anthropic-version"] = "2023-06-01";
     } else if (provider === "google") {
-      targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${integration?.api_key}`;
+      const action = stream ? "streamGenerateContent?alt=sse&" : "generateContent?";
+      targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${action}key=${integration?.api_key}`;
       requestBody = {
         systemInstruction: {
           parts: processedMessages
