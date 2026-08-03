@@ -23,6 +23,10 @@ export const formatModelLabel = (provider: string, modelId: string) => {
     if (labels[modelId]) return labels[modelId];
   }
 
+  if (provider === "openrouter" && modelId === "openrouter/free") {
+    return "Auto Select - Free Model";
+  }
+
   const displayProvider =
     provider === "openai"
       ? "OpenAI"

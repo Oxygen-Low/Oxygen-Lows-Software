@@ -613,15 +613,31 @@ export function ChatbotApp() {
     () => models.filter((m) => m.provider === "cloudflare"),
     [models],
   );
+  const hasOpenRouter = useMemo(
+    () => models.some((m) => m.provider === "openrouter"),
+    [models],
+  );
+  const customModels = useMemo(() => {
+    const cm = models.filter((m) => m.provider === "custom");
+    if (hasOpenRouter) {
+      cm.push({ provider: "openrouter", model_id: "openrouter/free" });
+    }
+    return cm;
+  }, [models, hasOpenRouter]);
   const otherModels = useMemo(
     () =>
       models.filter(
-        (m) => m.provider !== "horde" && m.provider !== "cloudflare",
+        (m) =>
+          m.provider !== "horde" &&
+          m.provider !== "cloudflare" &&
+          m.provider !== "custom" &&
+          !(m.provider === "openrouter" && m.model_id === "openrouter/free")
       ),
     [models],
   );
   const hasHordeModels = hordeModels.length > 0;
   const hasCloudflareModels = cloudflareModels.length > 0;
+  const hasCustomModels = customModels.length > 0;
 
   useEffect(() => {
     const fetchPoints = async () => {
@@ -982,6 +998,14 @@ export function ChatbotApp() {
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     let fullContent = "";
+    
+    const toolSearch = response.headers.get("X-Tool-Search");
+    if (toolSearch) {
+      const query = decodeURIComponent(toolSearch);
+      fullContent += `<tool_call>{"name":"Web Search", "args":{"query":"${query}"}}</tool_call>\n\n`;
+      streamCallback(fullContent);
+    }
+    
     let streamBuffer = "";
 
     if (reader) {
@@ -2282,6 +2306,53 @@ export function ChatbotApp() {
                           </div>
                           <div className="px-2 pl-3 border-l border-white/5 ml-3">
                             {cloudflareModels.map((m) => (
+                              <button
+                                key={`${m.provider}-${m.model_id}`}
+                                onClick={() => {
+                                  setSelection(m.model_id, m.provider);
+                                  setModelDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                  selectedModel === m.model_id &&
+                                    selectedProvider === m.provider
+                                    ? "bg-white/5"
+                                    : "",
+                                )}
+                              >
+                                <div className="text-sm text-white font-medium">
+                                  {
+                                    formatModelLabel(
+                                      m.provider,
+                                      m.model_id,
+                                    ).split(" - ")[0]
+                                  }
+                                </div>
+                                <div className="text-[11px] text-slate-400 truncate w-full pr-4">
+                                  {formatModelLabel(
+                                    m.provider,
+                                    m.model_id,
+                                  ).split(" - ")[1] || ""}
+                                </div>
+                                {selectedModel === m.model_id &&
+                                  selectedProvider === m.provider && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {hasCustomModels && (
+                        <>
+                          <div className="px-3 pb-1 pt-3 flex justify-between items-center">
+                            <p className="text-[11px] text-slate-400 font-display font-medium">
+                              Custom
+                            </p>
+                          </div>
+                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
+                            {customModels.map((m) => (
                               <button
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {

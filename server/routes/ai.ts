@@ -113,10 +113,86 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   }
 
   const processedMessages = (messages || []).slice(-20);
+  let finalMessages = [...processedMessages];
+  let searchPerformed = "";
+
+  // --- Web Search Intent Check ---
+  const lastMsg = finalMessages[finalMessages.length - 1];
+  if (lastMsg && lastMsg.role === "user") {
+    try {
+      const intentCheckBody = {
+        model: HORDE_MODELS_MAP.TitleGen?.[0] || "koboldcpp/Llama-3.2-1B-Instruct",
+        messages: [
+          {
+            role: "system",
+            content: `You determine if a web search is needed to answer the user's message. Respond with {"search": true, "query": "..."} if yes, or {"search": false} if no. Examples of needing search: current weather, news, sports scores, recent facts.`
+          },
+          { role: "user", content: lastMsg.content }
+        ],
+        stream: false,
+        max_tokens: 50,
+        temperature: 0.1
+      };
+
+      const intentRes = await fetch("https://oai.stablehorde.net/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${integration?.api_key || "0000000000"}`
+        },
+        body: JSON.stringify(intentCheckBody)
+      });
+
+      if (intentRes.ok) {
+        const intentData = await intentRes.json();
+        const content = intentData.choices?.[0]?.message?.content?.trim();
+        
+        if (content) {
+          const match = content.match(/\{[\s\S]*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed.search && parsed.query) {
+               // Perform search
+               const query = parsed.query;
+               searchPerformed = query;
+               const searchResponse = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query), {
+                 headers: {
+                   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                 }
+               });
+               if (searchResponse.ok) {
+                 const text = await searchResponse.text();
+                 const snippetRegex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+                 let snippets = [];
+                 let m;
+                 let count = 0;
+                 while ((m = snippetRegex.exec(text)) !== null && count < 5) {
+                   const cleanSnippet = m[1].replace(/<[^>]*>?/gm, '').trim();
+                   if (cleanSnippet) {
+                     snippets.push(cleanSnippet);
+                     count++;
+                   }
+                 }
+                 if (snippets.length > 0) {
+                   finalMessages.push({
+                     role: "system",
+                     content: `Web Search Results for "${query}":\n\n${snippets.join("\n\n")}`
+                   });
+                 }
+               }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Intent check failed", e);
+    }
+  }
+  // --------------------------------
 
   // Basic system prompt for edge (simplified, as file read isn't available)
   const baseContent = "You are an AI assistant.";
-  processedMessages.unshift({ role: "system", content: baseContent });
+  finalMessages.unshift({ role: "system", content: baseContent });
 
   const fetchOptions: any = {
     method: "POST",
@@ -132,17 +208,17 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
 
     if (provider === "openai") {
       targetUrl = "https://api.openai.com/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: processedMessages };
+      requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "anthropic") {
       targetUrl = "https://api.anthropic.com/v1/messages";
-      const systemMessages = processedMessages.filter(
+      const systemMessages = finalMessages.filter(
         (m: any) => m.role === "system",
       );
       const systemContent = systemMessages
         .map((m: any) => m.content)
         .join("\n\n");
-      const transformedMessages = processedMessages.filter(
+      const transformedMessages = finalMessages.filter(
         (m: any) => m.role !== "system",
       );
       requestBody = {
@@ -159,11 +235,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${action}key=${integration?.api_key}`;
       requestBody = {
         systemInstruction: {
-          parts: processedMessages
+          parts: finalMessages
             .filter((m: any) => m.role === "system")
             .map((m: any) => ({ text: m.content })),
         },
-        contents: processedMessages
+        contents: finalMessages
           .filter((m: any) => m.role !== "system")
           .map((m: any) => ({
             role: m.role === "assistant" ? "model" : "user",
@@ -175,11 +251,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       };
     } else if (provider === "openrouter") {
       targetUrl = "https://openrouter.ai/api/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: processedMessages };
+      requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "grok") {
       targetUrl = "https://api.x.ai/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: processedMessages };
+      requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "horde") {
       targetUrl = "https://oai.stablehorde.net/v1/chat/completions";
@@ -187,7 +263,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       requestBody = {
         ...requestBody,
         model: actualModel,
-        messages: processedMessages,
+        messages: finalMessages,
       };
       fetchOptions.headers["Authorization"] =
         `Bearer ${integration?.api_key || "0000000000"}`;
@@ -243,7 +319,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       }
 
       targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/v1/chat/completions`;
-      requestBody = { model, messages: processedMessages };
+      requestBody = { model, messages: finalMessages };
       if (stream) {
         requestBody.stream = true;
       }
@@ -265,11 +341,17 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     }
 
     if (stream) {
+      if (searchPerformed) {
+        c.header("X-Tool-Search", encodeURIComponent(searchPerformed));
+      }
       c.header("Content-Type", "text/event-stream");
       c.header("Cache-Control", "no-cache");
       c.header("Connection", "keep-alive");
       return c.body(upstreamResponse.body as any);
     } else {
+      if (searchPerformed) {
+        c.header("X-Tool-Search", encodeURIComponent(searchPerformed));
+      }
       const data = await upstreamResponse.json();
       return c.json(data);
     }
