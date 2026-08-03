@@ -289,7 +289,10 @@ export default function Characters() {
             }}
           >
             <DialogTrigger asChild>
-              <Button className="bg-cyan-600 hover:bg-cyan-700">
+              <Button 
+                className="bg-cyan-600 hover:bg-cyan-700"
+                onClick={() => setCurrentCharacter({ is_universe: activeTab === "universes" })}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 {activeTab === "characters" ? "New Character" : "New Universe"}
               </Button>
@@ -308,49 +311,31 @@ export default function Characters() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    type="checkbox"
-                    id="is_universe"
-                    checked={currentCharacter.is_universe || false}
-                    onChange={(e) =>
-                      setCurrentCharacter((prev) => ({
-                        ...prev,
-                        is_universe: e.target.checked,
-                      }))
-                    }
-                    className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
-                  />
-                  <label
-                    htmlFor="is_universe"
-                    className="text-sm font-medium text-slate-300"
-                  >
-                    This is a Universe (setting/lore)
-                  </label>
-                </div>
                 <div className="flex gap-4">
-                  <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
-                    {currentCharacter.image_url ? (
-                      <img
-                        src={currentCharacter.image_url}
-                        alt="Character"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-slate-600" />
-                    )}
-                    <StorageFileSelector
-                      onSelect={handleStorageSelect}
-                      allowedTypes={["image"]}
-                      trigger={
-                        <button
-                          type="button"
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                          aria-label="Select character image"
+                  {!currentCharacter.is_universe && (
+                    <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
+                      {currentCharacter.image_url ? (
+                        <img
+                          src={currentCharacter.image_url}
+                          alt="Character"
+                          className="w-full h-full object-cover"
                         />
-                      }
-                    />
-                  </div>
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-slate-600" />
+                      )}
+                      <StorageFileSelector
+                        onSelect={handleStorageSelect}
+                        allowedTypes={["image"]}
+                        trigger={
+                          <button
+                            type="button"
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            aria-label="Select character image"
+                          />
+                        }
+                      />
+                    </div>
+                  )}
                   <div className="flex-1 space-y-2">
                     <label htmlFor="char-name" className="text-sm font-medium">
                       Name
@@ -364,117 +349,164 @@ export default function Characters() {
                           name: e.target.value,
                         }))
                       }
-                      placeholder="Character name"
+                      placeholder={currentCharacter.is_universe ? "Universe name" : "Character name"}
                       className="bg-slate-800 border-slate-700"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="char-short-desc"
-                      className="text-sm font-medium"
-                    >
-                      Short Description
-                    </label>
-                    <Input
-                      id="char-short-desc"
-                      value={currentCharacter.short_description || ""}
-                      onChange={(e) =>
-                        setCurrentCharacter((prev) => ({
-                          ...prev,
-                          short_description: e.target.value,
-                        }))
-                      }
-                      placeholder="A one-line hook"
-                      className="bg-slate-800 border-slate-700"
-                    />
-                  </div>
-                  <div className="space-y-2 text-cyan-400">
-                    <label
-                      htmlFor="char-display-name"
-                      className="text-sm font-medium"
-                    >
-                      Display Name
-                    </label>
-                    <Input
-                      id="char-display-name"
-                      value={currentCharacter.display_name || ""}
-                      onChange={(e) =>
-                        setCurrentCharacter((prev) => ({
-                          ...prev,
-                          display_name: e.target.value,
-                        }))
-                      }
-                      placeholder="For organizing characters..."
-                      className="bg-slate-800 border-cyan-900"
-                    />
-                  </div>
-                </div>
+                {!currentCharacter.is_universe ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="char-short-desc"
+                          className="text-sm font-medium"
+                        >
+                          Short Description
+                        </label>
+                        <Input
+                          id="char-short-desc"
+                          value={currentCharacter.short_description || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              short_description: e.target.value,
+                            }))
+                          }
+                          placeholder="A one-line hook"
+                          className="bg-slate-800 border-slate-700"
+                        />
+                      </div>
+                      <div className="space-y-2 text-cyan-400">
+                        <label
+                          htmlFor="char-display-name"
+                          className="text-sm font-medium"
+                        >
+                          Display Name
+                        </label>
+                        <Input
+                          id="char-display-name"
+                          value={currentCharacter.display_name || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              display_name: e.target.value,
+                            }))
+                          }
+                          placeholder="For organizing characters..."
+                          className="bg-slate-800 border-cyan-900"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <label
-                    htmlFor="char-appearance"
-                    className="text-sm font-medium"
-                  >
-                    Appearance
-                  </label>
-                  <Textarea
-                    id="char-appearance"
-                    value={currentCharacter.appearance || ""}
-                    onChange={(e) =>
-                      setCurrentCharacter((prev) => ({
-                        ...prev,
-                        appearance: e.target.value,
-                      }))
-                    }
-                    placeholder="What do they look like?"
-                    className="bg-slate-800 border-slate-700 h-20"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="char-appearance"
+                        className="text-sm font-medium"
+                      >
+                        Appearance
+                      </label>
+                      <Textarea
+                        id="char-appearance"
+                        value={currentCharacter.appearance || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            appearance: e.target.value,
+                          }))
+                        }
+                        placeholder="What do they look like?"
+                        className="bg-slate-800 border-slate-700 h-20"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <label
-                    htmlFor="char-personality"
-                    className="text-sm font-medium"
-                  >
-                    Personality
-                  </label>
-                  <Textarea
-                    id="char-personality"
-                    value={currentCharacter.personality || ""}
-                    onChange={(e) =>
-                      setCurrentCharacter((prev) => ({
-                        ...prev,
-                        personality: e.target.value,
-                      }))
-                    }
-                    placeholder="How do they act?"
-                    className="bg-slate-800 border-slate-700 h-20"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="char-personality"
+                        className="text-sm font-medium"
+                      >
+                        Personality
+                      </label>
+                      <Textarea
+                        id="char-personality"
+                        value={currentCharacter.personality || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            personality: e.target.value,
+                          }))
+                        }
+                        placeholder="How do they act?"
+                        className="bg-slate-800 border-slate-700 h-20"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <label
-                    htmlFor="char-backstory"
-                    className="text-sm font-medium"
-                  >
-                    Backstory
-                  </label>
-                  <Textarea
-                    id="char-backstory"
-                    value={currentCharacter.backstory || ""}
-                    onChange={(e) =>
-                      setCurrentCharacter((prev) => ({
-                        ...prev,
-                        backstory: e.target.value,
-                      }))
-                    }
-                    placeholder="Their history and origins..."
-                    className="bg-slate-800 border-slate-700 h-32"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="char-backstory"
+                        className="text-sm font-medium"
+                      >
+                        Backstory
+                      </label>
+                      <Textarea
+                        id="char-backstory"
+                        value={currentCharacter.backstory || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            backstory: e.target.value,
+                          }))
+                        }
+                        placeholder="Their history and origins..."
+                        className="bg-slate-800 border-slate-700 h-32"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2 text-cyan-400">
+                      <label
+                        htmlFor="char-display-name"
+                        className="text-sm font-medium"
+                      >
+                        Display Name
+                      </label>
+                      <Input
+                        id="char-display-name"
+                        value={currentCharacter.display_name || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            display_name: e.target.value,
+                          }))
+                        }
+                        placeholder="For organizing universes..."
+                        className="bg-slate-800 border-cyan-900"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="char-short-desc"
+                        className="text-sm font-medium"
+                      >
+                        Description
+                      </label>
+                      <Textarea
+                        id="char-short-desc"
+                        value={currentCharacter.short_description || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            short_description: e.target.value,
+                          }))
+                        }
+                        placeholder="Describe your universe..."
+                        className="bg-slate-800 border-slate-700 h-32"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-2 text-cyan-400">
                   <label
