@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { serveStatic } from "hono/cloudflare-workers";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { demoRouter } from "./routes/demo.ts";
@@ -26,5 +27,7 @@ app.route("/api/oauth-admin", oauthAdminRouter);
 app.route("/api/admin/support", adminSupportRouter);
 app.route("/api/repos", reposRouter);
 app.route("/api/ai", aiRouter);
+
+app.get("*", serveStatic({ path: "./index.html" }));
 
 export default app;
