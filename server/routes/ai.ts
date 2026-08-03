@@ -268,10 +268,16 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["Authorization"] =
         `Bearer ${integration?.api_key || "0000000000"}`;
     } else if (provider === "cloudflare") {
+      // Estimate token usage (input + 400 estimated output)
+      const inputChars = finalMessages.reduce((acc: number, m: any) => acc + (m.content || "").length, 0);
+      const estimatedTokens = Math.floor(inputChars / 4) + 400;
+      // Convert to points (roughly 10 tokens per point)
+      const p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
+
       // Deduct points first
       const { data: success, error: rpcError } = await supabase.rpc(
         "spend_points",
-        { p_amount: 100 },
+        { p_amount },
       );
       if (rpcError || !success) {
         return c.json({ error: "Insufficient points" }, 402);
