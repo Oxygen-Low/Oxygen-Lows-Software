@@ -255,7 +255,7 @@ const ChatMessage = React.memo(
       return (
         <div className="flex gap-4 justify-end w-full animate-[fade-in_0.3s_ease-out] mb-4">
           <div className="flex flex-col gap-2 max-w-[80%] items-end">
-            <p className="text-muted text-xs font-display mr-1">User</p>
+            <p className="text-slate-400 text-xs font-display mr-1">User</p>
             <div className="glass-panel px-5 py-4 rounded-xl rounded-tr-sm text-[15px] leading-[1.6]">
               <ReactMarkdown components={memoizedMarkdownComponents}>
                 {displayContent}
@@ -313,7 +313,7 @@ const ChatMessage = React.memo(
               >
                 <button
                   onClick={() => setReasoningExpanded(!reasoningExpanded)}
-                  className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-muted hover:text-white/90"
+                  className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90"
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
                     <span className="material-symbols-outlined text-[16px] font-family-material">
@@ -331,7 +331,7 @@ const ChatMessage = React.memo(
                   </span>
                 </button>
                 {reasoningExpanded && (
-                  <div className="reasoning-content px-4 py-3 border-t border-white/10 text-sm text-muted/80 font-mono leading-relaxed bg-[#0F0F13]">
+                  <div className="reasoning-content px-4 py-3 border-t border-white/10 text-sm text-slate-300 font-mono leading-relaxed bg-[#0F0F13]">
                     <ReactMarkdown components={memoizedMarkdownComponents}>
                       {m.reasoning}
                     </ReactMarkdown>
@@ -1288,7 +1288,7 @@ export function ChatbotApp() {
               </button>
               <ScrollArea className="flex-1 -mx-2 px-2">
                 <div className="flex flex-col gap-1 mt-2">
-                  <p className="text-muted text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
+                  <p className="text-slate-400 text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
                     Chats
                   </p>
                   {chats.map((c) => (
@@ -1298,7 +1298,7 @@ export function ChatbotApp() {
                         "flex items-center gap-3 px-3 py-2 rounded-lg group text-left cursor-pointer transition-colors",
                         currentChatId === c.id
                           ? "bg-white/10 text-white"
-                          : "hover:bg-white/5 text-muted hover:text-white",
+                          : "hover:bg-white/5 text-slate-400 hover:text-white",
                       )}
                       onClick={() => setCurrentChatId(c.id)}
                     >
@@ -1380,7 +1380,7 @@ export function ChatbotApp() {
                     <div className="flex flex-col gap-2 max-w-[85%] w-full">
                       <p className="text-white text-sm font-display font-medium ml-1">
                         Chatbot{" "}
-                        <span className="text-muted text-xs font-normal ml-2">
+                        <span className="text-slate-400 text-xs font-normal ml-2">
                           Generating...
                         </span>
                       </p>
@@ -1483,7 +1483,7 @@ export function ChatbotApp() {
                             <span className="text-sm text-white/90 font-medium font-display">
                               Reasoning
                             </span>
-                            <span className="text-[11px] text-muted font-body">
+                            <span className="text-[11px] text-slate-400 font-body">
                               Toggle AI thought process
                             </span>
                           </div>
@@ -1622,12 +1622,12 @@ export function ChatbotApp() {
                       {hasHordeModels && (
                         <>
                           <div className="px-3 pt-3 pb-1">
-                            <p className="text-[10px] uppercase tracking-wider text-muted font-display font-medium">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
                               Default Models
                             </p>
                           </div>
                           <div className="px-3 pb-1">
-                            <p className="text-[11px] text-muted font-display font-medium">
+                            <p className="text-[11px] text-slate-400 font-display font-medium">
                               AI Horde
                             </p>
                           </div>
@@ -1655,7 +1655,7 @@ export function ChatbotApp() {
                                     ).split(" - ")[0]
                                   }
                                 </div>
-                                <div className="text-[11px] text-muted truncate flex items-center justify-between w-full">
+                                <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
                                   <span>
                                     {formatModelLabel(
                                       m.provider,
@@ -1681,7 +1681,7 @@ export function ChatbotApp() {
                       {hasCloudflareModels && (
                         <>
                           <div className="px-3 pb-1 pt-3 flex justify-between items-center">
-                            <p className="text-[11px] text-muted font-display font-medium">
+                            <p className="text-[11px] text-slate-400 font-display font-medium">
                               Cloudflare
                             </p>
                             {pointsStatus !== null && (
@@ -1717,7 +1717,7 @@ export function ChatbotApp() {
                                 <div className="text-sm text-white font-medium">
                                   {formatModelLabel(m.provider, m.model_id).split(" - ")[0]}
                                 </div>
-                                <div className="text-[11px] text-muted truncate w-full pr-4">
+                                <div className="text-[11px] text-slate-400 truncate w-full pr-4">
                                   {formatModelLabel(m.provider, m.model_id).split(" - ")[1] || ""}
                                 </div>
                                 {selectedModel === m.model_id &&
@@ -1733,7 +1733,7 @@ export function ChatbotApp() {
                       {otherModels.length > 0 && (
                         <>
                           <div className="px-3 pt-3 pb-1">
-                            <p className="text-[10px] uppercase tracking-wider text-muted font-display font-medium">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
                               Other Models
                             </p>
                           </div>
