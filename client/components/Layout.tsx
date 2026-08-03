@@ -33,8 +33,6 @@ const navItems = [
   { label: "Support", href: "/support", icon: LifeBuoy },
 ];
 
-
-
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */
 const TOUCH_EDGE_ZONE = 30;
 const SWIPE_THRESHOLD = 40;

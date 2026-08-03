@@ -232,7 +232,9 @@ export default function Storage() {
           <h2 className="text-3xl font-bold tracking-tight text-white">
             Storage
           </h2>
-          <p className="text-slate-400">Keep track of your uploaded files and data usage.</p>
+          <p className="text-slate-400">
+            Keep track of your uploaded files and data usage.
+          </p>
         </div>
 
         <Card className="bg-slate-900/50 border-slate-800">

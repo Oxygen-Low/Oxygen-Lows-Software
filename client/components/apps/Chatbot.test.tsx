@@ -184,7 +184,10 @@ global.fetch = vi.fn((url, options: any) => {
     if (options?.body && options.body.includes('"stream":false')) {
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ choices: [{ message: { content: "Mock Title" } }] })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: "Mock Title" } }],
+          }),
       });
     }
     const stream = new ReadableStream({
@@ -272,7 +275,10 @@ describe("ChatbotApp", () => {
           if (options?.body && options.body.includes('"stream":false')) {
             return Promise.resolve({
               ok: true,
-              json: () => Promise.resolve({ choices: [{ message: { content: "Mock Title" } }] })
+              json: () =>
+                Promise.resolve({
+                  choices: [{ message: { content: "Mock Title" } }],
+                }),
             });
           }
           const stream = new ReadableStream({

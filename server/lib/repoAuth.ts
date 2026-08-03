@@ -32,7 +32,7 @@ export async function authenticateRepoRequest(c: Context, next: Next) {
   const {
     data: { user },
   } = await supabase.auth.getUser(token);
-  
+
   if (user) {
     c.set("user", user);
     c.set("supabaseToken", token);

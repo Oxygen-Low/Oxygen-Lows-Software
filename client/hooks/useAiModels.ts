@@ -30,7 +30,12 @@ export const useAiModels = (
     selectedProviderRef.current = selectedProvider;
   }, [selectedModel, selectedProvider]);
 
-  const [hordeStatus, setHordeStatus] = useState<Record<string, { workers: number; queued: number; speed: string; eta: number }>>({});
+  const [hordeStatus, setHordeStatus] = useState<
+    Record<
+      string,
+      { workers: number; queued: number; speed: string; eta: number }
+    >
+  >({});
 
   const fetchModels = useCallback(async () => {
     setIsLoading(true);

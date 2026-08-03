@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
+import { PublicCharactersApp } from "@/components/apps/PublicCharacters";
 import { Server } from "lucide-react";
 
 type Category =
@@ -107,6 +108,16 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,
+  },
+  {
+    id: "public-characters",
+    name: "Public Characters",
+    description:
+      "Discover, download, and share characters and universes with the community.",
+    categories: ["All", "Social"],
+    availability: "web-and-desktop",
+    icon: <Users className="w-8 h-8 text-cyan-500" />,
+    component: PublicCharactersApp,
   },
 ];
 

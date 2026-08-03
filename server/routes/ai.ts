@@ -19,12 +19,8 @@ const DEFAULT_MODELS = [
 ];
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
-  Fast: [
-    "koboldcpp/Llama-3.2-1B-Instruct",
-  ],
-  Smart: [
-    "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
-  ],
+  Fast: ["koboldcpp/Llama-3.2-1B-Instruct"],
+  Smart: ["koboldcpp/Behemoth-128B-v3b-Q4_K_M"],
 };
 
 const apiLimiter = async (c: any, next: any) => {
@@ -37,7 +33,9 @@ aiRouter.get("/local-providers", apiLimiter, async (c) => {
 
 aiRouter.get("/horde-status", apiLimiter, async (c) => {
   try {
-    const response = await fetch("https://stablehorde.net/api/v2/status/models?type=text");
+    const response = await fetch(
+      "https://stablehorde.net/api/v2/status/models?type=text",
+    );
     if (!response.ok) return c.json({});
     const allModels: any[] = await response.json();
 
@@ -46,7 +44,10 @@ aiRouter.get("/horde-status", apiLimiter, async (c) => {
       if (m.name) statusByName[m.name] = m;
     }
 
-    const result: Record<string, { workers: number; queued: number; speed: string; eta: number }> = {};
+    const result: Record<
+      string,
+      { workers: number; queued: number; speed: string; eta: number }
+    > = {};
 
     for (const [modelId, hordeNames] of Object.entries(HORDE_MODELS_MAP)) {
       let workers = 0;
@@ -74,7 +75,8 @@ aiRouter.get("/horde-status", apiLimiter, async (c) => {
 });
 
 aiRouter.post("/proxy", apiLimiter, async (c) => {
-  const { provider, model, messages, stream, apiKey, baseUrl, tools } = await c.req.json();
+  const { provider, model, messages, stream, apiKey, baseUrl, tools } =
+    await c.req.json();
   const authHeader = c.req.header("authorization");
   if (!authHeader) return c.json({ error: "No authorization header" }, 401);
   const token = authHeader.replace("Bearer ", "");
@@ -83,7 +85,10 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) return c.json({ error: "Invalid token" }, 401);
 
   let { data: integration, error: integrationError } = await supabase
@@ -99,12 +104,16 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     integration = { ...integration, base_url: baseUrl };
   }
 
-  if (!integration?.api_key && provider !== "horde" && provider !== "cloudflare") {
+  if (
+    !integration?.api_key &&
+    provider !== "horde" &&
+    provider !== "cloudflare"
+  ) {
     return c.json({ error: "Provider not configured" }, 400);
   }
 
   const processedMessages = (messages || []).slice(-20);
-  
+
   // Basic system prompt for edge (simplified, as file read isn't available)
   const baseContent = "You are an AI assistant.";
   processedMessages.unshift({ role: "system", content: baseContent });
@@ -112,8 +121,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   const fetchOptions: any = {
     method: "POST",
     headers: {
-        "Content-Type": "application/json"
-    }
+      "Content-Type": "application/json",
+    },
   };
 
   try {
@@ -126,20 +135,41 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "anthropic") {
       targetUrl = "https://api.anthropic.com/v1/messages";
-      const systemMessages = processedMessages.filter((m: any) => m.role === "system");
-      const systemContent = systemMessages.map((m: any) => m.content).join("\n\n");
-      const transformedMessages = processedMessages.filter((m: any) => m.role !== "system");
-      requestBody = { ...requestBody, model, messages: transformedMessages, max_tokens: 4096, system: systemContent || undefined };
+      const systemMessages = processedMessages.filter(
+        (m: any) => m.role === "system",
+      );
+      const systemContent = systemMessages
+        .map((m: any) => m.content)
+        .join("\n\n");
+      const transformedMessages = processedMessages.filter(
+        (m: any) => m.role !== "system",
+      );
+      requestBody = {
+        ...requestBody,
+        model,
+        messages: transformedMessages,
+        max_tokens: 4096,
+        system: systemContent || undefined,
+      };
       fetchOptions.headers["x-api-key"] = integration?.api_key;
       fetchOptions.headers["anthropic-version"] = "2023-06-01";
     } else if (provider === "google") {
       targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${integration?.api_key}`;
       requestBody = {
-          systemInstruction: {
-            parts: processedMessages.filter((m: any) => m.role === "system").map((m: any) => ({ text: m.content })),
-          },
-          contents: processedMessages.filter((m: any) => m.role !== "system").map((m: any) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-          tools: tools ? tools.map((t: any) => ({ function_declarations: [t.function] })) : undefined,
+        systemInstruction: {
+          parts: processedMessages
+            .filter((m: any) => m.role === "system")
+            .map((m: any) => ({ text: m.content })),
+        },
+        contents: processedMessages
+          .filter((m: any) => m.role !== "system")
+          .map((m: any) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          })),
+        tools: tools
+          ? tools.map((t: any) => ({ function_declarations: [t.function] }))
+          : undefined,
       };
     } else if (provider === "openrouter") {
       targetUrl = "https://openrouter.ai/api/v1/chat/completions";
@@ -152,37 +182,64 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     } else if (provider === "horde") {
       targetUrl = "https://oai.stablehorde.net/v1/chat/completions";
       const actualModel = HORDE_MODELS_MAP[model]?.[0] || model;
-      requestBody = { ...requestBody, model: actualModel, messages: processedMessages };
-      fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key || "0000000000"}`;
+      requestBody = {
+        ...requestBody,
+        model: actualModel,
+        messages: processedMessages,
+      };
+      fetchOptions.headers["Authorization"] =
+        `Bearer ${integration?.api_key || "0000000000"}`;
     } else if (provider === "cloudflare") {
       // Deduct points first
-      const { data: success, error: rpcError } = await supabase.rpc('spend_points', { p_amount: 50 });
+      const { data: success, error: rpcError } = await supabase.rpc(
+        "spend_points",
+        { p_amount: 50 },
+      );
       if (rpcError || !success) {
-         return c.json({ error: "Insufficient points" }, 402);
+        return c.json({ error: "Insufficient points" }, 402);
       }
-      
+
       const rawEnv = (c.env || {}) as any;
       let AccountID = "";
       let CloudflareAPIToken = "";
 
       for (const [key, value] of Object.entries(rawEnv)) {
         const cleanKey = key.trim().toLowerCase();
-        if (cleanKey === "accountid" || cleanKey === "account_id") AccountID = (value as string).trim();
-        if (cleanKey === "cloudflareapitoken" || cleanKey === "cloudflare_api_token") CloudflareAPIToken = (value as string).trim();
+        if (cleanKey === "accountid" || cleanKey === "account_id")
+          AccountID = (value as string).trim();
+        if (
+          cleanKey === "cloudflareapitoken" ||
+          cleanKey === "cloudflare_api_token"
+        )
+          CloudflareAPIToken = (value as string).trim();
       }
 
-      const procEnv = typeof process !== 'undefined' ? process.env : {} as any;
+      const procEnv =
+        typeof process !== "undefined" ? process.env : ({} as any);
       if (!AccountID) {
         AccountID = (procEnv.AccountID || procEnv.ACCOUNT_ID || "").trim();
       }
       if (!CloudflareAPIToken) {
-        CloudflareAPIToken = (procEnv.CloudflareAPIToken || procEnv.CLOUDFLARE_API_TOKEN || "").trim();
+        CloudflareAPIToken = (
+          procEnv.CloudflareAPIToken ||
+          procEnv.CLOUDFLARE_API_TOKEN ||
+          ""
+        ).trim();
       }
 
       if (!AccountID || !CloudflareAPIToken) {
-        return c.json({ error: `Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing or empty. Found keys: ${Object.keys(rawEnv).map(k => '"' + k + '"').join(', ')}` }, 500);
+        return c.json(
+          {
+            error: `Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing or empty. Found keys: ${Object.keys(
+              rawEnv,
+            )
+              .map((k) => '"' + k + '"')
+              .join(", ")}`,
+          },
+          500,
+        );
       }
-      
+
       targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/v1/chat/completions`;
       requestBody = { model, messages: processedMessages };
       if (stream) {
@@ -190,7 +247,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       }
       fetchOptions.headers["Authorization"] = `Bearer ${CloudflareAPIToken}`;
     } else {
-        return c.json({ error: "Unsupported provider" }, 400);
+      return c.json({ error: "Unsupported provider" }, 400);
     }
 
     fetchOptions.body = JSON.stringify(requestBody);
@@ -198,18 +255,21 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     const upstreamResponse = await fetch(targetUrl, fetchOptions);
 
     if (!upstreamResponse.ok) {
-        const errData = await upstreamResponse.text();
-        return c.json({ error: "Upstream error", details: errData }, upstreamResponse.status as any);
+      const errData = await upstreamResponse.text();
+      return c.json(
+        { error: "Upstream error", details: errData },
+        upstreamResponse.status as any,
+      );
     }
 
     if (stream) {
-        c.header('Content-Type', 'text/event-stream');
-        c.header('Cache-Control', 'no-cache');
-        c.header('Connection', 'keep-alive');
-        return c.body(upstreamResponse.body as any);
+      c.header("Content-Type", "text/event-stream");
+      c.header("Cache-Control", "no-cache");
+      c.header("Connection", "keep-alive");
+      return c.body(upstreamResponse.body as any);
     } else {
-        const data = await upstreamResponse.json();
-        return c.json(data);
+      const data = await upstreamResponse.json();
+      return c.json(data);
     }
   } catch (err: any) {
     console.error("AI Proxy Error", err);

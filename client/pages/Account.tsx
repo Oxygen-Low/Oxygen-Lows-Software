@@ -333,8 +333,6 @@ export default function Account() {
       const isEnabling = !encryptionSettings[target];
       const key = inputKey;
 
-
-
       if (target === "chats") {
         const { data: chats } = await supabase
           .from("chats")
@@ -426,9 +424,7 @@ export default function Account() {
         newSettings.validation_hash = await encrypt("valid", key);
       }
 
-      const allDisabled =
-        !newSettings.chats &&
-        !newSettings.integrations;
+      const allDisabled = !newSettings.chats && !newSettings.integrations;
       if (allDisabled) {
         delete newSettings.validation_hash;
         clearMasterKey();
@@ -797,7 +793,6 @@ export default function Account() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
                     <Button
                       type="button"
                       variant={

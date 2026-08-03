@@ -37,7 +37,7 @@ export default function Support() {
   const { session } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -204,16 +204,28 @@ export default function Support() {
                   <div className="space-y-1 mb-2 sm:mb-0">
                     <p className="font-medium">{ticket.title}</p>
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
+                      <span>
+                        {new Date(ticket.created_at).toLocaleDateString()}
+                      </span>
                       <span>•</span>
                       <span>{ticket.type}</span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={ticket.priority === "Highest" ? "destructive" : ticket.priority === "High" ? "default" : "secondary"}>
+                    <Badge
+                      variant={
+                        ticket.priority === "Highest"
+                          ? "destructive"
+                          : ticket.priority === "High"
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
                       {ticket.priority}
                     </Badge>
-                    <Badge variant={ticket.status === "Open" ? "default" : "outline"}>
+                    <Badge
+                      variant={ticket.status === "Open" ? "default" : "outline"}
+                    >
                       {ticket.status}
                     </Badge>
                   </div>

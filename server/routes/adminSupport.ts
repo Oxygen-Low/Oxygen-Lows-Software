@@ -8,7 +8,7 @@ adminSupportRouter.get("/tickets", async (c) => {
   try {
     const token = c.req.header("authorization")?.split(" ")[1];
     const supabase = getAuthenticatedClient(token);
-    
+
     const { data: tickets, error } = await supabase
       .from("support_tickets")
       .select("*")
@@ -16,7 +16,9 @@ adminSupportRouter.get("/tickets", async (c) => {
 
     if (error) throw error;
 
-    const userIds = [...new Set(tickets.map((t: any) => t.user_id).filter(Boolean))];
+    const userIds = [
+      ...new Set(tickets.map((t: any) => t.user_id).filter(Boolean)),
+    ];
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, username, avatar_url")
@@ -24,7 +26,7 @@ adminSupportRouter.get("/tickets", async (c) => {
 
     const ticketsWithProfiles = tickets.map((t: any) => ({
       ...t,
-      profiles: profiles?.find((p: any) => p.user_id === t.user_id) || null
+      profiles: profiles?.find((p: any) => p.user_id === t.user_id) || null,
     }));
 
     return c.json({ tickets: ticketsWithProfiles });
@@ -81,7 +83,9 @@ adminSupportRouter.get("/tickets/:id/messages", async (c) => {
 
     if (error) throw error;
 
-    const senderIds = [...new Set(messages.map((m: any) => m.sender_id).filter(Boolean))];
+    const senderIds = [
+      ...new Set(messages.map((m: any) => m.sender_id).filter(Boolean)),
+    ];
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, username, avatar_url")
@@ -89,7 +93,7 @@ adminSupportRouter.get("/tickets/:id/messages", async (c) => {
 
     const messagesWithProfiles = messages.map((m: any) => ({
       ...m,
-      profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null
+      profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null,
     }));
 
     return c.json({ messages: messagesWithProfiles });
@@ -106,14 +110,16 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
     const { message } = await c.req.json();
     const token = c.req.header("authorization")?.split(" ")[1];
     const supabase = getAuthenticatedClient(token);
-    
+
     if (!message) {
       return c.json({ error: "Message is required" }, 400);
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
-        return c.json({ error: "Unauthorized" }, 401);
+      return c.json({ error: "Unauthorized" }, 401);
     }
 
     const { data, error } = await supabase
@@ -121,7 +127,7 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
       .insert({
         ticket_id: id,
         sender_id: user.id,
-        message
+        message,
       })
       .select()
       .single();
@@ -142,7 +148,7 @@ adminSupportRouter.patch("/tickets/:id/status", async (c) => {
     const { status } = await c.req.json();
     const token = c.req.header("authorization")?.split(" ")[1];
     const supabase = getAuthenticatedClient(token);
-    
+
     if (!status || !["Open", "Closed"].includes(status)) {
       return c.json({ error: "Invalid status" }, 400);
     }

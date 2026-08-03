@@ -279,8 +279,7 @@ export default function Characters() {
                 My Universes
               </button>
             </div>
-            <p className="text-slate-400 mt-1">
-            </p>
+            <p className="text-slate-400 mt-1"></p>
           </div>
           <Dialog
             open={isEditing}
@@ -586,8 +585,8 @@ export default function Characters() {
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
                 <p className="text-slate-500">
                   {activeTab === "characters"
-                    ? "No characters here yet! Click \"New Character\" to get started and add some to your collection."
-                    : "No universes here yet! Click \"New Universe\" to start building your own world."}
+                    ? 'No characters here yet! Click "New Character" to get started and add some to your collection.'
+                    : 'No universes here yet! Click "New Universe" to start building your own world.'}
                 </p>
               </div>
             )}

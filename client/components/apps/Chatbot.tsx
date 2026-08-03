@@ -155,9 +155,12 @@ const InteractiveBackground = () => {
 };
 
 interface Message {
+  id?: string;
+  parent_id?: string | null;
   role: "user" | "assistant" | "system";
   content: string;
   reasoning?: string;
+  created_at?: string;
 }
 
 interface Chat {
@@ -228,9 +231,17 @@ const memoizedMarkdownComponents = {
 const ChatMessage = React.memo(
   ({
     message: m,
+    siblings = [],
+    activeSiblingIndex = 0,
+    onNavigate,
+    onRegenerate,
     setActiveArtifact,
   }: {
     message: Message;
+    siblings?: Message[];
+    activeSiblingIndex?: number;
+    onNavigate?: (index: number) => void;
+    onRegenerate?: () => void;
     setActiveArtifact: (art: Artifact) => void;
   }) => {
     const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
@@ -261,6 +272,43 @@ const ChatMessage = React.memo(
                 {displayContent}
               </ReactMarkdown>
             </div>
+            {siblings.length > 0 && (
+              <div className="flex items-center gap-2 mt-2 ml-1 text-slate-400 text-xs">
+                <button
+                  onClick={() => onNavigate?.(activeSiblingIndex - 1)}
+                  disabled={activeSiblingIndex === 0}
+                  className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px] font-family-material">
+                    chevron_left
+                  </span>
+                </button>
+                <span className="font-mono select-none">
+                  {activeSiblingIndex + 1} / {siblings.length}
+                </span>
+                <button
+                  onClick={() => {
+                    if (activeSiblingIndex < siblings.length - 1) {
+                      onNavigate?.(activeSiblingIndex + 1);
+                    } else {
+                      onRegenerate?.();
+                    }
+                  }}
+                  className="hover:text-white p-1 flex items-center justify-center transition-colors"
+                  title={
+                    activeSiblingIndex < siblings.length - 1
+                      ? "Next"
+                      : "Regenerate"
+                  }
+                >
+                  <span className="material-symbols-outlined text-[16px] font-family-material">
+                    {activeSiblingIndex < siblings.length - 1
+                      ? "chevron_right"
+                      : "refresh"}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -394,14 +442,78 @@ export function ChatbotApp() {
     useAiModels();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [activeChildren, setActiveChildren] = useState<Record<string, string>>(
+    {},
+  );
+
+  const messages = useMemo(() => {
+    const rootMessages = allMessages.filter((m) => !m.parent_id);
+    if (rootMessages.length === 0) return [];
+
+    let currentId =
+      activeChildren["root"] || rootMessages[rootMessages.length - 1]?.id;
+    const path: Message[] = [];
+    while (currentId) {
+      const msg = allMessages.find((m) => m.id === currentId);
+      if (!msg) break;
+      path.push(msg);
+      currentId = activeChildren[currentId];
+    }
+    return path;
+  }, [allMessages, activeChildren]);
+
+  const setMessages = (
+    updater: Message[] | ((prev: Message[]) => Message[]),
+  ) => {
+    // This is a shim for setMessages that is used by streaming updates
+    if (typeof updater === "function") {
+      // we only support the streaming update pattern which appends/modifies the last message
+      const newPath = updater(messages);
+      // Sync back to allMessages
+      setAllMessages((prev) => {
+        const newAll = [...prev];
+        const lastMsg = newPath[newPath.length - 1];
+        if (lastMsg && !lastMsg.id) {
+          // Temporary streaming message
+          const existingTempIndex = newAll.findIndex(
+            (m) => m.id === "temp-streaming",
+          );
+          if (existingTempIndex >= 0) {
+            newAll[existingTempIndex] = { ...lastMsg, id: "temp-streaming" };
+          } else {
+            newAll.push({ ...lastMsg, id: "temp-streaming" });
+          }
+        } else if (lastMsg && lastMsg.id) {
+          const existingIndex = newAll.findIndex((m) => m.id === lastMsg.id);
+          if (existingIndex >= 0) {
+            newAll[existingIndex] = lastMsg;
+          } else {
+            newAll.push(lastMsg);
+          }
+        }
+        return newAll;
+      });
+    } else {
+      // Direct set (e.g. setMessages([]))
+      if (updater.length === 0) {
+        setAllMessages([]);
+        setActiveChildren({});
+      } else {
+        setAllMessages(updater);
+      }
+    }
+  };
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const isTypingRef = useRef(false);
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
-  const [pointsStatus, setPointsStatus] = useState<{available: number, given: number} | null>(null);
+  const [pointsStatus, setPointsStatus] = useState<{
+    available: number;
+    given: number;
+  } | null>(null);
 
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>(
     [],
@@ -436,7 +548,10 @@ export function ChatbotApp() {
     [models],
   );
   const otherModels = useMemo(
-    () => models.filter((m) => m.provider !== "horde" && m.provider !== "cloudflare"),
+    () =>
+      models.filter(
+        (m) => m.provider !== "horde" && m.provider !== "cloudflare",
+      ),
     [models],
   );
   const hasHordeModels = hordeModels.length > 0;
@@ -445,7 +560,7 @@ export function ChatbotApp() {
   useEffect(() => {
     const fetchPoints = async () => {
       if (!session?.user?.id) return;
-      const { data } = await supabase.rpc('get_points_status');
+      const { data } = await supabase.rpc("get_points_status");
       if (data) setPointsStatus(data as any);
     };
     fetchPoints();
@@ -564,7 +679,8 @@ export function ChatbotApp() {
   useEffect(() => {
     const fetchMessages = async () => {
       if (!currentChatId) {
-        setMessages([]);
+        setAllMessages([]);
+        setActiveChildren({});
         return;
       }
 
@@ -572,7 +688,7 @@ export function ChatbotApp() {
         skipNextFetchRef.current = null;
         return;
       }
-      
+
       if (isTypingRef.current) return;
 
       const { data } = await supabase
@@ -597,10 +713,26 @@ export function ChatbotApp() {
                 if (m.reasoning) reasoning = "[Encrypted Reasoning]";
               }
             }
-            return { role: m.role, content, reasoning };
+            return {
+              id: m.id,
+              parent_id: m.parent_id,
+              role: m.role,
+              content,
+              reasoning,
+              created_at: m.created_at,
+            };
           }),
         );
-        setMessages(processed);
+
+        const newActiveChildren: Record<string, string> = {};
+        processed.forEach((m) => {
+          const p = m.parent_id || "root";
+          // Since data is ordered by created_at, the last one processed becomes active
+          newActiveChildren[p] = m.id;
+        });
+
+        setAllMessages(processed);
+        setActiveChildren(newActiveChildren);
       }
     };
 
@@ -624,7 +756,8 @@ export function ChatbotApp() {
 
   const handleNewChatClick = () => {
     setCurrentChatId(null);
-    setMessages([]);
+    setAllMessages([]);
+    setActiveChildren({});
     setInput("");
   };
 
@@ -932,11 +1065,26 @@ export function ChatbotApp() {
     setAbortController(controller);
 
     const originalInput = input;
-    const userMessage: Message = { role: "user", content: input };
+    const lastMessageId =
+      messages.length > 0 ? messages[messages.length - 1].id : null;
+    const userMessage: Message = {
+      id: "temp-user",
+      parent_id: lastMessageId,
+      role: "user",
+      content: input,
+    };
     const newMessages = [...messages, userMessage];
     const isFirstMessage = messages.length === 0;
 
-    setMessages([...newMessages, { role: "assistant", content: "" }]);
+    setMessages([
+      ...newMessages,
+      {
+        id: "temp-streaming",
+        parent_id: "temp-user",
+        role: "assistant",
+        content: "",
+      },
+    ]);
     setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
@@ -956,9 +1104,10 @@ export function ChatbotApp() {
       }
 
       // 2. Save User Message
-      const { error: userInsertError } = await supabase
+      const { data: userMsgData, error: userInsertError } = await supabase
         .from("chat_messages")
         .insert({
+          parent_id: lastMessageId,
           chat_id: activeChatId,
           role: "user",
           content:
@@ -966,8 +1115,22 @@ export function ChatbotApp() {
               ? await encrypt(originalInput, key)
               : originalInput,
           is_encrypted: isEncryptionEnabled,
-        });
+        })
+        .select()
+        .single();
+
       if (userInsertError) throw userInsertError;
+
+      // Update temp-user id to real id in messages
+      setAllMessages((prev) =>
+        prev.map((m) =>
+          m.id === "temp-user" ? { ...m, id: userMsgData.id } : m,
+        ),
+      );
+      setActiveChildren((prev) => ({
+        ...prev,
+        [lastMessageId || "root"]: userMsgData.id,
+      }));
 
       let finalContent = "";
       let reasoningContent = "";
@@ -1124,6 +1287,7 @@ export function ChatbotApp() {
         }
 
         let insertData: any = {
+          parent_id: userMsgData.id,
           chat_id: activeChatId,
           role: "assistant",
           content:
@@ -1137,9 +1301,12 @@ export function ChatbotApp() {
           is_encrypted: isEncryptionEnabled,
         };
 
-        const { error: assistantInsertError } = await supabase
-          .from("chat_messages")
-          .insert(insertData);
+        const { data: assistantMsgData, error: assistantInsertError } =
+          await supabase
+            .from("chat_messages")
+            .insert(insertData)
+            .select()
+            .single();
 
         if (assistantInsertError) {
           if (
@@ -1147,13 +1314,37 @@ export function ChatbotApp() {
             assistantInsertError.details?.includes("reasoning")
           ) {
             delete insertData.reasoning;
-            const { error: retryError } = await supabase
+            const { data: retryData, error: retryError } = await supabase
               .from("chat_messages")
-              .insert(insertData);
+              .insert(insertData)
+              .select()
+              .single();
+            if (retryError) throw retryError;
+            // Update active state
+            setAllMessages((prev) =>
+              prev.map((m) =>
+                m.id === "temp-streaming" ? { ...m, id: retryData.id } : m,
+              ),
+            );
+            setActiveChildren((prev) => ({
+              ...prev,
+              [userMsgData.id]: retryData.id,
+            }));
             if (retryError) throw retryError;
           } else {
             throw assistantInsertError;
           }
+        } else {
+          // Update active state
+          setAllMessages((prev) =>
+            prev.map((m) =>
+              m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
+            ),
+          );
+          setActiveChildren((prev) => ({
+            ...prev,
+            [userMsgData.id]: assistantMsgData.id,
+          }));
         }
 
         const { error: chatUpdateError } = await supabase
@@ -1180,11 +1371,233 @@ export function ChatbotApp() {
     }
   };
 
+  const handleRegenerate = useCallback(async () => {
+    if (isTyping || !session?.user?.id || !currentChatId || messages.length < 2)
+      return;
+
+    // Get the last user message to regenerate from
+    const lastUserMessage = messages
+      .slice()
+      .reverse()
+      .find((m) => m.role === "user");
+    if (!lastUserMessage || !lastUserMessage.id) return;
+
+    // We basically simulate sending an empty message but we use the existing messages array
+    const originalInput = ""; // Not adding a new user message
+
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    setMessages([
+      ...messages,
+      {
+        id: "temp-streaming",
+        parent_id: lastUserMessage.id,
+        role: "assistant",
+        content: "",
+      },
+    ]);
+    setIsTyping(true);
+    isTypingRef.current = true;
+    lastParsedLengthRef.current = 0;
+    setQueueStatus(null);
+
+    try {
+      const key = getMasterKey();
+      if (isEncryptionEnabled && !key) {
+        setShowEncryptionUnlockModal(true);
+        return;
+      }
+
+      let finalContent = "";
+      let reasoningContent = "";
+
+      // Re-use system message generation logic from handleSendMessage
+      let injectedSystemMessage = "";
+      if (selectedLlmCharacter) {
+        const char = availableCharacters.find(
+          (c) => c.id === selectedLlmCharacter,
+        );
+        if (char)
+          injectedSystemMessage += `You are playing the role of: ${char.display_name || char.name}.\n`;
+      }
+      // Simplified system message builder for regeneration (you can expand this to full as needed)
+
+      const getApiMessages = (baseMessages: Message[]): Message[] => {
+        if (!injectedSystemMessage) return baseMessages;
+        return [
+          {
+            role: "system",
+            content: `[SYSTEM INSTRUCTIONS]\n${injectedSystemMessage.trim()}\n[END SYSTEM INSTRUCTIONS]`,
+          },
+          ...baseMessages,
+        ];
+      };
+
+      let currentMessages = messages;
+
+      if (isReasoningEnabled) {
+        const reasoningMessages = [
+          ...currentMessages,
+          {
+            role: "user",
+            content:
+              "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+          } as Message,
+        ];
+        reasoningContent = await callAiStream(
+          selectedProvider,
+          selectedModel,
+          getApiMessages(reasoningMessages),
+          controller.signal,
+          (content) => {
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              return [...prev.slice(0, -1), { ...last, reasoning: content }];
+            });
+          },
+        );
+        const finalMessages = [
+          ...currentMessages,
+          {
+            role: "assistant",
+            content: `My internal reasoning: \n${reasoningContent}`,
+          } as Message,
+          {
+            role: "user",
+            content:
+              "Great. Now based on your reasoning, provide the final response.",
+          } as Message,
+        ];
+        finalContent = await callAiStream(
+          selectedProvider,
+          selectedModel,
+          getApiMessages(finalMessages),
+          controller.signal,
+          (content) => {
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              return [...prev.slice(0, -1), { ...last, content }];
+            });
+          },
+        );
+      } else {
+        finalContent = await callAiStream(
+          selectedProvider,
+          selectedModel,
+          getApiMessages(currentMessages),
+          controller.signal,
+          (content) => {
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              return [...prev.slice(0, -1), { ...last, content }];
+            });
+          },
+        );
+      }
+
+      let insertData: any = {
+        chat_id: currentChatId,
+        parent_id: lastUserMessage.id,
+        role: "assistant",
+        content:
+          isEncryptionEnabled && key
+            ? await encrypt(finalContent, key)
+            : finalContent,
+        reasoning:
+          isEncryptionEnabled && key && reasoningContent
+            ? await encrypt(reasoningContent, key)
+            : reasoningContent || null,
+        is_encrypted: isEncryptionEnabled,
+      };
+
+      const { data: assistantMsgData, error: assistantInsertError } =
+        await supabase
+          .from("chat_messages")
+          .insert(insertData)
+          .select()
+          .single();
+
+      if (assistantInsertError) throw assistantInsertError;
+
+      setAllMessages((prev) =>
+        prev.map((m) =>
+          m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
+        ),
+      );
+      setActiveChildren((prev) => ({
+        ...prev,
+        [lastUserMessage.id]: assistantMsgData.id,
+      }));
+    } catch (e: any) {
+      toast.error(e.message);
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
+      setIsTyping(false);
+      isTypingRef.current = false;
+      setQueueStatus(null);
+      setAbortController(null);
+    }
+  }, [
+    messages,
+    isTyping,
+    currentChatId,
+    selectedProvider,
+    selectedModel,
+    isReasoningEnabled,
+    isEncryptionEnabled,
+    selectedLlmCharacter,
+    availableCharacters,
+  ]);
+
   const handleStop = () => {
     if (abortController) {
       abortController.abort();
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === "TEXTAREA" ||
+        document.activeElement?.tagName === "INPUT"
+      )
+        return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        const latestAssistant = messages
+          .slice()
+          .reverse()
+          .find((m) => m.role === "assistant");
+        if (!latestAssistant || isTyping || !latestAssistant.id) return;
+
+        const parentId = latestAssistant.parent_id || "root";
+        const siblings = allMessages.filter(
+          (m) => (m.parent_id || "root") === parentId,
+        );
+        const currentIndex = siblings.findIndex(
+          (s) => s.id === latestAssistant.id,
+        );
+
+        if (e.key === "ArrowLeft" && currentIndex > 0) {
+          setActiveChildren((prev) => ({
+            ...prev,
+            [parentId]: siblings[currentIndex - 1].id!,
+          }));
+        } else if (e.key === "ArrowRight") {
+          if (currentIndex < siblings.length - 1) {
+            setActiveChildren((prev) => ({
+              ...prev,
+              [parentId]: siblings[currentIndex + 1].id!,
+            }));
+          } else {
+            handleRegenerate();
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [allMessages, messages, isTyping, handleRegenerate]);
 
   const appStateClass =
     !currentChatId && messages.length === 0 ? "state-empty" : "state-active";
@@ -1429,10 +1842,33 @@ export function ChatbotApp() {
                   </div>
                 );
               }
+              let siblings: Message[] = [];
+              let currentIndex = 0;
+              if (m.parent_id) {
+                siblings = allMessages.filter(
+                  (x) => x.parent_id === m.parent_id,
+                );
+                currentIndex = siblings.findIndex((x) => x.id === m.id);
+              } else {
+                siblings = allMessages.filter((x) => !x.parent_id);
+                currentIndex = siblings.findIndex((x) => x.id === m.id);
+              }
               return (
                 <ChatMessage
                   key={i}
                   message={m}
+                  siblings={siblings}
+                  activeSiblingIndex={currentIndex}
+                  onNavigate={(index) => {
+                    const sibling = siblings[index];
+                    if (sibling && sibling.id) {
+                      setActiveChildren((prev) => ({
+                        ...prev,
+                        [m.parent_id || "root"]: sibling.id!,
+                      }));
+                    }
+                  }}
+                  onRegenerate={handleRegenerate}
                   setActiveArtifact={setActiveArtifact}
                 />
               );
@@ -1691,7 +2127,10 @@ export function ChatbotApp() {
                                   </span>
                                   {hordeStatus?.[m.model_id]?.eta > 0 && (
                                     <span className="text-cyan-500/70 ml-2 whitespace-nowrap">
-                                      ETA: {formatHordeEta(hordeStatus[m.model_id].eta)}
+                                      ETA:{" "}
+                                      {formatHordeEta(
+                                        hordeStatus[m.model_id].eta,
+                                      )}
                                     </span>
                                   )}
                                 </div>
@@ -1717,9 +2156,11 @@ export function ChatbotApp() {
                                   {pointsStatus.available}/{pointsStatus.given}
                                 </span>
                                 <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full bg-cyan-400" 
-                                    style={{ width: `${Math.max(0, Math.min(100, (pointsStatus.available / pointsStatus.given) * 100))}%` }} 
+                                  <div
+                                    className="h-full bg-cyan-400"
+                                    style={{
+                                      width: `${Math.max(0, Math.min(100, (pointsStatus.available / pointsStatus.given) * 100))}%`,
+                                    }}
                                   />
                                 </div>
                               </div>
@@ -1742,10 +2183,18 @@ export function ChatbotApp() {
                                 )}
                               >
                                 <div className="text-sm text-white font-medium">
-                                  {formatModelLabel(m.provider, m.model_id).split(" - ")[0]}
+                                  {
+                                    formatModelLabel(
+                                      m.provider,
+                                      m.model_id,
+                                    ).split(" - ")[0]
+                                  }
                                 </div>
                                 <div className="text-[11px] text-slate-400 truncate w-full pr-4">
-                                  {formatModelLabel(m.provider, m.model_id).split(" - ")[1] || ""}
+                                  {formatModelLabel(
+                                    m.provider,
+                                    m.model_id,
+                                  ).split(" - ")[1] || ""}
                                 </div>
                                 {selectedModel === m.model_id &&
                                   selectedProvider === m.provider && (

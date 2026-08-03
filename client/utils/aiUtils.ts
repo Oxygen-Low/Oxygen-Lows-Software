@@ -16,8 +16,10 @@ export const formatModelLabel = (provider: string, modelId: string) => {
       "@cf/openai/gpt-oss-120b": "Smart - openai/gpt-oss-120b",
       "@cf/google/gemma-4-26b-a4b-it": "Balanced - google/gemma-4-26b-a4b-it",
       "@cf/zai-org/glm-4.7-flash": "Fast - zai-org/glm-4.7-flash",
-      "@cf/ibm-granite/granite-4.0-h-micro": "Cheap - ibm-granite/granite-4.0-h-micro",
-      "@cf/meta/llama-3.1-8b-instruct-fast": "Write/Roleplay - meta/llama-3.1-8b-instruct-fast",
+      "@cf/ibm-granite/granite-4.0-h-micro":
+        "Cheap - ibm-granite/granite-4.0-h-micro",
+      "@cf/meta/llama-3.1-8b-instruct-fast":
+        "Write/Roleplay - meta/llama-3.1-8b-instruct-fast",
     };
     if (labels[modelId]) return labels[modelId];
   }

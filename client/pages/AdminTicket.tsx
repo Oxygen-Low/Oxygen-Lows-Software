@@ -58,31 +58,31 @@ export default function AdminTicket() {
 
   useEffect(() => {
     if (!id) return;
-    
+
     const channel = supabase
       .channel(`admin_ticket_${id}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'support_messages',
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
           filter: `ticket_id=eq.${id}`,
         },
         async (payload) => {
           const newMsg = payload.new as Message;
           // Fetch the profile for the sender
           const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('user_id', newMsg.sender_id)
+            .from("profiles")
+            .select("username, avatar_url")
+            .eq("user_id", newMsg.sender_id)
             .single();
 
           setMessages((prev) => {
-            if (prev.some(m => m.id === newMsg.id)) return prev;
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, { ...newMsg, profiles: profile || undefined }];
           });
-        }
+        },
       )
       .subscribe();
 
@@ -96,7 +96,7 @@ export default function AdminTicket() {
       // Fetch ticket info - we can fetch this via admin API or standard supabase if it doesn't matter,
       // but since RLS blocks it, we MUST fetch it via standard supabase with service key? No, RLS blocks admin unless they use API.
       // Wait, let's fetch tickets list API to get this ticket, or just make an endpoint for single ticket.
-      // Actually, I didn't create a GET /tickets/:id endpoint. Let me fetch all and find it, or use the standard supabase? 
+      // Actually, I didn't create a GET /tickets/:id endpoint. Let me fetch all and find it, or use the standard supabase?
       // RLS blocks it. I should fetch the ticket from the list.
       const ticketsRes = await fetch(`/api/admin/support/tickets/${id}`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
@@ -104,16 +104,19 @@ export default function AdminTicket() {
       if (!ticketsRes.ok) throw new Error("Failed to fetch ticket");
       const ticketsData = await ticketsRes.json();
       const currentTicket = ticketsData.ticket;
-      
+
       if (!currentTicket) throw new Error("Ticket not found");
       setTicket(currentTicket);
 
-      const messagesRes = await fetch(`/api/admin/support/tickets/${id}/messages`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      const messagesRes = await fetch(
+        `/api/admin/support/tickets/${id}/messages`,
+        {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        },
+      );
       if (!messagesRes.ok) throw new Error("Failed to fetch messages");
       const messagesData = await messagesRes.json();
-      
+
       setMessages(messagesData.messages || []);
     } catch (error: any) {
       toast({
@@ -133,24 +136,31 @@ export default function AdminTicket() {
 
     setIsSending(true);
     try {
-      const response = await fetch(`/api/admin/support/tickets/${id}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
+      const response = await fetch(
+        `/api/admin/support/tickets/${id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ message: newMessage }),
         },
-        body: JSON.stringify({ message: newMessage }),
-      });
+      );
 
       if (!response.ok) throw new Error("Failed to send message");
       const data = await response.json();
-      
+
       // Get admin profile for instant display
-      const { data: profile } = await supabase.from('profiles').select('username, avatar_url').eq('id', session?.user?.id).single();
-      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", session?.user?.id)
+        .single();
+
       const newMsg = {
         ...data.message,
-        profiles: profile
+        profiles: profile,
       };
 
       setMessages((prev) => [...prev, newMsg]);
@@ -180,7 +190,7 @@ export default function AdminTicket() {
       });
 
       if (!response.ok) throw new Error("Failed to update status");
-      
+
       setTicket({ ...ticket, status: newStatus });
       toast({ title: `Ticket marked as ${newStatus}` });
     } catch (error: any) {
@@ -193,23 +203,39 @@ export default function AdminTicket() {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-muted-foreground">Loading ticket...</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Loading ticket...
+      </div>
+    );
   }
 
   if (!ticket) {
-    return <div className="p-8 text-center text-muted-foreground">Ticket not found.</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Ticket not found.
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/admin/support")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/admin/support")}
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{ticket.title}</h1>
           <div className="flex items-center space-x-2 mt-1">
-            <Badge variant={ticket.priority === "Highest" ? "destructive" : "secondary"}>
+            <Badge
+              variant={
+                ticket.priority === "Highest" ? "destructive" : "secondary"
+              }
+            >
               {ticket.priority}
             </Badge>
             <Badge variant="outline">{ticket.type}</Badge>
@@ -218,8 +244,8 @@ export default function AdminTicket() {
             </Badge>
           </div>
         </div>
-        <Button 
-          variant={ticket.status === "Open" ? "destructive" : "default"} 
+        <Button
+          variant={ticket.status === "Open" ? "destructive" : "default"}
           onClick={toggleStatus}
         >
           Mark as {ticket.status === "Open" ? "Closed" : "Open"}
@@ -270,7 +296,9 @@ export default function AdminTicket() {
                             {msg.profiles?.username || "User"}
                           </p>
                         )}
-                        <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                        <p className="text-sm whitespace-pre-wrap">
+                          {msg.message}
+                        </p>
                         <p className="text-[10px] mt-1 opacity-60 text-right">
                           {new Date(msg.created_at).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -305,7 +333,9 @@ export default function AdminTicket() {
               <Button
                 type="submit"
                 size="icon"
-                disabled={isSending || ticket.status === "Closed" || !newMessage.trim()}
+                disabled={
+                  isSending || ticket.status === "Closed" || !newMessage.trim()
+                }
               >
                 <Send className="w-4 h-4" />
               </Button>

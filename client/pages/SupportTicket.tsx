@@ -58,31 +58,31 @@ export default function SupportTicket() {
 
   useEffect(() => {
     if (!id) return;
-    
+
     const channel = supabase
       .channel(`user_ticket_${id}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'support_messages',
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
           filter: `ticket_id=eq.${id}`,
         },
         async (payload) => {
           const newMsg = payload.new as Message;
           // Fetch the profile for the sender
           const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('user_id', newMsg.sender_id)
+            .from("profiles")
+            .select("username, avatar_url")
+            .eq("user_id", newMsg.sender_id)
             .single();
 
           setMessages((prev) => {
-            if (prev.some(m => m.id === newMsg.id)) return prev;
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, { ...newMsg, profiles: profile || undefined }];
           });
-        }
+        },
       )
       .subscribe();
 
@@ -106,8 +106,10 @@ export default function SupportTicket() {
       if (messagesRes.error) throw messagesRes.error;
 
       const messages = messagesRes.data || [];
-      const senderIds = [...new Set(messages.map((m: any) => m.sender_id).filter(Boolean))];
-      
+      const senderIds = [
+        ...new Set(messages.map((m: any) => m.sender_id).filter(Boolean)),
+      ];
+
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, username, avatar_url")
@@ -115,7 +117,7 @@ export default function SupportTicket() {
 
       const messagesWithProfiles = messages.map((m: any) => ({
         ...m,
-        profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null
+        profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null,
       }));
 
       setTicket(ticketRes.data);
@@ -156,7 +158,10 @@ export default function SupportTicket() {
         .eq("user_id", session?.user?.id)
         .single();
 
-      setMessages((prev) => [...prev, { ...data, profiles: profile || undefined }]);
+      setMessages((prev) => [
+        ...prev,
+        { ...data, profiles: profile || undefined },
+      ]);
       setNewMessage("");
     } catch (error: any) {
       toast({
@@ -170,23 +175,39 @@ export default function SupportTicket() {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-muted-foreground">Loading ticket...</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Loading ticket...
+      </div>
+    );
   }
 
   if (!ticket) {
-    return <div className="p-8 text-center text-muted-foreground">Ticket not found.</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Ticket not found.
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/support")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/support")}
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold">{ticket.title}</h1>
           <div className="flex items-center space-x-2 mt-1">
-            <Badge variant={ticket.priority === "Highest" ? "destructive" : "secondary"}>
+            <Badge
+              variant={
+                ticket.priority === "Highest" ? "destructive" : "secondary"
+              }
+            >
               {ticket.priority}
             </Badge>
             <Badge variant="outline">{ticket.type}</Badge>
@@ -241,7 +262,9 @@ export default function SupportTicket() {
                             {msg.profiles?.username || "Admin"}
                           </p>
                         )}
-                        <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                        <p className="text-sm whitespace-pre-wrap">
+                          {msg.message}
+                        </p>
                         <p className="text-[10px] mt-1 opacity-60 text-right">
                           {new Date(msg.created_at).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -276,7 +299,9 @@ export default function SupportTicket() {
               <Button
                 type="submit"
                 size="icon"
-                disabled={isSending || ticket.status === "Closed" || !newMessage.trim()}
+                disabled={
+                  isSending || ticket.status === "Closed" || !newMessage.trim()
+                }
               >
                 <Send className="w-4 h-4" />
               </Button>
