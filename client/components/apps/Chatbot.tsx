@@ -446,6 +446,10 @@ export function ChatbotApp() {
   const [activeChildren, setActiveChildren] = useState<Record<string, string>>(
     {},
   );
+  const activeChildrenRef = useRef(activeChildren);
+  useEffect(() => {
+    activeChildrenRef.current = activeChildren;
+  }, [activeChildren]);
 
   const messages = useMemo(() => {
     const rootMessages = allMessages.filter((m) => !m.parent_id);
@@ -463,16 +467,24 @@ export function ChatbotApp() {
     return path;
   }, [allMessages, activeChildren]);
 
-  const setMessages = (
+  const setMessages = useCallback((
     updater: Message[] | ((prev: Message[]) => Message[]),
   ) => {
     // This is a shim for setMessages that is used by streaming updates
     if (typeof updater === "function") {
-      // we only support the streaming update pattern which appends/modifies the last message
-      const newPath = updater(messages);
-      // Sync back to allMessages
-      setAllMessages((prev) => {
-        const newAll = [...prev];
+      setAllMessages((prevAll) => {
+        const rootMessages = prevAll.filter((m) => !m.parent_id);
+        let currentId =
+          activeChildrenRef.current["root"] || rootMessages[rootMessages.length - 1]?.id;
+        const path: Message[] = [];
+        while (currentId) {
+          const msg = prevAll.find((m) => m.id === currentId);
+          if (!msg) break;
+          path.push(msg);
+          currentId = activeChildrenRef.current[currentId];
+        }
+        const newPath = updater(path);
+        const newAll = [...prevAll];
         const lastMsg = newPath[newPath.length - 1];
         if (lastMsg && !lastMsg.id) {
           // Temporary streaming message
@@ -501,7 +513,7 @@ export function ChatbotApp() {
         setActiveChildren({});
       }
     }
-  };
+  }, []);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const isTypingRef = useRef(false);
@@ -1437,7 +1449,8 @@ export function ChatbotApp() {
         ];
       };
 
-      let currentMessages = messages;
+      const lastUserMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id);
+      let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
       if (isReasoningEnabled) {
         const reasoningMessages = [
