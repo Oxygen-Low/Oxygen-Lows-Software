@@ -1,27 +1,26 @@
-import { Request, Response, Router } from "express";
-import axios from "axios";
+import { Hono } from "hono";
 
-export const proxyRouter = Router();
+export const proxyRouter = new Hono();
 
-proxyRouter.post("/fetch", async (req: Request, res: Response) => {
+proxyRouter.post("/fetch", async (c) => {
   try {
-    const { url, options } = req.body;
+    const { url, options } = await c.req.json();
     if (!url) {
-      return res.status(400).json({ error: "Missing url" });
+      return c.json({ error: "Missing url" }, 400);
     }
 
-    const response = await axios({
-      url,
+    // In Cloudflare Workers, fetch is natively available and preferred over axios
+    const response = await fetch(url, {
       method: options?.method || "GET",
       headers: options?.headers,
-      data: options?.body,
-      responseType: "text", // We want raw text
-      validateStatus: () => true, // Don't throw on 4xx/5xx
+      body: options?.body ? JSON.stringify(options.body) : undefined,
     });
 
-    res.status(response.status).send(response.data);
+    const text = await response.text();
+    c.status(response.status as any);
+    return c.text(text);
   } catch (error: any) {
     console.error("Proxy fetch error:", error);
-    res.status(500).json({ error: error.message || "Unknown error" });
+    return c.json({ error: error.message || "Unknown error" }, 500);
   }
 });

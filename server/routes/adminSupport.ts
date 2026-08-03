@@ -1,19 +1,13 @@
-import express from "express";
-import { createClient } from "@supabase/supabase-js";
+import { Hono } from "hono";
+import { getAuthenticatedClient } from "../lib/supabase.ts";
 
-export const adminSupportRouter = express.Router();
-
-const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseServiceKey = process.env.SUPABASE_SECRET!;
-
-const getAdminSupabase = () => {
-  return createClient(supabaseUrl, supabaseServiceKey);
-};
+export const adminSupportRouter = new Hono();
 
 // Get all support tickets
-adminSupportRouter.get("/tickets", async (req, res) => {
+adminSupportRouter.get("/tickets", async (c) => {
   try {
-    const supabase = getAdminSupabase();
+    const token = c.req.header("authorization")?.split(" ")[1];
+    const supabase = getAuthenticatedClient(token);
     
     const { data: tickets, error } = await supabase
       .from("support_tickets")
@@ -33,18 +27,19 @@ adminSupportRouter.get("/tickets", async (req, res) => {
       profiles: profiles?.find((p: any) => p.user_id === t.user_id) || null
     }));
 
-    res.json({ tickets: ticketsWithProfiles });
+    return c.json({ tickets: ticketsWithProfiles });
   } catch (error: any) {
     console.error("Error fetching support tickets:", error);
-    res.status(500).json({ error: error.message });
+    return c.json({ error: error.message }, 500);
   }
 });
 
 // Get a specific ticket
-adminSupportRouter.get("/tickets/:id", async (req, res) => {
+adminSupportRouter.get("/tickets/:id", async (c) => {
   try {
-    const { id } = req.params;
-    const supabase = getAdminSupabase();
+    const id = c.req.param("id");
+    const token = c.req.header("authorization")?.split(" ")[1];
+    const supabase = getAuthenticatedClient(token);
 
     const { data: ticket, error } = await supabase
       .from("support_tickets")
@@ -64,18 +59,19 @@ adminSupportRouter.get("/tickets/:id", async (req, res) => {
       profile = data;
     }
 
-    res.json({ ticket: { ...ticket, profiles: profile } });
+    return c.json({ ticket: { ...ticket, profiles: profile } });
   } catch (error: any) {
     console.error("Error fetching specific ticket:", error);
-    res.status(500).json({ error: error.message });
+    return c.json({ error: error.message }, 500);
   }
 });
 
 // Get messages for a specific ticket
-adminSupportRouter.get("/tickets/:id/messages", async (req, res) => {
+adminSupportRouter.get("/tickets/:id/messages", async (c) => {
   try {
-    const { id } = req.params;
-    const supabase = getAdminSupabase();
+    const id = c.req.param("id");
+    const token = c.req.header("authorization")?.split(" ")[1];
+    const supabase = getAuthenticatedClient(token);
 
     const { data: messages, error } = await supabase
       .from("support_messages")
@@ -96,31 +92,35 @@ adminSupportRouter.get("/tickets/:id/messages", async (req, res) => {
       profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null
     }));
 
-    res.json({ messages: messagesWithProfiles });
+    return c.json({ messages: messagesWithProfiles });
   } catch (error: any) {
     console.error("Error fetching ticket messages:", error);
-    res.status(500).json({ error: error.message });
+    return c.json({ error: error.message }, 500);
   }
 });
 
 // Post a new message to a ticket
-adminSupportRouter.post("/tickets/:id/messages", async (req, res) => {
+adminSupportRouter.post("/tickets/:id/messages", async (c) => {
   try {
-    const { id } = req.params;
-    const { message } = req.body;
-    const adminUser = res.locals.user;
+    const id = c.req.param("id");
+    const { message } = await c.req.json();
+    const token = c.req.header("authorization")?.split(" ")[1];
+    const supabase = getAuthenticatedClient(token);
     
     if (!message) {
-      return res.status(400).json({ error: "Message is required" });
+      return c.json({ error: "Message is required" }, 400);
     }
 
-    const supabase = getAdminSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return c.json({ error: "Unauthorized" }, 401);
+    }
 
     const { data, error } = await supabase
       .from("support_messages")
       .insert({
         ticket_id: id,
-        sender_id: adminUser.id,
+        sender_id: user.id,
         message
       })
       .select()
@@ -128,24 +128,24 @@ adminSupportRouter.post("/tickets/:id/messages", async (req, res) => {
 
     if (error) throw error;
 
-    res.json({ message: data });
+    return c.json({ message: data });
   } catch (error: any) {
     console.error("Error posting ticket message:", error);
-    res.status(500).json({ error: error.message });
+    return c.json({ error: error.message }, 500);
   }
 });
 
 // Update ticket status
-adminSupportRouter.patch("/tickets/:id/status", async (req, res) => {
+adminSupportRouter.patch("/tickets/:id/status", async (c) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const id = c.req.param("id");
+    const { status } = await c.req.json();
+    const token = c.req.header("authorization")?.split(" ")[1];
+    const supabase = getAuthenticatedClient(token);
     
     if (!status || !["Open", "Closed"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
+      return c.json({ error: "Invalid status" }, 400);
     }
-
-    const supabase = getAdminSupabase();
 
     const { data, error } = await supabase
       .from("support_tickets")
@@ -156,9 +156,9 @@ adminSupportRouter.patch("/tickets/:id/status", async (req, res) => {
 
     if (error) throw error;
 
-    res.json({ ticket: data });
+    return c.json({ ticket: data });
   } catch (error: any) {
     console.error("Error updating ticket status:", error);
-    res.status(500).json({ error: error.message });
+    return c.json({ error: error.message }, 500);
   }
 });

@@ -1,16 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import { Request, Response, NextFunction } from "express";
-import { getAnonClient, supabase as anonClient } from "./supabase.ts";
+import { Context, Next } from "hono";
 
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
-export async function authenticateRepoRequest(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  const authHeader = req.headers.authorization;
+export async function authenticateRepoRequest(c: Context, next: Next) {
+  const authHeader = c.req.header("authorization");
   let token: string | null = null;
   let gitUsername: string | null = null;
 
@@ -25,43 +20,38 @@ export async function authenticateRepoRequest(
   }
 
   if (!token) {
-    (req as any).user = null;
-    (req as any).supabaseToken = supabaseAnonKey;
+    c.set("user", null);
+    c.set("supabaseToken", supabaseAnonKey);
     return next();
   }
 
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false },
   });
 
-  // Try as JWT
   const {
     data: { user },
   } = await supabase.auth.getUser(token);
+  
   if (user) {
-    (req as any).user = user;
-    (req as any).supabaseToken = token;
+    c.set("user", user);
+    c.set("supabaseToken", token);
     return next();
   }
 
-  // Git passwords are no longer supported, but we treat invalid tokens as anonymous
-  (req as any).user = null;
-  (req as any).supabaseToken = supabaseAnonKey;
-  next();
+  c.set("user", null);
+  c.set("supabaseToken", supabaseAnonKey);
+  await next();
 }
 
-export async function authorizeRepoAccess(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
-  const repoId = req.params.repoId || req.params.id;
-  const user = (req as any).user;
-  const token = (req as any).supabaseToken;
+export async function authorizeRepoAccess(c: Context, next: Next) {
+  const repoId = c.req.param("id") || c.req.param("repoId");
+  const user = c.get("user");
+  const token = c.get("supabaseToken");
 
-  if (!repoId) return res.status(401).json({ error: "Unauthorized" });
+  if (!repoId) return c.json({ error: "Unauthorized" }, 401);
 
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     auth: { persistSession: false },
   });
@@ -73,11 +63,11 @@ export async function authorizeRepoAccess(
     .single();
 
   if (error || !repo) {
-    return res.status(404).json({ error: "Repository not found" });
+    return c.json({ error: "Repository not found" }, 404);
   }
 
   if (user && repo.owner_id === user.id) {
-    (req as any).repoPermission = "admin";
+    c.set("repoPermission", "admin");
     return next();
   }
 
@@ -89,12 +79,11 @@ export async function authorizeRepoAccess(
       .eq("user_id", user.id)
       .single();
     if (collab) {
-      (req as any).repoPermission = collab.permission;
+      c.set("repoPermission", collab.permission);
       return next();
     }
   }
 
-  // Everyone has read access
-  (req as any).repoPermission = "read";
-  next();
+  c.set("repoPermission", "read");
+  await next();
 }

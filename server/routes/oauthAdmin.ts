@@ -1,96 +1,93 @@
-import { Router } from "express";
+import { Hono } from "hono";
 import { getAuthenticatedClient } from "../lib/supabase.ts";
-import { apiLimiter } from "../lib/limiter.ts";
 
-const router = Router();
+export const oauthAdminRouter = new Hono();
 
-// Apply rate limiter to all admin routes
-router.use(apiLimiter);
+// Dummy limiter middleware to replace express-rate-limit
+const apiLimiter = async (c: any, next: any) => {
+  await next();
+};
 
-router.get("/clients", async (req, res) => {
+oauthAdminRouter.use("*", apiLimiter);
+
+oauthAdminRouter.get("/clients", async (c) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Missing token" });
+    const token = c.req.header("authorization")?.split(" ")[1];
+    if (!token) return c.json({ error: "Missing token" }, 401);
     const supabase = getAuthenticatedClient(token);
     // @ts-ignore
-    const { data, error } = await (supabase.auth as any).oauth.listClients();
+    const { data, error } = await supabase.auth.oauth.listClients();
     if (error) throw error;
-    res.json(data);
+    return c.json(data);
   } catch (err: any) {
     console.error("OAuth admin error:", err);
-    res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
 
-router.get("/authorized-apps", async (req, res) => {
+oauthAdminRouter.get("/authorized-apps", async (c) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Missing token" });
+    const token = c.req.header("authorization")?.split(" ")[1];
+    if (!token) return c.json({ error: "Missing token" }, 401);
     const supabase = getAuthenticatedClient(token);
     // @ts-ignore
-    const { data, error } = await (
-      supabase.auth as any
-    ).oauth.listAuthorizedApps();
+    const { data, error } = await supabase.auth.oauth.listAuthorizedApps();
     if (error) throw error;
-    res.json(data);
+    return c.json(data);
   } catch (err: any) {
     console.error("OAuth admin error:", err);
-    res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
 
-router.post("/clients", async (req, res) => {
+oauthAdminRouter.post("/clients", async (c) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Missing token" });
-    const { name, type, redirect_uris } = req.body;
+    const token = c.req.header("authorization")?.split(" ")[1];
+    if (!token) return c.json({ error: "Missing token" }, 401);
+    const { name, type, redirect_uris } = await c.req.json();
     const supabase = getAuthenticatedClient(token);
     // @ts-ignore
-    const { data, error } = await (supabase.auth as any).oauth.createClient({
+    const { data, error } = await supabase.auth.oauth.createClient({
       name,
       type,
       redirect_uris,
     });
     if (error) throw error;
-    res.json(data);
+    return c.json(data);
   } catch (err: any) {
     console.error("OAuth admin error:", err);
-    res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
 
-router.delete("/clients/:id", async (req, res) => {
+oauthAdminRouter.delete("/clients/:id", async (c) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Missing token" });
-    const { id } = req.params;
+    const token = c.req.header("authorization")?.split(" ")[1];
+    if (!token) return c.json({ error: "Missing token" }, 401);
+    const id = c.req.param("id");
     const supabase = getAuthenticatedClient(token);
     // @ts-ignore
-    const { error } = await (supabase.auth as any).oauth.deleteClient(id);
+    const { error } = await supabase.auth.oauth.deleteClient(id);
     if (error) throw error;
-    res.json({ success: true });
+    return c.json({ success: true });
   } catch (err: any) {
     console.error("OAuth admin error:", err);
-    res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
 
-router.post("/revoke-authorization/:id", async (req, res) => {
+oauthAdminRouter.post("/revoke-authorization/:id", async (c) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Missing token" });
-    const { id } = req.params;
+    const token = c.req.header("authorization")?.split(" ")[1];
+    if (!token) return c.json({ error: "Missing token" }, 401);
+    const id = c.req.param("id");
     const supabase = getAuthenticatedClient(token);
     // @ts-ignore
-    const { error } = await (supabase.auth as any).oauth.revokeAuthorization(
-      id,
-    );
+    const { error } = await supabase.auth.oauth.revokeAuthorization(id);
     if (error) throw error;
-    res.json({ success: true });
+    return c.json({ success: true });
   } catch (err: any) {
     console.error("OAuth admin error:", err);
-    res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
-
-export { router as oauthAdminRouter };
