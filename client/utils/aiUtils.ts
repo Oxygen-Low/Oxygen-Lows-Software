@@ -10,6 +10,8 @@ export const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "lmstudio") return "LMStudio/" + modelId;
   if (provider === "koboldcpp" || provider === "kobold")
     return "Koboldcpp/" + modelId;
+  if (provider === "cloudflare" && modelId === "@cf/nvidia/nemotron-3-120b-a12b")
+    return "Code";
 
   const displayProvider =
     provider === "openai"

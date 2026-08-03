@@ -401,7 +401,7 @@ export function ChatbotApp() {
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
-  const [availablePoints, setAvailablePoints] = useState<number | null>(null);
+  const [pointsStatus, setPointsStatus] = useState<{available: number, given: number} | null>(null);
 
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>(
     [],
@@ -445,8 +445,8 @@ export function ChatbotApp() {
   useEffect(() => {
     const fetchPoints = async () => {
       if (!session?.user?.id) return;
-      const { data } = await supabase.rpc('get_available_points', { p_user_id: session.user.id });
-      if (data !== null) setAvailablePoints(data);
+      const { data } = await supabase.rpc('get_points_status');
+      if (data) setPointsStatus(data as any);
     };
     fetchPoints();
   }, [session?.user?.id, messages]);
@@ -1679,17 +1679,25 @@ export function ChatbotApp() {
 
                       {hasCloudflareModels && (
                         <>
-                          <div className="px-3 pt-3 pb-1 flex justify-between items-center">
-                            <p className="text-[10px] uppercase tracking-wider text-muted font-display font-medium">
+                          <div className="px-3 pb-1 pt-3 flex justify-between items-center">
+                            <p className="text-[11px] text-muted font-display font-medium">
                               Cloudflare
                             </p>
-                            {availablePoints !== null && (
-                              <span className="text-xs font-mono text-cyan-400">
-                                {availablePoints} Points
-                              </span>
+                            {pointsStatus !== null && (
+                              <div className="flex flex-col items-end gap-1.5 mt-1 mr-1">
+                                <span className="text-[10px] font-mono text-cyan-400 font-medium">
+                                  {pointsStatus.available}/{pointsStatus.given}
+                                </span>
+                                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-cyan-400" 
+                                    style={{ width: `${Math.max(0, Math.min(100, (pointsStatus.available / pointsStatus.given) * 100))}%` }} 
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
-                          <div className="px-2 pb-2">
+                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
                             {cloudflareModels.map((m) => (
                               <button
                                 key={`${m.provider}-${m.model_id}`}
@@ -1705,8 +1713,11 @@ export function ChatbotApp() {
                                     : "",
                                 )}
                               >
-                                <div className="text-sm text-white font-medium truncate pr-4">
-                                  {formatModelLabel(m.provider, m.model_id)}
+                                <div className="text-sm text-white font-medium">
+                                  {formatModelLabel(m.provider, m.model_id).split(" - ")[0]}
+                                </div>
+                                <div className="text-[11px] text-muted truncate w-full pr-4">
+                                  {formatModelLabel(m.provider, m.model_id).split(" - ")[1] || ""}
                                 </div>
                                 {selectedModel === m.model_id &&
                                   selectedProvider === m.provider && (
