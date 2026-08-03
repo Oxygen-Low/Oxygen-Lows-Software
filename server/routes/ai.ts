@@ -178,8 +178,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         return c.json({ error: `Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing or empty. Found keys: ${Object.keys(rawEnv).map(k => '"' + k + '"').join(', ')}` }, 500);
       }
       
-      targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/run/${model}`;
-      requestBody = { messages: processedMessages };
+      targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/v1/chat/completions`;
+      requestBody = { model, messages: processedMessages };
       if (stream) {
         requestBody.stream = true;
       }

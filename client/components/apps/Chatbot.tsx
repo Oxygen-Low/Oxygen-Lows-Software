@@ -803,6 +803,7 @@ export function ChatbotApp() {
                 "koboldcpp",
                 "kobold",
                 "horde",
+                "cloudflare",
               ].includes(provider)
             ) {
               delta = data.choices?.[0]?.delta?.content || "";
@@ -815,7 +816,7 @@ export function ChatbotApp() {
               if (data.choices?.[0]?.finish_reason === "tool_calls") {
                 delta += `\n}</tool_call>`;
               }
-            } else if (provider === "ollama" || provider === "cloudflare") {
+            } else if (provider === "ollama") {
               delta = data.message?.content || data.response || "";
             } else if (provider === "google") {
               delta =
