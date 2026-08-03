@@ -27,6 +27,7 @@ public partial class MainWindow : Window
         {
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add("http://localhost:50321/");
+            _httpListener.Prefixes.Add("http://127.0.0.1:50321/");
             _httpListener.Start();
 
             _ = Task.Run(async () =>

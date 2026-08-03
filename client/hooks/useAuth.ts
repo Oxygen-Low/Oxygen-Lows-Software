@@ -42,7 +42,7 @@ export const useAuth = () => {
         provider,
         options: {
           redirectTo: isWebView
-            ? "http://localhost:50321/"
+            ? "http://127.0.0.1:50321/"
             : (redirectTo ?? window.location.origin),
           scopes: "email profile openid",
           ...(isWebView ? { skipBrowserRedirect: true } : {}),
@@ -76,7 +76,7 @@ export const useAuth = () => {
         provider,
         options: {
           redirectTo: isWebView
-            ? "http://localhost:50321/"
+            ? "http://127.0.0.1:50321/"
             : `${window.location.origin}/account`,
           scopes: "email profile openid",
           ...(isWebView ? { skipBrowserRedirect: true } : {}),
