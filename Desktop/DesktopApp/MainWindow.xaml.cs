@@ -39,14 +39,22 @@ public partial class MainWindow : Window
                         var request = context.Request;
                         var response = context.Response;
 
-                        if (request.HttpMethod == "POST" && request.Url?.AbsolutePath == "/callback")
+                        // Add CORS headers for any response
+                        response.Headers.Add("Access-Control-Allow-Origin", "*");
+                        response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+
+                        // Handle OPTIONS preflight
+                        if (request.HttpMethod == "OPTIONS")
                         {
-                            using var reader = new StreamReader(request.InputStream);
-                            var url = await reader.ReadToEndAsync();
-                            var uri = new Uri(url);
-                            var fragment = uri.Fragment;
-                            var queryParams = uri.Query;
-                            
+                            response.StatusCode = 204;
+                            response.Close();
+                            continue;
+                        }
+
+                        // Extract auth code from query string (PKCE flow)
+                        var query = request.Url?.Query;
+                        if (!string.IsNullOrEmpty(query))
+                        {
                             Dispatcher.Invoke(() =>
                             {
                                 try
@@ -54,7 +62,7 @@ public partial class MainWindow : Window
                                     if (webView != null && webView.CoreWebView2 != null)
                                     {
                                         var currentOrigin = webView.Source.GetLeftPart(UriPartial.Authority);
-                                        webView.CoreWebView2.Navigate($"{currentOrigin}/auth{queryParams}{fragment}");
+                                        webView.CoreWebView2.Navigate($"{currentOrigin}/auth/callback{query}");
                                     }
                                 }
                                 catch (Exception ex)
@@ -62,16 +70,9 @@ public partial class MainWindow : Window
                                     Debug.WriteLine("Navigation Error: " + ex.Message);
                                 }
                             });
-
-                            var okResponse = "OK";
-                            byte[] okBuffer = System.Text.Encoding.UTF8.GetBytes(okResponse);
-                            response.ContentLength64 = okBuffer.Length;
-                            using var okOutput = response.OutputStream;
-                            await okOutput.WriteAsync(okBuffer, 0, okBuffer.Length);
-                            continue;
                         }
 
-                        string responseString = @"<html><body style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2 id='msg'>Completing authentication...</h2><script>fetch('http://localhost:50321/callback', {method: 'POST', body: window.location.href}).then(() => {document.getElementById('msg').innerText = 'Authentication successful! You can close this tab and return to the desktop app.'}).catch(() => {document.getElementById('msg').innerText = 'Authentication failed.'});</script></body></html>";
+                        string responseString = "<html><body style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2>Authentication successful!</h2><p>You can close this tab and return to the desktop app.</p></body></html>";
                         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
                         response.ContentLength64 = buffer.Length;
                         using var output = response.OutputStream;

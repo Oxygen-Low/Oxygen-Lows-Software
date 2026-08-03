@@ -23,6 +23,7 @@ import SupportTicket from "./pages/SupportTicket";
 import AdminSupport from "./pages/AdminSupport";
 import AdminTicket from "./pages/AdminTicket";
 import AdminPanel from "./pages/AdminPanel";
+import AuthCallback from "./pages/AuthCallback";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -102,6 +103,7 @@ const App = () => (
               />
               <Route path="/oauth/consent" element={<OauthConsent />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route
                 path="/support"
                 element={

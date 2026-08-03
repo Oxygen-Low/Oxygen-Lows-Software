@@ -161,8 +161,9 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         ACCOUNT_ID?: string; CLOUDFLARE_API_TOKEN?: string;
       }>(c);
       
-      const AccountID = bindings.AccountID || bindings.ACCOUNT_ID || process?.env?.ACCOUNT_ID || process?.env?.AccountID;
-      const CloudflareAPIToken = bindings.CloudflareAPIToken || bindings.CLOUDFLARE_API_TOKEN || process?.env?.CLOUDFLARE_API_TOKEN || process?.env?.CloudflareAPIToken;
+      const procEnv = typeof process !== 'undefined' ? process.env : {} as any;
+      const AccountID = bindings.AccountID || bindings.ACCOUNT_ID || procEnv.ACCOUNT_ID || procEnv.AccountID;
+      const CloudflareAPIToken = bindings.CloudflareAPIToken || bindings.CLOUDFLARE_API_TOKEN || procEnv.CLOUDFLARE_API_TOKEN || procEnv.CloudflareAPIToken;
 
       if (!AccountID || !CloudflareAPIToken) {
         return c.json({ error: "Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing" }, 500);
