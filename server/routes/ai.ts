@@ -11,6 +11,11 @@ const DEFAULT_MODELS = [
   { provider: "horde", model_id: "Fast" },
   { provider: "horde", model_id: "Smart" },
   { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b" },
+  { provider: "cloudflare", model_id: "@cf/openai/gpt-oss-120b" },
+  { provider: "cloudflare", model_id: "@cf/google/gemma-4-26b-a4b-it" },
+  { provider: "cloudflare", model_id: "@cf/zai-org/glm-4.7-flash" },
+  { provider: "cloudflare", model_id: "@cf/ibm-granite/granite-4.0-h-micro" },
+  { provider: "cloudflare", model_id: "@cf/meta/llama-3.1-8b-instruct-fast" },
 ];
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
