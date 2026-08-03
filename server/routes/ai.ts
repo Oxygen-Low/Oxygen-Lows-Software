@@ -156,19 +156,26 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
          return c.json({ error: "Insufficient points" }, 402);
       }
       
-      const bindings = env<{ 
-        AccountID?: string; CloudflareAPIToken?: string;
-        ACCOUNT_ID?: string; CLOUDFLARE_API_TOKEN?: string;
-      }>(c);
-      
       const rawEnv = (c.env || {}) as any;
+      let AccountID = "";
+      let CloudflareAPIToken = "";
+
+      for (const [key, value] of Object.entries(rawEnv)) {
+        const cleanKey = key.trim().toLowerCase();
+        if (cleanKey === "accountid" || cleanKey === "account_id") AccountID = (value as string).trim();
+        if (cleanKey === "cloudflareapitoken" || cleanKey === "cloudflare_api_token") CloudflareAPIToken = (value as string).trim();
+      }
+
       const procEnv = typeof process !== 'undefined' ? process.env : {} as any;
-      
-      const AccountID = bindings.AccountID || bindings.ACCOUNT_ID || rawEnv.AccountID || rawEnv.ACCOUNT_ID || procEnv.ACCOUNT_ID || procEnv.AccountID;
-      const CloudflareAPIToken = bindings.CloudflareAPIToken || bindings.CLOUDFLARE_API_TOKEN || rawEnv.CloudflareAPIToken || rawEnv.CLOUDFLARE_API_TOKEN || procEnv.CLOUDFLARE_API_TOKEN || procEnv.CloudflareAPIToken;
+      if (!AccountID) {
+        AccountID = (procEnv.AccountID || procEnv.ACCOUNT_ID || "").trim();
+      }
+      if (!CloudflareAPIToken) {
+        CloudflareAPIToken = (procEnv.CloudflareAPIToken || procEnv.CLOUDFLARE_API_TOKEN || "").trim();
+      }
 
       if (!AccountID || !CloudflareAPIToken) {
-        return c.json({ error: `Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing. Found environment keys: ${Object.keys(rawEnv).join(', ')}` }, 500);
+        return c.json({ error: `Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing or empty. Found keys: ${Object.keys(rawEnv).map(k => '"' + k + '"').join(', ')}` }, 500);
       }
       
       targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/run/${model}`;
