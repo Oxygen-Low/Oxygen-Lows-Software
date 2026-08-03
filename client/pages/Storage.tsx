@@ -51,6 +51,7 @@ export default function Storage() {
   const [totalSize, setTotalSize] = useState(0);
   const [dbStats, setDbStats] = useState<any[]>([]);
   const cloudInputRef = useRef<HTMLInputElement>(null);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
   const fetchCloudFiles = async () => {
     if (!session?.user?.id) return;
@@ -145,6 +146,7 @@ export default function Storage() {
 
   const deleteCloudFile = async (name: string) => {
     try {
+      setDeletingFile(name);
       if (name.includes("..")) throw new Error("Invalid file name");
       const { error } = await supabase.storage
         .from("Storage")
@@ -154,6 +156,8 @@ export default function Storage() {
       fetchCloudFiles();
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setDeletingFile(null);
     }
   };
 
@@ -427,8 +431,15 @@ export default function Storage() {
                     variant="destructive"
                     size="icon"
                     onClick={() => deleteCloudFile(file.name)}
+                    disabled={deletingFile === file.name}
+                    aria-label={`Delete ${file.name}`}
+                    title={`Delete ${file.name}`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {deletingFile === file.name ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                   </Button>
                 </CardContent>
               </Card>
