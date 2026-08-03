@@ -146,7 +146,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "horde") {
       targetUrl = "https://oai.stablehorde.net/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: processedMessages };
+      const actualModel = HORDE_MODELS_MAP[model]?.[0] || model;
+      requestBody = { ...requestBody, model: actualModel, messages: processedMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key || "0000000000"}`;
     } else {
         return c.json({ error: "Unsupported provider" }, 400);
