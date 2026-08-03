@@ -8,34 +8,15 @@ const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 const DEFAULT_HORDE_MODELS = [
   { provider: "horde", model_id: "Fast" },
-  { provider: "horde", model_id: "Balanced" },
   { provider: "horde", model_id: "Smart" },
-  { provider: "horde", model_id: "Write" },
-  { provider: "horde", model_id: "Code" },
 ];
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
   Fast: [
-    "koboldcpp/Llama-3.2-3B",
-    "koboldcpp/Meta-Llama-3-2-3B-Instruct.Q4_K_M",
-    "koboldcpp/Qwen_Qwen3-0.6B-IQ4_XS",
-  ],
-  Balanced: [
     "google/gemma-4-31b",
-    "neroued/Qwen3.6-27B-nvfp4-NInfer",
   ],
   Smart: [
     "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
-    "google/gemma-4-31b",
-  ],
-  Write: [
-    "koboldcpp/Behemoth-128B-v3b-Q4_K_M",
-    "google/gemma-4-31b",
-  ],
-  Code: [
-    "Qwen3-Coder-Next",
-    "neroued/Qwen3.6-27B-nvfp4-NInfer",
-    "google/gemma-4-31b",
   ],
 };
 

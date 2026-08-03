@@ -30,6 +30,8 @@ export const useAiModels = (
     selectedProviderRef.current = selectedProvider;
   }, [selectedModel, selectedProvider]);
 
+  const [hordeStatus, setHordeStatus] = useState<Record<string, { workers: number; queued: number; speed: string; eta: number }>>({});
+
   const fetchModels = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -82,6 +84,23 @@ export const useAiModels = (
     fetchModels();
   }, [fetchModels]);
 
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch("/api/ai/horde-status");
+        if (res.ok) {
+          const data = await res.json();
+          setHordeStatus(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch horde status", e);
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
+
   const updateSelection = useCallback(
     (modelId: string, provider: string) => {
       setSelectedModel(modelId);
@@ -100,5 +119,6 @@ export const useAiModels = (
     setSelection: updateSelection,
     isLoading,
     refreshModels: fetchModels,
+    hordeStatus,
   };
 };

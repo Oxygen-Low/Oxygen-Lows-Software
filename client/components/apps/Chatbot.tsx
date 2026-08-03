@@ -390,7 +390,7 @@ const formatHordeEta = (seconds: number): string => {
 
 export function ChatbotApp() {
   const { session } = useAuth();
-  const { models, selectedModel, selectedProvider, setSelection } =
+  const { models, selectedModel, selectedProvider, setSelection, hordeStatus } =
     useAiModels();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -1628,11 +1628,18 @@ export function ChatbotApp() {
                                     ).split(" - ")[0]
                                   }
                                 </div>
-                                <div className="text-[11px] text-muted truncate">
-                                  {formatModelLabel(
-                                    m.provider,
-                                    m.model_id,
-                                  ).split(" - ")[1] || ""}
+                                <div className="text-[11px] text-muted truncate flex items-center justify-between w-full">
+                                  <span>
+                                    {formatModelLabel(
+                                      m.provider,
+                                      m.model_id,
+                                    ).split(" - ")[1] || ""}
+                                  </span>
+                                  {hordeStatus?.[m.model_id]?.eta > 0 && (
+                                    <span className="text-cyan-500/70 ml-2 whitespace-nowrap">
+                                      ETA: {formatHordeEta(hordeStatus[m.model_id].eta)}
+                                    </span>
+                                  )}
                                 </div>
                                 {selectedModel === m.model_id &&
                                   selectedProvider === m.provider && (
