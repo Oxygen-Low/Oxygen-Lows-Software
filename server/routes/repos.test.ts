@@ -4,7 +4,7 @@ import { createServer } from "../index";
 import { repoManager } from "../lib/repoManager";
 
 // Set environment variable to skip config errors
-process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+process.env.SUPABASE_SECRET = "test-key";
 
 vi.mock("../lib/repoManager", () => ({
   repoManager: {
