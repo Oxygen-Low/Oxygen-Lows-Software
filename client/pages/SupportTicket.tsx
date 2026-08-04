@@ -203,6 +203,8 @@ export default function SupportTicket() {
           variant="ghost"
           size="icon"
           onClick={() => navigate("/support")}
+          aria-label="Back to support tickets"
+          title="Back to support tickets"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -308,6 +310,8 @@ export default function SupportTicket() {
                 disabled={
                   isSending || ticket.status === "Closed" || !newMessage.trim()
                 }
+                aria-label="Send message"
+                title="Send message"
               >
                 <Send className="w-4 h-4" />
               </Button>

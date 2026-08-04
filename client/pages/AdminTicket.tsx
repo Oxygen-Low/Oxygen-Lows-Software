@@ -231,6 +231,8 @@ export default function AdminTicket() {
           variant="ghost"
           size="icon"
           onClick={() => navigate("/admin/support")}
+          aria-label="Back to admin support tickets"
+          title="Back to admin support tickets"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -342,6 +344,8 @@ export default function AdminTicket() {
                 disabled={
                   isSending || ticket.status === "Closed" || !newMessage.trim()
                 }
+                aria-label="Send message"
+                title="Send message"
               >
                 <Send className="w-4 h-4" />
               </Button>
