@@ -118,6 +118,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             <h1 className={`${styles["logo"]} text-2xl font-bold`}>
               Oxygen Low's Software
             </h1>
+            <span className="px-3 py-1 text-xs font-bold text-yellow-900 bg-yellow-400 rounded-md uppercase tracking-wide">
+              Open Beta
+            </span>
             <a
               href="https://discord.gg/tNczTe66jK"
               target="_blank"
