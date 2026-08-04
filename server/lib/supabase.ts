@@ -51,3 +51,16 @@ export async function getAuthorProfile(userId: string) {
 
   return profile;
 }
+
+/**
+ * Returns an admin client using the service role key, bypassing RLS.
+ */
+export function getAdminClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+}

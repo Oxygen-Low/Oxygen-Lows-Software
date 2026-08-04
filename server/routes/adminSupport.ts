@@ -1,42 +1,12 @@
 import { Hono } from "hono";
-import { getAuthenticatedClient } from "../lib/supabase.ts";
+import { getAdminClient, getAuthenticatedClient } from "../lib/supabase.ts";
 
 export const adminSupportRouter = new Hono();
-
-// Middleware to check if user is admin
-adminSupportRouter.use("*", async (c, next) => {
-  try {
-    const token = c.req.header("authorization")?.split(" ")[1];
-    if (!token) return c.json({ error: "Unauthorized" }, 401);
-    const supabase = getAuthenticatedClient(token);
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profileError || !profile?.is_admin) {
-      return c.json({ error: "Forbidden: Admin access required" }, 403);
-    }
-
-    await next();
-  } catch (error) {
-    console.error("Error in admin middleware:", error);
-    return c.json({ error: "Internal Server Error" }, 500);
-  }
-});
 
 // Get all support tickets
 adminSupportRouter.get("/tickets", async (c) => {
   try {
-    const token = c.req.header("authorization")?.split(" ")[1];
-    const supabase = getAuthenticatedClient(token);
+    const supabase = getAdminClient();
 
     const { data: tickets, error } = await supabase
       .from("support_tickets")
@@ -69,8 +39,7 @@ adminSupportRouter.get("/tickets", async (c) => {
 adminSupportRouter.get("/tickets/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const token = c.req.header("authorization")?.split(" ")[1];
-    const supabase = getAuthenticatedClient(token);
+    const supabase = getAdminClient();
 
     const { data: ticket, error } = await supabase
       .from("support_tickets")
@@ -101,8 +70,7 @@ adminSupportRouter.get("/tickets/:id", async (c) => {
 adminSupportRouter.get("/tickets/:id/messages", async (c) => {
   try {
     const id = c.req.param("id");
-    const token = c.req.header("authorization")?.split(" ")[1];
-    const supabase = getAuthenticatedClient(token);
+    const supabase = getAdminClient();
 
     const { data: messages, error } = await supabase
       .from("support_messages")
@@ -138,7 +106,10 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
     const id = c.req.param("id");
     const { message } = await c.req.json();
     const token = c.req.header("authorization")?.split(" ")[1];
-    const supabase = getAuthenticatedClient(token);
+    
+    // We still need the authenticated client here to get the current user's ID
+    const authSupabase = getAuthenticatedClient(token);
+    const supabase = getAdminClient();
 
     if (!message) {
       return c.json({ error: "Message is required" }, 400);
@@ -146,7 +117,7 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
 
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await authSupabase.auth.getUser();
     if (!user) {
       return c.json({ error: "Unauthorized" }, 401);
     }
@@ -175,8 +146,7 @@ adminSupportRouter.patch("/tickets/:id/status", async (c) => {
   try {
     const id = c.req.param("id");
     const { status } = await c.req.json();
-    const token = c.req.header("authorization")?.split(" ")[1];
-    const supabase = getAuthenticatedClient(token);
+    const supabase = getAdminClient();
 
     if (!status || !["Open", "Closed"].includes(status)) {
       return c.json({ error: "Invalid status" }, 400);
