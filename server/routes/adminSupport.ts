@@ -6,7 +6,7 @@ export const adminSupportRouter = new Hono();
 function getServiceRoleKey(c: any) {
   const rawEnv = (c.env || {}) as any;
   const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
-  return rawEnv.SUPABASE_SERVICE_ROLE_KEY || procEnv.SUPABASE_SERVICE_ROLE_KEY;
+  return rawEnv.SUPABASE_SECRET || procEnv.SUPABASE_SECRET;
 }
 
 // Get all support tickets
