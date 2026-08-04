@@ -14,5 +14,6 @@
 **Action:** Always refactor multiple `Array.filter()` calls into a single `Array.reduce()` or `Array.forEach()` loop to process the data in one O(N) pass, pushing each item into the appropriate temporary array before setting state.
 
 ## 2024-06-25 - [O(N²) Redundant filtering in React array mapping]
+
 **Learning:** Inside rendering blocks or `useMemo` hooks (such as calculating nested siblings in `Chatbot.tsx`), using `.find()` or `.filter()` on the full dataset while mapping over the same dataset creates an O(N²) time complexity bottleneck. This drastically degrades performance during frequent streaming updates on long lists.
 **Action:** Always pre-calculate parent-child or relational mappings into O(1) hash maps (e.g. `Record<string, Item[]>`) using a single O(N) pass inside a `useMemo` block, and use these map lookups in the render loop instead of iterating the entire array repeatedly.

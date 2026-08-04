@@ -177,7 +177,9 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
                 let m;
                 let count = 0;
                 while ((m = snippetRegex.exec(text)) !== null && count < 5) {
-                  const cleanSnippet = m[1].replace(/<[^>]*>?/gm, "").trim();
+                  // Replace any HTML tags, including malformed/unclosed ones at the end of the string,
+                  // to prevent HTML injection vulnerabilities (like `<script`).
+                  const cleanSnippet = m[1].replace(/<[^>]*(>|$)/gm, "").trim();
                   if (cleanSnippet) {
                     snippets.push(cleanSnippet);
                     count++;
