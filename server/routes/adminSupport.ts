@@ -3,10 +3,16 @@ import { getAdminClient, getAuthenticatedClient } from "../lib/supabase.ts";
 
 export const adminSupportRouter = new Hono();
 
+function getServiceRoleKey(c: any) {
+  const rawEnv = (c.env || {}) as any;
+  const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
+  return rawEnv.SUPABASE_SERVICE_ROLE_KEY || procEnv.SUPABASE_SERVICE_ROLE_KEY;
+}
+
 // Get all support tickets
 adminSupportRouter.get("/tickets", async (c) => {
   try {
-    const supabase = getAdminClient();
+    const supabase = getAdminClient(getServiceRoleKey(c));
 
     const { data: tickets, error } = await supabase
       .from("support_tickets")
@@ -39,7 +45,7 @@ adminSupportRouter.get("/tickets", async (c) => {
 adminSupportRouter.get("/tickets/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const supabase = getAdminClient();
+    const supabase = getAdminClient(getServiceRoleKey(c));
 
     const { data: ticket, error } = await supabase
       .from("support_tickets")
@@ -70,7 +76,7 @@ adminSupportRouter.get("/tickets/:id", async (c) => {
 adminSupportRouter.get("/tickets/:id/messages", async (c) => {
   try {
     const id = c.req.param("id");
-    const supabase = getAdminClient();
+    const supabase = getAdminClient(getServiceRoleKey(c));
 
     const { data: messages, error } = await supabase
       .from("support_messages")
@@ -109,7 +115,7 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
     
     // We still need the authenticated client here to get the current user's ID
     const authSupabase = getAuthenticatedClient(token);
-    const supabase = getAdminClient();
+    const supabase = getAdminClient(getServiceRoleKey(c));
 
     if (!message) {
       return c.json({ error: "Message is required" }, 400);
@@ -146,7 +152,7 @@ adminSupportRouter.patch("/tickets/:id/status", async (c) => {
   try {
     const id = c.req.param("id");
     const { status } = await c.req.json();
-    const supabase = getAdminClient();
+    const supabase = getAdminClient(getServiceRoleKey(c));
 
     if (!status || !["Open", "Closed"].includes(status)) {
       return c.json({ error: "Invalid status" }, 400);

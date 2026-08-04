@@ -55,8 +55,10 @@ export async function getAuthorProfile(userId: string) {
 /**
  * Returns an admin client using the service role key, bypassing RLS.
  */
-export function getAdminClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export function getAdminClient(serviceRoleKeyParam?: string) {
+  const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
+  const serviceRoleKey = serviceRoleKeyParam || procEnv.SUPABASE_SERVICE_ROLE_KEY;
+  
   if (!serviceRoleKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
   }
