@@ -57,10 +57,10 @@ export async function getAuthorProfile(userId: string) {
  */
 export function getAdminClient(serviceRoleKeyParam?: string) {
   const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
-  const serviceRoleKey = serviceRoleKeyParam || procEnv.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = serviceRoleKeyParam || procEnv.SUPABASE_SECRET;
   
   if (!serviceRoleKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+    throw new Error("SUPABASE_SECRET is not set");
   }
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
