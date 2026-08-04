@@ -112,7 +112,7 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
     const id = c.req.param("id");
     const { message } = await c.req.json();
     const token = c.req.header("authorization")?.split(" ")[1];
-    
+
     // We still need the authenticated client here to get the current user's ID
     const authSupabase = getAuthenticatedClient(token);
     const supabase = getAdminClient(getServiceRoleKey(c));

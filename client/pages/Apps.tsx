@@ -182,7 +182,9 @@ export default function Apps() {
 
     return (
       <Layout fullWidth={isChatbot}>
-        <div className={isChatbot ? "h-full w-full flex flex-col" : "space-y-6"}>
+        <div
+          className={isChatbot ? "h-full w-full flex flex-col" : "space-y-6"}
+        >
           {!isChatbot && (
             <div className="flex items-center gap-4 mb-8">
               <button
@@ -193,7 +195,9 @@ export default function Apps() {
               >
                 <AppWindow className="w-6 h-6" />
               </button>
-              <h2 className="text-2xl font-bold text-white">{activeApp.name}</h2>
+              <h2 className="text-2xl font-bold text-white">
+                {activeApp.name}
+              </h2>
             </div>
           )}
           <AppComponent />

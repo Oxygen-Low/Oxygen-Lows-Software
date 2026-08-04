@@ -110,11 +110,13 @@ export function PublicCharactersApp() {
       const { data: pubData, error: pubError } = await supabase
         .from("public_characters")
         .select("*");
-        
+
       if (pubError) throw pubError;
 
       // Fetch profiles manually to avoid schema cache relationship issues
-      const uploaderIds = [...new Set(pubData.map((p: any) => p.uploader_id))].filter(Boolean);
+      const uploaderIds = [
+        ...new Set(pubData.map((p: any) => p.uploader_id)),
+      ].filter(Boolean);
       let profilesData: any[] = [];
       if (uploaderIds.length > 0) {
         const { data } = await supabase
@@ -132,15 +134,21 @@ export function PublicCharactersApp() {
       if (likesError) throw likesError;
 
       const itemsWithLikes = pubData.map((item: any) => {
-        const itemLikes = likesData.filter((l: any) => l.public_character_id === item.id);
-        const isLiked = itemLikes.some((l: any) => l.user_id === session.user.id);
-        const profile = profilesData?.find((p: any) => p.user_id === item.uploader_id);
-        
+        const itemLikes = likesData.filter(
+          (l: any) => l.public_character_id === item.id,
+        );
+        const isLiked = itemLikes.some(
+          (l: any) => l.user_id === session.user.id,
+        );
+        const profile = profilesData?.find(
+          (p: any) => p.user_id === item.uploader_id,
+        );
+
         return {
           ...item,
           author_username: profile?.username || "Unknown",
           likes_count: itemLikes.length,
-          is_liked_by_user: isLiked
+          is_liked_by_user: isLiked,
         };
       });
 
