@@ -17,6 +17,7 @@ adminSupportRouter.get("/tickets", async (c) => {
     const { data: tickets, error } = await supabase
       .from("support_tickets")
       .select("*")
+      .neq("status", "Closed")
       .order("created_at", { ascending: false });
 
     if (error) throw error;

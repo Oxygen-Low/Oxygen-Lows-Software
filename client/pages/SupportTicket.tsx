@@ -43,6 +43,7 @@ export default function SupportTicket() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -175,6 +176,32 @@ export default function SupportTicket() {
     }
   };
 
+  const handleDeleteTicket = async () => {
+    if (!id || !confirm("Are you sure you want to delete this ticket permanently?")) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("support_tickets")
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Ticket deleted",
+        description: "Your ticket has been deleted.",
+      });
+      navigate("/support");
+    } catch (error: any) {
+      toast({
+        title: "Error deleting ticket",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -198,30 +225,41 @@ export default function SupportTicket() {
   return (
     <Layout>
       <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex items-center space-x-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/support")}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">{ticket.title}</h1>
-          <div className="flex items-center space-x-2 mt-1">
-            <Badge
-              variant={
-                ticket.priority === "Highest" ? "destructive" : "secondary"
-              }
-            >
-              {ticket.priority}
-            </Badge>
-            <Badge variant="outline">{ticket.type}</Badge>
-            <Badge variant={ticket.status === "Open" ? "default" : "secondary"}>
-              {ticket.status}
-            </Badge>
+      <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/support")}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">{ticket.title}</h1>
+            <div className="flex items-center space-x-2 mt-1">
+              <Badge
+                variant={
+                  ticket.priority === "Highest" ? "destructive" : "secondary"
+                }
+              >
+                {ticket.priority}
+              </Badge>
+              <Badge variant="outline">{ticket.type}</Badge>
+              <Badge variant={ticket.status === "Open" ? "default" : "secondary"}>
+                {ticket.status}
+              </Badge>
+            </div>
           </div>
         </div>
+        {ticket.status === "Closed" && (
+          <Button 
+            variant="destructive" 
+            onClick={handleDeleteTicket} 
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete Ticket"}
+          </Button>
+        )}
       </div>
 
       <Card className="flex-1 flex flex-col overflow-hidden">
