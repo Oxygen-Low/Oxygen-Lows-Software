@@ -193,7 +193,7 @@ export function DataSaveApp() {
                 </label>
                 <div className="relative">
                   <Input
-                    placeholder="e.g. Work, APIs, Notes"
+                    placeholder="e.g. Work, Notes"
                     value={categoryName}
                     onChange={(e) => setCategoryName(e.target.value)}
                     className="bg-slate-950 border-slate-800 text-white"
