@@ -141,7 +141,7 @@ export function DataSaveApp() {
                   Key / Name
                 </label>
                 <Input
-                  placeholder="e.g. API_KEY_GITHUB or Note Title"
+                  placeholder="e.g. Server URL or Note Title"
                   value={keyName}
                   onChange={(e) => setKeyName(e.target.value)}
                   className="bg-slate-950 border-slate-800 text-white"
