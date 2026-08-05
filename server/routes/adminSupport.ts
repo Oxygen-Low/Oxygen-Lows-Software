@@ -3,6 +3,29 @@ import { getAdminClient, getAuthenticatedClient } from "../lib/supabase.ts";
 
 export const adminSupportRouter = new Hono();
 
+// Middleware to ensure the user is authenticated
+adminSupportRouter.use("*", async (c, next) => {
+  const authHeader = c.req.header("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return c.json({ error: "Missing or invalid authorization token" }, 401);
+  }
+
+  const token = authHeader.split(" ")[1];
+  const authSupabase = getAuthenticatedClient(token);
+
+  const {
+    data: { user },
+    error,
+  } = await authSupabase.auth.getUser();
+  if (error || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  // Set the authenticated user in the context so routes can use it
+  c.set("user", user);
+  await next();
+});
+
 function getServiceRoleKey(c: any) {
   const rawEnv = (c.env || {}) as any;
   const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
@@ -112,22 +135,14 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
   try {
     const id = c.req.param("id");
     const { message } = await c.req.json();
-    const token = c.req.header("authorization")?.split(" ")[1];
-    
-    // We still need the authenticated client here to get the current user's ID
-    const authSupabase = getAuthenticatedClient(token);
+
     const supabase = getAdminClient(getServiceRoleKey(c));
 
     if (!message) {
       return c.json({ error: "Message is required" }, 400);
     }
 
-    const {
-      data: { user },
-    } = await authSupabase.auth.getUser();
-    if (!user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const user = c.get("user");
 
     const { data, error } = await supabase
       .from("support_messages")

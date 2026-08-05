@@ -9,3 +9,9 @@
 **Vulnerability:** A critical command/process injection vulnerability could exist in `MainWindow.xaml.cs` when using `Process.Start` with dynamic user-controlled URIs during OAuth flows. If the URI scheme or host were not strictly validated, an attacker could potentially launch local system files, executables, or craft malicious URI schemes.
 **Learning:** Passing dynamic or unvalidated URLs directly to `Process.Start` with `UseShellExecute = true` can trigger security scanner alerts and potentially lead to OS command/process starting injection if the scheme or hostname is manipulated.
 **Prevention:** Always enforce strict whitelist validation on any URLs passed to `Process.Start` by verifying that the scheme is strictly `https`, the host belongs to a hardcoded list of allowed domains, and the path matches the expected endpoint pattern.
+
+## 2024-08-05 - [Missing Authentication on Admin Support Tickets Endpoint]
+
+**Vulnerability:** A critical vulnerability where `adminSupportRouter` endpoints (`GET /tickets`, `GET /tickets/:id`, `GET /tickets/:id/messages`, `PATCH /tickets/:id/status`) used `getAdminClient()` (which relies on the `SUPABASE_SECRET` service role key, bypassing RLS) without checking if the user calling the endpoint was actually authenticated or an admin. This allowed any unauthenticated request to read or alter support tickets.
+**Learning:** Using an admin client bypassing RLS inside of API routes without adding explicit authentication or authorization middleware creates an immediate unauthorized access risk.
+**Prevention:** Always wrap endpoints using service-role clients in authentication middleware to verify `auth.getUser()` and ensure proper access controls.
