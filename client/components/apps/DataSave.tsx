@@ -7,6 +7,8 @@ import {
   Loader2,
   KeyRound,
   FileText,
+  Tag,
+  Filter,
 } from "lucide-react";
 import {
   Card,
@@ -22,37 +24,50 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 
 export function DataSaveApp() {
   const { session } = useAuth();
   const [keyName, setKeyName] = useState("");
   const [content, setContent] = useState("");
+  const [categoryName, setCategoryName] = useState("");
   const [saves, setSaves] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
 
-  const fetchSaves = async () => {
+  const fetchData = async () => {
     if (!session?.user?.id) return;
     setFetching(true);
     try {
-      const { data, error } = await supabase
-        .from("data_saves")
-        .select("*")
-        .order("updated_at", { ascending: false });
+      const [savesRes, catsRes] = await Promise.all([
+        supabase
+          .from("data_saves")
+          .select("*, category:category_id(*)")
+          .order("updated_at", { ascending: false }),
+        supabase
+          .from("data_save_categories")
+          .select("*")
+          .order("name", { ascending: true })
+      ]);
 
-      if (error) throw error;
-      setSaves(data || []);
+      if (savesRes.error) throw savesRes.error;
+      if (catsRes.error) throw catsRes.error;
+
+      setSaves(savesRes.data || []);
+      setCategories(catsRes.data || []);
     } catch (error: any) {
-      console.error("Error fetching data saves:", error);
-      toast.error(error.message || "Failed to load saved data");
+      console.error("Error fetching data:", error);
+      toast.error(error.message || "Failed to load data");
     } finally {
       setFetching(false);
     }
   };
 
   useEffect(() => {
-    fetchSaves();
+    fetchData();
   }, [session]);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -64,14 +79,34 @@ export function DataSaveApp() {
 
     setLoading(true);
     try {
-      // Check if it exists
+      let categoryId = null;
+
+      // Handle category creation/selection
+      const catInput = categoryName.trim();
+      if (catInput) {
+        const existingCat = categories.find(c => c.name.toLowerCase() === catInput.toLowerCase());
+        if (existingCat) {
+          categoryId = existingCat.id;
+        } else {
+          const { data: newCat, error: catError } = await supabase
+            .from("data_save_categories")
+            .insert({ user_id: session?.user?.id, name: catInput })
+            .select()
+            .single();
+          
+          if (catError) throw catError;
+          categoryId = newCat.id;
+        }
+      }
+
+      // Check if data save exists
       const existing = saves.find(s => s.key_name === keyName);
       
       let error;
       if (existing) {
         const { error: updateError } = await supabase
           .from("data_saves")
-          .update({ content, updated_at: new Date().toISOString() })
+          .update({ content, category_id: categoryId, updated_at: new Date().toISOString() })
           .eq("id", existing.id);
         error = updateError;
       } else {
@@ -81,6 +116,7 @@ export function DataSaveApp() {
             user_id: session?.user?.id,
             key_name: keyName,
             content,
+            category_id: categoryId,
           });
         error = insertError;
       }
@@ -90,7 +126,8 @@ export function DataSaveApp() {
       toast.success("Data saved successfully!");
       setKeyName("");
       setContent("");
-      fetchSaves();
+      setCategoryName("");
+      fetchData();
     } catch (error: any) {
       console.error("Save error:", error);
       toast.error(error.message || "Failed to save data");
@@ -109,16 +146,18 @@ export function DataSaveApp() {
       if (error) throw error;
       
       toast.success("Data deleted successfully");
-      fetchSaves();
+      fetchData();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete data");
     }
   };
 
-  const filteredSaves = saves.filter(s => 
-    s.key_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSaves = saves.filter(s => {
+    const matchesSearch = s.key_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          s.content.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategoryFilter ? s.category_id === selectedCategoryFilter : true;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -146,6 +185,26 @@ export function DataSaveApp() {
                   onChange={(e) => setKeyName(e.target.value)}
                   className="bg-slate-950 border-slate-800 text-white"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-cyan-500" />
+                  Category (Optional)
+                </label>
+                <div className="relative">
+                  <Input
+                    placeholder="e.g. Work, APIs, Notes"
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-white"
+                    list="category-options"
+                  />
+                  <datalist id="category-options">
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -183,21 +242,38 @@ export function DataSaveApp() {
 
       <div className="space-y-6">
         <Card className="bg-slate-900/50 border-slate-800 h-full flex flex-col">
-          <CardHeader>
+          <CardHeader className="pb-4">
             <CardTitle className="text-white flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Save className="w-5 h-5 text-cyan-500" />
                 Saved Data
               </div>
             </CardTitle>
-            <div className="relative mt-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <Input
-                placeholder="Search keys or content..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-slate-950 border-slate-800 text-white"
-              />
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Input
+                  placeholder="Search keys or content..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 bg-slate-950 border-slate-800 text-white"
+                />
+              </div>
+              {categories.length > 0 && (
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <select
+                    className="pl-9 pr-4 h-10 w-full sm:w-40 rounded-md bg-slate-950 border-slate-800 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none cursor-pointer"
+                    value={selectedCategoryFilter || ""}
+                    onChange={(e) => setSelectedCategoryFilter(e.target.value || null)}
+                  >
+                    <option value="">All Categories</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="flex-1 p-0">
@@ -219,21 +295,30 @@ export function DataSaveApp() {
                       key={save.id}
                       className="p-4 bg-slate-950 rounded-xl border border-slate-800 group"
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-white flex items-center gap-2">
-                          <KeyRound className="w-4 h-4 text-cyan-500" />
-                          {save.key_name}
-                        </h4>
+                      <div className="flex items-start justify-between mb-2 gap-2">
+                        <div className="flex flex-col gap-1 overflow-hidden">
+                          <h4 className="font-medium text-white flex items-center gap-2 truncate">
+                            <KeyRound className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                            <span className="truncate">{save.key_name}</span>
+                          </h4>
+                          {save.category && (
+                            <div>
+                              <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] px-1.5 py-0 font-normal">
+                                {save.category.name}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(save.id)}
-                          className="h-8 w-8 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                      <div className="bg-slate-900 rounded-md p-3 relative group/content">
+                      <div className="bg-slate-900 rounded-md p-3 relative group/content mt-2">
                         <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap break-all max-h-32 overflow-hidden overflow-y-auto">
                           {save.content}
                         </pre>

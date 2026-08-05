@@ -98,6 +98,7 @@ export default function Storage() {
         "chat_messages",
         "user_preferences",
         "data_saves",
+        "data_save_categories",
       ];
       const stats = await Promise.all(
         tables.map(async (table) => {
