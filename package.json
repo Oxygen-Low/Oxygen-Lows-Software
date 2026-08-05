@@ -26,7 +26,7 @@
     "diff": "^9.0.0",
     "diff2html": "^3.4.56",
     "dotenv": "^17.4.2",
-    "hono": "^4.12.33",
+    "hono": "^4.12.34",
     "music-metadata-browser": "^2.5.11",
     "playwright": "^1.62.1",
     "qrcode.react": "^4.2.0",
