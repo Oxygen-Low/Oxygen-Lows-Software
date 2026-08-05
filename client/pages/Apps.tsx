@@ -18,12 +18,14 @@ import {
   Users,
   Bot,
   Gamepad2,
+  QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { PublicCharactersApp } from "@/components/apps/PublicCharacters";
 import { DataSaveApp } from "@/components/apps/DataSave";
+import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
 import { Server } from "lucide-react";
 
 type Category =
@@ -128,6 +130,15 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Server className="w-8 h-8 text-cyan-500" />,
     component: DataSaveApp,
+  },
+  {
+    id: "qrcode-generator",
+    name: "QR Code Generator",
+    description: "Convert links or text into custom QR codes.",
+    categories: ["All", "Utility"],
+    availability: "web-and-desktop",
+    icon: <QrCode className="w-8 h-8 text-cyan-500" />,
+    component: QRCodeGeneratorApp,
   },
 ];
 

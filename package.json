@@ -29,6 +29,7 @@
     "hono": "^4.12.33",
     "music-metadata-browser": "^2.5.11",
     "playwright": "^1.62.1",
+    "qrcode.react": "^4.2.0",
     "react-easy-crop": "^6.2.3",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
