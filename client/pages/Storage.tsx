@@ -429,6 +429,8 @@ export default function Storage() {
                     variant="destructive"
                     size="icon"
                     onClick={() => deleteCloudFile(file.name)}
+                    aria-label="Delete file"
+                    title="Delete file"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
