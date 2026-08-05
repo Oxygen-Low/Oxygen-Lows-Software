@@ -123,7 +123,7 @@ const apps: AppMetadata[] = [
   {
     id: "data-save",
     name: "Data Save",
-    description: "Save keys and contents into the database.",
+    description: "Securely store and manage your custom data and text snippets.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Server className="w-8 h-8 text-cyan-500" />,
