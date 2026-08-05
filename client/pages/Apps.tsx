@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { PublicCharactersApp } from "@/components/apps/PublicCharacters";
+import { DataSaveApp } from "@/components/apps/DataSave";
 import { Server } from "lucide-react";
 
 type Category =
@@ -118,6 +119,15 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Users className="w-8 h-8 text-cyan-500" />,
     component: PublicCharactersApp,
+  },
+  {
+    id: "data-save",
+    name: "Data Save",
+    description: "Save keys and contents into the database.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Server className="w-8 h-8 text-cyan-500" />,
+    component: DataSaveApp,
   },
 ];
 
