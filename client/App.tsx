@@ -54,6 +54,14 @@ const App = () => (
                 }
               />
               <Route
+                path="/apps/:appId"
+                element={
+                  <ProtectedRoute>
+                    <Apps />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/storage"
                 element={
                   <ProtectedRoute>

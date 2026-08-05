@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import {
   Card,
@@ -150,7 +150,10 @@ export default function Apps() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
-  const [activeApp, setActiveApp] = useState<AppMetadata | null>(null);
+  
+  const { appId } = useParams<{ appId: string }>();
+  const navigate = useNavigate();
+  const activeApp = useMemo(() => apps.find(a => a.id === appId) || null, [appId]);
 
   const availableApps = useMemo(
     () =>
@@ -196,7 +199,7 @@ export default function Apps() {
           {!isChatbot && (
             <div className="flex items-center gap-4 mb-8">
               <button
-                onClick={() => setActiveApp(null)}
+                onClick={() => navigate("/apps")}
                 aria-label="Back to apps list"
                 title="Back to apps list"
                 className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
@@ -308,7 +311,7 @@ export default function Apps() {
                 <Card
                   key={app.id}
                   className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden"
-                  onClick={() => setActiveApp(app)}
+                  onClick={() => navigate(`/apps/${app.id}`)}
                 >
                   <CardHeader className="p-6">
                     <div className="mb-4 transition-transform group-hover:scale-110">
