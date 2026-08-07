@@ -12,3 +12,8 @@
 
 **Learning:** When fetching raw data (e.g. `fData` array) that needs to be separated into multiple state arrays (like accepted friends, pending incoming, and pending outgoing), using multiple `Array.filter()` calls causes redundant O(N) traversals on every render or data load.
 **Action:** Always refactor multiple `Array.filter()` calls into a single `Array.reduce()` or `Array.forEach()` loop to process the data in one O(N) pass, pushing each item into the appropriate temporary array before setting state.
+
+## 2024-05-31 - [Hoist redundant function calls from useMemo loop]
+
+**Learning:** When using `useMemo` to filter an array (e.g. `array.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))`), string operations like `searchTerm.toLowerCase()` are needlessly re-evaluated for every item in the array inside the filter callback loop.
+**Action:** Hoist the string operations (like `toLowerCase()`) outside the callback but inside the `useMemo` function body to avoid redundant computation while iterating.
