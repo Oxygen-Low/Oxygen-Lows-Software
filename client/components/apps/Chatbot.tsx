@@ -324,6 +324,16 @@ const ChatMessage = React.memo(
               >
                 <button
                   onClick={() => setReasoningExpanded(!reasoningExpanded)}
+                  aria-label={
+                    reasoningExpanded
+                      ? "Collapse reasoning process"
+                      : "Expand reasoning process"
+                  }
+                  title={
+                    reasoningExpanded
+                      ? "Collapse reasoning process"
+                      : "Expand reasoning process"
+                  }
                   className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90"
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
@@ -467,53 +477,55 @@ export function ChatbotApp() {
     return path;
   }, [allMessages, activeChildren]);
 
-  const setMessages = useCallback((
-    updater: Message[] | ((prev: Message[]) => Message[]),
-  ) => {
-    // This is a shim for setMessages that is used by streaming updates
-    if (typeof updater === "function") {
-      setAllMessages((prevAll) => {
-        const rootMessages = prevAll.filter((m) => !m.parent_id);
-        let currentId =
-          activeChildrenRef.current["root"] || rootMessages[rootMessages.length - 1]?.id;
-        const path: Message[] = [];
-        while (currentId) {
-          const msg = prevAll.find((m) => m.id === currentId);
-          if (!msg) break;
-          path.push(msg);
-          currentId = activeChildrenRef.current[currentId];
-        }
-        const newPath = updater(path);
-        const newAll = [...prevAll];
-        const lastMsg = newPath[newPath.length - 1];
-        if (lastMsg && !lastMsg.id) {
-          // Temporary streaming message
-          const existingTempIndex = newAll.findIndex(
-            (m) => m.id === "temp-streaming",
-          );
-          if (existingTempIndex >= 0) {
-            newAll[existingTempIndex] = { ...lastMsg, id: "temp-streaming" };
-          } else {
-            newAll.push({ ...lastMsg, id: "temp-streaming" });
+  const setMessages = useCallback(
+    (updater: Message[] | ((prev: Message[]) => Message[])) => {
+      // This is a shim for setMessages that is used by streaming updates
+      if (typeof updater === "function") {
+        setAllMessages((prevAll) => {
+          const rootMessages = prevAll.filter((m) => !m.parent_id);
+          let currentId =
+            activeChildrenRef.current["root"] ||
+            rootMessages[rootMessages.length - 1]?.id;
+          const path: Message[] = [];
+          while (currentId) {
+            const msg = prevAll.find((m) => m.id === currentId);
+            if (!msg) break;
+            path.push(msg);
+            currentId = activeChildrenRef.current[currentId];
           }
-        } else if (lastMsg && lastMsg.id) {
-          const existingIndex = newAll.findIndex((m) => m.id === lastMsg.id);
-          if (existingIndex >= 0) {
-            newAll[existingIndex] = lastMsg;
-          } else {
-            newAll.push(lastMsg);
+          const newPath = updater(path);
+          const newAll = [...prevAll];
+          const lastMsg = newPath[newPath.length - 1];
+          if (lastMsg && !lastMsg.id) {
+            // Temporary streaming message
+            const existingTempIndex = newAll.findIndex(
+              (m) => m.id === "temp-streaming",
+            );
+            if (existingTempIndex >= 0) {
+              newAll[existingTempIndex] = { ...lastMsg, id: "temp-streaming" };
+            } else {
+              newAll.push({ ...lastMsg, id: "temp-streaming" });
+            }
+          } else if (lastMsg && lastMsg.id) {
+            const existingIndex = newAll.findIndex((m) => m.id === lastMsg.id);
+            if (existingIndex >= 0) {
+              newAll[existingIndex] = lastMsg;
+            } else {
+              newAll.push(lastMsg);
+            }
           }
+          return newAll;
+        });
+      } else {
+        // Direct set (e.g. setMessages([]))
+        if (updater.length === 0) {
+          setAllMessages([]);
+          setActiveChildren({});
         }
-        return newAll;
-      });
-    } else {
-      // Direct set (e.g. setMessages([]))
-      if (updater.length === 0) {
-        setAllMessages([]);
-        setActiveChildren({});
       }
-    }
-  }, []);
+    },
+    [],
+  );
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const isTypingRef = useRef(false);
@@ -631,7 +643,7 @@ export function ChatbotApp() {
           m.provider !== "horde" &&
           m.provider !== "cloudflare" &&
           m.provider !== "custom" &&
-          !(m.provider === "openrouter" && m.model_id === "openrouter/free")
+          !(m.provider === "openrouter" && m.model_id === "openrouter/free"),
       ),
     [models],
   );
@@ -998,14 +1010,14 @@ export function ChatbotApp() {
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     let fullContent = "";
-    
+
     const toolSearch = response.headers.get("X-Tool-Search");
     if (toolSearch) {
       const query = decodeURIComponent(toolSearch);
       fullContent += `<tool_call>{"name":"Web Search", "args":{"query":"${query}"}}</tool_call>\n\n`;
       streamCallback(fullContent);
     }
-    
+
     let streamBuffer = "";
 
     if (reader) {
@@ -1219,7 +1231,8 @@ export function ChatbotApp() {
       setAllMessages((prev) =>
         prev.map((m) => {
           if (m.id === "temp-user") return { ...m, id: userMsgData.id };
-          if (m.parent_id === "temp-user") return { ...m, parent_id: userMsgData.id };
+          if (m.parent_id === "temp-user")
+            return { ...m, parent_id: userMsgData.id };
           return m;
         }),
       );
@@ -1320,8 +1333,10 @@ export function ChatbotApp() {
             getApiMessages(reasoningMessages),
             controller.signal,
             (content) => {
-              setAllMessages((prevAll) => 
-                prevAll.map(m => m.id === "temp-streaming" ? { ...m, reasoning: content } : m)
+              setAllMessages((prevAll) =>
+                prevAll.map((m) =>
+                  m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+                ),
               );
             },
           );
@@ -1344,8 +1359,10 @@ export function ChatbotApp() {
             getApiMessages(finalMessages),
             controller.signal,
             (content) => {
-              setAllMessages((prevAll) => 
-                prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+              setAllMessages((prevAll) =>
+                prevAll.map((m) =>
+                  m.id === "temp-streaming" ? { ...m, content } : m,
+                ),
               );
 
               if (
@@ -1365,8 +1382,10 @@ export function ChatbotApp() {
             getApiMessages(currentMessages),
             controller.signal,
             (content) => {
-              setAllMessages((prevAll) => 
-                prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+              setAllMessages((prevAll) =>
+                prevAll.map((m) =>
+                  m.id === "temp-streaming" ? { ...m, content } : m,
+                ),
               );
 
               if (
@@ -1533,7 +1552,9 @@ export function ChatbotApp() {
         ];
       };
 
-      const lastUserMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id);
+      const lastUserMessageIndex = messages.findIndex(
+        (m) => m.id === lastUserMessage.id,
+      );
       let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
       if (isReasoningEnabled) {
@@ -1551,8 +1572,10 @@ export function ChatbotApp() {
           getApiMessages(reasoningMessages),
           controller.signal,
           (content) => {
-            setAllMessages((prevAll) => 
-              prevAll.map(m => m.id === "temp-streaming" ? { ...m, reasoning: content } : m)
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+              ),
             );
           },
         );
@@ -1574,8 +1597,10 @@ export function ChatbotApp() {
           getApiMessages(finalMessages),
           controller.signal,
           (content) => {
-            setAllMessages((prevAll) => 
-              prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, content } : m,
+              ),
             );
           },
         );
@@ -1586,8 +1611,10 @@ export function ChatbotApp() {
           getApiMessages(currentMessages),
           controller.signal,
           (content) => {
-            setAllMessages((prevAll) => 
-              prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, content } : m,
+              ),
             );
           },
         );
@@ -1816,9 +1843,9 @@ export function ChatbotApp() {
       </div>
 
       {/* Invisible hover trigger zone along right edge (Desktop) */}
-      <div 
-        className="fixed top-0 right-0 w-[18px] h-[100vh] z-[49] hidden md:block" 
-        onMouseEnter={openSidebar} 
+      <div
+        className="fixed top-0 right-0 w-[18px] h-[100vh] z-[49] hidden md:block"
+        onMouseEnter={openSidebar}
         onMouseLeave={scheduleSidebarClose}
       />
 
@@ -1826,7 +1853,9 @@ export function ChatbotApp() {
       <div
         className={cn(
           "fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-[50]",
-          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          sidebarOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none",
         )}
         onClick={() => setSidebarOpen(false)}
       />
@@ -1835,70 +1864,69 @@ export function ChatbotApp() {
       <aside
         className={cn(
           "fixed top-0 right-0 h-[100vh] w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between shadow-2xl z-[51]",
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
+          sidebarOpen ? "translate-x-0" : "translate-x-full",
         )}
         onMouseEnter={openSidebar}
         onMouseLeave={scheduleSidebarClose}
       >
         <div className="flex flex-col gap-6 h-full overflow-hidden">
-            <div className="flex flex-col gap-4 h-full">
-              <button
-                onClick={handleNewChatClick}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors w-full"
-              >
-                <Plus className="w-4 h-4 text-white" />
-                <span className="text-white text-sm font-medium leading-normal font-display">
-                  New Chat
-                </span>
-              </button>
-              <ScrollArea className="flex-1 -mx-2 px-2">
-                <div className="flex flex-col gap-1 mt-2">
-                  <p className="text-slate-400 text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
-                    Chats
-                  </p>
-                  {chats.map((c) => (
-                    <div
-                      key={c.id}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors",
-                        currentChatId === c.id
-                          ? "bg-white/10 text-white"
-                          : "hover:bg-white/5 text-slate-400 hover:text-white",
-                      )}
-                      onClick={() => {
-                        setCurrentChatId(c.id);
-                        setSidebarOpen(false);
+          <div className="flex flex-col gap-4 h-full">
+            <button
+              onClick={handleNewChatClick}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors w-full"
+            >
+              <Plus className="w-4 h-4 text-white" />
+              <span className="text-white text-sm font-medium leading-normal font-display">
+                New Chat
+              </span>
+            </button>
+            <ScrollArea className="flex-1 -mx-2 px-2">
+              <div className="flex flex-col gap-1 mt-2">
+                <p className="text-slate-400 text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
+                  Chats
+                </p>
+                {chats.map((c) => (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors",
+                      currentChatId === c.id
+                        ? "bg-white/10 text-white"
+                        : "hover:bg-white/5 text-slate-400 hover:text-white",
+                    )}
+                    onClick={() => {
+                      setCurrentChatId(c.id);
+                      setSidebarOpen(false);
+                    }}
+                  >
+                    <Bot className="w-5 h-5 opacity-70" />
+                    <span className="text-sm font-medium truncate flex-1 font-body">
+                      {c.title}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        supabase
+                          .from("chats")
+                          .delete()
+                          .eq("id", c.id)
+                          .then(() => {
+                            setChats(chats.filter((x) => x.id !== c.id));
+                            if (currentChatId === c.id) setCurrentChatId(null);
+                          });
                       }}
+                      className="md:opacity-0 md:group-hover/chat:opacity-100 opacity-100 hover:text-red-400 p-1 transition-opacity"
+                      aria-label="Delete chat"
+                      title="Delete chat"
                     >
-                      <Bot className="w-5 h-5 opacity-70" />
-                      <span className="text-sm font-medium truncate flex-1 font-body">
-                        {c.title}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          supabase
-                            .from("chats")
-                            .delete()
-                            .eq("id", c.id)
-                            .then(() => {
-                              setChats(chats.filter((x) => x.id !== c.id));
-                              if (currentChatId === c.id)
-                                setCurrentChatId(null);
-                            });
-                        }}
-                        className="md:opacity-0 md:group-hover/chat:opacity-100 opacity-100 hover:text-red-400 p-1 transition-opacity"
-                        aria-label="Delete chat"
-                        title="Delete chat"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
+        </div>
       </aside>
 
       {/* Main Area */}
@@ -1922,11 +1950,11 @@ export function ChatbotApp() {
         </header>
 
         {/* Subtle edge hint when sidebar is closed */}
-        <div 
+        <div
           className={cn(
             "fixed top-1/2 right-0 -translate-y-1/2 w-1 h-12 rounded-l-md bg-primary/25 z-[48] transition-all duration-300 pointer-events-none",
-            sidebarOpen ? "opacity-0" : "opacity-100"
-          )} 
+            sidebarOpen ? "opacity-0" : "opacity-100",
+          )}
         />
 
         {/* Chat Scrolling Area */}
@@ -2055,6 +2083,7 @@ export function ChatbotApp() {
                     }}
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white/70 transition-all duration-200"
                     title="Toggle Options"
+                    aria-label="Toggle Options"
                   >
                     <span className="material-symbols-outlined text-[20px] font-family-material">
                       add
@@ -2196,6 +2225,8 @@ export function ChatbotApp() {
                       setOptionsDropdownOpen(false);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-transparent hover:bg-white/5 transition-colors text-sm text-white/90"
+                    aria-label="Select Model"
+                    title="Select Model"
                   >
                     <span>
                       {
