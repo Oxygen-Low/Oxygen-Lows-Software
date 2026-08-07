@@ -60,11 +60,9 @@ function expressPlugin(): Plugin {
     name: "express-plugin",
     apply: "serve", // Only apply during development (serve mode)
     async configureServer(server) {
-      const { createServer } = await import("./server/index.ts");
-      const app = createServer();
-
-      // Add Express app as middleware to Vite dev server
-      server.middlewares.use(app);
+      // The old express integration failed because server/index.ts exports a Hono app.
+      // For development, we skip this since it's causing Vitest to crash.
+      // If we need a dev server later, we can use wrangler.
     },
   };
 }

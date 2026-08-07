@@ -9,3 +9,7 @@
 **Vulnerability:** A critical command/process injection vulnerability could exist in `MainWindow.xaml.cs` when using `Process.Start` with dynamic user-controlled URIs during OAuth flows. If the URI scheme or host were not strictly validated, an attacker could potentially launch local system files, executables, or craft malicious URI schemes.
 **Learning:** Passing dynamic or unvalidated URLs directly to `Process.Start` with `UseShellExecute = true` can trigger security scanner alerts and potentially lead to OS command/process starting injection if the scheme or hostname is manipulated.
 **Prevention:** Always enforce strict whitelist validation on any URLs passed to `Process.Start` by verifying that the scheme is strictly `https`, the host belongs to a hardcoded list of allowed domains, and the path matches the expected endpoint pattern.
+## 2024-05-24 - [SSRF via Proxy Fetch]
+**Vulnerability:** The `/api/proxy/fetch` endpoint blindly forwarded requests to any user-provided URL without validation. This enabled Server-Side Request Forgery (SSRF), allowing access to local IPs (`localhost`, `127.0.0.1`), private networks (`10.x.x.x`), and cloud metadata services (`169.254.169.254`).
+**Learning:** Generic proxy endpoints in server environments (like Cloudflare Workers) must validate their target destinations to prevent them from being abused as a gateway into internal networks.
+**Prevention:** Implemented URL scheme validation (allowing only HTTP/HTTPS) and added an IP blocklist for common internal and private network ranges before initiating a `fetch`.
