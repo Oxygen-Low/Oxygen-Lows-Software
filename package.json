@@ -19,7 +19,7 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@monaco-editor/react": "^4.7.0",
-    "@supabase/supabase-js": "^2.111.0",
+    "@supabase/supabase-js": "^2.112.0",
     "axios": "^1.19.0",
     "browser-image-compression": "^2.0.2",
     "buffer": "^6.0.3",
