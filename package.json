@@ -111,7 +111,7 @@
     "tailwindcss": "4.3.3",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.185.1",
-    "tsx": "^4.23.4",
+    "tsx": "^4.23.5",
     "typescript": "7.0.2",
     "vaul": "^1.1.2",
     "vite": "^8.2.0",
