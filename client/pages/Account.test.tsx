@@ -88,7 +88,9 @@ describe("Account Component", () => {
   it("renders Models tab correctly", async () => {
     render(<Account />);
     fireEvent.click(screen.getByRole("button", { name: "Models" }));
-    const select = await screen.findByRole("combobox", { name: "Select Model Provider" });
+    const select = await screen.findByRole("combobox", {
+      name: "Select Model Provider",
+    });
     expect(select).toBeDefined();
   });
 

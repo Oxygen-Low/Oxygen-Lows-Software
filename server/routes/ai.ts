@@ -105,12 +105,23 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       if (parsed.protocol !== "https:") {
         return c.json({ error: "Custom base URL must use HTTPS" }, 400);
       }
-      const blockedHosts = ["localhost", "127.0.0.1", "::1", "169.254.169.254", "metadata.google.internal"];
-      if (blockedHosts.includes(parsed.hostname) ||
-          parsed.hostname.startsWith("10.") ||
-          parsed.hostname.startsWith("192.168.") ||
-          /^172\.(1[6-9]|2\d|3[01])\./.test(parsed.hostname)) {
-        return c.json({ error: "Custom base URL must point to a public server" }, 400);
+      const blockedHosts = [
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "169.254.169.254",
+        "metadata.google.internal",
+      ];
+      if (
+        blockedHosts.includes(parsed.hostname) ||
+        parsed.hostname.startsWith("10.") ||
+        parsed.hostname.startsWith("192.168.") ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(parsed.hostname)
+      ) {
+        return c.json(
+          { error: "Custom base URL must point to a public server" },
+          400,
+        );
       }
       integration = { ...integration, base_url: baseUrl };
     } catch {
@@ -135,65 +146,75 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   if (lastMsg && lastMsg.role === "user") {
     try {
       const intentCheckBody = {
-        model: HORDE_MODELS_MAP.TitleGen?.[0] || "koboldcpp/Llama-3.2-1B-Instruct",
+        model:
+          HORDE_MODELS_MAP.TitleGen?.[0] || "koboldcpp/Llama-3.2-1B-Instruct",
         messages: [
           {
             role: "system",
-            content: `You determine if a web search is needed to answer the user's message. Respond with {"search": true, "query": "..."} if yes, or {"search": false} if no. Examples of needing search: current weather, news, sports scores, recent facts.`
+            content: `You determine if a web search is needed to answer the user's message. Respond with {"search": true, "query": "..."} if yes, or {"search": false} if no. Examples of needing search: current weather, news, sports scores, recent facts.`,
           },
-          { role: "user", content: lastMsg.content }
+          { role: "user", content: lastMsg.content },
         ],
         stream: false,
         max_tokens: 50,
-        temperature: 0.1
+        temperature: 0.1,
       };
 
-      const intentRes = await fetch("https://oai.stablehorde.net/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${integration?.api_key || "0000000000"}`
+      const intentRes = await fetch(
+        "https://oai.stablehorde.net/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${integration?.api_key || "0000000000"}`,
+          },
+          body: JSON.stringify(intentCheckBody),
         },
-        body: JSON.stringify(intentCheckBody)
-      });
+      );
 
       if (intentRes.ok) {
         const intentData = await intentRes.json();
         const content = intentData.choices?.[0]?.message?.content?.trim();
-        
+
         if (content) {
           const match = content.match(/\{[\s\S]*\}/);
           if (match) {
             const parsed = JSON.parse(match[0]);
             if (parsed.search && parsed.query) {
-               // Perform search
-               const query = parsed.query;
-               searchPerformed = query;
-               const searchResponse = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query), {
-                 headers: {
-                   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-                 }
-               });
-               if (searchResponse.ok) {
-                 const text = await searchResponse.text();
-                 const snippetRegex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
-                 let snippets = [];
-                 let m;
-                 let count = 0;
-                 while ((m = snippetRegex.exec(text)) !== null && count < 5) {
-                   const cleanSnippet = m[1].replace(/<[^>]*>?/gm, '').trim();
-                   if (cleanSnippet) {
-                     snippets.push(cleanSnippet);
-                     count++;
-                   }
-                 }
-                 if (snippets.length > 0) {
-                   finalMessages.push({
-                     role: "system",
-                     content: `Web Search Results for "${query}":\n\n${snippets.join("\n\n")}`
-                   });
-                 }
-               }
+              // Perform search
+              const query = parsed.query;
+              searchPerformed = query;
+              const searchResponse = await fetch(
+                "https://html.duckduckgo.com/html/?q=" +
+                  encodeURIComponent(query),
+                {
+                  headers: {
+                    "User-Agent":
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                  },
+                },
+              );
+              if (searchResponse.ok) {
+                const text = await searchResponse.text();
+                const snippetRegex =
+                  /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+                let snippets = [];
+                let m;
+                let count = 0;
+                while ((m = snippetRegex.exec(text)) !== null && count < 5) {
+                  const cleanSnippet = m[1].replace(/<[^>]*>?/gm, "").trim();
+                  if (cleanSnippet) {
+                    snippets.push(cleanSnippet);
+                    count++;
+                  }
+                }
+                if (snippets.length > 0) {
+                  finalMessages.push({
+                    role: "system",
+                    content: `Web Search Results for "${query}":\n\n${snippets.join("\n\n")}`,
+                  });
+                }
+              }
             }
           }
         }
@@ -245,7 +266,9 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["x-api-key"] = integration?.api_key;
       fetchOptions.headers["anthropic-version"] = "2023-06-01";
     } else if (provider === "google") {
-      const action = stream ? "streamGenerateContent?alt=sse&" : "generateContent?";
+      const action = stream
+        ? "streamGenerateContent?alt=sse&"
+        : "generateContent?";
       targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${action}key=${integration?.api_key}`;
       requestBody = {
         systemInstruction: {
@@ -283,7 +306,10 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         `Bearer ${integration?.api_key || "0000000000"}`;
     } else if (provider === "cloudflare") {
       // Estimate token usage (input + 400 estimated output)
-      const inputChars = finalMessages.reduce((acc: number, m: any) => acc + (m.content || "").length, 0);
+      const inputChars = finalMessages.reduce(
+        (acc: number, m: any) => acc + (m.content || "").length,
+        0,
+      );
       const estimatedTokens = Math.floor(inputChars / 4) + 400;
       // Convert to points (roughly 10 tokens per point)
       const p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
@@ -328,7 +354,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       if (!AccountID || !CloudflareAPIToken) {
         return c.json(
           {
-            error: "Cloudflare AI is temporarily unavailable. Please try a different provider.",
+            error:
+              "Cloudflare AI is temporarily unavailable. Please try a different provider.",
           },
           500,
         );
@@ -351,13 +378,13 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     if (!upstreamResponse.ok) {
       const status = upstreamResponse.status;
       let userMessage = "The AI provider returned an error.";
-      if (status === 401 || status === 403) userMessage = "Invalid or expired API key for this provider.";
-      else if (status === 429) userMessage = "Rate limit exceeded. Please try again later.";
-      else if (status === 503 || status === 502) userMessage = "The AI provider is temporarily unavailable.";
-      return c.json(
-        { error: userMessage },
-        status as any,
-      );
+      if (status === 401 || status === 403)
+        userMessage = "Invalid or expired API key for this provider.";
+      else if (status === 429)
+        userMessage = "Rate limit exceeded. Please try again later.";
+      else if (status === 503 || status === 502)
+        userMessage = "The AI provider is temporarily unavailable.";
+      return c.json({ error: userMessage }, status as any);
     }
 
     if (stream) {

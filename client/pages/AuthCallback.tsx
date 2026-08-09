@@ -19,7 +19,9 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         navigate("/apps", { replace: true });
       }
@@ -32,7 +34,7 @@ export default function AuthCallback() {
         if (event === "SIGNED_IN" && session) {
           navigate("/apps", { replace: true });
         }
-      }
+      },
     );
 
     // Timeout if it takes too long

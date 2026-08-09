@@ -36,7 +36,9 @@ export function DataSaveApp() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<
+    string | null
+  >(null);
 
   const fetchData = async () => {
     if (!session?.user?.id) return;
@@ -50,7 +52,7 @@ export function DataSaveApp() {
         supabase
           .from("data_save_categories")
           .select("*")
-          .order("name", { ascending: true })
+          .order("name", { ascending: true }),
       ]);
 
       if (savesRes.error) throw savesRes.error;
@@ -84,7 +86,9 @@ export function DataSaveApp() {
       // Handle category creation/selection
       const catInput = categoryName.trim();
       if (catInput) {
-        const existingCat = categories.find(c => c.name.toLowerCase() === catInput.toLowerCase());
+        const existingCat = categories.find(
+          (c) => c.name.toLowerCase() === catInput.toLowerCase(),
+        );
         if (existingCat) {
           categoryId = existingCat.id;
         } else {
@@ -93,20 +97,24 @@ export function DataSaveApp() {
             .insert({ user_id: session?.user?.id, name: catInput })
             .select()
             .single();
-          
+
           if (catError) throw catError;
           categoryId = newCat.id;
         }
       }
 
       // Check if data save exists
-      const existing = saves.find(s => s.key_name === keyName);
-      
+      const existing = saves.find((s) => s.key_name === keyName);
+
       let error;
       if (existing) {
         const { error: updateError } = await supabase
           .from("data_saves")
-          .update({ content, category_id: categoryId, updated_at: new Date().toISOString() })
+          .update({
+            content,
+            category_id: categoryId,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", existing.id);
         error = updateError;
       } else {
@@ -122,7 +130,7 @@ export function DataSaveApp() {
       }
 
       if (error) throw error;
-      
+
       toast.success("Data saved successfully!");
       setKeyName("");
       setContent("");
@@ -138,13 +146,10 @@ export function DataSaveApp() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("data_saves")
-        .delete()
-        .eq("id", id);
-      
+      const { error } = await supabase.from("data_saves").delete().eq("id", id);
+
       if (error) throw error;
-      
+
       toast.success("Data deleted successfully");
       fetchData();
     } catch (error: any) {
@@ -152,10 +157,13 @@ export function DataSaveApp() {
     }
   };
 
-  const filteredSaves = saves.filter(s => {
-    const matchesSearch = s.key_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          s.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategoryFilter ? s.category_id === selectedCategoryFilter : true;
+  const filteredSaves = saves.filter((s) => {
+    const matchesSearch =
+      s.key_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.content.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategoryFilter
+      ? s.category_id === selectedCategoryFilter
+      : true;
     return matchesSearch && matchesCategory;
   });
 
@@ -200,7 +208,7 @@ export function DataSaveApp() {
                     list="category-options"
                   />
                   <datalist id="category-options">
-                    {categories.map(c => (
+                    {categories.map((c) => (
                       <option key={c.id} value={c.name} />
                     ))}
                   </datalist>
@@ -265,11 +273,15 @@ export function DataSaveApp() {
                   <select
                     className="pl-9 pr-4 h-10 w-full sm:w-40 rounded-md bg-slate-950 border-slate-800 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none cursor-pointer"
                     value={selectedCategoryFilter || ""}
-                    onChange={(e) => setSelectedCategoryFilter(e.target.value || null)}
+                    onChange={(e) =>
+                      setSelectedCategoryFilter(e.target.value || null)
+                    }
                   >
                     <option value="">All Categories</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -303,7 +315,10 @@ export function DataSaveApp() {
                           </h4>
                           {save.category && (
                             <div>
-                              <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] px-1.5 py-0 font-normal">
+                              <Badge
+                                variant="secondary"
+                                className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] px-1.5 py-0 font-normal"
+                              >
                                 {save.category.name}
                               </Badge>
                             </div>
@@ -323,13 +338,13 @@ export function DataSaveApp() {
                           {save.content}
                         </pre>
                         <Button
-                           variant="secondary"
-                           size="sm"
-                           className="absolute top-2 right-2 opacity-0 group-hover/content:opacity-100 transition-opacity text-[10px] h-6"
-                           onClick={() => {
-                             navigator.clipboard.writeText(save.content);
-                             toast.success("Copied to clipboard!");
-                           }}
+                          variant="secondary"
+                          size="sm"
+                          className="absolute top-2 right-2 opacity-0 group-hover/content:opacity-100 transition-opacity text-[10px] h-6"
+                          onClick={() => {
+                            navigator.clipboard.writeText(save.content);
+                            toast.success("Copied to clipboard!");
+                          }}
                         >
                           Copy
                         </Button>

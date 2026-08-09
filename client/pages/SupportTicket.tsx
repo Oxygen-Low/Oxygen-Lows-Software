@@ -177,16 +177,20 @@ export default function SupportTicket() {
   };
 
   const handleDeleteTicket = async () => {
-    if (!id || !confirm("Are you sure you want to delete this ticket permanently?")) return;
+    if (
+      !id ||
+      !confirm("Are you sure you want to delete this ticket permanently?")
+    )
+      return;
     setIsDeleting(true);
     try {
       const { error } = await supabase
         .from("support_tickets")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
-      
+
       toast({
         title: "Ticket deleted",
         description: "Your ticket has been deleted.",
@@ -225,135 +229,140 @@ export default function SupportTicket() {
   return (
     <Layout>
       <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/support")}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{ticket.title}</h1>
-            <div className="flex items-center space-x-2 mt-1">
-              <Badge
-                variant={
-                  ticket.priority === "Highest" ? "destructive" : "secondary"
-                }
-              >
-                {ticket.priority}
-              </Badge>
-              <Badge variant="outline">{ticket.type}</Badge>
-              <Badge variant={ticket.status === "Open" ? "default" : "secondary"}>
-                {ticket.status}
-              </Badge>
+        <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/support")}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">{ticket.title}</h1>
+              <div className="flex items-center space-x-2 mt-1">
+                <Badge
+                  variant={
+                    ticket.priority === "Highest" ? "destructive" : "secondary"
+                  }
+                >
+                  {ticket.priority}
+                </Badge>
+                <Badge variant="outline">{ticket.type}</Badge>
+                <Badge
+                  variant={ticket.status === "Open" ? "default" : "secondary"}
+                >
+                  {ticket.status}
+                </Badge>
+              </div>
             </div>
           </div>
+          {ticket.status === "Closed" && (
+            <Button
+              variant="destructive"
+              onClick={handleDeleteTicket}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Ticket"}
+            </Button>
+          )}
         </div>
-        {ticket.status === "Closed" && (
-          <Button 
-            variant="destructive" 
-            onClick={handleDeleteTicket} 
-            disabled={isDeleting}
-          >
-            {isDeleting ? "Deleting..." : "Delete Ticket"}
-          </Button>
-        )}
-      </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="py-4 border-b">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Description
-          </CardTitle>
-          <p className="text-sm mt-2 whitespace-pre-wrap">
-            {ticket.description || "No description provided."}
-          </p>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 ? (
-              <p className="text-center text-muted-foreground text-sm my-4">
-                No messages yet. Send a message to start the conversation.
-              </p>
-            ) : (
-              messages.map((msg) => {
-                const isMine = msg.sender_id === session?.user?.id;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className="flex items-end space-x-2 max-w-[80%]">
-                      {!isMine && (
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={msg.profiles?.avatar_url} />
-                          <AvatarFallback>
-                            {msg.profiles?.username?.[0]?.toUpperCase() || "A"}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div
-                        className={`p-3 rounded-2xl ${
-                          isMine
-                            ? "bg-primary text-primary-foreground rounded-br-none"
-                            : "bg-muted rounded-bl-none"
-                        }`}
-                      >
+        <Card className="flex-1 flex flex-col overflow-hidden">
+          <CardHeader className="py-4 border-b">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Description
+            </CardTitle>
+            <p className="text-sm mt-2 whitespace-pre-wrap">
+              {ticket.description || "No description provided."}
+            </p>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 0 ? (
+                <p className="text-center text-muted-foreground text-sm my-4">
+                  No messages yet. Send a message to start the conversation.
+                </p>
+              ) : (
+                messages.map((msg) => {
+                  const isMine = msg.sender_id === session?.user?.id;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className="flex items-end space-x-2 max-w-[80%]">
                         {!isMine && (
-                          <p className="text-xs font-semibold mb-1 opacity-75">
-                            {msg.profiles?.username || "Admin"}
-                          </p>
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={msg.profiles?.avatar_url} />
+                            <AvatarFallback>
+                              {msg.profiles?.username?.[0]?.toUpperCase() ||
+                                "A"}
+                            </AvatarFallback>
+                          </Avatar>
                         )}
-                        <p className="text-sm whitespace-pre-wrap">
-                          {msg.message}
-                        </p>
-                        <p className="text-[10px] mt-1 opacity-60 text-right">
-                          {new Date(msg.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
+                        <div
+                          className={`p-3 rounded-2xl ${
+                            isMine
+                              ? "bg-primary text-primary-foreground rounded-br-none"
+                              : "bg-muted rounded-bl-none"
+                          }`}
+                        >
+                          {!isMine && (
+                            <p className="text-xs font-semibold mb-1 opacity-75">
+                              {msg.profiles?.username || "Admin"}
+                            </p>
+                          )}
+                          <p className="text-sm whitespace-pre-wrap">
+                            {msg.message}
+                          </p>
+                          <p className="text-[10px] mt-1 opacity-60 text-right">
+                            {new Date(msg.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
 
-          <div className="p-4 border-t bg-background">
-            <form
-              onSubmit={handleSendMessage}
-              className="flex items-center space-x-2"
-            >
-              <Input
-                placeholder={
-                  ticket.status === "Closed"
-                    ? "Ticket is closed"
-                    : "Type your message..."
-                }
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                disabled={isSending || ticket.status === "Closed"}
-                className="flex-1"
-              />
-              <Button
-                type="submit"
-                size="icon"
-                disabled={
-                  isSending || ticket.status === "Closed" || !newMessage.trim()
-                }
+            <div className="p-4 border-t bg-background">
+              <form
+                onSubmit={handleSendMessage}
+                className="flex items-center space-x-2"
               >
-                <Send className="w-4 h-4" />
-              </Button>
-            </form>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                <Input
+                  placeholder={
+                    ticket.status === "Closed"
+                      ? "Ticket is closed"
+                      : "Type your message..."
+                  }
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  disabled={isSending || ticket.status === "Closed"}
+                  className="flex-1"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={
+                    isSending ||
+                    ticket.status === "Closed" ||
+                    !newMessage.trim()
+                  }
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </Layout>
   );
 }

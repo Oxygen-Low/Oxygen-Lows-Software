@@ -115,129 +115,139 @@ export default function Support() {
   return (
     <Layout>
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Support Tickets</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Create Ticket</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Create a Support Ticket</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateTicket} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Title *</label>
-                <Input
-                  required
-                  placeholder="e.g., File Compressor error"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
-                <Textarea
-                  placeholder="Details of your issue..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Priority *</label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Highest">Highest (Security)</SelectItem>
-                    <SelectItem value="High">High (Broken Feature)</SelectItem>
-                    <SelectItem value="Medium">Medium (General)</SelectItem>
-                    <SelectItem value="Low">Low (Visual Bug)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Type *</label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Suggestion">Suggestion</SelectItem>
-                    <SelectItem value="Bug Report">Bug Report</SelectItem>
-                    <SelectItem value="Security Vulnerability Report">
-                      Security Vulnerability
-                    </SelectItem>
-                    <SelectItem value="User Report">User Report</SelectItem>
-                    <SelectItem value="Request">Request</SelectItem>
-                    <SelectItem value="Account Deletion Request">
-                      Account Deletion Request
-                    </SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Ticket"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Tickets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-muted-foreground">Loading tickets...</p>
-          ) : tickets.length === 0 ? (
-            <p className="text-muted-foreground">No tickets found.</p>
-          ) : (
-            <div className="space-y-4">
-              {tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  onClick={() => navigate(`/support/${ticket.id}`)}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Support Tickets</h1>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Create Ticket</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Create a Support Ticket</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreateTicket} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Title *</label>
+                  <Input
+                    required
+                    placeholder="e.g., File Compressor error"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea
+                    placeholder="Details of your issue..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Priority *</label>
+                  <Select value={priority} onValueChange={setPriority}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Highest">
+                        Highest (Security)
+                      </SelectItem>
+                      <SelectItem value="High">
+                        High (Broken Feature)
+                      </SelectItem>
+                      <SelectItem value="Medium">Medium (General)</SelectItem>
+                      <SelectItem value="Low">Low (Visual Bug)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Type *</label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Suggestion">Suggestion</SelectItem>
+                      <SelectItem value="Bug Report">Bug Report</SelectItem>
+                      <SelectItem value="Security Vulnerability Report">
+                        Security Vulnerability
+                      </SelectItem>
+                      <SelectItem value="User Report">User Report</SelectItem>
+                      <SelectItem value="Request">Request</SelectItem>
+                      <SelectItem value="Account Deletion Request">
+                        Account Deletion Request
+                      </SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
                 >
-                  <div className="space-y-1 mb-2 sm:mb-0">
-                    <p className="font-medium">{ticket.title}</p>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <span>
-                        {new Date(ticket.created_at).toLocaleDateString()}
-                      </span>
-                      <span>•</span>
-                      <span>{ticket.type}</span>
+                  {isSubmitting ? "Submitting..." : "Submit Ticket"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Tickets</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-muted-foreground">Loading tickets...</p>
+            ) : tickets.length === 0 ? (
+              <p className="text-muted-foreground">No tickets found.</p>
+            ) : (
+              <div className="space-y-4">
+                {tickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    onClick={() => navigate(`/support/${ticket.id}`)}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="space-y-1 mb-2 sm:mb-0">
+                      <p className="font-medium">{ticket.title}</p>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <span>
+                          {new Date(ticket.created_at).toLocaleDateString()}
+                        </span>
+                        <span>•</span>
+                        <span>{ticket.type}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge
+                        variant={
+                          ticket.priority === "Highest"
+                            ? "destructive"
+                            : ticket.priority === "High"
+                              ? "default"
+                              : "secondary"
+                        }
+                      >
+                        {ticket.priority}
+                      </Badge>
+                      <Badge
+                        variant={
+                          ticket.status === "Open" ? "default" : "outline"
+                        }
+                      >
+                        {ticket.status}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge
-                      variant={
-                        ticket.priority === "Highest"
-                          ? "destructive"
-                          : ticket.priority === "High"
-                            ? "default"
-                            : "secondary"
-                      }
-                    >
-                      {ticket.priority}
-                    </Badge>
-                    <Badge
-                      variant={ticket.status === "Open" ? "default" : "outline"}
-                    >
-                      {ticket.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </Layout>
   );
 }

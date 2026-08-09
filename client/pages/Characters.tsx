@@ -219,9 +219,13 @@ export default function Characters() {
             }}
           >
             <DialogTrigger asChild>
-              <Button 
+              <Button
                 className="bg-cyan-600 hover:bg-cyan-700"
-                onClick={() => setCurrentCharacter({ is_universe: activeTab === "universes" })}
+                onClick={() =>
+                  setCurrentCharacter({
+                    is_universe: activeTab === "universes",
+                  })
+                }
               >
                 <Plus className="w-4 h-4 mr-2" />
                 {activeTab === "characters" ? "New Character" : "New Universe"}
@@ -277,7 +281,11 @@ export default function Characters() {
                           name: e.target.value,
                         }))
                       }
-                      placeholder={currentCharacter.is_universe ? "Universe name" : "Character name"}
+                      placeholder={
+                        currentCharacter.is_universe
+                          ? "Universe name"
+                          : "Character name"
+                      }
                       className="bg-slate-800 border-slate-700"
                     />
                   </div>
