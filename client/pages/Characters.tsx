@@ -52,8 +52,6 @@ export default function Characters() {
   );
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-    {},
-  );
 
   useEffect(() => {
     fetchInitialData();
