@@ -321,10 +321,12 @@ const ChatMessage = React.memo(
               >
                 <button
                   onClick={() => setReasoningExpanded(!reasoningExpanded)}
+                  aria-expanded={reasoningExpanded}
+                  aria-label="Toggle Reasoning Process"
                   className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90"
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[16px] font-family-material">
+                    <span className="material-symbols-outlined text-[16px] font-family-material" aria-hidden="true">
                       psychology
                     </span>
                     Reasoning Process
@@ -334,6 +336,7 @@ const ChatMessage = React.memo(
                       "material-symbols-outlined text-[18px] transition-transform duration-200 font-family-material",
                       reasoningExpanded && "rotate-180",
                     )}
+                    aria-hidden="true"
                   >
                     expand_more
                   </span>
@@ -357,9 +360,11 @@ const ChatMessage = React.memo(
                 <button
                   onClick={() => onNavigate?.(activeSiblingIndex - 1)}
                   disabled={activeSiblingIndex === 0}
+                  aria-label="Previous version"
+                  title="Previous version"
                   className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[16px] font-family-material">
+                  <span className="material-symbols-outlined text-[16px] font-family-material" aria-hidden="true">
                     chevron_left
                   </span>
                 </button>
@@ -375,13 +380,18 @@ const ChatMessage = React.memo(
                     }
                   }}
                   className="hover:text-white p-1 flex items-center justify-center transition-colors"
+                  aria-label={
+                    activeSiblingIndex < siblings.length - 1
+                      ? "Next version"
+                      : "Regenerate"
+                  }
                   title={
                     activeSiblingIndex < siblings.length - 1
                       ? "Next"
                       : "Regenerate"
                   }
                 >
-                  <span className="material-symbols-outlined text-[16px] font-family-material">
+                  <span className="material-symbols-outlined text-[16px] font-family-material" aria-hidden="true">
                     {activeSiblingIndex < siblings.length - 1
                       ? "chevron_right"
                       : "refresh"}
@@ -1873,10 +1883,12 @@ export function ChatbotApp() {
                       setOptionsDropdownOpen(!optionsDropdownOpen);
                       setModelDropdownOpen(false);
                     }}
+                    aria-expanded={optionsDropdownOpen}
+                    aria-label="Toggle Options"
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white/70 transition-all duration-200"
                     title="Toggle Options"
                   >
-                    <span className="material-symbols-outlined text-[20px] font-family-material">
+                    <span className="material-symbols-outlined text-[20px] font-family-material" aria-hidden="true">
                       add
                     </span>
                   </button>
@@ -2015,6 +2027,8 @@ export function ChatbotApp() {
                       setModelDropdownOpen(!modelDropdownOpen);
                       setOptionsDropdownOpen(false);
                     }}
+                    aria-expanded={modelDropdownOpen}
+                    aria-label="Select Model"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-transparent hover:bg-white/5 transition-colors text-sm text-white/90"
                   >
                     <span>
@@ -2024,7 +2038,7 @@ export function ChatbotApp() {
                         )[0]
                       }
                     </span>
-                    <span className="material-symbols-outlined text-[18px] font-family-material">
+                    <span className="material-symbols-outlined text-[18px] font-family-material" aria-hidden="true">
                       expand_more
                     </span>
                   </button>
@@ -2255,8 +2269,9 @@ export function ChatbotApp() {
                     onClick={handleStop}
                     className="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center text-red-400 transition-colors duration-200 mr-2 flex-shrink-0"
                     aria-label="Stop generation"
+                    title="Stop generation"
                   >
-                    <span className="material-symbols-outlined text-[20px] font-family-material">
+                    <span className="material-symbols-outlined text-[20px] font-family-material" aria-hidden="true">
                       stop
                     </span>
                   </button>
@@ -2266,8 +2281,9 @@ export function ChatbotApp() {
                     disabled={!input.trim()}
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white transition-colors duration-200 mr-2 flex-shrink-0 disabled:opacity-50"
                     aria-label="Send message"
+                    title="Send message"
                   >
-                    <span className="material-symbols-outlined text-[20px] font-family-material">
+                    <span className="material-symbols-outlined text-[20px] font-family-material" aria-hidden="true">
                       arrow_upward
                     </span>
                   </button>

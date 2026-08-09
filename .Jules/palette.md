@@ -1,0 +1,3 @@
+## 2026-08-09 - Accessibility for Material Icons Text Ligatures
+**Learning:** Using `aria-hidden="true"` on material icon inner `<span>` elements that use text ligatures (e.g. `expand_more`) is critical. Otherwise, screen readers may read the raw icon text name instead of (or in addition to) the proper semantic `aria-label` set on the parent interactive element.
+**Action:** Whenever adding material icons with text ligatures inside buttons, make sure to add `aria-hidden="true"` to the icon `<span>` and provide an `aria-label` on the parent `<button>`.
