@@ -424,3 +424,51 @@
     box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
   }
 }
+
+/* ─── LLM Agent: Animated Code Background ─── */
+
+.agent-code-column {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 300px;
+  padding: 1rem;
+  font-family: 'JetBrains Mono', 'Geist Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #abb2bf;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.5;
+}
+
+.agent-code-snippet {
+  white-space: pre-wrap;
+  word-break: break-all;
+  animation: agent-fadeInOut 12s infinite linear;
+  opacity: 0;
+}
+
+.agent-code-snippet.agent-color-alt {
+  opacity: 0.7;
+}
+
+.agent-cursor {
+  color: #ffffff;
+  opacity: 0.7;
+  animation: agent-blink 0.8s step-end infinite;
+}
+
+@keyframes agent-fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(-20px); }
+  100% { opacity: 0; transform: translateY(-30px); }
+}
+
+@keyframes agent-blink {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0; }
+}

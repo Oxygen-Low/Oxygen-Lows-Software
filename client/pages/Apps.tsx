@@ -26,6 +26,7 @@ import { ChatbotApp } from "@/components/apps/Chatbot";
 import { PublicCharactersApp } from "@/components/apps/PublicCharacters";
 import { DataSaveApp } from "@/components/apps/DataSave";
 import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
+import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { Server } from "lucide-react";
 
 type Category =
@@ -140,6 +141,16 @@ const apps: AppMetadata[] = [
     icon: <QrCode className="w-8 h-8 text-cyan-500" />,
     component: QRCodeGeneratorApp,
   },
+  {
+    id: "llm-agent",
+    name: "LLM Agent",
+    description:
+      "An autonomous AI coding agent that reads, edits, and builds your projects.",
+    categories: ["All", "LLM/AI", "Development"],
+    availability: "desktop-only",
+    icon: <BrainCircuit className="w-8 h-8 text-cyan-500" />,
+    component: LLMAgentApp,
+  },
 ];
 
 export default function Apps() {
@@ -202,12 +213,12 @@ export default function Apps() {
 
   if (activeApp) {
     const AppComponent = activeApp.component;
-    const isChatbot = activeApp.id === "chatbot";
+    const isFullWidthApp = activeApp.id === "chatbot" || activeApp.id === "llm-agent";
 
     return (
-      <Layout fullWidth={isChatbot}>
-        <div className={isChatbot ? "h-full w-full flex flex-col" : "space-y-6"}>
-          {!isChatbot && (
+      <Layout fullWidth={isFullWidthApp}>
+        <div className={isFullWidthApp ? "h-full w-full flex flex-col" : "space-y-6"}>
+          {!isFullWidthApp && (
             <div className="flex items-center gap-4 mb-8">
               <button
                 onClick={() => navigate("/apps")}
