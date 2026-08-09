@@ -60,7 +60,6 @@ const createChatsChain = () => {
       const inserted = items.map((item) => ({
         id: "chat-" + Math.random().toString(36).substr(2, 9),
         updated_at: new Date().toISOString(),
-        is_encrypted: false,
         llm_character_id: null,
         user_character_id: null,
         ...item,

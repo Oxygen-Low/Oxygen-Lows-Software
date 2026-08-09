@@ -27,8 +27,6 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
-import { decrypt, encrypt, getMasterKey } from "@/lib/crypto";
-import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
 
 interface Character {
   id: string;
@@ -42,8 +40,6 @@ interface Character {
   personality: string | null;
   backstory: string | null;
   hidden_description: string | null;
-  is_encrypted: boolean;
-  is_corrupted?: boolean;
   is_universe?: boolean;
 }
 
@@ -56,11 +52,8 @@ export default function Characters() {
   );
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>(
     {},
   );
-  const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] =
-    useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -104,58 +97,6 @@ export default function Characters() {
       if (error) throw error;
 
       let processedData = data || [];
-      const hasEncrypted = processedData.some((c) => c.is_encrypted);
-
-      if (hasEncrypted) {
-        const key = getMasterKey();
-        if (!key) {
-          setShowEncryptionUnlockModal(true);
-          return;
-        }
-        processedData = await Promise.all(
-          processedData.map(async (char) => {
-            if (!char.is_encrypted) return char;
-            try {
-              return {
-                ...char,
-                name: await decrypt(char.name, key),
-                short_description: char.short_description
-                  ? await decrypt(char.short_description, key)
-                  : null,
-                display_name: char.display_name
-                  ? await decrypt(char.display_name, key)
-                  : null,
-                appearance: char.appearance
-                  ? await decrypt(char.appearance, key)
-                  : null,
-                personality: char.personality
-                  ? await decrypt(char.personality, key)
-                  : null,
-                backstory: char.backstory
-                  ? await decrypt(char.backstory, key)
-                  : null,
-                hidden_description: char.hidden_description
-                  ? await decrypt(char.hidden_description, key)
-                  : null,
-              };
-            } catch (e) {
-              console.error("Failed to decrypt character", char.id, e);
-              return {
-                ...char,
-                name: "[Encrypted]",
-                display_name: "[Encrypted]",
-                short_description: "[Encrypted]",
-                appearance: "[Encrypted]",
-                personality: "[Encrypted]",
-                backstory: "[Encrypted]",
-                hidden_description: "[Encrypted]",
-                is_corrupted: true,
-                is_universe: char.is_universe,
-              };
-            }
-          }),
-        );
-      }
       const charsWithUrls = await attachSignedImageUrls(processedData);
       setCharacters(charsWithUrls);
     } catch (error: any) {
@@ -182,7 +123,6 @@ export default function Characters() {
         backstory: currentCharacter.backstory,
         hidden_description: currentCharacter.hidden_description,
         image_path: currentCharacter.image_path,
-        is_encrypted: false,
         is_universe: currentCharacter.is_universe || false,
       };
 
@@ -255,14 +195,6 @@ export default function Characters() {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto space-y-8 pb-20">
-        <EncryptionUnlockModal
-          isOpen={showEncryptionUnlockModal}
-          onClose={() => setShowEncryptionUnlockModal(false)}
-          onUnlock={() => {
-            setShowEncryptionUnlockModal(false);
-            fetchInitialData();
-          }}
-        />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex gap-4 items-center">

@@ -31,8 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { decrypt, getMasterKey } from "@/lib/crypto";
-import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -62,7 +60,6 @@ interface LocalCharacter {
   name: string;
   display_name: string | null;
   is_universe: boolean;
-  is_encrypted: boolean;
   short_description: string | null;
   appearance: string | null;
   personality: string | null;
@@ -95,8 +92,6 @@ export function PublicCharactersApp() {
     null,
   );
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] =
-    useState(false);
 
   useEffect(() => {
     fetchData();
@@ -169,51 +164,7 @@ export function PublicCharactersApp() {
 
       if (error) throw error;
 
-      let processedData = data || [];
-      const hasEncrypted = processedData.some((c) => c.is_encrypted);
-
-      if (hasEncrypted) {
-        const key = getMasterKey();
-        if (!key) {
-          setShowEncryptionUnlockModal(true);
-          return;
-        }
-        processedData = await Promise.all(
-          processedData.map(async (char) => {
-            if (!char.is_encrypted) return char;
-            try {
-              return {
-                ...char,
-                name: await decrypt(char.name, key),
-                short_description: char.short_description
-                  ? await decrypt(char.short_description, key)
-                  : null,
-                display_name: char.display_name
-                  ? await decrypt(char.display_name, key)
-                  : null,
-                appearance: char.appearance
-                  ? await decrypt(char.appearance, key)
-                  : null,
-                personality: char.personality
-                  ? await decrypt(char.personality, key)
-                  : null,
-                backstory: char.backstory
-                  ? await decrypt(char.backstory, key)
-                  : null,
-                hidden_description: char.hidden_description
-                  ? await decrypt(char.hidden_description, key)
-                  : null,
-              };
-            } catch (e) {
-              return {
-                ...char,
-                name: "[Encrypted]",
-                display_name: "[Encrypted]",
-              };
-            }
-          }),
-        );
-      }
+      const processedData = data || [];
       setLocalCharacters(processedData);
     } catch (err: any) {
       console.error(err);
@@ -289,7 +240,6 @@ export function PublicCharactersApp() {
         backstory: item.backstory,
         hidden_description: item.hidden_description,
         image_path: item.image_path,
-        is_encrypted: false,
         is_universe: item.is_universe,
       };
 
@@ -402,15 +352,6 @@ export function PublicCharactersApp() {
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      <EncryptionUnlockModal
-        isOpen={showEncryptionUnlockModal}
-        onClose={() => setShowEncryptionUnlockModal(false)}
-        onUnlock={() => {
-          setShowEncryptionUnlockModal(false);
-          fetchLocalCharacters();
-        }}
-      />
-
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <Tabs
           value={activeTab}

@@ -27,8 +27,6 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { encrypt, decrypt, getMasterKey } from "@/lib/crypto";
-import { EncryptionUnlockModal } from "@/components/EncryptionUnlockModal";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
 
@@ -169,7 +167,6 @@ interface Chat {
   llm_character_id: string | null;
   user_character_id: string | null;
   universe_id: string | null;
-  is_encrypted: boolean;
 }
 
 interface Character {
@@ -537,9 +534,6 @@ export function ChatbotApp() {
   const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null);
 
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
-  const [showEncryptionUnlockModal, setShowEncryptionUnlockModal] =
-    useState(false);
-  const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const lastParsedLengthRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -676,18 +670,9 @@ export function ChatbotApp() {
 
     const { data: prefs } = await supabase
       .from("user_preferences")
-      .select("encryption_settings")
+      .select("last_model_id")
       .eq("user_id", session.user.id)
       .single();
-
-    const encryptionEnabled = prefs?.encryption_settings?.enabled || false;
-    setIsEncryptionEnabled(encryptionEnabled);
-
-    const masterKey = getMasterKey();
-    if (encryptionEnabled && !masterKey) {
-      setShowEncryptionUnlockModal(true);
-      return;
-    }
 
     const { data: chars } = await supabase
       .from("characters")
@@ -695,37 +680,7 @@ export function ChatbotApp() {
       .eq("user_id", session.user.id);
 
     if (chars) {
-      const processedChars = await Promise.all(
-        chars.map(async (c) => {
-          if (c.is_encrypted && masterKey) {
-            try {
-              return {
-                ...c,
-                name: await decrypt(c.name, masterKey),
-                display_name: c.display_name
-                  ? await decrypt(c.display_name, masterKey)
-                  : null,
-                short_description: c.short_description
-                  ? await decrypt(c.short_description, masterKey)
-                  : null,
-                appearance: c.appearance
-                  ? await decrypt(c.appearance, masterKey)
-                  : null,
-                personality: c.personality
-                  ? await decrypt(c.personality, masterKey)
-                  : null,
-                backstory: c.backstory
-                  ? await decrypt(c.backstory, masterKey)
-                  : null,
-              };
-            } catch (e) {
-              return { ...c, name: "[Encrypted]", display_name: "[Encrypted]" };
-            }
-          }
-          return c;
-        }),
-      );
-      setAvailableCharacters(processedChars);
+      setAvailableCharacters(chars);
     }
 
     const { data: chatsData } = await supabase
@@ -735,22 +690,7 @@ export function ChatbotApp() {
       .order("updated_at", { ascending: false });
 
     if (chatsData) {
-      const processedChats = await Promise.all(
-        chatsData.map(async (c) => {
-          if (c.is_encrypted && masterKey) {
-            try {
-              return {
-                ...c,
-                title: await decrypt(c.title, masterKey),
-              };
-            } catch (e) {
-              return { ...c, title: "Encrypted Chat" };
-            }
-          }
-          return c;
-        }),
-      );
-      setChats(processedChats);
+      setChats(chatsData);
     }
   }, [session?.user?.id]);
 
@@ -780,31 +720,16 @@ export function ChatbotApp() {
         .order("created_at", { ascending: true });
 
       if (data) {
-        const masterKey = getMasterKey();
-        const processed = await Promise.all(
-          data.map(async (m) => {
-            let content = m.content;
-            let reasoning = m.reasoning;
-            if (m.is_encrypted && masterKey) {
-              try {
-                content = await decrypt(m.content, masterKey);
-                if (m.reasoning)
-                  reasoning = await decrypt(m.reasoning, masterKey);
-              } catch (e) {
-                content = "[Encrypted Message]";
-                if (m.reasoning) reasoning = "[Encrypted Reasoning]";
-              }
-            }
-            return {
-              id: m.id,
-              parent_id: m.parent_id,
-              role: m.role,
-              content,
-              reasoning,
-              created_at: m.created_at,
-            };
-          }),
-        );
+        const processed = data.map((m) => {
+          return {
+            id: m.id,
+            parent_id: m.parent_id,
+            role: m.role,
+            content: m.content,
+            reasoning: m.reasoning,
+            created_at: m.created_at,
+          };
+        });
 
         const newActiveChildren: Record<string, string> = {};
         processed.forEach((m) => {
@@ -864,41 +789,6 @@ export function ChatbotApp() {
     const titleModel = { provider: "horde", model_id: "TitleGen" };
 
     try {
-      const { data: userInts } = await supabase
-        .from("user_integrations")
-        .select("*")
-        .eq("user_id", session?.user?.id)
-        .eq("provider", "horde")
-        .maybeSingle();
-
-      const key = getMasterKey();
-      let decryptedKey = undefined;
-      const { data: prefs } = await supabase
-        .from("user_preferences")
-        .select("encryption_settings")
-        .eq("user_id", session?.user?.id)
-        .single();
-      const encryptionSettings = prefs?.encryption_settings || {};
-
-      if (userInts && encryptionSettings.integrations) {
-        if (key && userInts.api_key) {
-          decryptedKey = await decrypt(userInts.api_key, key);
-        } else if (userInts.api_key) {
-          // If we have an encrypted key but no master key to decrypt it,
-          // we must override it with the anonymous key so the proxy doesn't
-          // send the encrypted string to AI Horde.
-          decryptedKey = "0000000000";
-        }
-      } else if (userInts?.api_key) {
-        decryptedKey = userInts.api_key;
-      }
-
-      // If we still don't have a decrypted key, explicitly set it to anonymous
-      // so the backend doesn't fall back to an encrypted database key.
-      if (!decryptedKey) {
-        decryptedKey = "0000000000";
-      }
-
       const response = await fetch("/api/ai/proxy", {
         method: "POST",
         headers: {
@@ -915,7 +805,7 @@ export function ChatbotApp() {
             },
           ],
           stream: false,
-          apiKey: decryptedKey,
+          apiKey: "0000000000",
         }),
       });
 
@@ -928,11 +818,9 @@ export function ChatbotApp() {
           .replace(/^["']|["']$/g, "");
       }
 
-      const encryptedTitle =
-        isEncryptionEnabled && key ? await encrypt(title, key) : title;
       await supabase
         .from("chats")
-        .update({ title: encryptedTitle })
+        .update({ title })
         .eq("id", chatId);
 
       setChats((prev) =>
@@ -950,30 +838,6 @@ export function ChatbotApp() {
     signal: AbortSignal,
     streamCallback: (chunk: string) => void,
   ) => {
-    const { data: userInts } = await supabase
-      .from("user_integrations")
-      .select("*")
-      .eq("user_id", session?.user?.id)
-      .eq("provider", provider)
-      .maybeSingle();
-
-    const key = getMasterKey();
-    let decryptedKey = undefined;
-    let decryptedBaseUrl = undefined;
-
-    const { data: prefs } = await supabase
-      .from("user_preferences")
-      .select("encryption_settings")
-      .eq("user_id", session?.user?.id)
-      .single();
-    const encryptionSettings = prefs?.encryption_settings || {};
-
-    if (userInts && encryptionSettings.integrations && key) {
-      if (userInts.api_key) decryptedKey = await decrypt(userInts.api_key, key);
-      if (userInts.base_url)
-        decryptedBaseUrl = await decrypt(userInts.base_url, key);
-    }
-
     const response = await fetch("/api/ai/proxy", {
       method: "POST",
       headers: {
@@ -986,8 +850,6 @@ export function ChatbotApp() {
         model: model,
         messages: msgs,
         stream: true,
-        apiKey: decryptedKey,
-        baseUrl: decryptedBaseUrl,
       }),
     });
 
@@ -1111,12 +973,6 @@ export function ChatbotApp() {
   const handleSendMessage = async () => {
     if (!input.trim() || isTyping || !session?.user?.id) return;
 
-    const key = getMasterKey();
-    if (isEncryptionEnabled && !key) {
-      setShowEncryptionUnlockModal(true);
-      return;
-    }
-
     let activeChatId = currentChatId;
 
     if (!activeChatId) {
@@ -1125,11 +981,10 @@ export function ChatbotApp() {
         .from("chats")
         .insert({
           user_id: session.user.id,
-          title: isEncryptionEnabled ? await encrypt(title, key!) : title,
+          title: title,
           llm_character_id: selectedLlmCharacter,
           user_character_id: selectedUserCharacter,
           universe_id: selectedUniverse,
-          is_encrypted: isEncryptionEnabled,
         })
         .select()
         .single();
@@ -1140,11 +995,7 @@ export function ChatbotApp() {
       }
 
       activeChatId = data.id;
-      const chatWithDecryptedTitle = {
-        ...data,
-        title: isEncryptionEnabled ? title : data.title,
-      };
-      setChats((prev) => [chatWithDecryptedTitle, ...prev]);
+      setChats((prev) => [data, ...prev]);
       skipNextFetchRef.current = activeChatId;
       setCurrentChatId(activeChatId);
     }
@@ -1204,11 +1055,7 @@ export function ChatbotApp() {
           parent_id: lastMessageId,
           chat_id: activeChatId,
           role: "user",
-          content:
-            isEncryptionEnabled && key
-              ? await encrypt(originalInput, key)
-              : originalInput,
-          is_encrypted: isEncryptionEnabled,
+          content: originalInput,
         })
         .select()
         .single();
@@ -1385,15 +1232,8 @@ export function ChatbotApp() {
           parent_id: userMsgData.id,
           chat_id: activeChatId,
           role: "assistant",
-          content:
-            isEncryptionEnabled && key
-              ? await encrypt(finalContent, key)
-              : finalContent,
-          reasoning:
-            isEncryptionEnabled && key && reasoningContent
-              ? await encrypt(reasoningContent, key)
-              : reasoningContent || null,
-          is_encrypted: isEncryptionEnabled,
+          content: finalContent,
+          reasoning: reasoningContent || null,
         };
 
         const { data: assistantMsgData, error: assistantInsertError } =
@@ -1502,11 +1342,6 @@ export function ChatbotApp() {
     setQueueStatus(null);
 
     try {
-      const key = getMasterKey();
-      if (isEncryptionEnabled && !key) {
-        setShowEncryptionUnlockModal(true);
-        return;
-      }
 
       let finalContent = "";
       let reasoningContent = "";
@@ -1597,15 +1432,8 @@ export function ChatbotApp() {
         chat_id: currentChatId,
         parent_id: lastUserMessage.id,
         role: "assistant",
-        content:
-          isEncryptionEnabled && key
-            ? await encrypt(finalContent, key)
-            : finalContent,
-        reasoning:
-          isEncryptionEnabled && key && reasoningContent
-            ? await encrypt(reasoningContent, key)
-            : reasoningContent || null,
-        is_encrypted: isEncryptionEnabled,
+        content: finalContent,
+        reasoning: reasoningContent || null,
       };
 
       const { data: assistantMsgData, error: assistantInsertError } =
@@ -1801,14 +1629,7 @@ export function ChatbotApp() {
             font-family: 'Material Symbols Outlined';
         }
       `}</style>
-      <EncryptionUnlockModal
-        isOpen={showEncryptionUnlockModal}
-        onClose={() => setShowEncryptionUnlockModal(false)}
-        onUnlock={() => {
-          setShowEncryptionUnlockModal(false);
-          fetchData();
-        }}
-      />
+
       <InteractiveBackground />
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] orb-1 rounded-full animate-blob mix-blend-screen"></div>
