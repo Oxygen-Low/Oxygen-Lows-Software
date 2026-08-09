@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 .config/
-!.env
+# .env is NOT tracked – secrets must never be committed
 
 # Local uploads
 uploads

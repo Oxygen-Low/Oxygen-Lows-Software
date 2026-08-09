@@ -8,6 +8,7 @@ import {
   authenticateRepoRequest,
   authorizeRepoAccess,
 } from "../lib/repoAuth.ts";
+import { rateLimiter } from "../lib/rateLimiter.ts";
 
 export const reposRouter = new Hono();
 
@@ -28,10 +29,8 @@ async function getRepo(id: string, token: string) {
   return data;
 }
 
-// Dummy limiter middleware
-const apiLimiter = async (c: any, next: any) => {
-  await next();
-};
+// 60 requests per minute for repo operations
+const apiLimiter = rateLimiter(60, 60_000, "repos");
 
 reposRouter.use("*", authenticateRepoRequest);
 

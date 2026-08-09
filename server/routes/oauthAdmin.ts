@@ -3,10 +3,10 @@ import { getAuthenticatedClient } from "../lib/supabase.ts";
 
 export const oauthAdminRouter = new Hono();
 
-// Dummy limiter middleware to replace express-rate-limit
-const apiLimiter = async (c: any, next: any) => {
-  await next();
-};
+import { rateLimiter } from "../lib/rateLimiter.ts";
+
+// 20 requests per minute for OAuth admin operations
+const apiLimiter = rateLimiter(20, 60_000, "oauth-admin");
 
 oauthAdminRouter.use("*", apiLimiter);
 

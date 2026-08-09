@@ -10,10 +10,24 @@ import { aiRouter } from "./routes/ai.ts";
 
 const app = new Hono();
 
+const ALLOWED_ORIGINS = [
+  "https://main.oxygen-lows-software.workers.dev",
+  "https://oxygenlow.com",
+  "https://www.oxygenlow.com",
+];
+
+function isAllowedOrigin(origin: string | undefined): string | undefined {
+  if (!origin) return undefined;
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  // Allow localhost for development
+  if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return origin;
+  return undefined;
+}
+
 app.use(secureHeaders());
 app.use(
   cors({
-    origin: "*",
+    origin: (origin) => isAllowedOrigin(origin) ?? "",
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "x-github-token"],
   }),

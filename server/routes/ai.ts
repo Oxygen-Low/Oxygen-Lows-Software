@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { env } from "hono/adapter";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimiter } from "../lib/rateLimiter.ts";
 
 export const aiRouter = new Hono();
 
@@ -23,9 +24,7 @@ const HORDE_MODELS_MAP: Record<string, string[]> = {
   Smart: ["koboldcpp/Behemoth-128B-v3b-Q4_K_M"],
 };
 
-const apiLimiter = async (c: any, next: any) => {
-  await next();
-};
+const apiLimiter = rateLimiter(30, 60_000, "ai");
 
 aiRouter.get("/local-providers", apiLimiter, async (c) => {
   return c.json([...DEFAULT_MODELS]);
@@ -101,7 +100,22 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     integration = { ...integration, api_key: apiKey };
   }
   if (baseUrl) {
-    integration = { ...integration, base_url: baseUrl };
+    try {
+      const parsed = new URL(baseUrl);
+      if (parsed.protocol !== "https:") {
+        return c.json({ error: "Custom base URL must use HTTPS" }, 400);
+      }
+      const blockedHosts = ["localhost", "127.0.0.1", "::1", "169.254.169.254", "metadata.google.internal"];
+      if (blockedHosts.includes(parsed.hostname) ||
+          parsed.hostname.startsWith("10.") ||
+          parsed.hostname.startsWith("192.168.") ||
+          /^172\.(1[6-9]|2\d|3[01])\./.test(parsed.hostname)) {
+        return c.json({ error: "Custom base URL must point to a public server" }, 400);
+      }
+      integration = { ...integration, base_url: baseUrl };
+    } catch {
+      return c.json({ error: "Invalid custom base URL" }, 400);
+    }
   }
 
   if (
@@ -314,11 +328,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       if (!AccountID || !CloudflareAPIToken) {
         return c.json(
           {
-            error: `Cloudflare Server Environment Variables (AccountID, CloudflareAPIToken) are missing or empty. Found keys: ${Object.keys(
-              rawEnv,
-            )
-              .map((k) => '"' + k + '"')
-              .join(", ")}`,
+            error: "Cloudflare AI is temporarily unavailable. Please try a different provider.",
           },
           500,
         );
@@ -339,10 +349,14 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     const upstreamResponse = await fetch(targetUrl, fetchOptions);
 
     if (!upstreamResponse.ok) {
-      const errData = await upstreamResponse.text();
+      const status = upstreamResponse.status;
+      let userMessage = "The AI provider returned an error.";
+      if (status === 401 || status === 403) userMessage = "Invalid or expired API key for this provider.";
+      else if (status === 429) userMessage = "Rate limit exceeded. Please try again later.";
+      else if (status === 503 || status === 502) userMessage = "The AI provider is temporarily unavailable.";
       return c.json(
-        { error: "Upstream error", details: errData },
-        upstreamResponse.status as any,
+        { error: userMessage },
+        status as any,
       );
     }
 

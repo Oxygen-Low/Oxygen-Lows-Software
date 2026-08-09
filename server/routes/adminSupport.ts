@@ -1,5 +1,10 @@
 import { Hono } from "hono";
 import { getAdminClient, getAuthenticatedClient } from "../lib/supabase.ts";
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
+const ADMIN_USER_IDS = new Set(["3cb76293-8c6c-49b9-b431-1ff5fce471ee"]);
 
 export const adminSupportRouter = new Hono();
 
@@ -8,6 +13,30 @@ function getServiceRoleKey(c: any) {
   const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
   return rawEnv.SUPABASE_SECRET || procEnv.SUPABASE_SECRET;
 }
+
+adminSupportRouter.use("*", async (c, next) => {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const token = authHeader.split(" ")[1];
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!ADMIN_USER_IDS.has(user.id)) {
+    return c.json({ error: "Forbidden: Admin access required" }, 403);
+  }
+
+  await next();
+});
 
 // Get all support tickets
 adminSupportRouter.get("/tickets", async (c) => {
