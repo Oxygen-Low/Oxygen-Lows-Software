@@ -50,4 +50,8 @@ app.get("*", async (c) => {
   return c.env.ASSETS.fetch(new Request(url, c.req.raw));
 });
 
+export function createServer() {
+  return app;
+}
+
 export default app;

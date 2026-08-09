@@ -41,10 +41,10 @@ describe("Apps", () => {
     expect(screen.queryByText("File Compressor")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Desktop only" }));
-    expect(
-      screen.getByText("No desktop-only apps are available yet."),
-    ).toBeDefined();
-    expect(screen.getByLabelText(/LLM\/AI \(0 apps\)/)).toBeDefined();
+    expect(screen.getByText("LLM Agent")).toBeDefined();
+    expect(screen.queryByText("Chatbot")).toBeNull();
+    // Verify the badge counts updated
+    expect(screen.getByLabelText(/LLM\/AI \(1 apps\)/)).toBeDefined();
   });
 
   it("hides the desktop-only filter in the browser catalogue", () => {

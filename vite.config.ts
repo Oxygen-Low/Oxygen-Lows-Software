@@ -57,14 +57,51 @@ export default defineConfig(({ mode }) => ({
 
 function expressPlugin(): Plugin {
   return {
-    name: "express-plugin",
-    apply: "serve", // Only apply during development (serve mode)
+    name: "api-proxy-plugin",
+    apply: "serve",
     async configureServer(server) {
       const { createServer } = await import("./server/index.ts");
       const app = createServer();
 
-      // Add Express app as middleware to Vite dev server
-      server.middlewares.use(app);
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url || "/";
+        if (!url.startsWith("/api/") && !url.startsWith("/health")) {
+          return next();
+        }
+        try {
+          const protocol = req.headers["x-forwarded-proto"] || "http";
+          const host = req.headers.host || "localhost";
+          const fullUrl = `${protocol}://${host}${url}`;
+          const headers = new Headers();
+          for (const [key, value] of Object.entries(req.headers)) {
+            if (value) headers.set(key, Array.isArray(value) ? value[0] : value);
+          }
+          const method = req.method || "GET";
+          const hasBody = method !== "GET" && method !== "HEAD";
+          let body: string | undefined;
+          if (hasBody) {
+            body = await new Promise<string>((resolve) => {
+              let data = "";
+              req.on("data", (chunk: any) => (data += chunk));
+              req.on("end", () => resolve(data));
+            });
+          }
+          const honoReq = new Request(fullUrl, {
+            method,
+            headers,
+            body: hasBody ? body : undefined,
+          });
+          const honoRes = await app.fetch(honoReq);
+          res.statusCode = honoRes.status;
+          honoRes.headers.forEach((value, key) => {
+            res.setHeader(key, value);
+          });
+          const arrayBuf = await honoRes.arrayBuffer();
+          res.end(Buffer.from(arrayBuf));
+        } catch (err) {
+          next(err);
+        }
+      });
     },
   };
 }

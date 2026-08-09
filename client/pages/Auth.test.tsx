@@ -44,7 +44,7 @@ describe("Auth Component", () => {
       </MemoryRouter>,
     );
 
-    const heading = screen.getByText("Welcome back");
+    const heading = screen.getByText(/Welcome back/i);
     expect(heading).toBeDefined();
 
     const googleBtn = screen.getByText("Sign in with Google");

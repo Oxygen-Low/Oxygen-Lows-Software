@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import path from "path";
 import {
   getAnonClient,
   getAuthorProfile,
@@ -288,6 +289,20 @@ reposRouter.post("/:id/files", apiLimiter, async (c) => {
   const user = c.get("user");
 
   if (!user) return c.json({ error: "Authentication required." }, 401);
+
+  // Path traversal validation
+  if (!filePath || typeof filePath !== "string") {
+    return c.json({ error: "Invalid file path" }, 400);
+  }
+  const decodedPath = decodeURIComponent(filePath);
+  if (
+    decodedPath.includes("..") ||
+    path.isAbsolute(decodedPath) ||
+    decodedPath.startsWith("/")
+  ) {
+    return c.json({ error: "Invalid file path" }, 400);
+  }
+
   if (c.get("repoPermission") === "read")
     return c.json({ error: "Forbidden: Write access required." }, 403);
 

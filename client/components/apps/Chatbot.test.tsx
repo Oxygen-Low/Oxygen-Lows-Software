@@ -24,6 +24,7 @@ window.HTMLElement.prototype.scrollIntoView = function () {};
 
 // Mock chats list
 let mockChats: any[] = [];
+let msgIdCounter = 0;
 
 // Mock supabase
 const mockSupabaseChain = (data: any) => {
@@ -152,7 +153,22 @@ vi.mock("@/lib/supabase", () => ({
       if (table === "chats") return createChatsChain();
       if (table === "user_models")
         return mockSupabaseChain([{ provider: "openai", model_id: "gpt-4" }]);
-      if (table === "chat_messages") return mockSupabaseChain([]);
+      if (table === "chat_messages") {
+        const builder: any = {
+          insert: vi.fn(() => builder),
+          update: vi.fn(() => builder),
+          delete: vi.fn(() => builder),
+          select: vi.fn(() => builder),
+          eq: vi.fn(() => builder),
+          order: vi.fn(() => builder),
+          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: "mock-msg-id-" + (++msgIdCounter) }, error: null })),
+          single: vi.fn(() => Promise.resolve({ data: { id: "mock-msg-id-" + (++msgIdCounter) }, error: null })),
+          then: vi.fn((onFulfilled) => {
+            return Promise.resolve({ data: [], error: null }).then(onFulfilled);
+          }),
+        };
+        return builder;
+      }
       if (table === "characters") return mockSupabaseChain([]);
       if (table === "user_preferences")
         return mockSupabaseChain({
@@ -190,12 +206,13 @@ global.fetch = vi.fn((url, options: any) => {
       });
     }
     const stream = new ReadableStream({
-      start(controller) {
+      async start(controller) {
         controller.enqueue(
           new TextEncoder().encode(
             'data: {"choices":[{"delta":{"content":"Hello from AI"}}]}\n',
           ),
         );
+        await new Promise((resolve) => setTimeout(resolve, 100));
         controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
         controller.close();
       },
@@ -203,6 +220,7 @@ global.fetch = vi.fn((url, options: any) => {
     return Promise.resolve({
       ok: true,
       body: stream,
+      headers: { get: () => null },
     });
   }
 
@@ -287,7 +305,7 @@ describe("ChatbotApp", () => {
                   'data: {"choices":[{"delta":{}}],"queue_info":{"position":2,"eta":75,"workers":5,"totalInQueue":12}}\n',
                 ),
               );
-              await new Promise((resolve) => setTimeout(resolve, 100));
+              await new Promise((resolve) => setTimeout(resolve, 2000));
               controller.enqueue(
                 new TextEncoder().encode(
                   'data: {"choices":[{"delta":{"content":"Hi from queue"}}]}\n',
@@ -300,6 +318,7 @@ describe("ChatbotApp", () => {
           return Promise.resolve({
             ok: true,
             body: stream,
+            headers: { get: () => null },
           });
         }
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });

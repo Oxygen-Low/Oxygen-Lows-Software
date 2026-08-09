@@ -836,7 +836,7 @@ export function ChatbotApp() {
     model: string,
     msgs: Message[],
     signal: AbortSignal,
-    streamCallback: (chunk: string) => void,
+    streamCallback: (content: string, reasoning?: string) => void,
   ) => {
     const response = await fetch("/api/ai/proxy", {
       method: "POST",
@@ -1476,7 +1476,6 @@ export function ChatbotApp() {
     selectedProvider,
     selectedModel,
     isReasoningEnabled,
-    isEncryptionEnabled,
     selectedLlmCharacter,
     availableCharacters,
   ]);

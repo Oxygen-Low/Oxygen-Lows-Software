@@ -85,10 +85,11 @@ describe("Account Component", () => {
     });
   });
 
-  it("renders Gemini/Google integration card in integrations tab", async () => {
+  it("renders Models tab correctly", async () => {
     render(<Account />);
-    fireEvent.click(screen.getByRole("button", { name: "Integrations" }));
-    await screen.findByRole("heading", { name: "Gemini/Google" });
+    fireEvent.click(screen.getByRole("button", { name: "Models" }));
+    const select = await screen.findByRole("combobox", { name: "Select Model Provider" });
+    expect(select).toBeDefined();
   });
 
   it("renders with correct header", async () => {

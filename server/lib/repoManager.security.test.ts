@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from "path";
 import os from "os";
-import fs from "fs-extra";
+import fs from "fs/promises";
 
 // Import the functions we need to test
 // We'll need to expose these for testing or test them indirectly
@@ -9,11 +9,11 @@ describe("RepoManager Path Traversal Security", () => {
   const testTmpDir = path.join(os.tmpdir(), "repoManager-security-test");
 
   beforeEach(async () => {
-    await fs.ensureDir(testTmpDir);
+    await fs.mkdir(testTmpDir, { recursive: true });
   });
 
   afterEach(async () => {
-    await fs.remove(testTmpDir);
+    await fs.rm(testTmpDir, { recursive: true, force: true });
   });
 
   describe("getSafeTmpPath path traversal protection", () => {
@@ -73,7 +73,8 @@ describe("RepoManager Path Traversal Security", () => {
 
       // The security check: when trying to escape with absolute path,
       // the relative path will start with '..' (going up from tmpdir)
-      expect(relative.startsWith("..")).toBe(true);
+      // or it will be an absolute path (on another drive, or root of current drive)
+      expect(relative.startsWith("..") || path.isAbsolute(relative)).toBe(true);
     });
 
     it("should allow safe paths within base directory", () => {
