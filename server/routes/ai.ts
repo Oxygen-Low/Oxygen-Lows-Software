@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { env } from "hono/adapter";
+import sanitizeHtml from "sanitize-html";
 import { createClient } from "@supabase/supabase-js";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 
@@ -202,7 +203,10 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
                 let m;
                 let count = 0;
                 while ((m = snippetRegex.exec(text)) !== null && count < 5) {
-                  const cleanSnippet = m[1].replace(/<[^>]*>?/gm, "").trim();
+                  const cleanSnippet = sanitizeHtml(m[1], {
+                    allowedTags: [],
+                    allowedAttributes: {},
+                  }).trim();
                   if (cleanSnippet) {
                     snippets.push(cleanSnippet);
                     count++;

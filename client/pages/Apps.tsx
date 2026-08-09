@@ -30,12 +30,7 @@ import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { Server } from "lucide-react";
 
 type Category =
-  | "All"
-  | "Utility"
-  | "LLM/AI"
-  | "Development"
-  | "Social"
-  | "Games";
+  "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
 
 type Availability = "web-and-desktop" | "desktop-only";
 
