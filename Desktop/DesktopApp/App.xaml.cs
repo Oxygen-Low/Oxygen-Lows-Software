@@ -4,7 +4,7 @@ using System.Windows.Threading;
 
 namespace DesktopApp;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -47,7 +47,7 @@ public partial class App : Application
 
     private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(
+        System.Windows.MessageBox.Show(
             $"An unexpected error occurred:\n\n{e.Exception.Message}\n\n{e.Exception.StackTrace}",
             "Error",
             MessageBoxButton.OK,
@@ -59,7 +59,7 @@ public partial class App : Application
     {
         if (e.ExceptionObject is Exception ex)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"A fatal error occurred:\n\n{ex.Message}\n\n{ex.StackTrace}",
                 "Fatal Error",
                 MessageBoxButton.OK,

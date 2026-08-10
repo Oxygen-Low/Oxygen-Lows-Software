@@ -62,7 +62,7 @@ public static class SingleInstance
                     var message = reader.ReadLine();
                     if (!string.IsNullOrEmpty(message))
                     {
-                        Application.Current.Dispatcher.Invoke(() =>
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             OnMessageReceived?.Invoke(message);
                         });

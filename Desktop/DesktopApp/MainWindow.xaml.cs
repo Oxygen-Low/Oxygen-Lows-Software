@@ -91,7 +91,7 @@ public partial class MainWindow : Window
                 else if (cmd == "select_directory")
                 {
                     string? selectedPath = null;
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                     {
                         using var dialog = new System.Windows.Forms.FolderBrowserDialog();
                         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
