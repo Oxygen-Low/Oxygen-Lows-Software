@@ -91,7 +91,7 @@
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
     "esbuild": "^0.28.2",
-    "framer-motion": "^12.43.0",
+    "framer-motion": "^13.0.0",
     "globals": "^17.9.0",
     "input-otp": "^1.4.2",
     "jsdom": "^30.0.1",
