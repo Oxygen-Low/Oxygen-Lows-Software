@@ -25,7 +25,7 @@ importers:
         version: 0.12.2
       '@hono/node-server':
         specifier: ^2.1.0
-        version: 2.1.0(hono@4.12.34)
+        version: 2.1.0(hono@4.13.1)
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -51,8 +51,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       hono:
-        specifier: ^4.12.34
-        version: 4.12.34
+        specifier: ^4.13.1
+        version: 4.13.1
       music-metadata-browser:
         specifier: ^2.5.11
         version: 2.5.11
@@ -2578,8 +2578,8 @@ packages:
   hls.js@1.6.16:
     resolution: {integrity: sha512-VSIRpLfRwlAAdGL4wiTucx2ScRipo0ed1FBatWkyt832jC4CReKstga6yIhYVwGu9LOBjuX9wzmRMeQdBJtzEA==}
 
-  hono@4.12.34:
-    resolution: {integrity: sha512-GqXJqY/xJkJmuloTrnV1ZEXG3fqte+VjkUqoRNZXcrUidiUOP4fMSIHHY4tsqZBK++kVyWmt/AAfSUuy57/eSA==}
+  hono@4.13.1:
+    resolution: {integrity: sha512-kdJoFVv2xmayw6cY09H7AbMJMt8Jn5jdlEdXsP7AGBdF2DIptVlKlOLKXP41yPip4/a3yQPv9gVcJYI8YY04dw==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@6.0.0:
@@ -3950,9 +3950,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hono/node-server@2.1.0(hono@4.12.34)':
+  '@hono/node-server@2.1.0(hono@4.13.1)':
     dependencies:
-      hono: 4.12.34
+      hono: 4.13.1
 
   '@hookform/resolvers@5.7.1(@standard-schema/spec@1.1.0)(react-hook-form@7.84.0(react@19.2.8))(zod@4.4.3)':
     dependencies:
@@ -5775,7 +5775,7 @@ snapshots:
 
   hls.js@1.6.16: {}
 
-  hono@4.12.34: {}
+  hono@4.13.1: {}
 
   html-encoding-sniffer@6.0.0(@noble/hashes@1.8.0):
     dependencies:
