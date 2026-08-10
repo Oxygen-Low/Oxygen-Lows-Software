@@ -58,7 +58,7 @@ export async function getAuthorProfile(userId: string) {
 export function getAdminClient(serviceRoleKeyParam?: string) {
   const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
   const serviceRoleKey = serviceRoleKeyParam || procEnv.SUPABASE_SECRET;
-  
+
   if (!serviceRoleKey) {
     throw new Error("SUPABASE_SECRET is not set");
   }

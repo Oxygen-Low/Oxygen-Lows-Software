@@ -5,7 +5,11 @@ export const proxyRouter = new Hono();
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
-const ALLOWED_DOMAINS = ["api.github.com", "raw.githubusercontent.com", "registry.npmjs.org"];
+const ALLOWED_DOMAINS = [
+  "api.github.com",
+  "raw.githubusercontent.com",
+  "registry.npmjs.org",
+];
 
 proxyRouter.post("/fetch", async (c) => {
   try {
@@ -14,12 +18,15 @@ proxyRouter.post("/fetch", async (c) => {
       return c.json({ error: "Unauthorized" }, 401);
     }
     const token = authHeader.split(" ")[1];
-    
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } }
+      global: { headers: { Authorization: `Bearer ${token}` } },
     });
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) {
       return c.json({ error: "Unauthorized" }, 401);
     }
@@ -41,7 +48,7 @@ proxyRouter.post("/fetch", async (c) => {
     }
 
     const hostname = parsedUrl.hostname;
-    
+
     if (
       hostname === "localhost" ||
       hostname === "127.0.0.1" ||
@@ -55,7 +62,9 @@ proxyRouter.post("/fetch", async (c) => {
       return c.json({ error: "Internal or private IPs not allowed" }, 400);
     }
 
-    const isAllowedDomain = ALLOWED_DOMAINS.some(domain => hostname.endsWith(domain));
+    const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
+      hostname.endsWith(domain),
+    );
     if (!isAllowedDomain) {
       return c.json({ error: "Domain not allowed" }, 403);
     }

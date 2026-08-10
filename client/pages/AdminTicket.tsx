@@ -226,130 +226,135 @@ export default function AdminTicket() {
   return (
     <Layout>
       <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex items-center space-x-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/admin/support")}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{ticket.title}</h1>
-          <div className="flex items-center space-x-2 mt-1">
-            <Badge
-              variant={
-                ticket.priority === "Highest" ? "destructive" : "secondary"
-              }
-            >
-              {ticket.priority}
-            </Badge>
-            <Badge variant="outline">{ticket.type}</Badge>
-            <Badge variant={ticket.status === "Open" ? "default" : "secondary"}>
-              {ticket.status}
-            </Badge>
-          </div>
-        </div>
-        <Button
-          variant={ticket.status === "Open" ? "destructive" : "default"}
-          onClick={toggleStatus}
-        >
-          Mark as {ticket.status === "Open" ? "Closed" : "Open"}
-        </Button>
-      </div>
-
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="py-4 border-b">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Description
-          </CardTitle>
-          <p className="text-sm mt-2 whitespace-pre-wrap">
-            {ticket.description || "No description provided."}
-          </p>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 ? (
-              <p className="text-center text-muted-foreground text-sm my-4">
-                No messages yet. Send a message to start the conversation.
-              </p>
-            ) : (
-              messages.map((msg) => {
-                const isMine = msg.sender_id === session?.user?.id;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className="flex items-end space-x-2 max-w-[80%]">
-                      {!isMine && (
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={msg.profiles?.avatar_url} />
-                          <AvatarFallback>
-                            {msg.profiles?.username?.[0]?.toUpperCase() || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div
-                        className={`p-3 rounded-2xl ${
-                          isMine
-                            ? "bg-primary text-primary-foreground rounded-br-none"
-                            : "bg-muted rounded-bl-none"
-                        }`}
-                      >
-                        {!isMine && (
-                          <p className="text-xs font-semibold mb-1 opacity-75">
-                            {msg.profiles?.username || "User"}
-                          </p>
-                        )}
-                        <p className="text-sm whitespace-pre-wrap">
-                          {msg.message}
-                        </p>
-                        <p className="text-[10px] mt-1 opacity-60 text-right">
-                          {new Date(msg.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <div className="p-4 border-t bg-background">
-            <form
-              onSubmit={handleSendMessage}
-              className="flex items-center space-x-2"
-            >
-              <Input
-                placeholder={
-                  ticket.status === "Closed"
-                    ? "Ticket is closed"
-                    : "Type your reply..."
-                }
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                disabled={isSending || ticket.status === "Closed"}
-                className="flex-1"
-              />
-              <Button
-                type="submit"
-                size="icon"
-                disabled={
-                  isSending || ticket.status === "Closed" || !newMessage.trim()
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/admin/support")}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">{ticket.title}</h1>
+            <div className="flex items-center space-x-2 mt-1">
+              <Badge
+                variant={
+                  ticket.priority === "Highest" ? "destructive" : "secondary"
                 }
               >
-                <Send className="w-4 h-4" />
-              </Button>
-            </form>
+                {ticket.priority}
+              </Badge>
+              <Badge variant="outline">{ticket.type}</Badge>
+              <Badge
+                variant={ticket.status === "Open" ? "default" : "secondary"}
+              >
+                {ticket.status}
+              </Badge>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <Button
+            variant={ticket.status === "Open" ? "destructive" : "default"}
+            onClick={toggleStatus}
+          >
+            Mark as {ticket.status === "Open" ? "Closed" : "Open"}
+          </Button>
+        </div>
+
+        <Card className="flex-1 flex flex-col overflow-hidden">
+          <CardHeader className="py-4 border-b">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Description
+            </CardTitle>
+            <p className="text-sm mt-2 whitespace-pre-wrap">
+              {ticket.description || "No description provided."}
+            </p>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 0 ? (
+                <p className="text-center text-muted-foreground text-sm my-4">
+                  No messages yet. Send a message to start the conversation.
+                </p>
+              ) : (
+                messages.map((msg) => {
+                  const isMine = msg.sender_id === session?.user?.id;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className="flex items-end space-x-2 max-w-[80%]">
+                        {!isMine && (
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={msg.profiles?.avatar_url} />
+                            <AvatarFallback>
+                              {msg.profiles?.username?.[0]?.toUpperCase() ||
+                                "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div
+                          className={`p-3 rounded-2xl ${
+                            isMine
+                              ? "bg-primary text-primary-foreground rounded-br-none"
+                              : "bg-muted rounded-bl-none"
+                          }`}
+                        >
+                          {!isMine && (
+                            <p className="text-xs font-semibold mb-1 opacity-75">
+                              {msg.profiles?.username || "User"}
+                            </p>
+                          )}
+                          <p className="text-sm whitespace-pre-wrap">
+                            {msg.message}
+                          </p>
+                          <p className="text-[10px] mt-1 opacity-60 text-right">
+                            {new Date(msg.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 border-t bg-background">
+              <form
+                onSubmit={handleSendMessage}
+                className="flex items-center space-x-2"
+              >
+                <Input
+                  placeholder={
+                    ticket.status === "Closed"
+                      ? "Ticket is closed"
+                      : "Type your reply..."
+                  }
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  disabled={isSending || ticket.status === "Closed"}
+                  className="flex-1"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={
+                    isSending ||
+                    ticket.status === "Closed" ||
+                    !newMessage.trim()
+                  }
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </Layout>
   );
 }

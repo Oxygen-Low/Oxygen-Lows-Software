@@ -161,8 +161,18 @@ vi.mock("@/lib/supabase", () => ({
           select: vi.fn(() => builder),
           eq: vi.fn(() => builder),
           order: vi.fn(() => builder),
-          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: "mock-msg-id-" + (++msgIdCounter) }, error: null })),
-          single: vi.fn(() => Promise.resolve({ data: { id: "mock-msg-id-" + (++msgIdCounter) }, error: null })),
+          maybeSingle: vi.fn(() =>
+            Promise.resolve({
+              data: { id: "mock-msg-id-" + ++msgIdCounter },
+              error: null,
+            }),
+          ),
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: { id: "mock-msg-id-" + ++msgIdCounter },
+              error: null,
+            }),
+          ),
           then: vi.fn((onFulfilled) => {
             return Promise.resolve({ data: [], error: null }).then(onFulfilled);
           }),

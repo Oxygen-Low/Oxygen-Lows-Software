@@ -126,7 +126,8 @@ const apps: AppMetadata[] = [
   {
     id: "data-save",
     name: "Data Save",
-    description: "Securely store and manage your custom data and text snippets.",
+    description:
+      "Securely store and manage your custom data and text snippets.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Server className="w-8 h-8 text-cyan-500" />,
@@ -172,10 +173,13 @@ export default function Apps() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
-  
+
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
-  const activeApp = useMemo(() => apps.find(a => a.id === appId) || null, [appId]);
+  const activeApp = useMemo(
+    () => apps.find((a) => a.id === appId) || null,
+    [appId],
+  );
 
   const availableApps = useMemo(
     () =>
@@ -213,11 +217,16 @@ export default function Apps() {
 
   if (activeApp) {
     const AppComponent = activeApp.component;
-    const isFullWidthApp = activeApp.id === "chatbot" || activeApp.id === "llm-agent";
+    const isFullWidthApp =
+      activeApp.id === "chatbot" || activeApp.id === "llm-agent";
 
     return (
       <Layout fullWidth={isFullWidthApp}>
-        <div className={isFullWidthApp ? "h-full w-full flex flex-col" : "space-y-6"}>
+        <div
+          className={
+            isFullWidthApp ? "h-full w-full flex flex-col" : "space-y-6"
+          }
+        >
           {!isFullWidthApp && (
             <div className="flex items-center gap-4 mb-8">
               <button
@@ -228,7 +237,9 @@ export default function Apps() {
               >
                 <AppWindow className="w-6 h-6" />
               </button>
-              <h2 className="text-2xl font-bold text-white">{activeApp.name}</h2>
+              <h2 className="text-2xl font-bold text-white">
+                {activeApp.name}
+              </h2>
             </div>
           )}
           <AppComponent />

@@ -382,8 +382,6 @@ export default function Account() {
             </Card>
           </TabsContent>
 
-
-
           <TabsContent value="models" className="space-y-6">
             <Card className="bg-slate-900/50 border-slate-800">
               <CardContent className="pt-6 space-y-6">

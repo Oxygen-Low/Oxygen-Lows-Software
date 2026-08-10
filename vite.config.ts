@@ -74,7 +74,8 @@ function expressPlugin(): Plugin {
           const fullUrl = `${protocol}://${host}${url}`;
           const headers = new Headers();
           for (const [key, value] of Object.entries(req.headers)) {
-            if (value) headers.set(key, Array.isArray(value) ? value[0] : value);
+            if (value)
+              headers.set(key, Array.isArray(value) ? value[0] : value);
           }
           const method = req.method || "GET";
           const hasBody = method !== "GET" && method !== "HEAD";
