@@ -37,7 +37,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@55af22117bfebc8a747e7be55b34d163e7421a3a # v4.4.0
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USER }}
