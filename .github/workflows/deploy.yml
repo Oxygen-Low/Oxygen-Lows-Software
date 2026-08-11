@@ -36,13 +36,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+      - name: Deploy via SFTP
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASS }}
-          port: ${{ secrets.FTP_PORT }}
-          local-dir: ./dist/
-          server-dir: ${{ secrets.FTP_APP_PATH }}
-          dangerous-clean-slate: false
+          host: ${{ secrets.PLESK_HOST }}
+          username: ${{ secrets.PLESK_USER }}
+          password: ${{ secrets.PLESK_PASSWORD }}
+          port: 22
+          source: "dist/*"
+          target: ${{ secrets.PLESK_APP_PATH }}
+          strip_components: 0
+          overwrite: true
