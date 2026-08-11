@@ -55,7 +55,7 @@ proxyRouter.post("/fetch", async (c) => {
       return c.json({ error: "Internal or private IPs not allowed" }, 400);
     }
 
-    const isAllowedDomain = ALLOWED_DOMAINS.some(domain => hostname.endsWith(domain));
+    const isAllowedDomain = ALLOWED_DOMAINS.some(domain => hostname === domain || hostname.endsWith("." + domain));
     if (!isAllowedDomain) {
       return c.json({ error: "Domain not allowed" }, 403);
     }
