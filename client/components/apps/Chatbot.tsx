@@ -321,6 +321,7 @@ const ChatMessage = React.memo(
               >
                 <button
                   onClick={() => setReasoningExpanded(!reasoningExpanded)}
+                  aria-expanded={reasoningExpanded}
                   className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90"
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
@@ -357,6 +358,8 @@ const ChatMessage = React.memo(
                 <button
                   onClick={() => onNavigate?.(activeSiblingIndex - 1)}
                   disabled={activeSiblingIndex === 0}
+                  title="Previous"
+                  aria-label="Previous"
                   className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px] font-family-material">
@@ -376,6 +379,11 @@ const ChatMessage = React.memo(
                   }}
                   className="hover:text-white p-1 flex items-center justify-center transition-colors"
                   title={
+                    activeSiblingIndex < siblings.length - 1
+                      ? "Next"
+                      : "Regenerate"
+                  }
+                  aria-label={
                     activeSiblingIndex < siblings.length - 1
                       ? "Next"
                       : "Regenerate"
@@ -1873,6 +1881,8 @@ export function ChatbotApp() {
                       setOptionsDropdownOpen(!optionsDropdownOpen);
                       setModelDropdownOpen(false);
                     }}
+                    aria-label="Toggle Options"
+                    aria-expanded={optionsDropdownOpen}
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white/70 transition-all duration-200"
                     title="Toggle Options"
                   >
