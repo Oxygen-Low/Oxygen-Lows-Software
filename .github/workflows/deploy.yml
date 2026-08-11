@@ -1,0 +1,48 @@
+name: Deploy to Plesk
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "Desktop/**"
+      - "*.md"
+      - ".Jules/**"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Client & Server
+        run: pnpm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@55af22117bfebc8a747e7be55b34d163e7421a3a # v4.4.0
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          port: ${{ secrets.FTP_PORT }}
+          local-dir: ./dist/
+          server-dir: ${{ secrets.FTP_APP_PATH }}
+          dangerous-clean-slate: false
