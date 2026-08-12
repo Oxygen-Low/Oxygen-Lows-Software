@@ -11,7 +11,6 @@ import { aiRouter } from "./routes/ai.ts";
 const app = new Hono();
 
 const ALLOWED_ORIGINS = [
-  "https://main.oxygen-lows-software.workers.dev",
   "https://oxygenlow.com",
   "https://www.oxygenlow.com",
 ];
