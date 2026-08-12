@@ -1,0 +1,51 @@
+name: Deploy to Plesk
+
+on:
+  push:
+    branches:
+      - main # Change this if your default branch is different
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history so we can checkout/push branches properly
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.14.0
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Commit and push to plesk branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Checkout or create the plesk branch
+          git checkout -B plesk
+          
+          # Force add the built dist directory (since it's in .gitignore)
+          git add -f dist/
+          
+          # Add any other potential changes
+          git add .
+          
+          # Commit the changes. If there's nothing to commit, it won't fail the workflow
+          git commit -m "chore: build and deploy to plesk branch" || echo "No changes to commit"
+          
+          # Push to the plesk branch, overwriting its history if needed
+          git push -f origin plesk
