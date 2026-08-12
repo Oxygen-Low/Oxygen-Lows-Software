@@ -66,9 +66,17 @@ namespace DesktopInstaller
             {
                 Directory.Delete(path, true);
             }
+
+            // Delete AppData
+            var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OxygenLowsSoftware");
+            if (Directory.Exists(appDataPath))
+            {
+                Directory.Delete(appDataPath, true);
+            }
             
             // Remove Registry Keys
             Registry.CurrentUser.DeleteSubKeyTree(RegKeyPath, false);
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\oxygenlows", false);
             
             // Remove Shortcuts
             var programsPath = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
