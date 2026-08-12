@@ -6,7 +6,7 @@ All user data is stored securely on the cloud, allowing you to access your conte
 
 ## Access the App
 
-You can access the official web application at https://Oxygenlow.com
+You can access the official web application at https://oxygenlow.com
 
 _Note: This project was originally designed as a self-hostable website, but it has now migrated to a cloud-hosted model and is no longer intended for self-hosting._
 
