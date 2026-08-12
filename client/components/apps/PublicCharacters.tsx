@@ -512,6 +512,7 @@ export function PublicCharactersApp() {
                   <button
                     onClick={(e) => handleLike(item, e)}
                     className="p-2 rounded-full bg-slate-900/60 backdrop-blur-sm border border-slate-800 hover:bg-slate-800 transition-colors flex flex-col items-center gap-1"
+                    aria-label={`${item.is_liked_by_user ? "Unlike" : "Like"} ${item.is_universe ? "universe" : "character"}`}
                   >
                     <Heart
                       className={`w-5 h-5 ${item.is_liked_by_user ? "fill-pink-500 text-pink-500" : "text-white"}`}
