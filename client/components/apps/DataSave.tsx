@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Save,
   Trash2,
@@ -152,12 +152,25 @@ export function DataSaveApp() {
     }
   };
 
-  const filteredSaves = saves.filter(s => {
-    const matchesSearch = s.key_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          s.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategoryFilter ? s.category_id === selectedCategoryFilter : true;
-    return matchesSearch && matchesCategory;
-  });
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Memoize saves filtering and hoist toLowerCase() outside the loop.
+   * Prevents expensive O(N) recalculations on every render and avoids
+   * allocating the same lowercase string N times during the filter pass.
+   */
+  const filteredSaves = useMemo(() => {
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return saves.filter((s) => {
+      const matchesSearch =
+        !lowerSearchTerm ||
+        s.key_name.toLowerCase().includes(lowerSearchTerm) ||
+        s.content.toLowerCase().includes(lowerSearchTerm);
+      const matchesCategory = selectedCategoryFilter
+        ? s.category_id === selectedCategoryFilter
+        : true;
+      return matchesSearch && matchesCategory;
+    });
+  }, [saves, searchTerm, selectedCategoryFilter]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
