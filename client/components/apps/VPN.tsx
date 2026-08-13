@@ -438,7 +438,7 @@ export function VPNApp() {
 
       if (config.type === "WireGuard") {
         await writeIPCFile(`vpn_temp.conf`, config.config_content);
-        const res = await runIPCCommand(`"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
+        const res = await runIPCCommand(`call "C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
         if (res.stderr && res.stderr.toLowerCase().includes("is not recognized")) {
             throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
         }
@@ -459,7 +459,7 @@ export function VPNApp() {
     setIsConnecting(true);
     try {
       if (config.type === "WireGuard") {
-        await runIPCCommand(`"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
+        await runIPCCommand(`call "C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
       } else {
         await runIPCCommand(`taskkill /F /IM openvpn.exe`);
       }
