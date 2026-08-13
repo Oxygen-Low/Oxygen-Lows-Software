@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
+import { ChatbotSimulatorApp } from "@/components/apps/ChatbotSimulator";
 import { PublicCharactersApp } from "@/components/apps/PublicCharacters";
 import { DataSaveApp } from "@/components/apps/DataSave";
 import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
@@ -105,6 +106,15 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
+  },
+  {
+    id: "chatbot-simulator",
+    name: "Chatbot Simulator",
+    description: "You are the AI. The LLM is the user. Help them out!",
+    categories: ["All", "Games", "LLM/AI"],
+    availability: "web-and-desktop",
+    icon: <Gamepad2 className="w-8 h-8 text-cyan-500" />,
+    component: ChatbotSimulatorApp,
   },
   {
     id: "file-compressor",

@@ -5,7 +5,6 @@ import { demoRouter } from "./routes/demo.ts";
 import { proxyRouter } from "./routes/proxy.ts";
 import { oauthAdminRouter } from "./routes/oauthAdmin.ts";
 import { adminSupportRouter } from "./routes/adminSupport.ts";
-import { reposRouter } from "./routes/repos.ts";
 import { aiRouter } from "./routes/ai.ts";
 import { changelogsRouter } from "./routes/changelogs.ts";
 
@@ -266,21 +265,6 @@ app.get("/.well-known/api-catalog", (c) => {
         ]
       },
       {
-        anchor: `${baseUrl}/api/repos`,
-        "service-desc": [
-          {
-            href: `${baseUrl}/api/openapi.json#/paths/~1api~1repos`,
-            type: "application/vnd.oai.openapi+json;version=3.0"
-          }
-        ],
-        "service-doc": [
-          {
-            href: `${baseUrl}/api/docs#repos`,
-            type: "text/html"
-          }
-        ]
-      },
-      {
         anchor: `${baseUrl}/api/ai`,
         "service-desc": [
           {
@@ -323,7 +307,6 @@ app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);
 app.route("/api/oauth-admin", oauthAdminRouter);
 app.route("/api/admin/support", adminSupportRouter);
-app.route("/api/repos", reposRouter);
 app.route("/api/ai", aiRouter);
 app.route("/api/changelogs", changelogsRouter);
 
