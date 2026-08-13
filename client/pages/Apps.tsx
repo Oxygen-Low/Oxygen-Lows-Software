@@ -236,7 +236,7 @@ export default function Apps() {
       const id = Date.now().toString();
       const listener = (event: any) => {
         try {
-          const data = JSON.parse(event.data);
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           if (data.id === id) {
             (window as any).chrome.webview.removeEventListener("message", listener);
             if (data.success) {
