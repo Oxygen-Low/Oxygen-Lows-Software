@@ -48,16 +48,12 @@ const createPulsingIcon = (ping: number | "error" | "loading") => {
     iconSize: [24, 24],
     iconAnchor: [12, 12]
   });
-};
-
-const createAgentIcon = () => {
-  return L.divIcon({
-    className: 'agent-icon',
-    html: `<div class="agent-wrapper"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
-  });
-};
+const agentIcon = L.divIcon({
+  className: 'agent-icon',
+  html: `<div class="agent-wrapper"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
+});
 
 function MapController({ center, locked }: { center: [number, number] | null; locked: boolean }) {
   const map = useMap();
@@ -113,7 +109,6 @@ export function VPNApp() {
   const statsRef = useRef<Record<string, ServerStat>>({});
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const markerRefs = useRef<Record<string, any>>({});
-  const agentRef = useRef<any>(null);
   
   // Connection State
   const [connectedConfigId, setConnectedConfigId] = useState<string | null>(null);
@@ -122,12 +117,12 @@ export function VPNApp() {
   const [agentLocation, setAgentLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
-    fetch('/api/vpn/geocode')
+    fetch('https://ipapi.co/json/')
       .then(res => res.json())
       .then(data => {
-        if (data.status === "success") {
-          setHomeLocation([data.lat, data.lon]);
-          setAgentLocation([data.lat, data.lon]);
+        if (data && data.latitude && data.longitude) {
+          setHomeLocation([data.latitude, data.longitude]);
+          setAgentLocation([data.latitude, data.longitude]);
         }
       })
       .catch(err => console.error("Home geocode error", err));
@@ -390,34 +385,65 @@ export function VPNApp() {
     }
   };
 
+  const animateAgentTo = async (start: [number, number], end: [number, number], durationMs: number) => {
+    return new Promise<void>((resolve) => {
+      const startTime = performance.now();
+      const step = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / durationMs, 1);
+        const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+        
+        const lat = start[0] + (end[0] - start[0]) * ease;
+        const lon = start[1] + (end[1] - start[1]) * ease;
+        
+        setAgentLocation([lat, lon]);
+        
+        if (progress < 1) requestAnimationFrame(step);
+        else resolve();
+      };
+      requestAnimationFrame(step);
+    });
+  };
+
+  const setAgentDiving = (diving: boolean) => {
+    const els = document.querySelectorAll('.agent-icon');
+    els.forEach(el => {
+      if (diving) {
+        el.classList.add('diving');
+        el.classList.remove('emerging');
+      } else {
+        el.classList.remove('diving');
+        el.classList.add('emerging');
+      }
+    });
+  };
+
   const handleConnect = async (config: any) => {
     setIsConnecting(true);
     try {
       const serverStat = serverStats[config.id];
-      if (serverStat && serverStat.lat && serverStat.lon && agentRef.current) {
+      if (serverStat && serverStat.lat && serverStat.lon && agentLocation) {
         // Dive
-        const el = agentRef.current.getElement();
-        if (el) L.DomUtil.addClass(el, 'diving');
-        
-        await new Promise(r => setTimeout(r, 600)); // Wait for dive animation
+        setAgentDiving(true);
+        await new Promise(r => setTimeout(r, 600));
 
-        // Move underground
-        setAgentLocation([serverStat.lat, serverStat.lon]);
-        
-        await new Promise(r => setTimeout(r, 1500)); // Wait for transform transition
+        // Move across globe
+        await animateAgentTo(agentLocation, [serverStat.lat, serverStat.lon], 1500);
 
         // Emerge
-        if (el) L.DomUtil.removeClass(el, 'diving');
-        
-        await new Promise(r => setTimeout(r, 500)); // Wait for emerge animation
+        setAgentDiving(false);
+        await new Promise(r => setTimeout(r, 600));
       }
 
       if (config.type === "WireGuard") {
         await writeIPCFile(`vpn_temp.conf`, config.config_content);
-        await runIPCCommand(`wireguard /installtunnelservice vpn_temp.conf`);
+        const res = await runIPCCommand(`"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
+        if (res.stderr && res.stderr.toLowerCase().includes("is not recognized")) {
+            throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
+        }
       } else {
         await writeIPCFile(`vpn_temp.ovpn`, config.config_content);
-        runIPCCommand(`openvpn --config vpn_temp.ovpn`); 
+        runIPCCommand(`openvpn --config "%TEMP%\\vpn_temp.ovpn"`); 
       }
       setConnectedConfigId(config.id);
       toast.success(`Connected to ${config.name}`);
@@ -432,23 +458,21 @@ export function VPNApp() {
     setIsConnecting(true);
     try {
       if (config.type === "WireGuard") {
-        await runIPCCommand(`wireguard /uninstalltunnelservice vpn_temp`);
+        await runIPCCommand(`"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
       } else {
         await runIPCCommand(`taskkill /F /IM openvpn.exe`);
       }
       setConnectedConfigId(null);
       
       // Reverse animation
-      if (homeLocation && agentRef.current) {
-        const el = agentRef.current.getElement();
-        if (el) L.DomUtil.addClass(el, 'diving');
+      if (homeLocation && agentLocation) {
+        setAgentDiving(true);
         await new Promise(r => setTimeout(r, 600));
 
-        setAgentLocation(homeLocation);
-        await new Promise(r => setTimeout(r, 1500));
+        await animateAgentTo(agentLocation, homeLocation, 1500);
 
-        if (el) L.DomUtil.removeClass(el, 'diving');
-        await new Promise(r => setTimeout(r, 500));
+        setAgentDiving(false);
+        await new Promise(r => setTimeout(r, 600));
       }
 
       toast.success(`Disconnected from ${config.name}`);
@@ -525,7 +549,6 @@ export function VPNApp() {
           display: none !important;
         }
         .agent-icon {
-          transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
           z-index: 1000 !important;
         }
         .agent-wrapper {
@@ -633,8 +656,7 @@ export function VPNApp() {
           {agentLocation && (
             <Marker 
               position={agentLocation} 
-              icon={createAgentIcon()} 
-              ref={agentRef}
+              icon={agentIcon} 
             />
           )}
         </MapContainer>
