@@ -296,8 +296,13 @@ public partial class MainWindow : Window
         
         string fullPath = Path.GetFullPath(Path.Combine(_workingDirectory, path));
         string workingDirFull = Path.GetFullPath(_workingDirectory);
-        if (!fullPath.StartsWith(workingDirFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && 
-            !fullPath.Equals(workingDirFull, StringComparison.OrdinalIgnoreCase))
+        if (!workingDirFull.EndsWith(Path.DirectorySeparatorChar.ToString()))
+        {
+            workingDirFull += Path.DirectorySeparatorChar;
+        }
+        
+        if (!fullPath.StartsWith(workingDirFull, StringComparison.OrdinalIgnoreCase) && 
+            !fullPath.Equals(Path.GetFullPath(_workingDirectory), StringComparison.OrdinalIgnoreCase))
         {
             throw new Exception("Path traversal detected");
         }
