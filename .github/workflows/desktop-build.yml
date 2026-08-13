@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Desktop/**'
+      - '.github/workflows/desktop-build.yml'
 
 jobs:
   build:
