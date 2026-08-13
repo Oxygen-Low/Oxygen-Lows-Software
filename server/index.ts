@@ -53,7 +53,7 @@ app.use('*', async (c, next) => {
   // Only inject on non-API, non-asset routes (i.e. HTML pages served to agents/browsers)
   if (!path.startsWith('/api/') && !path.startsWith('/.well-known/') && !path.match(/\.(js|css|png|ico|svg|woff2?|ttf|eot|map|json|xml|txt)$/i)) {
     const host = c.req.header('host') || 'oxygenlow.com';
-    const protocol = c.req.header('x-forwarded-proto') || 'https';
+    const protocol = (c.req.header('x-forwarded-proto') || 'https').split(',')[0].trim();
     const baseUrl = `${protocol}://${host}`;
     const linkHeaders = [
       `<${baseUrl}/.well-known/api-catalog>; rel="api-catalog"`,
@@ -71,7 +71,7 @@ app.get("/api/ping", (c) => c.json({ message: "ping" }));
 
 app.get("/sitemap.xml", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
   // The validator tool might be using a specific host and we should ensure it matches
   // However, often times the scanner directly visits the domain.
   const baseUrl = `${protocol}://${host}`;
@@ -108,7 +108,7 @@ ${urls
 
 app.get("/auth.md", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
   const baseUrl = `${protocol}://${host}`;
 
     const content = `# auth.md
@@ -179,7 +179,7 @@ Tokens provide access to API resources scoped under the permissions granted at r
 
 app.get("/.well-known/oauth-protected-resource", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
   const baseUrl = `${protocol}://${host}`;
 
   return c.json({
@@ -192,7 +192,7 @@ app.get("/.well-known/oauth-protected-resource", (c) => {
 
 app.get("/.well-known/oauth-authorization-server", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
   const baseUrl = `${protocol}://${host}`;
 
   return c.json({
@@ -239,7 +239,7 @@ app.get("/.well-known/oauth-authorization-server", (c) => {
 
 app.get("/.well-known/api-catalog", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
   const baseUrl = `${protocol}://${host}`;
 
   const catalog = {
