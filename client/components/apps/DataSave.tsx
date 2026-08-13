@@ -327,6 +327,8 @@ export function DataSaveApp() {
                           size="icon"
                           onClick={() => handleDelete(save.id)}
                           className="h-8 w-8 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          aria-label="Delete saved data"
+                          title="Delete saved data"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
