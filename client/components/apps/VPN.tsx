@@ -103,6 +103,7 @@ export function VPNApp() {
   const [serverStats, setServerStats] = useState<Record<string, ServerStat>>({});
   const statsRef = useRef<Record<string, ServerStat>>({});
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+  const markerRefs = useRef<Record<string, any>>({});
   
   // Connection State
   const [connectedConfigId, setConnectedConfigId] = useState<string | null>(null);
@@ -357,6 +358,11 @@ export function VPNApp() {
     const stat = serverStats[configId];
     if (stat && stat.lat && stat.lon) {
       setSelectedLocation([stat.lat, stat.lon]);
+      setTimeout(() => {
+        if (markerRefs.current[configId]) {
+          markerRefs.current[configId].openPopup();
+        }
+      }, 500); // Wait for flyTo animation slightly before opening to prevent glitchy behavior
     }
   };
 
@@ -482,7 +488,12 @@ export function VPNApp() {
             const stat = serverStats[config.id];
             if (stat && stat.lat && stat.lon) {
               return (
-                <Marker key={config.id} position={[stat.lat, stat.lon]} icon={createPulsingIcon(stat.ping)}>
+                <Marker 
+                  key={config.id} 
+                  position={[stat.lat, stat.lon]} 
+                  icon={createPulsingIcon(stat.ping)}
+                  ref={(r) => { if (r) markerRefs.current[config.id] = r; }}
+                >
                   <Popup 
                     closeOnClick={connectedConfigId !== config.id} 
                     autoClose={connectedConfigId !== config.id} 
