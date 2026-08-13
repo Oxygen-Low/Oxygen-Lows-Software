@@ -27,6 +27,20 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import imageCompression from "browser-image-compression";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { fetchFile, toBlobURL } from "@ffmpeg/util";
+
+let ffmpeg: FFmpeg | null = null;
+const loadFfmpeg = async () => {
+  if (ffmpeg) return ffmpeg;
+  ffmpeg = new FFmpeg();
+  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
+  await ffmpeg.load({
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+  });
+  return ffmpeg;
+};
 
 export function FileCompressorApp() {
   const [selectedFile, setSelectedFile] = useState<any>(null);
@@ -72,12 +86,42 @@ export function FileCompressorApp() {
           onProgress: (p: number) => setProgress(p),
         };
         compressedBlob = await imageCompression(fileData as File, options);
-      } else if (selectedFile.metadata.mimetype.startsWith("audio/")) {
-        // FFmpeg.wasm would be better for audio, but for now we'll just mock it or skip
-        // In a real app, you'd use @ffmpeg/ffmpeg
-        throw new Error(
-          "Audio compression is not yet implemented in this demo.",
-        );
+      } else if (
+        selectedFile.metadata.mimetype.startsWith("audio/") ||
+        selectedFile.metadata.mimetype.startsWith("video/")
+      ) {
+        const ext = selectedFile.name.split(".").pop()?.toLowerCase();
+        const inputName = `input.${ext}`;
+        const outputName = `output.${ext}`;
+        
+        const isVideo = selectedFile.metadata.mimetype.startsWith("video/");
+        
+        const ffmpegInstance = await loadFfmpeg();
+        ffmpegInstance.on("progress", ({ progress }) => {
+          setProgress(Math.round(progress * 100));
+        });
+
+        await ffmpegInstance.writeFile(inputName, await fetchFile(fileData as File));
+        
+        if (isVideo) {
+          // Compress video
+          await ffmpegInstance.exec([
+            "-i", inputName,
+            "-vcodec", "libx264",
+            "-crf", (100 - quality).toString(), // lower quality = higher crf
+            outputName,
+          ]);
+        } else {
+          // Compress audio
+          await ffmpegInstance.exec([
+            "-i", inputName,
+            "-b:a", `${Math.max(32, Math.floor(quality * 1.2))}k`, // Example scaling
+            outputName,
+          ]);
+        }
+        
+        const data = await ffmpegInstance.readFile(outputName);
+        compressedBlob = new Blob([data], { type: selectedFile.metadata.mimetype });
       } else {
         throw new Error("Unsupported file type");
       }
@@ -121,7 +165,7 @@ export function FileCompressorApp() {
           <CardContent className="space-y-4">
             <StorageFileSelector
               onSelect={setSelectedFile}
-              allowedTypes={["image", "audio"]}
+              allowedTypes={["image", "audio", "video"]}
               trigger={
                 <Button
                   variant="outline"
