@@ -85,13 +85,6 @@ describe("Account Component", () => {
     });
   });
 
-  it("renders Models tab correctly", async () => {
-    render(<Account />);
-    fireEvent.click(screen.getByRole("button", { name: "Models" }));
-    const select = await screen.findByRole("combobox", { name: "Select Model Provider" });
-    expect(select).toBeDefined();
-  });
-
   it("renders with correct header", async () => {
     render(<Account />);
     const headers = screen.getAllByText("Your Account", { selector: "h1" });

@@ -2,13 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Lock,
   Upload,
-  Share2,
-  Cpu,
-  Plus,
-  Trash2,
-  ChevronRight,
   Maximize,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -41,21 +35,6 @@ interface ProfilePicture {
   image_url: string;
   crop_data: Area;
 }
-interface UserModel {
-  provider: string;
-  model_id: string;
-}
-
-const PROVIDERS = [
-  { id: "openrouter", name: "OpenRouter" },
-  { id: "openai", name: "ChatGPT/OpenAI" },
-  { id: "google", name: "Gemini/Google" },
-  { id: "grok", name: "Grok" },
-  { id: "anthropic", name: "Claude/Anthropic" },
-  { id: "horde", name: "AI Horde" },
-  { id: "stablehorde", name: "Stable Horde" },
-  { id: "custom", name: "Custom/OpenAI-Like", hasUrl: true },
-];
 
 export default function Account() {
   const { session } = useAuth();
@@ -76,10 +55,6 @@ export default function Account() {
   const [usernameInput, setUsernameInput] = useState("");
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [bioInput, setBioInput] = useState("");
-  const [userModels, setUserModels] = useState<UserModel[]>([]);
-  const [newModelInput, setNewModelInput] = useState("");
-  const [selectedProviderForModel, setSelectedProviderForModel] =
-    useState("openrouter");
 
   const fetchAccountData = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -104,14 +79,6 @@ export default function Account() {
       setUsernameInput(prof.username || "");
       setDisplayNameInput(prof.display_name || "");
       setBioInput(prof.bio || "");
-    }
-    const { data: prefs } = await supabase
-      .from("user_preferences")
-      .select("custom_models")
-      .eq("user_id", session.user.id)
-      .single();
-    if (prefs) {
-      setUserModels(prefs.custom_models || []);
     }
   }, [session?.user?.id]);
 
@@ -208,40 +175,6 @@ export default function Account() {
     }
   };
 
-  const handleAddCustomModel = async () => {
-    if (!newModelInput.trim()) return;
-    try {
-      const newModels = [
-        ...userModels,
-        { provider: selectedProviderForModel, model_id: newModelInput.trim() },
-      ];
-      await supabase.rpc("upsert_user_preferences", {
-        p_user_id: session?.user?.id,
-        p_custom_models: newModels,
-      });
-      setUserModels(newModels);
-      setNewModelInput("");
-      toast({ title: "Model Added" });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    }
-  };
-
-  const handleRemoveCustomModel = async (model: UserModel) => {
-    try {
-      const newModels = userModels.filter(
-        (m) => m.model_id !== model.model_id || m.provider !== model.provider,
-      );
-      await supabase.rpc("upsert_user_preferences", {
-        p_user_id: session?.user?.id,
-        p_custom_models: newModels,
-      });
-      setUserModels(newModels);
-      toast({ title: "Model Removed" });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    }
-  };
 
   return (
     <Layout>
@@ -292,7 +225,6 @@ export default function Account() {
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="bg-slate-900 border-slate-800">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="models">Models</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -383,67 +315,6 @@ export default function Account() {
           </TabsContent>
 
 
-
-          <TabsContent value="models" className="space-y-6">
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardContent className="pt-6 space-y-6">
-                <div className="flex gap-3">
-                  <select
-                    value={selectedProviderForModel}
-                    onChange={(e) =>
-                      setSelectedProviderForModel(e.target.value)
-                    }
-                    aria-label="Select Model Provider"
-                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm"
-                  >
-                    {PROVIDERS.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Input
-                    placeholder="Model ID"
-                    aria-label="Model ID"
-                    value={newModelInput}
-                    onChange={(e) => setNewModelInput(e.target.value)}
-                    className="bg-slate-950"
-                  />
-                  <Button
-                    onClick={handleAddCustomModel}
-                    className="bg-cyan-600"
-                  >
-                    Add
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {userModels.map((m) => (
-                    <div
-                      key={`${m.provider}:${m.model_id}`}
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-950/50 border border-slate-800/50 group"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-xs text-slate-500 font-mono uppercase">
-                          {m.provider}
-                        </span>
-                        <span className="text-sm text-white font-medium">
-                          {m.model_id}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCustomModel(m)}
-                        aria-label={`Remove ${m.model_id} (${m.provider})`}
-                        className="p-2 text-slate-500 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
       {selectedImage && (
