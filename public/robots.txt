@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
 Sitemap: https://oxygenlow.com/sitemap.xml
+Content-Signal: ai-train=yes, search=yes, ai-input=yes
