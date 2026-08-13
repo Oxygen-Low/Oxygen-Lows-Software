@@ -146,6 +146,88 @@ app.get("/.well-known/oauth-authorization-server", (c) => {
   });
 });
 
+app.get("/.well-known/api-catalog", (c) => {
+  const host = c.req.header("host") || "oxygenlow.com";
+  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const baseUrl = `${protocol}://${host}`;
+
+  const catalog = {
+    linkset: [
+      {
+        anchor: `${baseUrl}/api`,
+        "service-desc": [
+          {
+            href: `${baseUrl}/api/openapi.json`,
+            type: "application/vnd.oai.openapi+json;version=3.0"
+          }
+        ],
+        "service-doc": [
+          {
+            href: `${baseUrl}/api/docs`,
+            type: "text/html"
+          }
+        ],
+        status: [
+          {
+            href: `${baseUrl}/health`,
+            type: "application/json"
+          }
+        ]
+      },
+      {
+        anchor: `${baseUrl}/api/repos`,
+        "service-desc": [
+          {
+            href: `${baseUrl}/api/openapi.json#/paths/~1api~1repos`,
+            type: "application/vnd.oai.openapi+json;version=3.0"
+          }
+        ],
+        "service-doc": [
+          {
+            href: `${baseUrl}/api/docs#repos`,
+            type: "text/html"
+          }
+        ]
+      },
+      {
+        anchor: `${baseUrl}/api/ai`,
+        "service-desc": [
+          {
+            href: `${baseUrl}/api/openapi.json#/paths/~1api~1ai`,
+            type: "application/vnd.oai.openapi+json;version=3.0"
+          }
+        ],
+        "service-doc": [
+          {
+            href: `${baseUrl}/api/docs#ai`,
+            type: "text/html"
+          }
+        ]
+      },
+      {
+        anchor: `${baseUrl}/api/changelogs`,
+        "service-desc": [
+          {
+            href: `${baseUrl}/api/openapi.json#/paths/~1api~1changelogs`,
+            type: "application/vnd.oai.openapi+json;version=3.0"
+          }
+        ],
+        "service-doc": [
+          {
+            href: `${baseUrl}/api/docs#changelogs`,
+            type: "text/html"
+          }
+        ]
+      }
+    ]
+  };
+
+  return c.json(catalog, 200, {
+    "Content-Type": "application/linkset+json",
+    "Cache-Control": "public, max-age=3600"
+  });
+});
+
 app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);
 app.route("/api/oauth-admin", oauthAdminRouter);
