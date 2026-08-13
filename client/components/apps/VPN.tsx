@@ -437,8 +437,9 @@ export function VPNApp() {
 
       if (config.type === "WireGuard") {
         await writeIPCFile(`vpn_temp.conf`, config.config_content);
-        const res = await runIPCCommand(`""C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf""`);
-        if (res.stderr && res.stderr.toLowerCase().includes("is not recognized")) {
+        await writeIPCFile(`vpn_temp_install.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
+        const res = await runIPCCommand(`"%TEMP%\\vpn_temp_install.bat"`);
+        if ((res.stderr || res.stdout) && (res.stderr.toLowerCase().includes("is not recognized") || res.stdout.toLowerCase().includes("is not recognized"))) {
             throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
         }
       } else {
@@ -458,7 +459,8 @@ export function VPNApp() {
     setIsConnecting(true);
     try {
       if (config.type === "WireGuard") {
-        await runIPCCommand(`""C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp"`);
+        await writeIPCFile(`vpn_temp_uninstall.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
+        await runIPCCommand(`"%TEMP%\\vpn_temp_uninstall.bat"`);
       } else {
         await runIPCCommand(`taskkill /F /IM openvpn.exe`);
       }
