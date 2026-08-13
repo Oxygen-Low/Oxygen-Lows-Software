@@ -298,34 +298,27 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       }
 
       const rawEnv = (c.env || {}) as any;
-      let AccountID = "";
-      let CloudflareAPIToken = "";
+      let cloudflareId = "";
+      let cloudflareToken = "";
 
       for (const [key, value] of Object.entries(rawEnv)) {
         const cleanKey = key.trim().toLowerCase();
-        if (cleanKey === "accountid" || cleanKey === "account_id")
-          AccountID = (value as string).trim();
-        if (
-          cleanKey === "cloudflareapitoken" ||
-          cleanKey === "cloudflare_api_token"
-        )
-          CloudflareAPIToken = (value as string).trim();
+        if (cleanKey === "cloudflare_id")
+          cloudflareId = (value as string).trim();
+        if (cleanKey === "cloudflare_token")
+          cloudflareToken = (value as string).trim();
       }
 
       const procEnv =
         typeof process !== "undefined" ? process.env : ({} as any);
-      if (!AccountID) {
-        AccountID = (procEnv.AccountID || procEnv.ACCOUNT_ID || "").trim();
+      if (!cloudflareId) {
+        cloudflareId = (procEnv.CLOUDFLARE_ID || "").trim();
       }
-      if (!CloudflareAPIToken) {
-        CloudflareAPIToken = (
-          procEnv.CloudflareAPIToken ||
-          procEnv.CLOUDFLARE_API_TOKEN ||
-          ""
-        ).trim();
+      if (!cloudflareToken) {
+        cloudflareToken = (procEnv.CLOUDFLARE_TOKEN || "").trim();
       }
 
-      if (!AccountID || !CloudflareAPIToken) {
+      if (!cloudflareId || !cloudflareToken) {
         return c.json(
           {
             error: "Cloudflare AI is temporarily unavailable. Please try a different provider.",
@@ -334,12 +327,12 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         );
       }
 
-      targetUrl = `https://api.cloudflare.com/client/v4/accounts/${AccountID}/ai/v1/chat/completions`;
+      targetUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareId}/ai/v1/chat/completions`;
       requestBody = { model, messages: finalMessages };
       if (stream) {
         requestBody.stream = true;
       }
-      fetchOptions.headers["Authorization"] = `Bearer ${CloudflareAPIToken}`;
+      fetchOptions.headers["Authorization"] = `Bearer ${cloudflareToken}`;
     } else {
       return c.json({ error: "Unsupported provider" }, 400);
     }
