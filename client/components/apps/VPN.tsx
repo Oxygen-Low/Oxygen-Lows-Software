@@ -173,19 +173,7 @@ export function VPNApp() {
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
         </MapContainer>
-        
-        {/* Map Overlay info if needed */}
-        <div className="absolute top-6 left-6 z-10 pointer-events-none">
-          <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 p-4 rounded-xl shadow-lg inline-flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
-              <MapIcon className="w-5 h-5 text-cyan-500" />
-            </div>
-            <div>
-              <h2 className="text-white font-bold text-lg leading-tight">Global Network</h2>
-              <p className="text-slate-400 text-sm">Select a configuration</p>
-            </div>
-          </div>
-        </div>
+
       </div>
 
       {/* Configurations Sidebar - Right */}
