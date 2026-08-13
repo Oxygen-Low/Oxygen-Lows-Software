@@ -168,6 +168,7 @@ export default function Changelogs() {
           );
         })}
       </div>
+      </div>
     </Layout>
   );
 }
