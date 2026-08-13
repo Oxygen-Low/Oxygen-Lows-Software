@@ -159,7 +159,14 @@ export function VPNApp() {
               Add New Config
             </CardTitle>
             <CardDescription className="text-slate-400">
-              Paste your VPN configuration file contents here.
+              <div className="flex flex-col gap-2 items-start">
+                <p>Paste your VPN configuration file contents here.</p>
+                <Button variant="outline" size="sm" className="bg-slate-900 border-slate-700 text-slate-300 hover:text-white" asChild>
+                  <a href="https://www.vpnbook.com" target="_blank" rel="noreferrer">
+                    Get Free Config from VPNBook
+                  </a>
+                </Button>
+              </div>
             </CardDescription>
           </CardHeader>
           <CardContent>
