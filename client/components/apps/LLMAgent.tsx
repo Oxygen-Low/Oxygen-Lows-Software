@@ -1139,9 +1139,13 @@ export function LLMAgentApp() {
               tool_call_id: m.toolCallId,
             };
           }
+          let content = m.content;
+          if (m.role === "system" && !supportsNativeTools) {
+            content += "\n\nTo use tools, you MUST output a JSON block with a \"commands\" array. Example:\n```json\n{\n  \"commands\": [\n    {\"command\": \"run_command\", \"arguments\": {\"command\": \"ls\"}}\n  ]\n}\n```\n\nAvailable tools:\n" + JSON.stringify(AGENT_TOOLS.map(t => t.function), null, 2);
+          }
           return {
             role: m.role as "user" | "assistant" | "system",
-            content: m.content,
+            content,
             ...(m.toolCalls && m.toolCalls.length > 0
               ? {
                   tool_calls: m.toolCalls.map((tc) => ({
@@ -1347,29 +1351,73 @@ export function LLMAgentApp() {
       }
 
       // If the provider doesn't support native tools, try parsing tool calls from content
-      if (!supportsNativeTools && fullContent.includes("<tool_call>")) {
-        const toolCallRegex =
-          /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
-        let match;
-        while ((match = toolCallRegex.exec(fullContent)) !== null) {
-          try {
-            const parsed = JSON.parse(match[1]);
-            const idx = Object.keys(accumulatedToolCalls).length;
-            accumulatedToolCalls[idx] = {
-              id: `call_${idx}`,
-              name: parsed.name,
-              arguments: JSON.stringify(parsed.args || parsed.arguments || {}),
-            };
-            finishReason = "tool_calls";
-          } catch {
-            // ignore
+      if (!supportsNativeTools) {
+        if (fullContent.includes("<tool_call>")) {
+          const toolCallRegex =
+            /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
+          let match;
+          while ((match = toolCallRegex.exec(fullContent)) !== null) {
+            try {
+              const parsed = JSON.parse(match[1]);
+              const idx = Object.keys(accumulatedToolCalls).length;
+              accumulatedToolCalls[idx] = {
+                id: `call_${idx}`,
+                name: parsed.name,
+                arguments: JSON.stringify(parsed.args || parsed.arguments || {}),
+              };
+              finishReason = "tool_calls";
+            } catch {
+              // ignore
+            }
+          }
+          // Strip tool_call tags from content
+          fullContent = fullContent.replace(
+            /<tool_call>[\s\S]*?<\/tool_call>/g,
+            "",
+          ).trim();
+        } else {
+          // Fallback for models outputting JSON blocks with "commands"
+          const jsonMatch = fullContent.match(/```(?:json)?\n([\s\S]*?)\n```/) || fullContent.match(/({[\s\S]*"commands"[\s\S]*})/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+              if (parsed.commands && Array.isArray(parsed.commands)) {
+                parsed.commands.forEach((cmd: any) => {
+                  const idx = Object.keys(accumulatedToolCalls).length;
+                  if (cmd.command && !cmd.name) {
+                    const isKnownTool = AGENT_TOOLS.some(t => t.function.name === cmd.command);
+                    if (isKnownTool) {
+                      accumulatedToolCalls[idx] = {
+                        id: `call_${idx}`,
+                        name: cmd.command,
+                        arguments: JSON.stringify(cmd.arguments || cmd.args || cmd)
+                      };
+                    } else {
+                      accumulatedToolCalls[idx] = {
+                        id: `call_${idx}`,
+                        name: "run_command",
+                        arguments: JSON.stringify({ command: cmd.command })
+                      };
+                    }
+                  } else if (cmd.name) {
+                    accumulatedToolCalls[idx] = {
+                      id: `call_${idx}`,
+                      name: cmd.name,
+                      arguments: JSON.stringify(cmd.arguments || cmd.args || {})
+                    };
+                  }
+                });
+                if (Object.keys(accumulatedToolCalls).length > 0) {
+                  finishReason = "tool_calls";
+                }
+                if (parsed.reasoning && !fullReasoning) {
+                  fullReasoning = parsed.reasoning;
+                }
+                fullContent = fullContent.replace(jsonMatch[0], "").trim();
+              }
+            } catch (e) {}
           }
         }
-        // Strip tool_call tags from content
-        fullContent = fullContent.replace(
-          /<tool_call>[\s\S]*?<\/tool_call>/g,
-          "",
-        ).trim();
       }
 
       // Parse accumulated tool calls
