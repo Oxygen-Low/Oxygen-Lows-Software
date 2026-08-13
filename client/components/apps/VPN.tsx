@@ -31,6 +31,25 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+const createPulsingIcon = (ping: number | "error" | "loading") => {
+  let colorClass = "slate";
+  if (typeof ping === "number") {
+    if (ping <= 50) colorClass = "green";
+    else if (ping <= 80) colorClass = "yellow";
+    else if (ping <= 120) colorClass = "orange";
+    else colorClass = "red";
+  } else if (ping === "error") {
+    colorClass = "red";
+  }
+
+  return L.divIcon({
+    className: 'custom-pulsing-icon',
+    html: `<div class="pulse-icon"><div class="pulse-ring pulse-ring-${colorClass}"></div><div class="pulse-dot pulse-dot-${colorClass}"></div></div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+};
+
 function MapController({ center }: { center: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
@@ -286,6 +305,45 @@ export function VPNApp() {
         .leaflet-control-attribution a {
           color: #06b6d4 !important;
         }
+        .pulse-icon {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+        }
+        .pulse-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          position: absolute;
+        }
+        .pulse-ring {
+          width: 100%;
+          height: 100%;
+          background-color: transparent;
+          border-width: 2px;
+          border-style: solid;
+          border-radius: 50%;
+          position: absolute;
+          animation: pulse 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        .pulse-dot-green { background-color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.8); }
+        .pulse-ring-green { border-color: rgba(16, 185, 129, 0.8); }
+        .pulse-dot-yellow { background-color: #eab308; box-shadow: 0 0 10px rgba(234, 179, 8, 0.8); }
+        .pulse-ring-yellow { border-color: rgba(234, 179, 8, 0.8); }
+        .pulse-dot-orange { background-color: #f97316; box-shadow: 0 0 10px rgba(249, 115, 22, 0.8); }
+        .pulse-ring-orange { border-color: rgba(249, 115, 22, 0.8); }
+        .pulse-dot-red { background-color: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+        .pulse-ring-red { border-color: rgba(239, 68, 68, 0.8); }
+        .pulse-dot-slate { background-color: #94a3b8; box-shadow: 0 0 10px rgba(148, 163, 184, 0.8); }
+        .pulse-ring-slate { border-color: rgba(148, 163, 184, 0.8); }
+
+        @keyframes pulse {
+          0% { transform: scale(0.5); opacity: 1; }
+          100% { transform: scale(2.5); opacity: 0; }
+        }
       `}</style>
       
       {/* Map Section - Left/Center */}
@@ -306,7 +364,7 @@ export function VPNApp() {
             const stat = serverStats[config.id];
             if (stat && stat.lat && stat.lon) {
               return (
-                <Marker key={config.id} position={[stat.lat, stat.lon]}>
+                <Marker key={config.id} position={[stat.lat, stat.lon]} icon={createPulsingIcon(stat.ping)}>
                   <Popup className="text-slate-900 font-medium">
                     {config.name}
                     <br />
