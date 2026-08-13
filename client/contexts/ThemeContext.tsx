@@ -92,7 +92,7 @@ export function adjustLightness(
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const { session } = useAuth();
   const [theme, setThemeState] = useState<Theme>("default");
-  const [font, setFontState] = useState<string>("font-indie");
+  const [font, setFontState] = useState<string>("font-zilla");
   const [useGradient, setUseGradientState] = useState<boolean>(true);
   const [lastModelId, setLastModelId] = useState<string | null>(null);
   const [lastProvider, setLastProvider] = useState<string | null>(null);
@@ -210,13 +210,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
           }
         } catch (error) {
           console.error("Failed to load custom font", error);
-          document.documentElement.classList.add("font-indie");
+          document.documentElement.classList.add("font-zilla");
         }
       } else {
         // Validate and add the new font class
         const validatedFont = VALID_FONTS.includes(newFont)
           ? newFont
-          : "font-indie";
+          : "font-zilla";
         document.documentElement.classList.add(validatedFont);
       }
     },
@@ -229,7 +229,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       if (!session?.user?.id) {
         // Use defaults for non-auth
         const initialTheme = "default";
-        const initialFont = "font-indie";
+        const initialFont = "font-zilla";
         const initialGradient = true;
 
         setThemeState(initialTheme);
@@ -257,7 +257,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         }
 
         const loadedTheme = (data?.theme as Theme) || "default";
-        const loadedFont = data?.font || "font-indie";
+        const loadedFont = data?.font || "font-zilla";
         const loadedGradient = data?.use_gradient ?? true;
         const loadedModelId = data?.last_model_id || null;
         const loadedProvider = data?.last_provider || null;
@@ -302,7 +302,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
   const setFont = useCallback(
     async (newFont: string) => {
-      let validatedFont = "font-indie";
+      let validatedFont = "font-zilla";
       if (newFont.startsWith("font-custom:")) {
         validatedFont = newFont;
       } else if (VALID_FONTS.includes(newFont)) {

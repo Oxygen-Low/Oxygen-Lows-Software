@@ -64,11 +64,15 @@ const THEMES = [
 
 const FONTS = [
   {
-    label: "Indie Flower (Default)",
+    label: "Zilla Slab (Default)",
+    value: "font-zilla",
+    family: "'Zilla Slab'",
+  },
+  {
+    label: "Indie Flower",
     value: "font-indie",
     family: "'Indie Flower'",
   },
-  { label: "Zilla Slab", value: "font-zilla", family: "'Zilla Slab'" },
   { label: "VT323", value: "font-vt323", family: "'VT323'" },
   { label: "Cabin Sketch", value: "font-cabin", family: "'Cabin Sketch'" },
   {
