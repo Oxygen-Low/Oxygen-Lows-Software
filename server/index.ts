@@ -33,6 +33,20 @@ app.use(
   }),
 );
 
+app.use('*', async (c, next) => {
+  const accept = c.req.header('Accept') || '';
+  if (accept.includes('text/markdown') && !c.req.path.startsWith('/api/')) {
+    const md = `# Oxygen Low's Software\n\nOxygen Low's Software - Open Beta. A platform for apps, storage, and customization.`;
+    const tokens = md.split(/\s+/).length.toString();
+    return c.text(md, 200, {
+      'Content-Type': 'text/markdown',
+      'x-markdown-tokens': tokens
+    });
+  }
+  await next();
+});
+
+
 app.get("/health", (c) => c.text("OK"));
 app.get("/api/ping", (c) => c.json({ message: "ping" }));
 
