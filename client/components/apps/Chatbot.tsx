@@ -631,7 +631,7 @@ export function ChatbotApp() {
     [models, session?.user?.id],
   );
   const hasHordeModels = hordeModels.length > 0;
-  const hasCloudflareModels = !session?.user?.id ? false : cloudflareModels.length > 0;
+  const hasCloudflareModels = cloudflareModels.length > 0;
   const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
 
   useEffect(() => {
@@ -2150,6 +2150,10 @@ export function ChatbotApp() {
                               <button
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
+                                  if (!session?.user?.id) {
+                                    toast.error("Sign In to access better models.");
+                                    return;
+                                  }
                                   setSelection(m.model_id, m.provider);
                                   setModelDropdownOpen(false);
                                 }}
