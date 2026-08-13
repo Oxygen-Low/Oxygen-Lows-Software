@@ -91,16 +91,13 @@ export default function Changelogs() {
           <GitCommit className="w-8 h-8 text-primary" />
         </div>
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+          <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
             Changelogs
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base font-medium">
-            Latest updates from the Oxygen Low's Software repository
-          </p>
         </div>
       </div>
 
-      <div className="relative border-l-2 border-muted/50 ml-4 sm:ml-6 space-y-10 pb-8 mt-12">
+      <div className="relative border-l-2 border-muted/50 ml-4 sm:ml-6 space-y-6 pb-4 mt-6">
         {commits.map((commit, index) => {
           const title = commit.commit.message.split("\n")[0];
           const description = commit.commit.message.split("\n").slice(1).join("\n").trim();
@@ -110,25 +107,25 @@ export default function Changelogs() {
               key={commit.sha}
               initial={{ opacity: 0, x: -20, y: 10 }}
               animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{ delay: index * 0.08, duration: 0.4, ease: "easeOut" }}
-              className="relative pl-8 sm:pl-10"
+              transition={{ delay: index * 0.05, duration: 0.3, ease: "easeOut" }}
+              className="relative pl-6 sm:pl-8"
             >
               {/* Timeline dot */}
-              <div className="absolute -left-[11px] top-4 w-5 h-5 rounded-full bg-background border-[3px] border-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+              <div className="absolute -left-[7px] top-4 w-3 h-3 rounded-full bg-background border-2 border-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
               
-              <div className="bg-card hover:bg-card/80 transition-all duration-300 border border-border/50 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-primary/30 group">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+              <div className="bg-card hover:bg-card/80 transition-all duration-300 border border-border/50 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md hover:border-primary/30 group">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
                   <div className="flex-1">
                     <a 
                       href={commit.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-lg sm:text-xl font-bold hover:text-primary transition-colors flex items-center gap-2 group/link w-fit"
+                      className="text-base sm:text-lg font-bold hover:text-primary transition-colors flex items-center gap-2 group/link w-fit"
                     >
                       {title}
-                      <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all" />
+                      <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-2 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all" />
                     </a>
-                    <div className="text-sm text-muted-foreground mt-2 flex flex-wrap items-center gap-2">
+                    <div className="text-xs sm:text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-foreground/80">{commit.commit.author.name}</span>
                       <span className="text-muted-foreground/50">•</span>
                       <span>{new Date(commit.commit.author.date).toLocaleDateString(undefined, { 
@@ -142,7 +139,7 @@ export default function Changelogs() {
                   </div>
                   
                   {commit.stats && (
-                    <div className="flex items-center gap-4 text-sm font-semibold bg-background/50 border border-border/40 py-2 px-4 rounded-xl whitespace-nowrap shadow-sm">
+                    <div className="flex items-center gap-3 text-xs sm:text-sm font-semibold bg-background/50 border border-border/40 py-1.5 px-3 rounded-lg whitespace-nowrap shadow-sm">
                       <span className="flex items-center gap-1.5 text-emerald-500">
                         <PlusCircle className="w-4 h-4" />
                         {commit.stats.additions}
@@ -156,9 +153,9 @@ export default function Changelogs() {
                 </div>
                 
                 {description && (
-                  <div className="mt-5 relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent rounded-xl pointer-events-none" />
-                    <pre className="text-sm text-muted-foreground/90 whitespace-pre-wrap font-sans bg-muted/20 p-4 sm:p-5 rounded-xl border border-border/30 relative">
+                  <div className="mt-3 relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent rounded-lg pointer-events-none" />
+                    <pre className="text-xs sm:text-sm text-muted-foreground/90 whitespace-pre-wrap font-sans bg-muted/20 p-3 sm:p-4 rounded-lg border border-border/30 relative">
                       {description}
                     </pre>
                   </div>
