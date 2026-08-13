@@ -60,7 +60,18 @@ public partial class MainWindow : Window
 
         await Task.Delay(1000); 
         
-        webView.CoreWebView2.Navigate("https://oxygenlow.com/?desktop=1");
+        string initialMessage = SingleInstance.InitialMessage ?? "";
+        if (!string.IsNullOrEmpty(initialMessage) && initialMessage.StartsWith("oxygenlows://"))
+        {
+            var uri = new Uri(initialMessage);
+            var query = uri.Query;
+            var fragment = uri.Fragment;
+            webView.CoreWebView2.Navigate($"https://oxygenlow.com/auth/callback{query}{fragment}");
+        }
+        else
+        {
+            webView.CoreWebView2.Navigate("https://oxygenlow.com/?desktop=1");
+        }
     }
 
     private async void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)

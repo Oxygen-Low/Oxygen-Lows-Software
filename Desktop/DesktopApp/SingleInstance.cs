@@ -15,10 +15,20 @@ public static class SingleInstance
     private static Mutex? _mutex;
 
     public static event Action<string>? OnMessageReceived;
+    public static string? InitialMessage { get; private set; }
 
     public static bool InitializeAsFirstInstance(string[] args)
     {
-        _mutex = new Mutex(true, MutexName, out bool isFirstInstance);
+        bool isFirstInstance = false;
+        try
+        {
+            _mutex = new Mutex(true, MutexName, out isFirstInstance);
+        }
+        catch (AbandonedMutexException)
+        {
+            // The previous instance terminated without releasing the mutex
+            isFirstInstance = true;
+        }
 
         if (!isFirstInstance)
         {
@@ -26,6 +36,11 @@ public static class SingleInstance
             string message = args.Length > 0 ? args[0] : "WAKEUP";
             SendToFirstInstance(message);
             return false;
+        }
+
+        if (args.Length > 0)
+        {
+            InitialMessage = args[0];
         }
 
         // We are the first instance. Start the pipe server.
