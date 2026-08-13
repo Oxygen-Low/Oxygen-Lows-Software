@@ -17,6 +17,32 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Calculate Version
+        id: calc_version
+        run: |
+          $majorMinor = "1.1"
+          $prefix = "v$majorMinor."
+          $tags = git tag -l "$prefix*"
+          if ($tags) {
+              $highestPatch = $tags | ForEach-Object {
+                  $num = $_ -replace "^$prefix", ""
+                  if ($num -match "^\d+$") { [int]$num } else { -1 }
+              } | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
+              if ($highestPatch -ge 0) {
+                  $patch = $highestPatch + 1
+              } else {
+                  $patch = 0
+              }
+          } else {
+              $patch = 0
+          }
+          $appVersion = "$majorMinor.$patch"
+          $tagName = "v$appVersion"
+          echo "APP_VERSION=$appVersion" >> $env:GITHUB_ENV
+          echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
 
       - name: Setup .NET Core
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -26,7 +52,7 @@ jobs:
       - name: Publish Desktop App
         run: |
           cd Desktop/DesktopApp
-          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.1.${{ github.run_number }}" -o ../DesktopAppOut
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="${{ env.APP_VERSION }}" -o ../DesktopAppOut
 
       - name: Zip Desktop App
         run: |
@@ -35,17 +61,13 @@ jobs:
       - name: Publish Desktop Installer
         run: |
           cd Desktop/DesktopInstaller
-          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="1.1.${{ github.run_number }}" -o ../DesktopInstallerOut
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="${{ env.APP_VERSION }}" -o ../DesktopInstallerOut
 
       - name: Rename Installer
         run: |
           Rename-Item -Path Desktop/DesktopInstallerOut/DesktopInstaller.exe -NewName "OxygenLowsSoftware_Installer.exe"
 
-      - name: Create Tag
-        id: create_tag
-        run: |
-          $tag = "v1.1.$($env:GITHUB_RUN_NUMBER)"
-          echo "TAG_NAME=$tag" >> $env:GITHUB_ENV
+      # Tag is created dynamically in Calculate Version step
 
       - name: Create Release
         uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
