@@ -31,7 +31,7 @@
     "dotenv": "^17.4.2",
     "hono": "^4.12.34",
     "leaflet": "^1.9.4",
-    "music-metadata-browser": "^2.5.11",
+    "music-metadata": "11.12.3",
     "ping": "^1.0.0",
     "playwright": "^1.62.1",
     "qrcode.react": "^4.2.0",
