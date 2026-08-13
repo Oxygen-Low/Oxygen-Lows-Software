@@ -231,7 +231,7 @@ export default function Apps() {
 
   if (activeApp) {
     const AppComponent = activeApp.component;
-    const isFullWidthApp = activeApp.id === "chatbot" || activeApp.id === "llm-agent";
+    const isFullWidthApp = activeApp.id === "chatbot" || activeApp.id === "llm-agent" || activeApp.id === "vpn";
 
     return (
       <Layout fullWidth={isFullWidthApp}>
