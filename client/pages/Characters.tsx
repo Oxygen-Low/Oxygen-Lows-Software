@@ -52,6 +52,7 @@ export default function Characters() {
   );
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>({});
 
   useEffect(() => {
     fetchInitialData();
