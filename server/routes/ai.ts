@@ -77,24 +77,34 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   const { provider, model, messages, stream, apiKey, baseUrl, tools } =
     await c.req.json();
   const authHeader = c.req.header("authorization");
-  if (!authHeader) return c.json({ error: "No authorization header" }, 401);
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader ? authHeader.replace("Bearer ", "") : null;
+  let user = null;
+  let supabase: any = null;
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
+  if (token && token !== "undefined" && token !== "null") {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const authRes = await supabase.auth.getUser();
+    if (!authRes.error && authRes.data?.user) {
+      user = authRes.data.user;
+    }
+  }
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) return c.json({ error: "Invalid token" }, 401);
+  if (!user && provider !== "horde") {
+    return c.json({ error: "Authentication required for this model." }, 401);
+  }
 
-  let { data: integration, error: integrationError } = await supabase
-    .from("user_integrations")
-    .select("api_key, base_url")
-    .eq("provider", provider)
-    .single();
+  let integration: any = null;
+  if (user && supabase) {
+    const { data } = await supabase
+      .from("user_integrations")
+      .select("api_key, base_url")
+      .eq("provider", provider)
+      .single();
+    if (data) integration = data;
+  }
+
 
   if (apiKey) {
     integration = { ...integration, api_key: apiKey };
@@ -282,6 +292,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["Authorization"] =
         `Bearer ${integration?.api_key || "0000000000"}`;
     } else if (provider === "cloudflare") {
+      if (!user || !supabase) return c.json({ error: "Authentication required" }, 401);
+
       // Estimate token usage (input + 400 estimated output)
       const inputChars = finalMessages.reduce((acc: number, m: any) => acc + (m.content || "").length, 0);
       const estimatedTokens = Math.floor(inputChars / 4) + 400;

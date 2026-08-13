@@ -608,18 +608,19 @@ export function ChatbotApp() {
     [models],
   );
   const hasOpenRouter = useMemo(
-    () => models.some((m) => m.provider === "openrouter"),
-    [models],
+    () => !session?.user?.id ? false : models.some((m) => m.provider === "openrouter"),
+    [models, session?.user?.id],
   );
   const customModels = useMemo(() => {
+    if (!session?.user?.id) return [];
     const cm = models.filter((m) => m.provider === "custom");
     if (hasOpenRouter) {
       cm.push({ provider: "openrouter", model_id: "openrouter/free" });
     }
     return cm;
-  }, [models, hasOpenRouter]);
+  }, [models, hasOpenRouter, session?.user?.id]);
   const otherModels = useMemo(
-    () =>
+    () => !session?.user?.id ? [] :
       models.filter(
         (m) =>
           m.provider !== "horde" &&
@@ -627,11 +628,17 @@ export function ChatbotApp() {
           m.provider !== "custom" &&
           !(m.provider === "openrouter" && m.model_id === "openrouter/free")
       ),
-    [models],
+    [models, session?.user?.id],
   );
   const hasHordeModels = hordeModels.length > 0;
-  const hasCloudflareModels = cloudflareModels.length > 0;
-  const hasCustomModels = customModels.length > 0;
+  const hasCloudflareModels = !session?.user?.id ? false : cloudflareModels.length > 0;
+  const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
+
+  useEffect(() => {
+    if (!session?.user?.id && selectedProvider !== "horde" && hordeModels.length > 0) {
+      setSelection(hordeModels[0].model_id, "horde");
+    }
+  }, [session?.user?.id, selectedProvider, hordeModels, setSelection]);
 
   useEffect(() => {
     const fetchPoints = async () => {
@@ -818,10 +825,12 @@ export function ChatbotApp() {
           .replace(/^["']|["']$/g, "");
       }
 
-      await supabase
-        .from("chats")
-        .update({ title })
-        .eq("id", chatId);
+      if (session?.user?.id) {
+        await supabase
+          .from("chats")
+          .update({ title })
+          .eq("id", chatId);
+      }
 
       setChats((prev) =>
         prev.map((c) => (c.id === chatId ? { ...c, title } : c)),
@@ -971,31 +980,37 @@ export function ChatbotApp() {
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isTyping || !session?.user?.id) return;
-
+    if (!input.trim() || isTyping) return;
+    
+    const isGuest = !session?.user?.id;
     let activeChatId = currentChatId;
 
     if (!activeChatId) {
       const title = "New Chat";
-      const { data, error } = await supabase
-        .from("chats")
-        .insert({
-          user_id: session.user.id,
-          title: title,
-          llm_character_id: selectedLlmCharacter,
-          user_character_id: selectedUserCharacter,
-          universe_id: selectedUniverse,
-        })
-        .select()
-        .single();
+      if (!isGuest) {
+        const { data, error } = await supabase
+          .from("chats")
+          .insert({
+            user_id: session!.user.id,
+            title: title,
+            llm_character_id: selectedLlmCharacter,
+            user_character_id: selectedUserCharacter,
+            universe_id: selectedUniverse,
+          })
+          .select()
+          .single();
 
-      if (error) {
-        toast.error(error.message);
-        return;
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+
+        activeChatId = data.id;
+        setChats((prev) => [data, ...prev]);
+      } else {
+        activeChatId = "guest-chat-" + Math.random().toString(36).substring(2);
+        setChats((prev) => [{ id: activeChatId, title, llm_character_id: null, user_character_id: null, universe_id: null }, ...prev] as any);
       }
-
-      activeChatId = data.id;
-      setChats((prev) => [data, ...prev]);
       skipNextFetchRef.current = activeChatId;
       setCurrentChatId(activeChatId);
     }
@@ -1049,18 +1064,22 @@ export function ChatbotApp() {
       }
 
       // 2. Save User Message
-      const { data: userMsgData, error: userInsertError } = await supabase
-        .from("chat_messages")
-        .insert({
-          parent_id: lastMessageId,
-          chat_id: activeChatId,
-          role: "user",
-          content: originalInput,
-        })
-        .select()
-        .single();
+      let userMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
+      if (!isGuest) {
+        const { data, error: userInsertError } = await supabase
+          .from("chat_messages")
+          .insert({
+            parent_id: lastMessageId,
+            chat_id: activeChatId,
+            role: "user",
+            content: originalInput,
+          })
+          .select()
+          .single();
 
-      if (userInsertError) throw userInsertError;
+        if (userInsertError) throw userInsertError;
+        userMsgData = data;
+      }
 
       // Update temp-user id to real id in messages
       setAllMessages((prev) =>
@@ -1236,59 +1255,55 @@ export function ChatbotApp() {
           reasoning: reasoningContent || null,
         };
 
-        const { data: assistantMsgData, error: assistantInsertError } =
-          await supabase
-            .from("chat_messages")
-            .insert(insertData)
-            .select()
-            .single();
-
-        if (assistantInsertError) {
-          if (
-            assistantInsertError.message?.includes("reasoning") ||
-            assistantInsertError.details?.includes("reasoning")
-          ) {
-            delete insertData.reasoning;
-            const { data: retryData, error: retryError } = await supabase
+        let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
+        if (!isGuest) {
+          const { data, error: assistantInsertError } =
+            await supabase
               .from("chat_messages")
               .insert(insertData)
               .select()
               .single();
-            if (retryError) throw retryError;
-            // Update active state
-            setAllMessages((prev) =>
-              prev.map((m) =>
-                m.id === "temp-streaming" ? { ...m, id: retryData.id } : m,
-              ),
-            );
-            activeChildrenRef.current = {
-              ...activeChildrenRef.current,
-              [userMsgData.id]: retryData.id,
-            };
-            setActiveChildren(activeChildrenRef.current);
-            if (retryError) throw retryError;
+
+          if (assistantInsertError) {
+            if (
+              assistantInsertError.message?.includes("reasoning") ||
+              assistantInsertError.details?.includes("reasoning")
+            ) {
+              delete insertData.reasoning;
+              const { data: retryData, error: retryError } = await supabase
+                .from("chat_messages")
+                .insert(insertData)
+                .select()
+                .single();
+              if (retryError) throw retryError;
+              assistantMsgData = retryData;
+            } else {
+              throw assistantInsertError;
+            }
           } else {
-            throw assistantInsertError;
+            assistantMsgData = data;
           }
-        } else {
-          // Update active state
-          setAllMessages((prev) =>
-            prev.map((m) =>
-              m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
-            ),
-          );
-          activeChildrenRef.current = {
-            ...activeChildrenRef.current,
-            [userMsgData.id]: assistantMsgData.id,
-          };
-          setActiveChildren(activeChildrenRef.current);
         }
 
-        const { error: chatUpdateError } = await supabase
-          .from("chats")
-          .update({ updated_at: new Date().toISOString() })
-          .eq("id", activeChatId);
-        if (chatUpdateError) throw chatUpdateError;
+        // Update active state
+        setAllMessages((prev) =>
+          prev.map((m) =>
+            m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
+          ),
+        );
+        activeChildrenRef.current = {
+          ...activeChildrenRef.current,
+          [userMsgData.id]: assistantMsgData.id,
+        };
+        setActiveChildren(activeChildrenRef.current);
+
+        if (!isGuest) {
+          const { error: chatUpdateError } = await supabase
+            .from("chats")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", activeChatId);
+          if (chatUpdateError) throw chatUpdateError;
+        }
       }
     } catch (e: any) {
       toast.error(e.message);
@@ -1305,8 +1320,9 @@ export function ChatbotApp() {
   };
 
   const handleRegenerate = useCallback(async () => {
-    if (isTyping || !session?.user?.id || !currentChatId || messages.length < 2)
+    if (isTyping || !currentChatId || messages.length < 2)
       return;
+    const isGuest = !session?.user?.id;
 
     // Get the last user message to regenerate from
     const lastUserMessage = messages
@@ -1436,14 +1452,19 @@ export function ChatbotApp() {
         reasoning: reasoningContent || null,
       };
 
-      const { data: assistantMsgData, error: assistantInsertError } =
-        await supabase
-          .from("chat_messages")
-          .insert(insertData)
-          .select()
-          .single();
+      let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
+      
+      if (!isGuest) {
+        const { data, error: assistantInsertError } =
+          await supabase
+            .from("chat_messages")
+            .insert(insertData)
+            .select()
+            .single();
 
-      if (assistantInsertError) throw assistantInsertError;
+        if (assistantInsertError) throw assistantInsertError;
+        assistantMsgData = data;
+      }
 
       setAllMessages((prev) =>
         prev.map((m) =>
