@@ -117,7 +117,7 @@ export function VPNApp() {
       const id = Date.now().toString() + Math.random().toString();
       const listener = (event: any) => {
         try {
-          const data = JSON.parse(event.data);
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           if (data.id === id) {
             webview.removeEventListener("message", listener);
             if (data.success) resolve(data.data);
@@ -138,7 +138,7 @@ export function VPNApp() {
       const id = Date.now().toString() + Math.random().toString();
       const listener = (event: any) => {
         try {
-          const data = JSON.parse(event.data);
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           if (data.id === id) {
             webview.removeEventListener("message", listener);
             if (data.success) resolve();
