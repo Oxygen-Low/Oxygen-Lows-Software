@@ -185,7 +185,7 @@ export function VPNApp() {
                 <div className="space-y-2">
                   <Label htmlFor="vpnType" className="text-slate-300">VPN Type</Label>
                   <Select value={vpnType} onValueChange={setVpnType}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+                    <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-left">
                       <SelectValue placeholder="Select VPN Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -211,7 +211,7 @@ export function VPNApp() {
                 <Label htmlFor="expiration" className="text-slate-300">Auto Delete / Expiration</Label>
                 <div className="flex gap-4">
                   <Select value={expiration} onValueChange={setExpiration}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-white flex-1">
+                    <SelectTrigger className="bg-slate-950 border-slate-800 text-white flex-1 text-left">
                       <SelectValue placeholder="Select Expiration" />
                     </SelectTrigger>
                     <SelectContent>
