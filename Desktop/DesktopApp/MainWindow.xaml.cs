@@ -17,7 +17,7 @@ namespace DesktopApp;
 
 public partial class MainWindow : Window
 {
-    private string? _workingDirectory;
+    private string? _workingDirectory = Path.GetTempPath();
 
     public MainWindow()
     {
