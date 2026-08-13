@@ -36,6 +36,43 @@ app.use(
 app.get("/health", (c) => c.text("OK"));
 app.get("/api/ping", (c) => c.json({ message: "ping" }));
 
+app.get("/sitemap.xml", (c) => {
+  const host = c.req.header("host") || "oxygenlow.com";
+  const protocol = c.req.header("x-forwarded-proto") || "https";
+  // The validator tool might be using a specific host and we should ensure it matches
+  // However, often times the scanner directly visits the domain.
+  const baseUrl = `${protocol}://${host}`;
+
+  const urls = [
+    { loc: `${baseUrl}/`, changefreq: "daily", priority: "1.0" },
+    { loc: `${baseUrl}/apps`, changefreq: "daily", priority: "0.9" },
+    { loc: `${baseUrl}/apps/chatbot`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/file-compressor`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/public-characters`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/qrcode-generator`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8" },
+  ];
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls
+  .map(
+    (u) => `  <url>
+    <loc>${u.loc}</loc>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`
+  )
+  .join("\n")}
+</urlset>`;
+
+  return c.text(sitemap, 200, {
+    "Content-Type": "application/xml",
+    "Cache-Control": "public, max-age=3600",
+  });
+});
+
 app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);
 app.route("/api/oauth-admin", oauthAdminRouter);

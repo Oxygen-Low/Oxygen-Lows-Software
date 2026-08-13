@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAiModels } from "@/hooks/useAiModels";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
@@ -265,7 +266,7 @@ const ChatMessage = React.memo(
           <div className="flex flex-col gap-2 max-w-[80%] items-end">
             <p className="text-slate-400 text-xs font-display mr-1">User</p>
             <div className="glass-panel px-5 py-4 rounded-xl rounded-tr-sm text-[15px] leading-[1.6]">
-              <ReactMarkdown components={memoizedMarkdownComponents}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
                 {displayContent}
               </ReactMarkdown>
             </div>
@@ -290,7 +291,7 @@ const ChatMessage = React.memo(
             </p>
             <div className="w-full">
               <div className="text-[13px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900/50 border border-slate-800 text-slate-300 font-mono overflow-auto max-h-[300px]">
-                <ReactMarkdown components={memoizedMarkdownComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
                   {displayContent}
                 </ReactMarkdown>
               </div>
@@ -340,7 +341,7 @@ const ChatMessage = React.memo(
                 </button>
                 {reasoningExpanded && (
                   <div className="reasoning-content px-4 py-3 border-t border-white/10 text-sm text-slate-300 font-mono leading-relaxed bg-[#0F0F13]">
-                    <ReactMarkdown components={memoizedMarkdownComponents}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
                       {m.reasoning}
                     </ReactMarkdown>
                   </div>
@@ -348,7 +349,7 @@ const ChatMessage = React.memo(
               </div>
             )}
             <div className="text-[15px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900 border border-slate-800 text-slate-200">
-              <ReactMarkdown components={memoizedMarkdownComponents}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
                 {displayContent}
               </ReactMarkdown>
             </div>
@@ -1100,7 +1101,7 @@ export function ChatbotApp() {
       let reasoningContent = "";
 
       // 3. Reasoning System Logic
-      let injectedSystemMessage = "";
+      let injectedSystemMessage = "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
       if (selectedLlmCharacter) {
         const char = availableCharacters.find(
           (c) => c.id === selectedLlmCharacter,
@@ -1363,7 +1364,7 @@ export function ChatbotApp() {
       let reasoningContent = "";
 
       // Re-use system message generation logic from handleSendMessage
-      let injectedSystemMessage = "";
+      let injectedSystemMessage = "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
       if (selectedLlmCharacter) {
         const char = availableCharacters.find(
           (c) => c.id === selectedLlmCharacter,
