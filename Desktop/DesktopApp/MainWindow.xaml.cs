@@ -36,7 +36,7 @@ public partial class MainWindow : Window
                 var uri = new Uri(message);
                 if (webView != null && webView.CoreWebView2 != null)
                 {
-                    var currentOrigin = webView.Source.GetLeftPart(UriPartial.Authority);
+                    var currentOrigin = webView.Source?.GetLeftPart(UriPartial.Authority) ?? "https://oxygenlow.com";
                     var query = uri.Query;
                     var fragment = uri.Fragment;
                     webView.CoreWebView2.Navigate($"{currentOrigin}/auth/callback{query}{fragment}");
@@ -170,7 +170,11 @@ public partial class MainWindow : Window
                     var stdoutTask = process.StandardOutput.ReadToEndAsync();
                     var stderrTask = process.StandardError.ReadToEndAsync();
                     
-                    if (!process.WaitForExit(30000))
+                    try
+                    {
+                        await process.WaitForExitAsync(new CancellationTokenSource(30000).Token);
+                    }
+                    catch (TaskCanceledException)
                     {
                         process.Kill();
                         throw new Exception("Command timed out after 30 seconds");
@@ -190,30 +194,34 @@ public partial class MainWindow : Window
                     string query = doc.RootElement.TryGetProperty("query", out var qProp) ? qProp.GetString() ?? "" : "";
                     string fullPath = string.IsNullOrEmpty(path) ? (_workingDirectory ?? throw new Exception("Working directory not set")) : GetValidatedPath(path);
                     
-                    var results = new List<object>();
-                    int count = 0;
-                    
-                    foreach (var file in Directory.EnumerateFiles(fullPath, "*.*", SearchOption.AllDirectories))
+                    var results = await Task.Run(() =>
                     {
-                        if (count >= 50) break;
+                        var res = new List<object>();
+                        int count = 0;
                         
-                        try
+                        foreach (var file in Directory.EnumerateFiles(fullPath, "*.*", SearchOption.AllDirectories))
                         {
-                            var lines = File.ReadLines(file);
-                            int lineNum = 1;
-                            foreach (var line in lines)
+                            if (count >= 50) break;
+                            
+                            try
                             {
-                                if (line.Contains(query, StringComparison.OrdinalIgnoreCase))
+                                var lines = File.ReadLines(file);
+                                int lineNum = 1;
+                                foreach (var line in lines)
                                 {
-                                    results.Add(new { file = Path.GetRelativePath(_workingDirectory!, file), line = lineNum, content = line });
-                                    count++;
-                                    if (count >= 50) break;
+                                    if (line.Contains(query, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        res.Add(new { file = Path.GetRelativePath(_workingDirectory!, file), line = lineNum, content = line });
+                                        count++;
+                                        if (count >= 50) break;
+                                    }
+                                    lineNum++;
                                 }
-                                lineNum++;
                             }
+                            catch { /* Ignore unreadable files */ }
                         }
-                        catch { /* Ignore unreadable files */ }
-                    }
+                        return res;
+                    });
                     
                     SendWebMessage(new { id, success = true, data = results });
                 }
