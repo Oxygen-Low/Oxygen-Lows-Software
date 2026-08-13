@@ -87,6 +87,65 @@ ${urls
   });
 });
 
+app.get("/auth.md", (c) => {
+  return c.text(`# auth.md\n\nAgent Authentication Information.`, 200, {
+    "Content-Type": "text/markdown",
+  });
+});
+
+app.get("/.well-known/oauth-protected-resource", (c) => {
+  const host = c.req.header("host") || "oxygenlow.com";
+  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const baseUrl = `${protocol}://${host}`;
+
+  return c.json({
+    resource: baseUrl,
+    authorization_servers: [baseUrl],
+    scopes_supported: ["read", "write"],
+    bearer_methods_supported: ["header"]
+  });
+});
+
+app.get("/.well-known/oauth-authorization-server", (c) => {
+  const host = c.req.header("host") || "oxygenlow.com";
+  const protocol = c.req.header("x-forwarded-proto") || "https";
+  const baseUrl = `${protocol}://${host}`;
+
+  return c.json({
+    issuer: baseUrl,
+    agent_auth: {
+      skill: "agent-registration",
+      register_uri: `${baseUrl}/agent/auth`,
+      methods: [
+        {
+          identity_types_supported: ["identity_assertion"],
+          identity_assertion: {
+            assertion_types_supported: ["urn:ietf:params:oauth:token-type:id-jag"]
+          },
+          credential_types_supported: ["bearer"],
+          revocation_uri: `${baseUrl}/agent/auth/revoke`,
+          events_supported: ["urn:ietf:params:oauth:event-type:token-revoked"]
+        },
+        {
+          identity_types_supported: ["identity_assertion"],
+          identity_assertion: {
+            assertion_types_supported: ["verified_email"]
+          },
+          credential_types_supported: ["bearer"],
+          claim_uri: `${baseUrl}/agent/auth/claim`
+        },
+        {
+          identity_types_supported: ["anonymous"],
+          anonymous: {
+            credential_types_supported: ["bearer"]
+          },
+          claim_uri: `${baseUrl}/agent/auth/claim`
+        }
+      ]
+    }
+  });
+});
+
 app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);
 app.route("/api/oauth-admin", oauthAdminRouter);
