@@ -237,6 +237,20 @@ public partial class MainWindow : Window
                     
                     SendWebMessage(new { id, success = true, data = results });
                 }
+                else if (cmd == "get_location")
+                {
+                    try
+                    {
+                        using var client = new System.Net.Http.HttpClient();
+                        var json = await client.GetStringAsync("http://ip-api.com/json/");
+                        var data = JsonSerializer.Deserialize<JsonElement>(json);
+                        SendWebMessage(new { id, success = true, data = new { lat = data.GetProperty("lat").GetDouble(), lon = data.GetProperty("lon").GetDouble() } });
+                    }
+                    catch (Exception ex)
+                    {
+                        SendWebMessage(new { id, success = false, error = ex.Message });
+                    }
+                }
                 else if (cmd == "is_admin")
                 {
                     bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);

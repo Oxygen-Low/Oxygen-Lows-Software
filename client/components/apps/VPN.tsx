@@ -118,20 +118,19 @@ export function VPNApp() {
   const [agentLocation, setAgentLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
-    fetch('https://ipapi.co/json/')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.latitude && data.longitude) {
-          setHomeLocation([data.latitude, data.longitude]);
-          setAgentLocation([data.latitude, data.longitude]);
+    runIPCCommand("get_location")
+      .then((data: any) => {
+        if (data && data.lat && data.lon) {
+          setHomeLocation([data.lat, data.lon]);
+          setAgentLocation([data.lat, data.lon]);
         }
       })
-      .catch(err => console.error("Home geocode error", err));
+      .catch(err => console.error("Home geocode error via IPC", err));
   }, []);
 
   // IPC Helpers for VPN
   const runIPCCommand = async (commandLine: string) => {
-    return new Promise<{stdout: string, stderr: string}>((resolve, reject) => {
+    return new Promise<any>((resolve, reject) => {
       const webview = (window as any).chrome?.webview;
       if (!webview) return reject(new Error("Not running in desktop app context"));
       
@@ -147,7 +146,7 @@ export function VPNApp() {
         } catch {}
       };
       webview.addEventListener("message", listener);
-      webview.postMessage(JSON.stringify({ command: "run_command", commandLine, id }));
+      webview.postMessage(JSON.stringify({ command: commandLine === "get_location" ? "get_location" : "run_command", commandLine, id }));
     });
   };
 
@@ -438,7 +437,7 @@ export function VPNApp() {
 
       if (config.type === "WireGuard") {
         await writeIPCFile(`vpn_temp.conf`, config.config_content);
-        const res = await runIPCCommand(`call "C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
+        const res = await runIPCCommand(`""C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf""`);
         if (res.stderr && res.stderr.toLowerCase().includes("is not recognized")) {
             throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
         }
@@ -459,7 +458,7 @@ export function VPNApp() {
     setIsConnecting(true);
     try {
       if (config.type === "WireGuard") {
-        await runIPCCommand(`call "C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
+        await runIPCCommand(`""C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp"`);
       } else {
         await runIPCCommand(`taskkill /F /IM openvpn.exe`);
       }
