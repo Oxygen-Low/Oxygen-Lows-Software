@@ -11,6 +11,7 @@ import {
   Contact,
   LifeBuoy,
   ShieldAlert,
+  GitCommit,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -31,6 +32,7 @@ const navItems = [
   { label: "Friends", href: "/friends", icon: Users },
   { label: "Customize", href: "/customize", icon: Palette },
   { label: "Characters", href: "/characters", icon: Contact },
+  { label: "Changelogs", href: "/changelogs", icon: GitCommit },
   { label: "Support", href: "/support", icon: LifeBuoy },
 ];
 
