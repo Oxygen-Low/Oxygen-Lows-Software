@@ -49,34 +49,40 @@ export const useAiModels = (
 
       const discoveredLocalModels: Model[] = [];
       try {
-        const res = await fetch("http://127.0.0.1:11434/api/tags", { signal: AbortSignal.timeout(500) });
+        const res = await fetch("http://127.0.0.1:11434/api/tags", { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
           const data = await res.json();
           for (const m of data.models || []) {
             discoveredLocalModels.push({ provider: "local-ollama", model_id: m.name });
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("Failed to fetch Ollama models:", e);
+      }
 
       try {
-        const res = await fetch("http://127.0.0.1:1234/v1/models", { signal: AbortSignal.timeout(500) });
+        const res = await fetch("http://127.0.0.1:1234/v1/models", { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
           const data = await res.json();
           for (const m of data.data || []) {
             discoveredLocalModels.push({ provider: "local-lmstudio", model_id: m.id });
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("Failed to fetch LM Studio models:", e);
+      }
 
       try {
-        const res = await fetch("http://127.0.0.1:5001/api/v1/model", { signal: AbortSignal.timeout(500) });
+        const res = await fetch("http://127.0.0.1:5001/api/v1/model", { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
           const data = await res.json();
           if (data.result) {
             discoveredLocalModels.push({ provider: "local-kobold", model_id: data.result });
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("Failed to fetch Kobold models:", e);
+      }
 
       const allModels: Model[] = [...(dbModels || []), ...localModels, ...discoveredLocalModels];
       setModels(allModels);
