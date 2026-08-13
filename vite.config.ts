@@ -65,7 +65,10 @@ function expressPlugin(): Plugin {
 
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || "/";
-        if (!url.startsWith("/api/") && !url.startsWith("/health")) {
+        const accept = req.headers.accept || "";
+        const isMarkdown = accept.includes("text/markdown");
+
+        if (!url.startsWith("/api/") && !url.startsWith("/health") && !isMarkdown) {
           return next();
         }
         try {
