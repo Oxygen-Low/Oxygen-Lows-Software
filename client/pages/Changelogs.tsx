@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { GitCommit, ArrowRight, Loader2 } from "lucide-react";
+import { GitCommit, Loader2 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 
 interface CommitStats {
@@ -116,15 +116,9 @@ export default function Changelogs() {
               <div className="bg-card hover:bg-card/80 transition-all duration-300 border border-border/50 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md hover:border-primary/30 group">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
                   <div className="flex-1">
-                    <a 
-                      href={commit.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-base sm:text-lg font-bold hover:text-primary transition-colors flex items-center gap-2 group/link w-fit"
-                    >
+                    <div className="text-base sm:text-lg font-bold">
                       {title}
-                      <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-2 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all" />
-                    </a>
+                    </div>
                     <div className="text-xs sm:text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-foreground/80">{commit.commit.author.name}</span>
                       <span className="text-muted-foreground/50">•</span>
