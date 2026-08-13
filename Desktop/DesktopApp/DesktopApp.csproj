@@ -10,8 +10,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <AssemblyTitle>Oxygen Lows Software Desktop</AssemblyTitle>
-    <Product>Oxygen Lows Software Desktop</Product>
+    <AssemblyTitle>Oxygen Low's Software</AssemblyTitle>
+    <Product>Oxygen Low's Software</Product>
+    <Description>Oxygen Low's Software</Description>
   </PropertyGroup>
 
   <ItemGroup>
