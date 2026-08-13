@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { GitCommit, ArrowRight, Loader2, PlusCircle, MinusCircle } from "lucide-react";
+import { Layout } from "@/components/Layout";
 
 interface CommitStats {
   additions: number;
@@ -63,23 +64,28 @@ export default function Changelogs() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center h-full min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </Layout>
     );
   }
 
   if (error) {
     return (
-      <div className="p-8 text-center bg-destructive/10 rounded-xl border border-destructive/20 text-destructive">
-        <h2 className="text-xl font-bold mb-2">Error Loading Changelogs</h2>
-        <p>{error}</p>
-      </div>
+      <Layout>
+        <div className="p-8 text-center bg-destructive/10 rounded-xl border border-destructive/20 text-destructive">
+          <h2 className="text-xl font-bold mb-2">Error Loading Changelogs</h2>
+          <p>{error}</p>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto w-full px-2 py-4">
+    <Layout>
+      <div className="space-y-8 max-w-4xl mx-auto w-full px-2 py-4">
       <div className="flex items-center gap-4">
         <div className="p-3 bg-primary/10 rounded-xl border border-primary/20 shadow-inner">
           <GitCommit className="w-8 h-8 text-primary" />
@@ -162,6 +168,6 @@ export default function Changelogs() {
           );
         })}
       </div>
-    </div>
+    </Layout>
   );
 }
