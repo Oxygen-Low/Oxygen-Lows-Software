@@ -12,6 +12,7 @@ import {
   LifeBuoy,
   ShieldAlert,
   GitCommit,
+  Trello,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -34,6 +35,7 @@ const navItems = [
   { label: "Characters", href: "/characters", icon: Contact },
   { label: "Changelogs", href: "/changelogs", icon: GitCommit },
   { label: "Support", href: "/support", icon: LifeBuoy },
+  { label: "Development", href: "https://trello.com/b/OmFTZeVK/oxygen-lows-software-development", icon: Trello, external: true },
 ];
 
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */
@@ -120,9 +122,14 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             <h1 className={`${styles["logo"]} text-2xl font-bold`}>
               Oxygen Low's Software
             </h1>
-            <span className="px-3 py-1 text-xs font-bold text-yellow-900 bg-yellow-400 rounded-md uppercase tracking-wide">
+            <a
+              href="https://trello.com/b/OmFTZeVK/oxygen-lows-software-development"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer"
+            >
               Open Beta
-            </span>
+            </a>
             <a
               href="https://discord.gg/tNczTe66jK"
               target="_blank"
@@ -186,6 +193,22 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto pt-2">
             {navItems.map((item) => {
               const Icon = item.icon;
+
+              if (item.external) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setSidebarOpen(false)}
+                    className={`${styles["nav-link"]} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </a>
+                );
+              }
 
               return (
                 <Link
