@@ -46,6 +46,25 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+// RFC 8288 / RFC 9727 Link headers for agent discovery on homepage and frontend routes
+app.use('*', async (c, next) => {
+  await next();
+  const path = c.req.path;
+  // Only inject on non-API, non-asset routes (i.e. HTML pages served to agents/browsers)
+  if (!path.startsWith('/api/') && !path.startsWith('/.well-known/') && !path.match(/\.(js|css|png|ico|svg|woff2?|ttf|eot|map|json|xml|txt)$/i)) {
+    const host = c.req.header('host') || 'oxygenlow.com';
+    const protocol = c.req.header('x-forwarded-proto') || 'https';
+    const baseUrl = `${protocol}://${host}`;
+    const linkHeaders = [
+      `<${baseUrl}/.well-known/api-catalog>; rel="api-catalog"`,
+      `<${baseUrl}/api/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.0"`,
+      `<${baseUrl}/api/docs>; rel="service-doc"; type="text/html"`,
+      `<${baseUrl}/auth.md>; rel="describedby"; type="text/markdown"`,
+    ].join(', ');
+    c.header('Link', linkHeaders);
+  }
+});
+
 
 app.get("/health", (c) => c.text("OK"));
 app.get("/api/ping", (c) => c.json({ message: "ping" }));
