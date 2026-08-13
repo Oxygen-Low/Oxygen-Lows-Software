@@ -940,6 +940,17 @@ export function ChatbotApp() {
               ) {
                 delta += data.delta.partial_json || "";
               }
+            } else if (
+              [
+                "openai",
+                "openrouter",
+                "grok",
+                "custom",
+                "lmstudio",
+                "koboldcpp",
+                "kobold",
+                "horde",
+                "cloudflare",
               ].includes(provider) || provider.startsWith("local-")
             ) {
               delta = data.choices?.[0]?.delta?.content || data.response || "";

@@ -12,7 +12,7 @@ import {
   LifeBuoy,
   ShieldAlert,
   GitCommit,
-  Trello,
+  Kanban,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -35,7 +35,7 @@ const navItems = [
   { label: "Characters", href: "/characters", icon: Contact },
   { label: "Changelogs", href: "/changelogs", icon: GitCommit },
   { label: "Support", href: "/support", icon: LifeBuoy },
-  { label: "Development", href: "https://trello.com/b/OmFTZeVK/oxygen-lows-software-development", icon: Trello, external: true },
+  { label: "Development", href: "https://trello.com/b/OmFTZeVK/oxygen-lows-software-development", icon: Kanban, external: true },
 ];
 
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */
