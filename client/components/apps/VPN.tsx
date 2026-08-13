@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,20 +7,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Plus, Shield, Loader2, Server, Clock } from "lucide-react";
+import { Trash2, Plus, Shield, Loader2, Server, Clock, Map as MapIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
+// Leaflet
+import { MapContainer, TileLayer } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 
 export function VPNApp() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Form State
   const [name, setName] = useState("");
   const [configContent, setConfigContent] = useState("");
   const [vpnType, setVpnType] = useState("WireGuard");
   const [expiration, setExpiration] = useState("never");
   const [customDate, setCustomDate] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: configs, isLoading } = useQuery({
     queryKey: ["vpnConfigs"],
@@ -80,6 +88,7 @@ export function VPNApp() {
       setVpnType("WireGuard");
       setExpiration("never");
       setCustomDate("");
+      setIsDialogOpen(false);
       toast.success("VPN config saved successfully");
     },
     onError: (error: any) => {
@@ -150,183 +159,221 @@ export function VPNApp() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full p-4 lg:p-6 pb-20">
-      <div className="space-y-6">
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Plus className="w-5 h-5 text-cyan-500" />
-              Add New Config
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              <div className="flex flex-col gap-2 items-start">
-                <p>Paste your VPN configuration file contents here.</p>
-                <Button variant="outline" size="sm" className="bg-slate-900 border-slate-700 text-slate-300 hover:text-white" asChild>
-                  <a href="https://www.vpnbook.com" target="_blank" rel="noreferrer">
-                    Get Free Config from VPNBook
-                  </a>
-                </Button>
-              </div>
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-slate-300">Config Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g. My Home VPN"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vpnType" className="text-slate-300">VPN Type</Label>
-                  <Select value={vpnType} onValueChange={setVpnType}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-left">
-                      <SelectValue placeholder="Select VPN Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="WireGuard">WireGuard (Recommended)</SelectItem>
-                      <SelectItem value="OpenVPN">OpenVPN</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="config" className="text-slate-300">Configuration Content</Label>
-                <Textarea
-                  id="config"
-                  placeholder={vpnType === "WireGuard" ? "[Interface]&#10;PrivateKey = ...&#10;Address = ..." : "client&#10;dev tun&#10;proto udp&#10;..."}
-                  value={configContent}
-                  onChange={(e) => setConfigContent(e.target.value)}
-                  className="font-mono bg-slate-950 border-slate-800 text-white min-h-[200px] text-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="expiration" className="text-slate-300">Auto Delete / Expiration</Label>
-                <div className="flex gap-4">
-                  <Select value={expiration} onValueChange={setExpiration}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-white flex-1 text-left">
-                      <SelectValue placeholder="Select Expiration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="never">Never (Keep Forever)</SelectItem>
-                      <SelectItem value="1 day">1 Day</SelectItem>
-                      <SelectItem value="3 days">3 Days</SelectItem>
-                      <SelectItem value="1 week">1 Week</SelectItem>
-                      <SelectItem value="1 month">1 Month</SelectItem>
-                      <SelectItem value="1 year">1 Year</SelectItem>
-                      <SelectItem value="custom">Custom Date</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  {expiration === "custom" && (
-                    <Input
-                      type="datetime-local"
-                      value={customDate}
-                      onChange={(e) => setCustomDate(e.target.value)}
-                      className="bg-slate-950 border-slate-800 text-white flex-1"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                disabled={saveMutation.isPending || !name.trim() || !configContent.trim()}
-                className="w-full bg-cyan-500 hover:bg-cyan-600 text-white mt-4"
-              >
-                {saveMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Save Configuration
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Map Section - Left/Center */}
+      <div className="flex-1 relative bg-slate-950">
+        <MapContainer 
+          center={[20, 0]} 
+          zoom={3} 
+          scrollWheelZoom={true} 
+          className="h-full w-full z-0"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          />
+        </MapContainer>
+        
+        {/* Map Overlay info if needed */}
+        <div className="absolute top-6 left-6 z-10 pointer-events-none">
+          <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 p-4 rounded-xl shadow-lg inline-flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
+              <MapIcon className="w-5 h-5 text-cyan-500" />
+            </div>
+            <div>
+              <h2 className="text-white font-bold text-lg leading-tight">Global Network</h2>
+              <p className="text-slate-400 text-sm">Select a configuration</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-6">
-        <Card className="bg-slate-900/50 border-slate-800 h-full flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+      {/* Configurations Sidebar - Right */}
+      <div className="w-full max-w-[400px] border-l border-slate-800 bg-slate-900/90 backdrop-blur-sm flex flex-col z-10 shadow-2xl relative">
+        <div className="p-6 border-b border-slate-800 flex flex-col gap-4">
+          <div>
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <Shield className="w-5 h-5 text-cyan-500" />
               Your Configurations
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              Manage your saved VPN configs here. Connecting is currently unsupported.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 p-0">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-                <Loader2 className="w-8 h-8 animate-spin mb-4 text-cyan-500" />
-                Loading configs...
-              </div>
-            ) : !configs || configs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-                <Server className="w-12 h-12 opacity-20 mb-4" />
-                <p>No configurations found.</p>
-              </div>
-            ) : (
-              <ScrollArea className="h-[550px] px-6 pb-6">
-                <div className="space-y-4">
-                  {configs.map((config) => (
-                    <div
-                      key={config.id}
-                      className="p-4 bg-slate-950 rounded-xl border border-slate-800 group relative"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex flex-col gap-1.5">
-                          <h4 className="font-medium text-white flex items-center gap-2 truncate text-lg">
-                            {config.name}
-                          </h4>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-xs font-normal">
-                              {config.type || 'WireGuard'}
-                            </Badge>
-                            {config.expires_at && (
-                              <Badge variant="secondary" className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                Expires: {new Date(config.expires_at).toLocaleDateString()}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
-                          onClick={() => handleDelete(config.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <div className="bg-slate-900 rounded-md p-3 mt-3">
-                        <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap break-all max-h-32 overflow-hidden overflow-y-auto">
-                          {config.config_content}
-                        </pre>
-                      </div>
-                    </div>
-                  ))}
+            </h3>
+            <p className="text-slate-400 text-sm mt-1">
+              Manage and monitor your VPN profiles.
+            </p>
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full bg-cyan-600 hover:bg-cyan-500 text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                Create New Config
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-cyan-500" />
+                  Add New VPN Config
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  <div className="flex flex-col gap-2 items-start mt-2">
+                    <p>Paste your VPN configuration file contents here.</p>
+                    <Button variant="outline" size="sm" className="bg-slate-950 border-slate-700 text-slate-300 hover:text-white" asChild>
+                      <a href="https://www.vpnbook.com" target="_blank" rel="noreferrer">
+                        Get Free Config from VPNBook
+                      </a>
+                    </Button>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+              
+              <form onSubmit={handleSave} className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-slate-300">Config Name</Label>
+                    <Input
+                      id="name"
+                      placeholder="e.g. My Home VPN"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="bg-slate-950 border-slate-800 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vpnType" className="text-slate-300">VPN Type</Label>
+                    <Select value={vpnType} onValueChange={setVpnType}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-left">
+                        <SelectValue placeholder="Select VPN Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="WireGuard">WireGuard (Recommended)</SelectItem>
+                        <SelectItem value="OpenVPN">OpenVPN</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
+
+                <div className="space-y-2">
+                  <Label htmlFor="config" className="text-slate-300">Configuration Content</Label>
+                  <Textarea
+                    id="config"
+                    placeholder={vpnType === "WireGuard" ? "[Interface]&#10;PrivateKey = ...&#10;Address = ..." : "client&#10;dev tun&#10;proto udp&#10;..."}
+                    value={configContent}
+                    onChange={(e) => setConfigContent(e.target.value)}
+                    className="font-mono bg-slate-950 border-slate-800 text-white min-h-[180px] text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expiration" className="text-slate-300">Auto Delete / Expiration</Label>
+                  <div className="flex gap-4">
+                    <Select value={expiration} onValueChange={setExpiration}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-white flex-1 text-left">
+                        <SelectValue placeholder="Select Expiration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never (Keep Forever)</SelectItem>
+                        <SelectItem value="1 day">1 Day</SelectItem>
+                        <SelectItem value="3 days">3 Days</SelectItem>
+                        <SelectItem value="1 week">1 Week</SelectItem>
+                        <SelectItem value="1 month">1 Month</SelectItem>
+                        <SelectItem value="1 year">1 Year</SelectItem>
+                        <SelectItem value="custom">Custom Date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {expiration === "custom" && (
+                      <Input
+                        type="datetime-local"
+                        value={customDate}
+                        onChange={(e) => setCustomDate(e.target.value)}
+                        className="bg-slate-950 border-slate-800 text-white flex-1"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button 
+                    type="submit" 
+                    disabled={saveMutation.isPending || !name.trim() || !configContent.trim()}
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white"
+                  >
+                    {saveMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-4 h-4 mr-2" />
+                        Save Configuration
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="flex-1 overflow-hidden relative">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 absolute inset-0">
+              <Loader2 className="w-8 h-8 animate-spin mb-4 text-cyan-500" />
+              Loading configs...
+            </div>
+          ) : !configs || configs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 text-center absolute inset-0">
+              <Server className="w-12 h-12 opacity-20 mb-4" />
+              <p>No configurations found.</p>
+              <p className="text-sm opacity-70 mt-2">Click "Create New Config" above to get started.</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="p-6 space-y-4">
+                {configs.map((config) => (
+                  <div
+                    key={config.id}
+                    className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors group relative"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex flex-col gap-1.5 overflow-hidden">
+                        <h4 className="font-bold text-white flex items-center gap-2 truncate text-base">
+                          {config.name}
+                        </h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0">
+                            {config.type || 'WireGuard'}
+                          </Badge>
+                          {config.expires_at && (
+                            <Badge variant="secondary" className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              Expires: {new Date(config.expires_at).toLocaleDateString()}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 -mt-1 -mr-1"
+                        onClick={() => handleDelete(config.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    <div className="bg-slate-900 rounded-md p-2.5 mt-3 border border-slate-800/50">
+                      <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap break-all max-h-24 overflow-hidden overflow-y-auto">
+                        {config.config_content}
+                      </pre>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
       </div>
     </div>
   );
