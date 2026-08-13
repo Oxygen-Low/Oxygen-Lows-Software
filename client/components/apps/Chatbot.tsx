@@ -325,9 +325,6 @@ const ChatMessage = React.memo(
                   className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90"
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[16px] font-family-material">
-                      psychology
-                    </span>
                     Reasoning Process
                   </span>
                   <span
