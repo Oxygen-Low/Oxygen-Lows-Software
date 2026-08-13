@@ -28,7 +28,8 @@ import { PublicCharactersApp } from "@/components/apps/PublicCharacters";
 import { DataSaveApp } from "@/components/apps/DataSave";
 import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
 import { LLMAgentApp } from "@/components/apps/LLMAgent";
-import { Server } from "lucide-react";
+import { VPNApp } from "@/components/apps/VPN";
+import { Server, Shield } from "lucide-react";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
@@ -155,6 +156,16 @@ const apps: AppMetadata[] = [
     availability: "desktop-only",
     icon: <BrainCircuit className="w-8 h-8 text-cyan-500" />,
     component: LLMAgentApp,
+    authRequired: true,
+  },
+  {
+    id: "vpn",
+    name: "VPN",
+    description: "Manage your WireGuard VPN configurations.",
+    categories: ["All", "Utility"],
+    availability: "desktop-only",
+    icon: <Shield className="w-8 h-8 text-cyan-500" />,
+    component: VPNApp,
     authRequired: true,
   },
 ];
