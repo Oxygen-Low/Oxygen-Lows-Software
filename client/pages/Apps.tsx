@@ -105,7 +105,6 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
-    authRequired: true,
   },
   {
     id: "file-compressor",
