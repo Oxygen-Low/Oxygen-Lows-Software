@@ -111,65 +111,7 @@ app.get("/auth.md", (c) => {
   const protocol = c.req.header("x-forwarded-proto") || "https";
   const baseUrl = `${protocol}://${host}`;
 
-  const content = `# auth.md
-
-This document describes how AI agents and automated clients can authenticate with **Oxygen Low's Software** (`${baseUrl}`).
-
-## Agent Audience
-
-This service is open to any AI agent or automated client. Agents may access public resources anonymously or register for a bearer token to access authenticated endpoints.
-
-## Discovery Documents
-
-- **OAuth Protected Resource Metadata**: `${baseUrl}/.well-known/oauth-protected-resource`
-- **OAuth Authorization Server Metadata**: `${baseUrl}/.well-known/oauth-authorization-server`
-
-The authorization server metadata includes a machine-readable `agent_auth` block that describes all supported registration flows.
-
-## Registration Endpoint
-
-- **Register**: `POST ${baseUrl}/agent/auth`
-- **Revoke**: `POST ${baseUrl}/agent/auth/revoke`
-- **Claim**: `GET ${baseUrl}/agent/auth/claim`
-
-## Supported Authentication Methods
-
-### 1. Identity Assertion — ID-JAG (JWT Authorization Grant)
-
-Agents with a signed JWT Authorization Grant can exchange it for a bearer token.
-
-- **Assertion type**: `urn:ietf:params:oauth:token-type:id-jag`
-- **Credential type**: `bearer`
-- **Register**: `POST ${baseUrl}/agent/auth` with assertion in request body
-- **Revoke**: `POST ${baseUrl}/agent/auth/revoke`
-- **Revocation event**: `urn:ietf:params:oauth:event-type:token-revoked`
-
-### 2. Identity Assertion — Verified Email
-
-Agents with a verified email identity claim can register and obtain a bearer token.
-
-- **Assertion type**: `verified_email`
-- **Credential type**: `bearer`
-- **Register**: `POST ${baseUrl}/agent/auth` with email assertion
-- **Claim**: `GET ${baseUrl}/agent/auth/claim`
-
-### 3. Anonymous Access
-
-Agents without an identity can obtain an anonymous bearer token for access to public resources.
-
-- **Credential type**: `bearer`
-- **Claim**: `GET ${baseUrl}/agent/auth/claim`
-
-## Using Credentials
-
-All bearer tokens must be sent in the HTTP `Authorization` header:
-
-\`\`\`
-Authorization: Bearer <token>
-\`\`\`
-
-Tokens provide access to API resources scoped under the permissions granted at registration time. See the Authorization Server metadata for the full list of supported scopes.
-`;
+  REPLACE_ME
 
   return c.text(content, 200, {
     "Content-Type": "text/markdown",
