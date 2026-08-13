@@ -1165,7 +1165,8 @@ export function LLMAgentApp() {
         "grok",
       ].includes(selectedProvider);
 
-      const response = await fetch("/api/ai/proxy", {
+      let url = "/api/ai/proxy";
+      let fetchOptions: RequestInit = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1179,7 +1180,28 @@ export function LLMAgentApp() {
           stream: true,
           ...(supportsNativeTools ? { tools: AGENT_TOOLS } : {}),
         }),
-      });
+      };
+
+      if (selectedProvider.startsWith("local-")) {
+        if (selectedProvider === "local-ollama") url = "http://127.0.0.1:11434/v1/chat/completions";
+        else if (selectedProvider === "local-lmstudio") url = "http://127.0.0.1:1234/v1/chat/completions";
+        else if (selectedProvider === "local-kobold") url = "http://127.0.0.1:5001/v1/chat/completions";
+        
+        fetchOptions = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal,
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: apiMessages,
+            stream: true,
+          }),
+        };
+      }
+
+      const response = await fetch(url, fetchOptions);
 
       if (!response.ok) {
         throw new Error(await parseAiProxyError(response));

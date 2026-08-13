@@ -47,7 +47,38 @@ export const useAiModels = (
       const localResponse = await fetch("/api/ai/local-providers");
       const localModels = localResponse.ok ? await localResponse.json() : [];
 
-      const allModels: Model[] = [...(dbModels || []), ...localModels];
+      const discoveredLocalModels: Model[] = [];
+      try {
+        const res = await fetch("http://127.0.0.1:11434/api/tags", { signal: AbortSignal.timeout(500) });
+        if (res.ok) {
+          const data = await res.json();
+          for (const m of data.models || []) {
+            discoveredLocalModels.push({ provider: "local-ollama", model_id: m.name });
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch("http://127.0.0.1:1234/v1/models", { signal: AbortSignal.timeout(500) });
+        if (res.ok) {
+          const data = await res.json();
+          for (const m of data.data || []) {
+            discoveredLocalModels.push({ provider: "local-lmstudio", model_id: m.id });
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch("http://127.0.0.1:5001/api/v1/model", { signal: AbortSignal.timeout(500) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.result) {
+            discoveredLocalModels.push({ provider: "local-kobold", model_id: data.result });
+          }
+        }
+      } catch (e) {}
+
+      const allModels: Model[] = [...(dbModels || []), ...localModels, ...discoveredLocalModels];
       setModels(allModels);
 
       if (allModels.length > 0) {

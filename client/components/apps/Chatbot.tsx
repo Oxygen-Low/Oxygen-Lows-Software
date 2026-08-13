@@ -853,7 +853,8 @@ export function ChatbotApp() {
     signal: AbortSignal,
     streamCallback: (content: string, reasoning?: string) => void,
   ) => {
-    const response = await fetch("/api/ai/proxy", {
+    let url = "/api/ai/proxy";
+    let fetchOptions: RequestInit = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -866,7 +867,28 @@ export function ChatbotApp() {
         messages: msgs,
         stream: true,
       }),
-    });
+    };
+
+    if (provider.startsWith("local-")) {
+      if (provider === "local-ollama") url = "http://127.0.0.1:11434/v1/chat/completions";
+      else if (provider === "local-lmstudio") url = "http://127.0.0.1:1234/v1/chat/completions";
+      else if (provider === "local-kobold") url = "http://127.0.0.1:5001/v1/chat/completions";
+      
+      fetchOptions = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        signal,
+        body: JSON.stringify({
+          model: model,
+          messages: msgs,
+          stream: true,
+        }),
+      };
+    }
+
+    const response = await fetch(url, fetchOptions);
 
     if (!response.ok) {
       throw new Error(await parseAiProxyError(response));
@@ -918,18 +940,7 @@ export function ChatbotApp() {
               ) {
                 delta += data.delta.partial_json || "";
               }
-            } else if (
-              [
-                "openai",
-                "openrouter",
-                "grok",
-                "custom",
-                "lmstudio",
-                "koboldcpp",
-                "kobold",
-                "horde",
-                "cloudflare",
-              ].includes(provider)
+              ].includes(provider) || provider.startsWith("local-")
             ) {
               delta = data.choices?.[0]?.delta?.content || data.response || "";
               const tc = data.choices?.[0]?.delta?.tool_calls?.[0];

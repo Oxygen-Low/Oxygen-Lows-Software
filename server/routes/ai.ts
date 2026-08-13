@@ -27,42 +27,7 @@ const HORDE_MODELS_MAP: Record<string, string[]> = {
 const apiLimiter = rateLimiter(30, 60_000, "ai");
 
 aiRouter.get("/local-providers", apiLimiter, async (c) => {
-  const localModels = [];
-
-  // Try Ollama
-  try {
-    const res = await fetch("http://127.0.0.1:11434/api/tags", { signal: AbortSignal.timeout(500) });
-    if (res.ok) {
-      const data: any = await res.json();
-      for (const m of data.models || []) {
-        localModels.push({ provider: "local-ollama", model_id: m.name });
-      }
-    }
-  } catch (e) {}
-
-  // Try LM Studio
-  try {
-    const res = await fetch("http://127.0.0.1:1234/v1/models", { signal: AbortSignal.timeout(500) });
-    if (res.ok) {
-      const data: any = await res.json();
-      for (const m of data.data || []) {
-        localModels.push({ provider: "local-lmstudio", model_id: m.id });
-      }
-    }
-  } catch (e) {}
-
-  // Try Kobold.cpp
-  try {
-    const res = await fetch("http://127.0.0.1:5001/api/v1/model", { signal: AbortSignal.timeout(500) });
-    if (res.ok) {
-      const data: any = await res.json();
-      if (data.result) {
-        localModels.push({ provider: "local-kobold", model_id: data.result });
-      }
-    }
-  } catch (e) {}
-
-  return c.json([...DEFAULT_MODELS, ...localModels]);
+  return c.json([...DEFAULT_MODELS]);
 });
 
 aiRouter.get("/horde-status", apiLimiter, async (c) => {
@@ -126,7 +91,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     }
   }
 
-  if (!user && provider !== "horde" && !provider.startsWith("local-")) {
+  if (!user && provider !== "horde") {
     return c.json({ error: "Authentication required for this model." }, 401);
   }
 
@@ -166,8 +131,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   if (
     !integration?.api_key &&
     provider !== "horde" &&
-    provider !== "cloudflare" &&
-    !provider.startsWith("local-")
+    provider !== "cloudflare"
   ) {
     return c.json({ error: "Provider not configured" }, 400);
   }
@@ -270,15 +234,6 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       targetUrl = "https://api.openai.com/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
-    } else if (provider === "local-ollama") {
-      targetUrl = "http://127.0.0.1:11434/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: finalMessages };
-    } else if (provider === "local-lmstudio") {
-      targetUrl = "http://127.0.0.1:1234/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: finalMessages };
-    } else if (provider === "local-kobold") {
-      targetUrl = "http://127.0.0.1:5001/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: finalMessages };
     } else if (provider === "anthropic") {
       targetUrl = "https://api.anthropic.com/v1/messages";
       const systemMessages = finalMessages.filter(
