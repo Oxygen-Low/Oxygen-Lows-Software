@@ -30,26 +30,15 @@ export default function Changelogs() {
   useEffect(() => {
     const fetchCommits = async () => {
       try {
-        // Fetch last 10 commits list
-        const response = await fetch("https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/commits?per_page=10");
-        if (!response.ok) throw new Error("Failed to fetch commits");
-        const data: Commit[] = await response.json();
+        // Fetch last 10 commits list and their stats from our server
+        const response = await fetch("/api/changelogs");
         
-        // Fetch detailed stats for each commit to get insertions and deletions
-        const commitsWithStats = await Promise.all(
-          data.map(async (commit) => {
-            try {
-              const detailRes = await fetch(`https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/commits/${commit.sha}`);
-              if (detailRes.ok) {
-                const detailData = await detailRes.json();
-                return { ...commit, stats: detailData.stats };
-              }
-            } catch (e) {
-              console.error("Failed to fetch stats for commit", commit.sha);
-            }
-            return commit;
-          })
-        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to fetch commits");
+        }
+        
+        const commitsWithStats: Commit[] = await response.json();
         
         setCommits(commitsWithStats);
       } catch (err: any) {
