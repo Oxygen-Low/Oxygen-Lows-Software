@@ -50,13 +50,31 @@ const createPulsingIcon = (ping: number | "error" | "loading") => {
   });
 };
 
-function MapController({ center }: { center: [number, number] | null }) {
+function MapController({ center, locked }: { center: [number, number] | null; locked: boolean }) {
   const map = useMap();
+  
   useEffect(() => {
     if (center) {
       map.flyTo(center, 5, { duration: 1.5 });
     }
   }, [center, map]);
+
+  useEffect(() => {
+    if (locked) {
+      map.dragging.disable();
+      map.touchZoom.disable();
+      map.doubleClickZoom.disable();
+      map.scrollWheelZoom.disable();
+      map.keyboard.disable();
+    } else {
+      map.dragging.enable();
+      map.touchZoom.enable();
+      map.doubleClickZoom.enable();
+      map.scrollWheelZoom.enable();
+      map.keyboard.enable();
+    }
+  }, [locked, map]);
+  
   return null;
 }
 
@@ -85,6 +103,53 @@ export function VPNApp() {
   const [serverStats, setServerStats] = useState<Record<string, ServerStat>>({});
   const statsRef = useRef<Record<string, ServerStat>>({});
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+  
+  // Connection State
+  const [connectedConfigId, setConnectedConfigId] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // IPC Helpers for VPN
+  const runIPCCommand = async (commandLine: string) => {
+    return new Promise<{stdout: string, stderr: string}>((resolve, reject) => {
+      const webview = (window as any).chrome?.webview;
+      if (!webview) return reject(new Error("Not running in desktop app context"));
+      
+      const id = Date.now().toString() + Math.random().toString();
+      const listener = (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.id === id) {
+            webview.removeEventListener("message", listener);
+            if (data.success) resolve(data.data);
+            else reject(new Error(data.error));
+          }
+        } catch {}
+      };
+      webview.addEventListener("message", listener);
+      webview.postMessage(JSON.stringify({ command: "run_command", commandLine, id }));
+    });
+  };
+
+  const writeIPCFile = async (path: string, content: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const webview = (window as any).chrome?.webview;
+      if (!webview) return reject(new Error("Not running in desktop app context"));
+      
+      const id = Date.now().toString() + Math.random().toString();
+      const listener = (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.id === id) {
+            webview.removeEventListener("message", listener);
+            if (data.success) resolve();
+            else reject(new Error(data.error));
+          }
+        } catch {}
+      };
+      webview.addEventListener("message", listener);
+      webview.postMessage(JSON.stringify({ command: "write_file", path, content, id }));
+    });
+  };
 
   const { data: configs, isLoading } = useQuery({
     queryKey: ["vpnConfigs"],
@@ -295,6 +360,43 @@ export function VPNApp() {
     }
   };
 
+  const handleConnect = async (config: any) => {
+    setIsConnecting(true);
+    try {
+      if (config.type === "WireGuard") {
+        await writeIPCFile(`vpn_temp.conf`, config.config_content);
+        await runIPCCommand(`wireguard /installtunnelservice vpn_temp.conf`);
+      } else {
+        await writeIPCFile(`vpn_temp.ovpn`, config.config_content);
+        // OpenVPN UI mockup execution
+        runIPCCommand(`openvpn --config vpn_temp.ovpn`); 
+      }
+      setConnectedConfigId(config.id);
+      toast.success(`Connected to ${config.name}`);
+    } catch (e: any) {
+      toast.error(`Connection failed: ${e.message}`);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async (config: any) => {
+    setIsConnecting(true);
+    try {
+      if (config.type === "WireGuard") {
+        await runIPCCommand(`wireguard /uninstalltunnelservice vpn_temp`);
+      } else {
+        await runIPCCommand(`taskkill /F /IM openvpn.exe`);
+      }
+      setConnectedConfigId(null);
+      toast.success(`Disconnected from ${config.name}`);
+    } catch (e: any) {
+      toast.error(`Disconnect failed: ${e.message}`);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden">
       <style>{`
@@ -344,6 +446,22 @@ export function VPNApp() {
           0% { transform: scale(0.5); opacity: 1; }
           100% { transform: scale(2.5); opacity: 0; }
         }
+
+        .leaflet-popup-content-wrapper {
+          background: transparent !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        .leaflet-popup-tip-container {
+          display: none !important;
+        }
+        .leaflet-popup-content {
+          margin: 0 !important;
+          width: 320px !important;
+        }
+        .leaflet-popup-close-button {
+          display: none !important;
+        }
       `}</style>
       
       {/* Map Section - Left/Center */}
@@ -358,17 +476,64 @@ export function VPNApp() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
-          <MapController center={selectedLocation} />
+          <MapController center={selectedLocation} locked={connectedConfigId !== null} />
           
           {configs?.map(config => {
             const stat = serverStats[config.id];
             if (stat && stat.lat && stat.lon) {
               return (
                 <Marker key={config.id} position={[stat.lat, stat.lon]} icon={createPulsingIcon(stat.ping)}>
-                  <Popup className="text-slate-900 font-medium">
-                    {config.name}
-                    <br />
-                    {stat.city}, {stat.country}
+                  <Popup 
+                    closeOnClick={connectedConfigId !== config.id} 
+                    autoClose={connectedConfigId !== config.id} 
+                    closeButton={false}
+                  >
+                    <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl flex flex-col gap-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-1 overflow-hidden">
+                          <h4 className="font-bold text-white flex items-center gap-2 truncate text-lg">
+                            {config.name}
+                          </h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700">
+                              {config.type || 'WireGuard'}
+                            </Badge>
+                            {stat.ping !== 'error' && stat.ping !== 'loading' && (
+                              <Badge variant="secondary" className="bg-slate-800 text-emerald-400 hover:bg-slate-700">
+                                {stat.ping}ms
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {stat.city && (
+                        <div className="text-sm text-slate-400 flex items-center gap-2">
+                          <MapIcon className="w-4 h-4 opacity-50" />
+                          {stat.city}, {stat.country}
+                        </div>
+                      )}
+                      
+                      <div className="mt-2">
+                        {connectedConfigId === config.id ? (
+                          <Button 
+                            onClick={(e) => { e.stopPropagation(); handleDisconnect(config); }}
+                            disabled={isConnecting}
+                            className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20"
+                          >
+                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Disconnect VPN"}
+                          </Button>
+                        ) : (
+                          <Button 
+                            onClick={(e) => { e.stopPropagation(); handleConnect(config); }}
+                            disabled={isConnecting || (connectedConfigId !== null)}
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20"
+                          >
+                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Connect VPN"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </Popup>
                 </Marker>
               );

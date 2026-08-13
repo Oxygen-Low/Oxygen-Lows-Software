@@ -45,6 +45,7 @@ interface AppMetadata {
   icon: React.ReactNode;
   component: React.ComponentType;
   authRequired?: boolean;
+  requiresAdmin?: boolean;
 }
 
 /**
@@ -167,6 +168,7 @@ const apps: AppMetadata[] = [
     icon: <Shield className="w-8 h-8 text-cyan-500" />,
     component: VPNApp,
     authRequired: true,
+    requiresAdmin: true,
   },
 ];
 
@@ -228,6 +230,34 @@ export default function Apps() {
     });
     return counts;
   }, [availableApps]);
+
+  const handleAppClick = (app: AppMetadata) => {
+    if (app.requiresAdmin && isDesktopMode && (window as any).chrome?.webview) {
+      const id = Date.now().toString();
+      const listener = (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.id === id) {
+            (window as any).chrome.webview.removeEventListener("message", listener);
+            if (data.success) {
+              navigate(`/apps/${app.id}`);
+            } else {
+              import("sonner").then((m) => m.toast.error("Administrator permissions are required to use this app."));
+            }
+          }
+        } catch {}
+      };
+      (window as any).chrome.webview.addEventListener("message", listener);
+      (window as any).chrome.webview.postMessage(JSON.stringify({ command: "require_admin", id }));
+      
+      // Fallback timeout in case no response
+      setTimeout(() => {
+        (window as any).chrome.webview.removeEventListener("message", listener);
+      }, 5000);
+    } else {
+      navigate(`/apps/${app.id}`);
+    }
+  };
 
   if (activeApp) {
     const AppComponent = activeApp.component;
@@ -371,7 +401,7 @@ export default function Apps() {
                 <Card
                   key={app.id}
                   className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden"
-                  onClick={() => navigate(`/apps/${app.id}`)}
+                  onClick={() => handleAppClick(app)}
                 >
                   <CardHeader className="p-6">
                     <div className="mb-4 transition-transform group-hover:scale-110">

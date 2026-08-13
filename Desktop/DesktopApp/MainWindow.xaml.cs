@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Security.Principal;
 using Microsoft.Web.WebView2.Core;
 
 namespace DesktopApp;
@@ -224,6 +225,40 @@ public partial class MainWindow : Window
                     });
                     
                     SendWebMessage(new { id, success = true, data = results });
+                }
+                else if (cmd == "is_admin")
+                {
+                    bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
+                    SendWebMessage(new { id, success = true, data = new { isAdmin } });
+                }
+                else if (cmd == "require_admin")
+                {
+                    bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
+                    if (!isAdmin)
+                    {
+                        var exeName = Process.GetCurrentProcess().MainModule?.FileName;
+                        if (exeName != null)
+                        {
+                            var startInfo = new ProcessStartInfo(exeName)
+                            {
+                                Verb = "runas",
+                                UseShellExecute = true
+                            };
+                            try
+                            {
+                                Process.Start(startInfo);
+                                System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.Shutdown());
+                            }
+                            catch (Win32Exception)
+                            {
+                                SendWebMessage(new { id, success = false, error = "admin_denied" });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        SendWebMessage(new { id, success = true, data = new { isAdmin = true } });
+                    }
                 }
             }
             catch (Exception ex)
