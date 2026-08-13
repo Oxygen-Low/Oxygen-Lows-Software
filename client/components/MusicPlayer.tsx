@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Play, Pause, SkipBack, SkipForward, Shuffle } from "lucide-react";
 import { useMusic } from "@/hooks/useMusic";
 import { Button } from "@/components/ui/button";
@@ -18,17 +19,17 @@ export const MusicPlayer = () => {
     playTrack,
   } = useMusic();
 
-  const formatTime = (milliseconds: number) => {
+  const formatTime = useCallback((milliseconds: number) => {
     const seconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(seconds / 60);
     const displaySeconds = seconds % 60;
     return `${minutes}:${displaySeconds.toString().padStart(2, "0")}`;
-  };
+  }, []);
 
-  const getDuration = () => {
+  const getDuration = useCallback(() => {
     if (!audioRef.current) return 0;
     return audioRef.current.duration * 1000;
-  };
+  }, [audioRef]);
 
   const progressPercent =
     getDuration() > 0 ? (currentPosition / getDuration()) * 100 : 0;

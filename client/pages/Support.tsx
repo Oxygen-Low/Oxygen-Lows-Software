@@ -201,7 +201,15 @@ export default function Support() {
                 <div
                   key={ticket.id}
                   onClick={() => navigate(`/support/${ticket.id}`)}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/support/${ticket.id}`);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   <div className="space-y-1 mb-2 sm:mb-0">
                     <p className="font-medium">{ticket.title}</p>

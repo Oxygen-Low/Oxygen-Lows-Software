@@ -956,9 +956,9 @@ function ToolLogItem({ entry }: { entry: ToolLogEntry }) {
 
 function AgentMarkdown({ content }: { content: string }) {
   return (
-    <ReactMarkdown
-      className="prose prose-invert prose-sm max-w-none text-sm leading-relaxed text-slate-300"
-      components={{
+    <div className="prose prose-invert prose-sm max-w-none text-sm leading-relaxed text-slate-300">
+      <ReactMarkdown
+        components={{
         code({ className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || "");
           const inline = !match;
@@ -1002,6 +1002,7 @@ function AgentMarkdown({ content }: { content: string }) {
     >
       {content}
     </ReactMarkdown>
+    </div>
   );
 }
 

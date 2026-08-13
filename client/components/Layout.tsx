@@ -24,7 +24,14 @@ interface LayoutProps {
  * ⚡ Bolt Performance Optimization:
  * Moved static array outside of the component to prevent recreating it on every render.
  */
-const navItems = [
+interface NavItem {
+  label: string;
+  href: string;
+  icon: any;
+  external?: boolean;
+}
+
+const navItems: NavItem[] = [
   { label: "Apps", href: "/apps", icon: Package },
   { label: "Storage", href: "/storage", icon: HardDrive },
   { label: "Account", href: "/account", icon: User },

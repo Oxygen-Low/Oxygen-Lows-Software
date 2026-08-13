@@ -40,48 +40,42 @@ export const useAiModels = (
   const fetchModels = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data: dbModels } = await supabase
-        .from("user_models")
-        .select("provider, model_id")
-        .order("provider");
-      const localResponse = await fetch("/api/ai/local-providers");
-      const localModels = localResponse.ok ? await localResponse.json() : [];
+      const localUrls = [
+        "http://127.0.0.1:11434/api/tags",
+        "http://127.0.0.1:1234/v1/models",
+        "http://127.0.0.1:5001/api/v1/model"
+      ];
+
+      const fetchTasks = [
+        supabase.from("user_models").select("provider, model_id").order("provider"),
+        fetch("/api/ai/local-providers").then(res => res.ok ? res.json() : []).catch(() => []),
+        ...localUrls.map(url => fetch(url, { signal: AbortSignal.timeout(2000) }).then(res => res.ok ? res.json() : null).catch(() => null))
+      ];
+
+      const results = await Promise.allSettled(fetchTasks);
+
+      const dbModels = results[0].status === "fulfilled" ? results[0].value.data || [] : [];
+      const localModels = results[1].status === "fulfilled" ? results[1].value || [] : [];
 
       const discoveredLocalModels: Model[] = [];
-      try {
-        const res = await fetch("http://127.0.0.1:11434/api/tags", { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-          const data = await res.json();
-          for (const m of data.models || []) {
-            discoveredLocalModels.push({ provider: "local-ollama", model_id: m.name });
-          }
+      
+      const ollamaData = results[2].status === "fulfilled" ? results[2].value : null;
+      if (ollamaData && ollamaData.models) {
+        for (const m of ollamaData.models) {
+          discoveredLocalModels.push({ provider: "local-ollama", model_id: m.name });
         }
-      } catch (e) {
-        console.error("Failed to fetch Ollama models:", e);
       }
 
-      try {
-        const res = await fetch("http://127.0.0.1:1234/v1/models", { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-          const data = await res.json();
-          for (const m of data.data || []) {
-            discoveredLocalModels.push({ provider: "local-lmstudio", model_id: m.id });
-          }
+      const lmStudioData = results[3].status === "fulfilled" ? results[3].value : null;
+      if (lmStudioData && lmStudioData.data) {
+        for (const m of lmStudioData.data) {
+          discoveredLocalModels.push({ provider: "local-lmstudio", model_id: m.id });
         }
-      } catch (e) {
-        console.error("Failed to fetch LM Studio models:", e);
       }
 
-      try {
-        const res = await fetch("http://127.0.0.1:5001/api/v1/model", { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.result) {
-            discoveredLocalModels.push({ provider: "local-kobold", model_id: data.result });
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch Kobold models:", e);
+      const koboldData = results[4].status === "fulfilled" ? results[4].value : null;
+      if (koboldData && koboldData.result) {
+        discoveredLocalModels.push({ provider: "local-kobold", model_id: koboldData.result });
       }
 
       const allModels: Model[] = [...(dbModels || []), ...localModels, ...discoveredLocalModels];

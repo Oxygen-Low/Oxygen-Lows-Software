@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -130,15 +130,15 @@ export function StorageFileSelector({
     });
   }, [searchOptimizedItems, search]);
 
-  const formatSize = (bytes: number) => {
+  const formatSize = useCallback((bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
+  }, []);
 
-  const getFileIcon = (mimetype: string) => {
+  const getFileIcon = useCallback((mimetype: string) => {
     if (mimetype.startsWith("image/"))
       return <ImageIcon className="w-4 h-4 text-pink-500" />;
     if (mimetype.startsWith("audio/"))
@@ -146,7 +146,7 @@ export function StorageFileSelector({
     if (mimetype.startsWith("video/"))
       return <Film className="w-4 h-4 text-purple-500" />;
     return <File className="w-4 h-4 text-slate-400" />;
-  };
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
