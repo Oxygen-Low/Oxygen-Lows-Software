@@ -335,7 +335,7 @@ export function ChatbotSimulatorApp() {
 
       // Prepare messages for AI
       // Note: we need to swap the roles so the AI thinks it's the user.
-      const systemMessage = "You are a human user using an AI chatbot. I (the real human) am the AI assistant. You will give me prompts, ask me to write code, tell me jokes, or ask for advice, just like a real user would. You are testing me. Once I have fulfilled your request or the interaction reaches a natural conclusion, you MUST call the `finish_simulator_chat` tool. Do not break character.";
+      const systemMessage = "You are a human user using an AI chatbot. I (the real human) am the AI assistant. You will give me prompts, ask me to write code, tell me jokes, or ask for advice, just like a real user would. You are testing me. Once I have fulfilled your request or the interaction reaches a natural conclusion, you MUST acknowledge my response (e.g. say 'Thanks!' or 'That makes sense', DO NOT just repeat my answer). Then you MUST end the simulation by outputting exactly: <tool_call>{\"name\": \"finish_simulator_chat\", \"arguments\": {}}</tool_call>. Do not break character.";
       
       const apiMessages = [
         { role: "system", content: systemMessage },
@@ -347,8 +347,8 @@ export function ChatbotSimulatorApp() {
       ];
 
       const finalContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
+        "horde",
+        "Fast",
         apiMessages as any,
         controller.signal,
         (content) => {
@@ -358,16 +358,8 @@ export function ChatbotSimulatorApp() {
 
       // Check if tool was called
       let toolCalled = false;
-      if (finalContent.includes("<tool_call>")) {
-        try {
-          const match = finalContent.match(/<tool_call>([\s\S]*?)<\/tool_call>/);
-          if (match) {
-            const toolData = JSON.parse(match[1]);
-            if (toolData.name === "finish_simulator_chat") {
-              toolCalled = true;
-            }
-          }
-        } catch (e) { }
+      if (finalContent.includes("finish_simulator_chat")) {
+        toolCalled = true;
       }
 
       const { data: assistantMsgData } = await supabase
@@ -477,7 +469,7 @@ export function ChatbotSimulatorApp() {
                             }
                           }}
                         >
-                          {m.content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "*(The user finished the simulation)*")}
+                          {m.content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "*(The user finished the simulation)*").replace(/\{"name":\s*"finish_simulator_chat"[\s\S]*?\}/g, "*(The user finished the simulation)*")}
                         </ReactMarkdown>
                       </div>
                     </div>
