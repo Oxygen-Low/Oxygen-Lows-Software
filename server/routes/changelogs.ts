@@ -2,8 +2,25 @@ import { Hono } from "hono";
 
 export const changelogsRouter = new Hono();
 
+const rateLimitMap = new Map<string, number[]>();
+const MAX_REQUESTS = 5;
+const WINDOW_MS = 60 * 1000;
+
 changelogsRouter.get("/", async (c) => {
   try {
+    const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
+    const now = Date.now();
+    
+    let timestamps = rateLimitMap.get(ip) || [];
+    timestamps = timestamps.filter(time => now - time < WINDOW_MS);
+    
+    if (timestamps.length >= MAX_REQUESTS) {
+      return c.json({ error: "Rate limit exceeded. Maximum 5 requests per minute." }, 429 as any);
+    }
+    
+    timestamps.push(now);
+    rateLimitMap.set(ip, timestamps);
+
     const token = process.env.CHANGELOGS_API;
     const headers: HeadersInit = {
       "Accept": "application/vnd.github.v3+json",
