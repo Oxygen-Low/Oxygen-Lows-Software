@@ -26,3 +26,20 @@ vpnRouter.get("/ping", async (c) => {
     return c.json({ error: "Failed to ping host" }, 500);
   }
 });
+
+vpnRouter.get("/geocode", async (c) => {
+  const ip = c.req.query("ip");
+  
+  if (!ip) {
+    return c.json({ error: "IP parameter is required" }, 400);
+  }
+
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}`);
+    const data = await res.json();
+    return c.json(data);
+  } catch (error) {
+    console.error("Geocode error:", error);
+    return c.json({ error: "Failed to geocode IP" }, 500);
+  }
+});

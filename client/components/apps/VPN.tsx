@@ -126,14 +126,16 @@ export function VPNApp() {
       // Geocode if missing
       if (newStats[config.id].lat === null) {
         try {
-          const geoRes = await fetch(`https://ipwhois.app/json/${ip}`);
-          const geoData = await geoRes.json();
-          if (geoData.success) {
-            newStats[config.id].lat = geoData.latitude;
-            newStats[config.id].lon = geoData.longitude;
-            newStats[config.id].city = geoData.city;
-            newStats[config.id].country = geoData.country;
-            hasChanges = true;
+          const geoRes = await fetch(`/api/vpn/geocode?ip=${ip}`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData.status === "success") {
+              newStats[config.id].lat = geoData.lat;
+              newStats[config.id].lon = geoData.lon;
+              newStats[config.id].city = geoData.city;
+              newStats[config.id].country = geoData.country;
+              hasChanges = true;
+            }
           }
         } catch (e) {
           console.error("Geocoding error", e);
