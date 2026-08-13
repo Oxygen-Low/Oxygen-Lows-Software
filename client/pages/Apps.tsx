@@ -115,6 +115,7 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,
+    authRequired: true,
   },
   {
     id: "public-characters",
