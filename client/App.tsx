@@ -40,27 +40,15 @@ const App = () => (
             <Routes>
               <Route
                 path="/"
-                element={
-                  <ProtectedRoute>
-                    <Apps />
-                  </ProtectedRoute>
-                }
+                element={<Apps />}
               />
               <Route
                 path="/apps"
-                element={
-                  <ProtectedRoute>
-                    <Apps />
-                  </ProtectedRoute>
-                }
+                element={<Apps />}
               />
               <Route
                 path="/apps/:appId"
-                element={
-                  <ProtectedRoute>
-                    <Apps />
-                  </ProtectedRoute>
-                }
+                element={<Apps />}
               />
               <Route
                 path="/storage"

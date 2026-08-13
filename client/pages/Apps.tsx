@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Card,
   CardContent,
@@ -42,6 +43,7 @@ interface AppMetadata {
   availability: Availability;
   icon: React.ReactNode;
   component: React.ComponentType;
+  authRequired?: boolean;
 }
 
 /**
@@ -103,6 +105,7 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
+    authRequired: true,
   },
   {
     id: "file-compressor",
@@ -122,6 +125,7 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Users className="w-8 h-8 text-cyan-500" />,
     component: PublicCharactersApp,
+    authRequired: true,
   },
   {
     id: "data-save",
@@ -131,6 +135,7 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Server className="w-8 h-8 text-cyan-500" />,
     component: DataSaveApp,
+    authRequired: true,
   },
   {
     id: "qrcode-generator",
@@ -150,10 +155,12 @@ const apps: AppMetadata[] = [
     availability: "desktop-only",
     icon: <BrainCircuit className="w-8 h-8 text-cyan-500" />,
     component: LLMAgentApp,
+    authRequired: true,
   },
 ];
 
 export default function Apps() {
+  const { session } = useAuth();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const hasDesktopParam = searchParams.get("desktop") === "1";
@@ -217,9 +224,9 @@ export default function Apps() {
 
     return (
       <Layout fullWidth={isFullWidthApp}>
-        <div className={isFullWidthApp ? "h-full w-full flex flex-col" : "space-y-6"}>
+        <div className={isFullWidthApp ? "h-full w-full flex flex-col" : "space-y-6 h-full flex flex-col"}>
           {!isFullWidthApp && (
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-8 shrink-0">
               <button
                 onClick={() => navigate("/apps")}
                 aria-label="Back to apps list"
@@ -231,7 +238,27 @@ export default function Apps() {
               <h2 className="text-2xl font-bold text-white">{activeApp.name}</h2>
             </div>
           )}
-          <AppComponent />
+          
+          <div className="relative flex-1 w-full h-full min-h-[500px]">
+            {!session && activeApp.authRequired && (
+              <div className="absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl border border-slate-800 p-6">
+                <div className="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center mb-6 text-cyan-500">
+                  {activeApp.icon}
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Sign in to use {activeApp.name}</h3>
+                <p className="text-slate-400 mb-8 max-w-md text-center">{activeApp.description}</p>
+                <button 
+                  onClick={() => navigate("/auth")} 
+                  className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
+                >
+                  Sign In to Continue
+                </button>
+              </div>
+            )}
+            <div className={cn("h-full w-full", !session && activeApp.authRequired && "pointer-events-none select-none opacity-20 blur-sm transition-all")}>
+              <AppComponent />
+            </div>
+          </div>
         </div>
       </Layout>
     );

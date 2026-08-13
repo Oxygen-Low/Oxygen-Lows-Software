@@ -136,15 +136,26 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             </a>
           </div>
           <div className="flex items-center gap-4">
-            <span className={`${styles["user-email"]} text-sm`}>
-              {session?.user?.email}
-            </span>
-            <button
-              onClick={handleSignOut}
-              className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium`}
-            >
-              <LogOut className="w-4 h-4 mr-2" /> Sign Out
-            </button>
+            {session ? (
+              <>
+                <span className={`${styles["user-email"]} text-sm`}>
+                  {session.user.email}
+                </span>
+                <button
+                  onClick={handleSignOut}
+                  className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium`}
+                >
+                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => navigate("/auth")}
+                className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium hover:bg-white/5`}
+              >
+                <User className="w-4 h-4 mr-2" /> Sign In
+              </button>
+            )}
           </div>
         </div>
       </header>
