@@ -15,6 +15,7 @@ export function getAuthenticatedClient(token?: string) {
   if (token && token !== supabaseKey) {
     return createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false },
     });
   }
   return supabase;
