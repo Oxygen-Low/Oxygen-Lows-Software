@@ -50,6 +50,15 @@ const createPulsingIcon = (ping: number | "error" | "loading") => {
   });
 };
 
+const createAgentIcon = () => {
+  return L.divIcon({
+    className: 'agent-icon',
+    html: `<div class="agent-wrapper"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+};
+
 function MapController({ center, locked }: { center: [number, number] | null; locked: boolean }) {
   const map = useMap();
   
@@ -104,10 +113,25 @@ export function VPNApp() {
   const statsRef = useRef<Record<string, ServerStat>>({});
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const markerRefs = useRef<Record<string, any>>({});
+  const agentRef = useRef<any>(null);
   
   // Connection State
   const [connectedConfigId, setConnectedConfigId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [homeLocation, setHomeLocation] = useState<[number, number] | null>(null);
+  const [agentLocation, setAgentLocation] = useState<[number, number] | null>(null);
+
+  useEffect(() => {
+    fetch('/api/vpn/geocode')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          setHomeLocation([data.lat, data.lon]);
+          setAgentLocation([data.lat, data.lon]);
+        }
+      })
+      .catch(err => console.error("Home geocode error", err));
+  }, []);
 
   // IPC Helpers for VPN
   const runIPCCommand = async (commandLine: string) => {
@@ -369,12 +393,30 @@ export function VPNApp() {
   const handleConnect = async (config: any) => {
     setIsConnecting(true);
     try {
+      const serverStat = serverStats[config.id];
+      if (serverStat && serverStat.lat && serverStat.lon && agentRef.current) {
+        // Dive
+        const el = agentRef.current.getElement();
+        if (el) L.DomUtil.addClass(el, 'diving');
+        
+        await new Promise(r => setTimeout(r, 600)); // Wait for dive animation
+
+        // Move underground
+        setAgentLocation([serverStat.lat, serverStat.lon]);
+        
+        await new Promise(r => setTimeout(r, 1500)); // Wait for transform transition
+
+        // Emerge
+        if (el) L.DomUtil.removeClass(el, 'diving');
+        
+        await new Promise(r => setTimeout(r, 500)); // Wait for emerge animation
+      }
+
       if (config.type === "WireGuard") {
         await writeIPCFile(`vpn_temp.conf`, config.config_content);
         await runIPCCommand(`wireguard /installtunnelservice vpn_temp.conf`);
       } else {
         await writeIPCFile(`vpn_temp.ovpn`, config.config_content);
-        // OpenVPN UI mockup execution
         runIPCCommand(`openvpn --config vpn_temp.ovpn`); 
       }
       setConnectedConfigId(config.id);
@@ -395,6 +437,20 @@ export function VPNApp() {
         await runIPCCommand(`taskkill /F /IM openvpn.exe`);
       }
       setConnectedConfigId(null);
+      
+      // Reverse animation
+      if (homeLocation && agentRef.current) {
+        const el = agentRef.current.getElement();
+        if (el) L.DomUtil.addClass(el, 'diving');
+        await new Promise(r => setTimeout(r, 600));
+
+        setAgentLocation(homeLocation);
+        await new Promise(r => setTimeout(r, 1500));
+
+        if (el) L.DomUtil.removeClass(el, 'diving');
+        await new Promise(r => setTimeout(r, 500));
+      }
+
       toast.success(`Disconnected from ${config.name}`);
     } catch (e: any) {
       toast.error(`Disconnect failed: ${e.message}`);
@@ -467,6 +523,28 @@ export function VPNApp() {
         }
         .leaflet-popup-close-button {
           display: none !important;
+        }
+        .agent-icon {
+          transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          z-index: 1000 !important;
+        }
+        .agent-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          background-color: #0f172a;
+          border: 2px solid #06b6d4;
+          border-radius: 50%;
+          box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+          color: #06b6d4;
+          transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease-in-out, filter 0.5s ease-in-out;
+        }
+        .agent-icon.diving .agent-wrapper {
+          transform: scale(0.3) translateY(40px);
+          opacity: 0;
+          filter: brightness(0.2);
         }
       `}</style>
       
@@ -551,6 +629,14 @@ export function VPNApp() {
             }
             return null;
           })}
+
+          {agentLocation && (
+            <Marker 
+              position={agentLocation} 
+              icon={createAgentIcon()} 
+              ref={agentRef}
+            />
+          )}
         </MapContainer>
       </div>
 
