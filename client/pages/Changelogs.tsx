@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { GitCommit, ArrowRight, Loader2, PlusCircle, MinusCircle } from "lucide-react";
+import { GitCommit, ArrowRight, Loader2 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 
 interface CommitStats {
@@ -140,13 +140,11 @@ export default function Changelogs() {
                   
                   {commit.stats && (
                     <div className="flex items-center gap-3 text-xs sm:text-sm font-semibold bg-background/50 border border-border/40 py-1.5 px-3 rounded-lg whitespace-nowrap shadow-sm">
-                      <span className="flex items-center gap-1.5 text-emerald-500">
-                        <PlusCircle className="w-4 h-4" />
-                        {commit.stats.additions}
+                      <span className="flex items-center gap-1 text-emerald-500">
+                        +{commit.stats.additions}
                       </span>
-                      <span className="flex items-center gap-1.5 text-rose-500">
-                        <MinusCircle className="w-4 h-4" />
-                        {commit.stats.deletions}
+                      <span className="flex items-center gap-1 text-rose-500">
+                        -{commit.stats.deletions}
                       </span>
                     </div>
                   )}
