@@ -5,6 +5,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 if (process.env.NODE_ENV === 'production') {
+  app.use('/assets/*', async (c, next) => {
+    await next();
+    if (c.res.ok) {
+      c.header('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  });
+
   app.get('*', serveStatic({ root: './dist/spa' }));
   
   let indexHtml = '';
