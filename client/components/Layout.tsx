@@ -10,9 +10,7 @@ import {
   Palette,
   Contact,
   LifeBuoy,
-  ShieldAlert,
   GitCommit,
-  Kanban,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
