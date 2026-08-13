@@ -334,22 +334,26 @@ export function ChatbotSimulatorApp() {
       }
 
       // Prepare messages for AI
-      // Note: we need to swap the roles so the AI thinks it's the user.
-      const systemMessage = `You are playing the role of a human user using an AI chatbot. I (the real human) am the AI assistant. 
-You will give me prompts, ask me to write code, tell me jokes, or ask for advice, just like a real user would. You are testing me. 
+      // The LLM always generates 'assistant' messages. So the LLM (playing the Clueless User) must be the 'assistant'.
+      // The real human (playing the AI) must be the 'user'.
+      const systemMessage = `We are playing a roleplay game. 
+You are "THE CLUELESS USER". 
+I (the human typing to you) am "THE AI ASSISTANT".
+
+Your job is to act like a typical, non-expert human user asking an AI for help.
 CRITICAL RULES:
-1. DO NOT answer your own questions. If you ask for code, wait for me to write it. If you ask a question, wait for my answer. 
-2. When I provide an answer or fix your code, you must act like a normal user receiving help. Acknowledge it naturally (e.g. "Oh that makes sense, thanks!" or "Wow, it works perfectly now!"). Do not just repeat my answer or provide the corrected code yourself.
-3. Once I have fulfilled your request or the interaction reaches a natural conclusion, you MUST end the simulation by outputting EXACTLY this string: <tool_call>{"name": "finish_simulator_chat", "arguments": {}}</tool_call>
-Do not break character.`;
+1. DO NOT act like an AI. DO NOT answer your own questions. DO NOT explain code.
+2. When I (THE AI ASSISTANT) provide an answer or fix your code, you must act like a normal human receiving help (e.g. say "Oh that makes sense, thanks!" or "Wow, it works perfectly now!").
+3. Once I have fulfilled your request, you MUST end the simulation by outputting EXACTLY this string: <tool_call>{"name": "finish_simulator_chat", "arguments": {}}</tool_call>
+Do not break character. You are the human.`;
       
       const apiMessages = [
         { role: "system", content: systemMessage },
         ...allMessages.map(m => ({
-          role: (m.role === "assistant" ? "user" : "assistant") as any,
+          role: m.role, // 'assistant' is Clueless User, 'user' is Real Human
           content: m.content
         })),
-        { role: "assistant", content: userContent } // the real human just replied, so AI sees it as 'assistant'
+        { role: "user", content: userContent } // the real human just replied, so AI sees it as 'user'
       ];
 
       const finalContent = await callAiStream(
