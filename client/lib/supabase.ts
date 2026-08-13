@@ -11,12 +11,19 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
+const clientCache = new Map<string, ReturnType<typeof createClient>>();
+
 export function getAuthenticatedClient(token?: string) {
   if (token && token !== supabaseKey) {
-    return createClient(supabaseUrl, supabaseKey, {
+    if (clientCache.has(token)) {
+      return clientCache.get(token)!;
+    }
+    const client = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
+    clientCache.set(token, client);
+    return client;
   }
   return supabase;
 }
