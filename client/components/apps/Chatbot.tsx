@@ -604,6 +604,10 @@ export function ChatbotApp() {
     () => models.filter((m) => m.provider === "horde"),
     [models],
   );
+  const localModels = useMemo(
+    () => models.filter((m) => m.provider.startsWith("local-")),
+    [models],
+  );
   const cloudflareModels = useMemo(
     () => models.filter((m) => m.provider === "cloudflare"),
     [models],
@@ -632,6 +636,7 @@ export function ChatbotApp() {
     [models, session?.user?.id],
   );
   const hasHordeModels = hordeModels.length > 0;
+  const hasLocalModels = localModels.length > 0;
   const hasCloudflareModels = cloudflareModels.length > 0;
   const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
 
@@ -2113,6 +2118,45 @@ export function ChatbotApp() {
                                       )}
                                     </span>
                                   )}
+                                </div>
+                                {selectedModel === m.model_id &&
+                                  selectedProvider === m.provider && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {hasLocalModels && (
+                        <>
+                          <div className="px-3 pb-1 pt-3">
+                            <p className="text-[11px] text-slate-400 font-display font-medium">
+                              Local Running Apps
+                            </p>
+                          </div>
+                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
+                            {localModels.map((m) => (
+                              <button
+                                key={m.model_id}
+                                onClick={() => {
+                                  setSelection(m.model_id, m.provider);
+                                  setModelDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                  selectedModel === m.model_id &&
+                                    selectedProvider === m.provider
+                                    ? "bg-white/5"
+                                    : "",
+                                )}
+                              >
+                                <div className="text-sm text-white font-medium">
+                                  {m.model_id}
+                                </div>
+                                <div className="text-[11px] text-slate-400 truncate w-full capitalize">
+                                  {m.provider.replace("local-", "")}
                                 </div>
                                 {selectedModel === m.model_id &&
                                   selectedProvider === m.provider && (

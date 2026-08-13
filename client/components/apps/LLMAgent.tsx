@@ -717,9 +717,10 @@ function ModelSelector({
 
   // Group models by provider
   const hordeModels = models.filter((m) => m.provider === "horde");
+  const localModels = models.filter((m) => m.provider.startsWith("local-"));
   const cloudflareModels = models.filter((m) => m.provider === "cloudflare");
   const otherModels = models.filter(
-    (m) => m.provider !== "horde" && m.provider !== "cloudflare",
+    (m) => m.provider !== "horde" && m.provider !== "cloudflare" && !m.provider.startsWith("local-"),
   );
 
   return (
@@ -763,6 +764,34 @@ function ModelSelector({
                       }}
                     >
                       <span>{formatModelLabel(m.provider, m.model_id)}</span>
+                      {m.model_id === selectedModel &&
+                        m.provider === selectedProvider && (
+                          <Check className="w-3 h-3" />
+                        )}
+                    </button>
+                  ))}
+                </>
+              )}
+              {localModels.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-1">
+                    Local Running Apps
+                  </div>
+                  {localModels.map((m) => (
+                    <button
+                      key={`${m.provider}-${m.model_id}`}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                        m.model_id === selectedModel &&
+                        m.provider === selectedProvider
+                          ? "bg-cyan-500/10 text-cyan-400"
+                          : "text-slate-300 hover:bg-slate-800"
+                      }`}
+                      onClick={() => {
+                        onSelect(m.model_id, m.provider);
+                        setOpen(false);
+                      }}
+                    >
+                      <span className="capitalize">{m.model_id} ({m.provider.replace("local-", "")})</span>
                       {m.model_id === selectedModel &&
                         m.provider === selectedProvider && (
                           <Check className="w-3 h-3" />
