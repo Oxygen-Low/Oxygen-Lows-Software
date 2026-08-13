@@ -160,6 +160,15 @@ export function VPNApp() {
 
   return (
     <div className="flex h-full w-full overflow-hidden">
+      <style>{`
+        .leaflet-control-attribution {
+          background-color: rgba(15, 23, 42, 0.8) !important;
+          color: #94a3b8 !important;
+        }
+        .leaflet-control-attribution a {
+          color: #06b6d4 !important;
+        }
+      `}</style>
       {/* Map Section - Left/Center */}
       <div className="flex-1 relative bg-slate-950">
         <MapContainer 
