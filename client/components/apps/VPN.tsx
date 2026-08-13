@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Plus, Shield, Loader2, Server, Clock, Map as MapIcon } from "lucide-react";
+import { Trash2, Plus, Shield, Loader2, Server, Clock, Map as MapIcon, Activity } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,8 +15,40 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 // Leaflet
-import { MapContainer, TileLayer } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Leaflet icon fix for Vite
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
+
+function MapController({ center }: { center: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, 5, { duration: 1.5 });
+    }
+  }, [center, map]);
+  return null;
+}
+
+interface ServerStat {
+  ip: string;
+  lat: number | null;
+  lon: number | null;
+  city: string;
+  country: string;
+  ping: number | "error" | "loading";
+}
 
 export function VPNApp() {
   const { session } = useAuth();
@@ -30,6 +62,11 @@ export function VPNApp() {
   const [customDate, setCustomDate] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Map & Stats State
+  const [serverStats, setServerStats] = useState<Record<string, ServerStat>>({});
+  const statsRef = useRef<Record<string, ServerStat>>({});
+  const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+
   const { data: configs, isLoading } = useQuery({
     queryKey: ["vpnConfigs"],
     queryFn: async () => {
@@ -40,7 +77,6 @@ export function VPNApp() {
       
       if (error) throw error;
 
-      // Lazy deletion of expired configs
       const now = new Date();
       const expiredIds: string[] = [];
       const validConfigs = data.filter((config) => {
@@ -52,7 +88,6 @@ export function VPNApp() {
       });
 
       if (expiredIds.length > 0) {
-        // Fire and forget deletion
         supabase.from("vpn_configs").delete().in("id", expiredIds).then(({ error }) => {
           if (error) console.error("Failed to delete expired configs:", error);
         });
@@ -62,6 +97,80 @@ export function VPNApp() {
     },
     enabled: !!session?.user?.id,
   });
+
+  const extractIP = (content: string, type: string) => {
+    if (type === "WireGuard") {
+      const match = content.match(/Endpoint\s*=\s*([^:\s]+)/i);
+      return match ? match[1].trim() : null;
+    } else {
+      const match = content.match(/remote\s+([^\s]+)/i);
+      return match ? match[1].trim() : null;
+    }
+  };
+
+  const updatePingAndGeo = async () => {
+    if (!configs || configs.length === 0) return;
+
+    const newStats = { ...statsRef.current };
+    let hasChanges = false;
+
+    for (const config of configs) {
+      const ip = extractIP(config.config_content, config.type);
+      if (!ip) continue;
+
+      if (!newStats[config.id]) {
+        newStats[config.id] = { ip, lat: null, lon: null, city: "", country: "", ping: "loading" };
+        hasChanges = true;
+      }
+      
+      // Geocode if missing
+      if (newStats[config.id].lat === null) {
+        try {
+          const geoRes = await fetch(`https://ipwhois.app/json/${ip}`);
+          const geoData = await geoRes.json();
+          if (geoData.success) {
+            newStats[config.id].lat = geoData.latitude;
+            newStats[config.id].lon = geoData.longitude;
+            newStats[config.id].city = geoData.city;
+            newStats[config.id].country = geoData.country;
+            hasChanges = true;
+          }
+        } catch (e) {
+          console.error("Geocoding error", e);
+        }
+      }
+
+      // Ping
+      try {
+        const pingRes = await fetch(`/api/vpn/ping?host=${ip}`);
+        if (pingRes.ok) {
+          const pingData = await pingRes.json();
+          if (pingData.alive && pingData.time !== "unknown") {
+            newStats[config.id].ping = Math.round(Number(pingData.time));
+          } else {
+            newStats[config.id].ping = "error";
+          }
+        } else {
+          newStats[config.id].ping = "error";
+        }
+        hasChanges = true;
+      } catch (e) {
+        newStats[config.id].ping = "error";
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      statsRef.current = newStats;
+      setServerStats(newStats);
+    }
+  };
+
+  useEffect(() => {
+    updatePingAndGeo();
+    const interval = setInterval(updatePingAndGeo, 10000);
+    return () => clearInterval(interval);
+  }, [configs]);
 
   const saveMutation = useMutation({
     mutationFn: async (newConfig: { name: string; config_content: string; type: string; expires_at: string | null }) => {
@@ -158,6 +267,13 @@ export function VPNApp() {
     }
   };
 
+  const handleConfigClick = (configId: string) => {
+    const stat = serverStats[configId];
+    if (stat && stat.lat && stat.lon) {
+      setSelectedLocation([stat.lat, stat.lon]);
+    }
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden">
       <style>{`
@@ -169,6 +285,7 @@ export function VPNApp() {
           color: #06b6d4 !important;
         }
       `}</style>
+      
       {/* Map Section - Left/Center */}
       <div className="flex-1 relative bg-slate-950">
         <MapContainer 
@@ -181,8 +298,24 @@ export function VPNApp() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
+          <MapController center={selectedLocation} />
+          
+          {configs?.map(config => {
+            const stat = serverStats[config.id];
+            if (stat && stat.lat && stat.lon) {
+              return (
+                <Marker key={config.id} position={[stat.lat, stat.lon]}>
+                  <Popup className="text-slate-900 font-medium">
+                    {config.name}
+                    <br />
+                    {stat.city}, {stat.country}
+                  </Popup>
+                </Marker>
+              );
+            }
+            return null;
+          })}
         </MapContainer>
-
       </div>
 
       {/* Configurations Sidebar - Right */}
@@ -328,45 +461,71 @@ export function VPNApp() {
           ) : (
             <ScrollArea className="h-full">
               <div className="p-6 space-y-4">
-                {configs.map((config) => (
-                  <div
-                    key={config.id}
-                    className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors group relative"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex flex-col gap-1.5 overflow-hidden">
-                        <h4 className="font-bold text-white flex items-center gap-2 truncate text-base">
-                          {config.name}
-                        </h4>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0">
-                            {config.type || 'WireGuard'}
-                          </Badge>
-                          {config.expires_at && (
-                            <Badge variant="secondary" className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1">
-                              <Clock className="w-2.5 h-2.5" />
-                              Expires: {new Date(config.expires_at).toLocaleDateString()}
+                {configs.map((config) => {
+                  const stat = serverStats[config.id];
+                  return (
+                    <div
+                      key={config.id}
+                      onClick={() => handleConfigClick(config.id)}
+                      className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-slate-950 transition-colors group relative cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex flex-col gap-1.5 overflow-hidden">
+                          <h4 className="font-bold text-white flex items-center gap-2 truncate text-base">
+                            {config.name}
+                          </h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0">
+                              {config.type || 'WireGuard'}
                             </Badge>
-                          )}
+                            
+                            {stat && (
+                              <Badge 
+                                variant="secondary" 
+                                className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1 ${stat.ping === 'error' ? 'text-red-400' : stat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
+                              >
+                                <Activity className="w-2.5 h-2.5" />
+                                {stat.ping === 'loading' ? 'Pinging...' : stat.ping === 'error' ? 'Offline' : `${stat.ping}ms`}
+                              </Badge>
+                            )}
+
+                            {config.expires_at && (
+                              <Badge variant="secondary" className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                Expires: {new Date(config.expires_at).toLocaleDateString()}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 -mt-1 -mr-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(config.id);
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 -mt-1 -mr-1"
-                        onClick={() => handleDelete(config.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      
+                      {stat && stat.city && (
+                        <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                          <MapIcon className="w-3 h-3 opacity-50" />
+                          {stat.city}, {stat.country}
+                        </div>
+                      )}
+
+                      <div className="bg-slate-900 rounded-md p-2.5 mt-3 border border-slate-800/50">
+                        <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap break-all max-h-24 overflow-hidden overflow-y-auto">
+                          {config.config_content}
+                        </pre>
+                      </div>
                     </div>
-                    <div className="bg-slate-900 rounded-md p-2.5 mt-3 border border-slate-800/50">
-                      <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap break-all max-h-24 overflow-hidden overflow-y-auto">
-                        {config.config_content}
-                      </pre>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           )}

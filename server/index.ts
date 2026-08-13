@@ -7,6 +7,7 @@ import { oauthAdminRouter } from "./routes/oauthAdmin.ts";
 import { adminSupportRouter } from "./routes/adminSupport.ts";
 import { aiRouter } from "./routes/ai.ts";
 import { changelogsRouter } from "./routes/changelogs.ts";
+import { vpnRouter } from "./routes/vpn.ts";
 
 const app = new Hono();
 
@@ -309,7 +310,7 @@ app.route("/api/oauth-admin", oauthAdminRouter);
 app.route("/api/admin/support", adminSupportRouter);
 app.route("/api/ai", aiRouter);
 app.route("/api/changelogs", changelogsRouter);
-
+app.route("/api/vpn", vpnRouter);
 
 export function createServer() {
   return app;
