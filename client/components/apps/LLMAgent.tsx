@@ -1734,7 +1734,13 @@ export function LLMAgentApp() {
                     models={models}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
-                    onSelect={setSelection}
+                    onSelect={(m, p) => {
+                      if (p === 'cloudflare' && !session?.access_token) {
+                        toast.error("Sign In to access better models.");
+                        return;
+                      }
+                      setSelection(m, p);
+                    }}
                   />
                 </div>
 
@@ -1926,8 +1932,14 @@ export function LLMAgentApp() {
                     models={models}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
-                    onSelect={setSelection}
                     compact
+                    onSelect={(m, p) => {
+                      if (p === 'cloudflare' && !session?.access_token) {
+                        toast.error("Sign In to access better models.");
+                        return;
+                      }
+                      setSelection(m, p);
+                    }}
                   />
                 </div>
                 <input
