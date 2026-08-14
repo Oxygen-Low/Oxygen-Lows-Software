@@ -8,24 +8,42 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MusicProvider } from "@/contexts/MusicContext";
-import { Suspense, lazy } from "react";
-const Auth = lazy(() => import("./pages/Auth"));
-const Apps = lazy(() => import("./pages/Apps"));
-const Friends = lazy(() => import("./pages/Friends"));
-const Account = lazy(() => import("./pages/Account"));
-const Storage = lazy(() => import("./pages/Storage"));
-const Customize = lazy(() => import("./pages/Customize"));
-const Characters = lazy(() => import("./pages/Characters"));
-const Changelogs = lazy(() => import("./pages/Changelogs"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const UserProfile = lazy(() => import("./pages/UserProfile"));
-const OauthConsent = lazy(() => import("./pages/OauthConsent"));
-const Support = lazy(() => import("./pages/Support"));
-const SupportTicket = lazy(() => import("./pages/SupportTicket"));
-const AdminSupport = lazy(() => import("./pages/AdminSupport"));
-const AdminTicket = lazy(() => import("./pages/AdminTicket"));
-const AdminPanel = lazy(() => import("./pages/AdminPanel"));
-const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+import { Suspense, lazy, ComponentType } from "react";
+
+const lazyWithRetry = (componentImport: () => Promise<{ default: ComponentType<any> }>) =>
+  lazy(async () => {
+    try {
+      const component = await componentImport();
+      window.sessionStorage.removeItem("retry-lazy-refreshed");
+      return component;
+    } catch (error) {
+      if (!window.sessionStorage.getItem("retry-lazy-refreshed")) {
+        window.sessionStorage.setItem("retry-lazy-refreshed", "true");
+        window.location.reload();
+        // Return a pending promise to halt rendering while reloading
+        return new Promise<{ default: ComponentType<any> }>(() => {});
+      }
+      throw error;
+    }
+  });
+
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Apps = lazyWithRetry(() => import("./pages/Apps"));
+const Friends = lazyWithRetry(() => import("./pages/Friends"));
+const Account = lazyWithRetry(() => import("./pages/Account"));
+const Storage = lazyWithRetry(() => import("./pages/Storage"));
+const Customize = lazyWithRetry(() => import("./pages/Customize"));
+const Characters = lazyWithRetry(() => import("./pages/Characters"));
+const Changelogs = lazyWithRetry(() => import("./pages/Changelogs"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
+const OauthConsent = lazyWithRetry(() => import("./pages/OauthConsent"));
+const Support = lazyWithRetry(() => import("./pages/Support"));
+const SupportTicket = lazyWithRetry(() => import("./pages/SupportTicket"));
+const AdminSupport = lazyWithRetry(() => import("./pages/AdminSupport"));
+const AdminTicket = lazyWithRetry(() => import("./pages/AdminTicket"));
+const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
+const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
