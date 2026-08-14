@@ -13,7 +13,7 @@ public partial class App : System.Windows.Application
         if (!SingleInstance.InitializeAsFirstInstance(e.Args))
         {
             // Exit if another instance is already running
-            Shutdown();
+            Environment.Exit(0);
             return;
         }
         

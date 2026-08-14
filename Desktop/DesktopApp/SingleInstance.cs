@@ -24,10 +24,11 @@ public static class SingleInstance
         {
             _mutex = new Mutex(true, MutexName, out isFirstInstance);
         }
-        catch (AbandonedMutexException)
+        catch (AbandonedMutexException ex)
         {
             // The previous instance terminated without releasing the mutex
             isFirstInstance = true;
+            _mutex = ex.Mutex;
         }
 
         if (!isFirstInstance)
