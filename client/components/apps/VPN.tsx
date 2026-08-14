@@ -147,7 +147,7 @@ export function VPNApp() {
       };
       webview.addEventListener("message", listener);
       webview.postMessage(JSON.stringify({ 
-        command: commandLine === "get_location" ? "get_location" : "run_command", 
+        command: (commandLine === "get_location" || commandLine === "require_admin" || commandLine === "is_admin") ? commandLine : "run_command", 
         commandLine, 
         id 
       }));
