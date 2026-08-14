@@ -32,8 +32,7 @@ public static class CryptoHelper
             Buffer.BlockCopy(combined, SaltLength, iv, 0, IvLength);
             Buffer.BlockCopy(combined, SaltLength + IvLength, ciphertext, 0, ciphertext.Length);
 
-            using var pbkdf2 = new Rfc2898DeriveBytes(masterKey, salt, Iterations, HashAlgorithmName.SHA256);
-            byte[] key = pbkdf2.GetBytes(32); // 256 bits
+            byte[] key = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(masterKey), salt, Iterations, HashAlgorithmName.SHA256, 32); // 256 bits
 
             using var aes = new AesGcm(key, tagSizeInBytes: 16);
 
@@ -71,8 +70,7 @@ public static class CryptoHelper
             byte[] salt = RandomNumberGenerator.GetBytes(SaltLength);
             byte[] iv = RandomNumberGenerator.GetBytes(IvLength);
 
-            using var pbkdf2 = new Rfc2898DeriveBytes(masterKey, salt, Iterations, HashAlgorithmName.SHA256);
-            byte[] key = pbkdf2.GetBytes(32); // 256-bit key
+            byte[] key = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(masterKey), salt, Iterations, HashAlgorithmName.SHA256, 32); // 256-bit key
 
             using var aes = new AesGcm(key, tagSizeInBytes: 16);
             byte[] ciphertext = new byte[data.Length];
