@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -231,6 +231,7 @@ export default function SupportTicket() {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/support")}
+            aria-label="Back to support tickets"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -346,8 +347,13 @@ export default function SupportTicket() {
                 disabled={
                   isSending || ticket.status === "Closed" || !newMessage.trim()
                 }
+                aria-label="Send message"
               >
-                <Send className="w-4 h-4" />
+                {isSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </Button>
             </form>
           </div>
