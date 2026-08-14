@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 // Leaflet
@@ -104,6 +105,7 @@ export function VPNApp() {
   const [expiration, setExpiration] = useState("never");
   const [customDate, setCustomDate] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [killswitch, setKillswitch] = useState(true);
 
   // Map & Stats State
   const [serverStats, setServerStats] = useState<Record<string, ServerStat>>({});
@@ -283,7 +285,7 @@ export function VPNApp() {
   }, [configs]);
 
   const saveMutation = useMutation({
-    mutationFn: async (newConfig: { name: string; config_content: string; type: string; expires_at: string | null }) => {
+    mutationFn: async (newConfig: { name: string; config_content: string; type: string; expires_at: string | null; killswitch: boolean }) => {
       const { data, error } = await supabase
         .from("vpn_configs")
         .insert([
@@ -292,7 +294,8 @@ export function VPNApp() {
             name: newConfig.name,
             config_content: newConfig.config_content,
             type: newConfig.type,
-            expires_at: newConfig.expires_at
+            expires_at: newConfig.expires_at,
+            killswitch: newConfig.killswitch
           }
         ])
         .select();
@@ -307,6 +310,7 @@ export function VPNApp() {
       setVpnType("WireGuard");
       setExpiration("never");
       setCustomDate("");
+      setKillswitch(true);
       setIsDialogOpen(false);
       toast.success("VPN config saved successfully");
     },
@@ -367,7 +371,8 @@ export function VPNApp() {
       name, 
       config_content: configContent, 
       type: vpnType,
-      expires_at
+      expires_at,
+      killswitch
     });
   };
 
@@ -450,14 +455,26 @@ export function VPNApp() {
       }
 
       if (config.type === "WireGuard") {
-        await writeIPCFile(`vpn_temp.conf`, config.config_content);
+        let finalConfig = config.config_content;
+        if (config.killswitch === false) {
+          // Bypass strict Windows kill switch by replacing 0.0.0.0/0 with 0.0.0.0/1, 128.0.0.0/1
+          finalConfig = finalConfig.replace(/0\.0\.0\.0\/0/g, "0.0.0.0/1, 128.0.0.0/1");
+          finalConfig = finalConfig.replace(/::\/0/g, "::/1, 8000::/1");
+        }
+        await writeIPCFile(`vpn_temp.conf`, finalConfig);
         await writeIPCFile(`vpn_temp_install.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
         const res = await runIPCCommand(`vpn_temp_install.bat`);
         if ((res.stderr || res.stdout) && (res.stderr.toLowerCase().includes("is not recognized") || res.stdout.toLowerCase().includes("is not recognized"))) {
             throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
         }
       } else {
-        await writeIPCFile(`vpn_temp.ovpn`, config.config_content);
+        let finalConfig = config.config_content;
+        if (config.killswitch !== false) {
+          if (!finalConfig.includes("block-outside-dns")) {
+            finalConfig += "\nblock-outside-dns\n";
+          }
+        }
+        await writeIPCFile(`vpn_temp.ovpn`, finalConfig);
         const checkRes = await runIPCCommand("openvpn --version");
         if ((checkRes.stderr || checkRes.stdout) && (checkRes.stderr.toLowerCase().includes("is not recognized") || checkRes.stdout.toLowerCase().includes("is not recognized"))) {
             throw new Error("OpenVPN is not installed. Please install it and ensure it's in your PATH.");
@@ -782,6 +799,25 @@ export function VPNApp() {
                         onChange={(e) => setCustomDate(e.target.value)}
                         className="bg-slate-950 border-slate-800 text-white flex-1"
                       />
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex flex-col gap-1 mt-4 border border-slate-800 rounded-lg p-4 bg-slate-900/50">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="killswitch" className="text-slate-300 font-medium">Kill Switch (Block untunneled traffic)</Label>
+                      <Switch 
+                        id="killswitch" 
+                        checked={killswitch} 
+                        onCheckedChange={setKillswitch} 
+                      />
+                    </div>
+                    {vpnType === "OpenVPN" && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Note: On Windows, OpenVPN natively supports only DNS leak protection via the CLI. 
+                        A true firewall-based kill switch requires manual Windows Firewall rules.
+                      </p>
                     )}
                   </div>
                 </div>
