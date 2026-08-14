@@ -121,7 +121,7 @@ export function FileCompressorApp() {
         }
         
         const data = await ffmpegInstance.readFile(outputName);
-        compressedBlob = new Blob([data], { type: selectedFile.metadata.mimetype });
+        compressedBlob = new Blob([data as unknown as BlobPart], { type: selectedFile.metadata.mimetype });
       } else {
         throw new Error("Unsupported file type");
       }

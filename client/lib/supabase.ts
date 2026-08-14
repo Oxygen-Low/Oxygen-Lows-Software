@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const clientCache = new Map<string, ReturnType<typeof createClient>>();
+const clientCache = new Map<string, any>();
 
 export function getAuthenticatedClient(token?: string) {
   if (token && token !== supabaseKey) {
