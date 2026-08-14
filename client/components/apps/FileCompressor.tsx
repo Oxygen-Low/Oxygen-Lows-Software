@@ -9,6 +9,9 @@ import {
   Trash2,
   AlertCircle,
   Loader2,
+  Download,
+  UploadCloud,
+  MonitorUp,
 } from "lucide-react";
 import {
   Card,
@@ -22,6 +25,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -29,6 +33,7 @@ import { cn } from "@/lib/utils";
 import imageCompression from "browser-image-compression";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
+import { useAuth } from "@/hooks/useAuth";
 
 let ffmpeg: FFmpeg | null = null;
 const loadFfmpeg = async () => {
@@ -42,8 +47,17 @@ const loadFfmpeg = async () => {
   return ffmpeg;
 };
 
+type SelectedFile = {
+  source: "upload" | "storage";
+  name: string;
+  size: number;
+  type: string;
+  file?: File;
+};
+
 export function FileCompressorApp() {
-  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const { session } = useAuth();
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
   const [quality, setQuality] = useState(70);
   const [targetSizeMB, setTargetSizeMB] = useState("");
   const [compressing, setCompressing] = useState(false);
@@ -52,6 +66,8 @@ export function FileCompressorApp() {
     originalSize: number;
     newSize: number;
     name: string;
+    compressedBlob: Blob;
+    source: "upload" | "storage";
   } | null>(null);
 
   const formatSize = (bytes: number) => {
@@ -69,15 +85,22 @@ export function FileCompressorApp() {
     setResult(null);
 
     try {
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from("Storage")
-        .download(selectedFile.name);
+      let fileToCompress: File;
 
-      if (downloadError) throw downloadError;
+      if (selectedFile.source === "storage") {
+        const { data: downloadData, error: downloadError } = await supabase.storage
+          .from("Storage")
+          .download(selectedFile.name);
+
+        if (downloadError) throw downloadError;
+        fileToCompress = new File([downloadData], selectedFile.name, { type: selectedFile.type });
+      } else {
+        fileToCompress = selectedFile.file!;
+      }
 
       let compressedBlob: Blob;
 
-      if (selectedFile.metadata.mimetype.startsWith("image/")) {
+      if (selectedFile.type.startsWith("image/")) {
         const options = {
           maxSizeMB: targetSizeMB ? parseFloat(targetSizeMB) : 10,
           maxWidthOrHeight: 1920,
@@ -85,23 +108,23 @@ export function FileCompressorApp() {
           initialQuality: quality / 100,
           onProgress: (p: number) => setProgress(p),
         };
-        compressedBlob = await imageCompression(fileData as File, options);
+        compressedBlob = await imageCompression(fileToCompress, options);
       } else if (
-        selectedFile.metadata.mimetype.startsWith("audio/") ||
-        selectedFile.metadata.mimetype.startsWith("video/")
+        selectedFile.type.startsWith("audio/") ||
+        selectedFile.type.startsWith("video/")
       ) {
         const ext = selectedFile.name.split(".").pop()?.toLowerCase();
         const inputName = `input.${ext}`;
         const outputName = `output.${ext}`;
         
-        const isVideo = selectedFile.metadata.mimetype.startsWith("video/");
+        const isVideo = selectedFile.type.startsWith("video/");
         
         const ffmpegInstance = await loadFfmpeg();
         ffmpegInstance.on("progress", ({ progress }) => {
           setProgress(Math.round(progress * 100));
         });
 
-        await ffmpegInstance.writeFile(inputName, await fetchFile(fileData as File));
+        await ffmpegInstance.writeFile(inputName, await fetchFile(fileToCompress));
         
         if (isVideo) {
           // Compress video
@@ -121,25 +144,19 @@ export function FileCompressorApp() {
         }
         
         const data = await ffmpegInstance.readFile(outputName);
-        compressedBlob = new Blob([data as unknown as BlobPart], { type: selectedFile.metadata.mimetype });
+        compressedBlob = new Blob([data as unknown as BlobPart], { type: selectedFile.type });
       } else {
         throw new Error("Unsupported file type");
       }
 
-      // Upload the compressed version back (overwriting or new name)
-      const newPath = selectedFile.name.replace(/(\.[^.]+)$/, `_compressed$1`);
-      const { error: uploadError } = await supabase.storage
-        .from("Storage")
-        .upload(newPath, compressedBlob, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
       setResult({
-        originalSize: selectedFile.metadata.size,
+        originalSize: selectedFile.size,
         newSize: compressedBlob.size,
         name: selectedFile.name,
+        compressedBlob,
+        source: selectedFile.source
       });
-      toast.success("Success");
+      toast.success("Compression complete");
     } catch (error: any) {
       console.error("Compression error:", error);
       toast.error(error.message || "Error");
@@ -159,38 +176,70 @@ export function FileCompressorApp() {
               Source File
             </CardTitle>
             <CardDescription className="text-slate-400">
-              Select a file from your storage to compress.
+              Upload a file or select one from your storage to compress.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <StorageFileSelector
-              onSelect={setSelectedFile}
-              allowedTypes={["image", "audio", "video"]}
-              trigger={
-                <Button
-                  variant="outline"
-                  className="w-full h-24 border-dashed border-slate-700 bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-white flex flex-col gap-2"
-                >
-                  {selectedFile ? (
-                    <>
-                      <File className="w-8 h-8 text-cyan-500" />
-                      <span className="font-medium text-white">
-                        {selectedFile.name}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        {formatSize(selectedFile.metadata.size)}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <FileBox className="w-8 h-8 opacity-50" />
-                      <span>Click to select from storage</span>
-                    </>
+            {!selectedFile ? (
+              <Tabs defaultValue="upload" className="w-full">
+                <TabsList className={cn("grid w-full mb-4 bg-slate-950 border border-slate-800", session ? "grid-cols-2" : "grid-cols-1")}>
+                  <TabsTrigger value="upload" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white">Upload File</TabsTrigger>
+                  {session && (
+                    <TabsTrigger value="storage" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white">Use Storage</TabsTrigger>
                   )}
-                </Button>
-              }
-            />
-            {selectedFile && (
+                </TabsList>
+                <TabsContent value="upload">
+                  <div className="relative">
+                    <Input
+                      type="file"
+                      accept="image/*,audio/*,video/*"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedFile({
+                            source: "upload",
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            file: file,
+                          });
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      className="w-full h-24 border-dashed border-slate-700 bg-slate-950 text-slate-400 flex flex-col gap-2 relative z-0 pointer-events-none"
+                    >
+                      <MonitorUp className="w-8 h-8 opacity-50" />
+                      <span>Click or drag to upload file</span>
+                    </Button>
+                  </div>
+                </TabsContent>
+                {session && (
+                  <TabsContent value="storage">
+                    <StorageFileSelector
+                      onSelect={(file: any) => setSelectedFile({
+                        source: "storage",
+                        name: file.name,
+                        size: file.metadata.size,
+                        type: file.metadata.mimetype,
+                      })}
+                      allowedTypes={["image", "audio", "video"]}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          className="w-full h-24 border-dashed border-slate-700 bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-white flex flex-col gap-2"
+                        >
+                          <FileBox className="w-8 h-8 opacity-50" />
+                          <span>Click to select from storage</span>
+                        </Button>
+                      }
+                    />
+                  </TabsContent>
+                )}
+              </Tabs>
+            ) : (
               <div className="flex justify-between items-center p-3 bg-slate-950 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-900 rounded">
@@ -201,8 +250,8 @@ export function FileCompressorApp() {
                       {selectedFile.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {formatSize(selectedFile.metadata.size)} •{" "}
-                      {selectedFile.metadata.mimetype}
+                      {formatSize(selectedFile.size)} •{" "}
+                      {selectedFile.type}
                     </p>
                   </div>
                 </div>
@@ -341,10 +390,10 @@ export function FileCompressorApp() {
                 <div className="p-6 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl">
                   <CheckCircle2 className="w-16 h-16 text-cyan-500 mx-auto mb-4" />
                   <h3 className="text-2xl font-bold text-white mb-2">
-                    Success
+                    Compression Complete
                   </h3>
                   <p className="text-slate-400">
-                    File has been compressed and updated in storage.
+                    Your file is ready to download or save.
                   </p>
                 </div>
 
@@ -369,8 +418,53 @@ export function FileCompressorApp() {
                   </div>
                 </div>
 
+                <div className="flex gap-4 w-full pt-4">
+                  <Button 
+                    className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white"
+                    onClick={() => {
+                      const url = URL.createObjectURL(result.compressedBlob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      const newPath = result.name.replace(/(\.[^.]+)$/, `_compressed$1`);
+                      a.download = newPath;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                  {session && (
+                    <Button
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
+                      onClick={async () => {
+                        try {
+                          const newPath = result.source === "storage" 
+                            ? result.name 
+                            : result.name.replace(/(\.[^.]+)$/, `_compressed$1`);
+                          
+                          const { error: uploadError } = await supabase.storage
+                            .from("Storage")
+                            .upload(newPath, result.compressedBlob, { upsert: true });
+                          
+                          if (uploadError) throw uploadError;
+                          toast.success("Saved to storage successfully");
+                        } catch (e: any) {
+                          toast.error(e.message || "Failed to save to storage");
+                        }
+                      }}
+                    >
+                      <UploadCloud className="w-4 h-4 mr-2" />
+                      Save to Storage
+                    </Button>
+                  )}
+                </div>
+
                 <Button
-                  className="w-full bg-slate-800 hover:bg-slate-700 text-white"
+                  variant="ghost"
+                  className="w-full text-slate-400 hover:text-white"
                   onClick={() => {
                     setResult(null);
                     setSelectedFile(null);
