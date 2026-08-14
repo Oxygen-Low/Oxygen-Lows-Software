@@ -161,7 +161,7 @@ public partial class MainWindow : Window
                 else if (cmd == "run_command")
                 {
                     if (_workingDirectory == null) throw new Exception("Working directory not set");
-                    string commandLine = doc.RootElement.TryGetProperty("command", out var clProp) ? clProp.GetString() ?? "" : "";
+                    string commandLine = doc.RootElement.TryGetProperty("commandLine", out var clProp) ? clProp.GetString() ?? "" : "";
                     
                     var process = new Process
                     {

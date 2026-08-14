@@ -146,7 +146,11 @@ export function VPNApp() {
         } catch {}
       };
       webview.addEventListener("message", listener);
-      webview.postMessage(JSON.stringify({ command: commandLine === "get_location" ? "get_location" : "run_command", commandLine, id }));
+      webview.postMessage(JSON.stringify({ 
+        command: commandLine === "get_location" ? "get_location" : "run_command", 
+        commandLine, 
+        id 
+      }));
     });
   };
 
@@ -421,6 +425,16 @@ export function VPNApp() {
   const handleConnect = async (config: any) => {
     setIsConnecting(true);
     try {
+      try {
+        const adminRes = await runIPCCommand("require_admin");
+        if (!adminRes?.isAdmin) {
+          setIsConnecting(false);
+          return;
+        }
+      } catch (err) {
+        throw new Error("Admin privileges are required to connect to VPN.");
+      }
+
       const serverStat = serverStats[config.id];
       if (serverStat && serverStat.lat && serverStat.lon && agentLocation) {
         // Dive
@@ -444,7 +458,7 @@ export function VPNApp() {
         }
       } else {
         await writeIPCFile(`vpn_temp.ovpn`, config.config_content);
-        runIPCCommand(`openvpn --config "%TEMP%\\vpn_temp.ovpn"`); 
+        await runIPCCommand(`start /b "" openvpn --config "%TEMP%\\vpn_temp.ovpn" > NUL 2>&1`); 
       }
       setConnectedConfigId(config.id);
       toast.success(`Connected to ${config.name}`);

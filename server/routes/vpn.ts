@@ -6,8 +6,8 @@ export const vpnRouter = new Hono();
 vpnRouter.get("/ping", async (c) => {
   const host = c.req.query("host");
 
-  if (!host) {
-    return c.json({ error: "Host parameter is required" }, 400);
+  if (!host || !/^[a-zA-Z0-9.-]+$/.test(host)) {
+    return c.json({ error: "Valid host parameter is required" }, 400);
   }
 
   try {
