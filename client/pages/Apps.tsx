@@ -162,7 +162,7 @@ const apps: AppMetadata[] = [
   {
     id: "vpn",
     name: "VPN",
-    description: "Manage your WireGuard VPN configurations.",
+    description: "Manage your VPN configurations.",
     categories: ["All", "Utility"],
     availability: "desktop-only",
     icon: <Shield className="w-8 h-8 text-cyan-500" />,
