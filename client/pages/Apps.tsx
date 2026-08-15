@@ -325,7 +325,7 @@ export default function Apps() {
             Explore and try out our collection of awesome tools!
           </p>
         </div>
-        {isDesktopMode && (
+        {(isDesktopMode || isAndroidMode) && (
           <section aria-label="App availability" className="space-y-3">
             <h3 className="text-xl font-semibold text-white">Availability</h3>
             <div className="flex flex-wrap gap-3">
@@ -414,7 +414,7 @@ export default function Apps() {
 
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white">
-            {`${selectedCategory} ${isDesktopMode ? `${selectedAvailability === "desktop-only" ? "Desktop only" : "Web + desktop"} ` : ""}Apps`}
+            {`${selectedCategory} ${(isDesktopMode || isAndroidMode) ? `${selectedAvailability === "desktop-only" ? (isAndroidMode ? "Android only" : "Desktop only") : (isAndroidMode ? "Web + Android" : "Web + desktop")} ` : ""}Apps`}
           </h3>
 
           {filteredApps.length > 0 ? (
@@ -442,8 +442,8 @@ export default function Apps() {
           ) : (
             <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
               <p className="text-slate-500">
-                {isDesktopMode && selectedAvailability === "desktop-only"
-                  ? "No desktop-only apps are available yet."
+                {(isDesktopMode || isAndroidMode) && selectedAvailability === "desktop-only"
+                  ? `No ${isAndroidMode ? "Android-only" : "desktop-only"} apps are available yet.`
                   : "No apps found in this category."}
               </p>
             </div>
