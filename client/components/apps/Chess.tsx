@@ -69,6 +69,8 @@ export function ChessApp() {
   const [gameStatus, setGameStatus] = useState<string>("White to move");
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [boardWidth, setBoardWidth] = useState(400);
+  const [moveFrom, setMoveFrom] = useState<string | null>(null);
+  const [optionSquares, setOptionSquares] = useState<Record<string, React.CSSProperties>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Handle board resizing
@@ -151,11 +153,80 @@ export function ChessApp() {
     if (game.turn() === "b" || isGameOver) return false;
 
     const promotion = piece[1].toLowerCase() ?? "q";
-    return makeMove({
+    const success = makeMove({
       from: sourceSquare,
       to: targetSquare,
       promotion: promotion,
     });
+    if (success) {
+      setMoveFrom(null);
+      setOptionSquares({});
+    }
+    return success;
+  }
+
+  function getMoveOptions(square: string) {
+    const moves = game.moves({
+      square: square as any,
+      verbose: true,
+    }) as Move[];
+    if (moves.length === 0) {
+      setOptionSquares({});
+      return false;
+    }
+
+    const newSquares: Record<string, React.CSSProperties> = {};
+    moves.map((move) => {
+      newSquares[move.to] = {
+        background:
+          game.get(move.to as any) && game.get(move.to as any).color !== game.get(square as any)?.color
+            ? "radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)"
+            : "radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)",
+        borderRadius: "50%",
+      };
+      return move;
+    });
+    newSquares[square] = {
+      background: "rgba(255, 255, 0, 0.4)",
+    };
+    setOptionSquares(newSquares);
+    return true;
+  }
+
+  function onSquareClick(square: string) {
+    if (game.turn() === "b" || isGameOver) return;
+
+    if (!moveFrom) {
+      const hasMoveOptions = getMoveOptions(square);
+      if (hasMoveOptions) setMoveFrom(square);
+      return;
+    }
+
+    const moveOptions = game.moves({
+      square: moveFrom as any,
+      verbose: true,
+    }) as Move[];
+
+    const foundMove = moveOptions.find((m) => m.to === square);
+    
+    if (foundMove) {
+      const success = makeMove({
+        from: moveFrom,
+        to: square,
+        promotion: "q",
+      });
+      if (success) {
+        setMoveFrom(null);
+        setOptionSquares({});
+      }
+    } else {
+      const hasMoveOptions = getMoveOptions(square);
+      if (hasMoveOptions) setMoveFrom(square);
+      else {
+        setMoveFrom(null);
+        setOptionSquares({});
+      }
+    }
   }
 
   function resetGame() {
@@ -163,6 +234,8 @@ export function ChessApp() {
     setGame(newGame);
     updateStatus(newGame);
     setIsGameOver(false);
+    setMoveFrom(null);
+    setOptionSquares({});
   }
 
   return (
@@ -254,6 +327,8 @@ export function ChessApp() {
             <Chessboard 
               position={game.fen()} 
               onPieceDrop={onDrop}
+              onSquareClick={onSquareClick}
+              customSquareStyles={optionSquares}
               boardWidth={boardWidth}
               customDarkSquareStyle={{ backgroundColor: "#334155" }}
               customLightSquareStyle={{ backgroundColor: "#cbd5e1" }}
