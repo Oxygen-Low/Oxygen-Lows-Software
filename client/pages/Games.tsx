@@ -24,7 +24,6 @@ import { SolitaireApp } from "@/components/apps/Solitaire";
 import { ChessApp } from "@/components/apps/Chess";
 import { PokerApp } from "@/components/apps/Poker";
 import { SudokuApp } from "@/components/apps/Sudoku";
-import { CrosswordApp } from "@/components/apps/Crossword";
 import { WordSearchApp } from "@/components/apps/WordSearch";
 
 type Category = "All";
@@ -89,15 +88,6 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Grid3x3 className="w-8 h-8 text-indigo-400" />,
     component: SudokuApp,
-  },
-  {
-    id: "crossword",
-    name: "Crossword",
-    description: "Solve a fun mini crossword puzzle.",
-    categories: ["All"],
-    availability: "web-and-desktop",
-    icon: <Grid3x3 className="w-8 h-8 text-cyan-500" />,
-    component: CrosswordApp,
   },
   {
     id: "wordsearch",
