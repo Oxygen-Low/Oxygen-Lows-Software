@@ -54,18 +54,9 @@ jobs:
           cd Desktop/DesktopApp
           dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="${{ env.APP_VERSION }}" -o ../DesktopAppOut
 
-      - name: Zip Desktop App
+      - name: Compile Inno Setup Installer
         run: |
-          Compress-Archive -Path Desktop/DesktopAppOut/* -DestinationPath Desktop/DesktopInstaller/app.zip
-
-      - name: Publish Desktop Installer
-        run: |
-          cd Desktop/DesktopInstaller
-          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version="${{ env.APP_VERSION }}" -o ../DesktopInstallerOut
-
-      - name: Rename Installer
-        run: |
-          Rename-Item -Path Desktop/DesktopInstallerOut/DesktopInstaller.exe -NewName "OxygenLowsSoftware_Installer.exe"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "Desktop\installer.iss" /DAppVersion="${{ env.APP_VERSION }}" /DAppSource="DesktopAppOut\*"
 
       # Tag is created dynamically in Calculate Version step
 
@@ -74,6 +65,6 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: Release ${{ env.TAG_NAME }}
-          files: Desktop/DesktopInstallerOut/OxygenLowsSoftware_Installer.exe
+          files: Desktop/Output/OxygenLowsSoftware_Installer.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
