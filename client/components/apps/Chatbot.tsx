@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { useAiModels } from "@/hooks/useAiModels";
+import { useAiModels, type Model } from "@/hooks/useAiModels";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -597,41 +597,51 @@ export function ChatbotApp() {
     }, 300);
   }, []);
 
-  const hordeModels = useMemo(
-    () => models.filter((m) => m.provider === "horde"),
-    [models],
-  );
-  const localModels = useMemo(
-    () => models.filter((m) => m.provider.startsWith("local-")),
-    [models],
-  );
-  const cloudflareModels = useMemo(
-    () => models.filter((m) => m.provider === "cloudflare"),
-    [models],
-  );
-  const hasOpenRouter = useMemo(
-    () => !session?.user?.id ? false : models.some((m) => m.provider === "openrouter"),
-    [models, session?.user?.id],
-  );
-  const customModels = useMemo(() => {
-    if (!session?.user?.id) return [];
-    const cm = models.filter((m) => m.provider === "custom");
-    if (hasOpenRouter) {
-      cm.push({ provider: "openrouter", model_id: "openrouter/free" });
+  /**
+   * ⚡ Bolt Performance Optimization:
+   * Replaced multiple separate O(N) Array.filter() calls with a single O(N) pass.
+   * Memoized the result to prevent recalculation on every render.
+   */
+  const { hordeModels, localModels, cloudflareModels, customModels, otherModels } = useMemo(() => {
+    const horde: Model[] = [];
+    const local: Model[] = [];
+    const cloudflare: Model[] = [];
+    const custom: Model[] = [];
+    const other: Model[] = [];
+    let hasOpenRouter = false;
+
+    for (const m of models) {
+      if (m.provider === "horde") {
+        horde.push(m);
+      } else if (m.provider.startsWith("local-")) {
+        local.push(m);
+      } else if (m.provider === "cloudflare") {
+        cloudflare.push(m);
+      } else if (m.provider === "custom") {
+        custom.push(m);
+      } else if (m.provider === "openrouter") {
+        hasOpenRouter = true;
+        if (!(m.provider === "openrouter" && m.model_id === "openrouter/free")) {
+          other.push(m);
+        }
+      } else {
+        other.push(m);
+      }
     }
-    return cm;
-  }, [models, hasOpenRouter, session?.user?.id]);
-  const otherModels = useMemo(
-    () => !session?.user?.id ? [] :
-      models.filter(
-        (m) =>
-          m.provider !== "horde" &&
-          m.provider !== "cloudflare" &&
-          m.provider !== "custom" &&
-          !(m.provider === "openrouter" && m.model_id === "openrouter/free")
-      ),
-    [models, session?.user?.id],
-  );
+
+    const finalCustom = session?.user?.id ? [...custom] : [];
+    if (session?.user?.id && hasOpenRouter) {
+      finalCustom.push({ provider: "openrouter", model_id: "openrouter/free" });
+    }
+
+    return {
+      hordeModels: horde,
+      localModels: local,
+      cloudflareModels: cloudflare,
+      customModels: finalCustom,
+      otherModels: session?.user?.id ? other : [],
+    };
+  }, [models, session?.user?.id]);
   const hasHordeModels = hordeModels.length > 0;
   const hasLocalModels = localModels.length > 0;
   const hasCloudflareModels = cloudflareModels.length > 0;
