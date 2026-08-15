@@ -47,8 +47,7 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = WebChromeClient()
 
         // Load the web app with android=1 param
-        // Load the web app with android=1 param
-        webView.loadUrl("https://oxygenlow.com/?android=1")
+        webView.loadUrl("https://oxygenlow.com/?desktop=1&android=1")
     }
 
     private fun injectPolyfill() {
