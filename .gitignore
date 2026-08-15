@@ -53,4 +53,3 @@ Android/app/build
 /captures
 .externalNativeBuild
 .cxx
-/Android/.kotlin/sessions
