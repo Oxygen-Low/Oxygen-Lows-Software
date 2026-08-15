@@ -52,7 +52,6 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const navigate = useNavigate();
 
   const isAndroidMode = typeof window !== "undefined" && (sessionStorage.getItem("androidMode") === "1" || new URLSearchParams(window.location.search).get("android") === "1");
-  const isDesktopMode = typeof window !== "undefined" && (sessionStorage.getItem("desktopMode") === "1" || new URLSearchParams(window.location.search).get("desktop") === "1");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -138,7 +137,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             >
               Open Beta
             </a>
-            {!isAndroidMode && !isDesktopMode && (
+            {!isAndroidMode && (
               <a
                 href="https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware_Installer.exe"
                 className="flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white"
