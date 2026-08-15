@@ -29,7 +29,7 @@ import { DataSaveApp } from "@/components/apps/DataSave";
 import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
 import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { VPNApp } from "@/components/apps/VPN";
-import { Server, Shield } from "lucide-react";
+import { Server, Shield, Monitor, Smartphone } from "lucide-react";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
@@ -325,7 +325,7 @@ export default function Apps() {
             Explore and try out our collection of awesome tools!
           </p>
         </div>
-        {isDesktopMode && !isAndroidMode && (
+        {isDesktopMode && (
           <section aria-label="App availability" className="space-y-3">
             <h3 className="text-xl font-semibold text-white">Availability</h3>
             <div className="flex flex-wrap gap-3">
@@ -341,7 +341,7 @@ export default function Apps() {
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10",
                 )}
               >
-                Web + desktop
+                {isAndroidMode ? "Web + Android" : "Web + desktop"}
               </button>
               <button
                 type="button"
@@ -355,8 +355,17 @@ export default function Apps() {
                     : "bg-white/5 text-gray-400 hover:text-cyan-400 hover:bg-white/10",
                 )}
               >
-                <Monitor className="w-4 h-4" />
-                Desktop only
+                {isAndroidMode ? (
+                  <>
+                    <Smartphone className="w-4 h-4" />
+                    Android only
+                  </>
+                ) : (
+                  <>
+                    <Monitor className="w-4 h-4" />
+                    Desktop only
+                  </>
+                )}
               </button>
             </div>
           </section>
