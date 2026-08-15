@@ -181,11 +181,11 @@ export default function Apps() {
   const hasAndroidParam = searchParams.get("android") === "1";
 
   const [isDesktopMode, setIsDesktopMode] = useState(() => {
-    return hasDesktopParam || sessionStorage.getItem("desktopMode") === "1" || !!(window as any).chrome?.webview;
+    return hasDesktopParam || sessionStorage.getItem("desktopMode") === "1";
   });
   
   const [isAndroidMode, setIsAndroidMode] = useState(() => {
-    return hasAndroidParam || sessionStorage.getItem("androidMode") === "1" || !!(window as any).AndroidApp;
+    return hasAndroidParam || sessionStorage.getItem("androidMode") === "1";
   });
 
   useEffect(() => {
