@@ -11,6 +11,7 @@ import {
   Contact,
   LifeBuoy,
   GitCommit,
+  Download,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -133,6 +134,13 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               className="px-3 py-1 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer"
             >
               Open Beta
+            </a>
+            <a
+              href="https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware_Installer.exe"
+              className="flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white"
+              title="Download Desktop App"
+            >
+              <Download className="w-5 h-5" />
             </a>
             <a
               href="https://discord.gg/tNczTe66jK"
