@@ -14,7 +14,7 @@ import {
   Wrench,
   MessageSquare,
   Code,
-  BrainCircuit,
+  Sparkles,
   Box,
   Users,
   Bot,
@@ -80,7 +80,7 @@ const CATEGORIES: {
   {
     name: "LLM/AI",
     label: "LLM/AI",
-    icon: <BrainCircuit className="w-5 h-5" />,
+    icon: <Sparkles className="w-5 h-5" />,
     description: "AI powered applications",
   },
   {
@@ -168,7 +168,7 @@ const apps: AppMetadata[] = [
       "An autonomous AI coding agent that reads, edits, and builds your projects.",
     categories: ["All", "LLM/AI", "Development"],
     availability: "desktop-only",
-    icon: <BrainCircuit className="w-8 h-8 text-cyan-500" />,
+    icon: <Sparkles className="w-8 h-8 text-cyan-500" />,
     component: LLMAgentApp,
     authRequired: true,
   },

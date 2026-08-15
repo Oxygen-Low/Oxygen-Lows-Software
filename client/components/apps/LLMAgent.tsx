@@ -23,7 +23,7 @@ import {
   Home,
   History,
   Code,
-  BrainCircuit,
+  Sparkles,
   ChevronDown,
   Check,
   Search,
@@ -733,7 +733,7 @@ function ModelSelector({
             : "px-3 py-2 bg-slate-900/50 text-slate-300"
         }`}
       >
-        <BrainCircuit className="w-3.5 h-3.5 text-cyan-400" />
+        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
         <span className="max-w-[160px] truncate text-xs">{label}</span>
         <ChevronDown className="w-3 h-3 text-slate-500" />
       </button>
@@ -1924,7 +1924,7 @@ export function LLMAgentApp() {
                         <details className="group/reasoning cursor-pointer">
                           <summary className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-600 font-bold mb-2">
                             <ChevronRight className="w-3 h-3 transition-transform group-open/reasoning:rotate-90" />
-                            <BrainCircuit className="w-3 h-3" />
+                            <Sparkles className="w-3 h-3" />
                             Reasoning
                           </summary>
                           <div className="space-y-2 pl-6 border-l border-slate-800 ml-1.5">
@@ -1974,7 +1974,7 @@ export function LLMAgentApp() {
                   {reasoningTime > 0 && (
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-600 font-bold">
                       <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
-                      <BrainCircuit className="w-3 h-3" />
+                      <Sparkles className="w-3 h-3" />
                       {streamingContent || currentReasoning
                         ? `Thinking for ${reasoningTime}s`
                         : `Working for ${reasoningTime}s`}

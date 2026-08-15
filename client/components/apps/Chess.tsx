@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Chess, Move } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, BrainCircuit, Trophy, AlertTriangle } from "lucide-react";
+import { RotateCcw, Sparkles, Trophy, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -241,7 +241,7 @@ export function ChessApp() {
   return (
     <div className="flex flex-col items-center justify-center p-4 max-w-4xl mx-auto h-full w-full">
       <div className="flex items-center gap-3 mb-6">
-        <BrainCircuit className="w-8 h-8 text-cyan-500" />
+        <Sparkles className="w-8 h-8 text-cyan-500" />
         <h1 className="text-3xl font-bold text-white tracking-tight">Play vs AI</h1>
       </div>
 
