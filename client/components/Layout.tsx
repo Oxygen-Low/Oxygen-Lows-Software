@@ -11,7 +11,7 @@ import {
   Contact,
   LifeBuoy,
   GitCommit,
-  Download,
+  Monitor,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -140,7 +140,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               className="flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white"
               title="Download Desktop App"
             >
-              <Download className="w-5 h-5" />
+              <Monitor className="w-5 h-5" />
             </a>
             <a
               href="https://discord.gg/tNczTe66jK"
