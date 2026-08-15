@@ -15,6 +15,9 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
@@ -26,6 +29,7 @@
     "axios": "^1.19.0",
     "browser-image-compression": "^2.0.2",
     "buffer": "^6.0.3",
+    "chess.js": "^1.4.0",
     "diff": "^9.0.0",
     "diff2html": "^3.4.56",
     "dotenv": "^17.4.2",
@@ -35,6 +39,7 @@
     "ping": "^1.0.0",
     "playwright": "^1.62.1",
     "qrcode.react": "^4.2.0",
+    "react-chessboard": "^4.7.2",
     "react-easy-crop": "^6.2.3",
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",

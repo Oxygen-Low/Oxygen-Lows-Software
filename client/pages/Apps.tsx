@@ -30,7 +30,10 @@ import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
 import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
-import { Server, Shield, Monitor, Smartphone } from "lucide-react";
+import { MinesweeperApp } from "@/components/apps/Minesweeper";
+import { SolitaireApp } from "@/components/apps/Solitaire";
+import { ChessApp } from "@/components/apps/Chess";
+import { Server, Shield, Monitor, Smartphone, Bomb, Spade, Crown } from "lucide-react";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Games";
@@ -180,6 +183,33 @@ const apps: AppMetadata[] = [
     authRequired: true,
     requiresAdmin: true,
     androidSupported: true,
+  },
+  {
+    id: "chess",
+    name: "Chess",
+    description: "Play a game of chess against an AI opponent.",
+    categories: ["All", "Games"],
+    availability: "web-and-desktop",
+    icon: <Crown className="w-8 h-8 text-cyan-500" />,
+    component: ChessApp,
+  },
+  {
+    id: "minesweeper",
+    name: "Minesweeper",
+    description: "The classic game of Minesweeper. Clear the board without detonating any mines!",
+    categories: ["All", "Games"],
+    availability: "web-and-desktop",
+    icon: <Bomb className="w-8 h-8 text-cyan-500" />,
+    component: MinesweeperApp,
+  },
+  {
+    id: "solitaire",
+    name: "Solitaire",
+    description: "Play the classic Klondike Solitaire card game.",
+    categories: ["All", "Games"],
+    availability: "web-and-desktop",
+    icon: <Spade className="w-8 h-8 text-green-500" />,
+    component: SolitaireApp,
   },
 ];
 
