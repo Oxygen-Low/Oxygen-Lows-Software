@@ -156,6 +156,33 @@ export function VPNApp() {
     });
   };
 
+  const runAndroidVPNCommand = async (type: string, configContent: string, name: string) => {
+    return new Promise<any>((resolve, reject) => {
+      const webview = (window as any).chrome?.webview;
+      if (!webview) return reject(new Error("Not running in desktop app context"));
+      
+      const id = Date.now().toString() + Math.random().toString();
+      const listener = (event: any) => {
+        try {
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          if (data.id === id) {
+            webview.removeEventListener("message", listener);
+            if (data.success) resolve(data.data);
+            else reject(new Error(data.error));
+          }
+        } catch {}
+      };
+      webview.addEventListener("message", listener);
+      webview.postMessage(JSON.stringify({ 
+        command: "android_vpn_connect", 
+        type, 
+        config: configContent,
+        name,
+        id 
+      }));
+    });
+  };
+
   const writeIPCFile = async (path: string, content: string) => {
     return new Promise<void>((resolve, reject) => {
       const webview = (window as any).chrome?.webview;
@@ -454,32 +481,38 @@ export function VPNApp() {
         await new Promise(r => setTimeout(r, 600));
       }
 
-      if (config.type === "WireGuard") {
-        let finalConfig = config.config_content;
-        if (config.killswitch === false) {
-          // Bypass strict Windows kill switch by replacing 0.0.0.0/0 with 0.0.0.0/1, 128.0.0.0/1
-          finalConfig = finalConfig.replace(/0\.0\.0\.0\/0/g, "0.0.0.0/1, 128.0.0.0/1");
-          finalConfig = finalConfig.replace(/::\/0/g, "::/1, 8000::/1");
-        }
-        await writeIPCFile(`vpn_temp.conf`, finalConfig);
-        await writeIPCFile(`vpn_temp_install.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
-        const res = await runIPCCommand(`vpn_temp_install.bat`);
-        if ((res.stderr || res.stdout) && (res.stderr.toLowerCase().includes("is not recognized") || res.stdout.toLowerCase().includes("is not recognized"))) {
-            throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
-        }
+      const isAndroid = sessionStorage.getItem("androidMode") === "1";
+
+      if (isAndroid) {
+        await runAndroidVPNCommand(config.type, config.config_content, config.name);
       } else {
-        let finalConfig = config.config_content;
-        if (config.killswitch !== false) {
-          if (!finalConfig.includes("block-outside-dns")) {
-            finalConfig += "\nblock-outside-dns\n";
+        if (config.type === "WireGuard") {
+          let finalConfig = config.config_content;
+          if (config.killswitch === false) {
+            // Bypass strict Windows kill switch by replacing 0.0.0.0/0 with 0.0.0.0/1, 128.0.0.0/1
+            finalConfig = finalConfig.replace(/0\.0\.0\.0\/0/g, "0.0.0.0/1, 128.0.0.0/1");
+            finalConfig = finalConfig.replace(/::\/0/g, "::/1, 8000::/1");
           }
+          await writeIPCFile(`vpn_temp.conf`, finalConfig);
+          await writeIPCFile(`vpn_temp_install.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
+          const res = await runIPCCommand(`vpn_temp_install.bat`);
+          if ((res.stderr || res.stdout) && (res.stderr.toLowerCase().includes("is not recognized") || res.stdout.toLowerCase().includes("is not recognized"))) {
+              throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
+          }
+        } else {
+          let finalConfig = config.config_content;
+          if (config.killswitch !== false) {
+            if (!finalConfig.includes("block-outside-dns")) {
+              finalConfig += "\nblock-outside-dns\n";
+            }
+          }
+          await writeIPCFile(`vpn_temp.ovpn`, finalConfig);
+          const checkRes = await runIPCCommand("openvpn --version");
+          if ((checkRes.stderr || checkRes.stdout) && (checkRes.stderr.toLowerCase().includes("is not recognized") || checkRes.stdout.toLowerCase().includes("is not recognized"))) {
+              throw new Error("OpenVPN is not installed. Please install it and ensure it's in your PATH.");
+          }
+          await runIPCCommand(`start /b "" openvpn --config "%TEMP%\\vpn_temp.ovpn" > NUL 2>&1`); 
         }
-        await writeIPCFile(`vpn_temp.ovpn`, finalConfig);
-        const checkRes = await runIPCCommand("openvpn --version");
-        if ((checkRes.stderr || checkRes.stdout) && (checkRes.stderr.toLowerCase().includes("is not recognized") || checkRes.stdout.toLowerCase().includes("is not recognized"))) {
-            throw new Error("OpenVPN is not installed. Please install it and ensure it's in your PATH.");
-        }
-        await runIPCCommand(`start /b "" openvpn --config "%TEMP%\\vpn_temp.ovpn" > NUL 2>&1`); 
       }
       setConnectedConfigId(config.id);
       toast.success(`Connected to ${config.name}`);
@@ -493,11 +526,18 @@ export function VPNApp() {
   const handleDisconnect = async (config: any) => {
     setIsConnecting(true);
     try {
-      if (config.type === "WireGuard") {
-        await writeIPCFile(`vpn_temp_uninstall.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
-        await runIPCCommand(`vpn_temp_uninstall.bat`);
+      const isAndroid = sessionStorage.getItem("androidMode") === "1";
+
+      if (isAndroid) {
+        // Disconnecting intent is manual in WireGuard app
+        toast.info("Please disconnect directly in the VPN app on Android.");
       } else {
-        await runIPCCommand(`taskkill /F /IM openvpn.exe`);
+        if (config.type === "WireGuard") {
+          await writeIPCFile(`vpn_temp_uninstall.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
+          await runIPCCommand(`vpn_temp_uninstall.bat`);
+        } else {
+          await runIPCCommand(`taskkill /F /IM openvpn.exe`);
+        }
       }
       setConnectedConfigId(null);
       

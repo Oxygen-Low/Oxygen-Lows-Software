@@ -37,3 +37,19 @@ DesktopAppOut/
 DesktopInstallerOut/
 /.pnpm-store
 .wrangler
+
+# Android
+*.iml
+.gradle
+local.properties
+.idea/caches
+.idea/libraries
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+Android/build
+Android/app/build
+/captures
+.externalNativeBuild
+.cxx

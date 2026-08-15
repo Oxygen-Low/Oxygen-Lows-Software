@@ -46,6 +46,7 @@ interface AppMetadata {
   component: React.ComponentType;
   authRequired?: boolean;
   requiresAdmin?: boolean;
+  androidSupported?: boolean;
 }
 
 /**
@@ -168,6 +169,7 @@ const apps: AppMetadata[] = [
     component: VPNApp,
     authRequired: true,
     requiresAdmin: true,
+    androidSupported: true,
   },
 ];
 
@@ -176,9 +178,14 @@ export default function Apps() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const hasDesktopParam = searchParams.get("desktop") === "1";
+  const hasAndroidParam = searchParams.get("android") === "1";
 
   const [isDesktopMode, setIsDesktopMode] = useState(() => {
     return hasDesktopParam || sessionStorage.getItem("desktopMode") === "1";
+  });
+  
+  const [isAndroidMode, setIsAndroidMode] = useState(() => {
+    return hasAndroidParam || sessionStorage.getItem("androidMode") === "1";
   });
 
   useEffect(() => {
@@ -186,7 +193,11 @@ export default function Apps() {
       sessionStorage.setItem("desktopMode", "1");
       setIsDesktopMode(true);
     }
-  }, [hasDesktopParam]);
+    if (hasAndroidParam) {
+      sessionStorage.setItem("androidMode", "1");
+      setIsAndroidMode(true);
+    }
+  }, [hasDesktopParam, hasAndroidParam]);
 
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedAvailability, setSelectedAvailability] =
@@ -199,11 +210,12 @@ export default function Apps() {
   const availableApps = useMemo(
     () =>
       apps.filter((app) => {
-        if (!isDesktopMode) return app.availability === "web-and-desktop";
+        if (!isDesktopMode && !isAndroidMode) return app.availability === "web-and-desktop";
+        if (isAndroidMode && app.availability === "desktop-only" && !app.androidSupported) return false;
         if (selectedAvailability === "web-and-desktop") return true;
         return app.availability === "desktop-only";
       }),
-    [isDesktopMode, selectedAvailability],
+    [isDesktopMode, isAndroidMode, selectedAvailability],
   );
 
   const filteredApps = useMemo(() => {
@@ -313,8 +325,7 @@ export default function Apps() {
             Explore and try out our collection of awesome tools!
           </p>
         </div>
-
-        {isDesktopMode && (
+        {isDesktopMode && !isAndroidMode && (
           <section aria-label="App availability" className="space-y-3">
             <h3 className="text-xl font-semibold text-white">Availability</h3>
             <div className="flex flex-wrap gap-3">
@@ -323,10 +334,11 @@ export default function Apps() {
                 aria-pressed={selectedAvailability === "web-and-desktop"}
                 onClick={() => setSelectedAvailability("web-and-desktop")}
                 className={cn(
-                  "rounded-lg border px-4 py-2 text-sm font-medium transition",
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300",
+                  "border border-white/10 hover:border-white/20",
                   selectedAvailability === "web-and-desktop"
-                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
-                    : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                    ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] scale-105"
+                    : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10",
                 )}
               >
                 Web + desktop
@@ -336,12 +348,14 @@ export default function Apps() {
                 aria-pressed={selectedAvailability === "desktop-only"}
                 onClick={() => setSelectedAvailability("desktop-only")}
                 className={cn(
-                  "rounded-lg border px-4 py-2 text-sm font-medium transition",
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300",
+                  "border border-white/10 hover:border-white/20 flex items-center gap-2",
                   selectedAvailability === "desktop-only"
-                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
-                    : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                    ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.2)] scale-105"
+                    : "bg-white/5 text-gray-400 hover:text-cyan-400 hover:bg-white/10",
                 )}
               >
+                <Monitor className="w-4 h-4" />
                 Desktop only
               </button>
             </div>
