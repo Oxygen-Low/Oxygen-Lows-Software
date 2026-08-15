@@ -1,4 +1,3 @@
 <Solution>
   <Project Path="DesktopApp/DesktopApp.csproj" />
-  <Project Path="DesktopInstaller/DesktopInstaller.csproj" />
 </Solution>
