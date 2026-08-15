@@ -12,6 +12,7 @@ import {
   LifeBuoy,
   GitCommit,
   Monitor,
+  Gamepad2,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -34,6 +35,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Apps", href: "/apps", icon: Package },
+  { label: "Games", href: "/games", icon: Gamepad2 },
   { label: "Storage", href: "/storage", icon: HardDrive },
   { label: "Account", href: "/account", icon: User },
   { label: "Friends", href: "/friends", icon: Users },

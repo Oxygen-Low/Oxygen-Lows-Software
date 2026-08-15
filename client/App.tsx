@@ -29,6 +29,7 @@ const lazyWithRetry = (componentImport: () => Promise<{ default: ComponentType<a
 
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const Apps = lazyWithRetry(() => import("./pages/Apps"));
+const Games = lazyWithRetry(() => import("./pages/Games"));
 const Friends = lazyWithRetry(() => import("./pages/Friends"));
 const Account = lazyWithRetry(() => import("./pages/Account"));
 const Storage = lazyWithRetry(() => import("./pages/Storage"));
@@ -69,6 +70,14 @@ const App = () => (
                 <Route
                   path="/apps/:appId"
                   element={<Apps />}
+                />
+                <Route
+                  path="/games"
+                  element={<Games />}
+                />
+                <Route
+                  path="/games/:appId"
+                  element={<Games />}
                 />
                 <Route
                   path="/storage"
