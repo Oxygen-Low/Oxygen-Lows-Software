@@ -450,10 +450,11 @@ export default function Storage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>
                           Are you absolutely sure?
+                          <span className="sr-only"> Delete {file.name}</span>
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                           This action cannot be undone. This will permanently
-                          delete your file from our servers.
+                          delete your file "{file.name}" from our servers.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
