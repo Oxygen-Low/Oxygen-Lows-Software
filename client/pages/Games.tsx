@@ -14,12 +14,18 @@ import {
   Spade,
   Crown,
   Monitor,
-  Smartphone
+  Smartphone,
+  Type,
+  Grid3x3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MinesweeperApp } from "@/components/apps/Minesweeper";
 import { SolitaireApp } from "@/components/apps/Solitaire";
 import { ChessApp } from "@/components/apps/Chess";
+import { PokerApp } from "@/components/apps/Poker";
+import { SudokuApp } from "@/components/apps/Sudoku";
+import { CrosswordApp } from "@/components/apps/Crossword";
+import { WordSearchApp } from "@/components/apps/WordSearch";
 
 type Category = "All";
 
@@ -65,6 +71,42 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Spade className="w-8 h-8 text-green-500" />,
     component: SolitaireApp,
+  },
+  {
+    id: "poker",
+    name: "Texas Hold'em",
+    description: "Play Heads-Up Texas Hold'em against an AI opponent.",
+    categories: ["All"],
+    availability: "web-and-desktop",
+    icon: <Gamepad2 className="w-8 h-8 text-yellow-500" />,
+    component: PokerApp,
+  },
+  {
+    id: "sudoku",
+    name: "Sudoku",
+    description: "Challenge your mind with the classic numbers puzzle.",
+    categories: ["All"],
+    availability: "web-and-desktop",
+    icon: <Grid3x3 className="w-8 h-8 text-indigo-400" />,
+    component: SudokuApp,
+  },
+  {
+    id: "crossword",
+    name: "Crossword",
+    description: "Solve a fun mini crossword puzzle.",
+    categories: ["All"],
+    availability: "web-and-desktop",
+    icon: <Grid3x3 className="w-8 h-8 text-cyan-500" />,
+    component: CrosswordApp,
+  },
+  {
+    id: "wordsearch",
+    name: "Word Search",
+    description: "Find hidden words in a grid of letters.",
+    categories: ["All"],
+    availability: "web-and-desktop",
+    icon: <Type className="w-8 h-8 text-indigo-500" />,
+    component: WordSearchApp,
   },
 ];
 

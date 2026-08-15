@@ -83,6 +83,9 @@ importers:
       playwright:
         specifier: ^1.62.1
         version: 1.62.1
+      pokersolver:
+        specifier: ^2.1.4
+        version: 2.1.4
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.2.8)
@@ -104,6 +107,9 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
+      sudoku-gen:
+        specifier: ^1.0.2
+        version: 1.0.2
       ws:
         specifier: ^8.21.3
         version: 8.21.3
@@ -3165,6 +3171,10 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  pokersolver@2.1.4:
+    resolution: {integrity: sha512-vmgZS+K8H8r1RePQykFM5YyvlKo1v3xVec8FMBjg9N6mR2Tj/n/X415w+lG67FWbrk71D/CADmKFinDgaQlAsw==}
+    engines: {'0': node >= 4.0.0}
+
   postcss-selector-parser@6.0.10:
     resolution: {integrity: sha512-IQ7TZdoaqbT+LCpShg46jnZVlhWD2w6iQYAcYXfHARZ7X1t/UGhhceQDs5X0cGqKvYlHNOuv7Oa1xmb0oQuA3w==}
     engines: {node: '>=4'}
@@ -3513,6 +3523,9 @@ packages:
 
   style-to-object@1.0.14:
     resolution: {integrity: sha512-LIN7rULI0jBscWQYaSswptyderlarFkjQ+t79nzty8tcIAceVomEVlLzH5VP4Cmsv6MtKhs7qaAiwlcp+Mgaxw==}
+
+  sudoku-gen@1.0.2:
+    resolution: {integrity: sha512-zQFQNbar9qGpbteAH7CQShGoR5lk7r4KYlt0Wsvts1eVMzLb2EZUovzc7gAmoHp+HmXGYadmqCyyXoY7QVEyhA==}
 
   superagent@10.3.0:
     resolution: {integrity: sha512-B+4Ik7ROgVKrQsXTV0Jwp2u+PXYLSlqtDAhYnkkD+zn3yg8s/zjA2MeGayPoY/KICrbitwneDHrjSotxKL+0XQ==}
@@ -6612,6 +6625,8 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
+  pokersolver@2.1.4: {}
+
   postcss-selector-parser@6.0.10:
     dependencies:
       cssesc: 3.0.0
@@ -7005,6 +7020,8 @@ snapshots:
   style-to-object@1.0.14:
     dependencies:
       inline-style-parser: 0.2.9
+
+  sudoku-gen@1.0.2: {}
 
   superagent@10.3.0:
     dependencies:
