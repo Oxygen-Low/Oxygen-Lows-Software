@@ -29,6 +29,7 @@ import { DataSaveApp } from "@/components/apps/DataSave";
 import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
 import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { VPNApp } from "@/components/apps/VPN";
+import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { Server, Shield, Monitor, Smartphone } from "lucide-react";
 
 type Category =
@@ -100,6 +101,15 @@ const CATEGORIES: {
 ];
 
 const apps: AppMetadata[] = [
+  {
+    id: "base64-encoder",
+    name: "Base64 Encoder/Decoder",
+    description: "Easily encode or decode text and data using Base64.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Code className="w-8 h-8 text-cyan-500" />,
+    component: Base64EncoderApp,
+  },
   {
     id: "chatbot",
     name: "Chatbot",

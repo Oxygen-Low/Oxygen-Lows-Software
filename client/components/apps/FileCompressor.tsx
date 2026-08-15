@@ -5,7 +5,7 @@ import {
   Zap,
   CheckCircle2,
   ArrowRight,
-  File,
+  File as FileIcon,
   Trash2,
   AlertCircle,
   Loader2,
@@ -243,7 +243,7 @@ export function FileCompressorApp() {
               <div className="flex justify-between items-center p-3 bg-slate-950 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-900 rounded">
-                    <File className="w-4 h-4 text-cyan-500" />
+                    <FileIcon className="w-4 h-4 text-cyan-500" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-white">
