@@ -46,29 +46,8 @@ class MainActivity : AppCompatActivity() {
         
         webView.webChromeClient = WebChromeClient()
 
-        var url = "https://oxygenlow.com/?desktop=1&android=1"
-        val data = intent.data
-        if (data != null && data.scheme == "oxygenlows" && data.host == "auth" && data.path == "/callback") {
-            val fragment = data.fragment
-            if (fragment != null) {
-                url += "#$fragment"
-            }
-        }
         // Load the web app with android=1 param
-        webView.loadUrl(url)
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        val data = intent.data
-        if (data != null && data.scheme == "oxygenlows" && data.host == "auth" && data.path == "/callback") {
-            val fragment = data.fragment
-            if (fragment != null) {
-                val url = "https://oxygenlow.com/?desktop=1&android=1#$fragment"
-                webView.loadUrl(url)
-            }
-        }
+        webView.loadUrl("https://oxygenlow.com/?desktop=1&android=1")
     }
 
     private fun injectPolyfill() {
