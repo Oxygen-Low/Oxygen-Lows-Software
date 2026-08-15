@@ -23,7 +23,7 @@ jobs:
       - name: Calculate Version
         id: calc_version
         run: |
-          $majorMinor = "1.2"
+          $majorMinor = "1.3"
           $prefix = "v$majorMinor."
           $tags = git tag -l "$prefix*"
           if ($tags) {
