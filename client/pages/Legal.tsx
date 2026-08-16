@@ -72,7 +72,7 @@ const legalDocuments: Omit<LegalCardProps, "index">[] = [
     href: "/license",
     icon: FileText,
     title: "License",
-    description: "The Creative Commons Attribution 4.0 International Public License applied to this project.",
+    description: "The Mozilla Public License Version 2.0 applied to this project.",
   },
 ];
 
