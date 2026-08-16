@@ -16,8 +16,8 @@ const PIECE_VALUES: Record<string, number> = {
   k: 900,
 };
 
-// Evaluate the board from Black's perspective (since AI plays Black)
-function evaluateBoard(game: Chess): number {
+// Evaluate the board from AI's perspective
+function evaluateBoard(game: Chess, aiColor: "w" | "b"): number {
   let totalEvaluation = 0;
   const board = game.board();
   
@@ -26,8 +26,8 @@ function evaluateBoard(game: Chess): number {
       const piece = board[i][j];
       if (piece) {
         const val = PIECE_VALUES[piece.type] || 0;
-        // AI plays Black, so Black pieces add to the score, White subtracts
-        totalEvaluation += piece.color === 'b' ? val : -val;
+        // AI color pieces add to the score, opponent subtracts
+        totalEvaluation += piece.color === aiColor ? val : -val;
       }
     }
   }
@@ -35,7 +35,7 @@ function evaluateBoard(game: Chess): number {
 }
 
 // Simple 1-ply search to find the best move
-function calculateBestMove(game: Chess): string {
+function calculateBestMove(game: Chess, aiColor: "w" | "b"): string {
   const possibleMoves = game.moves({ verbose: true }) as Move[];
   
   if (possibleMoves.length === 0) return "";
@@ -47,7 +47,7 @@ function calculateBestMove(game: Chess): string {
     game.move(move.san);
     
     // Evaluate the board after this move
-    const boardValue = evaluateBoard(game);
+    const boardValue = evaluateBoard(game, aiColor);
     
     // Undo the move to restore state
     game.undo();
@@ -66,6 +66,7 @@ function calculateBestMove(game: Chess): string {
 
 export function ChessApp() {
   const [game, setGame] = useState<Chess>(new Chess());
+  const [playerColor, setPlayerColor] = useState<"w" | "b">("w");
   const [gameStatus, setGameStatus] = useState<string>("White to move");
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [boardWidth, setBoardWidth] = useState(400);
@@ -134,10 +135,11 @@ export function ChessApp() {
 
   // AI Move logic
   useEffect(() => {
-    if (!isGameOver && game.turn() === "b") {
+    if (!isGameOver && game.turn() !== playerColor) {
+      const aiColor = playerColor === "w" ? "b" : "w";
       const timer = setTimeout(() => {
         const gameCopy = new Chess(game.fen());
-        const bestMove = calculateBestMove(gameCopy);
+        const bestMove = calculateBestMove(gameCopy, aiColor);
         
         if (bestMove) {
           makeMove(bestMove);
@@ -146,11 +148,11 @@ export function ChessApp() {
       
       return () => clearTimeout(timer);
     }
-  }, [game, isGameOver, makeMove]);
+  }, [game, isGameOver, makeMove, playerColor]);
 
   function onDrop(sourceSquare: string, targetSquare: string, piece: string) {
-    // Only allow white to move via drag and drop
-    if (game.turn() === "b" || isGameOver) return false;
+    // Only allow player to move via drag and drop
+    if (game.turn() !== playerColor || isGameOver) return false;
 
     const promotion = piece[1].toLowerCase() ?? "q";
     const success = makeMove({
@@ -194,7 +196,7 @@ export function ChessApp() {
   }
 
   function onSquareClick(square: string) {
-    if (game.turn() === "b" || isGameOver) return;
+    if (game.turn() !== playerColor || isGameOver) return;
 
     if (!moveFrom) {
       const hasMoveOptions = getMoveOptions(square);
@@ -229,9 +231,10 @@ export function ChessApp() {
     }
   }
 
-  function resetGame() {
+  function resetGame(color: "w" | "b" = playerColor) {
     const newGame = new Chess();
     setGame(newGame);
+    setPlayerColor(color);
     updateStatus(newGame);
     setIsGameOver(false);
     setMoveFrom(null);
@@ -257,12 +260,12 @@ export function ChessApp() {
                   className={
                     isGameOver 
                       ? "bg-red-500/10 text-red-400 border-red-500/20" 
-                      : game.turn() === 'w' 
+                      : game.turn() === playerColor 
                         ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
                         : "bg-purple-500/10 text-purple-400 border-purple-500/20"
                   }
                 >
-                  {isGameOver ? "Game Over" : game.turn() === 'w' ? "Your Turn" : "AI Thinking..."}
+                  {isGameOver ? "Game Over" : game.turn() === playerColor ? "Your Turn" : "AI Thinking..."}
                 </Badge>
               </div>
               
@@ -277,14 +280,22 @@ export function ChessApp() {
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-800">
+              <div className="pt-4 border-t border-slate-800 flex gap-2">
                 <Button 
-                  onClick={resetGame} 
+                  onClick={() => resetGame("w")} 
                   variant="secondary" 
-                  className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white"
+                  className={`flex-1 flex items-center justify-center gap-2 text-white ${playerColor === 'w' ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-slate-800 hover:bg-slate-700'}`}
                 >
                   <RotateCcw className="w-4 h-4" />
-                  New Game
+                  Play White
+                </Button>
+                <Button 
+                  onClick={() => resetGame("b")} 
+                  variant="secondary" 
+                  className={`flex-1 flex items-center justify-center gap-2 text-white ${playerColor === 'b' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-slate-800 hover:bg-slate-700'}`}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Play Black
                 </Button>
               </div>
             </CardContent>
@@ -333,7 +344,8 @@ export function ChessApp() {
               customDarkSquareStyle={{ backgroundColor: "#334155" }}
               customLightSquareStyle={{ backgroundColor: "#cbd5e1" }}
               arePremovesAllowed={false}
-              isDraggablePiece={({ piece }) => piece[0] === 'w' && game.turn() === 'w' && !isGameOver}
+              boardOrientation={playerColor === 'w' ? 'white' : 'black'}
+              isDraggablePiece={({ piece }) => piece[0] === playerColor && game.turn() === playerColor && !isGameOver}
             />
           </div>
         </div>
