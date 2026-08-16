@@ -1,7 +1,8 @@
 {
   "name": "@oxygenlow/defender",
   "version": "0.1.0",
-  "description": "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
+  "author": "Oxygen Low",
+  "description": "Oxygen Low's Software Defender: Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,7 +35,7 @@
   "license": "MPL-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Oxygen-Low/Oxygen-Lows-Software"
+    "url": "git+https://github.com/Oxygen-Low/Oxygen-Lows-Software.git"
   },
   "peerDependencies": {
     "express": ">=4.0.0",

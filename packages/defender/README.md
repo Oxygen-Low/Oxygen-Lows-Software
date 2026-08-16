@@ -3,11 +3,11 @@
 ![npm version](https://img.shields.io/npm/v/@oxygenlow/defender.svg)
 ![License](https://img.shields.io/npm/l/@oxygenlow/defender.svg)
 
-Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injection attacks, bots, and malicious traffic with an intelligent, cloud-managed Web Application Firewall (WAF) and middleware.
+Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injection attacks, bots, and malicious traffic with an intelligent, cloud-managed Web Application Firewall (WAF) and middleware by Oxygen Low's Software.
 
 ## Description
 
-`@oxygenlow/defender` is a robust security middleware package designed to safeguard your web applications and APIs. It seamlessly integrates into your existing server architecture to monitor, filter, and optionally block malicious requests in real-time, leveraging the Oxygen Lows dashboard for configuration and observability.
+`@oxygenlow/defender` is a robust security middleware package designed by Oxygen Low to safeguard your web applications and APIs. It seamlessly integrates into your existing server architecture to monitor, filter, and optionally block malicious requests in real-time, leveraging the Oxygen Low's Software dashboard for configuration and observability.
 
 ## Features
 
@@ -91,7 +91,7 @@ export async function middleware(request) {
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `apiKey` | `string` | **Required** | Your Oxygen Lows project API key. |
+| `apiKey` | `string` | **Required** | Your Oxygen Low's Software project API key. |
 | `apiUrl` | `string` | `'https://oxygenlow.com'` | The API url of the defender service. |
 | `logOnly` | `boolean` | `false` | If true, overrides the server config to only log threats, never block. |
 | `onBlocked` | `function` | `undefined` | Callback fired when a request is blocked locally. |
