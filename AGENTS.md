@@ -6,4 +6,4 @@
 
 ## Package Versions
 
--- When making changes to any published packages (e.g., in `packages/defender`), ALWAYS remember to bump the version number in its `package.json` so that the CI/CD pipeline can successfully publish the update.
+-- When making changes to any published packages (e.g., in `packages/defender`), ALWAYS remember to bump the version number in its `package.json`.
