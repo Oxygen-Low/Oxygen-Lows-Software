@@ -225,16 +225,14 @@ export class DefenderClient {
     // Determine final block action
     const actualBlock = isBlocked && this.appConfig.blockModeEnabled && !this.config.logOnly;
 
-    if (isBlocked) {
-      this.logEvent({
-        type: eventType,
-        ip,
-        method,
-        path,
-        reason: blockReason,
-        blocked: actualBlock
-      }, req);
-    }
+    this.logEvent({
+      type: eventType,
+      ip,
+      method,
+      path,
+      reason: isBlocked ? blockReason : '',
+      blocked: actualBlock
+    }, req);
 
     return {
       blocked: actualBlock,

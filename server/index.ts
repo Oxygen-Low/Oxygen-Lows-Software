@@ -22,7 +22,7 @@ app.use('*', async (c, next) => {
   if (!defenderPromise) {
     defenderPromise = createDefender({
       apiKey: process.env.DEFENDER_API_KEY || '',
-    });
+    }, app);
   }
   const middleware = await defenderPromise;
   return middleware(c, next);

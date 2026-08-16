@@ -1,9 +1,9 @@
 import { DefenderClient } from './defender.js';
 import { DefenderConfig } from './types.js';
 
-export async function createDefender(config: DefenderConfig): Promise<any> {
+export async function createDefender(config: DefenderConfig, app?: any): Promise<any> {
   const client = new DefenderClient(config);
-  await client.init(); // note: for route discovery in hono you might want to call init(app) separately, but this is the middleware generator
+  await client.init(app);
 
   return async (c: any, next: any) => {
     try {
