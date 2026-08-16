@@ -77,13 +77,40 @@ const Cell = React.memo(
   }
 );
 
+const GameTimer = React.memo(({ status, resetKey }: { status: "idle" | "playing" | "won" | "lost", resetKey: number }) => {
+  const [time, setTime] = useState(0);
+
+  useEffect(() => {
+    setTime(0);
+  }, [resetKey]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (status === "playing") {
+      interval = setInterval(() => {
+        setTime((t) => Math.min(t + 1, 999));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [status]);
+
+  return (
+    <div className="flex flex-col items-center gap-1 min-w-[80px] bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
+      <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Time</span>
+      <span className="text-2xl font-mono text-cyan-500">
+        {time.toString().padStart(3, "0")}
+      </span>
+    </div>
+  );
+});
+
 export function MinesweeperApp() {
   const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
   const [board, setBoard] = useState<CellData[]>([]);
   const [status, setStatus] = useState<"idle" | "playing" | "won" | "lost">("idle");
   const [flags, setFlags] = useState(0);
-  const [time, setTime] = useState(0);
   const [revealedCount, setRevealedCount] = useState(0);
+  const [resetKey, setResetKey] = useState(0);
 
   const config = LEVELS[difficulty];
   const { rows, cols, mines } = config;
@@ -101,24 +128,13 @@ export function MinesweeperApp() {
     setBoard(newBoard);
     setStatus("idle");
     setFlags(0);
-    setTime(0);
     setRevealedCount(0);
+    setResetKey(prev => prev + 1);
   }, [rows, cols]);
 
   useEffect(() => {
     initBoard();
   }, [initBoard]);
-
-  // Timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (status === "playing") {
-      interval = setInterval(() => {
-        setTime((t) => Math.min(t + 1, 999));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [status]);
 
   const getNeighbors = (index: number, totalRows: number, totalCols: number) => {
     const r = Math.floor(index / totalCols);
@@ -352,12 +368,7 @@ export function MinesweeperApp() {
             </select>
           </div>
 
-          <div className="flex flex-col items-center gap-1 min-w-[80px] bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
-            <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Time</span>
-            <span className="text-2xl font-mono text-cyan-500">
-              {time.toString().padStart(3, "0")}
-            </span>
-          </div>
+          <GameTimer status={status} resetKey={resetKey} />
         </div>
 
         {/* Board */}
