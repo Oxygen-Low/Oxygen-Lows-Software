@@ -4,15 +4,16 @@ import { OutboundConnection } from './types.js';
 
 export class OutboundMonitor {
   private reporter: (conn: OutboundConnection) => void;
+  private ignoreHost: string;
   private originalHttpRequest: any;
   private originalHttpGet: any;
   private originalHttpsRequest: any;
   private originalHttpsGet: any;
   private originalFetch: any;
-  private reportedSet: Set<string> = new Set();
 
-  constructor(reporter: (conn: OutboundConnection) => void) {
+  constructor(reporter: (conn: OutboundConnection) => void, ignoreHost: string) {
     this.reporter = reporter;
+    this.ignoreHost = ignoreHost;
   }
 
   install(): void {
@@ -42,12 +43,8 @@ export class OutboundMonitor {
             if (arg0.port) port = parseInt(arg0.port, 10);
           }
 
-          if (host) {
-            const key = `${protocol}//${host}:${port}`;
-            if (!self.reportedSet.has(key)) {
-              self.reportedSet.add(key);
-              self.reporter({ host, port, protocol });
-            }
+          if (host && host !== self.ignoreHost) {
+            self.reporter({ host, port, protocol });
           }
         } catch (e) {
           // ignore parsing errors
@@ -86,12 +83,8 @@ export class OutboundMonitor {
             }
           }
 
-          if (host) {
-            const key = `${protocol}//${host}:${port}`;
-            if (!self.reportedSet.has(key)) {
-              self.reportedSet.add(key);
-              self.reporter({ host, port, protocol });
-            }
+          if (host && host !== self.ignoreHost) {
+            self.reporter({ host, port, protocol });
           }
         } catch (e) {
           // ignore parsing errors
@@ -118,7 +111,5 @@ export class OutboundMonitor {
     this.originalHttpsRequest = undefined;
     this.originalHttpsGet = undefined;
     this.originalFetch = undefined;
-    
-    this.reportedSet.clear();
   }
 }

@@ -37,7 +37,7 @@ export class DefenderClient {
     this.apiUrl = config.apiUrl || 'https://oxygenlow.com';
     this.torDetector = new TorDetector();
     this.rateLimiter = new RateLimiter();
-    this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn));
+    this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn), new URL(this.apiUrl).hostname);
   }
 
   async init(app?: any): Promise<void> {
@@ -68,14 +68,30 @@ export class DefenderClient {
       if (app && this.appConfig) {
         const routes = discoverRoutes(app);
         if (routes.length > 0) {
-          fetch(`${this.apiUrl}/api/defender/register`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${this.config.apiKey}`
-            },
-            body: JSON.stringify({ routes })
-          }).catch(() => {});
+          try {
+            await fetch(`${this.apiUrl}/api/defender/register`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.config.apiKey}`
+              },
+              body: JSON.stringify({ routes })
+            });
+
+            // Refetch config to get the populated route IDs and rate limits
+            const verifyRes = await fetch(`${this.apiUrl}/api/defender/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.config.apiKey}`
+              }
+            });
+            if (verifyRes.ok) {
+              this.appConfig = await verifyRes.json();
+            }
+          } catch (e) {
+            console.error('[Defender] Route registration failed:', e);
+          }
         }
       }
 
