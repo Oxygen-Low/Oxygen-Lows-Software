@@ -42,6 +42,7 @@ interface SocialProfile {
   username: string;
   display_name: string | null;
   image_url: string | null;
+  crop_data?: any;
 }
 
 interface Friendship {
@@ -77,22 +78,9 @@ export function FriendsApp() {
         { data: bData },
       ] = await Promise.all([
         supabase.rpc("get_my_friendships"),
-        supabase
-          .from("follows")
-          .select(
-            "id, following_id, profile:profiles!follows_following_id_fkey(*)",
-          )
-          .eq("follower_id", session.user.id),
-        supabase
-          .from("follows")
-          .select(
-            "id, follower_id, profile:profiles!follows_follower_id_fkey(*)",
-          )
-          .eq("following_id", session.user.id),
-        supabase
-          .from("blocks")
-          .select("blocked_id, profile:profiles!blocks_blocked_id_fkey(*)")
-          .eq("blocker_id", session.user.id),
+        supabase.rpc("get_my_follows"),
+        supabase.rpc("get_my_followers"),
+        supabase.rpc("get_my_blocks"),
       ]);
 
       if (fData) {
@@ -157,6 +145,24 @@ export function FriendsApp() {
 
       if (targetUser.user_id === session.user.id) {
         toast.error("You cannot add yourself");
+        return;
+      }
+
+      // Check if a friendship already exists
+      const { data: existingFriendship } = await supabase
+        .from("friendships")
+        .select("id, status, user_id, friend_id")
+        .or(`and(user_id.eq.${session.user.id},friend_id.eq.${targetUser.user_id}),and(user_id.eq.${targetUser.user_id},friend_id.eq.${session.user.id})`)
+        .maybeSingle();
+
+      if (existingFriendship) {
+        if (existingFriendship.status === "accepted") {
+          toast.error("You are already friends with this user");
+        } else if (existingFriendship.user_id === session.user.id) {
+          toast.error("Friend request already sent");
+        } else {
+          toast.error("This user has already sent you a friend request");
+        }
         return;
       }
 
