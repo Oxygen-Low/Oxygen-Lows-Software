@@ -43,6 +43,11 @@ export class DefenderClient {
   async init(app?: any): Promise<void> {
     if (this.isInitialized) return;
 
+    if (!this.config.apiKey || this.config.apiKey.trim() === '') {
+      console.log('[Defender] No API key environment variable found. Protection is disabled.');
+      return;
+    }
+
     try {
       // 1. Validate API key
       const response = await fetch(`${this.apiUrl}/api/defender/verify`, {
