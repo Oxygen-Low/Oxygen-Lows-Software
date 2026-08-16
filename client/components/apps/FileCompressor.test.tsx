@@ -130,9 +130,13 @@ describe("FileCompressorApp", () => {
     );
 
     // Select a file
-    const storageTab = screen.getByText("Use Storage");
+    const storageTab = screen.getByRole("tab", { name: "Use Storage" });
+    fireEvent.pointerDown(storageTab);
     fireEvent.click(storageTab);
     
+    await waitFor(() => {
+      expect(screen.getByText("Click to select from storage")).toBeDefined();
+    });
     const selectors = screen.getAllByText("Click to select from storage");
     fireEvent.click(selectors[0]);
 
