@@ -1,6 +1,5 @@
 export interface DefenderConfig {
   apiKey: string;
-  apiUrl?: string; // defaults to 'https://oxygenlow.com'
   logOnly?: boolean; // override: always log-only regardless of server config
   onBlocked?: (event: BlockedEvent) => void;
   onError?: (error: Error) => void;

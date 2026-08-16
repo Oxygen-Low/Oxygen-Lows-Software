@@ -92,7 +92,6 @@ export async function middleware(request) {
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `apiKey` | `string` | **Required** | Your Oxygen Low's Software project API key. |
-| `apiUrl` | `string` | `'https://oxygenlow.com'` | The API url of the defender service. |
 | `logOnly` | `boolean` | `false` | If true, overrides the server config to only log threats, never block. |
 | `onBlocked` | `function` | `undefined` | Callback fired when a request is blocked locally. |
 | `onError` | `function` | `undefined` | Callback fired when an internal defender error occurs. |
