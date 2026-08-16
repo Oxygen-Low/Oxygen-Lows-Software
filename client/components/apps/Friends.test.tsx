@@ -119,7 +119,7 @@ describe("FriendsApp", () => {
     expect(input).toBeDefined();
 
     await waitFor(() => {
-      expect(supabase.from).toHaveBeenCalledWith("follows");
+      expect(supabase.rpc).toHaveBeenCalledWith("get_my_follows");
     });
   });
 
