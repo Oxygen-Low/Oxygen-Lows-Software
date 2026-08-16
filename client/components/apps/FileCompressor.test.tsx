@@ -12,6 +12,13 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Mock react-i18next
 
+// Mock useAuth
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({
+    session: { user: { id: "test-user" } },
+  }),
+}));
+
 // Mock ResizeObserver
 global.ResizeObserver = class {
   observe() {}
@@ -123,6 +130,9 @@ describe("FileCompressorApp", () => {
     );
 
     // Select a file
+    const storageTab = screen.getByText("Use Storage");
+    fireEvent.click(storageTab);
+    
     const selectors = screen.getAllByText("Click to select from storage");
     fireEvent.click(selectors[0]);
 
