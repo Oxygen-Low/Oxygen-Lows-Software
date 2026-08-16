@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -73,6 +73,16 @@ export default function Auth() {
             >
               Sign in with Google
             </button>
+            <p className="text-center text-xs text-slate-500 mt-4">
+              By signing in, you agree to our{" "}
+              <Link to="/privacy" className="text-cyan-500 hover:underline">
+                Privacy Policy
+              </Link>
+              {" "}and{" "}
+              <Link to="/terms" className="text-cyan-500 hover:underline">
+                Terms of Use
+              </Link>
+            </p>
           </div>
         </div>
       </div>

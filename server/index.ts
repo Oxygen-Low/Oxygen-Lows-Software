@@ -130,6 +130,12 @@ app.get("/sitemap.xml", (c) => {
     { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/qrcode-generator`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/privacy`, changefreq: "monthly", priority: "0.5" },
+    { loc: `${baseUrl}/terms`, changefreq: "monthly", priority: "0.5" },
+    { loc: `${baseUrl}/eula`, changefreq: "monthly", priority: "0.5" },
+    { loc: `${baseUrl}/dmca`, changefreq: "monthly", priority: "0.5" },
+    { loc: `${baseUrl}/acceptable-use`, changefreq: "monthly", priority: "0.5" },
+    { loc: `${baseUrl}/legal`, changefreq: "monthly", priority: "0.6" },
   ];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

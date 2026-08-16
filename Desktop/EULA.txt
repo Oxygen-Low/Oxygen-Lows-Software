@@ -1,0 +1,76 @@
+End User Licence Agreement
+Last updated: 16 August 2026  ·  Operated by Oxygen Low's Software  ·  United Kingdom
+
+1. Acceptance of This Agreement
+This End User Licence Agreement ("EULA") is a legally binding contract between you ("User", "you", or "your") and Oxygen Low's Software ("Licensor", "we", "us", or "our") governing your access to and use of the software, web application, desktop client, and any associated documentation or services made available at https://oxygenlow.com (collectively, the "Software").
+
+By installing, accessing, or using the Software, you confirm that you have read, understood, and agree to be bound by this EULA, our Terms of Use, and our Privacy Policy. If you do not agree, you must immediately cease using the Software.
+
+2. Grant of Licence
+Subject to your compliance with this EULA, the Licensor grants you a limited, non-exclusive, non-transferable, non-sublicensable, revocable licence to:
+- Access and use the web application through a supported browser.
+- Download and run the desktop client on a device you own or control, solely for your personal, non-commercial purposes.
+- Use any Software features made available to your account tier.
+
+This licence does not include any rights not expressly granted herein. All rights in and to the Software not granted to you remain with the Licensor.
+
+3. Licence Restrictions
+Except as expressly permitted by applicable law or this EULA, you must not, and must not permit any third party to:
+- Copy, reproduce, distribute, republish, or sell the Software or any part thereof.
+- Modify, adapt, translate, or create derivative works based on the Software.
+- Reverse-engineer, decompile, disassemble, or attempt to derive the source code of the Software, except to the limited extent permitted by mandatory applicable law.
+- Remove or alter any proprietary notices, labels, or marks on the Software.
+- Use the Software to provide services to third parties on a commercial basis (e.g., as a service bureau or outsourced service).
+- Transfer, assign, sublicense, rent, lease, or lend the Software or your licence rights to any third party.
+- Use the Software in any manner that violates applicable law or regulations.
+
+4. Ownership & Intellectual Property
+The Software is licensed, not sold. The Licensor retains all intellectual property rights in and to the Software, including all copyrights, patents, trademarks, trade secrets, and other proprietary rights. Your use of the Software does not grant you ownership of any part of the Software.
+
+Where portions of the Software are made available as open-source software, such portions are subject to the applicable open-source licence terms contained in the project repository. This EULA governs the proprietary elements of the Software that are not open-source.
+
+5. User-Generated Content
+You retain ownership of any content you create, upload, or submit through the Software ("User Content"). By submitting User Content, you grant the Licensor a worldwide, royalty-free, non-exclusive licence to host, store, process, and display that content solely as necessary to operate and provide the Software to you.
+
+You represent and warrant that you have all rights necessary to grant this licence and that your User Content does not infringe any third-party intellectual property rights, violate any applicable law, or breach any obligation of confidentiality.
+
+6. Updates & Modifications
+The Licensor may, from time to time, issue updates, patches, or new versions of the Software. Such updates may be applied automatically or may require your action. This EULA applies to all updates and supplements to the original Software unless a separate licence accompanies an update, in which case that separate licence governs.
+
+The Licensor reserves the right to modify, suspend, or discontinue any feature or the entire Software at any time, with or without notice, without liability to you.
+
+7. Third-Party Software & Services
+The Software may incorporate or interface with third-party software libraries, APIs, and services (including Supabase, OpenAI, Anthropic, Google, Cloudflare, and others). Your use of such third-party components is subject to their respective licence terms and privacy policies. The Licensor is not responsible for the availability, accuracy, or conduct of any third-party service.
+
+8. Privacy
+Your use of the Software is subject to our Privacy Policy, which is incorporated into this EULA by reference. By using the Software, you consent to the collection and use of your information as described in the Privacy Policy.
+
+9. Disclaimer of Warranties
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, OR NON-INFRINGEMENT. THE LICENSOR DOES NOT WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, TIMELY, SECURE, OR ERROR-FREE, OR THAT DEFECTS WILL BE CORRECTED.
+
+The Software is currently in Open Beta. Features, data, and availability may change without prior notice.
+
+10. Limitation of Liability
+TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, OXYGEN LOW'S SOFTWARE SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR RELATED TO YOUR USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+In jurisdictions that do not allow the exclusion or limitation of liability, the Licensor's liability will be limited to the greatest extent permitted by applicable law.
+
+11. Indemnification
+You agree to indemnify, defend, and hold harmless the Licensor and its officers, directors, employees, and agents from and against any claims, liabilities, damages, judgments, awards, losses, costs, expenses, or fees (including reasonable legal fees) arising out of or relating to your violation of this EULA or your use of the Software, including your User Content.
+
+12. Term & Termination
+This EULA is effective from the date you first access or use the Software and continues until terminated. The Licensor may terminate this EULA and your licence immediately, with or without notice, if you breach any provision of this EULA.
+
+You may terminate this EULA at any time by ceasing all use of the Software and, where applicable, deleting your account. Upon termination for any reason, your licence rights will immediately cease and you must stop using the Software.
+
+Sections 4, 5, 9, 10, 11, 13, and 14 survive any termination of this EULA.
+
+13. Governing Law
+This EULA is governed by and construed in accordance with the laws of England and Wales. Any disputes arising under or in connection with this EULA shall be subject to the exclusive jurisdiction of the courts of England and Wales, unless mandatory consumer protection laws in your country of residence require otherwise.
+
+14. Contact Us
+If you have any questions about this End User Licence Agreement, please contact us:
+Oxygen Low's Software
+Email: support@oxygenlow.com
+Website: https://oxygenlow.com
+Jurisdiction: United Kingdom

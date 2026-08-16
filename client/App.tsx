@@ -45,6 +45,13 @@ const AdminSupport = lazyWithRetry(() => import("./pages/AdminSupport"));
 const AdminTicket = lazyWithRetry(() => import("./pages/AdminTicket"));
 const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
 const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
+const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
+const Terms = lazyWithRetry(() => import("./pages/Terms"));
+const Eula = lazyWithRetry(() => import("./pages/Eula"));
+const Dmca = lazyWithRetry(() => import("./pages/Dmca"));
+const AcceptableUse = lazyWithRetry(() => import("./pages/AcceptableUse"));
+const Legal = lazyWithRetry(() => import("./pages/Legal"));
+const License = lazyWithRetry(() => import("./pages/License"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -138,6 +145,13 @@ const App = () => (
                 <Route path="/oauth/consent" element={<OauthConsent />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/eula" element={<Eula />} />
+                <Route path="/dmca" element={<Dmca />} />
+                <Route path="/acceptable-use" element={<AcceptableUse />} />
+                <Route path="/legal" element={<Legal />} />
+                <Route path="/license" element={<License />} />
                 <Route
                   path="/support"
                   element={

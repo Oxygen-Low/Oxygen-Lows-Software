@@ -13,6 +13,7 @@ import {
   GitCommit,
   Monitor,
   Gamepad2,
+  Scale,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { label: "Characters", href: "/characters", icon: Contact },
   { label: "Changelogs", href: "/changelogs", icon: GitCommit },
   { label: "Support", href: "/support", icon: LifeBuoy },
+  { label: "Legal", href: "/legal", icon: Scale },
 ];
 
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */

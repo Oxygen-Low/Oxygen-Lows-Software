@@ -17,6 +17,7 @@ OutputBaseFilename=OxygenLowsSoftware_Installer
 Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=lowest
+LicenseFile=EULA.txt
 WizardStyle=modern
 
 [Files]
