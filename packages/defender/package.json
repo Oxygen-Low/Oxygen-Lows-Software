@@ -6,23 +6,50 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./hono": { "import": "./dist/hono.js", "types": "./dist/hono.d.ts" },
-    "./next": { "import": "./dist/next.js", "types": "./dist/next.d.ts" }
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./hono": {
+      "import": "./dist/hono.js",
+      "types": "./dist/hono.d.ts"
+    },
+    "./next": {
+      "import": "./dist/next.js",
+      "types": "./dist/next.d.ts"
+    }
   },
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["security", "ddos", "firewall", "waf", "bot-detection", "rate-limiting"],
+  "keywords": [
+    "security",
+    "ddos",
+    "firewall",
+    "waf",
+    "bot-detection",
+    "rate-limiting"
+  ],
   "license": "MPL-2.0",
-  "repository": { "type": "git", "url": "https://github.com/Oxygen-Low/Oxygen-Lows-Software" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Oxygen-Low/Oxygen-Lows-Software"
+  },
   "peerDependencies": {
     "express": ">=4.0.0",
     "hono": ">=4.0.0"
   },
   "peerDependenciesMeta": {
-    "express": { "optional": true },
-    "hono": { "optional": true }
+    "express": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "7.0.2"
   }
 }
