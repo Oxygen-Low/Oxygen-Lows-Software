@@ -8,6 +8,7 @@ import { adminSupportRouter } from "./routes/adminSupport.ts";
 import { aiRouter } from "./routes/ai.ts";
 import { changelogsRouter } from "./routes/changelogs.ts";
 import { vpnRouter } from "./routes/vpn.ts";
+import { defenderRouter } from "./routes/defender.ts";
 
 const app = new Hono();
 
@@ -131,6 +132,7 @@ app.get("/sitemap.xml", (c) => {
     { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/qrcode-generator`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/defender`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/privacy`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/terms`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/eula`, changefreq: "monthly", priority: "0.5" },
@@ -363,6 +365,7 @@ app.route("/api/admin/support", adminSupportRouter);
 app.route("/api/ai", aiRouter);
 app.route("/api/changelogs", changelogsRouter);
 app.route("/api/vpn", vpnRouter);
+app.route("/api/defender", defenderRouter);
 
 export function createServer() {
   return app;

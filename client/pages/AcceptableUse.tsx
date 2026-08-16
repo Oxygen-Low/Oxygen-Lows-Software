@@ -174,6 +174,7 @@ export default function AcceptableUse() {
                   "Introducing viruses, malware, ransomware, spyware, worms, Trojan horses, or any other harmful or disruptive code.",
                   "Conducting denial-of-service (DoS) or distributed denial-of-service (DDoS) attacks against the Service or any third party.",
                   "Using automated tools (bots, crawlers, scrapers) to access the Service at a volume or frequency that places unreasonable load on our infrastructure, without our prior written consent.",
+                  "Using the Defender security package to intentionally block legitimate services or users for malicious purposes, or relying on Defender as your sole security measure against critical threats without implementing appropriate defense-in-depth strategies.",
                 ]}
               />
             </div>

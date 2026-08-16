@@ -254,6 +254,20 @@ export default function Privacy() {
                 these characters are stored in our database.
               </P>
             </div>
+
+            <div>
+              <p className="font-semibold text-foreground">
+                2.12 Defender &amp; Security Services
+              </p>
+              <P>
+                If you use our Defender security service or install the @oxygenlow/defender package 
+                on your infrastructure, we process metadata about incoming web requests (such as 
+                IP addresses, user agents, request paths, and potential attack vectors) and outbound 
+                connection data. This information is used to provide rate limiting, threat blocking, 
+                and security analytics for your protected applications. We use third-party IP geolocation 
+                services to support country-level blocking.
+              </P>
+            </div>
           </div>
         </Section>
 
@@ -354,6 +368,16 @@ export default function Privacy() {
                     "Cloudflare",
                     "Infrastructure, DDoS protection, & AI generation",
                     "IP address, request metadata, AI prompts",
+                  ],
+                  [
+                    "ip-api.com",
+                    "IP Geolocation for Defender",
+                    "IP address",
+                  ],
+                  [
+                    "Tor Project",
+                    "TOR Exit Node Detection",
+                    "No personal data shared (we fetch their public exit node list)",
                   ],
                 ].map(([proc, purpose, data]) => (
                   <tr key={proc} className="hover:bg-muted/10 transition-colors">

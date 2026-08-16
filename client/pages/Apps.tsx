@@ -30,10 +30,11 @@ import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
-import { Server, Shield, Monitor, Smartphone, Braces } from "lucide-react";
+import { DefenderApp } from "@/components/apps/Defender";
+import { Server, Shield, Monitor, Smartphone, Braces, ShieldCheck } from "lucide-react";
 
 type Category =
-  "All" | "Utility" | "LLM/AI" | "Development" | "Social";
+  "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
 
 type Availability = "web-and-desktop" | "desktop-only";
 
@@ -91,6 +92,12 @@ const CATEGORIES: {
     label: "Social",
     icon: <MessageSquare className="w-5 h-5" />,
     description: "Connect with others",
+  },
+  {
+    name: "Security",
+    label: "Security",
+    icon: <Shield className="w-5 h-5" />,
+    description: "Protection for software, websites and devices.",
   },
 ];
 
@@ -184,6 +191,16 @@ const apps: AppMetadata[] = [
     requiresAdmin: true,
     androidSupported: true,
   },
+  {
+    id: "defender",
+    name: "Defender",
+    description: "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
+    categories: ["All", "Security", "Development"],
+    availability: "web-and-desktop",
+    icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
+    component: DefenderApp,
+    authRequired: true,
+  },
 ];
 
 export default function Apps() {
@@ -245,6 +262,7 @@ export default function Apps() {
       "LLM/AI": 0,
       Development: 0,
       Social: 0,
+      Security: 0,
     };
     availableApps.forEach((app) => {
       app.categories.forEach((cat) => {

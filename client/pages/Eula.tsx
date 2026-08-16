@@ -125,6 +125,7 @@ export default function Eula() {
             items={[
               "Access and use the web application through a supported browser.",
               "Download and run the desktop client on a device you own or control, solely for your personal, non-commercial purposes.",
+              "Install and use the Defender security package on your own infrastructure to protect your applications.",
               "Use any Software features made available to your account tier.",
             ]}
           />

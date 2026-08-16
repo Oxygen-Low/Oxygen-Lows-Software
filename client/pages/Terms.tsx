@@ -226,11 +226,27 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 8. Intellectual property */}
+        {/* 8. Defender & Security Services */}
+        <Section
+          id="defender-security"
+          title="8. Defender &amp; Security Services"
+          index={8}
+        >
+          <P>
+            If you use our Defender security service or install the @oxygenlow/defender package on your 
+            applications, you are responsible for configuring the service appropriately for your needs. 
+            The service is designed to mitigate common web attacks, bots, and excessive traffic, but we 
+            do not guarantee that it will prevent all security incidents or unauthorized access. You 
+            agree that we are not liable for any security breaches, data loss, or service interruptions 
+            that may occur despite your use of the Defender service.
+          </P>
+        </Section>
+
+        {/* 9. Intellectual property */}
         <Section
           id="intellectual-property"
-          title="8. Intellectual Property"
-          index={8}
+          title="9. Intellectual Property"
+          index={9}
         >
           <P>
             All content, software, trademarks, logos, and other materials
@@ -246,11 +262,11 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 9. Third-party services */}
+        {/* 10. Third-party services */}
         <Section
           id="third-party"
-          title="9. Third-Party Services"
-          index={9}
+          title="10. Third-Party Services"
+          index={10}
         >
           <P>
             The Service integrates with third-party services (including Supabase,
@@ -261,8 +277,8 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 10. Disclaimers */}
-        <Section id="disclaimers" title="10. Disclaimers" index={10}>
+        {/* 11. Disclaimers */}
+        <Section id="disclaimers" title="11. Disclaimers" index={11}>
           <P>
             THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS
             WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
@@ -277,11 +293,11 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 11. Limitation of liability */}
+        {/* 12. Limitation of liability */}
         <Section
           id="liability"
-          title="11. Limitation of Liability"
-          index={11}
+          title="12. Limitation of Liability"
+          index={12}
         >
           <P>
             TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW,{" "}
@@ -299,8 +315,8 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 12. Governing law */}
-        <Section id="governing-law" title="12. Governing Law" index={12}>
+        {/* 13. Governing law */}
+        <Section id="governing-law" title="13. Governing Law" index={13}>
           <P>
             These Terms are governed by and construed in accordance with the
             laws of England and Wales. Any disputes arising under or in
@@ -311,8 +327,8 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 13. Changes */}
-        <Section id="changes" title="13. Changes to These Terms" index={13}>
+        {/* 14. Changes */}
+        <Section id="changes" title="14. Changes to These Terms" index={14}>
           <P>
             We may update these Terms at any time by posting the revised version
             on this page with an updated "Last updated" date. If changes are
@@ -323,8 +339,8 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 14. Termination */}
-        <Section id="termination" title="14. Termination" index={14}>
+        {/* 15. Termination */}
+        <Section id="termination" title="15. Termination" index={15}>
           <P>
             We may suspend or terminate your access to the Service at any time,
             with or without notice, for any reason, including if we reasonably
@@ -335,8 +351,8 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 15. Contact */}
-        <Section id="contact" title="15. Contact Us" index={15}>
+        {/* 16. Contact */}
+        <Section id="contact" title="16. Contact Us" index={16}>
           <P>
             If you have any questions about these Terms of Use, please contact
             us:

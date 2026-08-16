@@ -1,0 +1,28 @@
+{
+  "name": "@oxygenlow/defender",
+  "version": "0.1.0",
+  "description": "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./hono": { "import": "./dist/hono.js", "types": "./dist/hono.d.ts" },
+    "./next": { "import": "./dist/next.js", "types": "./dist/next.d.ts" }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["security", "ddos", "firewall", "waf", "bot-detection", "rate-limiting"],
+  "license": "MPL-2.0",
+  "repository": { "type": "git", "url": "https://github.com/Oxygen-Low/Oxygen-Lows-Software" },
+  "peerDependencies": {
+    "express": ">=4.0.0",
+    "hono": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": { "optional": true },
+    "hono": { "optional": true }
+  }
+}
