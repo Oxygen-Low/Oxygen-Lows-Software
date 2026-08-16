@@ -12,8 +12,11 @@ export async function createDefender(config: DefenderConfig): Promise<any> {
       
       let bodyStr = '';
       try {
-        const text = await c.req.text();
-        bodyStr = text || '';
+        if (['POST', 'PUT', 'PATCH'].includes(c.req.method.toUpperCase())) {
+          const raw = c.req.raw.clone();
+          const text = await raw.text();
+          bodyStr = text || '';
+        }
       } catch (e) {
         // Can't read body, ignore
       }

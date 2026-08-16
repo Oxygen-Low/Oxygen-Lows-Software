@@ -13,10 +13,15 @@ import { createDefender } from "@oxygenlow/webdefender/hono";
 
 const app = new Hono();
 
+let defenderPromise: Promise<any> | null = null;
+
 app.use('*', async (c, next) => {
-  const middleware = await createDefender({
-    apiKey: process.env.DEFENDER_API_KEY || 'your_api_key_here',
-  });
+  if (!defenderPromise) {
+    defenderPromise = createDefender({
+      apiKey: process.env.DEFENDER_API_KEY || 'your_api_key_here',
+    });
+  }
+  const middleware = await defenderPromise;
   return middleware(c, next);
 });
 
