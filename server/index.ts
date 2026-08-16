@@ -16,9 +16,12 @@ const app = new Hono();
 let defenderPromise: Promise<any> | null = null;
 
 app.use('*', async (c, next) => {
+  if (c.req.path.startsWith('/api/defender')) {
+    return next();
+  }
   if (!defenderPromise) {
     defenderPromise = createDefender({
-      apiKey: process.env.DEFENDER_API_KEY || 'your_api_key_here',
+      apiKey: process.env.DEFENDER_API_KEY || '',
     });
   }
   const middleware = await defenderPromise;
