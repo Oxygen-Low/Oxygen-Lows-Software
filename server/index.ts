@@ -9,8 +9,16 @@ import { aiRouter } from "./routes/ai.ts";
 import { changelogsRouter } from "./routes/changelogs.ts";
 import { vpnRouter } from "./routes/vpn.ts";
 import { defenderRouter } from "./routes/defender.ts";
+import { createDefender } from "@oxygenlow/defender/hono";
 
 const app = new Hono();
+
+app.use('*', async (c, next) => {
+  const middleware = await createDefender({
+    apiKey: process.env.DEFENDER_API_KEY || 'your_api_key_here',
+  });
+  return middleware(c, next);
+});
 
 const ALLOWED_ORIGINS = [
   "https://oxygenlow.com",
