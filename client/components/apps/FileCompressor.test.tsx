@@ -123,22 +123,16 @@ describe("FileCompressorApp", () => {
   });
 
   it("handles image compression", async () => {
-    render(
+    const { container } = render(
       <ThemeProvider>
         <FileCompressorApp />
       </ThemeProvider>,
     );
 
     // Select a file
-    const storageTab = screen.getByRole("tab", { name: "Use Storage" });
-    fireEvent.pointerDown(storageTab);
-    fireEvent.click(storageTab);
-    
-    await waitFor(() => {
-      expect(screen.getByText("Click to select from storage")).toBeDefined();
-    });
-    const selectors = screen.getAllByText("Click to select from storage");
-    fireEvent.click(selectors[0]);
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['dummy content'], 'test.jpg', { type: 'image/jpeg' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
 
     // Check if file name appears
     await waitFor(() => {
