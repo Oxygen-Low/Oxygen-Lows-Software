@@ -21,7 +21,7 @@ export default function License() {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">License</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Creative Commons Attribution 4.0 International Public License
+              Mozilla Public License Version 2.0
             </p>
           </div>
         </motion.div>
