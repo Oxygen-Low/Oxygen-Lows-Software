@@ -29,7 +29,8 @@ import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
 import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
-import { Server, Shield, Monitor, Smartphone } from "lucide-react";
+import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
+import { Server, Shield, Monitor, Smartphone, Braces } from "lucide-react";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social";
@@ -102,6 +103,15 @@ const apps: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Code className="w-8 h-8 text-cyan-500" />,
     component: Base64EncoderApp,
+  },
+  {
+    id: "json-formatter",
+    name: "JSON Formatter",
+    description: "Format, beautify, and validate JSON strings.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Braces className="w-8 h-8 text-cyan-500" />,
+    component: JsonFormatterApp,
   },
   {
     id: "chatbot",
