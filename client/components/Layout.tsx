@@ -14,6 +14,7 @@ import {
   Monitor,
   Gamepad2,
   Scale,
+  Download as DownloadIcon,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -139,13 +140,13 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             >
               Open Beta
             </a>
-            <a
-              href="https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware_Installer.exe"
+            <Link
+              to="/download"
               className="flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white"
               title="Download Desktop App"
             >
-              <Monitor className="w-5 h-5" />
-            </a>
+              <DownloadIcon className="w-5 h-5" />
+            </Link>
             <a
               href="https://discord.gg/tNczTe66jK"
               target="_blank"

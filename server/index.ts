@@ -34,6 +34,7 @@ app.use(
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
+      mediaSrc: ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co"],
       connectSrc: [
         "'self'",
         "https://vqmukrmpgvavscsyefqd.supabase.co",

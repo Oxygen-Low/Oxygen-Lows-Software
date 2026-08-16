@@ -52,6 +52,7 @@ const Dmca = lazyWithRetry(() => import("./pages/Dmca"));
 const AcceptableUse = lazyWithRetry(() => import("./pages/AcceptableUse"));
 const Legal = lazyWithRetry(() => import("./pages/Legal"));
 const License = lazyWithRetry(() => import("./pages/License"));
+const Download = lazyWithRetry(() => import("./pages/Download"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -192,6 +193,7 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/download" element={<Download />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
