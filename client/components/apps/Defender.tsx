@@ -118,6 +118,11 @@ export function DefenderApp() {
   const [newAppName, setNewAppName] = useState("");
   const [newAppKey, setNewAppKey] = useState<string | null>(null);
 
+  // App Deletion State
+  const [appToDelete, setAppToDelete] = useState<App | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
     const token = session?.access_token;
     if (!token) throw new Error('Not authenticated');
@@ -165,6 +170,23 @@ export function DefenderApp() {
     }
   };
 
+  const handleDeleteAppFromList = async () => {
+    if (!appToDelete) return;
+    setIsDeleting(true);
+    try {
+      await authFetch(`/api/defender/apps/${appToDelete.id}`, { method: 'DELETE' });
+      toast.success("App deleted successfully.");
+      setAppToDelete(null);
+      setDeleteConfirmText("");
+      loadApps();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete app.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (!selectedAppId) {
     return (
       <div className="p-6 max-w-7xl mx-auto space-y-8">
@@ -189,11 +211,24 @@ export function DefenderApp() {
                   onClick={() => setSelectedAppId(app.id)}
                 >
                   <CardHeader>
-                    <div className="flex justify-between items-start mb-2">
-                      <CardTitle className="text-xl text-white">{app.name}</CardTitle>
-                      <Badge variant={app.block_mode_enabled ? "destructive" : "default"} className={cn(app.block_mode_enabled ? "" : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20")}>
-                        {app.block_mode_enabled ? "Block Mode ON" : "Block Mode OFF"}
-                      </Badge>
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                      <CardTitle className="text-xl text-white line-clamp-1">{app.name}</CardTitle>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={app.block_mode_enabled ? "destructive" : "default"} className={cn(app.block_mode_enabled ? "" : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20")}>
+                          {app.block_mode_enabled ? "Block Mode ON" : "Block Mode OFF"}
+                        </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAppToDelete(app);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <CardDescription className="font-mono text-xs">
                       Key: {app.api_key_prefix}••••••••
@@ -271,6 +306,40 @@ export function DefenderApp() {
                     </DialogFooter>
                   </div>
                 )}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!appToDelete} onOpenChange={(open) => {
+              if (!open) { setAppToDelete(null); setDeleteConfirmText(""); }
+            }}>
+              <DialogContent className="sm:max-w-md bg-slate-950 border-slate-800">
+                <DialogHeader>
+                  <DialogTitle>Delete App</DialogTitle>
+                  <DialogDescription>
+                    This action cannot be undone. This will permanently delete <strong>{appToDelete?.name}</strong> and all its configuration and logs.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Type <strong className="text-white">{appToDelete?.name}</strong> to confirm</Label>
+                    <Input 
+                      value={deleteConfirmText} 
+                      onChange={e => setDeleteConfirmText(e.target.value)} 
+                      className="bg-slate-900 border-slate-800" 
+                      placeholder={appToDelete?.name}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => { setAppToDelete(null); setDeleteConfirmText(""); }}>Cancel</Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={handleDeleteAppFromList} 
+                      disabled={deleteConfirmText !== appToDelete?.name || isDeleting}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete App"}
+                    </Button>
+                  </DialogFooter>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
