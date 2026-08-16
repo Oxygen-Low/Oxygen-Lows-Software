@@ -34,7 +34,7 @@ export class DefenderClient {
 
   constructor(config: DefenderConfig) {
     this.config = config;
-    this.apiUrl = 'https://oxygenlow.com';
+    this.apiUrl = config.apiUrl || 'https://oxygenlow.com';
     this.torDetector = new TorDetector();
     this.rateLimiter = new RateLimiter();
     this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn));

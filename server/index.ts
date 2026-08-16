@@ -22,6 +22,7 @@ app.use('*', async (c, next) => {
   if (!defenderPromise) {
     defenderPromise = createDefender({
       apiKey: process.env.DEFENDER_API_KEY || '',
+      apiUrl: process.env.DEFENDER_API_URL || 'https://oxygenlow.com',
     }, app);
   }
   const middleware = await defenderPromise;

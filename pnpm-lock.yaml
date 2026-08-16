@@ -36,8 +36,8 @@ importers:
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@oxygenlow/webdefender':
-        specifier: 0.1.0
-        version: 0.1.0(express@5.2.1)(hono@4.13.2)
+        specifier: workspace:*
+        version: link:packages/webdefender
       '@supabase/supabase-js':
         specifier: ^2.112.3
         version: 2.112.3
@@ -796,17 +796,6 @@ packages:
 
   '@oxc-project/types@0.144.0':
     resolution: {integrity: sha512-nuhZIOLuI6TFQ32I/WnUx+SCPY7SdSKwgnFHydAuoS1+Z4BRcaP+RRJmGzl9lw+0OFF7UmaESf7KQRXaNLHypg==}
-
-  '@oxygenlow/webdefender@0.1.0':
-    resolution: {integrity: sha512-igUbNzSPgMipU4HmdWKE+n5lRhYblB9qC+vKb90xxnVqejBPyFhtv+KxOKj82QUXa5lFJPYGcPuK2lEAizUWjQ==}
-    peerDependencies:
-      express: '>=4.0.0'
-      hono: '>=4.0.0'
-    peerDependenciesMeta:
-      express:
-        optional: true
-      hono:
-        optional: true
 
   '@paralleldrive/cuid2@2.3.1':
     resolution: {integrity: sha512-XO7cAxhnTZl0Yggq6jOgjiOHhbgcO4NqFqwSmQpjK3b6TEE6Uj/jfSk6wzYyemh3+I0sHirKSetjQwn5cZktFw==}
@@ -4319,11 +4308,6 @@ snapshots:
   '@noble/hashes@1.8.0': {}
 
   '@oxc-project/types@0.144.0': {}
-
-  '@oxygenlow/webdefender@0.1.0(express@5.2.1)(hono@4.13.2)':
-    optionalDependencies:
-      express: 5.2.1
-      hono: 4.13.2
 
   '@paralleldrive/cuid2@2.3.1':
     dependencies:
