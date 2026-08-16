@@ -229,16 +229,16 @@ export default function Terms() {
         {/* 8. Defender & Security Services */}
         <Section
           id="defender-security"
-          title="8. Defender &amp; Security Services"
+          title="8. Web Defender &amp; Security Services"
           index={8}
         >
           <P>
-            If you use our Defender security service or install the @oxygenlow/defender package on your 
+            If you use our Web Defender security service or install the @oxygenlow/webdefender package on your 
             applications, you are responsible for configuring the service appropriately for your needs. 
             The service is designed to mitigate common web attacks, bots, and excessive traffic, but we 
             do not guarantee that it will prevent all security incidents or unauthorized access. You 
             agree that we are not liable for any security breaches, data loss, or service interruptions 
-            that may occur despite your use of the Defender service.
+            that may occur despite your use of the Web Defender service.
           </P>
         </Section>
 

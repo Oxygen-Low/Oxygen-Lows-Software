@@ -1,13 +1,13 @@
-# @oxygenlow/defender
+# @oxygenlow/webdefender
 
-![npm version](https://img.shields.io/npm/v/@oxygenlow/defender.svg)
-![License](https://img.shields.io/npm/l/@oxygenlow/defender.svg)
+![npm version](https://img.shields.io/npm/v/@oxygenlow/webdefender.svg)
+![License](https://img.shields.io/badge/license-MPL--2.0-blue.svg)
 
 Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injection attacks, bots, and malicious traffic with an intelligent, cloud-managed Web Application Firewall (WAF) and middleware by Oxygen Low's Software.
 
 ## Description
 
-`@oxygenlow/defender` is a robust security middleware package designed by Oxygen Low to safeguard your web applications and APIs. It seamlessly integrates into your existing server architecture to monitor, filter, and optionally block malicious requests in real-time, leveraging the Oxygen Low's Software dashboard for configuration and observability.
+`@oxygenlow/webdefender` is a robust security middleware package designed by Oxygen Low to safeguard your web applications and APIs. It seamlessly integrates into your existing server architecture to monitor, filter, and optionally block malicious requests in real-time, leveraging the Oxygen Low's Software dashboard for configuration and observability.
 
 ## Features
 
@@ -22,7 +22,7 @@ Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injectio
 ## Installation
 
 ```bash
-npm install @oxygenlow/defender
+npm install @oxygenlow/webdefender
 ```
 
 ## Quick Start
@@ -31,7 +31,7 @@ npm install @oxygenlow/defender
 
 ```javascript
 import express from 'express';
-import { createDefender } from '@oxygenlow/defender';
+import { createDefender } from '@oxygenlow/webdefender';
 
 const app = express();
 app.use(express.json());
@@ -55,7 +55,7 @@ start();
 
 ```javascript
 import { Hono } from 'hono';
-import { createDefender } from '@oxygenlow/defender/hono';
+import { createDefender } from '@oxygenlow/webdefender/hono';
 
 const app = new Hono();
 
@@ -76,7 +76,7 @@ export default app;
 ```javascript
 // middleware.ts
 import { NextResponse } from 'next/server';
-import { createNextDefender } from '@oxygenlow/defender/next';
+import { createNextDefender } from '@oxygenlow/webdefender/next';
 
 const defender = createNextDefender({
   apiKey: 'your_api_key_here'

@@ -257,10 +257,10 @@ export default function Privacy() {
 
             <div>
               <p className="font-semibold text-foreground">
-                2.12 Defender &amp; Security Services
+                2.12 Web Defender &amp; Security Services
               </p>
               <P>
-                If you use our Defender security service or install the @oxygenlow/defender package 
+                If you use our Web Defender security service or install the @oxygenlow/webdefender package 
                 on your infrastructure, we process metadata about incoming web requests (such as 
                 IP addresses, user agents, request paths, and potential attack vectors) and outbound 
                 connection data. This information is used to provide rate limiting, threat blocking, 
@@ -371,7 +371,7 @@ export default function Privacy() {
                   ],
                   [
                     "ip-api.com",
-                    "IP Geolocation for Defender",
+                    "IP Geolocation for Web Defender",
                     "IP address",
                   ],
                   [

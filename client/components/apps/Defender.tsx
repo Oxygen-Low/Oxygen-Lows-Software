@@ -172,7 +172,7 @@ export function DefenderApp() {
           <div className="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center">
             <Shield className="w-10 h-10 text-cyan-500" />
           </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Defender</h1>
+          <h1 className="text-4xl font-bold text-white tracking-tight">Web Defender</h1>
           <p className="text-lg text-slate-400 max-w-xl">
             Protect your websites and APIs from attacks, bots, and malicious traffic.
           </p>
@@ -226,7 +226,7 @@ export function DefenderApp() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md bg-slate-950 border-slate-800">
                 <DialogHeader>
-                  <DialogTitle>Create New Defender App</DialogTitle>
+                  <DialogTitle>Create New Web Defender App</DialogTitle>
                   <DialogDescription>
                     Set up a new application to monitor and protect.
                   </DialogDescription>
@@ -280,7 +280,7 @@ export function DefenderApp() {
           <h3 className="text-xl font-semibold text-white mb-6">Integration Setup</h3>
           <Card className="bg-slate-900 border-slate-800 overflow-hidden">
             <div className="p-4 bg-slate-950 border-b border-slate-800 font-mono text-sm text-slate-300">
-              npm install @oxygenlow/defender
+              npm install @oxygenlow/webdefender
             </div>
             <CardContent className="p-6">
               <Tabs defaultValue="express">
@@ -292,7 +292,7 @@ export function DefenderApp() {
                 <TabsContent value="express" className="space-y-4">
                   <pre className="p-4 bg-slate-950 rounded-lg overflow-x-auto text-sm font-mono text-slate-300">
 {`import express from 'express';
-import { defender } from '@oxygenlow/defender/express';
+import { defender } from '@oxygenlow/webdefender/express';
 
 const app = express();
 
@@ -307,7 +307,7 @@ app.get('/', (req, res) => res.send('Protected!'));`}
                 <TabsContent value="hono" className="space-y-4">
                   <pre className="p-4 bg-slate-950 rounded-lg overflow-x-auto text-sm font-mono text-slate-300">
 {`import { Hono } from 'hono';
-import { defender } from '@oxygenlow/defender/hono';
+import { defender } from '@oxygenlow/webdefender/hono';
 
 const app = new Hono();
 
@@ -322,7 +322,7 @@ app.get('/', (c) => c.text('Protected!'));`}
                 <TabsContent value="next" className="space-y-4">
                   <pre className="p-4 bg-slate-950 rounded-lg overflow-x-auto text-sm font-mono text-slate-300">
 {`// middleware.ts
-import { withDefender } from '@oxygenlow/defender/next';
+import { withDefender } from '@oxygenlow/webdefender/next';
 
 export default withDefender({
   apiKey: process.env.DEFENDER_API_KEY
