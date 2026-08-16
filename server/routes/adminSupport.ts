@@ -67,7 +67,7 @@ adminSupportRouter.get("/tickets", async (c) => {
     return c.json({ tickets: ticketsWithProfiles });
   } catch (error: any) {
     console.error("Error fetching support tickets:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });
 
@@ -98,7 +98,7 @@ adminSupportRouter.get("/tickets/:id", async (c) => {
     return c.json({ ticket: { ...ticket, profiles: profile } });
   } catch (error: any) {
     console.error("Error fetching specific ticket:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });
 
@@ -132,7 +132,7 @@ adminSupportRouter.get("/tickets/:id/messages", async (c) => {
     return c.json({ messages: messagesWithProfiles });
   } catch (error: any) {
     console.error("Error fetching ticket messages:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });
 
@@ -173,7 +173,7 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
     return c.json({ message: data });
   } catch (error: any) {
     console.error("Error posting ticket message:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });
 
@@ -200,6 +200,6 @@ adminSupportRouter.patch("/tickets/:id/status", async (c) => {
     return c.json({ ticket: data });
   } catch (error: any) {
     console.error("Error updating ticket status:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });

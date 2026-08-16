@@ -77,7 +77,10 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   const { provider, model, messages, stream, apiKey, baseUrl, tools } =
     await c.req.json();
   const authHeader = c.req.header("authorization");
-  const token = authHeader ? authHeader.replace("Bearer ", "") : null;
+  // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+  const token = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
   let user = null;
   let supabase: any = null;
 
@@ -136,7 +139,17 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     return c.json({ error: "Provider not configured" }, 400);
   }
 
-  const processedMessages = (messages || []).slice(-20);
+  // A03: cap message history and enforce a per-message content length limit
+  const MAX_MSG_CONTENT_LENGTH = 32_768; // 32 KB per message
+  const processedMessages = (messages || [])
+    .slice(-20)
+    .map((m: any) => ({
+      ...m,
+      content:
+        typeof m.content === "string" && m.content.length > MAX_MSG_CONTENT_LENGTH
+          ? m.content.slice(0, MAX_MSG_CONTENT_LENGTH)
+          : m.content,
+    }));
   let finalMessages = [...processedMessages];
   let searchPerformed = "";
 
@@ -381,7 +394,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       return c.json(data);
     }
   } catch (err: any) {
+    // A09: log full error server-side; return generic message to client
     console.error("AI Proxy Error", err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: "An internal error occurred" }, 500);
   }
 });

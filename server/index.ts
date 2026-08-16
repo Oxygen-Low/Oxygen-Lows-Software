@@ -24,7 +24,42 @@ function isAllowedOrigin(origin: string | undefined): string | undefined {
   return undefined;
 }
 
-app.use(secureHeaders());
+// A05: explicit Content-Security-Policy — Hono's secureHeaders() does NOT emit
+// CSP by default, so we must configure it manually.
+app.use(
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // required for Vite HMR in dev
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: [
+        "'self'",
+        "https://vqmukrmpgvavscsyefqd.supabase.co",
+        "wss://vqmukrmpgvavscsyefqd.supabase.co",
+        "https://oai.stablehorde.net",
+        "https://stablehorde.net",
+        "https://api.cloudflare.com",
+        "https://api.openai.com",
+        "https://api.anthropic.com",
+        "https://generativelanguage.googleapis.com",
+        "https://openrouter.ai",
+        "https://api.x.ai",
+      ],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: [],
+    },
+    xFrameOptions: "DENY",
+    xContentTypeOptions: "nosniff",
+    referrerPolicy: "strict-origin-when-cross-origin",
+    strictTransportSecurity: "max-age=31536000; includeSubDomains",
+  }),
+);
+
 app.use(
   cors({
     origin: (origin) => isAllowedOrigin(origin) ?? "",
@@ -32,6 +67,16 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization", "x-github-token"],
   }),
 );
+
+// A09: X-Request-Id for log correlation
+app.use("*", async (c, next) => {
+  const requestId =
+    c.req.header("x-request-id") ||
+    crypto.randomUUID();
+  c.set("requestId" as any, requestId);
+  await next();
+  c.header("X-Request-Id", requestId);
+});
 
 app.use('*', async (c, next) => {
   const accept = c.req.header('Accept') || '';
