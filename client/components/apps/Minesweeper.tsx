@@ -44,7 +44,7 @@ const Cell = React.memo(
           data.isRevealed
             ? "bg-slate-800 border-slate-700"
             : "bg-slate-700 border-slate-500 hover:bg-slate-600",
-          data.isRevealed && data.isMine && "bg-red-500/20 border-red-500/50"
+          data.isRevealed && data.isMine && "bg-red-500/20 border-red-500/50",
         )}
         onClick={onClick}
         onContextMenu={onContextMenu}
@@ -63,7 +63,7 @@ const Cell = React.memo(
                 data.neighborMines === 5 && "text-yellow-400",
                 data.neighborMines === 6 && "text-cyan-400",
                 data.neighborMines === 7 && "text-orange-400",
-                data.neighborMines === 8 && "text-pink-400"
+                data.neighborMines === 8 && "text-pink-400",
               )}
             >
               {data.neighborMines}
@@ -74,40 +74,52 @@ const Cell = React.memo(
         ) : null}
       </div>
     );
-  }
+  },
 );
 
-const GameTimer = React.memo(({ status, resetKey }: { status: "idle" | "playing" | "won" | "lost", resetKey: number }) => {
-  const [time, setTime] = useState(0);
+const GameTimer = React.memo(
+  ({
+    status,
+    resetKey,
+  }: {
+    status: "idle" | "playing" | "won" | "lost";
+    resetKey: number;
+  }) => {
+    const [time, setTime] = useState(0);
 
-  useEffect(() => {
-    setTime(0);
-  }, [resetKey]);
+    useEffect(() => {
+      setTime(0);
+    }, [resetKey]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (status === "playing") {
-      interval = setInterval(() => {
-        setTime((t) => Math.min(t + 1, 999));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [status]);
+    useEffect(() => {
+      let interval: NodeJS.Timeout;
+      if (status === "playing") {
+        interval = setInterval(() => {
+          setTime((t) => Math.min(t + 1, 999));
+        }, 1000);
+      }
+      return () => clearInterval(interval);
+    }, [status]);
 
-  return (
-    <div className="flex flex-col items-center gap-1 min-w-[80px] bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
-      <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Time</span>
-      <span className="text-2xl font-mono text-cyan-500">
-        {time.toString().padStart(3, "0")}
-      </span>
-    </div>
-  );
-});
+    return (
+      <div className="flex flex-col items-center gap-1 min-w-[80px] bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
+        <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">
+          Time
+        </span>
+        <span className="text-2xl font-mono text-cyan-500">
+          {time.toString().padStart(3, "0")}
+        </span>
+      </div>
+    );
+  },
+);
 
 export function MinesweeperApp() {
   const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
   const [board, setBoard] = useState<CellData[]>([]);
-  const [status, setStatus] = useState<"idle" | "playing" | "won" | "lost">("idle");
+  const [status, setStatus] = useState<"idle" | "playing" | "won" | "lost">(
+    "idle",
+  );
   const [flags, setFlags] = useState(0);
   const [revealedCount, setRevealedCount] = useState(0);
   const [resetKey, setResetKey] = useState(0);
@@ -129,14 +141,18 @@ export function MinesweeperApp() {
     setStatus("idle");
     setFlags(0);
     setRevealedCount(0);
-    setResetKey(prev => prev + 1);
+    setResetKey((prev) => prev + 1);
   }, [rows, cols]);
 
   useEffect(() => {
     initBoard();
   }, [initBoard]);
 
-  const getNeighbors = (index: number, totalRows: number, totalCols: number) => {
+  const getNeighbors = (
+    index: number,
+    totalRows: number,
+    totalCols: number,
+  ) => {
     const r = Math.floor(index / totalCols);
     const c = index % totalCols;
     const neighbors: number[] = [];
@@ -159,7 +175,7 @@ export function MinesweeperApp() {
       firstClickIndex,
       ...getNeighbors(firstClickIndex, rows, cols),
     ]);
-    
+
     let minesPlaced = 0;
     while (minesPlaced < mines) {
       const idx = Math.floor(Math.random() * (rows * cols));
@@ -183,7 +199,12 @@ export function MinesweeperApp() {
   };
 
   const handleCellClick = (index: number) => {
-    if (status === "won" || status === "lost" || board[index].isFlagged || board[index].isRevealed) {
+    if (
+      status === "won" ||
+      status === "lost" ||
+      board[index].isFlagged ||
+      board[index].isRevealed
+    ) {
       return;
     }
 
@@ -216,7 +237,7 @@ export function MinesweeperApp() {
       if (!newBoard[curr].isRevealed && !newBoard[curr].isFlagged) {
         newBoard[curr].isRevealed = true;
         currentRevealedCount++;
-        
+
         if (newBoard[curr].neighborMines === 0) {
           const neighbors = getNeighbors(curr, rows, cols);
           for (const n of neighbors) {
@@ -236,7 +257,9 @@ export function MinesweeperApp() {
       setStatus("won");
       // Flag all remaining mines
       setBoard((prev) =>
-        prev.map((c) => (c.isMine && !c.isFlagged ? { ...c, isFlagged: true } : c))
+        prev.map((c) =>
+          c.isMine && !c.isFlagged ? { ...c, isFlagged: true } : c,
+        ),
       );
       setFlags(mines);
     }
@@ -263,7 +286,11 @@ export function MinesweeperApp() {
   };
 
   const handleDoubleClick = (index: number) => {
-    if (status !== "playing" || !board[index].isRevealed || board[index].neighborMines === 0) {
+    if (
+      status !== "playing" ||
+      !board[index].isRevealed ||
+      board[index].neighborMines === 0
+    ) {
       return;
     }
 
@@ -303,7 +330,7 @@ export function MinesweeperApp() {
         if (!newBoard[curr].isRevealed && !newBoard[curr].isFlagged) {
           newBoard[curr].isRevealed = true;
           currentRevealedCount++;
-          
+
           if (newBoard[curr].neighborMines === 0) {
             const nextNeighbors = getNeighbors(curr, rows, cols);
             for (const n of nextNeighbors) {
@@ -322,7 +349,9 @@ export function MinesweeperApp() {
       if (currentRevealedCount === rows * cols - mines) {
         setStatus("won");
         setBoard((prev) =>
-          prev.map((c) => (c.isMine && !c.isFlagged ? { ...c, isFlagged: true } : c))
+          prev.map((c) =>
+            c.isMine && !c.isFlagged ? { ...c, isFlagged: true } : c,
+          ),
         );
         setFlags(mines);
       }
@@ -332,11 +361,12 @@ export function MinesweeperApp() {
   return (
     <div className="flex flex-col items-center h-full w-full py-8 text-slate-200">
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl flex flex-col max-w-[95%] max-h-full overflow-hidden">
-        
         {/* Header Controls */}
         <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-800 shrink-0 gap-4 flex-wrap">
           <div className="flex flex-col items-center gap-1 min-w-[80px] bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
-            <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Mines</span>
+            <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">
+              Mines
+            </span>
             <span className="text-2xl font-mono text-red-500">
               {(mines - flags).toString().padStart(3, "0")}
             </span>
