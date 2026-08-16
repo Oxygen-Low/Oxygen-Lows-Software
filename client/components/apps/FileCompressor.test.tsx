@@ -145,7 +145,7 @@ describe("FileCompressorApp", () => {
 
     await waitFor(
       () => {
-        expect(screen.getByText("Success")).toBeDefined();
+        expect(screen.getByText("Compression Complete")).toBeDefined();
       },
       { timeout: 3000 },
     );
