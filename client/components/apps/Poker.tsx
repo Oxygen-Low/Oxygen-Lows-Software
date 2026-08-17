@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Coins, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-// @ts-ignore
 import { Hand as PokerHand } from "pokersolver";
 
 type Phase = "pre-flop" | "flop" | "turn" | "river" | "showdown" | "game-over";
