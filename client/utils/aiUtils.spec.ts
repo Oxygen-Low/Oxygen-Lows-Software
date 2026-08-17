@@ -10,15 +10,18 @@ describe("formatModelLabel", () => {
 
   it("should handle ollama provider", () => {
     expect(formatModelLabel("ollama", "llama3")).toBe("Ollama/llama3");
+    expect(formatModelLabel("local-ollama", "llama3")).toBe("Ollama/llama3");
   });
 
   it("should handle lmstudio provider", () => {
     expect(formatModelLabel("lmstudio", "phi3")).toBe("LMStudio/phi3");
+    expect(formatModelLabel("local-lmstudio", "phi3")).toBe("LMStudio/phi3");
   });
 
   it("should handle koboldcpp and kobold providers", () => {
     expect(formatModelLabel("koboldcpp", "model-a")).toBe("Koboldcpp/model-a");
     expect(formatModelLabel("kobold", "model-b")).toBe("Koboldcpp/model-b");
+    expect(formatModelLabel("local-kobold", "model-c")).toBe("Koboldcpp/model-c");
   });
 
   it("should handle cloudflare provider", () => {

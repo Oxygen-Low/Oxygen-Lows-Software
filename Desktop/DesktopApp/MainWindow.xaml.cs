@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading;
@@ -18,6 +19,7 @@ namespace DesktopApp;
 public partial class MainWindow : Window
 {
     private string? _workingDirectory = Path.GetTempPath();
+    private static readonly HttpClient _localHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2.5) };
 
     public MainWindow()
     {
@@ -53,7 +55,11 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         var userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OxygenLowsSoftware", "WebView2");
-        var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+        var options = new CoreWebView2EnvironmentOptions
+        {
+            AdditionalBrowserArguments = "--allow-running-insecure-content --disable-web-security --allow-insecure-localhost --disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights"
+        };
+        var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
         await webView.EnsureCoreWebView2Async(environment);
         
         webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
@@ -328,6 +334,173 @@ public partial class MainWindow : Window
                             error = PythonServerManager.Instance.LastError
                         } 
                     });
+                }
+                else if (cmd == "fetch_local_models")
+                {
+                    var models = new List<Dictionary<string, string>>();
+                    var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    void AddModel(string provider, string modelId)
+                    {
+                        if (string.IsNullOrWhiteSpace(modelId)) return;
+                        string key = $"{provider}:{modelId}";
+                        if (seen.Add(key))
+                        {
+                            models.Add(new Dictionary<string, string>
+                            {
+                                ["provider"] = provider,
+                                ["model_id"] = modelId
+                            });
+                        }
+                    }
+
+                    // 1. LM Studio (ports 1234 on 127.0.0.1 and localhost)
+                    var lmStudioUrls = new[]
+                    {
+                        "http://127.0.0.1:1234/v1/models",
+                        "http://localhost:1234/v1/models",
+                        "http://127.0.0.1:1234/api/v0/models",
+                        "http://localhost:1234/api/v0/models"
+                    };
+                    foreach (var url in lmStudioUrls)
+                    {
+                        try
+                        {
+                            var res = await _localHttpClient.GetStringAsync(url);
+                            using var resDoc = JsonDocument.Parse(res);
+                            if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in dataProp.EnumerateArray())
+                                {
+                                    if (item.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "embeddings")
+                                        continue;
+                                    string? modelId = null;
+                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                    else if (item.TryGetProperty("model", out var mProp)) modelId = mProp.GetString();
+                                    else if (item.TryGetProperty("key", out var kProp)) modelId = kProp.GetString();
+
+                                    if (!string.IsNullOrEmpty(modelId))
+                                    {
+                                        AddModel("local-lmstudio", modelId);
+                                    }
+                                }
+                            }
+                            else if (resDoc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in modelsProp.EnumerateArray())
+                                {
+                                    string? modelId = null;
+                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                    if (!string.IsNullOrEmpty(modelId))
+                                    {
+                                        AddModel("local-lmstudio", modelId);
+                                    }
+                                }
+                            }
+                            else if (resDoc.RootElement.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in resDoc.RootElement.EnumerateArray())
+                                {
+                                    string? modelId = null;
+                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                    if (!string.IsNullOrEmpty(modelId))
+                                    {
+                                        AddModel("local-lmstudio", modelId);
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // 2. Ollama (port 11434 on 127.0.0.1 and localhost)
+                    var ollamaUrls = new[]
+                    {
+                        "http://127.0.0.1:11434/api/tags",
+                        "http://localhost:11434/api/tags",
+                        "http://127.0.0.1:11434/v1/models",
+                        "http://localhost:11434/v1/models"
+                    };
+                    foreach (var url in ollamaUrls)
+                    {
+                        try
+                        {
+                            var res = await _localHttpClient.GetStringAsync(url);
+                            using var resDoc = JsonDocument.Parse(res);
+                            if (resDoc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in modelsProp.EnumerateArray())
+                                {
+                                    string? modelId = null;
+                                    if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                    else if (item.TryGetProperty("model", out var mProp)) modelId = mProp.GetString();
+                                    if (!string.IsNullOrEmpty(modelId))
+                                    {
+                                        AddModel("local-ollama", modelId);
+                                    }
+                                }
+                            }
+                            else if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in dataProp.EnumerateArray())
+                                {
+                                    string? modelId = null;
+                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                    if (!string.IsNullOrEmpty(modelId))
+                                    {
+                                        AddModel("local-ollama", modelId);
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // 3. Kobold / KoboldCPP (ports 5001 and 5000 on 127.0.0.1 and localhost)
+                    var koboldUrls = new[]
+                    {
+                        "http://127.0.0.1:5001/api/v1/model",
+                        "http://localhost:5001/api/v1/model",
+                        "http://127.0.0.1:5000/api/v1/model",
+                        "http://localhost:5000/api/v1/model",
+                        "http://127.0.0.1:5001/v1/models",
+                        "http://localhost:5001/v1/models"
+                    };
+                    foreach (var url in koboldUrls)
+                    {
+                        try
+                        {
+                            var res = await _localHttpClient.GetStringAsync(url);
+                            using var resDoc = JsonDocument.Parse(res);
+                            if (resDoc.RootElement.TryGetProperty("result", out var resProp))
+                            {
+                                string? modelId = resProp.GetString();
+                                if (!string.IsNullOrEmpty(modelId))
+                                {
+                                    AddModel("local-kobold", modelId);
+                                }
+                            }
+                            else if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in dataProp.EnumerateArray())
+                                {
+                                    string? modelId = null;
+                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                    if (!string.IsNullOrEmpty(modelId))
+                                    {
+                                        AddModel("local-kobold", modelId);
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    SendWebMessage(new { id, success = true, data = models });
                 }
             }
             catch (Exception ex)

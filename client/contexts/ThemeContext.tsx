@@ -187,7 +187,11 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
           let path = fileName.startsWith(sessionUserId + "/")
             ? fileName
             : `${sessionUserId}/${fileName}`;
-          path = path.replace(/\.\.\//g, "");
+          let previous: string;
+          do {
+            previous = path;
+            path = path.replace(/\.\.\//g, "");
+          } while (path !== previous);
           const { data } = await supabase.storage
             .from("Storage")
             .createSignedUrl(path, 3600);

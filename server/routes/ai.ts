@@ -74,6 +74,17 @@ export function parseSearchIntent(content: unknown): SearchIntent | null {
   }
 }
 
+export function stripHtmlTags(input: unknown): string {
+  if (typeof input !== "string") return "";
+  let prev = "";
+  let sanitized = input;
+  do {
+    prev = sanitized;
+    sanitized = sanitized.replace(/<[^<>]*>/g, "");
+  } while (sanitized !== prev);
+  return sanitized.trim();
+}
+
 // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
 export function extractBearerToken(authHeader?: string | null): string | null {
   if (!authHeader) return null;
@@ -276,7 +287,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
               let m;
               let count = 0;
               while ((m = snippetRegex.exec(text)) !== null && count < 5) {
-                const cleanSnippet = m[1].replace(/<[^>]*>?/gm, "").trim();
+                const cleanSnippet = stripHtmlTags(m[1]);
                 if (cleanSnippet) {
                   snippets.push(cleanSnippet);
                 }
