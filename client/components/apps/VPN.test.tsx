@@ -5,6 +5,7 @@ import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { VPNApp } from "./VPN";
+import L from "leaflet";
 
 // Mock leaflet since Leaflet requires window/canvas/DOM features not present in jsdom
 vi.mock("react-leaflet", () => ({
@@ -112,3 +113,15 @@ resolv-retry infinite`;
     expect((textarea as HTMLTextAreaElement).value).toBe(sampleOpenVPN);
   });
 });
+
+describe("Leaflet Vite Icon Configuration", () => {
+  it("properly configures default icon assets and removes dynamic _getIconUrl", () => {
+    // _getIconUrl on Icon.Default.prototype should be deleted so it delegates to L.Icon.prototype._getIconUrl
+    expect(Object.prototype.hasOwnProperty.call(L.Icon.Default.prototype, "_getIconUrl")).toBe(false);
+    expect((L.Icon.Default.prototype as any)._getIconUrl).toBe((L.Icon.prototype as any)._getIconUrl);
+    expect(L.Icon.Default.prototype.options.iconUrl).toBeDefined();
+    expect(L.Icon.Default.prototype.options.iconRetinaUrl).toBeDefined();
+    expect(L.Icon.Default.prototype.options.shadowUrl).toBeDefined();
+  });
+});
+
