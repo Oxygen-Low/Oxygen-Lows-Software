@@ -472,6 +472,9 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       return c.json(data);
     }
   } catch (err: any) {
+    if (err?.name === "AbortError") {
+      return c.json({ error: "Request aborted" }, 499 as any);
+    }
     // A09: log full error server-side; return generic message to client
     console.error("AI Proxy Error", err);
     return c.json({ error: "An internal error occurred" }, 500);
