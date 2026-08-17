@@ -2,6 +2,7 @@ export interface LanguageOption {
   code: string;
   name: string;
   flag: string;
+  countryCode: string;
   nativeName?: string;
 }
 
@@ -10,102 +11,119 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
     code: "en",
     name: "English",
     flag: "🇬🇧",
+    countryCode: "gb",
     nativeName: "English",
   },
   {
     code: "ko",
     name: "Korean",
     flag: "🇰🇷",
+    countryCode: "kr",
     nativeName: "한국어",
   },
   {
     code: "ja",
     name: "Japanese",
     flag: "🇯🇵",
+    countryCode: "jp",
     nativeName: "日本語",
   },
   {
     code: "zh-CN",
     name: "Chinese (Simplified)",
     flag: "🇨🇳",
+    countryCode: "cn",
     nativeName: "简体中文",
   },
   {
     code: "zh-TW",
     name: "Chinese (Traditional)",
     flag: "🇹🇼",
+    countryCode: "tw",
     nativeName: "繁體中文",
   },
   {
     code: "ru",
     name: "Russian",
     flag: "🇷🇺",
+    countryCode: "ru",
     nativeName: "Русский",
   },
   {
     code: "fr",
     name: "French",
     flag: "🇫🇷",
+    countryCode: "fr",
     nativeName: "Français",
   },
   {
     code: "de",
     name: "German",
     flag: "🇩🇪",
+    countryCode: "de",
     nativeName: "Deutsch",
   },
   {
     code: "es",
     name: "Spanish",
     flag: "🇪🇸",
+    countryCode: "es",
     nativeName: "Español",
   },
   {
     code: "ro",
     name: "Romanian",
     flag: "🇷🇴",
+    countryCode: "ro",
     nativeName: "Română",
   },
   {
     code: "ar",
     name: "Arabic",
     flag: "🇸🇦",
+    countryCode: "sa",
     nativeName: "العربية",
   },
   {
     code: "cs",
     name: "Czech",
     flag: "🇨🇿",
+    countryCode: "cz",
     nativeName: "Čeština",
   },
   {
     code: "zu",
     name: "Zulu",
     flag: "🇿🇦",
+    countryCode: "za",
     nativeName: "isiZulu",
   },
   {
     code: "da",
     name: "Danish",
     flag: "🇩🇰",
+    countryCode: "dk",
     nativeName: "Dansk",
   },
   {
     code: "la",
     name: "Latin",
     flag: "🇻🇦",
+    countryCode: "va",
     nativeName: "Latina",
   },
   {
     code: "he",
     name: "Hebrew",
     flag: "🇮🇱",
+    countryCode: "il",
     nativeName: "עברית",
   },
   {
     code: "uk",
     name: "Ukrainian",
     flag: "🇺🇦",
+    countryCode: "ua",
     nativeName: "Українська",
   },
 ] as const;
@@ -118,6 +136,14 @@ export function registerLanguageOption(option: LanguageOption) {
   if (!dynamicLanguages.some((l) => l.code === option.code || l.name === option.name)) {
     dynamicLanguages.push(option);
   }
+}
+
+/**
+ * Returns FlagCDN flag image URL for a given 2-letter country code.
+ */
+export function getCountryFlagUrl(countryCode?: string | null, width: "w20" | "w40" | "w80" = "w40"): string {
+  if (!countryCode || countryCode.length !== 2) return "";
+  return `https://flagcdn.com/${width}/${countryCode.toLowerCase()}.png`;
 }
 
 /**

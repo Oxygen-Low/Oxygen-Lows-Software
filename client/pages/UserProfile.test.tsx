@@ -79,7 +79,8 @@ describe("UserProfile Component", () => {
       expect(screen.getByText("Test User")).toBeDefined();
       expect(screen.getByText("@testuser")).toBeDefined();
       expect(screen.getByText("English")).toBeDefined();
-      expect(screen.getByText("🇬🇧")).toBeDefined();
+      const flagImg = document.querySelector("img[src*='flagcdn.com/w40/gb.png']");
+      expect(flagImg).not.toBeNull();
     });
   });
 });

@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getLanguageOption } from "@/lib/languages";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 export default function UserProfile() {
   const { username } = useParams();
@@ -347,11 +348,12 @@ export default function UserProfile() {
                         {profile.email}
                       </p>
                     )}
-                    <div className="flex items-center justify-center md:justify-start gap-1.5 mt-2 text-xs text-slate-400">
-                      <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                      <span className="text-sm" role="img" aria-label="Language flag">
-                        {getLanguageOption(profile.language).flag}
-                      </span>
+                    <div className="flex items-center justify-center md:justify-start gap-2 mt-2 text-xs text-slate-400">
+                      <CountryFlag
+                        countryCode={getLanguageOption(profile.language).countryCode}
+                        className="w-4 h-3 rounded-[2px]"
+                        alt={`${getLanguageOption(profile.language).name} flag`}
+                      />
                       <span className="font-medium text-slate-300">
                         {getLanguageOption(profile.language).name}
                       </span>

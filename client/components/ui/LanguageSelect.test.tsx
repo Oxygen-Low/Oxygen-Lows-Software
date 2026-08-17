@@ -4,10 +4,21 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { LanguageSelect } from "./LanguageSelect";
 
 describe("LanguageSelect Component", () => {
-  it("renders with default language selection and flag", () => {
-    render(<LanguageSelect value="English" />);
+  it("renders with default language selection and FlagCDN country flag", () => {
+    const { container } = render(<LanguageSelect value="English" />);
     expect(screen.getByText("English")).toBeDefined();
-    expect(screen.getByText("🇬🇧")).toBeDefined();
+    const img = container.querySelector("img");
+    expect(img).toBeDefined();
+    expect(img?.getAttribute("src")).toBe("https://flagcdn.com/w40/gb.png");
+    expect(img?.getAttribute("srcset")).toBe("https://flagcdn.com/w80/gb.png 2x");
+  });
+
+  it("renders Korean language selection with South Korea FlagCDN flag", () => {
+    const { container } = render(<LanguageSelect value="Korean" />);
+    expect(screen.getByText("Korean")).toBeDefined();
+    const img = container.querySelector("img");
+    expect(img).toBeDefined();
+    expect(img?.getAttribute("src")).toBe("https://flagcdn.com/w40/kr.png");
   });
 
   it("renders with custom id and accessibility label", () => {

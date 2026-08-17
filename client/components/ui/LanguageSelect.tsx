@@ -11,6 +11,7 @@ import {
   getLanguageOption,
 } from "@/lib/languages";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 import { cn } from "@/lib/utils";
 
 export interface LanguageSelectProps {
@@ -56,19 +57,17 @@ export function LanguageSelect({
           )}
         >
           <div className="flex items-center gap-2.5">
-            <span
-              className="text-lg leading-none"
-              role="img"
-              aria-label={`${currentOption.name} flag`}
-            >
-              {currentOption.flag}
-            </span>
+            <CountryFlag
+              countryCode={currentOption.countryCode}
+              className="w-5 h-3.5 rounded-[2px] shadow-sm shrink-0"
+              alt={`${currentOption.name} flag`}
+            />
             <span className="font-medium text-slate-200">
               {currentOption.name}
             </span>
           </div>
         </SelectTrigger>
-        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+        <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[300px] overflow-y-auto">
           {SUPPORTED_LANGUAGES.map((lang) => (
             <SelectItem
               key={lang.code}
@@ -76,13 +75,11 @@ export function LanguageSelect({
               className="flex items-center gap-2.5 focus:bg-slate-800 focus:text-white cursor-pointer py-2"
             >
               <div className="flex items-center gap-2.5">
-                <span
-                  className="text-lg leading-none"
-                  role="img"
-                  aria-label={`${lang.name} flag`}
-                >
-                  {lang.flag}
-                </span>
+                <CountryFlag
+                  countryCode={lang.countryCode}
+                  className="w-5 h-3.5 rounded-[2px] shadow-sm shrink-0"
+                  alt={`${lang.name} flag`}
+                />
                 <span className="font-medium">{lang.name}</span>
                 {lang.nativeName && lang.nativeName !== lang.name && (
                   <span className="text-xs text-slate-400 font-normal ml-1">
