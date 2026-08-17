@@ -24,9 +24,16 @@ export interface RequestResult {
   eventType?: EventType;
 }
 
+class RouteTrieNode {
+  children = new Map<string, RouteTrieNode>();
+  routes: RouteConfig[] = [];
+}
+
 export class DefenderClient {
   private config: DefenderConfig;
   private appConfig: AppConfig | null = null;
+  private exactRoutes = new Map<string, Map<string, RouteConfig>>();
+  private prefixRoutes = new Map<string, RouteTrieNode>();
   private torDetector: TorDetector;
   private threatActorDetector: ThreatActorDetector;
   private outboundMonitor: OutboundMonitor;
@@ -44,6 +51,42 @@ export class DefenderClient {
     this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn), new URL(this.apiUrl).hostname);
   }
 
+  private buildRouteCache(routes: RouteConfig[]) {
+    this.exactRoutes.clear();
+    this.prefixRoutes.clear();
+
+    for (let i = 0; i < routes.length; i++) {
+      const route = routes[i];
+      const method = (route.method || '').toUpperCase();
+
+      let exactMap = this.exactRoutes.get(method);
+      if (!exactMap) {
+        exactMap = new Map();
+        this.exactRoutes.set(method, exactMap);
+      }
+      exactMap.set(route.path, route);
+
+      const prefix = route.path.replace(/:\w+/g, '');
+
+      let root = this.prefixRoutes.get(method);
+      if (!root) {
+        root = new RouteTrieNode();
+        this.prefixRoutes.set(method, root);
+      }
+
+      let node = root;
+      for (const char of prefix) {
+        let child = node.children.get(char);
+        if (!child) {
+          child = new RouteTrieNode();
+          node.children.set(char, child);
+        }
+        node = child;
+      }
+      node.routes.push(route);
+    }
+  }
+
   private normalizeConfig(raw: any): AppConfig {
     const cfg = raw.config || {};
     const routes = (raw.routes || []).map((r: any) => ({
@@ -54,6 +97,9 @@ export class DefenderClient {
       rateLimitRequests: r.rate_limit_requests ?? 100,
       rateLimitWindowSeconds: r.rate_limit_window_seconds ?? 60,
     }));
+
+    this.buildRouteCache(routes);
+
     return {
       appId: raw.id,
       blockModeEnabled: raw.block_mode_enabled ?? false,
@@ -232,10 +278,35 @@ export class DefenderClient {
   private getMatchingRoute(method: string, path: string): RouteConfig | undefined {
     if (!this.appConfig || !this.appConfig.routes) return undefined;
     
-    return this.appConfig.routes.find(
-      r => r.method.toUpperCase() === method.toUpperCase() && 
-      (r.path === path || path.startsWith(r.path.replace(/:\w+/g, '')))
-    );
+    method = method.toUpperCase();
+
+    const exactMap = this.exactRoutes.get(method);
+    if (exactMap) {
+      const exact = exactMap.get(path);
+      if (exact) return exact;
+    }
+
+    const root = this.prefixRoutes.get(method);
+    if (root) {
+      let node: RouteTrieNode | undefined = root;
+      let bestMatch: RouteConfig | undefined = undefined;
+
+      if (node.routes.length > 0) {
+        bestMatch = node.routes[0];
+      }
+
+      for (const char of path) {
+        node = node.children.get(char);
+        if (!node) break;
+        if (node.routes.length > 0) {
+          bestMatch = node.routes[0];
+        }
+      }
+
+      return bestMatch;
+    }
+
+    return undefined;
   }
 
   async handleRequest(req: IncomingRequest): Promise<RequestResult> {
