@@ -1178,12 +1178,12 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2 mb-4">
-            {config.blocked_countries.map(code => {
+            {(config.block_countries || []).map(code => {
               const country = COUNTRIES.find(c => c.code === code);
               return (
                 <Badge key={code} variant="secondary" className="bg-slate-800 hover:bg-slate-700">
                   {country ? country.name : code}
-                  <button onClick={() => updateConfig({ blocked_countries: config.blocked_countries.filter(c => c !== code) })} className="ml-2 text-slate-400 hover:text-white">
+                  <button onClick={() => updateConfig({ block_countries: (config.block_countries || []).filter(c => c !== code) })} className="ml-2 text-slate-400 hover:text-white">
                     <X className="w-3 h-3" />
                   </button>
                 </Badge>
@@ -1191,8 +1191,8 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
             })}
           </div>
           <Select onValueChange={(val) => {
-            if (!config.blocked_countries.includes(val)) {
-              updateConfig({ blocked_countries: [...config.blocked_countries, val] });
+            if (!(config.block_countries || []).includes(val)) {
+              updateConfig({ block_countries: [...(config.block_countries || []), val] });
             }
           }}>
             <SelectTrigger className="bg-slate-950 border-slate-800">
@@ -1200,7 +1200,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
             </SelectTrigger>
             <SelectContent>
               <ScrollArea className="h-64">
-                {COUNTRIES.filter(c => !config.blocked_countries.includes(c.code)).map(c => (
+                {COUNTRIES.filter(c => !(config.block_countries || []).includes(c.code)).map(c => (
                   <SelectItem key={c.code} value={c.code}>{c.name} ({c.code})</SelectItem>
                 ))}
               </ScrollArea>
