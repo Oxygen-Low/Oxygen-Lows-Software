@@ -14,7 +14,6 @@ import { chromium } from "playwright";
   const badgeExists = await page
     .locator('img[alt="Aikido Security Audit Report"]')
     .count();
-  console.log(`Badge count on Auth page: ${badgeExists}`);
 
   await browser.close();
   process.exit(badgeExists === 0 ? 0 : 1);
