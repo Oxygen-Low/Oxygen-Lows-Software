@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export interface PlaylistTrack {
   name: string;
@@ -260,6 +261,81 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     [session?.user?.id],
   );
 
+  const triggerAutoResumePlayback = useCallback(
+    (audio: HTMLAudioElement, targetPositionMs: number) => {
+      const targetPosSec = targetPositionMs / 1000;
+
+      const attemptPlay = async () => {
+        try {
+          if (targetPosSec > 0) {
+            try {
+              audio.currentTime = targetPosSec;
+            } catch {}
+          }
+          audio.muted = false;
+          await audio.play();
+          setIsPlayingState(true);
+          isPlayingRef.current = true;
+        } catch (err) {
+          console.warn("Autoplay unmuted blocked by browser:", err);
+
+          // Start audio playing muted so audio context is active
+          try {
+            audio.muted = true;
+            await audio.play();
+            setIsPlayingState(true);
+            isPlayingRef.current = true;
+          } catch {}
+
+          const gestureEvents = [
+            "click",
+            "pointerdown",
+            "mousedown",
+            "keydown",
+            "touchstart",
+            "wheel",
+          ];
+
+          const resumeOnGesture = () => {
+            if (audioRef.current) {
+              audioRef.current.muted = false;
+              audioRef.current
+                .play()
+                .then(() => {
+                  setIsPlayingState(true);
+                  isPlayingRef.current = true;
+                })
+                .catch(() => {});
+            }
+            gestureEvents.forEach((evt) => {
+              window.removeEventListener(evt, resumeOnGesture, true);
+              document.removeEventListener(evt, resumeOnGesture, true);
+            });
+          };
+
+          gestureEvents.forEach((evt) => {
+            window.addEventListener(evt, resumeOnGesture, {
+              once: true,
+              capture: true,
+            });
+            document.addEventListener(evt, resumeOnGesture, {
+              once: true,
+              capture: true,
+            });
+          });
+        }
+      };
+
+      if (audio.readyState >= 1) {
+        attemptPlay();
+      } else {
+        audio.addEventListener("loadedmetadata", attemptPlay, { once: true });
+        setTimeout(attemptPlay, 300);
+      }
+    },
+    [],
+  );
+
   // Initial immediate auto-resume from cached signed URL if available and fresh (<10s since exit)
   useEffect(() => {
     if (autoResumeAttemptedRef.current) return;
@@ -280,48 +356,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       audio.src = initialPlaybackState.signedUrl;
       audio.loop = initialPlaybackState.loop || false;
 
-      const targetPos = (initialPlaybackState.position || 0) / 1000;
-
-      const startPlayback = async () => {
-        try {
-          if (targetPos > 0) {
-            try {
-              audio.currentTime = targetPos;
-            } catch {}
-          }
-          await audio.play();
-          setIsPlayingState(true);
-          isPlayingRef.current = true;
-        } catch (err) {
-          console.warn("Auto-resume playback was prevented by browser:", err);
-          const resumeOnGesture = () => {
-            if (audioRef.current && currentTrackRef.current) {
-              audioRef.current
-                .play()
-                .then(() => {
-                  setIsPlayingState(true);
-                  isPlayingRef.current = true;
-                })
-                .catch(() => {});
-            }
-            ["click", "pointerdown", "keydown", "touchstart"].forEach((evt) => {
-              window.removeEventListener(evt, resumeOnGesture);
-            });
-          };
-          ["click", "pointerdown", "keydown", "touchstart"].forEach((evt) => {
-            window.addEventListener(evt, resumeOnGesture, { once: true });
-          });
-        }
-      };
-
-      if (audio.readyState >= 1) {
-        startPlayback();
-      } else {
-        audio.addEventListener("loadedmetadata", startPlayback, { once: true });
-        setTimeout(startPlayback, 300);
-      }
+      triggerAutoResumePlayback(audio, initialPlaybackState.position || 0);
     }
-  }, [initialPlaybackState]);
+  }, [initialPlaybackState, triggerAutoResumePlayback]);
 
   // Load preferences from database
   useEffect(() => {
@@ -398,67 +435,27 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
                   setCurrentPositionState(initialPosition);
                   currentPositionRef.current = initialPosition;
 
-                  const targetPos = initialPosition / 1000;
-                  const startPlayback = async () => {
-                    if (!audioRef.current) return;
-                    try {
-                      if (targetPos > 0) {
-                        audioRef.current.currentTime = targetPos;
-                      }
-                    } catch {}
-
-                    if (autoResume.shouldResume) {
-                      try {
-                        await audioRef.current.play();
-                        setIsPlayingState(true);
-                        isPlayingRef.current = true;
-                      } catch (playErr) {
-                        console.warn(
-                          "Auto-resume playback was prevented by browser:",
-                          playErr,
-                        );
-                        const resumeOnGesture = () => {
-                          if (audioRef.current && currentTrackRef.current) {
-                            audioRef.current
-                              .play()
-                              .then(() => {
-                                setIsPlayingState(true);
-                                isPlayingRef.current = true;
-                              })
-                              .catch(() => {});
-                          }
-                          [
-                            "click",
-                            "pointerdown",
-                            "keydown",
-                            "touchstart",
-                          ].forEach((evt) => {
-                            window.removeEventListener(evt, resumeOnGesture);
-                          });
-                        };
-                        [
-                          "click",
-                          "pointerdown",
-                          "keydown",
-                          "touchstart",
-                        ].forEach((evt) => {
-                          window.addEventListener(evt, resumeOnGesture, {
-                            once: true,
-                          });
+                  if (autoResume.shouldResume) {
+                    triggerAutoResumePlayback(audioRef.current, initialPosition);
+                  } else {
+                    const targetPos = initialPosition / 1000;
+                    if (targetPos > 0) {
+                      const setPos = () => {
+                        if (audioRef.current) {
+                          try {
+                            audioRef.current.currentTime = targetPos;
+                          } catch {}
+                        }
+                      };
+                      if (audioRef.current.readyState >= 1) {
+                        setPos();
+                      } else {
+                        audioRef.current.addEventListener("loadedmetadata", setPos, {
+                          once: true,
                         });
+                        setTimeout(setPos, 300);
                       }
                     }
-                  };
-
-                  if (audioRef.current.readyState >= 1) {
-                    startPlayback();
-                  } else {
-                    audioRef.current.addEventListener(
-                      "loadedmetadata",
-                      startPlayback,
-                      { once: true },
-                    );
-                    setTimeout(startPlayback, 300);
                   }
                 } else {
                   console.warn(
@@ -482,7 +479,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadMusicPreferences();
-  }, [session?.user?.id, resolvePlaybackUrl, checkAutoResume]);
+  }, [session?.user?.id, resolvePlaybackUrl, checkAutoResume, triggerAutoResumePlayback]);
 
   // Window exit / tab close / visibility change listeners to record state
   useEffect(() => {
@@ -577,6 +574,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       currentSignedUrlRef.current = url;
       urlExpiryRef.current = Date.now() + 3500 * 1000;
       audioRef.current.currentTime = 0;
+      audioRef.current.muted = false;
       try {
         await audioRef.current.play();
         setIsPlayingState(true);
@@ -694,6 +692,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             audioRef.current.currentTime = currentPositionRef.current / 1000;
           }
         }
+        audioRef.current.muted = false;
         await audioRef.current.play();
       }
       setIsPlayingState(true);
@@ -890,7 +889,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <MusicContext.Provider value={contextValue}>
-      <audio ref={audioRef} crossOrigin="anonymous" />
+      <audio
+        ref={audioRef}
+        autoPlay
+        playsInline
+        crossOrigin="anonymous"
+      />
       {children}
     </MusicContext.Provider>
   );
