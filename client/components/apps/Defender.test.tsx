@@ -1,0 +1,58 @@
+import { describe, it, expect } from "vitest";
+import { getAppConfig } from "./Defender";
+
+describe("Defender getAppConfig", () => {
+  it("returns default configuration when defenderConfig is null or undefined", () => {
+    const configNull = getAppConfig(null);
+    expect(configNull.block_sql_injection).toBe(true);
+    expect(configNull.block_shell_injection).toBe(true);
+    expect(configNull.block_tor).toBe(true);
+    expect(configNull.block_countries).toEqual([]);
+    expect(configNull.ddos_threshold_rpm).toBe(1000);
+
+    const configUndefined = getAppConfig(undefined);
+    expect(configUndefined.block_sql_injection).toBe(true);
+  });
+
+  it("extracts config correctly from a single object (1-to-1 relation)", () => {
+    const singleObjConfig = {
+      app_id: "app-123",
+      block_sql_injection: false,
+      block_shell_injection: true,
+      block_tor: false,
+      block_countries: ["US", "CA"],
+      ddos_threshold_rpm: 500
+    };
+
+    const config = getAppConfig(singleObjConfig);
+    expect(config.block_sql_injection).toBe(false);
+    expect(config.block_shell_injection).toBe(true);
+    expect(config.block_tor).toBe(false);
+    expect(config.block_countries).toEqual(["US", "CA"]);
+    expect(config.ddos_threshold_rpm).toBe(500);
+    // Unspecified fields fallback to defaults
+    expect(config.block_path_traversal).toBe(true);
+  });
+
+  it("extracts config correctly from an array of objects", () => {
+    const arrayConfig = [
+      {
+        app_id: "app-123",
+        block_sql_injection: false,
+        block_countries: ["FR"],
+        block_ad_bots: true
+      }
+    ];
+
+    const config = getAppConfig(arrayConfig);
+    expect(config.block_sql_injection).toBe(false);
+    expect(config.block_countries).toEqual(["FR"]);
+    expect(config.block_ad_bots).toBe(true);
+  });
+
+  it("handles empty array gracefully", () => {
+    const config = getAppConfig([]);
+    expect(config.block_sql_injection).toBe(true);
+    expect(config.block_tor).toBe(true);
+  });
+});

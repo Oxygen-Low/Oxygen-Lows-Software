@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { Play, Pause, SkipBack, SkipForward, Shuffle } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat } from "lucide-react";
 import { useMusic } from "@/hooks/useMusic";
 import { Button } from "@/components/ui/button";
 
@@ -9,12 +9,14 @@ export const MusicPlayer = () => {
     currentPosition,
     isPlaying,
     shuffle,
+    loop,
     audioRef,
     play,
     pause,
     playNext,
     playPrev,
     toggleShuffle,
+    toggleLoop,
     playlist,
     playTrack,
   } = useMusic();
@@ -123,6 +125,20 @@ export const MusicPlayer = () => {
           aria-pressed={shuffle}
         >
           <Shuffle className="w-4 h-4" />
+        </Button>
+
+        <Button
+          size="sm"
+          variant={loop ? "default" : "ghost"}
+          onClick={() => toggleLoop(!loop)}
+          className={
+            loop ? "bg-primary hover:bg-primary/90" : "hover:text-primary"
+          }
+          title="Toggle loop"
+          aria-label="Toggle loop"
+          aria-pressed={loop}
+        >
+          <Repeat className="w-4 h-4" />
         </Button>
       </div>
     </div>

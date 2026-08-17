@@ -94,6 +94,8 @@ export default function Customize() {
     playTrack,
     shuffle,
     toggleShuffle,
+    loop,
+    toggleLoop,
   } = useMusicContext();
 
   const { session } = useAuth();
@@ -335,6 +337,27 @@ export default function Customize() {
               }`}
             >
               {shuffle ? "On" : "Off"}
+            </button>
+          </div>
+
+          {/* Loop Toggle */}
+          <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
+            <div>
+              <label className="text-foreground font-medium block">Loop</label>
+              <p className="text-sm text-muted-foreground">
+                Keep looping the current song
+              </p>
+            </div>
+            <button
+              onClick={() => toggleLoop(!loop)}
+              aria-pressed={loop}
+              className={`px-4 py-2 rounded-lg border-2 transition-all font-medium ${
+                loop
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card text-foreground hover:border-primary/50"
+              }`}
+            >
+              {loop ? "On" : "Off"}
             </button>
           </div>
 

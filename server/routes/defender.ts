@@ -71,11 +71,15 @@ defenderRouter.post("/verify", packageLimiter, requireApiKey, async (c) => {
       .eq("id", app.id);
   }
 
+  const config = Array.isArray(app.defender_config)
+    ? (app.defender_config[0] || {})
+    : (app.defender_config || {});
+
   return c.json({
     id: app.id,
     name: app.name,
     block_mode_enabled: app.block_mode_enabled,
-    config: app.defender_config?.[0] || {},
+    config: config,
     routes: app.defender_routes || []
   });
 });
@@ -299,10 +303,32 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
 
+  const allowedKeys = [
+    "block_sql_injection",
+    "block_shell_injection",
+    "block_path_traversal",
+    "block_ssrf",
+    "block_tor",
+    "block_countries",
+    "block_ad_bots",
+    "block_ai_assistants",
+    "block_ai_scrapers",
+    "block_ai_search_crawlers",
+    "block_data_harvesters",
+    "ddos_protection",
+    "ddos_threshold_rpm"
+  ];
+
+  const updatePayload: Record<string, any> = { app_id: id };
+  for (const key of allowedKeys) {
+    if (key in body) {
+      updatePayload[key] = body[key];
+    }
+  }
+
   const { data, error } = await supabase
     .from("defender_config")
-    .update({ ...body, app_id: id })
-    .eq("app_id", id)
+    .upsert(updatePayload)
     .select("*")
     .single();
 
@@ -334,9 +360,9 @@ defenderRouter.put("/routes/:routeId", uiLimiter, requireJwt, async (c) => {
   const { data, error } = await supabase
     .from("defender_routes")
     .update({
-      rate_limit_enabled: body.rateLimitEnabled,
-      rate_limit_requests: body.rateLimitRequests,
-      rate_limit_window_seconds: body.rateLimitWindowSeconds
+      rate_limit_enabled: body.rateLimitEnabled ?? body.rate_limit_enabled,
+      rate_limit_requests: body.rateLimitRequests ?? body.rate_limit_requests,
+      rate_limit_window_seconds: body.rateLimitWindowSeconds ?? body.rate_limit_window_seconds
     })
     .eq("id", routeId)
     .select("*")

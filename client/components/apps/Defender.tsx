@@ -65,7 +65,7 @@ type App = {
   block_mode_enabled_at: string | null;
   first_request_at: string | null;
   created_at: string;
-  defender_config?: any[];
+  defender_config?: any;
 };
 
 type AppConfig = {
@@ -996,37 +996,40 @@ function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds:
   );
 }
 
-function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFetch: any, onUpdate: () => void, onDelete: () => void }) {
-  const defaultConfig: AppConfig = {
-    block_sql_injection: true,
-    block_shell_injection: true,
-    block_path_traversal: true,
-    block_ssrf: true,
-    block_tor: true,
-    ddos_protection: true,
-    ddos_threshold_rpm: 1000,
-    block_countries: [],
-    block_ad_bots: false,
-    block_ai_assistants: false,
-    block_ai_scrapers: true,
-    block_ai_search_crawlers: false,
-    block_data_harvesters: true
-  };
+const defaultDefenderConfig: AppConfig = {
+  block_sql_injection: true,
+  block_shell_injection: true,
+  block_path_traversal: true,
+  block_ssrf: true,
+  block_tor: true,
+  ddos_protection: true,
+  ddos_threshold_rpm: 1000,
+  block_countries: [],
+  block_ad_bots: false,
+  block_ai_assistants: false,
+  block_ai_scrapers: true,
+  block_ai_search_crawlers: false,
+  block_data_harvesters: true
+};
 
-  const [config, setConfig] = useState<AppConfig | null>(app.defender_config?.[0] || defaultConfig);
+export function getAppConfig(defenderConfig: any): AppConfig {
+  if (!defenderConfig) return defaultDefenderConfig;
+  const raw = Array.isArray(defenderConfig) ? defenderConfig[0] : defenderConfig;
+  return raw ? { ...defaultDefenderConfig, ...raw } : defaultDefenderConfig;
+}
+
+function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFetch: any, onUpdate: () => void, onDelete: () => void }) {
+  const [config, setConfig] = useState<AppConfig>(() => getAppConfig(app.defender_config));
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
 
   useEffect(() => {
-    if (app.defender_config && app.defender_config.length > 0) {
-      setConfig(app.defender_config[0]);
-    }
+    setConfig(getAppConfig(app.defender_config));
   }, [app.defender_config]);
 
   const updateConfig = async (updates: Partial<AppConfig>) => {
-    if (!config) return;
     const newConfig = { ...config, ...updates };
     setConfig(newConfig);
     try {
@@ -1035,6 +1038,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
         body: JSON.stringify(newConfig)
       });
       toast.success("Settings saved");
+      onUpdate();
     } catch (err) {
       toast.error("Failed to save settings");
       setConfig(config); // revert

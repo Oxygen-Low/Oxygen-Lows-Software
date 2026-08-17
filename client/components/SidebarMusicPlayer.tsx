@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, Shuffle } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat } from "lucide-react";
 import { useMusic } from "@/hooks/useMusic";
 import { Button } from "@/components/ui/button";
 
@@ -7,11 +7,13 @@ export const SidebarMusicPlayer = () => {
     currentTrack,
     isPlaying,
     shuffle,
+    loop,
     play,
     pause,
     playNext,
     playPrev,
     toggleShuffle,
+    toggleLoop,
     playlist,
     playTrack,
   } = useMusic();
@@ -96,6 +98,18 @@ export const SidebarMusicPlayer = () => {
           aria-pressed={shuffle}
         >
           <Shuffle className="w-4 h-4" />
+        </Button>
+
+        <Button
+          size="icon"
+          variant={loop ? "default" : "ghost"}
+          onClick={() => toggleLoop(!loop)}
+          className={`h-8 w-8 ${loop ? "bg-primary hover:bg-primary/90" : "hover:text-primary"}`}
+          title="Toggle loop"
+          aria-label="Toggle loop"
+          aria-pressed={loop}
+        >
+          <Repeat className="w-4 h-4" />
         </Button>
       </div>
     </div>
