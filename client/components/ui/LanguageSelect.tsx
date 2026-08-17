@@ -84,6 +84,11 @@ export function LanguageSelect({
                   {lang.flag}
                 </span>
                 <span className="font-medium">{lang.name}</span>
+                {lang.nativeName && lang.nativeName !== lang.name && (
+                  <span className="text-xs text-slate-400 font-normal ml-1">
+                    ({lang.nativeName})
+                  </span>
+                )}
               </div>
             </SelectItem>
           ))}
