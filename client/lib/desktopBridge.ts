@@ -5,7 +5,7 @@ const pendingBridgeCalls = new Map<
 
 let bridgeListenerInitialized = false;
 
-function initBridgeListener() {
+export function initBridgeListener() {
   if (bridgeListenerInitialized) return;
   bridgeListenerInitialized = true;
 

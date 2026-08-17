@@ -2,7 +2,11 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
-import { callDesktopBridge, isDesktopBridgeAvailable } from "@/lib/desktopBridge";
+import {
+  callDesktopBridge,
+  isDesktopBridgeAvailable,
+  initBridgeListener,
+} from "@/lib/desktopBridge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";

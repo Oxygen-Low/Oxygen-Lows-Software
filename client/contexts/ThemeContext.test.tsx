@@ -11,7 +11,7 @@ const mockCreateSignedUrl = vi.fn().mockResolvedValue({
 const mockRpc = vi.fn().mockResolvedValue({ data: null, error: null });
 
 const mockSupabase = {
-  from: vi.fn(() => ({
+  from: vi.fn((_table?: string) => ({
     select: vi.fn(() => ({
       eq: vi.fn(() => ({
         single: vi.fn().mockResolvedValue({
@@ -28,7 +28,7 @@ const mockSupabase = {
     })),
   })),
   storage: {
-    from: vi.fn(() => ({
+    from: vi.fn((_bucket?: string) => ({
       createSignedUrl: mockCreateSignedUrl,
     })),
   },
