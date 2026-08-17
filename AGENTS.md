@@ -7,3 +7,8 @@
 ## Package Versions
 
 -- When making changes to any published packages (e.g., in `packages/defender`), ALWAYS remember to bump the version number in its `package.json`.
+
+## Translations
+
+-- When making changes or adding text that users would see, add translations to every language.
+

@@ -87,23 +87,25 @@ export class ThreatActorDetector {
       await Promise.allSettled(
         THREAT_FEEDS.map(async (feed) => {
           const categoryIps = new Set<string>();
-          for (const url of feed.urls) {
-            try {
-              const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-              const timeout = setTimeout(() => controller?.abort(), 5000);
-              const response = await fetch(url, { signal: controller?.signal });
-              clearTimeout(timeout);
-              if (response.ok) {
-                const text = await response.text();
-                const parsed = this.parseIps(text);
-                for (const ip of parsed) {
-                  categoryIps.add(ip);
+          await Promise.allSettled(
+            feed.urls.map(async (url) => {
+              try {
+                const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                const timeout = setTimeout(() => controller?.abort(), 5000);
+                const response = await fetch(url, { signal: controller?.signal });
+                clearTimeout(timeout);
+                if (response.ok) {
+                  const text = await response.text();
+                  const parsed = this.parseIps(text);
+                  for (const ip of parsed) {
+                    categoryIps.add(ip);
+                  }
                 }
+              } catch (err) {
+                // Silently fail on network/timeout error and keep existing nodes
               }
-            } catch (err) {
-              // Silently fail on network/timeout error and keep existing nodes
-            }
-          }
+            })
+          );
           if (categoryIps.size > 0) {
             this.categoryNodes.set(feed.category, categoryIps);
           }

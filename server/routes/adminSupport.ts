@@ -124,9 +124,11 @@ adminSupportRouter.get("/tickets/:id/messages", async (c) => {
       .select("user_id, username, avatar_url")
       .in("user_id", senderIds);
 
+    const profilesMap = new Map(profiles?.map((p: any) => [p.user_id, p]) || []);
+
     const messagesWithProfiles = messages.map((m: any) => ({
       ...m,
-      profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null,
+      profiles: profilesMap.get(m.sender_id) || null,
     }));
 
     return c.json({ messages: messagesWithProfiles });
