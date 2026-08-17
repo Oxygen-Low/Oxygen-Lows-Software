@@ -103,7 +103,7 @@ export function SudokuApp() {
     const cell = board[index];
 
     return cn(
-      "w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-medium cursor-pointer transition-colors border-r border-b",
+      "w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center text-sm sm:text-lg md:text-xl font-medium cursor-pointer transition-colors border-r border-b select-none touch-manipulation",
       // Thicker borders for 3x3 grids
       col % 3 === 2 && col !== 8 && "border-r-2 border-r-slate-400",
       row % 3 === 2 && row !== 8 && "border-b-2 border-b-slate-400",
@@ -128,21 +128,21 @@ export function SudokuApp() {
   };
 
   return (
-    <div className="flex flex-col items-center h-full w-full py-8 text-slate-200">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl flex flex-col max-w-[95%] items-center">
+    <div className="flex flex-col items-center h-full w-full py-4 sm:py-8 text-slate-200">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-6 shadow-2xl flex flex-col max-w-[98%] sm:max-w-[95%] items-center w-full">
         
         {/* Header Controls */}
-        <div className="flex w-full items-center justify-between mb-8 pb-6 border-b border-slate-800 gap-4 flex-wrap">
+        <div className="flex w-full items-center justify-between mb-4 sm:mb-8 pb-4 sm:pb-6 border-b border-slate-800 gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-cyan-500" />
-            <h3 className="text-xl font-bold text-white hidden sm:block">Sudoku</h3>
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-500" />
+            <h3 className="text-lg sm:text-xl font-bold text-white">Sudoku</h3>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>
@@ -152,24 +152,25 @@ export function SudokuApp() {
             
             <button
               onClick={() => initGame()}
-              className="p-2 rounded-lg hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               title="New Game"
+              aria-label="New Game"
             >
-              <RefreshCw className="w-5 h-5 text-slate-400 hover:text-white" />
+              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 hover:text-white" />
             </button>
           </div>
         </div>
 
         {/* Status indicator */}
         {status === "won" && (
-          <div className="mb-6 flex items-center gap-2 text-yellow-400 bg-yellow-400/10 px-4 py-2 rounded-lg border border-yellow-400/20 animate-in fade-in zoom-in">
+          <div className="mb-4 sm:mb-6 flex items-center gap-2 text-yellow-400 bg-yellow-400/10 px-4 py-2 rounded-lg border border-yellow-400/20 animate-in fade-in zoom-in">
             <Trophy className="w-5 h-5" />
             <span className="font-bold">Puzzle Solved!</span>
           </div>
         )}
 
         {/* Board */}
-        <div className="bg-slate-700 p-[2px] rounded-lg shadow-xl">
+        <div className="bg-slate-700 p-[2px] rounded-lg shadow-xl max-w-full overflow-hidden">
           <div className="grid grid-cols-9 bg-slate-800 rounded-md overflow-hidden">
             {board.map((cell, index) => (
               <div
@@ -183,31 +184,51 @@ export function SudokuApp() {
           </div>
         </div>
         
-        {/* Mobile Input Pad */}
-        <div className="mt-8 grid grid-cols-5 gap-2 sm:hidden w-full max-w-[280px]">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+        {/* On-Screen Number Keypad for Touch Devices */}
+        <div className="mt-6 sm:mt-8 w-full max-w-[340px]">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+            {[1, 2, 3, 4, 5].map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => {
+                  if (selectedCell !== null && !board[selectedCell].isInitial) {
+                    updateCell(selectedCell, num.toString());
+                  }
+                }}
+                className="bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-white rounded-lg h-11 sm:h-12 flex items-center justify-center font-bold text-lg sm:text-xl border border-slate-700 transition-colors"
+              >
+                {num}
+              </button>
+            ))}
+            {[6, 7, 8, 9].map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => {
+                  if (selectedCell !== null && !board[selectedCell].isInitial) {
+                    updateCell(selectedCell, num.toString());
+                  }
+                }}
+                className="bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-white rounded-lg h-11 sm:h-12 flex items-center justify-center font-bold text-lg sm:text-xl border border-slate-700 transition-colors"
+              >
+                {num}
+              </button>
+            ))}
             <button
-              key={num}
+              type="button"
               onClick={() => {
                 if (selectedCell !== null && !board[selectedCell].isInitial) {
-                  updateCell(selectedCell, num.toString());
+                  updateCell(selectedCell, "");
                 }
               }}
-              className="bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white rounded-lg h-12 flex items-center justify-center font-bold text-xl border border-slate-700"
+              title="Clear selected cell"
+              aria-label="Clear selected cell"
+              className="bg-red-950/50 hover:bg-red-900/50 active:bg-red-800 text-red-300 rounded-lg h-11 sm:h-12 flex items-center justify-center font-bold text-xs sm:text-sm border border-red-900/50 transition-colors"
             >
-              {num}
+              Clear
             </button>
-          ))}
-          <button
-            onClick={() => {
-              if (selectedCell !== null && !board[selectedCell].isInitial) {
-                updateCell(selectedCell, "");
-              }
-            }}
-            className="bg-red-950/50 hover:bg-red-900/50 active:bg-red-800/50 text-red-400 rounded-lg h-12 flex items-center justify-center font-bold border border-red-900/50 col-span-5 mt-2"
-          >
-            Clear Cell
-          </button>
+          </div>
         </div>
         
       </div>

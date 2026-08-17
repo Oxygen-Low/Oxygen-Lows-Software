@@ -288,7 +288,8 @@ export function DefenderApp() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-6 w-6 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label={`Delete ${app.name}`}
+                          className="h-7 w-7 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation();
                             setAppToDelete(app);
@@ -543,14 +544,14 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
   const uniqueIps = new Set(todayEvents.map(e => e.ip)).size;
 
   return (
-    <div className="h-full flex flex-col p-6 max-w-[1600px] mx-auto w-full space-y-6">
+    <div className="h-full flex flex-col p-3 sm:p-6 max-w-[1600px] mx-auto w-full space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Button variant="ghost" size="icon" onClick={onBack} className="text-slate-400 hover:text-white">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-white">{app.name}</h2>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-bold text-white">{app.name}</h2>
             <Badge variant={app.block_mode_enabled ? "destructive" : "default"} className={cn(!app.block_mode_enabled && "bg-emerald-500/10 text-emerald-500")}>
               {app.block_mode_enabled ? "Block Mode" : "Observe Mode"}
             </Badge>
@@ -558,7 +559,7 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
         <StatCard title="Total Events (24h)" value={todayEvents.length.toLocaleString()} icon={<Activity className="w-4 h-4" />} />
         <StatCard title="Threats Detected" value={threats.length.toLocaleString()} icon={<ShieldCheck className="w-4 h-4" />} color="text-rose-500" />
         <StatCard title="Unique IPs" value={uniqueIps.toLocaleString()} icon={<Globe className="w-4 h-4" />} />
@@ -566,13 +567,15 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="bg-slate-900 border border-slate-800 shrink-0 w-max">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="routes">Routes ({routes.length})</TabsTrigger>
-          <TabsTrigger value="events">Event Log</TabsTrigger>
-          <TabsTrigger value="outbound">Outbound</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto max-w-full pb-1 -mx-1 px-1">
+          <TabsList className="bg-slate-900 border border-slate-800 shrink-0 w-max">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="routes">Routes ({routes.length})</TabsTrigger>
+            <TabsTrigger value="events">Event Log</TabsTrigger>
+            <TabsTrigger value="outbound">Outbound</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+        </div>
 
         <div className="flex-1 overflow-auto mt-6">
           <TabsContent value="overview" className="h-full m-0 space-y-6">

@@ -241,25 +241,25 @@ export default function Storage() {
   return (
     <Layout>
       <div className="space-y-8 animate-in fade-in duration-500">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-white">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Storage
           </h2>
-          <p className="text-slate-400">
+          <p className="text-sm sm:text-base text-slate-400">
             Keep track of your uploaded files and data usage.
           </p>
         </div>
 
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
-            <CardTitle className="text-white">Overall Usage</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-lg sm:text-xl text-white">Overall Usage</CardTitle>
+            <CardDescription className="text-xs sm:text-sm text-slate-400">
               Total space used by files and application data
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <div className="flex justify-between text-sm text-slate-400">
+              <div className="flex justify-between text-xs sm:text-sm text-slate-400">
                 <span>{formatSize(totalAll)} used</span>
                 <span>{`Limit: ${"30MB"} (Files)`}</span>
               </div>
@@ -330,10 +330,10 @@ export default function Storage() {
                   );
                 })}
               </div>
-              <div className="flex flex-wrap gap-4 pt-2">
+              <div className="flex flex-wrap gap-3 sm:gap-4 pt-2">
                 {Object.entries(categories).map(([key, cat]) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <div className={cn("w-3 h-3 rounded-full", cat.color)} />
+                  <div key={key} className="flex items-center gap-1.5 sm:gap-2">
+                    <div className={cn("w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full", cat.color)} />
                     <span className="text-xs text-slate-400">{cat.label}</span>
                   </div>
                 ))}
@@ -342,11 +342,11 @@ export default function Storage() {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h3 className="text-lg font-medium text-white">Files</h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-400">
                 Your uploaded files and saved artifacts.
               </p>
             </div>
@@ -361,7 +361,7 @@ export default function Storage() {
                 ) : (
                   <Upload className="w-4 h-4 mr-2" />
                 )}
-                Upload
+                Upload File
               </Button>
             </div>
             <input
@@ -372,7 +372,7 @@ export default function Storage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {cloudFiles.map((file) => (
               <Card
                 key={file.id}

@@ -40,10 +40,10 @@ const Cell = React.memo(
     return (
       <div
         className={cn(
-          "w-6 h-6 flex items-center justify-center text-sm font-bold cursor-pointer select-none border transition-colors",
+          "w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-bold cursor-pointer select-none border transition-colors touch-manipulation",
           data.isRevealed
             ? "bg-slate-800 border-slate-700"
-            : "bg-slate-700 border-slate-500 hover:bg-slate-600",
+            : "bg-slate-700 border-slate-500 hover:bg-slate-600 active:bg-slate-500",
           data.isRevealed && data.isMine && "bg-red-500/20 border-red-500/50",
         )}
         onClick={onClick}
@@ -70,7 +70,7 @@ const Cell = React.memo(
             </span>
           ) : null
         ) : data.isFlagged ? (
-          <Flag className="w-4 h-4 text-red-500" />
+          <Flag className="w-4 h-4 text-red-500 animate-in zoom-in" />
         ) : null}
       </div>
     );
@@ -123,6 +123,7 @@ export function MinesweeperApp() {
   const [flags, setFlags] = useState(0);
   const [revealedCount, setRevealedCount] = useState(0);
   const [resetKey, setResetKey] = useState(0);
+  const [touchMode, setTouchMode] = useState<"reveal" | "flag">("reveal");
 
   const config = LEVELS[difficulty];
   const { rows, cols, mines } = config;
@@ -205,9 +206,18 @@ export function MinesweeperApp() {
     if (
       status === "won" ||
       status === "lost" ||
-      board[index].isFlagged ||
       board[index].isRevealed
     ) {
+      return;
+    }
+
+    // Touch flag mode support for mobile
+    if (touchMode === "flag") {
+      handleContextMenu({ preventDefault: () => {} } as any, index);
+      return;
+    }
+
+    if (board[index].isFlagged) {
       return;
     }
 
@@ -362,36 +372,72 @@ export function MinesweeperApp() {
   };
 
   return (
-    <div className="flex flex-col items-center h-full w-full py-8 text-slate-200">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl flex flex-col max-w-[95%] max-h-full overflow-hidden">
+    <div className="flex flex-col items-center h-full w-full py-4 sm:py-8 text-slate-200">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-6 shadow-2xl flex flex-col max-w-[98%] sm:max-w-[95%] max-h-full overflow-hidden w-full items-center">
         {/* Header Controls */}
-        <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-800 shrink-0 gap-4 flex-wrap">
-          <div className="flex flex-col items-center gap-1 min-w-[80px] bg-slate-950 px-4 py-2 rounded-lg border border-slate-800">
-            <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">
+        <div className="flex items-center justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 shrink-0 gap-3 flex-wrap w-full">
+          <div className="flex flex-col items-center gap-0.5 min-w-[70px] sm:min-w-[80px] bg-slate-950 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-slate-800">
+            <span className="text-[10px] sm:text-xs text-slate-500 uppercase font-bold tracking-wider">
               Mines
             </span>
-            <span className="text-2xl font-mono text-red-500">
+            <span className="text-xl sm:text-2xl font-mono text-red-500 font-bold">
               {(mines - flags).toString().padStart(3, "0")}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
+            {/* Mobile Touch Mode Toggle */}
+            <div className="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setTouchMode("reveal")}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
+                  touchMode === "reveal"
+                    ? "bg-cyan-600 text-white shadow"
+                    : "text-slate-400 hover:text-white"
+                )}
+                title="Dig / Reveal cell mode"
+                aria-pressed={touchMode === "reveal"}
+              >
+                <Bomb className="w-3.5 h-3.5" />
+                <span>Dig</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTouchMode("flag")}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
+                  touchMode === "flag"
+                    ? "bg-red-600 text-white shadow"
+                    : "text-slate-400 hover:text-white"
+                )}
+                title="Flag mine mode"
+                aria-pressed={touchMode === "flag"}
+              >
+                <Flag className="w-3.5 h-3.5" />
+                <span>Flag</span>
+              </button>
+            </div>
+
             <button
               onClick={initBoard}
-              className="p-3 rounded-full hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700 group focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              aria-label="Restart game"
+              className="p-2 sm:p-3 rounded-full hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700 group focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               {status === "lost" ? (
-                <Frown className="w-8 h-8 text-red-400 group-hover:scale-110 transition-transform" />
+                <Frown className="w-7 h-7 sm:w-8 sm:h-8 text-red-400 group-hover:scale-110 transition-transform" />
               ) : status === "won" ? (
-                <Trophy className="w-8 h-8 text-yellow-400 group-hover:scale-110 transition-transform" />
+                <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-400 group-hover:scale-110 transition-transform" />
               ) : (
-                <Smile className="w-8 h-8 text-cyan-400 group-hover:scale-110 transition-transform" />
+                <Smile className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 group-hover:scale-110 transition-transform" />
               )}
             </button>
+
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               {Object.entries(LEVELS).map(([key, lvl]) => (
                 <option key={key} value={key}>
@@ -405,7 +451,7 @@ export function MinesweeperApp() {
         </div>
 
         {/* Board */}
-        <div className="flex-1 overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-2 min-h-0 relative">
+        <div className="flex-1 overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-2 min-h-0 relative max-w-full">
           <div
             className="grid gap-[1px] mx-auto bg-slate-800"
             style={{

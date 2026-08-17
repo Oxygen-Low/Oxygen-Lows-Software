@@ -178,10 +178,10 @@ export default function Account() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto space-y-8 pb-20">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          <div className="relative group">
-            <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-slate-800 bg-slate-900 flex items-center justify-center">
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-20">
+        <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-start text-center sm:text-left">
+          <div className="relative group shrink-0">
+            <div className="w-28 h-28 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-slate-800 bg-slate-900 flex items-center justify-center">
               {profilePicture ? (
                 <div
                   className="w-full h-full"
@@ -194,7 +194,7 @@ export default function Account() {
                 />
               ) : (
                 <div className="text-slate-700">
-                  <Upload className="w-12 h-12" />
+                  <Upload className="w-10 h-10 sm:w-12 sm:h-12" />
                 </div>
               )}
             </div>
@@ -207,18 +207,19 @@ export default function Account() {
                   title="Upload profile picture"
                   className="absolute bottom-1 right-1 p-2 bg-cyan-600 rounded-full text-white shadow-lg hover:bg-cyan-500 transition-colors"
                 >
-                  <Upload className="w-5 h-5" />
+                  <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               }
             />
           </div>
 
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold text-white">
-                {profile?.display_name || profile?.username || "Your Account"}
-              </h1>
-            </div>
+          <div className="flex-1 space-y-2 sm:space-y-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              {profile?.display_name || profile?.username || "Your Account"}
+            </h1>
+            {profile?.username && profile?.display_name && (
+              <p className="text-sm text-slate-400">@{profile.username}</p>
+            )}
           </div>
         </div>
 

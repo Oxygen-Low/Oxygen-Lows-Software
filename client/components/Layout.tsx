@@ -14,6 +14,9 @@ import {
   Monitor,
   Gamepad2,
   Scale,
+  Menu,
+  X,
+  ExternalLink,
   Download as DownloadIcon,
 } from "lucide-react";
 import styles from "./Layout.module.css";
@@ -142,59 +145,79 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       <div className={styles["background-gradient"]} />
       {/* Header */}
       <header
-        className={`${styles["header"]} backdrop-blur-sm sticky top-0 z-[60]`}
+        className={`${styles["header"]} backdrop-blur-md sticky top-0 z-[60]`}
       >
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className={`${styles["logo"]} text-2xl font-bold`}>
-              Oxygen Low's Software
-            </h1>
+        <div className="w-full px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            {/* Mobile Hamburger Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+              aria-expanded={sidebarOpen}
+              className="p-2 -ml-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary md:hidden flex items-center justify-center shrink-0"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            <Link to="/apps" className="flex items-center gap-2 min-w-0">
+              <h1 className={`${styles["logo"]} text-base sm:text-xl md:text-2xl font-bold truncate tracking-tight`}>
+                Oxygen Low's Software
+              </h1>
+            </Link>
+
             <a
               href="https://trello.com/b/OmFTZeVK/oxygen-lows-software-development"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer"
+              className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
             >
               Open Beta
             </a>
+
             <Link
               to="/download"
-              className="flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white"
+              className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0"
               title="Download Desktop App"
             >
-              <DownloadIcon className="w-5 h-5" />
+              <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </Link>
+
             <a
               href="https://discord.gg/tNczTe66jK"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white"
+              className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white shrink-0"
               title="Join our Discord"
             >
-              <svg width="20" height="20" viewBox="0 0 127.14 96.36" fill="currentColor">
+              <svg width="18" height="18" viewBox="0 0 127.14 96.36" fill="currentColor">
                 <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" />
               </svg>
             </a>
           </div>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {session ? (
               <>
-                <span className={`${styles["user-email"]} text-sm`}>
+                <span className={`${styles["user-email"]} text-xs sm:text-sm hidden md:inline truncate max-w-[180px]`}>
                   {session.user.email}
                 </span>
                 <button
                   onClick={handleSignOut}
-                  className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium`}
+                  className={`${styles["sign-out-button"]} flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border transition duration-200 text-xs sm:text-sm font-medium`}
+                  title="Sign Out"
                 >
-                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                  <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Sign Out</span>
                 </button>
               </>
             ) : (
               <button
                 onClick={() => navigate("/auth")}
-                className={`${styles["sign-out-button"]} flex items-center gap-2 px-4 py-2 rounded-lg border transition duration-200 text-sm font-medium hover:bg-white/5`}
+                className={`${styles["sign-out-button"]} flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border transition duration-200 text-xs sm:text-sm font-medium hover:bg-white/5`}
               >
-                <User className="w-4 h-4 mr-2" /> Sign In
+                <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Sign In</span>
               </button>
             )}
           </div>
@@ -233,7 +256,55 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           onMouseEnter={openSidebar}
           onMouseLeave={scheduleSidebarClose}
         >
-          <nav className="p-4 space-y-2 flex-1 overflow-y-auto pt-2">
+          {/* Mobile Drawer Header */}
+          <div className="flex md:hidden items-center justify-between p-4 border-b border-border/70 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className={`${styles["logo"]} font-bold text-base`}>Oxygen Low</span>
+              <span className="px-2 py-0.5 text-[10px] font-bold text-yellow-900 bg-yellow-400 rounded uppercase">Beta</span>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              aria-label="Close sidebar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Mobile User Banner */}
+          <div className="md:hidden px-4 pt-3 pb-2 border-b border-border/50 bg-slate-900/40">
+            {session ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold shrink-0">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-300 truncate">
+                    {session.user.email}
+                  </span>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center justify-center gap-2 w-full py-1.5 px-3 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium border border-red-500/20 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setSidebarOpen(false);
+                  navigate("/auth");
+                }}
+                className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition-colors"
+              >
+                <User className="w-3.5 h-3.5" /> Sign In / Register
+              </button>
+            )}
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="p-3 sm:p-4 space-y-1 sm:space-y-2 flex-1 overflow-y-auto pt-2">
             {navItems.map((item) => {
               const Icon = item.icon;
 
@@ -245,9 +316,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setSidebarOpen(false)}
-                    className={`${styles["nav-link"]} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
+                    className={`${styles["nav-link"]} flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-lg font-medium text-sm`}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/80" />
                     {item.label}
                   </a>
                 );
@@ -258,13 +329,47 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                   key={item.href}
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`${styles["nav-link"]} flex items-center gap-3 px-4 py-3 rounded-lg font-medium`}
+                  className={`${styles["nav-link"]} flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-lg font-medium text-sm`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/80" />
                   {item.label}
                 </Link>
               );
             })}
+
+            {/* Mobile Quick Action Links inside sidebar */}
+            <div className="pt-3 mt-3 border-t border-border/50 md:hidden space-y-1.5">
+              <Link
+                to="/download"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+              >
+                <DownloadIcon className="w-4 h-4 text-slate-400" />
+                Download Desktop App
+              </Link>
+              <a
+                href="https://discord.gg/tNczTe66jK"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-[#7983f5] hover:bg-slate-800 transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="currentColor">
+                  <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" />
+                </svg>
+                Join Discord Community
+              </a>
+              <a
+                href="https://trello.com/b/OmFTZeVK/oxygen-lows-software-development"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-yellow-400 hover:bg-slate-800 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4 text-yellow-400" />
+                Development Roadmap (Trello)
+              </a>
+            </div>
           </nav>
 
           <SidebarMusicPlayer />
@@ -287,7 +392,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       />
 
       {/* Content Area */}
-      <main className={fullWidth ? "w-full h-[calc(100vh-73px)]" : "mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-12"}>
+      <main className={fullWidth ? "w-full h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)]" : "mx-auto w-full max-w-5xl px-3 sm:px-6 lg:px-8 py-6 sm:py-12"}>
         {children}
       </main>
     </div>

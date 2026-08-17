@@ -15,6 +15,8 @@ import {
   Copy,
   X,
   Check,
+  ArrowLeft,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1816,16 +1818,45 @@ export function ChatbotApp() {
           respondingClass,
         )}
       >
-        <header className="h-[72px] shrink-0 flex items-center justify-between px-6 bg-black/40 backdrop-blur-xl absolute top-0 w-full z-20">
-          <h2
-            className={cn(
-              "font-display font-medium text-lg text-white/90 ml-4 transition-opacity duration-300",
-              !currentChatId ? "opacity-0" : "opacity-100",
-            )}
-          >
-            {chats.find((c) => c.id === currentChatId)?.title ||
-              "New Conversation"}
-          </h2>
+        <header className="h-[60px] sm:h-[72px] shrink-0 flex items-center justify-between px-3 sm:px-6 bg-black/50 backdrop-blur-xl absolute top-0 w-full z-20 border-b border-white/5">
+          <div className="flex items-center gap-2 min-w-0">
+            <a
+              href="/apps"
+              aria-label="Back to apps"
+              title="Back to apps"
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 flex items-center justify-center"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </a>
+            <h2
+              className={cn(
+                "font-display font-medium text-sm sm:text-base md:text-lg text-white/90 truncate transition-opacity duration-300",
+                !currentChatId ? "opacity-0" : "opacity-100",
+              )}
+            >
+              {chats.find((c) => c.id === currentChatId)?.title ||
+                "New Conversation"}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleNewChatClick}
+              aria-label="New chat"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New Chat</span>
+            </button>
+            <button
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              aria-label="Chat sessions"
+              title="Chat sessions"
+              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+          </div>
         </header>
 
         {/* Subtle edge hint when sidebar is closed */}
@@ -1939,8 +1970,8 @@ export function ChatbotApp() {
               : "opacity-0 -translate-y-5",
           )}
         >
-          <div className="w-full flex flex-col items-center justify-center transform -translate-y-[10vh]">
-            <h1 className="text-[48px] font-display font-semibold leading-tight tracking-tight mb-12 text-center text-transparent bg-clip-text bg-gradient-to-br from-primary to-accent pb-2">
+          <div className="w-full flex flex-col items-center justify-center transform -translate-y-[6vh] sm:-translate-y-[10vh] px-4">
+            <h1 className="text-[28px] sm:text-[36px] md:text-[48px] font-display font-semibold leading-tight tracking-tight mb-6 sm:mb-12 text-center text-transparent bg-clip-text bg-gradient-to-br from-primary to-accent pb-2">
               How can I help you?
             </h1>
           </div>
@@ -1951,10 +1982,10 @@ export function ChatbotApp() {
           <div className="h-[120px] w-full bottom-mask absolute bottom-0 left-0"></div>
           <div
             className={cn(
-              "absolute left-0 right-0 mx-auto w-full max-w-[800px] px-6 pointer-events-auto transition-transform duration-500",
+              "absolute left-0 right-0 mx-auto w-full max-w-[800px] px-3 sm:px-6 pointer-events-auto transition-transform duration-500",
               !currentChatId && messages.length === 0
-                ? "bottom-[40vh]"
-                : "bottom-8",
+                ? "bottom-[35vh] sm:bottom-[40vh]"
+                : "bottom-4 sm:bottom-8",
             )}
           >
             <div className="p-2 relative group focus-within:shadow-[0_0_20px_rgba(207,188,255,0.15)] transition-all duration-300 ai-responding-glow rounded-full bg-[#1A1A1E]">

@@ -250,7 +250,7 @@ export function WordSearchApp() {
         )}
 
         <div 
-          className="bg-slate-900 border border-slate-800 rounded-xl p-2 md:p-4 aspect-square flex flex-col justify-between"
+          className="bg-slate-900 border border-slate-800 rounded-xl p-1.5 sm:p-3 md:p-4 aspect-square flex flex-col justify-between max-w-full touch-none select-none"
           onPointerLeave={handlePointerLeave}
         >
           {grid.map((row, r) => (
@@ -274,11 +274,11 @@ export function WordSearchApp() {
                     onPointerEnter={() => handlePointerEnter(r, c)}
                     onPointerUp={handlePointerUp}
                     className={cn(
-                      "flex-1 m-0.5 md:m-1 flex items-center justify-center rounded-md md:rounded-lg text-sm md:text-xl font-bold cursor-pointer transition-colors duration-150",
+                      "flex-1 m-[1px] sm:m-0.5 md:m-1 flex items-center justify-center rounded-sm sm:rounded-md md:rounded-lg text-xs sm:text-base md:text-xl font-bold cursor-pointer transition-colors duration-150 select-none touch-manipulation",
                       isActiveHighlight ? "bg-cyan-500 text-white shadow-sm" :
                       isFound ? "bg-green-500/20 text-green-400 border border-green-500/30" :
                       "bg-slate-800/50 text-slate-300 hover:bg-slate-800",
-                      isStartOrEnd && isActiveHighlight && "bg-cyan-400"
+                      isStartOrEnd && isActiveHighlight && "bg-cyan-400 text-white"
                     )}
                   >
                     {letter}

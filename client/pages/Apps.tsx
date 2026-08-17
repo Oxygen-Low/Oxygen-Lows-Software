@@ -308,30 +308,30 @@ export default function Apps() {
       <Layout fullWidth={isFullWidthApp}>
         <div className={isFullWidthApp ? "h-full w-full flex flex-col" : "space-y-6 h-full flex flex-col"}>
           {!isFullWidthApp && (
-            <div className="flex items-center gap-4 mb-8 shrink-0">
+            <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8 shrink-0">
               <button
                 onClick={() => navigate("/apps")}
                 aria-label="Back to apps list"
                 title="Back to apps list"
-                className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
+                className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none shrink-0"
               >
-                <AppWindow className="w-6 h-6" />
+                <AppWindow className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <h2 className="text-2xl font-bold text-white">{activeApp.name}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-white truncate">{activeApp.name}</h2>
             </div>
           )}
           
           <div className="relative flex-1 w-full h-full min-h-[500px]">
             {!session && activeApp.authRequired && (
-              <div className="absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl border border-slate-800 p-6">
-                <div className="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center mb-6 text-cyan-500">
+              <div className="absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl border border-slate-800 p-4 sm:p-6 text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-500/10 rounded-full flex items-center justify-center mb-4 sm:mb-6 text-cyan-500">
                   {activeApp.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Sign in to use {activeApp.name}</h3>
-                <p className="text-slate-400 mb-8 max-w-md text-center">{activeApp.description}</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">Sign in to use {activeApp.name}</h3>
+                <p className="text-slate-400 mb-6 sm:mb-8 max-w-md text-xs sm:text-sm">{activeApp.description}</p>
                 <button 
                   onClick={() => navigate("/auth")} 
-                  className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
+                  className="px-6 py-2.5 sm:px-8 sm:py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors text-sm"
                 >
                   Sign In to Continue
                 </button>
@@ -348,23 +348,23 @@ export default function Apps() {
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Apps</h2>
-          <p className="text-slate-400">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Apps</h2>
+          <p className="text-sm sm:text-base text-slate-400">
             Explore and try out our collection of awesome tools!
           </p>
         </div>
         {isDesktopMode && (
           <section aria-label="App availability" className="space-y-3">
-            <h3 className="text-xl font-semibold text-white">Availability</h3>
-            <div className="flex flex-wrap gap-3">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">Availability</h3>
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 type="button"
                 aria-pressed={selectedAvailability === "web-and-desktop"}
                 onClick={() => setSelectedAvailability("web-and-desktop")}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300",
+                  "px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-300",
                   "border border-white/10 hover:border-white/20",
                   selectedAvailability === "web-and-desktop"
                     ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] scale-105"
@@ -378,7 +378,7 @@ export default function Apps() {
                 aria-pressed={selectedAvailability === "desktop-only"}
                 onClick={() => setSelectedAvailability("desktop-only")}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300",
+                  "px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-300",
                   "border border-white/10 hover:border-white/20 flex items-center gap-2",
                   selectedAvailability === "desktop-only"
                     ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.2)] scale-105"
@@ -401,7 +401,7 @@ export default function Apps() {
           </section>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {CATEGORIES.map((cat) => {
             const hasApps = categoryAppCounts[cat.name] > 0;
             return (
@@ -418,21 +418,21 @@ export default function Apps() {
                 )}
                 onClick={() => setSelectedCategory(cat.name)}
               >
-                <CardHeader className="flex flex-row items-center gap-4 p-4">
+                <CardHeader className="flex flex-row items-center gap-3 sm:gap-4 p-3.5 sm:p-4">
                   <div
                     className={cn(
-                      "p-2 rounded-lg bg-slate-800 text-slate-300",
+                      "p-2 rounded-lg bg-slate-800 text-slate-300 shrink-0",
                       selectedCategory === cat.name &&
                         "bg-cyan-500/10 text-cyan-400",
                     )}
                   >
                     {cat.icon}
                   </div>
-                  <div>
-                    <CardTitle className="text-lg text-white">
+                  <div className="min-w-0">
+                    <CardTitle className="text-base sm:text-lg text-white truncate">
                       {cat.label}
                     </CardTitle>
-                    <CardDescription className="text-xs text-slate-500">
+                    <CardDescription className="text-xs text-slate-500 line-clamp-1">
                       {cat.description}
                     </CardDescription>
                   </div>
@@ -443,26 +443,26 @@ export default function Apps() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white">
+          <h3 className="text-lg sm:text-xl font-semibold text-white">
             {`${selectedCategory} ${isDesktopMode ? `${selectedAvailability === "desktop-only" ? "Desktop only" : "Web + desktop"} ` : ""}Apps`}
           </h3>
 
           {filteredApps.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredApps.map((app) => (
                 <Card
                   key={app.id}
                   className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden"
                   onClick={() => handleAppClick(app)}
                 >
-                  <CardHeader className="p-6">
-                    <div className="mb-4 transition-transform group-hover:scale-110">
+                  <CardHeader className="p-4 sm:p-6">
+                    <div className="mb-3 sm:mb-4 transition-transform group-hover:scale-110">
                       {app.icon}
                     </div>
-                    <CardTitle className="text-xl text-white mb-2">
+                    <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
                       {app.name}
                     </CardTitle>
-                    <CardDescription className="text-slate-400">
+                    <CardDescription className="text-xs sm:text-sm text-slate-400">
                       {app.description}
                     </CardDescription>
                   </CardHeader>

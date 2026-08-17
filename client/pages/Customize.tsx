@@ -165,46 +165,46 @@ export default function Customize() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-foreground">Customize</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Customize</h1>
 
         {/* Theme Section */}
-        <div className="mb-12">
-          <h2 className="text-xl font-semibold mb-4 text-foreground">
+        <div className="mb-8 sm:mb-12">
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-foreground">
             Appearance
           </h2>
 
-          <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
+          <div className="mb-6 p-3.5 sm:p-4 bg-card rounded-lg border border-border flex items-center justify-between gap-3">
             <div>
-              <label className="text-foreground font-medium block">
+              <label className="text-foreground font-medium block text-sm sm:text-base">
                 Use gradient
               </label>
-              <p className="text-sm text-muted-foreground">
-                Apply a gradient background based on your theme
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Apply a dynamic gradient across backgrounds and headers
               </p>
             </div>
             <button
               onClick={() => setUseGradient(!useGradient)}
               aria-pressed={useGradient}
-              className={`px-4 py-2 rounded-lg border-2 transition-all font-medium ${
+              className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-lg border-2 transition-all font-medium text-xs sm:text-sm shrink-0 ${
                 useGradient
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {useGradient ? "Enabled" : "Disabled"}
+              {useGradient ? "On" : "Off"}
             </button>
           </div>
 
-          <h3 className="text-lg font-medium mb-3 text-foreground">
-            Theme Color
+          <h3 className="text-base sm:text-lg font-medium mb-3 text-foreground">
+            Preset Themes
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {THEMES.map((themeOption) => (
               <button
                 key={themeOption.value}
                 onClick={() => setTheme(themeOption.value as any)}
                 aria-pressed={theme === themeOption.value}
-                className={`p-4 rounded-lg border-2 transition-all font-medium text-sm ${
+                className={`p-3 sm:p-4 rounded-lg border-2 transition-all font-medium text-xs sm:text-sm ${
                   theme === themeOption.value
                     ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
                     : "hover:opacity-80"
@@ -220,16 +220,16 @@ export default function Customize() {
             ))}
           </div>
 
-          <h3 className="text-lg font-medium mb-3 mt-8 text-foreground">
+          <h3 className="text-base sm:text-lg font-medium mb-3 mt-6 sm:mt-8 text-foreground">
             Custom Theme
           </h3>
-          <div className="p-4 bg-card rounded-lg border border-border space-y-4">
-            <div className="flex items-center gap-4">
+          <div className="p-3.5 sm:p-4 bg-card rounded-lg border border-border space-y-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
-                <label className="text-foreground font-medium block">
+                <label className="text-foreground font-medium block text-sm sm:text-base">
                   Primary Accent Color
                 </label>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Used for buttons, highlights, and icons
                 </p>
               </div>
@@ -240,15 +240,15 @@ export default function Customize() {
                   setCustomPrimaryColor(e.target.value);
                   setTheme(`custom:${e.target.value}-${customBgColor}`);
                 }}
-                className="w-12 h-12 rounded cursor-pointer border-0 bg-transparent p-0"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded cursor-pointer border-0 bg-transparent p-0 shrink-0"
               />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
-                <label className="text-foreground font-medium block">
+                <label className="text-foreground font-medium block text-sm sm:text-base">
                   Background Color
                 </label>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Main background color of the app. A gradient is generated if
                   enabled.
                 </p>
@@ -260,22 +260,22 @@ export default function Customize() {
                   setCustomBgColor(e.target.value);
                   setTheme(`custom:${customPrimaryColor}-${e.target.value}`);
                 }}
-                className="w-12 h-12 rounded cursor-pointer border-0 bg-transparent p-0"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded cursor-pointer border-0 bg-transparent p-0 shrink-0"
               />
             </div>
           </div>
         </div>
 
         {/* Font Section */}
-        <div className="mb-12">
-          <h2 className="text-xl font-semibold mb-4 text-foreground">Font</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="mb-8 sm:mb-12">
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-foreground">Font</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {FONTS.map((fontOption) => (
               <button
                 key={fontOption.value}
                 onClick={() => setFont(fontOption.value)}
                 aria-pressed={font === fontOption.value}
-                className={`p-4 rounded-lg border-2 transition-all text-sm ${
+                className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-xs sm:text-sm ${
                   font === fontOption.value
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border bg-card text-foreground hover:border-primary/50"
