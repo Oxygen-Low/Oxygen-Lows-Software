@@ -7,6 +7,15 @@ import { ru } from "./ru";
 import { fr } from "./fr";
 import { de } from "./de";
 import { es } from "./es";
+import { it } from "./it";
+import { pt } from "./pt";
+import { nl } from "./nl";
+import { pl } from "./pl";
+import { tr } from "./tr";
+import { vi } from "./vi";
+import { id } from "./id";
+import { hi } from "./hi";
+import { bn } from "./bn";
 import { ro } from "./ro";
 import { ar } from "./ar";
 import { cs } from "./cs";
@@ -26,6 +35,15 @@ export {
   fr,
   de,
   es,
+  it,
+  pt,
+  nl,
+  pl,
+  tr,
+  vi,
+  id,
+  hi,
+  bn,
   ro,
   ar,
   cs,
@@ -107,6 +125,60 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   Spanish: es,
   spanish: es,
   "Español": es,
+
+  // Italian (Italy 🇮🇹)
+  it,
+  Italian: it,
+  italian: it,
+  Italiano: it,
+
+  // Portuguese (Portugal / Brazil 🇵🇹)
+  pt,
+  Portuguese: pt,
+  portuguese: pt,
+  "Português": pt,
+
+  // Dutch (Netherlands 🇳🇱)
+  nl,
+  Dutch: nl,
+  dutch: nl,
+  Nederlands: nl,
+
+  // Polish (Poland 🇵🇱)
+  pl,
+  Polish: pl,
+  polish: pl,
+  Polski: pl,
+
+  // Turkish (Turkey 🇹🇷)
+  tr,
+  Turkish: tr,
+  turkish: tr,
+  "Türkçe": tr,
+
+  // Vietnamese (Vietnam 🇻🇳)
+  vi,
+  Vietnamese: vi,
+  vietnamese: vi,
+  "Tiếng Việt": vi,
+
+  // Indonesian (Indonesia 🇮🇩)
+  id,
+  Indonesian: id,
+  indonesian: id,
+  "Bahasa Indonesia": id,
+
+  // Hindi (India 🇮🇳)
+  hi,
+  Hindi: hi,
+  hindi: hi,
+  "हिन्दी": hi,
+
+  // Bengali (Bangladesh 🇧🇩)
+  bn,
+  Bengali: bn,
+  bengali: bn,
+  "বাংলা": bn,
 
   // Romanian / Romainian (Romania 🇷🇴)
   ro,

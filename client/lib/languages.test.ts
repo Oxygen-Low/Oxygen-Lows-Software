@@ -13,7 +13,7 @@ describe("languages utility", () => {
   });
 
   it("contains English with flag in SUPPORTED_LANGUAGES", () => {
-    expect(SUPPORTED_LANGUAGES.length).toBeGreaterThanOrEqual(17);
+    expect(SUPPORTED_LANGUAGES.length).toBe(26);
     const english = SUPPORTED_LANGUAGES.find((l) => l.name === "English");
     expect(english).toBeDefined();
     expect(english?.flag).toBe("🇬🇧");
@@ -55,6 +55,15 @@ describe("languages utility", () => {
       { code: "fr", countryCode: "fr" },
       { code: "de", countryCode: "de" },
       { code: "es", countryCode: "es" },
+      { code: "it", countryCode: "it" },
+      { code: "pt", countryCode: "pt" },
+      { code: "nl", countryCode: "nl" },
+      { code: "pl", countryCode: "pl" },
+      { code: "tr", countryCode: "tr" },
+      { code: "vi", countryCode: "vn" },
+      { code: "id", countryCode: "id" },
+      { code: "hi", countryCode: "in" },
+      { code: "bn", countryCode: "bd" },
       { code: "ro", countryCode: "ro" },
       { code: "ar", countryCode: "sa" },
       { code: "cs", countryCode: "cz" },
@@ -86,6 +95,15 @@ describe("languages utility", () => {
     expect(getLanguageOption("Korean").flag).toBe("🇰🇷");
     expect(getLanguageOption("Romainian").name).toBe("Romanian");
     expect(getLanguageOption("chinese").code).toBe("zh-CN");
+    expect(getLanguageOption("Dutch").code).toBe("nl");
+    expect(getLanguageOption("Polish").code).toBe("pl");
+    expect(getLanguageOption("Vietnamese").code).toBe("vi");
+    expect(getLanguageOption("Bengali").code).toBe("bn");
+    expect(getLanguageOption("Turkish").code).toBe("tr");
+    expect(getLanguageOption("Italian").code).toBe("it");
+    expect(getLanguageOption("Indonesian").code).toBe("id");
+    expect(getLanguageOption("Hindi").code).toBe("hi");
+    expect(getLanguageOption("Portuguese").code).toBe("pt");
   });
 
   it("falls back to default language for null or invalid inputs", () => {
@@ -99,6 +117,7 @@ describe("languages utility", () => {
     expect(formatLanguageWithFlag("en")).toBe("🇬🇧 English");
     expect(formatLanguageWithFlag("Korean")).toBe("🇰🇷 Korean");
     expect(formatLanguageWithFlag("ko")).toBe("🇰🇷 Korean");
+    expect(formatLanguageWithFlag("Dutch")).toBe("🇳🇱 Dutch");
     expect(formatLanguageWithFlag(null)).toBe("🇬🇧 English");
   });
 });
