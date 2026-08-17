@@ -42,6 +42,9 @@ jobs:
           # Checkout or create the plesk branch
           git checkout -B plesk
           
+          # Remove files not needed for hosting
+          rm -rf Android Desktop supabase
+          
           # Force add the built dist directory (since it's in .gitignore)
           git add -f dist/
           
