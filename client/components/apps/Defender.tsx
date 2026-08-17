@@ -26,6 +26,15 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
+function getCountryFlag(countryCode: string): string {
+  if (!countryCode || countryCode.length !== 2) return '🌐';
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0));
+  return String.fromCodePoint(...codePoints);
+}
+
 const COUNTRIES = [
   { code: 'AF', name: 'Afghanistan' }, { code: 'AL', name: 'Albania' }, { code: 'DZ', name: 'Algeria' },
   { code: 'AR', name: 'Argentina' }, { code: 'AU', name: 'Australia' }, { code: 'AT', name: 'Austria' },
@@ -874,7 +883,14 @@ function EventsTab({ events }: { events: Event[] }) {
               <TableRow key={e.id} className="border-slate-800 hover:bg-slate-800/50">
                 <TableCell className="text-xs text-slate-400 whitespace-nowrap">{new Date(e.created_at).toLocaleString()}</TableCell>
                 <TableCell className="font-mono text-xs whitespace-nowrap">{e.ip}</TableCell>
-                <TableCell className="whitespace-nowrap">{e.country_code || '-'}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {e.country_code ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-sm">{getCountryFlag(e.country_code)}</span>
+                      <span>{e.country_code}</span>
+                    </span>
+                  ) : '-'}
+                </TableCell>
                 <TableCell className="whitespace-nowrap"><EventBadge type={e.event_type} /></TableCell>
                 <TableCell className="font-mono text-xs max-w-[200px] truncate">
                   <span className="text-slate-500 mr-2">{e.method}</span>
@@ -1181,27 +1197,37 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
             {(config.block_countries || []).map(code => {
               const country = COUNTRIES.find(c => c.code === code);
               return (
-                <Badge key={code} variant="secondary" className="bg-slate-800 hover:bg-slate-700">
-                  {country ? country.name : code}
-                  <button onClick={() => updateConfig({ block_countries: (config.block_countries || []).filter(c => c !== code) })} className="ml-2 text-slate-400 hover:text-white">
+                <Badge key={code} variant="secondary" className="bg-slate-800 hover:bg-slate-700 flex items-center gap-1.5 py-1 px-2.5">
+                  <span className="text-base leading-none">{getCountryFlag(code)}</span>
+                  <span>{country ? country.name : code}</span>
+                  <button onClick={() => updateConfig({ block_countries: (config.block_countries || []).filter(c => c !== code) })} className="ml-1 text-slate-400 hover:text-white">
                     <X className="w-3 h-3" />
                   </button>
                 </Badge>
               );
             })}
           </div>
-          <Select onValueChange={(val) => {
-            if (!(config.block_countries || []).includes(val)) {
-              updateConfig({ block_countries: [...(config.block_countries || []), val] });
-            }
-          }}>
+          <Select
+            key={(config.block_countries || []).length}
+            onValueChange={(val) => {
+              if (val && !(config.block_countries || []).includes(val)) {
+                updateConfig({ block_countries: [...(config.block_countries || []), val] });
+              }
+            }}
+          >
             <SelectTrigger className="bg-slate-950 border-slate-800">
               <SelectValue placeholder="Add a country to block..." />
             </SelectTrigger>
             <SelectContent>
               <ScrollArea className="h-64">
                 {COUNTRIES.filter(c => !(config.block_countries || []).includes(c.code)).map(c => (
-                  <SelectItem key={c.code} value={c.code}>{c.name} ({c.code})</SelectItem>
+                  <SelectItem key={c.code} value={c.code}>
+                    <span className="flex items-center gap-2">
+                      <span className="text-base leading-none">{getCountryFlag(c.code)}</span>
+                      <span>{c.name}</span>
+                      <span className="text-slate-500 text-xs font-mono">({c.code})</span>
+                    </span>
+                  </SelectItem>
                 ))}
               </ScrollArea>
             </SelectContent>
