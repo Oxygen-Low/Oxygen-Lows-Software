@@ -4,7 +4,7 @@ import {
   validateAiUrl,
   resolveCustomProviderUrl,
 } from "../lib/safeAiUrl";
-import { parseSearchIntent, extractBearerToken } from "./ai";
+import { parseSearchIntent, extractBearerToken, stripHtmlTags } from "./ai";
 import fs from "fs";
 import path from "path";
 
@@ -253,3 +253,51 @@ describe("RFC 6750 Case-Insensitive Bearer Scheme Token Extraction", () => {
   });
 });
 
+describe("stripHtmlTags (HTML sanitization)", () => {
+  it("should strip simple HTML tags", () => {
+    expect(stripHtmlTags("<b>Hello World</b>")).toBe("Hello World");
+    expect(stripHtmlTags("<p>This is a <i>paragraph</i>.</p>")).toBe(
+      "This is a paragraph.",
+    );
+  });
+
+  it("should recursively strip nested and spliced HTML tags (incomplete multi-character sanitization protection)", () => {
+    expect(stripHtmlTags("<<script>script>alert('XSS')</script>")).toBe(
+      "alert('XSS')",
+    );
+    expect(stripHtmlTags("<scr<script>ipt>dangerous()</scr</script>ipt>")).toBe(
+      "dangerous()",
+    );
+    expect(stripHtmlTags("<<tag>nested>content")).toBe("content");
+    expect(stripHtmlTags("<div <script>>test</div>")).toBe("test");
+  });
+
+  it("should handle links and attributes properly", () => {
+    expect(
+      stripHtmlTags(
+        '<a href="https://example.com" class="result__snippet">Example result text</a>',
+      ),
+    ).toBe("Example result text");
+  });
+
+  it("should trim surrounding whitespace", () => {
+    expect(stripHtmlTags("   <span>  Trimmed content  </span>   ")).toBe(
+      "Trimmed content",
+    );
+  });
+
+  it("should return empty string for non-string or empty inputs", () => {
+    expect(stripHtmlTags("")).toBe("");
+    expect(stripHtmlTags("    ")).toBe("");
+    expect(stripHtmlTags(null)).toBe("");
+    expect(stripHtmlTags(undefined)).toBe("");
+    expect(stripHtmlTags(12345)).toBe("");
+    expect(stripHtmlTags({})).toBe("");
+  });
+
+  it("should preserve clean text without tags", () => {
+    expect(
+      stripHtmlTags("This is already clean text with numbers 123 and symbols!"),
+    ).toBe("This is already clean text with numbers 123 and symbols!");
+  });
+});
