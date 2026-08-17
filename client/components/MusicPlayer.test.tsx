@@ -12,14 +12,16 @@ vi.mock("@/hooks/useMusic", () => ({
   useMusic: () => mockUseMusic(),
 }));
 
+const mockCreateSignedUrl = vi.fn().mockResolvedValue({
+  data: { signedUrl: "https://example.com/audio.mp3" },
+  error: null,
+});
+
 const mockSupabase = {
   from: vi.fn((_table?: string) => ({} as any)),
   storage: {
     from: vi.fn((_bucket?: string) => ({
-      createSignedUrl: vi.fn().mockResolvedValue({
-        data: { signedUrl: "https://example.com/audio.mp3" },
-        error: null,
-      }),
+      createSignedUrl: mockCreateSignedUrl,
     })),
   },
 };
@@ -407,4 +409,50 @@ describe("MusicContext 10-second auto-resume after exit/refresh", () => {
     expect(stored.isPlaying).toBe(false);
   });
 });
+
+describe("MusicContext storage path sanitization", () => {
+  function PathTestConsumer({ track }: { track: any }) {
+    const { playTrack } = useMusicContext();
+    return (
+      <button data-testid="play-track-btn" onClick={() => playTrack(track)}>
+        Play
+      </button>
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSupabase.from = vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn().mockResolvedValue({
+            data: null,
+            error: null,
+          }),
+        })),
+      })),
+      upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }));
+  });
+
+  it("recursively sanitizes nested and spliced path traversal sequences", async () => {
+    render(
+      <MusicProvider>
+        <PathTestConsumer
+          track={{ name: "Traversed Track", fileName: "....//....//nested/song.mp3" }}
+        />
+      </MusicProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("play-track-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateSignedUrl).toHaveBeenCalledWith(
+        "test-user-id/nested/song.mp3",
+        3600,
+      );
+    });
+  });
+});
+
 
