@@ -315,6 +315,10 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
     "block_ai_scrapers",
     "block_ai_search_crawlers",
     "block_data_harvesters",
+    "block_bruteforce",
+    "block_http_dos",
+    "block_http_exploit",
+    "block_botnets",
     "ddos_protection",
     "ddos_threshold_rpm"
   ];

@@ -1,5 +1,6 @@
 import { DefenderConfig, AppConfig, BlockedEvent, EventType, OutboundConnection, RouteConfig } from './types.js';
 import { TorDetector } from './tor.js';
+import { ThreatActorDetector } from './threatActors.js';
 import { OutboundMonitor } from './outbound.js';
 import { RateLimiter } from './rateLimiter.js';
 import { discoverRoutes } from './routeDiscovery.js';
@@ -27,6 +28,7 @@ export class DefenderClient {
   private config: DefenderConfig;
   private appConfig: AppConfig | null = null;
   private torDetector: TorDetector;
+  private threatActorDetector: ThreatActorDetector;
   private outboundMonitor: OutboundMonitor;
   private rateLimiter: RateLimiter;
   private apiUrl: string;
@@ -36,6 +38,7 @@ export class DefenderClient {
     this.config = config;
     this.apiUrl = config.apiUrl || 'https://oxygenlow.com';
     this.torDetector = new TorDetector();
+    this.threatActorDetector = new ThreatActorDetector();
     this.rateLimiter = new RateLimiter();
     this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn), new URL(this.apiUrl).hostname);
   }
@@ -64,6 +67,10 @@ export class DefenderClient {
       blockAiScrapers: cfg.block_ai_scrapers ?? true,
       blockAiSearchCrawlers: cfg.block_ai_search_crawlers ?? false,
       blockDataHarvesters: cfg.block_data_harvesters ?? true,
+      blockBruteforce: cfg.block_bruteforce ?? true,
+      blockHttpDos: cfg.block_http_dos ?? true,
+      blockHttpExploit: cfg.block_http_exploit ?? true,
+      blockBotnets: cfg.block_botnets ?? true,
       ddosProtection: cfg.ddos_protection ?? true,
       ddosThresholdRpm: cfg.ddos_threshold_rpm ?? 1000,
       routes,
@@ -226,7 +233,43 @@ export class DefenderClient {
       }
     }
 
-    // 3. Bot Detection
+    // 3. Known Threat Actor Check
+    if (!isBlocked) {
+      const threatActor = this.threatActorDetector.checkThreatActor(ip);
+      if (threatActor) {
+        let shouldBlock = false;
+        let eventType: EventType = 'threat_botnet';
+        switch (threatActor.category) {
+          case 'bruteforce':
+            shouldBlock = this.appConfig.blockBruteforce;
+            eventType = 'threat_bruteforce';
+            break;
+          case 'http_dos':
+            shouldBlock = this.appConfig.blockHttpDos;
+            eventType = 'threat_dos';
+            break;
+          case 'http_exploit':
+            shouldBlock = this.appConfig.blockHttpExploit;
+            eventType = 'threat_exploit';
+            break;
+          case 'botnet':
+            shouldBlock = this.appConfig.blockBotnets;
+            eventType = 'threat_botnet';
+            break;
+        }
+        if (shouldBlock) {
+          const categoryLabels: Record<string, string> = {
+            bruteforce: 'Bruteforce attacker',
+            http_dos: 'HTTP DoS attacker',
+            http_exploit: 'HTTP Exploit attacker',
+            botnet: 'Botnet Actor'
+          };
+          fail(eventType, `Known threat actor detected: ${categoryLabels[threatActor.category] || threatActor.category}`);
+        }
+      }
+    }
+
+    // 4. Bot Detection
     if (!isBlocked) {
       const botResult = detectBot(userAgent);
       if (botResult.isBot && botResult.category) {
@@ -244,7 +287,7 @@ export class DefenderClient {
       }
     }
 
-    // 4. Injection Scanning
+    // 5. Injection Scanning
     if (!isBlocked) {
       const scanRes = scanRequest(method, path, query, body, headers);
       for (const threat of scanRes.threats) {
@@ -263,7 +306,7 @@ export class DefenderClient {
       }
     }
 
-    // 5. Global DDoS Check
+    // 6. Global DDoS Check
     if (!isBlocked && this.appConfig.ddosProtection && this.appConfig.ddosThresholdRpm > 0) {
       const { allowed } = this.rateLimiter.check(`global:${ip}`, this.appConfig.ddosThresholdRpm, 60);
       if (!allowed) {
@@ -271,7 +314,7 @@ export class DefenderClient {
       }
     }
 
-    // 6. Route Specific Rate Limit
+    // 7. Route Specific Rate Limit
     if (!isBlocked) {
       const route = this.getMatchingRoute(method, path);
       if (route && route.rateLimitEnabled) {
@@ -303,6 +346,7 @@ export class DefenderClient {
 
   destroy(): void {
     this.torDetector.destroy();
+    this.threatActorDetector.destroy();
     this.outboundMonitor.uninstall();
     this.rateLimiter.destroy();
   }

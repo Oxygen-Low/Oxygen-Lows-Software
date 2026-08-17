@@ -1,6 +1,7 @@
 export { DefenderClient } from './webdefender.js';
+export { ThreatActorDetector } from './threatActors.js';
 export { createExpressMiddleware } from './middleware.js';
-export type { DefenderConfig, BlockedEvent, EventType, AppConfig, RouteConfig } from './types.js';
+export type { DefenderConfig, BlockedEvent, EventType, AppConfig, RouteConfig, ThreatActorCategory } from './types.js';
 import { DefenderClient } from './webdefender.js';
 import { createExpressMiddleware } from './middleware.js';
 import { DefenderConfig } from './types.js';

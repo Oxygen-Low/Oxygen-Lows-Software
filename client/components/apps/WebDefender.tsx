@@ -138,6 +138,10 @@ type AppConfig = {
   block_ai_scrapers: boolean;
   block_ai_search_crawlers: boolean;
   block_data_harvesters: boolean;
+  block_bruteforce: boolean;
+  block_http_dos: boolean;
+  block_http_exploit: boolean;
+  block_botnets: boolean;
 };
 
 type Route = {
@@ -864,6 +868,10 @@ function EventBadge({ type }: { type: string }) {
     tor: { color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', label: 'TOR' },
     country_block: { color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Geo Block' },
     bot: { color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Bot' },
+    threat_bruteforce: { color: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Bruteforce' },
+    threat_dos: { color: 'bg-rose-600/10 text-rose-600 border-rose-600/20', label: 'HTTP DoS' },
+    threat_exploit: { color: 'bg-orange-600/10 text-orange-500 border-orange-600/20', label: 'HTTP Exploit' },
+    threat_botnet: { color: 'bg-purple-600/10 text-purple-400 border-purple-600/20', label: 'Botnet' },
     ddos: { color: 'bg-rose-600/10 text-rose-600 border-rose-600/20', label: 'DDoS' },
     rate_limit: { color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', label: 'Rate Limit' },
     allowed: { color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', label: 'Allowed' }
@@ -1065,7 +1073,11 @@ const defaultDefenderConfig: AppConfig = {
   block_ai_assistants: false,
   block_ai_scrapers: true,
   block_ai_search_crawlers: false,
-  block_data_harvesters: true
+  block_data_harvesters: true,
+  block_bruteforce: true,
+  block_http_dos: true,
+  block_http_exploit: true,
+  block_botnets: true
 };
 
 export function getAppConfig(defenderConfig: any): AppConfig {
@@ -1221,6 +1233,29 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>Known Threat Actors</CardTitle>
+          <CardDescription>Block malicious IP addresses actively tracked on global threat intelligence feeds.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {[
+            { id: 'block_bruteforce', label: 'Bruteforce Attackers', desc: 'Block known IPs engaged in credential stuffing and brute-force login attempts.' },
+            { id: 'block_http_dos', label: 'HTTP DoS Attackers', desc: 'Block known IPs participating in HTTP denial-of-service and flood attacks.' },
+            { id: 'block_http_exploit', label: 'HTTP Exploit Attackers', desc: 'Block known IPs actively exploiting web application vulnerabilities and RFI/LFI.' },
+            { id: 'block_botnets', label: 'Botnet Actors', desc: 'Block known botnet Command & Control (C2) servers and compromised bot nodes.' }
+          ].map(setting => (
+            <div key={setting.id} className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base text-white">{setting.label}</Label>
+                <p className="text-sm text-slate-400">{setting.desc}</p>
+              </div>
+              <Switch checked={config[setting.id as keyof AppConfig] as boolean} onCheckedChange={(c) => updateConfig({ [setting.id]: c })} />
+            </div>
+          ))}
         </CardContent>
       </Card>
 

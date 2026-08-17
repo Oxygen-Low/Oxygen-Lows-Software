@@ -18,10 +18,14 @@ export interface BlockedEvent {
 
 export type EventType = 
   | 'sql_injection' | 'shell_injection' | 'path_traversal' | 'ssrf'
-  | 'tor' | 'country_block' | 'bot' | 'ddos' | 'rate_limit' | 'allowed';
+  | 'tor' | 'country_block' | 'bot' | 'ddos' | 'rate_limit' | 'allowed'
+  | 'threat_bruteforce' | 'threat_dos' | 'threat_exploit' | 'threat_botnet';
 
 export type BotCategory = 
   | 'ad_bot' | 'ai_assistant' | 'ai_scraper' | 'ai_search_crawler' | 'data_harvester';
+
+export type ThreatActorCategory =
+  | 'bruteforce' | 'http_dos' | 'http_exploit' | 'botnet';
 
 export interface AppConfig {
   appId: string;
@@ -37,6 +41,10 @@ export interface AppConfig {
   blockAiScrapers: boolean;
   blockAiSearchCrawlers: boolean;
   blockDataHarvesters: boolean;
+  blockBruteforce: boolean;
+  blockHttpDos: boolean;
+  blockHttpExploit: boolean;
+  blockBotnets: boolean;
   ddosProtection: boolean;
   ddosThresholdRpm: number;
   routes: RouteConfig[];

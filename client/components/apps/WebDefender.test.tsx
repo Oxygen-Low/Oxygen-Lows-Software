@@ -12,9 +12,17 @@ describe("Defender getAppConfig", () => {
     expect(configNull.block_tor).toBe(true);
     expect(configNull.block_countries).toEqual([]);
     expect(configNull.ddos_threshold_rpm).toBe(1000);
+    expect(configNull.block_bruteforce).toBe(true);
+    expect(configNull.block_http_dos).toBe(true);
+    expect(configNull.block_http_exploit).toBe(true);
+    expect(configNull.block_botnets).toBe(true);
 
     const configUndefined = getAppConfig(undefined);
     expect(configUndefined.block_sql_injection).toBe(true);
+    expect(configUndefined.block_bruteforce).toBe(true);
+    expect(configUndefined.block_http_dos).toBe(true);
+    expect(configUndefined.block_http_exploit).toBe(true);
+    expect(configUndefined.block_botnets).toBe(true);
   });
 
   it("extracts config correctly from a single object (1-to-1 relation)", () => {
@@ -24,7 +32,11 @@ describe("Defender getAppConfig", () => {
       block_shell_injection: true,
       block_tor: false,
       block_countries: ["US", "CA"],
-      ddos_threshold_rpm: 500
+      ddos_threshold_rpm: 500,
+      block_bruteforce: false,
+      block_http_dos: true,
+      block_http_exploit: false,
+      block_botnets: true
     };
 
     const config = getAppConfig(singleObjConfig);
@@ -33,6 +45,10 @@ describe("Defender getAppConfig", () => {
     expect(config.block_tor).toBe(false);
     expect(config.block_countries).toEqual(["US", "CA"]);
     expect(config.ddos_threshold_rpm).toBe(500);
+    expect(config.block_bruteforce).toBe(false);
+    expect(config.block_http_dos).toBe(true);
+    expect(config.block_http_exploit).toBe(false);
+    expect(config.block_botnets).toBe(true);
     // Unspecified fields fallback to defaults
     expect(config.block_path_traversal).toBe(true);
   });
@@ -43,7 +59,9 @@ describe("Defender getAppConfig", () => {
         app_id: "app-123",
         block_sql_injection: false,
         block_countries: ["FR"],
-        block_ad_bots: true
+        block_ad_bots: true,
+        block_bruteforce: true,
+        block_botnets: false
       }
     ];
 
@@ -51,12 +69,19 @@ describe("Defender getAppConfig", () => {
     expect(config.block_sql_injection).toBe(false);
     expect(config.block_countries).toEqual(["FR"]);
     expect(config.block_ad_bots).toBe(true);
+    expect(config.block_bruteforce).toBe(true);
+    expect(config.block_botnets).toBe(false);
+    expect(config.block_http_dos).toBe(true);
   });
 
   it("handles empty array gracefully", () => {
     const config = getAppConfig([]);
     expect(config.block_sql_injection).toBe(true);
     expect(config.block_tor).toBe(true);
+    expect(config.block_bruteforce).toBe(true);
+    expect(config.block_http_dos).toBe(true);
+    expect(config.block_http_exploit).toBe(true);
+    expect(config.block_botnets).toBe(true);
   });
 });
 
