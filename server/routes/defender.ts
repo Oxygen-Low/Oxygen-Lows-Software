@@ -299,7 +299,8 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
 
   const { data, error } = await supabase
     .from("defender_config")
-    .upsert({ ...body, app_id: id })
+    .update({ ...body, app_id: id })
+    .eq("app_id", id)
     .select("*")
     .single();
 
