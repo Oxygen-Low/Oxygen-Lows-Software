@@ -164,12 +164,18 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
 
     private fun connectVpn(configStr: String, type: String, name: String) {
         val ext = if (type.contains("WireGuard", true)) "conf" else "ovpn"
-        val fileName = "${name.replace(Regex("[^a-zA-Z0-9.-]"), "_")}.$ext"
+        val sanitizedBaseName = File(name).name
+            .replace(Regex("[^a-zA-Z0-9_-]"), "_")
+            .ifEmpty { "vpn_profile" }
+        val fileName = "$sanitizedBaseName.$ext"
         
-        val cacheDir = File(context.cacheDir, "vpn_profiles")
+        val cacheDir = File(context.cacheDir, "vpn_profiles").canonicalFile
         if (!cacheDir.exists()) cacheDir.mkdirs()
         
-        val configFile = File(cacheDir, fileName)
+        val configFile = File(cacheDir, fileName).canonicalFile
+        if (!configFile.canonicalPath.startsWith(cacheDir.canonicalPath + File.separator)) {
+            throw SecurityException("Invalid VPN configuration file path")
+        }
         configFile.writeText(configStr)
         
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", configFile)
