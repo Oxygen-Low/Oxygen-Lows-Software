@@ -215,10 +215,12 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
 export const DEFAULT_LANGUAGE = "English";
 
 const dynamicLanguages: LanguageOption[] = [];
+let languageMapCache: Map<string, LanguageOption> | null = null;
 
 export function registerLanguageOption(option: LanguageOption) {
   if (!dynamicLanguages.some((l) => l.code === option.code || l.name === option.name)) {
     dynamicLanguages.push(option);
+    languageMapCache = null;
   }
 }
 
@@ -237,33 +239,41 @@ export function getCountryFlagUrl(countryCode?: string | null, width: "w20" | "w
 export function getLanguageOption(value?: string | null): LanguageOption {
   if (!value) return SUPPORTED_LANGUAGES[0];
   const normalized = value.trim().toLowerCase();
-  const all = [...SUPPORTED_LANGUAGES, ...dynamicLanguages];
 
-  // Specific alias mappings
-  if (normalized === "romainian") {
-    const foundRo = all.find((l) => l.code === "ro");
-    if (foundRo) return foundRo;
-  }
-  if (normalized === "chinese" || normalized === "zh") {
-    const foundZh = all.find((l) => l.code === "zh-CN");
-    if (foundZh) return foundZh;
-  }
-  if (normalized === "simplified chinese") {
-    const foundZhCn = all.find((l) => l.code === "zh-CN");
-    if (foundZhCn) return foundZhCn;
-  }
-  if (normalized === "traditional chinese") {
-    const foundZhTw = all.find((l) => l.code === "zh-TW");
-    if (foundZhTw) return foundZhTw;
+  if (!languageMapCache) {
+    languageMapCache = new Map<string, LanguageOption>();
+    const all = [...SUPPORTED_LANGUAGES, ...dynamicLanguages];
+
+    for (const l of all) {
+      const name = l.name.toLowerCase();
+      const code = l.code.toLowerCase();
+
+      if (!languageMapCache.has(name)) languageMapCache.set(name, l);
+      if (!languageMapCache.has(code)) languageMapCache.set(code, l);
+      if (l.nativeName) {
+        const nativeName = l.nativeName.toLowerCase();
+        if (!languageMapCache.has(nativeName)) languageMapCache.set(nativeName, l);
+      }
+    }
+
+    // Specific alias mappings
+    const foundRo = languageMapCache.get("ro");
+    if (foundRo) languageMapCache.set("romainian", foundRo);
+
+    const foundZh = languageMapCache.get("zh-cn");
+    if (foundZh) {
+      languageMapCache.set("chinese", foundZh);
+      languageMapCache.set("zh", foundZh);
+      languageMapCache.set("simplified chinese", foundZh);
+    }
+
+    const foundZhTw = languageMapCache.get("zh-tw");
+    if (foundZhTw) {
+      languageMapCache.set("traditional chinese", foundZhTw);
+    }
   }
 
-  const found = all.find(
-    (l) =>
-      l.name.toLowerCase() === normalized ||
-      l.code.toLowerCase() === normalized ||
-      l.nativeName?.toLowerCase() === normalized,
-  );
-  return found || SUPPORTED_LANGUAGES[0];
+  return languageMapCache.get(normalized) || SUPPORTED_LANGUAGES[0];
 }
 
 /**
