@@ -24,6 +24,9 @@ import { da } from "./da";
 import { la } from "./la";
 import { he } from "./he";
 import { uk } from "./uk";
+import { pa } from "./pa";
+import { ur } from "./ur";
+import { fa } from "./fa";
 
 export {
   en,
@@ -52,6 +55,9 @@ export {
   la,
   he,
   uk,
+  pa,
+  ur,
+  fa,
 };
 
 export type StringLeaves<T> = {
@@ -229,6 +235,24 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   Ukrainian: uk,
   ukrainian: uk,
   "Українська": uk,
+
+  // Punjabi (India 🇮🇳)
+  pa,
+  Punjabi: pa,
+  punjabi: pa,
+  "ਪੰਜਾਬੀ": pa,
+
+  // Urdu (Pakistan 🇵🇰)
+  ur,
+  Urdu: ur,
+  urdu: ur,
+  "اردو": ur,
+
+  // Persian (Iran 🇮🇷)
+  fa,
+  Persian: fa,
+  persian: fa,
+  "فارسی": fa,
 };
 
 export const DEFAULT_LOCALE = "English";

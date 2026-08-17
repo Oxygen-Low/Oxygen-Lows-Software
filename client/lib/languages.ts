@@ -189,6 +189,27 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
     countryCode: "ua",
     nativeName: "Українська",
   },
+  {
+    code: "ur",
+    name: "Urdu",
+    flag: "🇵🇰",
+    countryCode: "pk",
+    nativeName: "اردو",
+  },
+  {
+    code: "fa",
+    name: "Persian",
+    flag: "🇮🇷",
+    countryCode: "ir",
+    nativeName: "فارسی",
+  },
+  {
+    code: "pa",
+    name: "Punjabi",
+    flag: "🇮🇳",
+    countryCode: "in",
+    nativeName: "ਪੰਜਾਬੀ",
+  },
 ] as const;
 
 export const DEFAULT_LANGUAGE = "English";
