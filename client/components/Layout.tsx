@@ -58,13 +58,18 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Touch handling for mobile edge-swipe ──
+  // ── Touch handling for mobile edge-swipe and tap ──
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchStartTime = useRef<number>(0);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     const x = e.touches[0].clientX;
+    const y = e.touches[0].clientY;
     if (x <= TOUCH_EDGE_ZONE) {
       touchStartX.current = x;
+      touchStartY.current = y;
+      touchStartTime.current = Date.now();
     }
   }, []);
 
@@ -77,8 +82,20 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
     }
   }, []);
 
-  const handleTouchEnd = useCallback(() => {
-    touchStartX.current = null;
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    if (touchStartX.current !== null) {
+      const touchDuration = Date.now() - touchStartTime.current;
+      const changedTouch = e.changedTouches[0];
+      if (changedTouch) {
+        const dx = Math.abs(changedTouch.clientX - touchStartX.current);
+        const dy = touchStartY.current !== null ? Math.abs(changedTouch.clientY - touchStartY.current) : 0;
+        // Tap on the edge opens sidebar
+        if (touchDuration < 500 && dx < 20 && dy < 20) {
+          setSidebarOpen(true);
+        }
+      }
+      touchStartX.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -184,11 +201,20 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Invisible hover trigger zone along left edge */}
+      {/* Click / hover trigger zone along left edge */}
       <div 
         className={styles["sidebar-trigger"]} 
         onMouseEnter={openSidebar} 
         onMouseLeave={scheduleSidebarClose}
+        onClick={openSidebar}
+        role="button"
+        tabIndex={0}
+        aria-label="Open sidebar"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            openSidebar();
+          }
+        }}
       />
 
       {/* Sidebar overlay container */}
@@ -246,7 +272,19 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       </div>
 
       {/* Subtle edge hint when sidebar is closed */}
-      <div className={styles["sidebar-edge-hint"]} />
+      <div 
+        className={styles["sidebar-edge-hint"]}
+        onClick={openSidebar}
+        role="button"
+        tabIndex={0}
+        aria-label="Open sidebar"
+        title="Open sidebar"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            openSidebar();
+          }
+        }}
+      />
 
       {/* Content Area */}
       <main className={fullWidth ? "w-full h-[calc(100vh-73px)]" : "mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-12"}>

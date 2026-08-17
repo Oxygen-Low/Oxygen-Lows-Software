@@ -550,15 +550,20 @@ export function ChatbotApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const skipNextFetchRef = useRef<string | null>(null);
 
-  // ── Touch handling for right-edge-swipe ──
+  // ── Touch handling for right-edge-swipe and tap ──
   const TOUCH_EDGE_ZONE = 30;
   const SWIPE_THRESHOLD = 40;
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchStartTime = useRef<number>(0);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     const x = e.touches[0].clientX;
+    const y = e.touches[0].clientY;
     if (window.innerWidth - x <= TOUCH_EDGE_ZONE) {
       touchStartX.current = x;
+      touchStartY.current = y;
+      touchStartTime.current = Date.now();
     }
   }, []);
 
@@ -571,8 +576,19 @@ export function ChatbotApp() {
     }
   }, []);
 
-  const handleTouchEnd = useCallback(() => {
-    touchStartX.current = null;
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    if (touchStartX.current !== null) {
+      const touchDuration = Date.now() - touchStartTime.current;
+      const changedTouch = e.changedTouches[0];
+      if (changedTouch) {
+        const dx = Math.abs(touchStartX.current - changedTouch.clientX);
+        const dy = touchStartY.current !== null ? Math.abs(changedTouch.clientY - touchStartY.current) : 0;
+        if (touchDuration < 500 && dx < 20 && dy < 20) {
+          setSidebarOpen(true);
+        }
+      }
+      touchStartX.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -1699,11 +1715,18 @@ export function ChatbotApp() {
         <div className="absolute bottom-[-20%] right-[-10%] w-[900px] h-[900px] orb-2 rounded-full animate-blob-reverse mix-blend-screen"></div>
       </div>
 
-      {/* Invisible hover trigger zone along right edge (Desktop) */}
+      {/* Click / hover trigger zone along right edge */}
       <div 
-        className="fixed top-0 right-0 w-[18px] h-[100vh] z-[49] hidden md:block" 
+        className="fixed top-0 right-0 w-[18px] md:w-[18px] h-[100vh] z-[49] cursor-pointer" 
         onMouseEnter={openSidebar} 
         onMouseLeave={scheduleSidebarClose}
+        onClick={openSidebar}
+        role="button"
+        tabIndex={0}
+        aria-label="Open sidebar"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") openSidebar();
+        }}
       />
 
       {/* Sidebar Backdrop – click to close */}
@@ -1807,9 +1830,17 @@ export function ChatbotApp() {
 
         {/* Subtle edge hint when sidebar is closed */}
         <div 
+          role="button"
+          tabIndex={0}
+          aria-label="Open sidebar"
+          title="Open sidebar"
+          onClick={openSidebar}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") openSidebar();
+          }}
           className={cn(
-            "fixed top-1/2 right-0 -translate-y-1/2 w-1 h-12 rounded-l-md bg-primary/25 z-[48] transition-all duration-300 pointer-events-none",
-            sidebarOpen ? "opacity-0" : "opacity-100"
+            "fixed top-1/2 right-0 -translate-y-1/2 w-1.5 h-12 rounded-l-md bg-primary/35 hover:bg-primary/75 active:bg-primary/90 z-[48] transition-all duration-300 cursor-pointer",
+            sidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
           )} 
         />
 
