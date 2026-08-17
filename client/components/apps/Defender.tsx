@@ -22,7 +22,7 @@ import {
   Shield, Check, Copy, ArrowLeft, AlertTriangle, Plus,
   Settings, Activity, Lock, Key, Trash2, Globe, Search,
   ShieldCheck, ArrowRight, X, ChevronDown, ChevronRight,
-  Server, Zap
+  Server, Zap, RefreshCw
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
