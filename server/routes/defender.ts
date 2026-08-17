@@ -4,7 +4,9 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 import { createHash, randomBytes } from "node:crypto";
 import type { Context, Next } from "hono";
 
-export const defenderRouter = new Hono();
+export const defenderRouter = new Hono<{
+  Variables: { defenderApp: any; supabase: any };
+}>();
 
 // Helper to hash API keys
 function hashApiKey(key: string): string {

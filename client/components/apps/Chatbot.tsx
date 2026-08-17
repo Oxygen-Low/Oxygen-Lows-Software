@@ -62,9 +62,9 @@ const InteractiveBackground = () => {
 
     function initDots() {
       dots = [];
-      if (!canvas) return;
-      const cols = Math.ceil(canvas.width / spacing);
-      const rows = Math.ceil(canvas.height / spacing);
+      if (!canvas || canvas.width <= 0 || canvas.height <= 0) return;
+      const cols = Math.min(Math.ceil(canvas.width / spacing), 200);
+      const rows = Math.min(Math.ceil(canvas.height / spacing), 200);
 
       for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
@@ -85,6 +85,7 @@ const InteractiveBackground = () => {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "rgba(207, 188, 255, 0.15)"; // primary color with low opacity
+      ctx.beginPath();
 
       for (let i = 0; i < dots.length; i++) {
         let dot = dots[i];
@@ -94,7 +95,7 @@ const InteractiveBackground = () => {
         let dy = mouseY - dot.y;
         let dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < repelRadius) {
+        if (dist < repelRadius && dist > 0) {
           // Repel
           let force = (repelRadius - dist) / repelRadius;
           let angle = Math.atan2(dy, dx);
@@ -109,11 +110,11 @@ const InteractiveBackground = () => {
           dot.y += (dot.originY - dot.y) * returnSpeed;
         }
 
-        ctx.beginPath();
+        ctx.moveTo(dot.x + dotRadius, dot.y);
         ctx.arc(dot.x, dot.y, dotRadius, 0, Math.PI * 2);
-        ctx.fill();
       }
 
+      ctx.fill();
       animationFrameId = requestAnimationFrame(animateDots);
     }
 
@@ -196,6 +197,9 @@ const parseArtifacts = (content: string): Artifact[] => {
   let match;
   ARTIFACT_REGEX.lastIndex = 0;
   while ((match = ARTIFACT_REGEX.exec(content)) !== null) {
+    if (match.index === ARTIFACT_REGEX.lastIndex) {
+      ARTIFACT_REGEX.lastIndex++;
+    }
     artifacts.push({
       id: Math.random().toString(36).substr(2, 9),
       filename: match[1],
@@ -453,7 +457,9 @@ export function ChatbotApp() {
     let currentId =
       activeChildren["root"] || rootMessages[rootMessages.length - 1]?.id;
     const path: Message[] = [];
-    while (currentId) {
+    const visited = new Set<string>();
+    while (currentId && !visited.has(currentId) && visited.size < 5000) {
+      visited.add(currentId);
       const msg = allMessages.find((m) => m.id === currentId);
       if (!msg) break;
       path.push(msg);
@@ -472,7 +478,9 @@ export function ChatbotApp() {
         let currentId =
           activeChildrenRef.current["root"] || rootMessages[rootMessages.length - 1]?.id;
         const path: Message[] = [];
-        while (currentId) {
+        const visited = new Set<string>();
+        while (currentId && !visited.has(currentId) && visited.size < 5000) {
+          visited.add(currentId);
           const msg = prevAll.find((m) => m.id === currentId);
           if (!msg) break;
           path.push(msg);

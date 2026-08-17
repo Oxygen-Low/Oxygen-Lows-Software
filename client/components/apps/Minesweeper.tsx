@@ -176,8 +176,11 @@ export function MinesweeperApp() {
       ...getNeighbors(firstClickIndex, rows, cols),
     ]);
 
+    const maxMines = Math.max(0, rows * cols - safeZone.size);
+    const targetMines = Math.min(mines, maxMines);
     let minesPlaced = 0;
-    while (minesPlaced < mines) {
+    let attempts = 0;
+    while (minesPlaced < targetMines && attempts++ < 10000) {
       const idx = Math.floor(Math.random() * (rows * cols));
       if (!currentBoard[idx].isMine && !safeZone.has(idx)) {
         currentBoard[idx].isMine = true;

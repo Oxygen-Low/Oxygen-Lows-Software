@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -407,26 +408,44 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     [savePreferences],
   );
 
+  const contextValue = useMemo(
+    () => ({
+      playlist,
+      currentTrack,
+      currentPosition,
+      isPlaying,
+      shuffle,
+      isLoading,
+      audioRef,
+      play,
+      pause,
+      playTrack,
+      playNext,
+      playPrev,
+      addTrack,
+      removeTrack,
+      toggleShuffle,
+    }),
+    [
+      playlist,
+      currentTrack,
+      currentPosition,
+      isPlaying,
+      shuffle,
+      isLoading,
+      play,
+      pause,
+      playTrack,
+      playNext,
+      playPrev,
+      addTrack,
+      removeTrack,
+      toggleShuffle,
+    ],
+  );
+
   return (
-    <MusicContext.Provider
-      value={{
-        playlist,
-        currentTrack,
-        currentPosition,
-        isPlaying,
-        shuffle,
-        isLoading,
-        audioRef,
-        play,
-        pause,
-        playTrack,
-        playNext,
-        playPrev,
-        addTrack,
-        removeTrack,
-        toggleShuffle,
-      }}
-    >
+    <MusicContext.Provider value={contextValue}>
       <audio ref={audioRef} crossOrigin="anonymous" />
       {children}
     </MusicContext.Provider>

@@ -558,13 +558,14 @@ function AnimatedBackground() {
       if (!ctx || !canvas) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "rgba(115, 115, 115, 0.3)";
+      ctx.beginPath();
 
       for (const dot of dotsRef.current) {
         const dx = mouseRef.current.x - dot.x;
         const dy = mouseRef.current.y - dot.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < repelRadius) {
+        if (dist < repelRadius && dist > 0) {
           const force = (repelRadius - dist) / repelRadius;
           dot.vx -= (dx / dist) * force * 1.5;
           dot.vy -= (dy / dist) * force * 1.5;
@@ -577,10 +578,10 @@ function AnimatedBackground() {
         dot.x += dot.vx;
         dot.y += dot.vy;
 
-        ctx.beginPath();
+        ctx.moveTo(dot.x + radius, dot.y);
         ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
-        ctx.fill();
       }
+      ctx.fill();
       animFrameRef.current = requestAnimationFrame(draw);
     }
 
@@ -1357,6 +1358,9 @@ export function LLMAgentApp() {
             /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
           let match;
           while ((match = toolCallRegex.exec(fullContent)) !== null) {
+            if (match.index === toolCallRegex.lastIndex) {
+              toolCallRegex.lastIndex++;
+            }
             try {
               const parsed = JSON.parse(match[1]);
               const idx = Object.keys(accumulatedToolCalls).length;

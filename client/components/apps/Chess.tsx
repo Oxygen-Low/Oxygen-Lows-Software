@@ -336,16 +336,18 @@ export function ChessApp() {
             style={{ maxWidth: boardWidth }}
           >
             <Chessboard 
-              position={game.fen()} 
-              onPieceDrop={onDrop}
-              onSquareClick={onSquareClick}
-              customSquareStyles={optionSquares}
-              boardWidth={boardWidth}
-              customDarkSquareStyle={{ backgroundColor: "#334155" }}
-              customLightSquareStyle={{ backgroundColor: "#cbd5e1" }}
-              arePremovesAllowed={false}
-              boardOrientation={playerColor === 'w' ? 'white' : 'black'}
-              isDraggablePiece={({ piece }) => piece[0] === playerColor && game.turn() === playerColor && !isGameOver}
+              {...({
+                position: game.fen(), 
+                onPieceDrop: onDrop,
+                onSquareClick: onSquareClick,
+                customSquareStyles: optionSquares,
+                boardWidth: boardWidth,
+                customDarkSquareStyle: { backgroundColor: "#334155" },
+                customLightSquareStyle: { backgroundColor: "#cbd5e1" },
+                arePremovesAllowed: false,
+                boardOrientation: playerColor === 'w' ? 'white' : 'black',
+                isDraggablePiece: ({ piece }: any) => piece[0] === playerColor && game.turn() === playerColor && !isGameOver,
+              } as any)}
             />
           </div>
         </div>
