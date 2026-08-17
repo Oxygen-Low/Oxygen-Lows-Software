@@ -151,9 +151,16 @@ export function VPNApp() {
         if (data && data.lat && data.lon) {
           setHomeLocation([data.lat, data.lon]);
           setAgentLocation([data.lat, data.lon]);
+        } else {
+          setHomeLocation([20, 0]);
+          setAgentLocation([20, 0]);
         }
       })
-      .catch(err => console.error("Home geocode error via IPC", err));
+      .catch(err => {
+        console.error("Home geocode error via IPC", err);
+        setHomeLocation([20, 0]);
+        setAgentLocation([20, 0]);
+      });
   }, []);
 
   // IPC Helpers for VPN
