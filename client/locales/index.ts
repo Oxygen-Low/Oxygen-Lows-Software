@@ -1,6 +1,40 @@
 import { en } from "./en";
+import { ko } from "./ko";
+import { ja } from "./ja";
+import { zhCN } from "./zh-CN";
+import { zhTW } from "./zh-TW";
+import { ru } from "./ru";
+import { fr } from "./fr";
+import { de } from "./de";
+import { es } from "./es";
+import { ro } from "./ro";
+import { ar } from "./ar";
+import { cs } from "./cs";
+import { zu } from "./zu";
+import { da } from "./da";
+import { la } from "./la";
+import { he } from "./he";
+import { uk } from "./uk";
 
-export { en };
+export {
+  en,
+  ko,
+  ja,
+  zhCN,
+  zhTW,
+  ru,
+  fr,
+  de,
+  es,
+  ro,
+  ar,
+  cs,
+  zu,
+  da,
+  la,
+  he,
+  uk,
+};
 
 export type StringLeaves<T> = {
   [K in keyof T]: T[K] extends object ? StringLeaves<T[K]> : string;
@@ -14,16 +48,115 @@ export type DeepPartial<T> = {
 
 /**
  * Registry of all available locale dictionaries.
- * To add a new language in the future:
- * 1. Create a locale file in `client/locales/<code/name>.ts`
- * 2. Add an entry to `LOCALES` below:
- *    `es: es, Spanish: es`
- * 3. Add the language metadata in `client/lib/languages.ts` in `SUPPORTED_LANGUAGES`.
  */
 export const LOCALES: Record<string, DeepPartial<TranslationSchema> | TranslationSchema> = {
+  // English
   en,
   English: en,
   english: en,
+
+  // Korean (South Korea 🇰🇷)
+  ko,
+  Korean: ko,
+  korean: ko,
+  "한국어": ko,
+
+  // Japanese (Japan 🇯🇵)
+  ja,
+  Japanese: ja,
+  japanese: ja,
+  "日本語": ja,
+
+  // Chinese (Simplified - China 🇨🇳)
+  zh: zhCN,
+  "zh-CN": zhCN,
+  "zh-cn": zhCN,
+  chinese: zhCN,
+  Chinese: zhCN,
+  "Chinese (Simplified)": zhCN,
+  "Simplified Chinese": zhCN,
+  "简体中文": zhCN,
+
+  // Chinese (Traditional - Taiwan 🇹🇼)
+  "zh-TW": zhTW,
+  "zh-tw": zhTW,
+  "Chinese (Traditional)": zhTW,
+  "Traditional Chinese": zhTW,
+  "繁體中文": zhTW,
+
+  // Russian (Russia 🇷🇺)
+  ru,
+  Russian: ru,
+  russian: ru,
+  "Русский": ru,
+
+  // French (France 🇫🇷)
+  fr,
+  French: fr,
+  french: fr,
+  "Français": fr,
+
+  // German (Germany 🇩🇪)
+  de,
+  German: de,
+  german: de,
+  Deutsch: de,
+
+  // Spanish (Spain 🇪🇸)
+  es,
+  Spanish: es,
+  spanish: es,
+  "Español": es,
+
+  // Romanian / Romainian (Romania 🇷🇴)
+  ro,
+  Romanian: ro,
+  romanian: ro,
+  Romainian: ro,
+  romainian: ro,
+  "Română": ro,
+
+  // Arabic (Saudi Arabia 🇸🇦)
+  ar,
+  Arabic: ar,
+  arabic: ar,
+  "العربية": ar,
+
+  // Czech (Czechia 🇨🇿)
+  cs,
+  Czech: cs,
+  czech: cs,
+  "Čeština": cs,
+
+  // Zulu (South Africa 🇿🇦)
+  zu,
+  Zulu: zu,
+  zulu: zu,
+  isiZulu: zu,
+
+  // Danish (Denmark 🇩🇰)
+  da,
+  Danish: da,
+  danish: da,
+  Dansk: da,
+
+  // Latin (Vatican City 🇻🇦)
+  la,
+  Latin: la,
+  latin: la,
+  Latina: la,
+
+  // Hebrew (Israel 🇮🇱)
+  he,
+  Hebrew: he,
+  hebrew: he,
+  "עברית": he,
+
+  // Ukrainian (Ukraine 🇺🇦)
+  uk,
+  Ukrainian: uk,
+  ukrainian: uk,
+  "Українська": uk,
 };
 
 export const DEFAULT_LOCALE = "English";
@@ -38,15 +171,6 @@ export function registerLocale(
   dictionary: DeepPartial<TranslationSchema> | TranslationSchema,
 ) {
   LOCALES[identifier] = dictionary;
-  const lower = identifier.toLowerCase();
-  if (lower === "es" || lower === "spanish") {
-    registerLanguageOption({
-      code: "es",
-      name: "Spanish",
-      flag: "🇪🇸",
-      nativeName: "Español",
-    });
-  }
 }
 
 /**
