@@ -19,9 +19,12 @@ function cleanCache() {
     }
     // If still too large, delete oldest
     if (cache.size > MAX_CACHE_SIZE) {
-      const keys = Array.from(cache.keys());
-      for (let i = 0; i < keys.length - MAX_CACHE_SIZE; i++) {
-        cache.delete(keys[i]);
+      let excess = cache.size - MAX_CACHE_SIZE;
+      for (const key of cache.keys()) {
+        if (excess <= 0) break;
+        cache.delete(key);
+        excess--;
+
       }
     }
   }
