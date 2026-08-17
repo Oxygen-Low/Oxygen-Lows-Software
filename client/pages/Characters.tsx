@@ -187,22 +187,21 @@ export default function Characters() {
   };
 
   const handleStorageSelect = async (file: any) => {
-    if (file.name.includes("..")) {
+    if (!file?.name || file.name.includes("..")) {
       toast({
         title: t("common.error", undefined, "Error"),
-        description: "Invalid file name",
+        description: t("account.invalidFileName", undefined, "Invalid file name"),
         variant: "destructive",
       });
       return;
     }
-    const safeName = file.name.replace(/\.\.\//g, "");
     setCurrentCharacter((prev) => ({
       ...prev,
-      image_path: safeName,
+      image_path: file.name,
     }));
     const { data } = await supabase.storage
       .from("Storage")
-      .createSignedUrl(safeName, 3600);
+      .createSignedUrl(file.name, 3600);
     if (data?.signedUrl) {
       setCurrentCharacter((prev) => ({
         ...prev,
