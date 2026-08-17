@@ -162,11 +162,15 @@ proxyRouter.post("/fetch", async (c) => {
     const text = await response.text();
     c.status(response.status as any);
     return c.text(text);
-  } catch (error: any) {
-    if (error?.name === "AbortError") {
-      return c.json({ error: "Request aborted" }, 499 as any);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        return c.json({ error: "Request aborted" }, 499 as any);
+      }
+      console.error("Proxy fetch error:", error);
+      return c.json({ error: error.message }, 500);
     }
     console.error("Proxy fetch error:", error);
-    return c.json({ error: error.message || "Unknown error" }, 500);
+    return c.json({ error: "Unknown error" }, 500);
   }
 });
