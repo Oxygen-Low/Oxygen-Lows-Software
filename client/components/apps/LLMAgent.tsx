@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
+import { callDesktopBridge, isDesktopBridgeAvailable } from "@/lib/desktopBridge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -232,71 +233,6 @@ Important guidelines:
 - If you encounter an error, debug it and fix it — don't give up
 - Explain your reasoning briefly as you work, but focus on getting the task done
 - When you are finished, provide a clear summary of all changes made`;
-
-// ─── Desktop Bridge ────────────────────────────────────────────────────
-
-const pendingBridgeCalls = new Map<
-  string,
-  { resolve: (v: any) => void; reject: (e: Error) => void }
->();
-
-let bridgeListenerInitialized = false;
-
-function initBridgeListener() {
-  if (bridgeListenerInitialized) return;
-  bridgeListenerInitialized = true;
-
-  const webview = (window as any).chrome?.webview;
-  if (!webview) return;
-
-  webview.addEventListener("message", (event: any) => {
-    try {
-      const data =
-        typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-      if (data.id && pendingBridgeCalls.has(data.id)) {
-        const { resolve, reject } = pendingBridgeCalls.get(data.id)!;
-        pendingBridgeCalls.delete(data.id);
-        if (data.success) {
-          resolve(data.data);
-        } else {
-          reject(new Error(data.error || "Bridge call failed"));
-        }
-      }
-    } catch {
-      // Ignore non-JSON messages
-    }
-  });
-}
-
-function callDesktopBridge(
-  command: string,
-  params: Record<string, any> = {},
-): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const webview = (window as any).chrome?.webview;
-    if (!webview) {
-      reject(new Error("Desktop bridge not available. Run in the desktop app."));
-      return;
-    }
-
-    const id = crypto.randomUUID();
-    pendingBridgeCalls.set(id, { resolve, reject });
-
-    // Timeout after 60 seconds (commands can take a while)
-    setTimeout(() => {
-      if (pendingBridgeCalls.has(id)) {
-        pendingBridgeCalls.delete(id);
-        reject(new Error("Bridge call timed out"));
-      }
-    }, 60000);
-
-    webview.postMessage(JSON.stringify({ command, id, ...params }));
-  });
-}
-
-function isDesktopBridgeAvailable(): boolean {
-  return !!(window as any).chrome?.webview;
-}
 
 // ─── Tool Executor ─────────────────────────────────────────────────────
 
@@ -1207,7 +1143,20 @@ export function LLMAgentApp() {
         };
       }
 
-      const response = await fetch(url, fetchOptions);
+      let response: Response;
+      try {
+        response = await fetch(url, fetchOptions);
+      } catch (fetchErr) {
+        if (url.includes("127.0.0.1")) {
+          const fallbackUrl = url.replace("127.0.0.1", "localhost");
+          response = await fetch(fallbackUrl, fetchOptions);
+        } else if (url.includes("localhost")) {
+          const fallbackUrl = url.replace("localhost", "127.0.0.1");
+          response = await fetch(fallbackUrl, fetchOptions);
+        } else {
+          throw fetchErr;
+        }
+      }
 
       if (!response.ok) {
         throw new Error(await parseAiProxyError(response));

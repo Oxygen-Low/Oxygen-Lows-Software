@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/hooks/useTheme";
+import { callDesktopBridge, isDesktopBridgeAvailable } from "@/lib/desktopBridge";
 
 export interface Model {
   provider: string;
@@ -40,42 +41,120 @@ export const useAiModels = (
   const fetchModels = useCallback(async () => {
     setIsLoading(true);
     try {
-      const localUrls = [
-        "http://127.0.0.1:11434/api/tags",
+      const discoveredLocalModels: Model[] = [];
+      const seenLocal = new Set<string>();
+
+      const addDiscovered = (provider: string, modelId: string | null | undefined) => {
+        if (!modelId || typeof modelId !== "string" || !modelId.trim()) return;
+        const trimmed = modelId.trim();
+        const key = `${provider}:${trimmed}`;
+        if (!seenLocal.has(key)) {
+          seenLocal.add(key);
+          discoveredLocalModels.push({ provider, model_id: trimmed });
+        }
+      };
+
+      const lmStudioUrls = [
         "http://127.0.0.1:1234/v1/models",
-        "http://127.0.0.1:5001/api/v1/model"
+        "http://localhost:1234/v1/models",
+        "http://127.0.0.1:1234/api/v0/models",
+        "http://localhost:1234/api/v0/models",
       ];
+
+      const ollamaUrls = [
+        "http://127.0.0.1:11434/api/tags",
+        "http://localhost:11434/api/tags",
+        "http://127.0.0.1:11434/v1/models",
+        "http://localhost:11434/v1/models",
+      ];
+
+      const koboldUrls = [
+        "http://127.0.0.1:5001/api/v1/model",
+        "http://localhost:5001/api/v1/model",
+        "http://127.0.0.1:5000/api/v1/model",
+        "http://localhost:5000/api/v1/model",
+        "http://127.0.0.1:5001/v1/models",
+        "http://localhost:5001/v1/models",
+      ];
+
+      const probeJson = (url: string) =>
+        fetch(url, { signal: AbortSignal.timeout(2000) })
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null);
+
+      const bridgeTask = isDesktopBridgeAvailable()
+        ? callDesktopBridge<Model[]>("fetch_local_models", {}, 2500).catch(() => [])
+        : Promise.resolve([]);
 
       const fetchTasks = [
         supabase.from("user_models").select("provider, model_id").order("provider"),
-        fetch("/api/ai/local-providers").then(res => res.ok ? res.json() : []).catch(() => []),
-        ...localUrls.map(url => fetch(url, { signal: AbortSignal.timeout(2000) }).then(res => res.ok ? res.json() : null).catch(() => null))
+        fetch("/api/ai/local-providers").then((res) => (res.ok ? res.json() : [])).catch(() => []),
+        bridgeTask,
+        Promise.allSettled(lmStudioUrls.map(probeJson)),
+        Promise.allSettled(ollamaUrls.map(probeJson)),
+        Promise.allSettled(koboldUrls.map(probeJson)),
       ];
 
       const results = await Promise.allSettled(fetchTasks);
 
-      const dbModels = results[0].status === "fulfilled" ? results[0].value.data || [] : [];
-      const localModels = results[1].status === "fulfilled" ? results[1].value || [] : [];
+      const dbModels = results[0].status === "fulfilled" ? (results[0].value as any).data || [] : [];
+      const localModels = results[1].status === "fulfilled" ? (results[1].value as Model[]) || [] : [];
+      const bridgeModels = results[2].status === "fulfilled" ? (results[2].value as Model[]) || [] : [];
 
-      const discoveredLocalModels: Model[] = [];
-      
-      const ollamaData = results[2].status === "fulfilled" ? results[2].value : null;
-      if (ollamaData && ollamaData.models) {
-        for (const m of ollamaData.models) {
-          discoveredLocalModels.push({ provider: "local-ollama", model_id: m.name });
+      // Add bridge models
+      for (const bm of bridgeModels) {
+        if (bm && bm.provider && bm.model_id) {
+          addDiscovered(bm.provider, bm.model_id);
         }
       }
 
-      const lmStudioData = results[3].status === "fulfilled" ? results[3].value : null;
-      if (lmStudioData && lmStudioData.data) {
-        for (const m of lmStudioData.data) {
-          discoveredLocalModels.push({ provider: "local-lmstudio", model_id: m.id });
+      // Add LM Studio models from direct fetch
+      const lmStudioSettled = results[3].status === "fulfilled" ? (results[3].value as PromiseSettledResult<any>[]) : [];
+      for (const res of lmStudioSettled) {
+        if (res.status === "fulfilled" && res.value) {
+          const val = res.value;
+          const items = Array.isArray(val) ? val : Array.isArray(val.data) ? val.data : Array.isArray(val.models) ? val.models : [];
+          for (const item of items) {
+            if (item && item.type !== "embeddings") {
+              const modelId = item.id || item.name || item.model || item.key;
+              addDiscovered("local-lmstudio", modelId);
+            }
+          }
         }
       }
 
-      const koboldData = results[4].status === "fulfilled" ? results[4].value : null;
-      if (koboldData && koboldData.result) {
-        discoveredLocalModels.push({ provider: "local-kobold", model_id: koboldData.result });
+      // Add Ollama models from direct fetch
+      const ollamaSettled = results[4].status === "fulfilled" ? (results[4].value as PromiseSettledResult<any>[]) : [];
+      for (const res of ollamaSettled) {
+        if (res.status === "fulfilled" && res.value) {
+          const val = res.value;
+          const items = Array.isArray(val.models) ? val.models : Array.isArray(val.data) ? val.data : Array.isArray(val) ? val : [];
+          for (const item of items) {
+            if (item) {
+              const modelId = item.name || item.model || item.id;
+              addDiscovered("local-ollama", modelId);
+            }
+          }
+        }
+      }
+
+      // Add Kobold models from direct fetch
+      const koboldSettled = results[5].status === "fulfilled" ? (results[5].value as PromiseSettledResult<any>[]) : [];
+      for (const res of koboldSettled) {
+        if (res.status === "fulfilled" && res.value) {
+          const val = res.value;
+          if (typeof val.result === "string") {
+            addDiscovered("local-kobold", val.result);
+          } else {
+            const items = Array.isArray(val.data) ? val.data : Array.isArray(val) ? val : [];
+            for (const item of items) {
+              if (item) {
+                const modelId = typeof item === "string" ? item : item.id || item.name;
+                addDiscovered("local-kobold", modelId);
+              }
+            }
+          }
+        }
       }
 
       const allModels: Model[] = [...(dbModels || []), ...localModels, ...discoveredLocalModels];

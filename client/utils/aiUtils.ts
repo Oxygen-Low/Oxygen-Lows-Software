@@ -6,9 +6,13 @@ export const formatModelLabel = (provider: string, modelId: string) => {
     };
     return labels[modelId] || "AI Horde - " + modelId;
   }
-  if (provider === "ollama") return "Ollama/" + modelId;
-  if (provider === "lmstudio") return "LMStudio/" + modelId;
-  if (provider === "koboldcpp" || provider === "kobold")
+  if (provider === "local-ollama" || provider === "ollama") return "Ollama/" + modelId;
+  if (provider === "local-lmstudio" || provider === "lmstudio") return "LMStudio/" + modelId;
+  if (
+    provider === "local-kobold" ||
+    provider === "koboldcpp" ||
+    provider === "kobold"
+  )
     return "Koboldcpp/" + modelId;
   if (provider === "cloudflare") {
     const labels: Record<string, string> = {

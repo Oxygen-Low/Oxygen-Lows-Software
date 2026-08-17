@@ -921,7 +921,20 @@ export function ChatbotApp() {
       };
     }
 
-    const response = await fetch(url, fetchOptions);
+    let response: Response;
+    try {
+      response = await fetch(url, fetchOptions);
+    } catch (fetchErr) {
+      if (url.includes("127.0.0.1")) {
+        const fallbackUrl = url.replace("127.0.0.1", "localhost");
+        response = await fetch(fallbackUrl, fetchOptions);
+      } else if (url.includes("localhost")) {
+        const fallbackUrl = url.replace("localhost", "127.0.0.1");
+        response = await fetch(fallbackUrl, fetchOptions);
+      } else {
+        throw fetchErr;
+      }
+    }
 
     if (!response.ok) {
       throw new Error(await parseAiProxyError(response));
