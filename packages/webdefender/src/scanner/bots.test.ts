@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectBot } from './bots';
+import { detectBot } from './bots.js';
 
 describe('detectBot', () => {
   it('should return false for empty or falsy user agent', () => {
