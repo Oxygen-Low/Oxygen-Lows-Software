@@ -257,6 +257,11 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
 
 export const DEFAULT_LOCALE = "English";
 
+const localeCache = new Map<string, DeepPartial<TranslationSchema> | TranslationSchema>();
+for (const [key, dictionary] of Object.entries(LOCALES)) {
+  localeCache.set(key.toLowerCase(), dictionary);
+}
+
 import { registerLanguageOption } from "@/lib/languages";
 
 /**
@@ -267,6 +272,7 @@ export function registerLocale(
   dictionary: DeepPartial<TranslationSchema> | TranslationSchema,
 ) {
   LOCALES[identifier] = dictionary;
+  localeCache.set(identifier.toLowerCase(), dictionary);
 }
 
 /**
@@ -281,8 +287,6 @@ export function getLocaleDictionary(
   if (typeof language !== "string") return en;
 
   const normalized = language.trim().toLowerCase();
-  const found = Object.entries(LOCALES).find(
-    ([key]) => key.toLowerCase() === normalized,
-  );
-  return found ? found[1] : en;
+  const found = localeCache.get(normalized);
+  return found ? found : en;
 }

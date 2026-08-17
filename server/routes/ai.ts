@@ -175,7 +175,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${integration?.api_key || "0000000000"}`
+          "Authorization": `Bearer ${provider === "horde" ? (integration?.api_key || "0000000000") : "0000000000"}`
         },
         body: JSON.stringify(intentCheckBody)
       });
