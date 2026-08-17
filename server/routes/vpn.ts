@@ -87,13 +87,14 @@ vpnRouter.get("/ping", apiLimiter, async (c) => {
 vpnRouter.get("/geocode", apiLimiter, async (c) => {
   const ip = c.req.query("ip");
 
-  // If an IP is supplied it must be a well-formed, public IP (A01 / A10)
+  // If an IP or hostname is supplied it must be well-formed and public (A01 / A10)
   if (ip !== undefined && ip !== "") {
-    if (!isValidIp(ip)) {
-      return c.json({ error: "Invalid IP address format" }, 400);
+    const isValidFormat = isValidIp(ip) || /^[a-zA-Z0-9.-]+$/.test(ip);
+    if (!isValidFormat) {
+      return c.json({ error: "Invalid IP address or hostname format" }, 400);
     }
     if (isPrivateHost(ip)) {
-      return c.json({ error: "Private or loopback IPs are not allowed" }, 400);
+      return c.json({ error: "Private or loopback hosts are not allowed" }, 400);
     }
   }
 

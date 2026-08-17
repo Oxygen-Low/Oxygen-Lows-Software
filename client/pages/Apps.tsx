@@ -223,7 +223,6 @@ const APPS: AppMetadata[] = [
     availability: "desktop-only",
     icon: <Shield className="w-8 h-8 text-cyan-500" />,
     component: VPNApp,
-    authRequired: true,
     requiresAdmin: true,
     androidSupported: true,
   },

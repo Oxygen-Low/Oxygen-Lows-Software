@@ -9,24 +9,16 @@ import { de } from "./de";
 import { es } from "./es";
 import { it } from "./it";
 import { pt } from "./pt";
-import { nl } from "./nl";
 import { pl } from "./pl";
 import { tr } from "./tr";
 import { vi } from "./vi";
 import { id } from "./id";
 import { hi } from "./hi";
-import { bn } from "./bn";
-import { ro } from "./ro";
 import { ar } from "./ar";
-import { cs } from "./cs";
 import { zu } from "./zu";
-import { da } from "./da";
 import { la } from "./la";
 import { he } from "./he";
 import { uk } from "./uk";
-import { pa } from "./pa";
-import { ur } from "./ur";
-import { fa } from "./fa";
 
 export {
   en,
@@ -40,24 +32,16 @@ export {
   es,
   it,
   pt,
-  nl,
   pl,
   tr,
   vi,
   id,
   hi,
-  bn,
-  ro,
   ar,
-  cs,
   zu,
-  da,
   la,
   he,
   uk,
-  pa,
-  ur,
-  fa,
 };
 
 export type StringLeaves<T> = {
@@ -144,12 +128,6 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   portuguese: pt,
   "Português": pt,
 
-  // Dutch (Netherlands 🇳🇱)
-  nl,
-  Dutch: nl,
-  dutch: nl,
-  Nederlands: nl,
-
   // Polish (Poland 🇵🇱)
   pl,
   Polish: pl,
@@ -180,43 +158,17 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   hindi: hi,
   "हिन्दी": hi,
 
-  // Bengali (Bangladesh 🇧🇩)
-  bn,
-  Bengali: bn,
-  bengali: bn,
-  "বাংলা": bn,
-
-  // Romanian / Romainian (Romania 🇷🇴)
-  ro,
-  Romanian: ro,
-  romanian: ro,
-  Romainian: ro,
-  romainian: ro,
-  "Română": ro,
-
   // Arabic (Saudi Arabia 🇸🇦)
   ar,
   Arabic: ar,
   arabic: ar,
   "العربية": ar,
 
-  // Czech (Czechia 🇨🇿)
-  cs,
-  Czech: cs,
-  czech: cs,
-  "Čeština": cs,
-
   // Zulu (South Africa 🇿🇦)
   zu,
   Zulu: zu,
   zulu: zu,
   isiZulu: zu,
-
-  // Danish (Denmark 🇩🇰)
-  da,
-  Danish: da,
-  danish: da,
-  Dansk: da,
 
   // Latin (Vatican City 🇻🇦)
   la,
@@ -235,24 +187,6 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   Ukrainian: uk,
   ukrainian: uk,
   "Українська": uk,
-
-  // Punjabi (India 🇮🇳)
-  pa,
-  Punjabi: pa,
-  punjabi: pa,
-  "ਪੰਜਾਬੀ": pa,
-
-  // Urdu (Pakistan 🇵🇰)
-  ur,
-  Urdu: ur,
-  urdu: ur,
-  "اردو": ur,
-
-  // Persian (Iran 🇮🇷)
-  fa,
-  Persian: fa,
-  persian: fa,
-  "فارسی": fa,
 };
 
 export const DEFAULT_LOCALE = "English";

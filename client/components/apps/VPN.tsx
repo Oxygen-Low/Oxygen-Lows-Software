@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Plus, Shield, Loader2, Server, Clock, Map as MapIcon, Activity } from "lucide-react";
+import { Trash2, Plus, Shield, Loader2, Server, Clock, Map as MapIcon, Activity, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Leaflet
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -32,7 +34,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-const createPulsingIcon = (ping: number | "error" | "loading") => {
+const createPulsingIcon = (ping: number | "error" | "loading", isDirect = false) => {
   let colorClass = "slate";
   if (typeof ping === "number") {
     if (ping <= 50) colorClass = "green";
@@ -43,13 +45,16 @@ const createPulsingIcon = (ping: number | "error" | "loading") => {
     colorClass = "red";
   }
 
+  const directBadge = isDirect ? `<div class="pulse-direct-indicator"></div>` : "";
+
   return L.divIcon({
     className: 'custom-pulsing-icon',
-    html: `<div class="pulse-icon"><div class="pulse-ring pulse-ring-${colorClass}"></div><div class="pulse-dot pulse-dot-${colorClass}"></div></div>`,
+    html: `<div class="pulse-icon"><div class="pulse-ring pulse-ring-${colorClass}"></div><div class="pulse-dot pulse-dot-${colorClass}"></div>${directBadge}</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12]
   });
 };
+
 const agentIcon = L.divIcon({
   className: 'agent-icon',
   html: `<div class="agent-wrapper"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`,
@@ -96,9 +101,21 @@ interface ServerStat {
 
 export function VPNApp() {
   const { session } = useAuth();
+  const isAuthenticated = !!session?.user?.id;
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   
-  // Form State
+  // Active Tab: saved or direct
+  const [activeTab, setActiveTab] = useState<string>(() => isAuthenticated ? "saved" : "direct");
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setActiveTab("direct");
+    }
+  }, [isAuthenticated]);
+
+  // Saved Config Form State
   const [name, setName] = useState("");
   const [configContent, setConfigContent] = useState("");
   const [vpnType, setVpnType] = useState("WireGuard");
@@ -106,6 +123,15 @@ export function VPNApp() {
   const [customDate, setCustomDate] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [killswitch, setKillswitch] = useState(true);
+
+  // Direct (Guest / Unsaved) Config State
+  const [directName, setDirectName] = useState("");
+  const [directType, setDirectType] = useState("WireGuard");
+  const [directConfig, setDirectConfig] = useState("");
+  const [directKillswitch, setDirectKillswitch] = useState(true);
+  const [directStat, setDirectStat] = useState<ServerStat | null>(null);
+  const directStatRef = useRef<ServerStat | null>(null);
+  const directMarkerRef = useRef<any>(null);
 
   // Map & Stats State
   const [serverStats, setServerStats] = useState<Record<string, ServerStat>>({});
@@ -177,7 +203,7 @@ export function VPNApp() {
         command: "android_vpn_connect", 
         type, 
         config: configContent,
-        name,
+        name, 
         id 
       }));
     });
@@ -232,16 +258,17 @@ export function VPNApp() {
 
       return validConfigs;
     },
-    enabled: !!session?.user?.id,
+    enabled: isAuthenticated,
   });
 
   const extractIP = (content: string, type: string) => {
+    if (!content) return null;
     if (type === "WireGuard") {
-      const match = content.match(/Endpoint\s*=\s*([^:\s]+)/i);
-      return match ? match[1].trim() : null;
+      const match = content.match(/Endpoint\s*=\s*(?:\[([a-fA-F0-9:]+)\]|([^:\s]+))/i);
+      return match ? (match[1] || match[2]).trim() : null;
     } else {
-      const match = content.match(/remote\s+([^\s]+)/i);
-      return match ? match[1].trim() : null;
+      const match = content.match(/remote\s+(?:\[([a-fA-F0-9:]+)\]|([^\s]+))/i);
+      return match ? (match[1] || match[2]).trim() : null;
     }
   };
 
@@ -263,14 +290,14 @@ export function VPNApp() {
       // Geocode if missing
       if (newStats[config.id].lat === null) {
         try {
-          const geoRes = await fetch(`/api/vpn/geocode?ip=${ip}`);
+          const geoRes = await fetch(`/api/vpn/geocode?ip=${encodeURIComponent(ip)}`);
           if (geoRes.ok) {
             const geoData = await geoRes.json();
-            if (geoData.status === "success") {
+            if (geoData.status === "success" && typeof geoData.lat === "number" && typeof geoData.lon === "number") {
               newStats[config.id].lat = geoData.lat;
               newStats[config.id].lon = geoData.lon;
-              newStats[config.id].city = geoData.city;
-              newStats[config.id].country = geoData.country;
+              newStats[config.id].city = geoData.city || "";
+              newStats[config.id].country = geoData.country || "";
               hasChanges = true;
             }
           }
@@ -281,7 +308,7 @@ export function VPNApp() {
 
       // Ping
       try {
-        const pingRes = await fetch(`/api/vpn/ping?host=${ip}`);
+        const pingRes = await fetch(`/api/vpn/ping?host=${encodeURIComponent(ip)}`);
         if (pingRes.ok) {
           const pingData = await pingRes.json();
           if (pingData.alive && pingData.time !== "unknown") {
@@ -310,6 +337,81 @@ export function VPNApp() {
     const interval = setInterval(updatePingAndGeo, 10000);
     return () => clearInterval(interval);
   }, [configs]);
+
+  // Direct Config Real-Time Geocode & Ping Effect
+  useEffect(() => {
+    const ip = extractIP(directConfig, directType);
+    if (!ip) {
+      setDirectStat(null);
+      directStatRef.current = null;
+      return;
+    }
+
+    let isMounted = true;
+    const currentDirect = directStatRef.current;
+    
+    // If IP changed or new, reset stat and fetch geocode
+    if (!currentDirect || currentDirect.ip !== ip) {
+      const initial: ServerStat = { ip, lat: null, lon: null, city: "", country: "", ping: "loading" };
+      setDirectStat(initial);
+      directStatRef.current = initial;
+
+      fetch(`/api/vpn/geocode?ip=${encodeURIComponent(ip)}`)
+        .then(res => res.json())
+        .then(geoData => {
+          if (!isMounted) return;
+          if (geoData.status === "success" && typeof geoData.lat === "number" && typeof geoData.lon === "number") {
+            setDirectStat(prev => {
+              if (!prev || prev.ip !== ip) return prev;
+              const updated: ServerStat = { 
+                ...prev, 
+                lat: geoData.lat, 
+                lon: geoData.lon, 
+                city: geoData.city || "", 
+                country: geoData.country || "" 
+              };
+              directStatRef.current = updated;
+              return updated;
+            });
+            setSelectedLocation([geoData.lat, geoData.lon]);
+          }
+        })
+        .catch(err => console.error("Geocoding error for direct config:", err));
+    }
+
+    // Ping check
+    const performPing = () => {
+      fetch(`/api/vpn/ping?host=${encodeURIComponent(ip)}`)
+        .then(res => res.json())
+        .then(pingData => {
+          if (!isMounted) return;
+          setDirectStat(prev => {
+            if (!prev || prev.ip !== ip) return prev;
+            const pingVal = pingData.alive && pingData.time !== "unknown" ? Math.round(Number(pingData.time)) : "error";
+            const updated: ServerStat = { ...prev, ping: pingVal };
+            directStatRef.current = updated;
+            return updated;
+          });
+        })
+        .catch(() => {
+          if (!isMounted) return;
+          setDirectStat(prev => {
+            if (!prev || prev.ip !== ip) return prev;
+            const updated: ServerStat = { ...prev, ping: "error" };
+            directStatRef.current = updated;
+            return updated;
+          });
+        });
+    };
+
+    performPing();
+    const interval = setInterval(performPing, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [directConfig, directType]);
 
   const saveMutation = useMutation({
     mutationFn: async (newConfig: { name: string; config_content: string; type: string; expires_at: string | null; killswitch: boolean }) => {
@@ -379,7 +481,7 @@ export function VPNApp() {
       case "1 year": date.setFullYear(date.getFullYear() + 1); break;
     }
     return date.toISOString();
-  }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -417,7 +519,18 @@ export function VPNApp() {
         if (markerRefs.current[configId]) {
           markerRefs.current[configId].openPopup();
         }
-      }, 500); // Wait for flyTo animation slightly before opening to prevent glitchy behavior
+      }, 500);
+    }
+  };
+
+  const handleDirectMarkerClick = () => {
+    if (directStat && directStat.lat && directStat.lon) {
+      setSelectedLocation([directStat.lat, directStat.lon]);
+      setTimeout(() => {
+        if (directMarkerRef.current) {
+          directMarkerRef.current.openPopup();
+        }
+      }, 500);
     }
   };
 
@@ -454,7 +567,7 @@ export function VPNApp() {
     });
   };
 
-  const handleConnect = async (config: any) => {
+  const handleConnect = async (config: { id: string; name: string; type: string; config_content: string; killswitch?: boolean }) => {
     setIsConnecting(true);
     try {
       try {
@@ -467,7 +580,7 @@ export function VPNApp() {
         throw new Error("Admin privileges are required to connect to VPN.");
       }
 
-      const serverStat = serverStats[config.id];
+      const serverStat = config.id === "direct" ? directStat : serverStats[config.id];
       if (serverStat && serverStat.lat && serverStat.lon && agentLocation) {
         // Dive
         setAgentDiving(true);
@@ -523,13 +636,12 @@ export function VPNApp() {
     }
   };
 
-  const handleDisconnect = async (config: any) => {
+  const handleDisconnect = async (config: { id: string; name: string; type: string }) => {
     setIsConnecting(true);
     try {
       const isAndroid = sessionStorage.getItem("androidMode") === "1";
 
       if (isAndroid) {
-        // Disconnecting intent is manual in WireGuard app
         toast.info("Please disconnect directly in the VPN app on Android.");
       } else {
         if (config.type === "WireGuard") {
@@ -558,6 +670,14 @@ export function VPNApp() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const directConfigObj = {
+    id: "direct",
+    name: directName.trim() || t("apps.vpnDirectConnection", undefined, "Direct Connection"),
+    type: directType,
+    config_content: directConfig,
+    killswitch: directKillswitch,
   };
 
   return (
@@ -604,6 +724,17 @@ export function VPNApp() {
         .pulse-ring-red { border-color: rgba(239, 68, 68, 0.8); }
         .pulse-dot-slate { background-color: #94a3b8; box-shadow: 0 0 10px rgba(148, 163, 184, 0.8); }
         .pulse-ring-slate { border-color: rgba(148, 163, 184, 0.8); }
+
+        .pulse-direct-indicator {
+          position: absolute;
+          top: -2px;
+          right: -2px;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background-color: #06b6d4;
+          box-shadow: 0 0 6px #06b6d4;
+        }
 
         @keyframes pulse {
           0% { transform: scale(0.5); opacity: 1; }
@@ -662,6 +793,7 @@ export function VPNApp() {
           />
           <MapController center={selectedLocation} locked={connectedConfigId !== null} />
           
+          {/* Saved Config Markers (for authenticated users) */}
           {configs?.map(config => {
             const stat = serverStats[config.id];
             if (stat && stat.lat && stat.lon) {
@@ -669,7 +801,7 @@ export function VPNApp() {
                 <Marker 
                   key={config.id} 
                   position={[stat.lat, stat.lon]} 
-                  icon={createPulsingIcon(stat.ping)}
+                  icon={createPulsingIcon(stat.ping, false)}
                   ref={(r) => { if (r) markerRefs.current[config.id] = r; }}
                 >
                   <Popup 
@@ -710,7 +842,7 @@ export function VPNApp() {
                             disabled={isConnecting}
                             className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20"
                           >
-                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Disconnect VPN"}
+                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
                           </Button>
                         ) : (
                           <Button 
@@ -718,7 +850,7 @@ export function VPNApp() {
                             disabled={isConnecting || (connectedConfigId !== null)}
                             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20"
                           >
-                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Connect VPN"}
+                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
                           </Button>
                         )}
                       </div>
@@ -730,6 +862,72 @@ export function VPNApp() {
             return null;
           })}
 
+          {/* Direct Connect Marker (for unauthenticated / direct connection config) */}
+          {directStat && directStat.lat && directStat.lon && (
+            <Marker
+              key="direct-marker"
+              position={[directStat.lat, directStat.lon]}
+              icon={createPulsingIcon(directStat.ping, true)}
+              ref={(r) => { if (r) directMarkerRef.current = r; }}
+            >
+              <Popup
+                closeOnClick={connectedConfigId !== "direct"}
+                autoClose={connectedConfigId !== "direct"}
+                closeButton={false}
+              >
+                <div className="p-5 bg-slate-900 border border-cyan-500/30 rounded-xl shadow-2xl flex flex-col gap-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-1 overflow-hidden">
+                      <h4 className="font-bold text-white flex items-center gap-2 truncate text-lg">
+                        {directConfigObj.name}
+                        <Badge className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 text-[10px]">
+                          {t("apps.vpnDirectConnect", undefined, "Direct")}
+                        </Badge>
+                      </h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700">
+                          {directType}
+                        </Badge>
+                        {directStat.ping !== 'error' && directStat.ping !== 'loading' && (
+                          <Badge variant="secondary" className="bg-slate-800 text-emerald-400 hover:bg-slate-700">
+                            {directStat.ping}ms
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {directStat.city && (
+                    <div className="text-sm text-slate-400 flex items-center gap-2">
+                      <MapIcon className="w-4 h-4 opacity-50" />
+                      {directStat.city}, {directStat.country}
+                    </div>
+                  )}
+
+                  <div className="mt-2">
+                    {connectedConfigId === "direct" ? (
+                      <Button 
+                        onClick={(e) => { e.stopPropagation(); handleDisconnect(directConfigObj); }}
+                        disabled={isConnecting}
+                        className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20"
+                      >
+                        {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={(e) => { e.stopPropagation(); handleConnect(directConfigObj); }}
+                        disabled={isConnecting || (connectedConfigId !== null) || !directConfig.trim()}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20"
+                      >
+                        {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
           {agentLocation && (
             <Marker 
               position={agentLocation} 
@@ -740,236 +938,520 @@ export function VPNApp() {
       </div>
 
       {/* Configurations Sidebar - Right */}
-      <div className="w-full max-w-[400px] border-l border-slate-800 bg-slate-900/90 backdrop-blur-sm flex flex-col z-10 shadow-2xl relative">
-        <div className="p-6 border-b border-slate-800 flex flex-col gap-4">
-          <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Shield className="w-5 h-5 text-cyan-500" />
-              Your Configurations
-            </h3>
-            <p className="text-slate-400 text-sm mt-1">
-              Manage and monitor your VPN profiles.
-            </p>
-          </div>
+      <div className="w-full max-w-[420px] border-l border-slate-800 bg-slate-900/95 backdrop-blur-sm flex flex-col z-10 shadow-2xl relative">
+        {isAuthenticated ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+            <div className="p-6 border-b border-slate-800 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-cyan-500" />
+                    {t("apps.vpnTitle", undefined, "VPN")}
+                  </h3>
+                  <p className="text-slate-400 text-xs mt-1">
+                    {t("apps.vpnManageProfilesDesc", undefined, "Manage and monitor your VPN profiles.")}
+                  </p>
+                </div>
+              </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full bg-cyan-600 hover:bg-cyan-500 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Create New Config
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-cyan-500" />
-                  Add New VPN Config
-                </DialogTitle>
-                <DialogDescription className="text-slate-400">
-                  <div className="flex flex-col gap-2 items-start mt-2">
-                    <p>Paste your VPN configuration file contents here.</p>
-                    <Button variant="outline" size="sm" className="bg-slate-950 border-slate-700 text-slate-300 hover:text-white" asChild>
-                      <a href="https://www.vpnbook.com" target="_blank" rel="noreferrer">
-                        Get Free Config from VPNBook
-                      </a>
+              <TabsList className="grid grid-cols-2 bg-slate-950/80 border border-slate-800/80 p-1">
+                <TabsTrigger value="saved" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                  {t("apps.vpnSavedConfigs", undefined, "Saved Configs")}
+                </TabsTrigger>
+                <TabsTrigger value="direct" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                  {t("apps.vpnDirectConnect", undefined, "Direct Connect")}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="saved" className="m-0 pt-1">
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full bg-cyan-600 hover:bg-cyan-500 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t("apps.vpnCreateNewConfig", undefined, "Create New Config")}
                     </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-cyan-500" />
+                        {t("apps.vpnCreateNewConfig", undefined, "Add New VPN Config")}
+                      </DialogTitle>
+                      <DialogDescription className="text-slate-400">
+                        <div className="flex flex-col gap-2 items-start mt-2">
+                          <p>{t("apps.vpnConfigPlaceholder", undefined, "Paste your VPN configuration file contents here.")}</p>
+                          <Button variant="outline" size="sm" className="bg-slate-950 border-slate-700 text-slate-300 hover:text-white" asChild>
+                            <a href="https://www.vpnbook.com" target="_blank" rel="noreferrer">
+                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                              {t("apps.vpnFreeConfigBtn", undefined, "Get Free Config from VPNBook")}
+                            </a>
+                          </Button>
+                        </div>
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <form onSubmit={handleSave} className="space-y-4 mt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name" className="text-slate-300">{t("apps.vpnConfigName", undefined, "Config Name")}</Label>
+                          <Input
+                            id="name"
+                            placeholder={t("apps.vpnConfigNamePlaceholder", undefined, "e.g. My Home VPN")}
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="bg-slate-950 border-slate-800 text-white"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="vpnType" className="text-slate-300">{t("apps.vpnType", undefined, "VPN Type")}</Label>
+                          <Select value={vpnType} onValueChange={setVpnType}>
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-left">
+                              <SelectValue placeholder="Select VPN Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="WireGuard">WireGuard (Recommended)</SelectItem>
+                              <SelectItem value="OpenVPN">OpenVPN</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="config" className="text-slate-300">{t("apps.vpnConfigContent", undefined, "Configuration Content")}</Label>
+                        <Textarea
+                          id="config"
+                          placeholder={vpnType === "WireGuard" ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0" : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."}
+                          value={configContent}
+                          onChange={(e) => setConfigContent(e.target.value)}
+                          className="font-mono bg-slate-950 border-slate-800 text-white min-h-[180px] text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="expiration" className="text-slate-300">Auto Delete / Expiration</Label>
+                        <div className="flex gap-4">
+                          <Select value={expiration} onValueChange={setExpiration}>
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-white flex-1 text-left">
+                              <SelectValue placeholder="Select Expiration" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="never">Never (Keep Forever)</SelectItem>
+                              <SelectItem value="1 day">1 Day</SelectItem>
+                              <SelectItem value="3 days">3 Days</SelectItem>
+                              <SelectItem value="1 week">1 Week</SelectItem>
+                              <SelectItem value="1 month">1 Month</SelectItem>
+                              <SelectItem value="1 year">1 Year</SelectItem>
+                              <SelectItem value="custom">Custom Date</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          {expiration === "custom" && (
+                            <Input
+                              type="datetime-local"
+                              value={customDate}
+                              onChange={(e) => setCustomDate(e.target.value)}
+                              className="bg-slate-950 border-slate-800 text-white flex-1"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex flex-col gap-1 mt-4 border border-slate-800 rounded-lg p-4 bg-slate-900/50">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="killswitch" className="text-slate-300 font-medium">{t("apps.vpnKillSwitch", undefined, "Kill Switch (Block untunneled traffic)")}</Label>
+                            <Switch 
+                              id="killswitch" 
+                              checked={killswitch} 
+                              onCheckedChange={setKillswitch} 
+                            />
+                          </div>
+                          {vpnType === "OpenVPN" && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              {t("apps.vpnKillSwitchNote", undefined, "Note: On Windows, OpenVPN natively supports only DNS leak protection via the CLI.")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        <Button 
+                          type="submit" 
+                          disabled={saveMutation.isPending || !name.trim() || !configContent.trim()}
+                          className="w-full bg-cyan-600 hover:bg-cyan-500 text-white"
+                        >
+                          {saveMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="w-4 h-4 mr-2" />
+                              Save Configuration
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </TabsContent>
+            </div>
+
+            <TabsContent value="saved" className="flex-1 overflow-hidden m-0 relative">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 absolute inset-0">
+                  <Loader2 className="w-8 h-8 animate-spin mb-4 text-cyan-500" />
+                  Loading configs...
+                </div>
+              ) : !configs || configs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 text-center absolute inset-0">
+                  <Server className="w-12 h-12 opacity-20 mb-4" />
+                  <p>{t("apps.vpnNoConfigsFound", undefined, "No configurations found.")}</p>
+                  <p className="text-sm opacity-70 mt-2">{t("apps.vpnNoConfigsFoundDesc", undefined, "Click 'Create New Config' above to get started, or switch to Direct Connect.")}</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-full">
+                  <div className="p-6 space-y-4">
+                    {configs.map((config) => {
+                      const stat = serverStats[config.id];
+                      return (
+                        <div
+                          key={config.id}
+                          onClick={() => handleConfigClick(config.id)}
+                          className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-slate-950 transition-colors group relative cursor-pointer"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex flex-col gap-1.5 overflow-hidden">
+                              <h4 className="font-bold text-white flex items-center gap-2 truncate text-base">
+                                {config.name}
+                              </h4>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0">
+                                  {config.type || 'WireGuard'}
+                                </Badge>
+                                
+                                {stat && (
+                                  <Badge 
+                                    variant="secondary" 
+                                    className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1 ${stat.ping === 'error' ? 'text-red-400' : stat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
+                                  >
+                                    <Activity className="w-2.5 h-2.5" />
+                                    {stat.ping === 'loading' ? t("apps.vpnPinging", undefined, "Pinging...") : stat.ping === 'error' ? t("apps.vpnOffline", undefined, "Offline") : `${stat.ping}ms`}
+                                  </Badge>
+                                )}
+
+                                {config.expires_at && (
+                                  <Badge variant="secondary" className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    Expires: {new Date(config.expires_at).toLocaleDateString()}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 -mt-1 -mr-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(config.id);
+                              }}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                          
+                          {stat && stat.city && (
+                            <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                              <MapIcon className="w-3 h-3 opacity-50" />
+                              {stat.city}, {stat.country}
+                            </div>
+                          )}
+
+                          <div className="bg-slate-900 rounded-md p-2.5 mt-3 border border-slate-800/50">
+                            <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap break-all max-h-24 overflow-hidden overflow-y-auto">
+                              {config.config_content}
+                            </pre>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </DialogDescription>
-              </DialogHeader>
-              
-              <form onSubmit={handleSave} className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-slate-300">Config Name</Label>
+                </ScrollArea>
+              )}
+            </TabsContent>
+
+            <TabsContent value="direct" className="flex-1 overflow-hidden m-0 flex flex-col">
+              <ScrollArea className="h-full">
+                <div className="p-6 space-y-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="directName" className="text-xs text-slate-300">{t("apps.vpnConfigName", undefined, "Config Name")}</Label>
+                        <Input
+                          id="directName"
+                          placeholder={t("apps.vpnConfigNamePlaceholder", undefined, "e.g. Temporary Connection")}
+                          value={directName}
+                          onChange={(e) => setDirectName(e.target.value)}
+                          className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="directType" className="text-xs text-slate-300">{t("apps.vpnType", undefined, "VPN Type")}</Label>
+                        <Select value={directType} onValueChange={setDirectType}>
+                          <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-xs h-9 text-left">
+                            <SelectValue placeholder="Select VPN Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="WireGuard">WireGuard</SelectItem>
+                            <SelectItem value="OpenVPN">OpenVPN</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="directConfig" className="text-xs text-slate-300">{t("apps.vpnConfigContent", undefined, "Configuration Content")}</Label>
+                        <a
+                          href="https://www.vpnbook.com"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          VPNBook
+                        </a>
+                      </div>
+                      <Textarea
+                        id="directConfig"
+                        placeholder={directType === "WireGuard" ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0" : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."}
+                        value={directConfig}
+                        onChange={(e) => setDirectConfig(e.target.value)}
+                        className="font-mono bg-slate-950 border-slate-800 text-white min-h-[160px] text-xs"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between border border-slate-800 rounded-lg p-3 bg-slate-950/60">
+                      <Label htmlFor="directKillswitch" className="text-xs text-slate-300 font-medium">
+                        {t("apps.vpnKillSwitch", undefined, "Kill Switch (Block untunneled traffic)")}
+                      </Label>
+                      <Switch 
+                        id="directKillswitch" 
+                        checked={directKillswitch} 
+                        onCheckedChange={setDirectKillswitch} 
+                      />
+                    </div>
+
+                    {/* Detected Server Status Card */}
+                    {directStat && directStat.ip ? (
+                      <div 
+                        onClick={handleDirectMarkerClick}
+                        className="p-3.5 bg-slate-950/90 rounded-xl border border-cyan-500/30 hover:border-cyan-500/60 cursor-pointer transition-colors space-y-2 shadow-lg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <Server className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span className="text-xs font-semibold text-white truncate">
+                              {directStat.ip}
+                            </span>
+                          </div>
+                          <Badge 
+                            variant="secondary" 
+                            className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-2 py-0.5 flex items-center gap-1 ${directStat.ping === 'error' ? 'text-red-400' : directStat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
+                          >
+                            <Activity className="w-2.5 h-2.5" />
+                            {directStat.ping === 'loading' ? t("apps.vpnPinging", undefined, "Pinging...") : directStat.ping === 'error' ? t("apps.vpnOffline", undefined, "Offline") : `${directStat.ping}ms`}
+                          </Badge>
+                        </div>
+                        {directStat.city && (
+                          <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                            <MapIcon className="w-3.5 h-3.5 opacity-60 text-cyan-400" />
+                            {directStat.city}, {directStat.country}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-3.5 bg-slate-950/40 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-500">
+                        {t("apps.vpnNoServerDetected", undefined, "Paste a configuration to detect server location and live ping.")}
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      {connectedConfigId === "direct" ? (
+                        <Button 
+                          onClick={() => handleDisconnect(directConfigObj)}
+                          disabled={isConnecting}
+                          className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 h-11"
+                        >
+                          {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={() => handleConnect(directConfigObj)}
+                          disabled={isConnecting || (connectedConfigId !== null) || !directConfig.trim()}
+                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 h-11"
+                        >
+                          {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        ) : (
+          /* Guest / Unauthenticated Direct Connection View */
+          <div className="flex flex-col h-full">
+            <div className="p-6 border-b border-slate-800 flex flex-col gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-cyan-500" />
+                  {t("apps.vpnDirectConnect", undefined, "Direct Connect")}
+                </h3>
+                <p className="text-slate-400 text-xs mt-1">
+                  {t("apps.vpnDirectConnectDesc", undefined, "Enter a VPN config to connect directly without saving.")}
+                </p>
+              </div>
+
+              {/* Guest Banner */}
+              <div className="bg-slate-950/90 border border-slate-800 rounded-lg p-3 text-xs text-slate-400 flex items-start gap-2.5">
+                <Shield className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p>{t("apps.vpnGuestNotice", undefined, "Connect directly without saving, or sign in to save profiles across devices.")}</p>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    onClick={() => navigate("/auth")}
+                    className="text-cyan-400 hover:text-cyan-300 p-0 h-auto font-semibold mt-1 text-xs"
+                  >
+                    {t("apps.vpnSignInPrompt", undefined, "Sign In")} &rarr;
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <ScrollArea className="flex-1">
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="guestName" className="text-xs text-slate-300">{t("apps.vpnConfigName", undefined, "Config Name")}</Label>
                     <Input
-                      id="name"
-                      placeholder="e.g. My Home VPN"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="bg-slate-950 border-slate-800 text-white"
+                      id="guestName"
+                      placeholder={t("apps.vpnConfigNamePlaceholder", undefined, "e.g. Temporary Connection")}
+                      value={directName}
+                      onChange={(e) => setDirectName(e.target.value)}
+                      className="bg-slate-950 border-slate-800 text-white text-xs h-9"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vpnType" className="text-slate-300">VPN Type</Label>
-                    <Select value={vpnType} onValueChange={setVpnType}>
-                      <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-left">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="guestType" className="text-xs text-slate-300">{t("apps.vpnType", undefined, "VPN Type")}</Label>
+                    <Select value={directType} onValueChange={setDirectType}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-xs h-9 text-left">
                         <SelectValue placeholder="Select VPN Type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="WireGuard">WireGuard (Recommended)</SelectItem>
+                        <SelectItem value="WireGuard">WireGuard</SelectItem>
                         <SelectItem value="OpenVPN">OpenVPN</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="config" className="text-slate-300">Configuration Content</Label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="guestConfig" className="text-xs text-slate-300">{t("apps.vpnConfigContent", undefined, "Configuration Content")}</Label>
+                    <a
+                      href="https://www.vpnbook.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      VPNBook
+                    </a>
+                  </div>
                   <Textarea
-                    id="config"
-                    placeholder={vpnType === "WireGuard" ? "[Interface]&#10;PrivateKey = ...&#10;Address = ..." : "client&#10;dev tun&#10;proto udp&#10;..."}
-                    value={configContent}
-                    onChange={(e) => setConfigContent(e.target.value)}
-                    className="font-mono bg-slate-950 border-slate-800 text-white min-h-[180px] text-sm"
+                    id="guestConfig"
+                    placeholder={directType === "WireGuard" ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0" : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."}
+                    value={directConfig}
+                    onChange={(e) => setDirectConfig(e.target.value)}
+                    className="font-mono bg-slate-950 border-slate-800 text-white min-h-[160px] text-xs"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="expiration" className="text-slate-300">Auto Delete / Expiration</Label>
-                  <div className="flex gap-4">
-                    <Select value={expiration} onValueChange={setExpiration}>
-                      <SelectTrigger className="bg-slate-950 border-slate-800 text-white flex-1 text-left">
-                        <SelectValue placeholder="Select Expiration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="never">Never (Keep Forever)</SelectItem>
-                        <SelectItem value="1 day">1 Day</SelectItem>
-                        <SelectItem value="3 days">3 Days</SelectItem>
-                        <SelectItem value="1 week">1 Week</SelectItem>
-                        <SelectItem value="1 month">1 Month</SelectItem>
-                        <SelectItem value="1 year">1 Year</SelectItem>
-                        <SelectItem value="custom">Custom Date</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    {expiration === "custom" && (
-                      <Input
-                        type="datetime-local"
-                        value={customDate}
-                        onChange={(e) => setCustomDate(e.target.value)}
-                        className="bg-slate-950 border-slate-800 text-white flex-1"
-                      />
-                    )}
-                  </div>
+                <div className="flex items-center justify-between border border-slate-800 rounded-lg p-3 bg-slate-950/60">
+                  <Label htmlFor="guestKillswitch" className="text-xs text-slate-300 font-medium">
+                    {t("apps.vpnKillSwitch", undefined, "Kill Switch (Block untunneled traffic)")}
+                  </Label>
+                  <Switch 
+                    id="guestKillswitch" 
+                    checked={directKillswitch} 
+                    onCheckedChange={setDirectKillswitch} 
+                  />
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex flex-col gap-1 mt-4 border border-slate-800 rounded-lg p-4 bg-slate-900/50">
+                {/* Detected Server Status Card */}
+                {directStat && directStat.ip ? (
+                  <div 
+                    onClick={handleDirectMarkerClick}
+                    className="p-3.5 bg-slate-950/90 rounded-xl border border-cyan-500/30 hover:border-cyan-500/60 cursor-pointer transition-colors space-y-2 shadow-lg"
+                  >
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="killswitch" className="text-slate-300 font-medium">Kill Switch (Block untunneled traffic)</Label>
-                      <Switch 
-                        id="killswitch" 
-                        checked={killswitch} 
-                        onCheckedChange={setKillswitch} 
-                      />
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <Server className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span className="text-xs font-semibold text-white truncate">
+                          {directStat.ip}
+                        </span>
+                      </div>
+                      <Badge 
+                        variant="secondary" 
+                        className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-2 py-0.5 flex items-center gap-1 ${directStat.ping === 'error' ? 'text-red-400' : directStat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
+                      >
+                        <Activity className="w-2.5 h-2.5" />
+                        {directStat.ping === 'loading' ? t("apps.vpnPinging", undefined, "Pinging...") : directStat.ping === 'error' ? t("apps.vpnOffline", undefined, "Offline") : `${directStat.ping}ms`}
+                      </Badge>
                     </div>
-                    {vpnType === "OpenVPN" && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        Note: On Windows, OpenVPN natively supports only DNS leak protection via the CLI. 
-                        A true firewall-based kill switch requires manual Windows Firewall rules.
-                      </p>
+                    {directStat.city && (
+                      <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                        <MapIcon className="w-3.5 h-3.5 opacity-60 text-cyan-400" />
+                        {directStat.city}, {directStat.country}
+                      </div>
                     )}
                   </div>
-                </div>
+                ) : (
+                  <div className="p-3.5 bg-slate-950/40 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-500">
+                    {t("apps.vpnNoServerDetected", undefined, "Paste a configuration to detect server location and live ping.")}
+                  </div>
+                )}
 
                 <div className="pt-2">
-                  <Button 
-                    type="submit" 
-                    disabled={saveMutation.isPending || !name.trim() || !configContent.trim()}
-                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white"
-                  >
-                    {saveMutation.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="w-4 h-4 mr-2" />
-                        Save Configuration
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <div className="flex-1 overflow-hidden relative">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 absolute inset-0">
-              <Loader2 className="w-8 h-8 animate-spin mb-4 text-cyan-500" />
-              Loading configs...
-            </div>
-          ) : !configs || configs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 text-center absolute inset-0">
-              <Server className="w-12 h-12 opacity-20 mb-4" />
-              <p>No configurations found.</p>
-              <p className="text-sm opacity-70 mt-2">Click "Create New Config" above to get started.</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-full">
-              <div className="p-6 space-y-4">
-                {configs.map((config) => {
-                  const stat = serverStats[config.id];
-                  return (
-                    <div
-                      key={config.id}
-                      onClick={() => handleConfigClick(config.id)}
-                      className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-slate-950 transition-colors group relative cursor-pointer"
+                  {connectedConfigId === "direct" ? (
+                    <Button 
+                      onClick={() => handleDisconnect(directConfigObj)}
+                      disabled={isConnecting}
+                      className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 h-11"
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex flex-col gap-1.5 overflow-hidden">
-                          <h4 className="font-bold text-white flex items-center gap-2 truncate text-base">
-                            {config.name}
-                          </h4>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0">
-                              {config.type || 'WireGuard'}
-                            </Badge>
-                            
-                            {stat && (
-                              <Badge 
-                                variant="secondary" 
-                                className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1 ${stat.ping === 'error' ? 'text-red-400' : stat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
-                              >
-                                <Activity className="w-2.5 h-2.5" />
-                                {stat.ping === 'loading' ? 'Pinging...' : stat.ping === 'error' ? 'Offline' : `${stat.ping}ms`}
-                              </Badge>
-                            )}
-
-                            {config.expires_at && (
-                              <Badge variant="secondary" className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1">
-                                <Clock className="w-2.5 h-2.5" />
-                                Expires: {new Date(config.expires_at).toLocaleDateString()}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 -mt-1 -mr-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(config.id);
-                          }}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                      
-                      {stat && stat.city && (
-                        <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
-                          <MapIcon className="w-3 h-3 opacity-50" />
-                          {stat.city}, {stat.country}
-                        </div>
-                      )}
-
-                      <div className="bg-slate-900 rounded-md p-2.5 mt-3 border border-slate-800/50">
-                        <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap break-all max-h-24 overflow-hidden overflow-y-auto">
-                          {config.config_content}
-                        </pre>
-                      </div>
-                    </div>
-                  );
-                })}
+                      {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={() => handleConnect(directConfigObj)}
+                      disabled={isConnecting || (connectedConfigId !== null) || !directConfig.trim()}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 h-11"
+                    >
+                      {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
+                    </Button>
+                  )}
+                </div>
               </div>
             </ScrollArea>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

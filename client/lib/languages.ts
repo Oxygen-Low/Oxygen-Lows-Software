@@ -85,13 +85,6 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
     nativeName: "Português",
   },
   {
-    code: "nl",
-    name: "Dutch",
-    flag: "🇳🇱",
-    countryCode: "nl",
-    nativeName: "Nederlands",
-  },
-  {
     code: "pl",
     name: "Polish",
     flag: "🇵🇱",
@@ -127,20 +120,6 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
     nativeName: "हिन्दी",
   },
   {
-    code: "bn",
-    name: "Bengali",
-    flag: "🇧🇩",
-    countryCode: "bd",
-    nativeName: "বাংলা",
-  },
-  {
-    code: "ro",
-    name: "Romanian",
-    flag: "🇷🇴",
-    countryCode: "ro",
-    nativeName: "Română",
-  },
-  {
     code: "ar",
     name: "Arabic",
     flag: "🇸🇦",
@@ -148,25 +127,11 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
     nativeName: "العربية",
   },
   {
-    code: "cs",
-    name: "Czech",
-    flag: "🇨🇿",
-    countryCode: "cz",
-    nativeName: "Čeština",
-  },
-  {
     code: "zu",
     name: "Zulu",
     flag: "🇿🇦",
     countryCode: "za",
     nativeName: "isiZulu",
-  },
-  {
-    code: "da",
-    name: "Danish",
-    flag: "🇩🇰",
-    countryCode: "dk",
-    nativeName: "Dansk",
   },
   {
     code: "la",
@@ -188,27 +153,6 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
     flag: "🇺🇦",
     countryCode: "ua",
     nativeName: "Українська",
-  },
-  {
-    code: "ur",
-    name: "Urdu",
-    flag: "🇵🇰",
-    countryCode: "pk",
-    nativeName: "اردو",
-  },
-  {
-    code: "fa",
-    name: "Persian",
-    flag: "🇮🇷",
-    countryCode: "ir",
-    nativeName: "فارسی",
-  },
-  {
-    code: "pa",
-    name: "Punjabi",
-    flag: "🇮🇳",
-    countryCode: "in",
-    nativeName: "ਪੰਜਾਬੀ",
   },
 ] as const;
 
@@ -257,9 +201,6 @@ export function getLanguageOption(value?: string | null): LanguageOption {
     }
 
     // Specific alias mappings
-    const foundRo = languageMapCache.get("ro");
-    if (foundRo) languageMapCache.set("romainian", foundRo);
-
     const foundZh = languageMapCache.get("zh-cn");
     if (foundZh) {
       languageMapCache.set("chinese", foundZh);
