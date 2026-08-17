@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { createClient } from "@supabase/supabase-js";
+import { validateAiUrl } from "../lib/safeAiUrl.js";
 
 export const proxyRouter = new Hono();
 
@@ -60,12 +61,19 @@ proxyRouter.post("/fetch", async (c) => {
       return c.json({ error: "Domain not allowed" }, 403);
     }
 
+    try {
+      await validateAiUrl(url);
+    } catch (e: any) {
+      return c.json({ error: e.message || "Invalid or unsafe URL" }, 400);
+    }
+
     // In Cloudflare Workers, fetch is natively available and preferred over axios
     const response = await fetch(url, {
       method: options?.method || "GET",
       headers: options?.headers,
       body: options?.body ? JSON.stringify(options.body) : undefined,
       signal: c.req.raw.signal,
+      redirect: "manual",
     });
 
     const text = await response.text();
