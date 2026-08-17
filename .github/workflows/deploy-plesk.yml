@@ -1,12 +1,7 @@
 name: Deploy to Plesk
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
-    branches:
-      - main
+  workflow_call:
   workflow_dispatch:
 
 permissions: {}
@@ -14,7 +9,6 @@ permissions: {}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
     steps:
