@@ -83,9 +83,6 @@ export class DefenderClient {
 
     const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
     if (this.config.offlineMode || noApiKey) {
-      if (!this.config.offlineMode) {
-        console.log('[WebDefender] No DEFENDER_API_KEY environment variable found. Offline mode enabled.');
-      }
       this.appConfig = this.normalizeConfig({ block_mode_enabled: true, config: {} });
       this.isInitialized = true;
       return;
