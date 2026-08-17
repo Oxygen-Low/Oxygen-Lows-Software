@@ -203,3 +203,209 @@ describe("MusicContext loop integration", () => {
     );
   });
 });
+
+describe("MusicContext 10-second auto-resume after exit/refresh", () => {
+  let mockSelect: any;
+  const playMock = vi.fn().mockResolvedValue(undefined);
+  const pauseMock = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+
+    window.HTMLMediaElement.prototype.play = playMock;
+    window.HTMLMediaElement.prototype.pause = pauseMock;
+
+    mockSelect = vi.fn(() => ({
+      eq: vi.fn(() => ({
+        single: vi.fn().mockResolvedValue({
+          data: {
+            music_playlist: [
+              { name: "Song 1", fileName: "song1.mp3" },
+              { name: "Song 2", fileName: "song2.mp3" },
+            ],
+            current_music_track: "song1.mp3",
+            current_music_position: 12000,
+            shuffle_enabled: false,
+            loop_enabled: false,
+          },
+          error: null,
+        }),
+      })),
+    }));
+
+    mockSupabase.from = vi.fn((table?: string) => {
+      if (table === "user_preferences") {
+        return {
+          select: mockSelect,
+          upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }
+      return {};
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  const AutoResumeConsumer = () => {
+    const { isPlaying, currentPosition, currentTrack, pause, play } = useMusicContext();
+    return (
+      <div>
+        <span data-testid="is-playing">{isPlaying ? "playing" : "paused"}</span>
+        <span data-testid="current-pos">{currentPosition}</span>
+        <span data-testid="track-name">{currentTrack?.name || "none"}</span>
+        <button data-testid="pause-btn" onClick={pause}>Pause</button>
+        <button data-testid="play-btn" onClick={play}>Play</button>
+      </div>
+    );
+  };
+
+  it("automatically starts music again if exited/refreshed within 10 seconds while playing", async () => {
+    // Simulate exit 3 seconds ago while playing at position 15000ms
+    const exitTimestamp = Date.now() - 3000;
+    localStorage.setItem(
+      "oxygen_music_exit_state",
+      JSON.stringify({
+        isPlaying: true,
+        timestamp: exitTimestamp,
+        trackFileName: "song1.mp3",
+        position: 15000,
+      }),
+    );
+
+    render(
+      <MusicProvider>
+        <AutoResumeConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-playing").textContent).toBe("playing");
+      expect(screen.getByTestId("current-pos").textContent).toBe("15000");
+    });
+
+    expect(playMock).toHaveBeenCalled();
+  });
+
+  it("does NOT automatically start music if returning after more than 10 seconds", async () => {
+    // Simulate exit 15 seconds ago (> 10s) while playing
+    const exitTimestamp = Date.now() - 15000;
+    localStorage.setItem(
+      "oxygen_music_exit_state",
+      JSON.stringify({
+        isPlaying: true,
+        timestamp: exitTimestamp,
+        trackFileName: "song1.mp3",
+        position: 15000,
+      }),
+    );
+
+    render(
+      <MusicProvider>
+        <AutoResumeConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("track-name").textContent).toBe("Song 1");
+    });
+
+    expect(screen.getByTestId("is-playing").textContent).toBe("paused");
+    expect(playMock).not.toHaveBeenCalled();
+  });
+
+  it("does NOT automatically start music if music was paused before exit", async () => {
+    // Simulate exit 2 seconds ago, but music was paused
+    const exitTimestamp = Date.now() - 2000;
+    localStorage.setItem(
+      "oxygen_music_exit_state",
+      JSON.stringify({
+        isPlaying: false,
+        timestamp: exitTimestamp,
+        trackFileName: "song1.mp3",
+        position: 15000,
+      }),
+    );
+
+    render(
+      <MusicProvider>
+        <AutoResumeConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("track-name").textContent).toBe("Song 1");
+    });
+
+    expect(screen.getByTestId("is-playing").textContent).toBe("paused");
+    expect(playMock).not.toHaveBeenCalled();
+  });
+
+  it("records exit state to localStorage when beforeunload event fires", async () => {
+    // Start with auto-resume active so isPlaying becomes true
+    const exitTimestamp = Date.now() - 2000;
+    localStorage.setItem(
+      "oxygen_music_exit_state",
+      JSON.stringify({
+        isPlaying: true,
+        timestamp: exitTimestamp,
+        trackFileName: "song1.mp3",
+        position: 12000,
+      }),
+    );
+
+    render(
+      <MusicProvider>
+        <AutoResumeConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-playing").textContent).toBe("playing");
+    });
+
+    // Fire beforeunload
+    fireEvent(window, new Event("beforeunload"));
+
+    const stored = JSON.parse(localStorage.getItem("oxygen_music_exit_state") || "{}");
+    expect(stored.isPlaying).toBe(true);
+    expect(stored.trackFileName).toBe("song1.mp3");
+    expect(typeof stored.timestamp).toBe("number");
+  });
+
+  it("updates localStorage with isPlaying: false when paused", async () => {
+    const exitTimestamp = Date.now() - 2000;
+    localStorage.setItem(
+      "oxygen_music_exit_state",
+      JSON.stringify({
+        isPlaying: true,
+        timestamp: exitTimestamp,
+        trackFileName: "song1.mp3",
+        position: 12000,
+      }),
+    );
+
+    render(
+      <MusicProvider>
+        <AutoResumeConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-playing").textContent).toBe("playing");
+    });
+
+    fireEvent.click(screen.getByTestId("pause-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-playing").textContent).toBe("paused");
+    });
+
+    const stored = JSON.parse(localStorage.getItem("oxygen_music_exit_state") || "{}");
+    expect(stored.isPlaying).toBe(false);
+  });
+});
+

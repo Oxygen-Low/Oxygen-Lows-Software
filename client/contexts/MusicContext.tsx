@@ -23,6 +23,7 @@ interface MusicContextType {
   currentPosition: number;
   isPlaying: boolean;
   shuffle: boolean;
+  loop: boolean;
   isLoading: boolean;
   audioRef: React.RefObject<HTMLAudioElement>;
   play: () => Promise<void>;
@@ -36,7 +37,11 @@ interface MusicContextType {
   addTrack: (track: PlaylistTrack) => Promise<void>;
   removeTrack: (trackFileName: string) => Promise<void>;
   toggleShuffle: (shuffle: boolean) => Promise<void>;
+  toggleLoop: (loop: boolean) => Promise<void>;
 }
+
+const AUTO_RESUME_STORAGE_KEY = "oxygen_music_exit_state";
+const AUTO_RESUME_WINDOW_MS = 10000; // 10 seconds
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
@@ -51,6 +56,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentPosition, setCurrentPositionState] = useState(0);
   const [isPlaying, setIsPlayingState] = useState(false);
   const [shuffle, setShuffleState] = useState(false);
+  const [loop, setLoopState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -58,16 +64,74 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const currentTrackRef = useRef<PlaylistTrack | null>(null);
   const isPlayingRef = useRef(false);
   const shuffleRef = useRef(false);
+  const loopRef = useRef(false);
   const currentPositionRef = useRef(0);
   const playNextRef = useRef<(() => void) | undefined>(undefined);
   const playTokenRef = useRef(0);
+
+  const savePlaybackExitState = useCallback(
+    (playing: boolean, pos?: number, trackFileName?: string) => {
+      try {
+        const payload = {
+          isPlaying: playing,
+          timestamp: Date.now(),
+          trackFileName:
+            trackFileName ?? currentTrackRef.current?.fileName ?? null,
+          position:
+            pos !== undefined
+              ? Math.floor(pos)
+              : Math.floor(currentPositionRef.current),
+        };
+        localStorage.setItem(
+          AUTO_RESUME_STORAGE_KEY,
+          JSON.stringify(payload),
+        );
+      } catch {
+        // Ignore localStorage quota / access errors
+      }
+    },
+    [],
+  );
+
+  const checkAutoResume = useCallback((): {
+    shouldResume: boolean;
+    position?: number;
+  } => {
+    try {
+      const raw = localStorage.getItem(AUTO_RESUME_STORAGE_KEY);
+      if (!raw) return { shouldResume: false };
+      const parsed = JSON.parse(raw);
+      if (
+        !parsed ||
+        !parsed.isPlaying ||
+        typeof parsed.timestamp !== "number"
+      ) {
+        return { shouldResume: false };
+      }
+      const elapsed = Date.now() - parsed.timestamp;
+      if (elapsed >= -1000 && elapsed <= AUTO_RESUME_WINDOW_MS) {
+        return {
+          shouldResume: true,
+          position:
+            typeof parsed.position === "number" ? parsed.position : undefined,
+        };
+      }
+      return { shouldResume: false };
+    } catch {
+      return { shouldResume: false };
+    }
+  }, []);
 
   useEffect(() => {
     playlistRef.current = playlist;
     currentTrackRef.current = currentTrack;
     isPlayingRef.current = isPlaying;
     shuffleRef.current = shuffle;
-  }, [playlist, currentTrack, isPlaying, shuffle]);
+    loopRef.current = loop;
+    if (audioRef.current) {
+      audioRef.current.loop = loop;
+    }
+  }, [playlist, currentTrack, isPlaying, shuffle, loop]);
 
   const resolvePlaybackUrl = useCallback(
     async (fileName: string) => {
@@ -105,6 +169,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         overrides.shuffle !== undefined
           ? overrides.shuffle
           : shuffleRef.current;
+      const loop_enabled =
+        overrides.loop !== undefined ? overrides.loop : loopRef.current;
 
       await supabase.from("user_preferences").upsert(
         {
@@ -113,6 +179,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           current_music_track,
           current_music_position,
           shuffle_enabled,
+          loop_enabled,
         },
         { onConflict: "user_id" },
       );
@@ -131,7 +198,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         const { data, error } = await supabase
           .from("user_preferences")
           .select(
-            "music_playlist, current_music_track, current_music_position, shuffle_enabled",
+            "music_playlist, current_music_track, current_music_position, shuffle_enabled, loop_enabled",
           )
           .eq("user_id", session.user.id)
           .single();
@@ -144,11 +211,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         const currentTrackName = data?.current_music_track as string;
         const savedPosition = data?.current_music_position || 0;
         const shuffleEnabled = data?.shuffle_enabled || false;
+        const loopEnabled = data?.loop_enabled || false;
 
         setPlaylistState(loadedPlaylist);
         setShuffleState(shuffleEnabled);
+        setLoopState(loopEnabled);
         setCurrentPositionState(savedPosition);
         currentPositionRef.current = savedPosition;
+
+        if (audioRef.current) {
+          audioRef.current.loop = loopEnabled;
+        }
 
         if (currentTrackName && loadedPlaylist.length > 0) {
           const track = loadedPlaylist.find(
@@ -161,10 +234,51 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
                 const url = await resolvePlaybackUrl(track.fileName);
                 if (url) {
                   audioRef.current.src = url;
-                  audioRef.current.currentTime = savedPosition / 1000;
+
+                  const autoResume = checkAutoResume();
+                  const initialPosition =
+                    autoResume.shouldResume &&
+                    autoResume.position !== undefined
+                      ? autoResume.position
+                      : savedPosition;
+
+                  audioRef.current.currentTime = initialPosition / 1000;
+                  setCurrentPositionState(initialPosition);
+                  currentPositionRef.current = initialPosition;
+
                   console.log(
-                    `Loaded track ${track.name} with saved position ${savedPosition}ms`,
+                    `Loaded track ${track.name} with position ${initialPosition}ms (autoResume: ${autoResume.shouldResume})`,
                   );
+
+                  if (autoResume.shouldResume) {
+                    try {
+                      await audioRef.current.play();
+                      setIsPlayingState(true);
+                      isPlayingRef.current = true;
+                    } catch (playErr) {
+                      console.warn(
+                        "Auto-resume playback was prevented by browser:",
+                        playErr,
+                      );
+                      const resumeOnInteraction = () => {
+                        if (audioRef.current && currentTrackRef.current) {
+                          audioRef.current
+                            .play()
+                            .then(() => {
+                              setIsPlayingState(true);
+                              isPlayingRef.current = true;
+                            })
+                            .catch(() => {});
+                        }
+                      };
+                      window.addEventListener("click", resumeOnInteraction, {
+                        once: true,
+                      });
+                      window.addEventListener("keydown", resumeOnInteraction, {
+                        once: true,
+                      });
+                    }
+                  }
                 } else {
                   console.warn(
                     `Could not resolve URL for saved track: ${track.fileName}`,
@@ -184,7 +298,51 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadMusicPreferences();
-  }, [session?.user?.id, resolvePlaybackUrl]);
+  }, [session?.user?.id, resolvePlaybackUrl, checkAutoResume]);
+
+  // Window exit / tab close / visibility change listeners to record state
+  useEffect(() => {
+    const handleExit = () => {
+      const isCurrentlyPlaying = isPlayingRef.current;
+      const currentPos = audioRef.current
+        ? audioRef.current.currentTime * 1000
+        : currentPositionRef.current;
+      savePlaybackExitState(
+        isCurrentlyPlaying,
+        currentPos,
+        currentTrackRef.current?.fileName,
+      );
+    };
+
+    window.addEventListener("beforeunload", handleExit);
+    window.addEventListener("pagehide", handleExit);
+    document.addEventListener("visibilitychange", handleExit);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleExit);
+      window.removeEventListener("pagehide", handleExit);
+      document.removeEventListener("visibilitychange", handleExit);
+    };
+  }, [savePlaybackExitState]);
+
+  // Heartbeat to keep exit timestamp fresh while playing
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      if (isPlayingRef.current) {
+        savePlaybackExitState(
+          true,
+          audioRef.current
+            ? audioRef.current.currentTime * 1000
+            : currentPositionRef.current,
+          currentTrackRef.current?.fileName,
+        );
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, savePlaybackExitState]);
 
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
@@ -216,9 +374,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         await audioRef.current.play();
         setIsPlayingState(true);
+        isPlayingRef.current = true;
+        savePlaybackExitState(true, 0, track.fileName);
       } catch (error) {
         console.error(`Failed to play track ${track.name}:`, error);
         setIsPlayingState(false);
+        isPlayingRef.current = false;
+        savePlaybackExitState(false, 0, track.fileName);
       }
 
       savePreferences({
@@ -227,7 +389,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         playlist: overridePlaylist || playlistRef.current,
       });
     },
-    [resolvePlaybackUrl, savePreferences],
+    [resolvePlaybackUrl, savePreferences, savePlaybackExitState],
   );
 
   const playNext = useCallback(async () => {
@@ -270,7 +432,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const handleEnded = () => {
-      playNextRef.current?.();
+      if (!loopRef.current) {
+        playNextRef.current?.();
+      }
     };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
@@ -282,7 +446,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  // Auto-save position periodically
+  // Auto-save position periodically to Supabase
   useEffect(() => {
     if (!isPlaying || !session?.user?.id) return;
 
@@ -300,18 +464,30 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         await audioRef.current.play();
       }
       setIsPlayingState(true);
+      isPlayingRef.current = true;
+      savePlaybackExitState(
+        true,
+        currentPositionRef.current,
+        currentTrack.fileName,
+      );
     } catch (error) {
       console.error("Failed to play audio:", error);
     }
-  }, [currentTrack]);
+  }, [currentTrack, savePlaybackExitState]);
 
   const pause = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
     }
     setIsPlayingState(false);
+    isPlayingRef.current = false;
+    savePlaybackExitState(
+      false,
+      currentPositionRef.current,
+      currentTrack?.fileName,
+    );
     savePreferences();
-  }, [savePreferences, currentTrack]);
+  }, [savePreferences, currentTrack, savePlaybackExitState]);
 
   const playPrev = useCallback(async () => {
     const currentT = currentTrackRef.current;
@@ -362,6 +538,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             setCurrentPositionState(0);
             currentPositionRef.current = 0;
             setIsPlayingState(false);
+            isPlayingRef.current = false;
+            savePlaybackExitState(false, 0, nextTrack.fileName);
             const url = await resolvePlaybackUrl(nextTrack.fileName);
             if (url && audioRef.current) {
               audioRef.current.src = url;
@@ -376,6 +554,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           nextTrack = null;
           setCurrentTrackState(null);
           setIsPlayingState(false);
+          isPlayingRef.current = false;
+          savePlaybackExitState(false, 0, undefined);
           if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.src = "";
@@ -397,6 +577,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playTrack,
       resolvePlaybackUrl,
       savePreferences,
+      savePlaybackExitState,
     ],
   );
 
@@ -408,6 +589,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     [savePreferences],
   );
 
+  const toggleLoop = useCallback(
+    async (newLoopState: boolean) => {
+      setLoopState(newLoopState);
+      loopRef.current = newLoopState;
+      if (audioRef.current) {
+        audioRef.current.loop = newLoopState;
+      }
+      savePreferences({ loop: newLoopState });
+    },
+    [savePreferences],
+  );
+
   const contextValue = useMemo(
     () => ({
       playlist,
@@ -415,6 +608,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       currentPosition,
       isPlaying,
       shuffle,
+      loop,
       isLoading,
       audioRef,
       play,
@@ -425,6 +619,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       addTrack,
       removeTrack,
       toggleShuffle,
+      toggleLoop,
     }),
     [
       playlist,
@@ -432,6 +627,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       currentPosition,
       isPlaying,
       shuffle,
+      loop,
       isLoading,
       play,
       pause,
@@ -441,6 +637,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       addTrack,
       removeTrack,
       toggleShuffle,
+      toggleLoop,
     ],
   );
 
