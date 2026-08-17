@@ -195,7 +195,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
                const searchResponse = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query), {
                  headers: {
                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-                 }
+                 },
+                 redirect: "error"
                });
                if (searchResponse.ok) {
                  const text = await searchResponse.text();

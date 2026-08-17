@@ -312,4 +312,4 @@ export const ur = {
   },
 } as const;
 
-export type TranslationSchema = typeof en;
+export type TranslationSchema = typeof ur;
