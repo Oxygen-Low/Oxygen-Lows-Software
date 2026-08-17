@@ -97,18 +97,25 @@ export function scanRequest(
   
   const inputs: string[] = [path, body];
   
-  for (const val of Object.values(query)) {
+  for (const key in query) {
+    const val = query[key];
     if (Array.isArray(val)) {
-      inputs.push(...val);
+      for (let i = 0; i < val.length; i++) {
+        inputs.push(val[i]);
+      }
     } else if (val) {
       inputs.push(val);
     }
   }
   
-  for (const [key, val] of Object.entries(headers)) {
-    if (key.toLowerCase() === 'cookie' || key.toLowerCase() === 'referer') {
+  for (const key in headers) {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === 'cookie' || lowerKey === 'referer') {
+      const val = headers[key];
       if (Array.isArray(val)) {
-        inputs.push(...val);
+        for (let i = 0; i < val.length; i++) {
+          inputs.push(val[i]);
+        }
       } else if (val) {
         inputs.push(val);
       }
