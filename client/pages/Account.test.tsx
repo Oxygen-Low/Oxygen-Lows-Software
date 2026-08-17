@@ -101,4 +101,11 @@ describe("Account Component", () => {
     expect(screen.getByText("Display Language")).toBeDefined();
     expect(screen.getByText("English")).toBeDefined();
   });
+
+  it("renders additional languages section with controls", async () => {
+    render(<Account />);
+    expect(screen.getByText("Additional Languages")).toBeDefined();
+    expect(screen.getByText("Add Language")).toBeDefined();
+    expect(screen.getByText("No additional languages added.")).toBeDefined();
+  });
 });

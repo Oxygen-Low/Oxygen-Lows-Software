@@ -54,7 +54,7 @@ export default function UserProfile() {
       // Fetch basic profile info
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, bio, show_email, email, language")
+        .select("user_id, display_name, username, bio, show_email, email, language, additional_languages")
         .eq("username", username)
         .single();
 
@@ -348,15 +348,41 @@ export default function UserProfile() {
                         {profile.email}
                       </p>
                     )}
-                    <div className="flex items-center justify-center md:justify-start gap-2 mt-2 text-xs text-slate-400">
-                      <CountryFlag
-                        countryCode={getLanguageOption(profile.language).countryCode}
-                        className="w-4 h-3 rounded-[2px]"
-                        alt={`${getLanguageOption(profile.language).name} flag`}
-                      />
-                      <span className="font-medium text-slate-300">
-                        {getLanguageOption(profile.language).name}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
+                      <div
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs text-slate-200 shadow-sm"
+                        title={`${t("userProfile.primary", undefined, "Primary")}: ${getLanguageOption(profile.language).name}`}
+                      >
+                        <CountryFlag
+                          countryCode={getLanguageOption(profile.language).countryCode}
+                          className="w-4 h-3 rounded-[2px]"
+                          alt={`${getLanguageOption(profile.language).name} flag`}
+                        />
+                        <span className="font-medium text-slate-200">
+                          {getLanguageOption(profile.language).name}
+                        </span>
+                      </div>
+
+                      {Array.isArray(profile.additional_languages) &&
+                        profile.additional_languages
+                          .filter((lang: string) => lang && lang !== profile.language)
+                          .map((lang: string) => {
+                            const opt = getLanguageOption(lang);
+                            return (
+                              <div
+                                key={lang}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/40 border border-slate-800 text-xs text-slate-300 hover:border-slate-700 transition"
+                                title={opt.name}
+                              >
+                                <CountryFlag
+                                  countryCode={opt.countryCode}
+                                  className="w-4 h-3 rounded-[2px]"
+                                  alt={`${opt.name} flag`}
+                                />
+                                <span className="font-medium">{opt.name}</span>
+                              </div>
+                            );
+                          })}
                     </div>
                   </div>
 

@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Upload,
   Maximize,
+  Plus,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -22,6 +24,18 @@ import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  SUPPORTED_LANGUAGES,
+  getLanguageOption,
+} from "@/lib/languages";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 interface UserProfile {
   user_id: string;
@@ -31,6 +45,7 @@ interface UserProfile {
   email: string | null;
   show_email: boolean;
   language?: string | null;
+  additional_languages?: string[] | null;
 }
 interface ProfilePicture {
   id: string;
@@ -59,6 +74,8 @@ export default function Account() {
   const [usernameInput, setUsernameInput] = useState("");
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [bioInput, setBioInput] = useState("");
+  const [additionalLanguages, setAdditionalLanguages] = useState<string[]>([]);
+  const [selectedAddLanguage, setSelectedAddLanguage] = useState<string>("");
 
   const fetchAccountData = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -85,6 +102,9 @@ export default function Account() {
       setBioInput(prof.bio || "");
       if (prof.language) {
         setLanguage(prof.language);
+      }
+      if (Array.isArray(prof.additional_languages)) {
+        setAdditionalLanguages(prof.additional_languages);
       }
     }
   }, [session?.user?.id, setLanguage]);
@@ -167,9 +187,80 @@ export default function Account() {
     }
   };
 
+  const availableAdditionalLanguages = useMemo(() => {
+    const currentLangOpt = getLanguageOption(language);
+    return SUPPORTED_LANGUAGES.filter(
+      (l) =>
+        l.name !== currentLangOpt.name &&
+        !additionalLanguages.some((al) => getLanguageOption(al).name === l.name)
+    );
+  }, [language, additionalLanguages]);
+
   const handleLanguageChange = async (newLang: string) => {
     await setLanguage(newLang);
+    const newOpt = getLanguageOption(newLang);
+    if (additionalLanguages.some((al) => getLanguageOption(al).name === newOpt.name)) {
+      const updated = additionalLanguages.filter(
+        (al) => getLanguageOption(al).name !== newOpt.name
+      );
+      setAdditionalLanguages(updated);
+      if (session?.user?.id) {
+        await supabase.from("profiles").upsert({
+          user_id: session.user.id,
+          additional_languages: updated,
+        });
+      }
+    }
     toast({ title: t("account.languageUpdated", undefined, "Language updated") });
+  };
+
+  const handleAddAdditionalLanguage = async () => {
+    if (!selectedAddLanguage) return;
+    const opt = getLanguageOption(selectedAddLanguage);
+    if (
+      additionalLanguages.some((al) => getLanguageOption(al).name === opt.name) ||
+      getLanguageOption(language).name === opt.name
+    ) {
+      return;
+    }
+    const updated = [...additionalLanguages, opt.name];
+    setAdditionalLanguages(updated);
+    setSelectedAddLanguage("");
+
+    if (session?.user?.id) {
+      try {
+        await supabase.from("profiles").upsert({
+          user_id: session.user.id,
+          additional_languages: updated,
+        });
+        toast({
+          title: t("account.additionalLanguagesUpdated", undefined, "Additional languages updated"),
+        });
+      } catch (err: any) {
+        console.error("Failed to update additional languages:", err);
+      }
+    }
+  };
+
+  const handleRemoveAdditionalLanguage = async (langName: string) => {
+    const updated = additionalLanguages.filter(
+      (al) => getLanguageOption(al).name !== getLanguageOption(langName).name
+    );
+    setAdditionalLanguages(updated);
+
+    if (session?.user?.id) {
+      try {
+        await supabase.from("profiles").upsert({
+          user_id: session.user.id,
+          additional_languages: updated,
+        });
+        toast({
+          title: t("account.additionalLanguagesUpdated", undefined, "Additional languages updated"),
+        });
+      } catch (err: any) {
+        console.error("Failed to update additional languages:", err);
+      }
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -180,6 +271,7 @@ export default function Account() {
         display_name: displayNameInput,
         bio: bioInput,
         language: language,
+        additional_languages: additionalLanguages,
       });
       if (error) throw error;
       toast({ title: t("common.success", undefined, "Success") });
@@ -305,7 +397,7 @@ export default function Account() {
                   {t("account.languageSectionDesc", undefined, "Choose your preferred language for your account and public profile")}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2 max-w-sm">
                   <Label
                     htmlFor="account-language-select"
@@ -318,6 +410,102 @@ export default function Account() {
                     value={language}
                     onValueChange={handleLanguageChange}
                   />
+                  <p className="text-xs text-slate-500">
+                    {t("account.displayLanguageDesc", undefined, "Controls the interface language across the application")}
+                  </p>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-slate-800/60">
+                  <div>
+                    <h4 className="text-sm font-medium text-white">
+                      {t("account.additionalLanguages", undefined, "Additional Languages")}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {t("account.additionalLanguagesDesc", undefined, "Cosmetic languages displayed on your public profile for others to see")}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md">
+                    <div className="flex-1">
+                      <Select
+                        value={selectedAddLanguage}
+                        onValueChange={setSelectedAddLanguage}
+                        disabled={availableAdditionalLanguages.length === 0}
+                      >
+                        <SelectTrigger
+                          id="additional-language-select"
+                          aria-label={t("account.selectLanguageToAdd", undefined, "Select a language to add")}
+                          className="bg-slate-950 border-slate-800 text-white focus:ring-cyan-500"
+                        >
+                          <SelectValue placeholder={t("account.selectLanguageToAdd", undefined, "Select a language to add")} />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[250px]">
+                          {availableAdditionalLanguages.map((lang) => (
+                            <SelectItem
+                              key={lang.code}
+                              value={lang.name}
+                              className="flex items-center gap-2 focus:bg-slate-800 cursor-pointer py-1.5"
+                            >
+                              <div className="flex items-center gap-2">
+                                <CountryFlag
+                                  countryCode={lang.countryCode}
+                                  className="w-4 h-3 rounded-[2px]"
+                                  alt={`${lang.name} flag`}
+                                />
+                                <span>{lang.name}</span>
+                                {lang.nativeName && lang.nativeName !== lang.name && (
+                                  <span className="text-xs text-slate-400">({lang.nativeName})</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleAddAdditionalLanguage}
+                      disabled={!selectedAddLanguage}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white shrink-0 gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {t("account.addLanguage", undefined, "Add Language")}
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {additionalLanguages.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">
+                        {t("account.noAdditionalLanguages", undefined, "No additional languages added.")}
+                      </p>
+                    ) : (
+                      additionalLanguages.map((lang) => {
+                        const opt = getLanguageOption(lang);
+                        return (
+                          <div
+                            key={lang}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950 border border-slate-800 text-xs text-slate-200 shadow-sm group hover:border-slate-700 transition"
+                          >
+                            <CountryFlag
+                              countryCode={opt.countryCode}
+                              className="w-4 h-3 rounded-[2px]"
+                              alt={`${opt.name} flag`}
+                            />
+                            <span className="font-medium">{opt.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAdditionalLanguage(lang)}
+                              aria-label={`${t("account.removeLanguage", undefined, "Remove language")} ${opt.name}`}
+                              title={`${t("account.removeLanguage", undefined, "Remove language")} ${opt.name}`}
+                              className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded-full"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
