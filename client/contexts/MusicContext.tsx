@@ -328,8 +328,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const currentToken = ++playTokenRef.current;
-
-      console.log(`Playing track: ${track.name} (${track.fileName})`);
       setCurrentTrackState(track);
       currentTrackRef.current = track;
       setCurrentPositionState(0);
