@@ -16,10 +16,13 @@ function getServiceRoleKey(c: any) {
 
 adminSupportRouter.use("*", async (c, next) => {
   const authHeader = c.req.header("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+  const token = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
+  if (!token) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  const token = authHeader.split(" ")[1];
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${token}` } },
@@ -143,7 +146,11 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
   try {
     const id = c.req.param("id");
     const { message } = await c.req.json();
-    const token = c.req.header("authorization")?.split(" ")[1];
+    const authHeader = c.req.header("authorization");
+    // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+    const token = authHeader?.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7)
+      : undefined;
     
     // We still need the authenticated client here to get the current user's ID
     const authSupabase = getAuthenticatedClient(token);

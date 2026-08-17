@@ -254,11 +254,11 @@ const ChatMessage = React.memo(
 
     if (m.role === "assistant" && displayContent.includes("<tool_call>")) {
       displayContent = displayContent.replace(
-        /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/,
+        /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g,
         (match, jsonStr) => {
           try {
             const data = JSON.parse(jsonStr);
-            return `🔨 **Using Tool: ${data.name}**\n\`\`\`json\n${JSON.stringify(data.args, null, 2)}\n\`\`\``;
+            return `\n\n🔨 **Using Tool: ${data.name}**\n\`\`\`json\n${JSON.stringify(data.args, null, 2)}\n\`\`\`\n\n`;
           } catch (e) {
             return match;
           }
@@ -939,6 +939,7 @@ export function ChatbotApp() {
     }
     
     let streamBuffer = "";
+    const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
 
     if (reader) {
       while (true) {
@@ -961,17 +962,50 @@ export function ChatbotApp() {
 
             let delta = "";
             if (provider === "anthropic") {
-              delta = data.delta?.text || "";
               if (
                 data.type === "content_block_start" &&
                 data.content_block?.type === "tool_use"
               ) {
+                const idx = data.index ?? openAnthropicToolBlocks.size;
+                openAnthropicToolBlocks.set(idx, { hasArgs: false });
                 delta += `<tool_call>\n{"name": "${data.content_block.name}", "args": `;
               } else if (
                 data.type === "content_block_delta" &&
                 data.delta?.type === "input_json_delta"
               ) {
+                const idx = data.index ?? (openAnthropicToolBlocks.size - 1);
+                if (openAnthropicToolBlocks.has(idx)) {
+                  openAnthropicToolBlocks.get(idx)!.hasArgs = true;
+                }
                 delta += data.delta.partial_json || "";
+              } else if (
+                data.type === "content_block_delta" &&
+                data.delta?.type === "text_delta"
+              ) {
+                delta += data.delta.text || "";
+              } else if (data.type === "content_block_stop") {
+                const idx = data.index ?? (openAnthropicToolBlocks.size - 1);
+                if (openAnthropicToolBlocks.has(idx)) {
+                  const block = openAnthropicToolBlocks.get(idx)!;
+                  if (!block.hasArgs) {
+                    delta += "{}";
+                  }
+                  delta += `\n}</tool_call>`;
+                  openAnthropicToolBlocks.delete(idx);
+                }
+              } else if (
+                data.type === "message_stop" ||
+                data.type === "message_delta"
+              ) {
+                if (openAnthropicToolBlocks.size > 0) {
+                  for (const [, block] of openAnthropicToolBlocks.entries()) {
+                    if (!block.hasArgs) delta += "{}";
+                    delta += `\n}</tool_call>`;
+                  }
+                  openAnthropicToolBlocks.clear();
+                }
+              } else {
+                delta = data.delta?.text || "";
               }
             } else if (
               [
@@ -1011,15 +1045,6 @@ export function ChatbotApp() {
               }
             }
 
-            // Simple fix for Anthropic closing brace
-            if (
-              provider === "anthropic" &&
-              data.type === "message_delta" &&
-              data.delta?.stop_reason === "tool_use"
-            ) {
-              delta += `\n}</tool_call>`;
-            }
-
             if (delta) {
               setQueueStatus(null);
               fullContent += delta;
@@ -1034,6 +1059,19 @@ export function ChatbotApp() {
               toast.error(e.message);
             }
           }
+        }
+      }
+
+      if (openAnthropicToolBlocks.size > 0) {
+        let unclosedDelta = "";
+        for (const [, block] of openAnthropicToolBlocks.entries()) {
+          if (!block.hasArgs) unclosedDelta += "{}";
+          unclosedDelta += `\n}</tool_call>`;
+        }
+        openAnthropicToolBlocks.clear();
+        if (unclosedDelta) {
+          fullContent += unclosedDelta;
+          streamCallback(fullContent);
         }
       }
     }

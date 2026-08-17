@@ -25,6 +25,13 @@ window.HTMLElement.prototype.scrollIntoView = function () {};
 // Mock chats list
 let mockChats: any[] = [];
 let msgIdCounter = 0;
+let mockUserModels: any[] = [{ provider: "openai", model_id: "gpt-4" }];
+let mockUserPreferences: any = {
+  theme: "default",
+  use_gradient: true,
+  language: "English",
+  sub_language: "GB",
+};
 
 // Mock supabase
 const mockSupabaseChain = (data: any) => {
@@ -152,7 +159,7 @@ vi.mock("@/lib/supabase", () => ({
     from: vi.fn((table) => {
       if (table === "chats") return createChatsChain();
       if (table === "user_models")
-        return mockSupabaseChain([{ provider: "openai", model_id: "gpt-4" }]);
+        return mockSupabaseChain(mockUserModels);
       if (table === "chat_messages") {
         const builder: any = {
           insert: vi.fn(() => builder),
@@ -171,12 +178,7 @@ vi.mock("@/lib/supabase", () => ({
       }
       if (table === "characters") return mockSupabaseChain([]);
       if (table === "user_preferences")
-        return mockSupabaseChain({
-          theme: "default",
-          use_gradient: true,
-          language: "English",
-          sub_language: "GB",
-        });
+        return mockSupabaseChain(mockUserPreferences);
       return mockSupabaseChain(null);
     }),
     rpc: vi.fn((name) => {
@@ -234,10 +236,16 @@ describe("ChatbotApp", () => {
       {
         id: "chat-1",
         title: "Existing Chat",
-
         updated_at: new Date().toISOString(),
       },
     ];
+    mockUserModels = [{ provider: "openai", model_id: "gpt-4" }];
+    mockUserPreferences = {
+      theme: "default",
+      use_gradient: true,
+      language: "English",
+      sub_language: "GB",
+    };
   });
 
   afterEach(() => {
@@ -352,4 +360,235 @@ describe("ChatbotApp", () => {
       global.fetch = originalFetch;
     }
   }, 30000);
+
+  it("handles Anthropic streaming tool call correctly", async () => {
+    mockUserPreferences = {
+      theme: "default",
+      use_gradient: true,
+      language: "English",
+      sub_language: "GB",
+      last_model_id: "claude-3-5-sonnet-20241022",
+      last_provider: "anthropic",
+    };
+    mockUserModels = [
+      { provider: "anthropic", model_id: "claude-3-5-sonnet-20241022" },
+    ];
+
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = vi.fn((url, options: any) => {
+        if (url === "/api/ai/proxy") {
+          if (options?.body && options.body.includes('"stream":false')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  content: [{ type: "text", text: "Weather Chat" }],
+                }),
+            });
+          }
+          const stream = new ReadableStream({
+            async start(controller) {
+              const events = [
+                'data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-3-5-sonnet-20241022"}}\n',
+                'data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"get_weather","input":{}}}\n',
+                'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"location\\":"}}\n',
+                'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":" \\"San Francisco\\"}"}}\n',
+                'data: {"type":"content_block_stop","index":0}\n',
+                'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}\n',
+                'data: {"type":"message_stop"}\n',
+                'data: [DONE]\n',
+              ];
+              for (const ev of events) {
+                controller.enqueue(new TextEncoder().encode(ev));
+              }
+              controller.close();
+            },
+          });
+          return Promise.resolve({
+            ok: true,
+            body: stream,
+            headers: { get: () => null },
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }) as any;
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "What is the weather?" } });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      await screen.findByText(/Using Tool: get_weather/, {}, { timeout: 10000 });
+      await screen.findByText(/San Francisco/, {}, { timeout: 10000 });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  }, 30000);
+
+  it("handles multiple Anthropic tool calls in a single response", async () => {
+    mockUserPreferences = {
+      theme: "default",
+      use_gradient: true,
+      language: "English",
+      sub_language: "GB",
+      last_model_id: "claude-3-5-sonnet-20241022",
+      last_provider: "anthropic",
+    };
+    mockUserModels = [
+      { provider: "anthropic", model_id: "claude-3-5-sonnet-20241022" },
+    ];
+
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = vi.fn((url, options: any) => {
+        if (url === "/api/ai/proxy") {
+          if (options?.body && options.body.includes('"stream":false')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  content: [{ type: "text", text: "Multi Tool Chat" }],
+                }),
+            });
+          }
+          const stream = new ReadableStream({
+            async start(controller) {
+              const events = [
+                'data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-3-5-sonnet-20241022"}}\n',
+                'data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"tool_first","input":{}}}\n',
+                'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"step\\": 1}"}}\n',
+                'data: {"type":"content_block_stop","index":0}\n',
+                'data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_2","name":"tool_second","input":{}}}\n',
+                'data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\\"step\\": 2}"}}\n',
+                'data: {"type":"content_block_stop","index":1}\n',
+                'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}\n',
+                'data: {"type":"message_stop"}\n',
+                'data: [DONE]\n',
+              ];
+              for (const ev of events) {
+                controller.enqueue(new TextEncoder().encode(ev));
+              }
+              controller.close();
+            },
+          });
+          return Promise.resolve({
+            ok: true,
+            body: stream,
+            headers: { get: () => null },
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }) as any;
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "Execute both tools" } });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      await screen.findByText(/Using Tool: tool_first/, {}, { timeout: 10000 });
+      await screen.findByText(/Using Tool: tool_second/, {}, { timeout: 10000 });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  }, 30000);
+
+  it("handles Anthropic tool calls with empty arguments", async () => {
+    mockUserPreferences = {
+      theme: "default",
+      use_gradient: true,
+      language: "English",
+      sub_language: "GB",
+      last_model_id: "claude-3-5-sonnet-20241022",
+      last_provider: "anthropic",
+    };
+    mockUserModels = [
+      { provider: "anthropic", model_id: "claude-3-5-sonnet-20241022" },
+    ];
+
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = vi.fn((url, options: any) => {
+        if (url === "/api/ai/proxy") {
+          if (options?.body && options.body.includes('"stream":false')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  content: [{ type: "text", text: "Empty Args Chat" }],
+                }),
+            });
+          }
+          const stream = new ReadableStream({
+            async start(controller) {
+              const events = [
+                'data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-3-5-sonnet-20241022"}}\n',
+                'data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"get_time","input":{}}}\n',
+                'data: {"type":"content_block_stop","index":0}\n',
+                'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}\n',
+                'data: {"type":"message_stop"}\n',
+                'data: [DONE]\n',
+              ];
+              for (const ev of events) {
+                controller.enqueue(new TextEncoder().encode(ev));
+              }
+              controller.close();
+            },
+          });
+          return Promise.resolve({
+            ok: true,
+            body: stream,
+            headers: { get: () => null },
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }) as any;
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "Get the current time" } });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      await screen.findByText(/Using Tool: get_time/, {}, { timeout: 10000 });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  }, 30000);
 });
+
