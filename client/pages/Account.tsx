@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { LanguageSelect } from "@/components/ui/LanguageSelect";
+import { DEFAULT_LANGUAGE } from "@/lib/languages";
 
 interface UserProfile {
   user_id: string;
@@ -28,6 +30,7 @@ interface UserProfile {
   bio: string;
   email: string | null;
   show_email: boolean;
+  language?: string | null;
 }
 interface ProfilePicture {
   id: string;
@@ -55,6 +58,13 @@ export default function Account() {
   const [usernameInput, setUsernameInput] = useState("");
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [bioInput, setBioInput] = useState("");
+  const [language, setLanguage] = useState<string>(() => {
+    try {
+      return localStorage.getItem("preferred_language") || DEFAULT_LANGUAGE;
+    } catch {
+      return DEFAULT_LANGUAGE;
+    }
+  });
 
   const fetchAccountData = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -79,6 +89,9 @@ export default function Account() {
       setUsernameInput(prof.username || "");
       setDisplayNameInput(prof.display_name || "");
       setBioInput(prof.bio || "");
+      if (prof.language) {
+        setLanguage(prof.language);
+      }
     }
   }, [session?.user?.id]);
 
@@ -160,6 +173,27 @@ export default function Account() {
     }
   };
 
+  const handleLanguageChange = async (newLang: string) => {
+    setLanguage(newLang);
+    try {
+      localStorage.setItem("preferred_language", newLang);
+    } catch {}
+    if (!session?.user?.id) return;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({ user_id: session.user.id, language: newLang });
+      if (error) throw error;
+      toast({ title: "Language updated" });
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveProfile = async () => {
     try {
       const { error } = await supabase.from("profiles").upsert({
@@ -167,6 +201,7 @@ export default function Account() {
         username: usernameInput,
         display_name: displayNameInput,
         bio: bioInput,
+        language: language,
       });
       if (error) throw error;
       toast({ title: "Success" });
@@ -281,6 +316,32 @@ export default function Account() {
                 <Button onClick={handleSaveProfile} className="bg-cyan-600">
                   Save Changes
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader>
+                <CardTitle className="text-white text-lg">
+                  Language
+                </CardTitle>
+                <CardDescription>
+                  Choose your preferred language for your account and public profile
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2 max-w-sm">
+                  <Label
+                    htmlFor="account-language-select"
+                    className="text-sm font-medium text-slate-300"
+                  >
+                    Display Language
+                  </Label>
+                  <LanguageSelect
+                    id="account-language-select"
+                    value={language}
+                    onValueChange={handleLanguageChange}
+                  />
+                </div>
               </CardContent>
             </Card>
 

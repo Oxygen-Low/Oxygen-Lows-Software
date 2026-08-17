@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
 import Account from "./Account";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -85,9 +85,20 @@ describe("Account Component", () => {
     });
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it("renders with correct header", async () => {
     render(<Account />);
     const headers = screen.getAllByText("Your Account", { selector: "h1" });
     expect(headers.length).toBeGreaterThan(0);
+  });
+
+  it("renders the language section and display language selector", async () => {
+    render(<Account />);
+    expect(screen.getByText("Language")).toBeDefined();
+    expect(screen.getByText("Display Language")).toBeDefined();
+    expect(screen.getByText("English")).toBeDefined();
   });
 });

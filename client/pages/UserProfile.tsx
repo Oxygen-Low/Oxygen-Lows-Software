@@ -13,9 +13,11 @@ import {
   UserCheck,
   ShieldAlert,
   ShieldCheck,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getLanguageOption } from "@/lib/languages";
 
 export default function UserProfile() {
   const { username } = useParams();
@@ -49,7 +51,7 @@ export default function UserProfile() {
       // Fetch basic profile info
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, bio, show_email, email")
+        .select("user_id, display_name, username, bio, show_email, email, language")
         .eq("username", username)
         .single();
 
@@ -351,6 +353,15 @@ export default function UserProfile() {
                         {profile.email}
                       </p>
                     )}
+                    <div className="flex items-center justify-center md:justify-start gap-1.5 mt-2 text-xs text-slate-400">
+                      <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                      <span className="text-sm" role="img" aria-label="Language flag">
+                        {getLanguageOption(profile.language).flag}
+                      </span>
+                      <span className="font-medium text-slate-300">
+                        {getLanguageOption(profile.language).name}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap justify-center md:justify-start gap-6 py-2">

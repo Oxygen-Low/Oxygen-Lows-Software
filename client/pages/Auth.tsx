@@ -2,11 +2,29 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
+import { LanguageSelect } from "@/components/ui/LanguageSelect";
+import { DEFAULT_LANGUAGE } from "@/lib/languages";
 
 export default function Auth() {
   const location = useLocation();
   const { session, loading, signInWithOAuth } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
+    try {
+      return localStorage.getItem("preferred_language") || DEFAULT_LANGUAGE;
+    } catch {
+      return DEFAULT_LANGUAGE;
+    }
+  });
+
+  const handleLanguageChange = (lang: string) => {
+    setSelectedLanguage(lang);
+    try {
+      localStorage.setItem("preferred_language", lang);
+    } catch {
+      // Ignore storage write errors
+    }
+  };
 
   const requestedReturnTo = new URLSearchParams(location.search).get(
     "returnTo",
@@ -60,7 +78,21 @@ export default function Auth() {
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="auth-language-select"
+                className="text-xs font-medium text-slate-400 block"
+              >
+                Language
+              </label>
+              <LanguageSelect
+                id="auth-language-select"
+                value={selectedLanguage}
+                onValueChange={handleLanguageChange}
+              />
+            </div>
+
             <button
               type="button"
               onClick={() =>

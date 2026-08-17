@@ -93,4 +93,23 @@ describe("Auth Component", () => {
       expect(screen.getByText("Desktop Apps Page")).toBeDefined();
     });
   });
+
+  it("should render the language selector dropdown on the auth page", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signInWithOAuth: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Language")).toBeDefined();
+    expect(screen.getByText("English")).toBeDefined();
+  });
 });
