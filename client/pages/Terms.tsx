@@ -226,7 +226,7 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 8. Defender & Security Services */}
+        {/* 8. Web Defender & Security Services */}
         <Section
           id="defender-security"
           title="8. Web Defender &amp; Security Services"

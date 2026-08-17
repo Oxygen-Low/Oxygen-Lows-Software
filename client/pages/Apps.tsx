@@ -193,7 +193,7 @@ const apps: AppMetadata[] = [
   },
   {
     id: "defender",
-    name: "Defender",
+    name: "Web Defender",
     description: "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
     categories: ["All", "Security", "Development"],
     availability: "web-and-desktop",

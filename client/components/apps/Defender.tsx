@@ -592,7 +592,7 @@ function OverviewTab({ app, events, authFetch, onUpdate }: { app: App, events: E
         <Card className="bg-slate-900 border-slate-800">
           <CardHeader>
             <CardTitle>Block Mode</CardTitle>
-            <CardDescription>When enabled, Defender will actively block detected threats and unlisted outbound connections.</CardDescription>
+            <CardDescription>When enabled, Web Defender will actively block detected threats and unlisted outbound connections.</CardDescription>
           </CardHeader>
           <CardContent>
             {!app.first_request_at ? (
@@ -1061,7 +1061,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
       <Card className="bg-slate-900 border-slate-800">
         <CardHeader>
           <CardTitle>API Key</CardTitle>
-          <CardDescription>Authenticate your application with the Defender SDK.</CardDescription>
+          <CardDescription>Authenticate your application with the Web Defender SDK.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {newKey ? (
