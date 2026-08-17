@@ -73,8 +73,13 @@ export class DefenderClient {
   async init(app?: any): Promise<void> {
     if (this.isInitialized) return;
 
-    if (!this.config.apiKey || this.config.apiKey.trim() === '') {
-      console.log('[Defender] No API key environment variable found. Protection is disabled.');
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    if (this.config.offlineMode || noApiKey) {
+      if (!this.config.offlineMode) {
+        console.log('[WebDefender] No DEFENDER_API_KEY environment variable found. Offline mode enabled.');
+      }
+      this.appConfig = this.normalizeConfig({ block_mode_enabled: true, config: {} });
+      this.isInitialized = true;
       return;
     }
 
@@ -137,6 +142,11 @@ export class DefenderClient {
   }
 
   private reportOutbound(conn: OutboundConnection) {
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    if (this.config.offlineMode || noApiKey) {
+      return;
+    }
+
     fetch(`${this.apiUrl}/api/defender/outbound`, {
       method: 'POST',
       headers: {
@@ -150,6 +160,11 @@ export class DefenderClient {
   private logEvent(event: BlockedEvent, req?: Partial<IncomingRequest>) {
     if (this.config.onBlocked && event.blocked) {
       this.config.onBlocked(event);
+    }
+
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    if (this.config.offlineMode || noApiKey) {
+      return;
     }
 
     fetch(`${this.apiUrl}/api/defender/event`, {

@@ -2,6 +2,7 @@ export interface DefenderConfig {
   apiKey: string;
   apiUrl?: string;
   logOnly?: boolean; // override: always log-only regardless of server config
+  offlineMode?: boolean;
   onBlocked?: (event: BlockedEvent) => void;
   onError?: (error: Error) => void;
 }
