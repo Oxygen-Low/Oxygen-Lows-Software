@@ -30,7 +30,7 @@ import { LLMAgentApp } from "@/components/apps/LLMAgent";
 import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
-import { DefenderApp } from "@/components/apps/Defender";
+import { DefenderApp } from "@/components/apps/WebDefender";
 import { Server, Shield, Monitor, Smartphone, Braces, ShieldCheck } from "lucide-react";
 
 type Category =

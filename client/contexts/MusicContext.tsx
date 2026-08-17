@@ -43,159 +43,31 @@ interface MusicContextType {
 const AUTO_RESUME_STORAGE_KEY = "oxygen_music_exit_state";
 const AUTO_RESUME_WINDOW_MS = 10000; // 10 seconds
 
-interface StoredPlaybackState {
-  isPlaying: boolean;
-  timestamp: number;
-  track: PlaylistTrack | null;
-  trackFileName?: string | null;
-  position: number;
-  signedUrl?: string | null;
-  urlExpiry?: number | null;
-  playlist?: PlaylistTrack[];
-  loop?: boolean;
-  shuffle?: boolean;
-  shouldResume?: boolean;
-}
-
-const getInitialPlaybackState = (): StoredPlaybackState | null => {
-  if (typeof window === "undefined" || !window.localStorage) return null;
-  try {
-    const raw = localStorage.getItem(AUTO_RESUME_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: StoredPlaybackState = JSON.parse(raw);
-    if (!parsed || typeof parsed.timestamp !== "number") return null;
-    const elapsed = Date.now() - parsed.timestamp;
-    const shouldResume =
-      Boolean(parsed.isPlaying) &&
-      elapsed >= -1000 &&
-      elapsed <= AUTO_RESUME_WINDOW_MS;
-    return {
-      ...parsed,
-      shouldResume,
-    };
-  } catch {
-    return null;
-  }
-};
-
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { session } = useAuth();
-
-  const initialPlaybackState = useMemo(() => getInitialPlaybackState(), []);
-
-  const [playlist, setPlaylistState] = useState<PlaylistTrack[]>(
-    () => initialPlaybackState?.playlist || [],
-  );
+  const [playlist, setPlaylistState] = useState<PlaylistTrack[]>([]);
   const [currentTrack, setCurrentTrackState] = useState<PlaylistTrack | null>(
-    () =>
-      initialPlaybackState?.track ||
-      (initialPlaybackState?.trackFileName
-        ? {
-            name: initialPlaybackState.trackFileName,
-            fileName: initialPlaybackState.trackFileName,
-          }
-        : null),
+    null,
   );
-  const [currentPosition, setCurrentPositionState] = useState<number>(
-    () => initialPlaybackState?.position || 0,
-  );
-  const [isPlaying, setIsPlayingState] = useState<boolean>(false);
-  const [shuffle, setShuffleState] = useState<boolean>(
-    () => initialPlaybackState?.shuffle || false,
-  );
-  const [loop, setLoopState] = useState<boolean>(
-    () => initialPlaybackState?.loop || false,
-  );
+  const [currentPosition, setCurrentPositionState] = useState(0);
+  const [isPlaying, setIsPlayingState] = useState(false);
+  const [shuffle, setShuffleState] = useState(false);
+  const [loop, setLoopState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const playlistRef = useRef<PlaylistTrack[]>(playlist);
-  const currentTrackRef = useRef<PlaylistTrack | null>(currentTrack);
+  const playlistRef = useRef<PlaylistTrack[]>([]);
+  const currentTrackRef = useRef<PlaylistTrack | null>(null);
   const isPlayingRef = useRef(false);
-  const shuffleRef = useRef(shuffle);
-  const loopRef = useRef(loop);
-  const currentPositionRef = useRef(currentPosition);
+  const shuffleRef = useRef(false);
+  const loopRef = useRef(false);
+  const currentPositionRef = useRef(0);
   const playNextRef = useRef<(() => void) | undefined>(undefined);
   const playTokenRef = useRef(0);
-  const currentSignedUrlRef = useRef<string | null>(
-    initialPlaybackState?.signedUrl || null,
-  );
-  const urlExpiryRef = useRef<number | null>(
-    initialPlaybackState?.urlExpiry || null,
-  );
-  const autoResumeAttemptedRef = useRef(false);
-
-  const savePlaybackExitState = useCallback(
-    (
-      playing: boolean,
-      pos?: number,
-      track?: PlaylistTrack | null,
-      signedUrl?: string | null,
-      urlExpiry?: number | null,
-      pl?: PlaylistTrack[],
-      lp?: boolean,
-      shuf?: boolean,
-    ) => {
-      try {
-        const payload: StoredPlaybackState = {
-          isPlaying: playing,
-          timestamp: Date.now(),
-          track: track ?? currentTrackRef.current ?? null,
-          trackFileName:
-            track?.fileName ?? currentTrackRef.current?.fileName ?? null,
-          position:
-            pos !== undefined
-              ? Math.floor(pos)
-              : Math.floor(currentPositionRef.current),
-          signedUrl: signedUrl ?? currentSignedUrlRef.current ?? null,
-          urlExpiry: urlExpiry ?? urlExpiryRef.current ?? null,
-          playlist: pl ?? playlistRef.current,
-          loop: lp ?? loopRef.current,
-          shuffle: shuf ?? shuffleRef.current,
-        };
-        localStorage.setItem(
-          AUTO_RESUME_STORAGE_KEY,
-          JSON.stringify(payload),
-        );
-      } catch {
-        // Ignore localStorage quota / access errors
-      }
-    },
-    [],
-  );
-
-  const checkAutoResume = useCallback((): {
-    shouldResume: boolean;
-    position?: number;
-  } => {
-    try {
-      const raw = localStorage.getItem(AUTO_RESUME_STORAGE_KEY);
-      if (!raw) return { shouldResume: false };
-      const parsed = JSON.parse(raw);
-      if (
-        !parsed ||
-        !parsed.isPlaying ||
-        typeof parsed.timestamp !== "number"
-      ) {
-        return { shouldResume: false };
-      }
-      const elapsed = Date.now() - parsed.timestamp;
-      if (elapsed >= -1000 && elapsed <= AUTO_RESUME_WINDOW_MS) {
-        return {
-          shouldResume: true,
-          position:
-            typeof parsed.position === "number" ? parsed.position : undefined,
-        };
-      }
-      return { shouldResume: false };
-    } catch {
-      return { shouldResume: false };
-    }
-  }, []);
 
   useEffect(() => {
     playlistRef.current = playlist;
@@ -261,106 +133,75 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     [session?.user?.id],
   );
 
-  const triggerAutoResumePlayback = useCallback(
-    (audio: HTMLAudioElement, targetPositionMs: number) => {
-      const targetPosSec = targetPositionMs / 1000;
-
-      const attemptPlay = async () => {
-        try {
-          if (targetPosSec > 0) {
-            try {
-              audio.currentTime = targetPosSec;
-            } catch {}
-          }
-          audio.muted = false;
-          await audio.play();
-          setIsPlayingState(true);
-          isPlayingRef.current = true;
-        } catch (err) {
-          console.warn("Autoplay unmuted blocked by browser:", err);
-
-          // Start audio playing muted so audio context is active
-          try {
-            audio.muted = true;
-            await audio.play();
-            setIsPlayingState(true);
-            isPlayingRef.current = true;
-          } catch {}
-
-          const gestureEvents = [
-            "click",
-            "pointerdown",
-            "mousedown",
-            "keydown",
-            "touchstart",
-            "wheel",
-          ];
-
-          const resumeOnGesture = () => {
-            if (audioRef.current) {
-              audioRef.current.muted = false;
-              audioRef.current
-                .play()
-                .then(() => {
-                  setIsPlayingState(true);
-                  isPlayingRef.current = true;
-                })
-                .catch(() => {});
-            }
-            gestureEvents.forEach((evt) => {
-              window.removeEventListener(evt, resumeOnGesture, true);
-              document.removeEventListener(evt, resumeOnGesture, true);
-            });
-          };
-
-          gestureEvents.forEach((evt) => {
-            window.addEventListener(evt, resumeOnGesture, {
-              once: true,
-              capture: true,
-            });
-            document.addEventListener(evt, resumeOnGesture, {
-              once: true,
-              capture: true,
-            });
-          });
-        }
-      };
-
-      if (audio.readyState >= 1) {
-        attemptPlay();
-      } else {
-        audio.addEventListener("loadedmetadata", attemptPlay, { once: true });
-        setTimeout(attemptPlay, 300);
-      }
-    },
-    [],
-  );
-
-  // Initial immediate auto-resume from cached signed URL if available and fresh (<10s since exit)
-  useEffect(() => {
-    if (autoResumeAttemptedRef.current) return;
-    autoResumeAttemptedRef.current = true;
-
-    if (
-      initialPlaybackState?.shouldResume &&
-      initialPlaybackState?.track &&
-      initialPlaybackState?.signedUrl &&
-      initialPlaybackState?.urlExpiry &&
-      initialPlaybackState.urlExpiry > Date.now()
-    ) {
-      const audio = audioRef.current;
-      if (!audio) return;
-
-      currentSignedUrlRef.current = initialPlaybackState.signedUrl;
-      urlExpiryRef.current = initialPlaybackState.urlExpiry;
-      audio.src = initialPlaybackState.signedUrl;
-      audio.loop = initialPlaybackState.loop || false;
-
-      triggerAutoResumePlayback(audio, initialPlaybackState.position || 0);
+  // Save the playing state to localStorage whenever we exit/refresh
+  const saveExitState = useCallback((playing: boolean) => {
+    try {
+      const pos = audioRef.current
+        ? audioRef.current.currentTime * 1000
+        : currentPositionRef.current;
+      localStorage.setItem(
+        AUTO_RESUME_STORAGE_KEY,
+        JSON.stringify({
+          isPlaying: playing,
+          timestamp: Date.now(),
+          position: Math.floor(pos),
+          trackFileName: currentTrackRef.current?.fileName ?? null,
+        }),
+      );
+    } catch {
+      // ignore
     }
-  }, [initialPlaybackState, triggerAutoResumePlayback]);
+  }, []);
 
-  // Load preferences from database
+  // Heartbeat: update the stored timestamp every second so it stays fresh
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      if (isPlayingRef.current) saveExitState(true);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying, saveExitState]);
+
+  // Save on unload/hide
+  useEffect(() => {
+    const onExit = (e?: Event) => {
+      if (e?.type === "visibilitychange" && document.visibilityState !== "hidden") return;
+      saveExitState(isPlayingRef.current);
+    };
+    window.addEventListener("beforeunload", onExit);
+    window.addEventListener("pagehide", onExit);
+    document.addEventListener("visibilitychange", onExit);
+    return () => {
+      window.removeEventListener("beforeunload", onExit);
+      window.removeEventListener("pagehide", onExit);
+      document.removeEventListener("visibilitychange", onExit);
+    };
+  }, [saveExitState]);
+
+  // Check on load if we should auto-resume
+  const getAutoResumeState = useCallback((): {
+    shouldResume: boolean;
+    position: number;
+  } => {
+    try {
+      const raw = localStorage.getItem(AUTO_RESUME_STORAGE_KEY);
+      if (!raw) return { shouldResume: false, position: 0 };
+      const parsed = JSON.parse(raw);
+      if (!parsed?.isPlaying || typeof parsed.timestamp !== "number") {
+        return { shouldResume: false, position: 0 };
+      }
+      const elapsed = Date.now() - parsed.timestamp;
+      const shouldResume = elapsed >= 0 && elapsed <= AUTO_RESUME_WINDOW_MS;
+      return {
+        shouldResume,
+        position: typeof parsed.position === "number" ? parsed.position : 0,
+      };
+    } catch {
+      return { shouldResume: false, position: 0 };
+    }
+  }, []);
+
+  // Load music preferences from DB
   useEffect(() => {
     const loadMusicPreferences = async () => {
       if (!session?.user?.id) {
@@ -377,9 +218,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           .eq("user_id", session.user.id)
           .single();
 
-        if (error && error.code !== "PGRST116") {
-          throw error;
-        }
+        if (error && error.code !== "PGRST116") throw error;
 
         const loadedPlaylist = (data?.music_playlist as PlaylistTrack[]) || [];
         const currentTrackName = data?.current_music_track as string;
@@ -403,68 +242,68 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             setCurrentTrackState(track);
             currentTrackRef.current = track;
 
-            // If track is already playing from the fast-resume cache, do not restart
-            if (
-              audioRef.current &&
-              audioRef.current.src &&
-              isPlayingRef.current &&
-              currentTrackRef.current?.fileName === track.fileName
-            ) {
-              console.log(
-                `Track ${track.name} is already playing from initial auto-resume`,
-              );
-              setIsLoading(false);
-              return;
-            }
+            const url = await resolvePlaybackUrl(track.fileName);
+            if (url && audioRef.current) {
+              const { shouldResume, position } = getAutoResumeState();
+              const seekTo = shouldResume ? position : savedPosition;
 
-            if (audioRef.current) {
-              try {
-                const url = await resolvePlaybackUrl(track.fileName);
-                if (url) {
-                  audioRef.current.src = url;
-                  currentSignedUrlRef.current = url;
-                  urlExpiryRef.current = Date.now() + 3500 * 1000;
+              audioRef.current.src = url;
 
-                  const autoResume = checkAutoResume();
-                  const initialPosition =
-                    autoResume.shouldResume &&
-                    autoResume.position !== undefined
-                      ? autoResume.position
-                      : savedPosition;
+              // Wait for the audio to be ready before seeking
+              const doSeekAndPlay = async () => {
+                if (!audioRef.current) return;
+                try {
+                  audioRef.current.currentTime = seekTo / 1000;
+                } catch {}
 
-                  setCurrentPositionState(initialPosition);
-                  currentPositionRef.current = initialPosition;
+                setCurrentPositionState(seekTo);
+                currentPositionRef.current = seekTo;
 
-                  if (autoResume.shouldResume) {
-                    triggerAutoResumePlayback(audioRef.current, initialPosition);
-                  } else {
-                    const targetPos = initialPosition / 1000;
-                    if (targetPos > 0) {
-                      const setPos = () => {
-                        if (audioRef.current) {
+                if (shouldResume) {
+                  try {
+                    await audioRef.current.play();
+                    setIsPlayingState(true);
+                    isPlayingRef.current = true;
+                  } catch {
+                    // Browser blocked autoplay — show a one-click resume toast
+                    toast("Music paused", {
+                      description: `Click to resume "${track.name}"`,
+                      action: {
+                        label: "▶ Resume",
+                        onClick: async () => {
+                          if (!audioRef.current) return;
                           try {
-                            audioRef.current.currentTime = targetPos;
+                            await audioRef.current.play();
+                            setIsPlayingState(true);
+                            isPlayingRef.current = true;
                           } catch {}
-                        }
-                      };
-                      if (audioRef.current.readyState >= 1) {
-                        setPos();
-                      } else {
-                        audioRef.current.addEventListener("loadedmetadata", setPos, {
-                          once: true,
-                        });
-                        setTimeout(setPos, 300);
-                      }
-                    }
+                        },
+                      },
+                      duration: 8000,
+                    });
                   }
-                } else {
-                  console.warn(
-                    `Could not resolve URL for saved track: ${track.fileName}`,
-                  );
                 }
-              } catch (error) {
-                console.error(`Failed to load saved track:`, error);
-              }
+              };
+
+              // Attempt immediately — if seek fails before metadata it's fine,
+              // play() will still work and the browser will seek as it loads.
+              doSeekAndPlay();
+              // Also register loadedmetadata in case the above is called before
+              // the audio element has duration info yet (sets currentTime again).
+              audioRef.current.addEventListener(
+                "loadedmetadata",
+                () => {
+                  if (!audioRef.current) return;
+                  try {
+                    audioRef.current.currentTime = seekTo / 1000;
+                  } catch {}
+                },
+                { once: true },
+              );
+
+              console.log(
+                `Loaded track "${track.name}" at ${seekTo}ms (autoResume: ${shouldResume})`,
+              );
             }
           }
         } else {
@@ -479,68 +318,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadMusicPreferences();
-  }, [session?.user?.id, resolvePlaybackUrl, checkAutoResume, triggerAutoResumePlayback]);
-
-  // Window exit / tab close / visibility change listeners to record state
-  useEffect(() => {
-    const handleExit = (event?: Event) => {
-      // If visibilitychange fired and document is NOT hidden (i.e. became visible), do not overwrite state
-      if (
-        event?.type === "visibilitychange" &&
-        document.visibilityState !== "hidden"
-      ) {
-        return;
-      }
-      const isCurrentlyPlaying = isPlayingRef.current;
-      const currentPos = audioRef.current
-        ? audioRef.current.currentTime * 1000
-        : currentPositionRef.current;
-      savePlaybackExitState(
-        isCurrentlyPlaying,
-        currentPos,
-        currentTrackRef.current,
-        currentSignedUrlRef.current,
-        urlExpiryRef.current,
-        playlistRef.current,
-        loopRef.current,
-        shuffleRef.current,
-      );
-    };
-
-    window.addEventListener("beforeunload", handleExit);
-    window.addEventListener("pagehide", handleExit);
-    document.addEventListener("visibilitychange", handleExit);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleExit);
-      window.removeEventListener("pagehide", handleExit);
-      document.removeEventListener("visibilitychange", handleExit);
-    };
-  }, [savePlaybackExitState]);
-
-  // Heartbeat to keep exit timestamp fresh while playing
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const interval = setInterval(() => {
-      if (isPlayingRef.current) {
-        savePlaybackExitState(
-          true,
-          audioRef.current
-            ? audioRef.current.currentTime * 1000
-            : currentPositionRef.current,
-          currentTrackRef.current,
-          currentSignedUrlRef.current,
-          urlExpiryRef.current,
-          playlistRef.current,
-          loopRef.current,
-          shuffleRef.current,
-        );
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, savePlaybackExitState]);
+  }, [session?.user?.id, resolvePlaybackUrl, getAutoResumeState]);
 
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
@@ -557,11 +335,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       setCurrentPositionState(0);
       currentPositionRef.current = 0;
 
-      // Stop all current audio
       audioRef.current.pause();
       audioRef.current.src = "";
-      currentSignedUrlRef.current = null;
-      urlExpiryRef.current = null;
 
       const url = await resolvePlaybackUrl(track.fileName);
       if (currentToken !== playTokenRef.current) return;
@@ -570,39 +345,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error(`Failed to resolve URL for track: ${track.fileName}`);
         return;
       }
+
       audioRef.current.src = url;
-      currentSignedUrlRef.current = url;
-      urlExpiryRef.current = Date.now() + 3500 * 1000;
       audioRef.current.currentTime = 0;
-      audioRef.current.muted = false;
       try {
         await audioRef.current.play();
         setIsPlayingState(true);
         isPlayingRef.current = true;
-        savePlaybackExitState(
-          true,
-          0,
-          track,
-          url,
-          Date.now() + 3500 * 1000,
-          overridePlaylist || playlistRef.current,
-          loopRef.current,
-          shuffleRef.current,
-        );
+        saveExitState(true);
       } catch (error) {
         console.error(`Failed to play track ${track.name}:`, error);
         setIsPlayingState(false);
         isPlayingRef.current = false;
-        savePlaybackExitState(
-          false,
-          0,
-          track,
-          url,
-          Date.now() + 3500 * 1000,
-          overridePlaylist || playlistRef.current,
-          loopRef.current,
-          shuffleRef.current,
-        );
+        saveExitState(false);
       }
 
       savePreferences({
@@ -611,7 +366,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         playlist: overridePlaylist || playlistRef.current,
       });
     },
-    [resolvePlaybackUrl, savePreferences, savePlaybackExitState],
+    [resolvePlaybackUrl, savePreferences, saveExitState],
   );
 
   const playNext = useCallback(async () => {
@@ -637,12 +392,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     await playTrack(nextTrack);
   }, [playTrack]);
 
-  // Sync playNextRef with playNext
   useEffect(() => {
     playNextRef.current = playNext;
   }, [playNext]);
 
-  // Setup audio element and event listeners
+  // Setup audio event listeners
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -668,14 +422,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  // Auto-save position periodically to Supabase
+  // Auto-save position to DB periodically
   useEffect(() => {
     if (!isPlaying || !session?.user?.id) return;
-
     const interval = setInterval(() => {
       savePreferences();
     }, 10000);
-
     return () => clearInterval(interval);
   }, [isPlaying, session?.user?.id, savePreferences]);
 
@@ -687,30 +439,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           const url = await resolvePlaybackUrl(currentTrack.fileName);
           if (url) {
             audioRef.current.src = url;
-            currentSignedUrlRef.current = url;
-            urlExpiryRef.current = Date.now() + 3500 * 1000;
             audioRef.current.currentTime = currentPositionRef.current / 1000;
           }
         }
-        audioRef.current.muted = false;
         await audioRef.current.play();
       }
       setIsPlayingState(true);
       isPlayingRef.current = true;
-      savePlaybackExitState(
-        true,
-        currentPositionRef.current,
-        currentTrack,
-        currentSignedUrlRef.current,
-        urlExpiryRef.current,
-        playlistRef.current,
-        loopRef.current,
-        shuffleRef.current,
-      );
+      saveExitState(true);
     } catch (error) {
       console.error("Failed to play audio:", error);
     }
-  }, [currentTrack, resolvePlaybackUrl, savePlaybackExitState]);
+  }, [currentTrack, resolvePlaybackUrl, saveExitState]);
 
   const pause = useCallback(() => {
     if (audioRef.current) {
@@ -718,18 +458,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     setIsPlayingState(false);
     isPlayingRef.current = false;
-    savePlaybackExitState(
-      false,
-      currentPositionRef.current,
-      currentTrackRef.current,
-      currentSignedUrlRef.current,
-      urlExpiryRef.current,
-      playlistRef.current,
-      loopRef.current,
-      shuffleRef.current,
-    );
+    saveExitState(false);
     savePreferences();
-  }, [savePreferences, savePlaybackExitState]);
+  }, [savePreferences, saveExitState]);
 
   const playPrev = useCallback(async () => {
     const currentT = currentTrackRef.current;
@@ -750,7 +481,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const addTrack = useCallback(
     async (track: PlaylistTrack) => {
       if (!session?.user?.id) return;
-
       const updatedPlaylist = [...playlist, track];
       setPlaylistState(updatedPlaylist);
       savePreferences({ playlist: updatedPlaylist });
@@ -782,12 +512,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             currentPositionRef.current = 0;
             setIsPlayingState(false);
             isPlayingRef.current = false;
-            savePlaybackExitState(false, 0, nextTrack);
+            saveExitState(false);
             const url = await resolvePlaybackUrl(nextTrack.fileName);
             if (url && audioRef.current) {
               audioRef.current.src = url;
-              currentSignedUrlRef.current = url;
-              urlExpiryRef.current = Date.now() + 3500 * 1000;
               audioRef.current.currentTime = 0;
             }
             savePreferences({
@@ -801,7 +529,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           currentTrackRef.current = null;
           setIsPlayingState(false);
           isPlayingRef.current = false;
-          savePlaybackExitState(false, 0, null);
+          saveExitState(false);
           if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.src = "";
@@ -823,7 +551,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playTrack,
       resolvePlaybackUrl,
       savePreferences,
-      savePlaybackExitState,
+      saveExitState,
     ],
   );
 
@@ -889,12 +617,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <MusicContext.Provider value={contextValue}>
-      <audio
-        ref={audioRef}
-        autoPlay
-        playsInline
-        crossOrigin="anonymous"
-      />
+      <audio ref={audioRef} crossOrigin="anonymous" />
       {children}
     </MusicContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { DefenderClient, IncomingRequest } from './defender.js';
+import { DefenderClient, IncomingRequest } from './webdefender.js';
 
 export function createExpressMiddleware(client: DefenderClient) {
   return async (req: any, res: any, next: any) => {

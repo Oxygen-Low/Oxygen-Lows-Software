@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
-import { getAppConfig, CountryFlag, COUNTRIES } from "./Defender";
+import { getAppConfig, CountryFlag, COUNTRIES } from "./WebDefender";
 
 describe("Defender getAppConfig", () => {
   it("returns default configuration when defenderConfig is null or undefined", () => {

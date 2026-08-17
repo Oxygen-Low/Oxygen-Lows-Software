@@ -1,4 +1,4 @@
-import { DefenderClient } from './defender.js';
+import { DefenderClient } from './webdefender.js';
 import { DefenderConfig } from './types.js';
 
 export function createNextDefender(config: DefenderConfig) {

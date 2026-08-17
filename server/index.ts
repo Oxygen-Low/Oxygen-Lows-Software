@@ -8,7 +8,7 @@ import { adminSupportRouter } from "./routes/adminSupport.ts";
 import { aiRouter } from "./routes/ai.ts";
 import { changelogsRouter } from "./routes/changelogs.ts";
 import { vpnRouter } from "./routes/vpn.ts";
-import { defenderRouter } from "./routes/defender.ts";
+import { defenderRouter } from "./routes/webdefender.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 
 const app = new Hono();
