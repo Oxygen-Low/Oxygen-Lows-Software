@@ -26,6 +26,43 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
+export function CountryFlag({
+  countryCode,
+  className = "w-4 h-3 rounded-[2px] object-cover shrink-0 inline-block shadow-sm",
+  alt
+}: {
+  countryCode?: string | null;
+  className?: string;
+  alt?: string;
+}) {
+  const [hasError, setHasError] = useState(false);
+
+  if (!countryCode || countryCode.length !== 2) {
+    return <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0 inline-block" />;
+  }
+
+  const code = countryCode.toLowerCase();
+
+  if (hasError) {
+    return (
+      <span className="inline-flex items-center justify-center bg-slate-800 text-[10px] font-semibold text-slate-300 px-1 py-0.5 rounded border border-slate-700 select-none shrink-0 leading-none">
+        {countryCode.toUpperCase()}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${code}.png`}
+      srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
+      alt={alt || `${countryCode.toUpperCase()} flag`}
+      className={`inline-block ${className}`}
+      loading="lazy"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 function getCountryFlag(countryCode: string): string {
   if (!countryCode || countryCode.length !== 2) return '🌐';
   const codePoints = countryCode
@@ -35,26 +72,45 @@ function getCountryFlag(countryCode: string): string {
   return String.fromCodePoint(...codePoints);
 }
 
-const COUNTRIES = [
+export const COUNTRIES = [
   { code: 'AF', name: 'Afghanistan' }, { code: 'AL', name: 'Albania' }, { code: 'DZ', name: 'Algeria' },
-  { code: 'AR', name: 'Argentina' }, { code: 'AU', name: 'Australia' }, { code: 'AT', name: 'Austria' },
-  { code: 'BD', name: 'Bangladesh' }, { code: 'BE', name: 'Belgium' }, { code: 'BR', name: 'Brazil' },
-  { code: 'CA', name: 'Canada' }, { code: 'CL', name: 'Chile' }, { code: 'CN', name: 'China' },
-  { code: 'CO', name: 'Colombia' }, { code: 'CZ', name: 'Czech Republic' }, { code: 'DK', name: 'Denmark' },
-  { code: 'EG', name: 'Egypt' }, { code: 'FI', name: 'Finland' }, { code: 'FR', name: 'France' },
-  { code: 'DE', name: 'Germany' }, { code: 'GR', name: 'Greece' }, { code: 'IN', name: 'India' },
+  { code: 'AD', name: 'Andorra' }, { code: 'AO', name: 'Angola' }, { code: 'AR', name: 'Argentina' },
+  { code: 'AM', name: 'Armenia' }, { code: 'AU', name: 'Australia' }, { code: 'AT', name: 'Austria' },
+  { code: 'AZ', name: 'Azerbaijan' }, { code: 'BS', name: 'Bahamas' }, { code: 'BH', name: 'Bahrain' },
+  { code: 'BD', name: 'Bangladesh' }, { code: 'BY', name: 'Belarus' }, { code: 'BE', name: 'Belgium' },
+  { code: 'BZ', name: 'Belize' }, { code: 'BO', name: 'Bolivia' }, { code: 'BA', name: 'Bosnia and Herzegovina' },
+  { code: 'BR', name: 'Brazil' }, { code: 'BG', name: 'Bulgaria' }, { code: 'KH', name: 'Cambodia' },
+  { code: 'CM', name: 'Cameroon' }, { code: 'CA', name: 'Canada' }, { code: 'CL', name: 'Chile' },
+  { code: 'CN', name: 'China' }, { code: 'CO', name: 'Colombia' }, { code: 'CR', name: 'Costa Rica' },
+  { code: 'HR', name: 'Croatia' }, { code: 'CU', name: 'Cuba' }, { code: 'CY', name: 'Cyprus' },
+  { code: 'CZ', name: 'Czech Republic' }, { code: 'DK', name: 'Denmark' }, { code: 'DO', name: 'Dominican Republic' },
+  { code: 'EC', name: 'Ecuador' }, { code: 'EG', name: 'Egypt' }, { code: 'EE', name: 'Estonia' },
+  { code: 'FI', name: 'Finland' }, { code: 'FR', name: 'France' }, { code: 'GE', name: 'Georgia' },
+  { code: 'DE', name: 'Germany' }, { code: 'GH', name: 'Ghana' }, { code: 'GR', name: 'Greece' },
+  { code: 'GT', name: 'Guatemala' }, { code: 'HN', name: 'Honduras' }, { code: 'HK', name: 'Hong Kong' },
+  { code: 'HU', name: 'Hungary' }, { code: 'IS', name: 'Iceland' }, { code: 'IN', name: 'India' },
   { code: 'ID', name: 'Indonesia' }, { code: 'IR', name: 'Iran' }, { code: 'IQ', name: 'Iraq' },
   { code: 'IE', name: 'Ireland' }, { code: 'IL', name: 'Israel' }, { code: 'IT', name: 'Italy' },
-  { code: 'JP', name: 'Japan' }, { code: 'KP', name: 'North Korea' }, { code: 'KR', name: 'South Korea' },
-  { code: 'MY', name: 'Malaysia' }, { code: 'MX', name: 'Mexico' }, { code: 'MA', name: 'Morocco' }, { code: 'NL', name: 'Netherlands' },
-  { code: 'NZ', name: 'New Zealand' }, { code: 'NG', name: 'Nigeria' }, { code: 'NO', name: 'Norway' },
-  { code: 'PK', name: 'Pakistan' }, { code: 'PE', name: 'Peru' }, { code: 'PH', name: 'Philippines' },
-  { code: 'PL', name: 'Poland' }, { code: 'PT', name: 'Portugal' }, { code: 'RO', name: 'Romania' },
-  { code: 'RU', name: 'Russia' }, { code: 'SA', name: 'Saudi Arabia' }, { code: 'SG', name: 'Singapore' },
-  { code: 'ZA', name: 'South Africa' }, { code: 'ES', name: 'Spain' }, { code: 'SE', name: 'Sweden' },
-  { code: 'CH', name: 'Switzerland' }, { code: 'TH', name: 'Thailand' }, { code: 'TR', name: 'Turkey' },
-  { code: 'UA', name: 'Ukraine' }, { code: 'AE', name: 'United Arab Emirates' }, { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' }, { code: 'VN', name: 'Vietnam' }
+  { code: 'JM', name: 'Jamaica' }, { code: 'JP', name: 'Japan' }, { code: 'JO', name: 'Jordan' },
+  { code: 'KZ', name: 'Kazakhstan' }, { code: 'KE', name: 'Kenya' }, { code: 'KW', name: 'Kuwait' },
+  { code: 'LV', name: 'Latvia' }, { code: 'LB', name: 'Lebanon' }, { code: 'LT', name: 'Lithuania' },
+  { code: 'LU', name: 'Luxembourg' }, { code: 'MY', name: 'Malaysia' }, { code: 'MX', name: 'Mexico' },
+  { code: 'MD', name: 'Moldova' }, { code: 'MC', name: 'Monaco' }, { code: 'MA', name: 'Morocco' },
+  { code: 'NP', name: 'Nepal' }, { code: 'NL', name: 'Netherlands' }, { code: 'NZ', name: 'New Zealand' },
+  { code: 'NG', name: 'Nigeria' }, { code: 'KP', name: 'North Korea' }, { code: 'MK', name: 'North Macedonia' },
+  { code: 'NO', name: 'Norway' }, { code: 'OM', name: 'Oman' }, { code: 'PK', name: 'Pakistan' },
+  { code: 'PA', name: 'Panama' }, { code: 'PY', name: 'Paraguay' }, { code: 'PE', name: 'Peru' },
+  { code: 'PH', name: 'Philippines' }, { code: 'PL', name: 'Poland' }, { code: 'PT', name: 'Portugal' },
+  { code: 'PR', name: 'Puerto Rico' }, { code: 'QA', name: 'Qatar' }, { code: 'RO', name: 'Romania' },
+  { code: 'RU', name: 'Russia' }, { code: 'SA', name: 'Saudi Arabia' }, { code: 'RS', name: 'Serbia' },
+  { code: 'SG', name: 'Singapore' }, { code: 'SK', name: 'Slovakia' }, { code: 'SI', name: 'Slovenia' },
+  { code: 'ZA', name: 'South Africa' }, { code: 'KR', name: 'South Korea' }, { code: 'ES', name: 'Spain' },
+  { code: 'LK', name: 'Sri Lanka' }, { code: 'SE', name: 'Sweden' }, { code: 'CH', name: 'Switzerland' },
+  { code: 'TW', name: 'Taiwan' }, { code: 'TH', name: 'Thailand' }, { code: 'TN', name: 'Tunisia' },
+  { code: 'TR', name: 'Turkey' }, { code: 'UA', name: 'Ukraine' }, { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'GB', name: 'United Kingdom' }, { code: 'US', name: 'United States' }, { code: 'UY', name: 'Uruguay' },
+  { code: 'UZ', name: 'Uzbekistan' }, { code: 'VE', name: 'Venezuela' }, { code: 'VN', name: 'Vietnam' },
+  { code: 'ZW', name: 'Zimbabwe' }
 ];
 
 type App = {
@@ -886,7 +942,7 @@ function EventsTab({ events }: { events: Event[] }) {
                 <TableCell className="whitespace-nowrap">
                   {e.country_code ? (
                     <span className="inline-flex items-center gap-1.5">
-                      <span className="text-sm">{getCountryFlag(e.country_code)}</span>
+                      <CountryFlag countryCode={e.country_code} className="w-4 h-3 rounded-[2px]" />
                       <span>{e.country_code}</span>
                     </span>
                   ) : '-'}
@@ -1201,8 +1257,8 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
             {(config.block_countries || []).map(code => {
               const country = COUNTRIES.find(c => c.code === code);
               return (
-                <Badge key={code} variant="secondary" className="bg-slate-800 hover:bg-slate-700 flex items-center gap-1.5 py-1 px-2.5">
-                  <span className="text-base leading-none">{getCountryFlag(code)}</span>
+                <Badge key={code} variant="secondary" className="bg-slate-800 hover:bg-slate-700 flex items-center gap-2 py-1 px-2.5">
+                  <CountryFlag countryCode={code} className="w-4 h-3 rounded-[2px]" />
                   <span>{country ? country.name : code}</span>
                   <button onClick={() => updateConfig({ block_countries: (config.block_countries || []).filter(c => c !== code) })} className="ml-1 text-slate-400 hover:text-white">
                     <X className="w-3 h-3" />
@@ -1227,7 +1283,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
                 {COUNTRIES.filter(c => !(config.block_countries || []).includes(c.code)).map(c => (
                   <SelectItem key={c.code} value={c.code}>
                     <span className="flex items-center gap-2">
-                      <span className="text-base leading-none">{getCountryFlag(c.code)}</span>
+                      <CountryFlag countryCode={c.code} className="w-4 h-3 rounded-[2px]" />
                       <span>{c.name}</span>
                       <span className="text-slate-500 text-xs font-mono">({c.code})</span>
                     </span>
