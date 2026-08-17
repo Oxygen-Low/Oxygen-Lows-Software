@@ -4,6 +4,7 @@ import {
   validateAiUrl,
   resolveCustomProviderUrl,
 } from "../lib/safeAiUrl";
+import { parseSearchIntent, extractBearerToken } from "./ai";
 import fs from "fs";
 import path from "path";
 
@@ -119,3 +120,136 @@ describe("Path Traversal Protection", () => {
     });
   });
 });
+
+describe("AI Search Intent Parsing Security", () => {
+  it("should successfully parse valid search intent JSON", () => {
+    const input = '{"search": true, "query": "current weather in Tokyo"}';
+    const result = parseSearchIntent(input);
+    expect(result).toEqual({
+      search: true,
+      query: "current weather in Tokyo",
+    });
+  });
+
+  it("should successfully parse valid search:false intent", () => {
+    const input = '{"search": false}';
+    const result = parseSearchIntent(input);
+    expect(result).toEqual({
+      search: false,
+    });
+  });
+
+  it("should extract JSON embedded in conversational or markdown text", () => {
+    const input =
+      'Here is the extracted intent:\n```json\n{"search": true, "query": "latest news"}\n```\nDone!';
+    const result = parseSearchIntent(input);
+    expect(result).toEqual({
+      search: true,
+      query: "latest news",
+    });
+  });
+
+  it("should safely handle malformed JSON without throwing", () => {
+    expect(
+      parseSearchIntent('{"search": true, "query": "unterminated'),
+    ).toBeNull();
+    expect(parseSearchIntent("{invalid: json}")).toBeNull();
+    expect(parseSearchIntent('{ "search": true, }')).toBeNull();
+  });
+
+  it("should safely handle non-JSON text containing curly braces", () => {
+    expect(parseSearchIntent("This {is just} some text")).toBeNull();
+  });
+
+  it("should return null for null, undefined, numbers, empty string or non-string inputs", () => {
+    expect(parseSearchIntent(null)).toBeNull();
+    expect(parseSearchIntent(undefined)).toBeNull();
+    expect(parseSearchIntent("")).toBeNull();
+    expect(parseSearchIntent("   ")).toBeNull();
+    expect(parseSearchIntent(12345 as any)).toBeNull();
+    expect(parseSearchIntent({} as any)).toBeNull();
+  });
+
+  it("should return null for array of primitives or invalid formats", () => {
+    expect(parseSearchIntent("[1, 2, 3]")).toBeNull();
+    expect(parseSearchIntent('["search", "true"]')).toBeNull();
+  });
+
+  it("should return null if query is missing or not a non-empty string when search is true", () => {
+    expect(parseSearchIntent('{"search": true}')).toBeNull();
+    expect(parseSearchIntent('{"search": true, "query": 12345}')).toBeNull();
+    expect(parseSearchIntent('{"search": true, "query": {}}')).toBeNull();
+    expect(
+      parseSearchIntent('{"search": true, "query": ["apple"]}'),
+    ).toBeNull();
+    expect(parseSearchIntent('{"search": true, "query": "   "}')).toBeNull();
+  });
+
+  it("should return null if search property is truthy non-boolean", () => {
+    expect(parseSearchIntent('{"search": "true", "query": "test"}')).toBeNull();
+    expect(parseSearchIntent('{"search": 1, "query": "test"}')).toBeNull();
+  });
+
+  it("should trim and cap excessively long queries", () => {
+    const longQuery = "a".repeat(500);
+    const input = JSON.stringify({ search: true, query: `  ${longQuery}  ` });
+    const result = parseSearchIntent(input);
+    expect(result).not.toBeNull();
+    expect(result?.search).toBe(true);
+    expect(result?.query).toBe("a".repeat(300));
+    expect(result?.query?.length).toBe(300);
+  });
+});
+
+describe("RFC 6750 Case-Insensitive Bearer Scheme Token Extraction", () => {
+  it("should extract token with standard 'Bearer' scheme prefix", () => {
+    expect(extractBearerToken("Bearer eyJhbGciOiJIUzI1NiJ9.test")).toBe(
+      "eyJhbGciOiJIUzI1NiJ9.test",
+    );
+  });
+
+  it("should extract token with lowercase 'bearer' scheme prefix", () => {
+    expect(extractBearerToken("bearer eyJhbGciOiJIUzI1NiJ9.test")).toBe(
+      "eyJhbGciOiJIUzI1NiJ9.test",
+    );
+  });
+
+  it("should extract token with uppercase 'BEARER' scheme prefix", () => {
+    expect(extractBearerToken("BEARER eyJhbGciOiJIUzI1NiJ9.test")).toBe(
+      "eyJhbGciOiJIUzI1NiJ9.test",
+    );
+  });
+
+  it("should extract token with mixed-case 'bEaReR' scheme prefix", () => {
+    expect(extractBearerToken("bEaReR token-secret-123")).toBe(
+      "token-secret-123",
+    );
+  });
+
+  it("should preserve case of the token itself", () => {
+    expect(extractBearerToken("Bearer TokenWithMixedCase123")).toBe(
+      "TokenWithMixedCase123",
+    );
+  });
+
+  it("should not corrupt tokens containing the word 'Bearer'", () => {
+    expect(extractBearerToken("Bearer Bearer_inside_token_Bearer")).toBe(
+      "Bearer_inside_token_Bearer",
+    );
+  });
+
+  it("should return null for non-Bearer schemes", () => {
+    expect(extractBearerToken("Basic dXNlcjpwYXNz")).toBeNull();
+    expect(extractBearerToken('Digest username="Mufasa"')).toBeNull();
+    expect(extractBearerToken("Token 12345")).toBeNull();
+  });
+
+  it("should return null for missing or invalid header values", () => {
+    expect(extractBearerToken(null)).toBeNull();
+    expect(extractBearerToken(undefined)).toBeNull();
+    expect(extractBearerToken("")).toBeNull();
+    expect(extractBearerToken("Bearer")).toBeNull();
+    expect(extractBearerToken("random-string-without-scheme")).toBeNull();
+  });
+});
+

@@ -16,11 +16,14 @@ function hashApiKey(key: string): string {
 // Middleware for NPM package API Key auth
 async function requireApiKey(c: Context, next: Next) {
   const authHeader = c.req.header("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+  const rawKey = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
+  if (!rawKey) {
     return c.json({ error: "Missing or invalid Authorization header" }, 401);
   }
   
-  const rawKey = authHeader.substring(7);
   const hash = hashApiKey(rawKey);
 
   const supabase = getAdminClient();
@@ -41,10 +44,13 @@ async function requireApiKey(c: Context, next: Next) {
 // Middleware for UI JWT auth
 async function requireJwt(c: Context, next: Next) {
   const authHeader = c.req.header("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+  const token = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7)
+    : null;
+  if (!token) {
     return c.json({ error: "Missing or invalid Authorization header" }, 401);
   }
-  const token = authHeader.substring(7);
   const supabase = getAuthenticatedClient(token);
   
   c.set("supabase", supabase);

@@ -19,7 +19,11 @@ oauthAdminRouter.use("*", apiLimiter);
 
 oauthAdminRouter.get("/clients", async (c) => {
   try {
-    const token = c.req.header("authorization")?.split(" ")[1];
+    const authHeader = c.req.header("authorization");
+    // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+    const token = authHeader?.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7)
+      : null;
     if (!token) return c.json({ error: "Missing token" }, 401);
     const supabase = getAuthenticatedClient(token);
     const oauth = (supabase.auth as any).oauth as SupabaseOAuthAdmin;
@@ -34,7 +38,11 @@ oauthAdminRouter.get("/clients", async (c) => {
 
 oauthAdminRouter.get("/authorized-apps", async (c) => {
   try {
-    const token = c.req.header("authorization")?.split(" ")[1];
+    const authHeader = c.req.header("authorization");
+    // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+    const token = authHeader?.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7)
+      : null;
     if (!token) return c.json({ error: "Missing token" }, 401);
     const supabase = getAuthenticatedClient(token);
     const oauth = (supabase.auth as any).oauth as SupabaseOAuthAdmin;
@@ -49,7 +57,11 @@ oauthAdminRouter.get("/authorized-apps", async (c) => {
 
 oauthAdminRouter.post("/clients", async (c) => {
   try {
-    const token = c.req.header("authorization")?.split(" ")[1];
+    const authHeader = c.req.header("authorization");
+    // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+    const token = authHeader?.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7)
+      : null;
     if (!token) return c.json({ error: "Missing token" }, 401);
     const { name, type, redirect_uris } = await c.req.json();
     const supabase = getAuthenticatedClient(token);
@@ -69,7 +81,11 @@ oauthAdminRouter.post("/clients", async (c) => {
 
 oauthAdminRouter.delete("/clients/:id", async (c) => {
   try {
-    const token = c.req.header("authorization")?.split(" ")[1];
+    const authHeader = c.req.header("authorization");
+    // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+    const token = authHeader?.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7)
+      : null;
     if (!token) return c.json({ error: "Missing token" }, 401);
     const id = c.req.param("id");
     const supabase = getAuthenticatedClient(token);
@@ -85,7 +101,11 @@ oauthAdminRouter.delete("/clients/:id", async (c) => {
 
 oauthAdminRouter.post("/revoke-authorization/:id", async (c) => {
   try {
-    const token = c.req.header("authorization")?.split(" ")[1];
+    const authHeader = c.req.header("authorization");
+    // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
+    const token = authHeader?.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7)
+      : null;
     if (!token) return c.json({ error: "Missing token" }, 401);
     const id = c.req.param("id");
     const supabase = getAuthenticatedClient(token);

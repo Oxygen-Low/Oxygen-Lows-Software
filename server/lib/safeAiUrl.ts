@@ -10,13 +10,26 @@ export const isPrivateIP = (ip: string): boolean => {
       parts[0] === 10 ||
       (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
       (parts[0] === 192 && parts[1] === 168) ||
-      (parts[0] === 169 && parts[1] === 254)
+      (parts[0] === 169 && parts[1] === 254) ||
+      (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) ||
+      (parts[0] === 192 && parts[1] === 0 && parts[2] === 0) ||
+      (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) ||
+      (parts[0] === 198 && parts[1] >= 18 && parts[1] <= 19) ||
+      (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) ||
+      (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) ||
+      parts[0] >= 224
     )
       return true;
     return false;
   } else if (net.isIPv6(ip)) {
     const expanded = ip.toLowerCase();
-    if (expanded === "::1" || expanded === "0:0:0:0:0:0:0:1") return true;
+    if (
+      expanded === "::1" ||
+      expanded === "0:0:0:0:0:0:0:1" ||
+      expanded === "::" ||
+      expanded === "0:0:0:0:0:0:0:0"
+    )
+      return true;
     const v4MappedMatch = expanded.match(
       /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/,
     );
@@ -35,9 +48,16 @@ export const isPrivateIP = (ip: string): boolean => {
   return false;
 };
 
-const LOCALHOST_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
+const LOCALHOST_HOSTNAMES = new Set([
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "0.0.0.0",
+  "metadata.google.internal",
+  "169.254.169.254",
+]);
 
-function assertPublicHostname(hostname: string): void {
+export function assertPublicHostname(hostname: string): void {
   if (
     isPrivateIP(hostname) ||
     LOCALHOST_HOSTNAMES.has(hostname.toLowerCase())
