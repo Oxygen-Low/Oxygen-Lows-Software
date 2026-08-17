@@ -577,11 +577,11 @@ function OverviewTab({ app, events, authFetch, onUpdate }: { app: App, events: E
 
   const topThreats = useMemo(() => {
     const counts: Record<string, number> = {};
-    todayEvents.filter(e => e.event_type !== 'allowed').forEach(e => {
+    events.filter(e => e.event_type !== 'allowed').forEach(e => {
       counts[e.event_type] = (counts[e.event_type] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [todayEvents]);
+  }, [events]);
 
   const isWaitPeriod = app.first_request_at && !app.block_mode_enabled_at && 
     (Date.now() - new Date(app.first_request_at).getTime() < 86400000);
