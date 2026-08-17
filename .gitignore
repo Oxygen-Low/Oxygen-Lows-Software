@@ -53,3 +53,13 @@ Android/app/build
 /captures
 .externalNativeBuild
 .cxx
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.venv
+venv/
+ENV/
+env/
+

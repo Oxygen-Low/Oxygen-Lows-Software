@@ -58,6 +58,16 @@ public partial class MainWindow : Window
         
         webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
+        // Start isolated Python background server
+        PythonServerManager.Instance.OnServerReady += (url) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                SendWebMessage(new { @event = "python_server_ready", data = new { url, port = PythonServerManager.Instance.Port } });
+            });
+        };
+        _ = PythonServerManager.Instance.StartAsync();
+
         await Task.Delay(1000); 
         
         string initialMessage = SingleInstance.InitialMessage ?? "";
@@ -285,6 +295,40 @@ public partial class MainWindow : Window
                         SendWebMessage(new { id, success = true, data = new { isAdmin = true } });
                     }
                 }
+                else if (cmd == "get_python_server")
+                {
+                    SendWebMessage(new 
+                    { 
+                        id, 
+                        success = true, 
+                        data = new 
+                        { 
+                            isRunning = PythonServerManager.Instance.IsRunning,
+                            port = PythonServerManager.Instance.Port,
+                            url = PythonServerManager.Instance.ServerUrl,
+                            status = PythonServerManager.Instance.Status,
+                            error = PythonServerManager.Instance.LastError
+                        } 
+                    });
+                }
+                else if (cmd == "restart_python_server")
+                {
+                    PythonServerManager.Instance.Stop();
+                    bool ok = await PythonServerManager.Instance.StartAsync();
+                    SendWebMessage(new 
+                    { 
+                        id, 
+                        success = ok, 
+                        data = new 
+                        { 
+                            isRunning = PythonServerManager.Instance.IsRunning,
+                            port = PythonServerManager.Instance.Port,
+                            url = PythonServerManager.Instance.ServerUrl,
+                            status = PythonServerManager.Instance.Status,
+                            error = PythonServerManager.Instance.LastError
+                        } 
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -335,5 +379,6 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        PythonServerManager.Instance.Stop();
     }
 }
