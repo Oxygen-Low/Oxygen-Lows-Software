@@ -177,7 +177,6 @@ export class DefenderClient {
         eventType: event.type,
         ip: event.ip,
         countryCode: req?.query?.countryCode || null,
-        userAgent: req?.userAgent || null,
         method: event.method,
         path: event.path,
         blocked: event.blocked,

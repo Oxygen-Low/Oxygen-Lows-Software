@@ -127,7 +127,6 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
       event_type: body.eventType,
       ip: body.ip,
       country_code: body.countryCode,
-      user_agent: body.userAgent,
       method: body.method,
       path: body.path,
       blocked: body.blocked,
