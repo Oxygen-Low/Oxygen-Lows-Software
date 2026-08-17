@@ -97,7 +97,7 @@ const CATEGORIES: {
     name: "Security",
     label: "Security",
     icon: <Shield className="w-5 h-5" />,
-    description: "Protection for software, websites and devices.",
+    description: "Protection for software and devices.",
   },
 ];
 
