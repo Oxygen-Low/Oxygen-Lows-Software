@@ -162,12 +162,11 @@ describe("MusicContext loop integration", () => {
   });
 
   const TestConsumer = () => {
-    const { loop, toggleLoop, currentTrack, audioRef } = useMusicContext();
+    const { loop, toggleLoop, currentTrack } = useMusicContext();
     return (
       <div>
         <span data-testid="loop-state">{loop ? "loop-on" : "loop-off"}</span>
         <span data-testid="track-state">{currentTrack?.name || "none"}</span>
-        <span data-testid="audio-loop">{audioRef.current?.loop ? "audio-loop-on" : "audio-loop-off"}</span>
         <button data-testid="toggle-btn" onClick={() => toggleLoop(!loop)}>
           Toggle Loop
         </button>
@@ -184,14 +183,14 @@ describe("MusicContext loop integration", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("loop-state").textContent).toBe("loop-on");
-      expect(screen.getByTestId("audio-loop").textContent).toBe("audio-loop-on");
+      expect(document.querySelector("audio")?.loop).toBe(true);
     });
 
     fireEvent.click(screen.getByTestId("toggle-btn"));
 
     await waitFor(() => {
       expect(screen.getByTestId("loop-state").textContent).toBe("loop-off");
-      expect(screen.getByTestId("audio-loop").textContent).toBe("audio-loop-off");
+      expect(document.querySelector("audio")?.loop).toBe(false);
     });
 
     expect(mockUpsert).toHaveBeenCalledWith(
