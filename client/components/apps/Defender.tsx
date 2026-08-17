@@ -60,18 +60,18 @@ type App = {
 };
 
 type AppConfig = {
-  sql_injection: boolean;
-  shell_injection: boolean;
-  path_traversal: boolean;
-  ssrf: boolean;
-  tor: boolean;
-  ddos: boolean;
-  ddos_rpm: number;
-  blocked_countries: string[];
+  block_sql_injection: boolean;
+  block_shell_injection: boolean;
+  block_path_traversal: boolean;
+  block_ssrf: boolean;
+  block_tor: boolean;
+  ddos_protection: boolean;
+  ddos_threshold_rpm: number;
+  block_countries: string[];
   block_ad_bots: boolean;
   block_ai_assistants: boolean;
   block_ai_scrapers: boolean;
-  block_ai_search: boolean;
+  block_ai_search_crawlers: boolean;
   block_data_harvesters: boolean;
 };
 
@@ -981,11 +981,33 @@ function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds:
 }
 
 function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFetch: any, onUpdate: () => void, onDelete: () => void }) {
-  const [config, setConfig] = useState<AppConfig | null>(app.defender_config?.[0] || null);
+  const defaultConfig: AppConfig = {
+    block_sql_injection: true,
+    block_shell_injection: true,
+    block_path_traversal: true,
+    block_ssrf: true,
+    block_tor: true,
+    ddos_protection: true,
+    ddos_threshold_rpm: 1000,
+    block_countries: [],
+    block_ad_bots: false,
+    block_ai_assistants: false,
+    block_ai_scrapers: true,
+    block_ai_search_crawlers: false,
+    block_data_harvesters: true
+  };
+
+  const [config, setConfig] = useState<AppConfig | null>(app.defender_config?.[0] || defaultConfig);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+
+  useEffect(() => {
+    if (app.defender_config && app.defender_config.length > 0) {
+      setConfig(app.defender_config[0]);
+    }
+  }, [app.defender_config]);
 
   const updateConfig = async (updates: Partial<AppConfig>) => {
     if (!config) return;
@@ -1076,10 +1098,10 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
         </CardHeader>
         <CardContent className="space-y-6">
           {[
-            { id: 'sql_injection', label: 'SQL Injection', desc: 'Detect and block SQL injection attempts.' },
-            { id: 'shell_injection', label: 'Shell Injection', desc: 'Prevent command execution attacks.' },
-            { id: 'path_traversal', label: 'Path Traversal', desc: 'Block attempts to read unauthorized files.' },
-            { id: 'ssrf', label: 'SSRF', desc: 'Prevent Server-Side Request Forgery.' }
+            { id: 'block_sql_injection', label: 'SQL Injection', desc: 'Detect and block SQL injection attempts.' },
+            { id: 'block_shell_injection', label: 'Shell Injection', desc: 'Prevent command execution attacks.' },
+            { id: 'block_path_traversal', label: 'Path Traversal', desc: 'Block attempts to read unauthorized files.' },
+            { id: 'block_ssrf', label: 'SSRF', desc: 'Prevent Server-Side Request Forgery.' }
           ].map(setting => (
             <div key={setting.id} className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -1102,7 +1124,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
               <Label className="text-base text-white">Block TOR Network</Label>
               <p className="text-sm text-slate-400">Deny access from known TOR exit nodes.</p>
             </div>
-            <Switch checked={config.tor} onCheckedChange={(c) => updateConfig({ tor: c })} />
+            <Switch checked={config.block_tor} onCheckedChange={(c) => updateConfig({ block_tor: c })} />
           </div>
           <Separator className="bg-slate-800" />
           <div className="flex items-center justify-between">
@@ -1110,15 +1132,15 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
               <Label className="text-base text-white">DDoS Protection</Label>
               <p className="text-sm text-slate-400">Automatically block IPs that exceed the threshold.</p>
             </div>
-            <Switch checked={config.ddos} onCheckedChange={(c) => updateConfig({ ddos: c })} />
+            <Switch checked={config.ddos_protection} onCheckedChange={(c) => updateConfig({ ddos_protection: c })} />
           </div>
-          {config.ddos && (
+          {config.ddos_protection && (
             <div className="pl-4 border-l-2 border-slate-800 space-y-2">
               <Label className="text-sm text-slate-400">Threshold (Requests per minute per IP)</Label>
               <Input 
                 type="number" 
-                value={config.ddos_rpm} 
-                onChange={e => updateConfig({ ddos_rpm: parseInt(e.target.value) || 100 })} 
+                value={config.ddos_threshold_rpm} 
+                onChange={e => updateConfig({ ddos_threshold_rpm: parseInt(e.target.value) || 100 })} 
                 className="w-32 bg-slate-950 border-slate-700" 
               />
             </div>
@@ -1135,7 +1157,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
             { id: 'block_ad_bots', label: 'Ad Bots', desc: 'Block advertising crawlers and indexing bots.' },
             { id: 'block_ai_assistants', label: 'AI Assistants', desc: 'Block AI assistants like ChatGPT browsing, Claude Web.' },
             { id: 'block_ai_scrapers', label: 'AI Data Scrapers', desc: 'Block bots that scrape your content for AI training data.' },
-            { id: 'block_ai_search', label: 'AI Search Crawlers', desc: 'Block AI-powered search engine crawlers.' },
+            { id: 'block_ai_search_crawlers', label: 'AI Search Crawlers', desc: 'Block AI-powered search engine crawlers.' },
             { id: 'block_data_harvesters', label: 'Data Harvesters', desc: 'Block bots that scrape emails, phone numbers, and personal data.' }
           ].map(setting => (
             <div key={setting.id} className="flex items-center justify-between">
