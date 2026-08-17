@@ -719,11 +719,11 @@ function RoutesTab({ routes, authFetch, onUpdate }: { routes: Route[], authFetch
       <Table>
         <TableHeader className="bg-slate-950/50">
           <TableRow className="border-slate-800 hover:bg-transparent">
-            <TableHead>Method</TableHead>
+            <TableHead className="whitespace-nowrap">Method</TableHead>
             <TableHead className="w-full">Path</TableHead>
-            <TableHead>Rate Limit</TableHead>
-            <TableHead>Max Requests</TableHead>
-            <TableHead>Window (ms)</TableHead>
+            <TableHead className="whitespace-nowrap">Rate Limit</TableHead>
+            <TableHead className="whitespace-nowrap">Max Requests</TableHead>
+            <TableHead className="whitespace-nowrap">Window (ms)</TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
@@ -739,11 +739,11 @@ function RoutesTab({ routes, authFetch, onUpdate }: { routes: Route[], authFetch
             const data = isEditing ? editData : route;
             return (
               <TableRow key={route.id} className="border-slate-800 hover:bg-slate-800/50">
-                <TableCell>
-                  <Badge variant="outline" className={getMethodColor(route.method)}>{route.method}</Badge>
+                <TableCell className="whitespace-nowrap">
+                  <Badge variant="outline" className={cn(getMethodColor(route.method), "whitespace-nowrap")}>{route.method}</Badge>
                 </TableCell>
                 <TableCell className="font-mono text-sm text-slate-300">{route.path}</TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <Switch 
                     checked={data.rate_limit_enabled} 
                     onCheckedChange={(c) => {
@@ -804,7 +804,7 @@ function EventBadge({ type }: { type: string }) {
     allowed: { color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', label: 'Allowed' }
   };
   const c = config[type] || { color: 'bg-slate-500/10 text-slate-400 border-slate-500/20', label: type };
-  return <Badge variant="outline" className={c.color}>{c.label}</Badge>;
+  return <Badge variant="outline" className={cn(c.color, "whitespace-nowrap")}>{c.label}</Badge>;
 }
 
 function EventsTab({ events }: { events: Event[] }) {
@@ -856,13 +856,13 @@ function EventsTab({ events }: { events: Event[] }) {
         <Table>
           <TableHeader className="bg-slate-950/50 sticky top-0">
             <TableRow className="border-slate-800 hover:bg-transparent">
-              <TableHead>Time</TableHead>
-              <TableHead>IP</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>User Agent</TableHead>
+              <TableHead className="whitespace-nowrap">Time</TableHead>
+              <TableHead className="whitespace-nowrap">IP</TableHead>
+              <TableHead className="whitespace-nowrap">Location</TableHead>
+              <TableHead className="whitespace-nowrap">Type</TableHead>
+              <TableHead className="w-full">Target</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+              <TableHead className="whitespace-nowrap">User Agent</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -872,16 +872,16 @@ function EventsTab({ events }: { events: Event[] }) {
               </TableRow>
             ) : paged.map(e => (
               <TableRow key={e.id} className="border-slate-800 hover:bg-slate-800/50">
-                <TableCell className="text-xs text-slate-400">{new Date(e.created_at).toLocaleString()}</TableCell>
-                <TableCell className="font-mono text-xs">{e.ip}</TableCell>
-                <TableCell>{e.country_code || '-'}</TableCell>
-                <TableCell><EventBadge type={e.event_type} /></TableCell>
+                <TableCell className="text-xs text-slate-400 whitespace-nowrap">{new Date(e.created_at).toLocaleString()}</TableCell>
+                <TableCell className="font-mono text-xs whitespace-nowrap">{e.ip}</TableCell>
+                <TableCell className="whitespace-nowrap">{e.country_code || '-'}</TableCell>
+                <TableCell className="whitespace-nowrap"><EventBadge type={e.event_type} /></TableCell>
                 <TableCell className="font-mono text-xs max-w-[200px] truncate">
                   <span className="text-slate-500 mr-2">{e.method}</span>
                   <span className="text-slate-300" title={e.path}>{e.path}</span>
                 </TableCell>
-                <TableCell>
-                  <Badge variant={e.blocked ? 'destructive' : 'default'} className={cn(!e.blocked && 'bg-emerald-500/10 text-emerald-500')}>
+                <TableCell className="whitespace-nowrap">
+                  <Badge variant={e.blocked ? 'destructive' : 'default'} className={cn(!e.blocked && 'bg-emerald-500/10 text-emerald-500', "whitespace-nowrap")}>
                     {e.blocked ? 'blocked' : 'allowed'}
                   </Badge>
                 </TableCell>
@@ -942,12 +942,12 @@ function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds:
         <Table>
           <TableHeader className="bg-slate-950/50">
             <TableRow className="border-slate-800 hover:bg-transparent">
-              <TableHead>Host</TableHead>
-              <TableHead>Port</TableHead>
-              <TableHead>Protocol</TableHead>
-              <TableHead>Requests</TableHead>
-              <TableHead>Last Seen</TableHead>
-              <TableHead>Allowed</TableHead>
+              <TableHead className="w-full">Host</TableHead>
+              <TableHead className="whitespace-nowrap">Port</TableHead>
+              <TableHead className="whitespace-nowrap">Protocol</TableHead>
+              <TableHead className="whitespace-nowrap">Requests</TableHead>
+              <TableHead className="whitespace-nowrap">Last Seen</TableHead>
+              <TableHead className="whitespace-nowrap">Allowed</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -958,15 +958,15 @@ function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds:
               </TableRow>
             ) : outbounds.map(o => (
               <TableRow key={o.id} className="border-slate-800 hover:bg-slate-800/50">
-                <TableCell className="font-mono text-sm text-white">{o.host}</TableCell>
-                <TableCell className="font-mono text-sm text-slate-400">{o.port}</TableCell>
-                <TableCell className="text-sm">{o.protocol}</TableCell>
-                <TableCell className="text-sm">{o.request_count}</TableCell>
-                <TableCell className="text-sm text-slate-400">{new Date(o.last_seen).toLocaleString()}</TableCell>
-                <TableCell>
+                <TableCell className="font-mono text-sm text-white max-w-[200px] truncate">{o.host}</TableCell>
+                <TableCell className="font-mono text-sm text-slate-400 whitespace-nowrap">{o.port}</TableCell>
+                <TableCell className="text-sm whitespace-nowrap">{o.protocol}</TableCell>
+                <TableCell className="text-sm whitespace-nowrap">{o.request_count}</TableCell>
+                <TableCell className="text-sm text-slate-400 whitespace-nowrap">{new Date(o.last_seen).toLocaleString()}</TableCell>
+                <TableCell className="whitespace-nowrap">
                   <Switch checked={o.allowed} onCheckedChange={(c) => handleToggle(o.id, c)} />
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <Button variant="ghost" size="icon" onClick={() => handleRemove(o.id)} className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/10">
                     <Trash2 className="w-4 h-4" />
                   </Button>
