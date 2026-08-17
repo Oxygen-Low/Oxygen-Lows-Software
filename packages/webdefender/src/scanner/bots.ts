@@ -66,18 +66,25 @@ export const BOT_SIGNATURES: Record<BotCategory, string[]> = {
   ]
 };
 
+const COMPILED_BOT_REGEXES = (Object.entries(BOT_SIGNATURES) as [BotCategory, string[]][]).map(([category, signatures]) => ({
+  category,
+  regex: new RegExp(signatures.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'i'),
+  signatures
+}));
+
 export function detectBot(userAgent: string): { isBot: boolean; category?: BotCategory; match?: string } {
   if (!userAgent) return { isBot: false };
   
-  for (const [category, signatures] of Object.entries(BOT_SIGNATURES)) {
-    for (const signature of signatures) {
-      if (userAgent.toLowerCase().includes(signature.toLowerCase())) {
-        return { 
-          isBot: true, 
-          category: category as BotCategory, 
-          match: signature 
-        };
-      }
+  for (const { category, regex, signatures } of COMPILED_BOT_REGEXES) {
+    const match = userAgent.match(regex);
+    if (match) {
+      const matchStr = match[0].toLowerCase();
+      const original = signatures.find(s => s.toLowerCase() === matchStr);
+      return {
+        isBot: true,
+        category,
+        match: original
+      };
     }
   }
   
