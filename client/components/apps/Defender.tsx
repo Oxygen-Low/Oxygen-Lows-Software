@@ -80,19 +80,19 @@ type Route = {
   method: string;
   path: string;
   rate_limit_enabled: boolean;
-  max_requests: number;
-  window_ms: number;
+  rate_limit_requests: number;
+  rate_limit_window_seconds: number;
 };
 
 type Event = {
   id: string;
-  timestamp: string;
+  created_at: string;
   ip: string;
   country_code: string | null;
   event_type: string;
   method: string;
   path: string;
-  status: 'allowed' | 'blocked';
+  blocked: boolean;
   user_agent: string | null;
 };
 
@@ -103,8 +103,8 @@ type Outbound = {
   protocol: string;
   first_seen: string;
   last_seen: string;
-  requests_count: number;
-  is_allowed: boolean;
+  request_count: number;
+  allowed: boolean;
 };
 
 export function DefenderApp() {
@@ -470,7 +470,7 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
 
   if (!app) return <div>App not found</div>;
 
-  const todayEvents = events.filter(e => new Date(e.timestamp || (e as any).created_at) > new Date(Date.now() - 86400000));
+  const todayEvents = events.filter(e => new Date(e.created_at) > new Date(Date.now() - 86400000));
   const threats = todayEvents.filter(e => e.event_type !== 'allowed');
   const uniqueIps = new Set(todayEvents.map(e => e.ip)).size;
 
@@ -566,9 +566,9 @@ function OverviewTab({ app, events, authFetch, onUpdate }: { app: App, events: E
       data[d.getHours()] = { name: `${d.getHours()}:00`, allowed: 0, blocked: 0 };
     }
     events.forEach(e => {
-      const hour = new Date(e.timestamp).getHours();
+      const hour = new Date(e.created_at).getHours();
       if (data[hour]) {
-        if (e.status === 'blocked') data[hour].blocked++;
+        if (e.blocked) data[hour].blocked++;
         else data[hour].allowed++;
       }
     });
@@ -577,11 +577,11 @@ function OverviewTab({ app, events, authFetch, onUpdate }: { app: App, events: E
 
   const topThreats = useMemo(() => {
     const counts: Record<string, number> = {};
-    events.filter(e => e.event_type !== 'allowed').forEach(e => {
+    todayEvents.filter(e => e.event_type !== 'allowed').forEach(e => {
       counts[e.event_type] = (counts[e.event_type] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [events]);
+  }, [todayEvents]);
 
   const isWaitPeriod = app.first_request_at && !app.block_mode_enabled_at && 
     (Date.now() - new Date(app.first_request_at).getTime() < 86400000);
@@ -756,24 +756,24 @@ function RoutesTab({ routes, authFetch, onUpdate }: { routes: Route[], authFetch
                   {isEditing && data.rate_limit_enabled ? (
                     <Input 
                       type="number" 
-                      value={data.max_requests} 
-                      onChange={e => setEditData({ ...data, max_requests: parseInt(e.target.value) || 0 })}
+                      value={data.rate_limit_requests} 
+                      onChange={e => setEditData({ ...data, rate_limit_requests: parseInt(e.target.value) || 0 })}
                       className="w-24 h-8 bg-slate-950 border-slate-700"
                     />
                   ) : data.rate_limit_enabled ? (
-                    <span className="text-slate-300">{route.max_requests}</span>
+                    <span className="text-slate-300">{route.rate_limit_requests}</span>
                   ) : <span className="text-slate-600">-</span>}
                 </TableCell>
                 <TableCell>
                   {isEditing && data.rate_limit_enabled ? (
                     <Input 
                       type="number" 
-                      value={data.window_ms} 
-                      onChange={e => setEditData({ ...data, window_ms: parseInt(e.target.value) || 0 })}
+                      value={data.rate_limit_window_seconds} 
+                      onChange={e => setEditData({ ...data, rate_limit_window_seconds: parseInt(e.target.value) || 0 })}
                       className="w-24 h-8 bg-slate-950 border-slate-700"
                     />
                   ) : data.rate_limit_enabled ? (
-                    <span className="text-slate-300">{route.window_ms}</span>
+                    <span className="text-slate-300">{route.rate_limit_window_seconds}</span>
                   ) : <span className="text-slate-600">-</span>}
                 </TableCell>
                 <TableCell>
@@ -815,9 +815,12 @@ function EventsTab({ events }: { events: Event[] }) {
 
   const filtered = useMemo(() => events.filter(e => {
     if (filterType !== 'all' && e.event_type !== filterType) return false;
-    if (filterStatus !== 'all' && e.status !== filterStatus) return false;
+    if (filterStatus !== 'all') {
+      const status = e.blocked ? 'blocked' : 'allowed';
+      if (status !== filterStatus) return false;
+    }
     return true;
-  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [events, filterType, filterStatus]);
+  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), [events, filterType, filterStatus]);
 
   const paged = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
@@ -869,7 +872,7 @@ function EventsTab({ events }: { events: Event[] }) {
               </TableRow>
             ) : paged.map(e => (
               <TableRow key={e.id} className="border-slate-800 hover:bg-slate-800/50">
-                <TableCell className="text-xs text-slate-400">{new Date(e.timestamp).toLocaleString()}</TableCell>
+                <TableCell className="text-xs text-slate-400">{new Date(e.created_at).toLocaleString()}</TableCell>
                 <TableCell className="font-mono text-xs">{e.ip}</TableCell>
                 <TableCell>{e.country_code || '-'}</TableCell>
                 <TableCell><EventBadge type={e.event_type} /></TableCell>
@@ -878,8 +881,8 @@ function EventsTab({ events }: { events: Event[] }) {
                   <span className="text-slate-300" title={e.path}>{e.path}</span>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={e.status === 'blocked' ? 'destructive' : 'default'} className={cn(e.status === 'allowed' && 'bg-emerald-500/10 text-emerald-500')}>
-                    {e.status}
+                  <Badge variant={e.blocked ? 'destructive' : 'default'} className={cn(!e.blocked && 'bg-emerald-500/10 text-emerald-500')}>
+                    {e.blocked ? 'blocked' : 'allowed'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-slate-500 max-w-[200px] truncate" title={e.user_agent || ''}>
@@ -902,7 +905,7 @@ function EventsTab({ events }: { events: Event[] }) {
 function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds: Outbound[], blockMode: boolean, authFetch: any, onUpdate: () => void }) {
   const handleToggle = async (id: string, isAllowed: boolean) => {
     try {
-      await authFetch(`/api/defender/outbound/${id}`, { method: 'PUT', body: JSON.stringify({ is_allowed: isAllowed }) });
+      await authFetch(`/api/defender/outbound/${id}`, { method: 'PUT', body: JSON.stringify({ allowed: isAllowed }) });
       onUpdate();
     } catch (err) { toast.error("Failed to update outbound rule"); }
   };
@@ -958,10 +961,10 @@ function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds:
                 <TableCell className="font-mono text-sm text-white">{o.host}</TableCell>
                 <TableCell className="font-mono text-sm text-slate-400">{o.port}</TableCell>
                 <TableCell className="text-sm">{o.protocol}</TableCell>
-                <TableCell className="text-sm">{o.requests_count}</TableCell>
+                <TableCell className="text-sm">{o.request_count}</TableCell>
                 <TableCell className="text-sm text-slate-400">{new Date(o.last_seen).toLocaleString()}</TableCell>
                 <TableCell>
-                  <Switch checked={o.is_allowed} onCheckedChange={(c) => handleToggle(o.id, c)} />
+                  <Switch checked={o.allowed} onCheckedChange={(c) => handleToggle(o.id, c)} />
                 </TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" onClick={() => handleRemove(o.id)} className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/10">
@@ -978,7 +981,7 @@ function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds:
 }
 
 function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFetch: any, onUpdate: () => void, onDelete: () => void }) {
-  const [config, setConfig] = useState<AppConfig | null>(app.config || null);
+  const [config, setConfig] = useState<AppConfig | null>(app.defender_config?.[0] || null);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -1006,7 +1009,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
     try {
       const res = await authFetch(`/api/defender/apps/${app.id}/rotate-key`, { method: 'POST' });
       const data = await res.json();
-      setNewKey(data.api_key);
+      setNewKey(data.apiKey);
       toast.success("API Key rotated");
       onUpdate();
     } catch (err) {

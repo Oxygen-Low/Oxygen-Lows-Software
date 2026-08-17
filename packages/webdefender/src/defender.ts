@@ -40,6 +40,36 @@ export class DefenderClient {
     this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn), new URL(this.apiUrl).hostname);
   }
 
+  private normalizeConfig(raw: any): AppConfig {
+    const cfg = raw.config || {};
+    const routes = (raw.routes || []).map((r: any) => ({
+      id: r.id,
+      method: r.method,
+      path: r.path,
+      rateLimitEnabled: r.rate_limit_enabled ?? false,
+      rateLimitRequests: r.rate_limit_requests ?? 100,
+      rateLimitWindowSeconds: r.rate_limit_window_seconds ?? 60,
+    }));
+    return {
+      appId: raw.id,
+      blockModeEnabled: raw.block_mode_enabled ?? false,
+      blockSqlInjection: cfg.block_sql_injection ?? true,
+      blockShellInjection: cfg.block_shell_injection ?? true,
+      blockPathTraversal: cfg.block_path_traversal ?? true,
+      blockSsrf: cfg.block_ssrf ?? true,
+      blockTor: cfg.block_tor ?? true,
+      blockCountries: cfg.block_countries ?? [],
+      blockAdBots: cfg.block_ad_bots ?? false,
+      blockAiAssistants: cfg.block_ai_assistants ?? false,
+      blockAiScrapers: cfg.block_ai_scrapers ?? true,
+      blockAiSearchCrawlers: cfg.block_ai_search_crawlers ?? false,
+      blockDataHarvesters: cfg.block_data_harvesters ?? true,
+      ddosProtection: cfg.ddos_protection ?? true,
+      ddosThresholdRpm: cfg.ddos_threshold_rpm ?? 1000,
+      routes,
+    };
+  }
+
   async init(app?: any): Promise<void> {
     if (this.isInitialized) return;
 
@@ -62,7 +92,7 @@ export class DefenderClient {
         throw new Error(`Failed to verify API key: ${response.statusText}`);
       }
 
-      this.appConfig = await response.json();
+      this.appConfig = this.normalizeConfig(await response.json());
 
       // 3. Register routes if app is provided
       if (app && this.appConfig) {
@@ -87,7 +117,7 @@ export class DefenderClient {
               }
             });
             if (verifyRes.ok) {
-              this.appConfig = await verifyRes.json();
+              this.appConfig = this.normalizeConfig(await verifyRes.json());
             }
           } catch (e) {
             console.error('[Defender] Route registration failed:', e);
