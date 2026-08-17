@@ -93,6 +93,7 @@ export async function middleware(request) {
 |---|---|---|---|
 | `apiKey` | `string` | **Required** | Your Oxygen Low's Software project API key. |
 | `logOnly` | `boolean` | `false` | If true, overrides the server config to only log threats, never block. |
+| `syncIntervalMs` | `number` | `60000` | Interval in ms to automatically sync security configuration from the dashboard. Set to 0 to disable. |
 | `onBlocked` | `function` | `undefined` | Callback fired when a request is blocked locally. |
 | `onError` | `function` | `undefined` | Callback fired when an internal defender error occurs. |
 

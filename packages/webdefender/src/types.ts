@@ -3,6 +3,7 @@ export interface DefenderConfig {
   apiUrl?: string;
   logOnly?: boolean; // override: always log-only regardless of server config
   offlineMode?: boolean;
+  syncIntervalMs?: number; // Config sync interval in milliseconds (default 60000ms, 0 to disable)
   onBlocked?: (event: BlockedEvent) => void;
   onError?: (error: Error) => void;
 }

@@ -33,6 +33,7 @@ export class DefenderClient {
   private rateLimiter: RateLimiter;
   private apiUrl: string;
   private isInitialized = false;
+  private configSyncIntervalId?: ReturnType<typeof setInterval>;
 
   constructor(config: DefenderConfig) {
     this.config = config;
@@ -140,11 +141,50 @@ export class DefenderClient {
       // 5. Install outbound monitor
       this.outboundMonitor.install();
       this.isInitialized = true;
+
+      // 6. Start periodic config sync
+      this.startConfigSync();
     } catch (error) {
       if (this.config.onError && error instanceof Error) {
         this.config.onError(error);
       }
       console.error('[Defender] Initialization failed:', error);
+    }
+  }
+
+  private startConfigSync(): void {
+    if (this.configSyncIntervalId) {
+      clearInterval(this.configSyncIntervalId);
+      this.configSyncIntervalId = undefined;
+    }
+    const syncInterval = this.config.syncIntervalMs !== undefined ? this.config.syncIntervalMs : 60000;
+    if (syncInterval > 0) {
+      this.configSyncIntervalId = setInterval(() => this.refreshConfig(), syncInterval);
+    }
+  }
+
+  async refreshConfig(): Promise<void> {
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    if (this.config.offlineMode || noApiKey) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${this.apiUrl}/api/defender/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.apiKey}`
+        }
+      });
+
+      if (response.ok) {
+        this.appConfig = this.normalizeConfig(await response.json());
+      }
+    } catch (error) {
+      if (this.config.onError && error instanceof Error) {
+        this.config.onError(error);
+      }
     }
   }
 
@@ -345,6 +385,10 @@ export class DefenderClient {
   }
 
   destroy(): void {
+    if (this.configSyncIntervalId) {
+      clearInterval(this.configSyncIntervalId);
+      this.configSyncIntervalId = undefined;
+    }
     this.torDetector.destroy();
     this.threatActorDetector.destroy();
     this.outboundMonitor.uninstall();
