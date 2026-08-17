@@ -7,7 +7,6 @@ import {
   Trash2,
   Image as ImageIcon,
   Loader2,
-  Lock,
   Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 
 interface Character {
@@ -46,6 +46,7 @@ interface Character {
 export default function Characters() {
   const { session } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeTab, setActiveTab] = useState<"characters" | "universes">(
     "characters",
@@ -98,10 +99,11 @@ export default function Characters() {
       let processedData = data || [];
       const charsWithUrls = await attachSignedImageUrls(processedData);
       setCharacters(charsWithUrls);
-    } catch (error: any) {
+    } catch (err: any) {
+      console.error("Error fetching characters", err);
       toast({
-        title: "Error",
-        description: error.message,
+        title: t("common.error", undefined, "Error"),
+        description: "Failed to load characters",
         variant: "destructive",
       });
     } finally {
@@ -111,17 +113,26 @@ export default function Characters() {
 
   const handleSave = async () => {
     if (!session?.user?.id) return;
+    if (!currentCharacter.name) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: "Name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const payload = {
+      const payload: any = {
         user_id: session.user.id,
         name: currentCharacter.name,
         short_description: currentCharacter.short_description,
         display_name: currentCharacter.display_name,
+        image_path: currentCharacter.image_path,
         appearance: currentCharacter.appearance,
         personality: currentCharacter.personality,
         backstory: currentCharacter.backstory,
         hidden_description: currentCharacter.hidden_description,
-        image_path: currentCharacter.image_path,
         is_universe: currentCharacter.is_universe || false,
       };
 
@@ -137,44 +148,53 @@ export default function Characters() {
       }
 
       toast({
-        title: "Success",
-        description: currentCharacter.is_universe
-          ? "Universe saved successfully"
-          : "Character saved successfully",
+        title: t("common.success", undefined, "Success"),
+        description: t("characters.characterSaved", undefined, "Character saved successfully"),
       });
+
       setIsEditing(false);
+      setCurrentCharacter({});
       fetchCharacters();
-    } catch (error: any) {
+    } catch (err: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t("common.error", undefined, "Error"),
+        description: err.message,
         variant: "destructive",
       });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!session?.user?.id) return;
-    if (!confirm("Are you sure you want to delete this character?")) return;
     try {
       const { error } = await supabase
         .from("characters")
         .delete()
-        .match({ id, user_id: session.user.id });
+        .eq("id", id);
       if (error) throw error;
 
-      setCharacters(characters.filter((c) => c.id !== id));
-      toast({ title: "Character deleted" });
-    } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t("common.success", undefined, "Success"),
+        description: t("characters.characterDeleted", undefined, "Character deleted successfully"),
+      });
+      fetchCharacters();
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err.message,
         variant: "destructive",
       });
     }
   };
 
   const handleStorageSelect = async (file: any) => {
+    if (file.name.includes("..")) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: "Invalid file name",
+        variant: "destructive",
+      });
+      return;
+    }
     const safeName = file.name.replace(/\.\.\//g, "");
     setCurrentCharacter((prev) => ({
       ...prev,
@@ -201,13 +221,13 @@ export default function Characters() {
                 onClick={() => setActiveTab("characters")}
                 className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "characters" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
               >
-                My Characters
+                {t("characters.charactersTab", undefined, "My Characters")}
               </button>
               <button
                 onClick={() => setActiveTab("universes")}
                 className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "universes" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
               >
-                My Universes
+                {t("characters.universesTab", undefined, "My Universes")}
               </button>
             </div>
             <p className="text-slate-400 mt-1"></p>
@@ -225,7 +245,7 @@ export default function Characters() {
                 onClick={() => setCurrentCharacter({ is_universe: activeTab === "universes" })}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                {activeTab === "characters" ? "New Character" : "New Universe"}
+                {activeTab === "characters" ? t("characters.createCharacter", undefined, "New Character") : t("characters.createUniverse", undefined, "New Universe")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
@@ -267,7 +287,7 @@ export default function Characters() {
                   </div>
                   <div className="flex-1 space-y-2">
                     <label htmlFor="char-name" className="text-sm font-medium">
-                      Name
+                      {t("characters.name", undefined, "Name")}
                     </label>
                     <Input
                       id="char-name"
@@ -292,7 +312,7 @@ export default function Characters() {
                           htmlFor="char-short-desc"
                           className="text-sm font-medium"
                         >
-                          Short Description
+                          {t("characters.shortDescription", undefined, "Short Description")}
                         </label>
                         <Input
                           id="char-short-desc"
@@ -312,7 +332,7 @@ export default function Characters() {
                           htmlFor="char-display-name"
                           className="text-sm font-medium"
                         >
-                          Display Name
+                          {t("characters.displayName", undefined, "Display Name")}
                         </label>
                         <Input
                           id="char-display-name"
@@ -334,7 +354,7 @@ export default function Characters() {
                         htmlFor="char-appearance"
                         className="text-sm font-medium"
                       >
-                        Appearance
+                        {t("characters.appearance", undefined, "Appearance")}
                       </label>
                       <Textarea
                         id="char-appearance"
@@ -355,7 +375,7 @@ export default function Characters() {
                         htmlFor="char-personality"
                         className="text-sm font-medium"
                       >
-                        Personality
+                        {t("characters.personality", undefined, "Personality")}
                       </label>
                       <Textarea
                         id="char-personality"
@@ -376,7 +396,7 @@ export default function Characters() {
                         htmlFor="char-backstory"
                         className="text-sm font-medium"
                       >
-                        Backstory
+                        {t("characters.backstory", undefined, "Backstory")}
                       </label>
                       <Textarea
                         id="char-backstory"
@@ -399,7 +419,7 @@ export default function Characters() {
                         htmlFor="char-display-name"
                         className="text-sm font-medium"
                       >
-                        Display Name
+                        {t("characters.displayName", undefined, "Display Name")}
                       </label>
                       <Input
                         id="char-display-name"
@@ -442,7 +462,7 @@ export default function Characters() {
                     htmlFor="char-hidden-desc"
                     className="text-sm font-medium"
                   >
-                    Private Notes
+                    {t("characters.hiddenDescription", undefined, "Private Notes")}
                   </label>
                   <Textarea
                     id="char-hidden-desc"
@@ -464,13 +484,13 @@ export default function Characters() {
                   onClick={() => setIsEditing(false)}
                   className="border-slate-700 text-slate-300 hover:bg-slate-800"
                 >
-                  Cancel
+                  {t("common.cancel", undefined, "Cancel")}
                 </Button>
                 <Button
                   onClick={handleSave}
                   className="bg-cyan-600 hover:bg-cyan-700"
                 >
-                  Save {currentCharacter.is_universe ? "Universe" : "Character"}
+                  {t("common.save", undefined, "Save")} {currentCharacter.is_universe ? "Universe" : "Character"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -528,7 +548,7 @@ export default function Characters() {
                       }}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
-                      Edit
+                      {t("common.edit", undefined, "Edit")}
                     </Button>
                     <Button
                       variant="destructive"
@@ -546,8 +566,8 @@ export default function Characters() {
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
                 <p className="text-slate-500">
                   {activeTab === "characters"
-                    ? 'No characters here yet! Click "New Character" to get started and add some to your collection.'
-                    : 'No universes here yet! Click "New Universe" to start building your own world.'}
+                    ? t("characters.noCharacters", undefined, 'No characters here yet! Click "New Character" to get started and add some to your collection.')
+                    : t("characters.noUniverses", undefined, 'No universes here yet! Click "New Universe" to start building your own world.')}
                 </p>
               </div>
             )}

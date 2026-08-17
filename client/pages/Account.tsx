@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Upload,
   Maximize,
@@ -21,7 +22,6 @@ import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
-import { DEFAULT_LANGUAGE } from "@/lib/languages";
 
 interface UserProfile {
   user_id: string;
@@ -42,6 +42,7 @@ interface ProfilePicture {
 export default function Account() {
   const { session } = useAuth();
   const { toast } = useToast();
+  const { t, language, setLanguage } = useTranslation();
   const [profilePicture, setProfilePicture] = useState<ProfilePicture | null>(
     null,
   );
@@ -58,13 +59,6 @@ export default function Account() {
   const [usernameInput, setUsernameInput] = useState("");
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [bioInput, setBioInput] = useState("");
-  const [language, setLanguage] = useState<string>(() => {
-    try {
-      return localStorage.getItem("preferred_language") || DEFAULT_LANGUAGE;
-    } catch {
-      return DEFAULT_LANGUAGE;
-    }
-  });
 
   const fetchAccountData = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -93,7 +87,7 @@ export default function Account() {
         setLanguage(prof.language);
       }
     }
-  }, [session?.user?.id]);
+  }, [session?.user?.id, setLanguage]);
 
   useEffect(() => {
     fetchAccountData();
@@ -102,8 +96,8 @@ export default function Account() {
   const handleStorageSelect = async (file: any) => {
     if (file.name.includes("..")) {
       toast({
-        title: "Error",
-        description: "Invalid file name",
+        title: t("common.error", undefined, "Error"),
+        description: t("account.invalidFileName", undefined, "Invalid file name"),
         variant: "destructive",
       });
       return;
@@ -154,9 +148,9 @@ export default function Account() {
       });
       setSelectedImage(null);
       setSelectedStoragePath(null);
-      toast({ title: "Success" });
+      toast({ title: t("common.success", undefined, "Success") });
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error", undefined, "Error"), description: e.message, variant: "destructive" });
     }
   };
 
@@ -169,29 +163,13 @@ export default function Account() {
       .single();
     if (!error && data) {
       setProfile(data);
-      toast({ title: "Success" });
+      toast({ title: t("common.success", undefined, "Success") });
     }
   };
 
   const handleLanguageChange = async (newLang: string) => {
-    setLanguage(newLang);
-    try {
-      localStorage.setItem("preferred_language", newLang);
-    } catch {}
-    if (!session?.user?.id) return;
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({ user_id: session.user.id, language: newLang });
-      if (error) throw error;
-      toast({ title: "Language updated" });
-    } catch (e: any) {
-      toast({
-        title: "Error",
-        description: e.message,
-        variant: "destructive",
-      });
-    }
+    await setLanguage(newLang);
+    toast({ title: t("account.languageUpdated", undefined, "Language updated") });
   };
 
   const handleSaveProfile = async () => {
@@ -204,12 +182,11 @@ export default function Account() {
         language: language,
       });
       if (error) throw error;
-      toast({ title: "Success" });
+      toast({ title: t("common.success", undefined, "Success") });
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error", undefined, "Error"), description: e.message, variant: "destructive" });
     }
   };
-
 
   return (
     <Layout>
@@ -238,8 +215,8 @@ export default function Account() {
               trigger={
                 <button
                   type="button"
-                  aria-label="Upload profile picture"
-                  title="Upload profile picture"
+                  aria-label={t("account.uploadProfilePicture", undefined, "Upload profile picture")}
+                  title={t("account.uploadProfilePicture", undefined, "Upload profile picture")}
                   className="absolute bottom-1 right-1 p-2 bg-cyan-600 rounded-full text-white shadow-lg hover:bg-cyan-500 transition-colors"
                 >
                   <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -250,7 +227,7 @@ export default function Account() {
 
           <div className="flex-1 space-y-2 sm:space-y-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">
-              {profile?.display_name || profile?.username || "Your Account"}
+              {profile?.display_name || profile?.username || t("account.title", undefined, "Your Account")}
             </h1>
             {profile?.username && profile?.display_name && (
               <p className="text-sm text-slate-400">@{profile.username}</p>
@@ -260,7 +237,7 @@ export default function Account() {
 
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="bg-slate-900 border-slate-800">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="profile">{t("account.profile", undefined, "Profile")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -272,13 +249,13 @@ export default function Account() {
                       htmlFor="username-input"
                       className="text-sm font-medium text-slate-300"
                     >
-                      Username
+                      {t("account.username", undefined, "Username")}
                     </Label>
                     <Input
                       id="username-input"
                       value={usernameInput}
                       onChange={(e) => setUsernameInput(e.target.value)}
-                      placeholder="Username"
+                      placeholder={t("account.username", undefined, "Username")}
                       className="bg-slate-950"
                     />
                   </div>
@@ -287,13 +264,13 @@ export default function Account() {
                       htmlFor="display-name-input"
                       className="text-sm font-medium text-slate-300"
                     >
-                      Display Name
+                      {t("account.displayName", undefined, "Display Name")}
                     </Label>
                     <Input
                       id="display-name-input"
                       value={displayNameInput}
                       onChange={(e) => setDisplayNameInput(e.target.value)}
-                      placeholder="Display Name"
+                      placeholder={t("account.displayName", undefined, "Display Name")}
                       className="bg-slate-950"
                     />
                   </div>
@@ -303,18 +280,18 @@ export default function Account() {
                     htmlFor="bio-input"
                     className="text-sm font-medium text-slate-300"
                   >
-                    Bio
+                    {t("account.bio", undefined, "Bio")}
                   </Label>
                   <textarea
                     id="bio-input"
                     value={bioInput}
                     onChange={(e) => setBioInput(e.target.value)}
-                    placeholder="Bio"
+                    placeholder={t("account.bioPlaceholder", undefined, "Bio")}
                     className="w-full min-h-[100px] bg-slate-950 border-slate-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
                   />
                 </div>
                 <Button onClick={handleSaveProfile} className="bg-cyan-600">
-                  Save Changes
+                  {t("account.saveChanges", undefined, "Save Changes")}
                 </Button>
               </CardContent>
             </Card>
@@ -322,10 +299,10 @@ export default function Account() {
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader>
                 <CardTitle className="text-white text-lg">
-                  Language
+                  {t("account.languageSectionTitle", undefined, "Language")}
                 </CardTitle>
                 <CardDescription>
-                  Choose your preferred language for your account and public profile
+                  {t("account.languageSectionDesc", undefined, "Choose your preferred language for your account and public profile")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -334,7 +311,7 @@ export default function Account() {
                     htmlFor="account-language-select"
                     className="text-sm font-medium text-slate-300"
                   >
-                    Display Language
+                    {t("account.displayLanguage", undefined, "Display Language")}
                   </Label>
                   <LanguageSelect
                     id="account-language-select"
@@ -348,20 +325,20 @@ export default function Account() {
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader>
                 <CardTitle className="text-white text-lg">
-                  Email Settings
+                  {t("account.emailSettingsTitle", undefined, "Email Settings")}
                 </CardTitle>
                 <CardDescription>
-                  Choose how others see your email
+                  {t("account.emailSettingsDesc", undefined, "Choose how others see your email")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
                   <div>
                     <p className="text-sm font-medium text-white">
-                      Public Email
+                      {t("account.publicEmail", undefined, "Public Email")}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Show your email on your public profile
+                      {t("account.publicEmailDesc", undefined, "Show your email on your public profile")}
                     </p>
                   </div>
                   <Button
@@ -369,21 +346,19 @@ export default function Account() {
                     onClick={() => handleToggleEmail(!profile?.show_email)}
                     aria-pressed={!!profile?.show_email}
                   >
-                    {profile?.show_email ? "Visible" : "Hidden"}
+                    {profile?.show_email ? t("common.yes", undefined, "Visible") : t("common.no", undefined, "Hidden")}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-
-
         </Tabs>
       </div>
       {selectedImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <Card className="w-full max-w-2xl bg-slate-900 border-slate-800">
             <CardHeader>
-              <CardTitle className="text-white">Crop Image</CardTitle>
+              <CardTitle className="text-white">{t("account.cropProfilePicture", undefined, "Crop Profile Picture")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="relative h-96 w-full bg-black">
@@ -412,7 +387,7 @@ export default function Account() {
                     className="gap-2"
                   >
                     <Maximize className="w-4 h-4" />
-                    {fitImage ? "Fill Area" : "Fit Entire Image"}
+                    {fitImage ? t("account.fillArea", undefined, "Fill Area") : t("account.fitImage", undefined, "Fit Entire Image")}
                   </Button>
                 </div>
                 <div className="flex items-center gap-4">
@@ -420,7 +395,7 @@ export default function Account() {
                     htmlFor="zoom-input"
                     className="text-xs text-slate-400"
                   >
-                    Zoom
+                    {t("account.zoom", undefined, "Zoom")}
                   </Label>
                   <input
                     id="zoom-input"
@@ -436,13 +411,13 @@ export default function Account() {
               </div>
               <div className="flex gap-3 justify-end">
                 <Button variant="ghost" onClick={() => setSelectedImage(null)}>
-                  Cancel
+                  {t("common.cancel", undefined, "Cancel")}
                 </Button>
                 <Button
                   onClick={handleUpload}
                   className="bg-cyan-600 text-white"
                 >
-                  Save
+                  {t("common.save", undefined, "Save")}
                 </Button>
               </div>
             </CardContent>

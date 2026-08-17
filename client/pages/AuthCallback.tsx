@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -15,6 +16,7 @@ import { Loader2 } from "lucide-react";
 export default function AuthCallback() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function AuthCallback() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
           <h2 className="text-xl font-semibold text-red-400 mb-2">
-            Authentication Error
+            {t("common.error", undefined, "Authentication Error")}
           </h2>
           <p className="text-slate-400 mb-4">{error}</p>
           <button
@@ -59,7 +61,7 @@ export default function AuthCallback() {
             onClick={() => navigate("/auth", { replace: true })}
             className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200"
           >
-            Back to Sign In
+            {t("nav.signIn", undefined, "Back to Sign In")}
           </button>
         </div>
       </div>
@@ -70,7 +72,7 @@ export default function AuthCallback() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="w-8 h-8 text-cyan-500 animate-spin mx-auto mb-4" />
-        <p className="text-slate-400">Completing sign in...</p>
+        <p className="text-slate-400">{t("auth.signingIn", undefined, "Completing sign in...")}</p>
       </div>
     </div>
   );

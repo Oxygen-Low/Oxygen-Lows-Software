@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { GitCommit, Loader2 } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 interface CommitStats {
   additions: number;
@@ -23,6 +24,7 @@ interface Commit {
 }
 
 export default function Changelogs() {
+  const { t } = useTranslation();
   const [commits, setCommits] = useState<Commit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export default function Changelogs() {
     return (
       <Layout>
         <div className="p-8 text-center bg-destructive/10 rounded-xl border border-destructive/20 text-destructive">
-          <h2 className="text-xl font-bold mb-2">Error Loading Changelogs</h2>
+          <h2 className="text-xl font-bold mb-2">{t("changelogs.errorLoading", undefined, "Error Loading Changelogs")}</h2>
           <p>{error}</p>
         </div>
       </Layout>
@@ -81,7 +83,7 @@ export default function Changelogs() {
         </div>
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
-            Changelogs
+            {t("changelogs.title", undefined, "Changelogs")}
           </h1>
         </div>
       </div>

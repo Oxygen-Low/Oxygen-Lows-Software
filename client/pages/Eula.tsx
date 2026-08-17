@@ -3,7 +3,7 @@ import { FileText } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Link } from "react-router-dom";
 
-const LAST_UPDATED = "16 August 2026";
+const LAST_UPDATED = "17 August 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
 const OPERATOR = "Oxygen Low's Software";
 const SITE_URL = "https://oxygenlow.com";
@@ -123,34 +123,35 @@ export default function Eula() {
           </P>
           <Ul
             items={[
-              "Access and use the web application through a supported browser.",
-              "Download and run the desktop client on a device you own or control, solely for your personal, non-commercial purposes.",
-              "Install and use the Web Defender security package on your own infrastructure to protect your applications.",
+              "Access and use the hosted web application through a supported browser.",
+              "Download, install, and run the desktop client executable on a device you own or control, solely for your personal, non-commercial purposes.",
               "Use any Software features made available to your account tier.",
             ]}
           />
           <P>
-            This licence does not include any rights not expressly granted
-            herein. All rights in and to the Software not granted to you remain
-            with the Licensor.
+            This licence governs the compiled application binaries, desktop installer,
+            and hosted platform. The underlying source code of the project and published
+            packages (including @oxygenlow/webdefender) are licensed under the Mozilla
+            Public License Version 2.0 (MPL-2.0). All proprietary rights in trademarks,
+            branding, and hosted infrastructure not expressly granted herein remain with the
+            Licensor.
           </P>
         </Section>
 
         {/* 3. Restrictions */}
         <Section id="restrictions" title="3. Licence Restrictions" index={3}>
           <P>
-            Except as expressly permitted by applicable law or this EULA, you
+            Except as expressly permitted by applicable open-source licences (such as the
+            MPL-2.0 governing the source code) or mandatory applicable law, you
             must not, and must not permit any third party to:
           </P>
           <Ul
             items={[
-              "Copy, reproduce, distribute, republish, or sell the Software or any part thereof.",
-              "Modify, adapt, translate, or create derivative works based on the Software.",
-              "Reverse-engineer, decompile, disassemble, or attempt to derive the source code of the Software, except to the limited extent permitted by mandatory applicable law.",
-              "Remove or alter any proprietary notices, labels, or marks on the Software.",
-              "Use the Software to provide services to third parties on a commercial basis (e.g., as a service bureau or outsourced service).",
-              "Transfer, assign, sublicense, rent, lease, or lend the Software or your licence rights to any third party.",
-              "Use the Software in any manner that violates applicable law or regulations.",
+              "Resell, rent, lease, sublicense, or commercially redistribute the compiled desktop installer or application binaries.",
+              "Attempt to circumvent or disable any security features, authentication mechanisms, or access-control measures of the Software.",
+              "Remove or alter any proprietary notices, copyright marks, or branding displayed within the Software.",
+              "Use the Software or its connected services to provide commercial service bureau operations without our prior written consent.",
+              "Use the Software in any manner that violates applicable law, regulations, or our Acceptable Use Policy.",
             ]}
           />
         </Section>
@@ -158,17 +159,16 @@ export default function Eula() {
         {/* 4. Ownership */}
         <Section id="ownership" title="4. Ownership & Intellectual Property" index={4}>
           <P>
-            The Software is licensed, not sold. The Licensor retains all
-            intellectual property rights in and to the Software, including all
-            copyrights, patents, trademarks, trade secrets, and other
-            proprietary rights. Your use of the Software does not grant you
-            ownership of any part of the Software.
+            The Software application, desktop binaries, branding, trademarks, and
+            hosted services are licensed, not sold. The Licensor retains all
+            intellectual property rights in and to these proprietary elements.
           </P>
           <P>
             Where portions of the Software are made available as open-source
-            software, such portions are subject to the applicable open-source
-            licence terms contained in the project repository. This EULA governs
-            the proprietary elements of the Software that are not open-source.
+            software in the project repository under the Mozilla Public License Version 2.0 (MPL-2.0),
+            your rights in the source code form are governed by the MPL-2.0. This EULA
+            governs the compiled desktop binaries, official installers, and connection to our
+            cloud infrastructure.
           </P>
         </Section>
 
@@ -259,6 +259,13 @@ export default function Eula() {
           title="10. Limitation of Liability"
           index={10}
         >
+          <P>
+            Nothing in this EULA shall limit or exclude the Licensor's liability for
+            death or personal injury caused by negligence, for fraud or fraudulent
+            misrepresentation, or for any other liability that cannot lawfully be
+            excluded or limited under applicable law, including non-excludable statutory
+            rights under the UK Consumer Rights Act 2015.
+          </P>
           <P>
             TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW,{" "}
             <strong>{OPERATOR.toUpperCase()}</strong> SHALL NOT BE LIABLE FOR

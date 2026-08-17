@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export default function SupportTicket() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -126,7 +128,7 @@ export default function SupportTicket() {
       setMessages(messagesWithProfiles);
     } catch (error: any) {
       toast({
-        title: "Error fetching ticket",
+        title: t("common.error", undefined, "Error fetching ticket"),
         description: error.message,
         variant: "destructive",
       });
@@ -167,7 +169,7 @@ export default function SupportTicket() {
       setNewMessage("");
     } catch (error: any) {
       toast({
-        title: "Error sending message",
+        title: t("common.error", undefined, "Error sending message"),
         description: error.message,
         variant: "destructive",
       });
@@ -194,7 +196,7 @@ export default function SupportTicket() {
       navigate("/support");
     } catch (error: any) {
       toast({
-        title: "Error deleting ticket",
+        title: t("common.error", undefined, "Error deleting ticket"),
         description: error.message,
         variant: "destructive",
       });
@@ -206,7 +208,7 @@ export default function SupportTicket() {
     return (
       <Layout>
         <div className="p-8 text-center text-muted-foreground">
-          Loading ticket...
+          {t("common.loading", undefined, "Loading ticket...")}
         </div>
       </Layout>
     );
@@ -216,7 +218,7 @@ export default function SupportTicket() {
     return (
       <Layout>
         <div className="p-8 text-center text-muted-foreground">
-          Ticket not found.
+          {t("supportTicket.ticketClosed", undefined, "Ticket not found.")}
         </div>
       </Layout>
     );
@@ -231,7 +233,7 @@ export default function SupportTicket() {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/support")}
-            aria-label="Back to support tickets"
+            aria-label={t("supportTicket.backToTickets", undefined, "Back to support tickets")}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -258,7 +260,7 @@ export default function SupportTicket() {
             onClick={handleDeleteTicket} 
             disabled={isDeleting}
           >
-            {isDeleting ? "Deleting..." : "Delete Ticket"}
+            {isDeleting ? t("common.loading", undefined, "Deleting...") : t("supportTicket.closeTicket", undefined, "Delete Ticket")}
           </Button>
         )}
       </div>
@@ -266,7 +268,7 @@ export default function SupportTicket() {
       <Card className="flex-1 flex flex-col overflow-hidden">
         <CardHeader className="py-4 border-b">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Description
+            {t("supportTicket.description", undefined, "Description")}
           </CardTitle>
           <p className="text-sm mt-2 whitespace-pre-wrap">
             {ticket.description || "No description provided."}
@@ -333,8 +335,8 @@ export default function SupportTicket() {
               <Input
                 placeholder={
                   ticket.status === "Closed"
-                    ? "Ticket is closed"
-                    : "Type your message..."
+                    ? t("supportTicket.ticketClosed", undefined, "Ticket is closed")
+                    : t("supportTicket.writeReply", undefined, "Type your message...")
                 }
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
@@ -347,7 +349,7 @@ export default function SupportTicket() {
                 disabled={
                   isSending || ticket.status === "Closed" || !newMessage.trim()
                 }
-                aria-label="Send message"
+                aria-label={t("supportTicket.sendReply", undefined, "Send message")}
               >
                 {isSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

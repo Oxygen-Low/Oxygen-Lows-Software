@@ -4,13 +4,13 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
   getLanguageOption,
 } from "@/lib/languages";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
 export interface LanguageSelectProps {
@@ -25,7 +25,7 @@ export interface LanguageSelectProps {
 }
 
 export function LanguageSelect({
-  value = DEFAULT_LANGUAGE,
+  value,
   onValueChange,
   disabled = false,
   className,
@@ -33,13 +33,18 @@ export function LanguageSelect({
   id = "language-select",
   ariaLabel = "Select language",
 }: LanguageSelectProps) {
-  const currentOption = getLanguageOption(value);
+  const context = useLanguage();
+  
+  const activeValue = value !== undefined ? value : context.language;
+  const handleChange = onValueChange !== undefined ? onValueChange : context.setLanguage;
+
+  const currentOption = getLanguageOption(activeValue || DEFAULT_LANGUAGE);
 
   return (
     <div className={cn("w-full", className)}>
       <Select
         value={currentOption.name}
-        onValueChange={onValueChange}
+        onValueChange={handleChange}
         disabled={disabled}
       >
         <SelectTrigger

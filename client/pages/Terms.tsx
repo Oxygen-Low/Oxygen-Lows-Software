@@ -3,7 +3,7 @@ import { ScrollText } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Link } from "react-router-dom";
 
-const LAST_UPDATED = "16 August 2026";
+const LAST_UPDATED = "17 August 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
 const OPERATOR = "Oxygen Low's Software";
 const SITE_URL = "https://oxygenlow.com";
@@ -111,10 +111,13 @@ export default function Terms() {
           <P>
             You must be at least 13 years old to use the Service. If you are
             between 13 and 18, you represent that you have obtained parental or
-            guardian consent. Users in the UK or EEA must be at least 16 years
-            old to consent to data processing, in accordance with UK GDPR
-            Article 8. By using the Service you confirm that you meet the
-            applicable age requirements.
+            guardian consent. In accordance with the UK Data Protection Act 2018
+            (and Article 8 of the UK GDPR), the age of digital consent for
+            information society services in the UK is 13 years old. Users
+            located in the EEA must meet the applicable digital consent age
+            required by their member state (up to 16 years old, unless a lower
+            age is established by national law). By using the Service you
+            confirm that you meet the applicable age requirements.
           </P>
           <P>
             The Service is intended for personal, non-commercial use. Use of
@@ -136,10 +139,11 @@ export default function Terms() {
             ]}
           />
           <P>
-            We reserve the right to suspend or terminate your account if we
-            believe that your account information is false, that you have
-            violated these Terms, or for any other reason at our sole
-            discretion.
+            We reserve the right to suspend or terminate your account upon reasonable
+            notice if we believe that your account information is false, that you have
+            violated these Terms, or where necessary to prevent harm or comply with legal
+            obligations. In cases of serious or repeated violations, suspension or
+            termination may take effect immediately.
           </P>
         </Section>
 
@@ -147,8 +151,11 @@ export default function Terms() {
         <Section id="permitted-use" title="4. Permitted Use" index={4}>
           <P>
             Subject to these Terms, we grant you a limited, non-exclusive,
-            non-transferable, revocable licence to access and use the Service
-            for your own personal, non-commercial purposes. You agree not to:
+            non-transferable, revocable licence to access and use the hosted
+            Service and its online infrastructure for your own personal,
+            non-commercial purposes. (Open-source source code of the project
+            remains governed by the Mozilla Public License v2.0 as stated in
+            Section 9). You agree not to:
           </P>
           <Ul
             items={[
@@ -156,7 +163,7 @@ export default function Terms() {
               "Upload, transmit, or distribute any content that is illegal, harmful, defamatory, obscene, or infringes any third-party rights.",
               "Attempt to gain unauthorised access to any part of the Service, its servers, or related systems.",
               "Use automated tools (bots, scrapers, crawlers) to access the Service without our prior written consent.",
-              "Reverse-engineer, decompile, or disassemble any part of the Service.",
+              "Attempt to circumvent or disable any security features, authentication mechanisms, or access-control measures of the Service.",
               "Exploit any Service feature (including the VPN/proxy or AI services) in a way that places unreasonable load on our infrastructure.",
               "Circumvent any security measures or usage limits imposed by the Service (e.g. storage quotas, bandwidth caps).",
               "Impersonate any person or entity, or misrepresent your affiliation with any person or entity.",
@@ -245,20 +252,22 @@ export default function Terms() {
         {/* 9. Intellectual property */}
         <Section
           id="intellectual-property"
-          title="9. Intellectual Property"
+          title="9. Intellectual Property & Open-Source Licensing"
           index={9}
         >
           <P>
-            All content, software, trademarks, logos, and other materials
-            forming part of the Service (excluding User Content) are the
-            exclusive property of <strong>{OPERATOR}</strong> or its licensors.
-            Nothing in these Terms grants you any right to use our intellectual
-            property without our prior written consent.
+            All hosted content, branding, trademarks, logos, domain names, and
+            proprietary hosted services forming part of the Service (excluding
+            User Content) are the exclusive property of <strong>{OPERATOR}</strong> or
+            its licensors.
           </P>
           <P>
-            The source code of the Service is made available under the licence
-            terms stated in the project repository. Any use of the source code
-            must comply with those licence terms.
+            The underlying source code of the project is made available as
+            open-source software under the <strong>Mozilla Public License Version 2.0 (MPL-2.0)</strong>.
+            Nothing in these Terms restricts any rights granted to you under the
+            MPL-2.0 regarding the source code form of Covered Software. These Terms
+            govern your access to and use of our hosted web application, server
+            infrastructure, online accounts, and cloud services.
           </P>
         </Section>
 
@@ -299,6 +308,13 @@ export default function Terms() {
           title="12. Limitation of Liability"
           index={12}
         >
+          <P>
+            Nothing in these Terms shall limit or exclude our liability for death or
+            personal injury caused by our negligence, for fraud or fraudulent
+            misrepresentation, or for any other liability that cannot lawfully be
+            excluded or limited under applicable law, including statutory consumer
+            rights under the UK Consumer Rights Act 2015.
+          </P>
           <P>
             TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW,{" "}
             <strong>{OPERATOR.toUpperCase()}</strong> SHALL NOT BE LIABLE FOR
@@ -342,12 +358,12 @@ export default function Terms() {
         {/* 15. Termination */}
         <Section id="termination" title="15. Termination" index={15}>
           <P>
-            We may suspend or terminate your access to the Service at any time,
-            with or without notice, for any reason, including if we reasonably
-            believe you have violated these Terms. You may terminate your account
-            at any time by submitting an "Account Deletion Request" support
-            ticket. Upon termination, your right to use the Service will
-            immediately cease.
+            We may suspend or terminate your access to the Service upon reasonable
+            notice if you breach these Terms, or immediately without prior notice
+            where necessary to prevent security risks, illegal activity, or severe
+            abuse. You may terminate your account at any time by submitting an
+            "Account Deletion Request" support ticket. Upon termination, your right
+            to use the Service will cease.
           </P>
         </Section>
 

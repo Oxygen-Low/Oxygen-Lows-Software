@@ -16,6 +16,14 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
 
 export const DEFAULT_LANGUAGE = "English";
 
+const dynamicLanguages: LanguageOption[] = [];
+
+export function registerLanguageOption(option: LanguageOption) {
+  if (!dynamicLanguages.some((l) => l.code === option.code || l.name === option.name)) {
+    dynamicLanguages.push(option);
+  }
+}
+
 /**
  * Find a supported language option by code or name.
  * Falls back to the default language (English) if not found.
@@ -23,7 +31,8 @@ export const DEFAULT_LANGUAGE = "English";
 export function getLanguageOption(value?: string | null): LanguageOption {
   if (!value) return SUPPORTED_LANGUAGES[0];
   const normalized = value.trim().toLowerCase();
-  const found = SUPPORTED_LANGUAGES.find(
+  const all = [...SUPPORTED_LANGUAGES, ...dynamicLanguages];
+  const found = all.find(
     (l) =>
       l.name.toLowerCase() === normalized ||
       l.code.toLowerCase() === normalized,

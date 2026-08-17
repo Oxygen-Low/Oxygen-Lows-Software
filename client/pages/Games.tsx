@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Card,
   CardDescription,
@@ -16,7 +17,7 @@ import {
   Monitor,
   Smartphone,
   Type,
-  Grid3x3
+  Grid3x3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MinesweeperApp } from "@/components/apps/Minesweeper";
@@ -30,10 +31,12 @@ type Category = "All";
 
 type Availability = "web-and-desktop" | "desktop-only";
 
-interface AppMetadata {
+interface GameMetadata {
   id: string;
-  name: string;
-  description: string;
+  nameKey: string;
+  defaultName: string;
+  descKey: string;
+  defaultDesc: string;
   categories: Category[];
   availability: Availability;
   icon: React.ReactNode;
@@ -43,11 +46,13 @@ interface AppMetadata {
   androidSupported?: boolean;
 }
 
-const apps: AppMetadata[] = [
+const GAMES: GameMetadata[] = [
   {
     id: "chess",
-    name: "Chess",
-    description: "Play a game of chess against an AI opponent.",
+    nameKey: "games.chessTitle",
+    defaultName: "Chess",
+    descKey: "games.chessDesc",
+    defaultDesc: "Play a game of chess against an AI opponent.",
     categories: ["All"],
     availability: "web-and-desktop",
     icon: <Crown className="w-8 h-8 text-cyan-500" />,
@@ -55,8 +60,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "minesweeper",
-    name: "Minesweeper",
-    description: "The classic game of Minesweeper. Clear the board without detonating any mines!",
+    nameKey: "games.minesweeperTitle",
+    defaultName: "Minesweeper",
+    descKey: "games.minesweeperDesc",
+    defaultDesc: "The classic game of Minesweeper. Clear the board without detonating any mines!",
     categories: ["All"],
     availability: "web-and-desktop",
     icon: <Bomb className="w-8 h-8 text-cyan-500" />,
@@ -64,8 +71,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "solitaire",
-    name: "Solitaire",
-    description: "Play the classic Klondike Solitaire card game.",
+    nameKey: "games.solitaireTitle",
+    defaultName: "Solitaire",
+    descKey: "games.solitaireDesc",
+    defaultDesc: "Play the classic Klondike Solitaire card game.",
     categories: ["All"],
     availability: "web-and-desktop",
     icon: <Spade className="w-8 h-8 text-green-500" />,
@@ -73,8 +82,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "poker",
-    name: "Texas Hold'em",
-    description: "Play Heads-Up Texas Hold'em against an AI opponent.",
+    nameKey: "games.pokerTitle",
+    defaultName: "Texas Hold'em",
+    descKey: "games.pokerDesc",
+    defaultDesc: "Play Heads-Up Texas Hold'em against an AI opponent.",
     categories: ["All"],
     availability: "web-and-desktop",
     icon: <Gamepad2 className="w-8 h-8 text-yellow-500" />,
@@ -82,8 +93,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "sudoku",
-    name: "Sudoku",
-    description: "Challenge your mind with the classic numbers puzzle.",
+    nameKey: "games.sudokuTitle",
+    defaultName: "Sudoku",
+    descKey: "games.sudokuDesc",
+    defaultDesc: "Challenge your mind with the classic numbers puzzle.",
     categories: ["All"],
     availability: "web-and-desktop",
     icon: <Grid3x3 className="w-8 h-8 text-indigo-400" />,
@@ -91,8 +104,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "wordsearch",
-    name: "Word Search",
-    description: "Find hidden words in a grid of letters.",
+    nameKey: "games.wordSearchTitle",
+    defaultName: "Word Search",
+    descKey: "games.wordSearchDesc",
+    defaultDesc: "Find hidden words in a grid of letters.",
     categories: ["All"],
     availability: "web-and-desktop",
     icon: <Type className="w-8 h-8 text-indigo-500" />,
@@ -102,6 +117,7 @@ const apps: AppMetadata[] = [
 
 export default function Games() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const hasDesktopParam = searchParams.get("desktop") === "1";
@@ -131,20 +147,29 @@ export default function Games() {
   
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
-  const activeApp = useMemo(() => apps.find(a => a.id === appId) || null, [appId]);
+
+  const localizedGames = useMemo(() => {
+    return GAMES.map((game) => ({
+      ...game,
+      name: t(game.nameKey as any, undefined, game.defaultName),
+      description: t(game.descKey as any, undefined, game.defaultDesc),
+    }));
+  }, [t]);
+
+  const activeApp = useMemo(() => localizedGames.find((a) => a.id === appId) || null, [appId, localizedGames]);
 
   const availableApps = useMemo(
     () =>
-      apps.filter((app) => {
+      localizedGames.filter((app) => {
         if (!isDesktopMode && !isAndroidMode) return app.availability === "web-and-desktop";
         if (isAndroidMode && app.availability === "desktop-only" && !app.androidSupported) return false;
         if (selectedAvailability === "web-and-desktop") return true;
         return app.availability === "desktop-only";
       }),
-    [isDesktopMode, isAndroidMode, selectedAvailability],
+    [isDesktopMode, isAndroidMode, selectedAvailability, localizedGames],
   );
 
-  const handleAppClick = (app: AppMetadata) => {
+  const handleAppClick = (app: typeof localizedGames[0]) => {
     navigate(`/games/${app.id}`);
   };
 
@@ -159,8 +184,8 @@ export default function Games() {
             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8 shrink-0">
               <button
                 onClick={() => navigate("/games")}
-                aria-label="Back to games list"
-                title="Back to games list"
+                aria-label={t("games.backToGames", undefined, "Back to games list")}
+                title={t("games.backToGames", undefined, "Back to games list")}
                 className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none shrink-0"
               >
                 <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -175,13 +200,15 @@ export default function Games() {
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-500/10 rounded-full flex items-center justify-center mb-4 sm:mb-6 text-cyan-500">
                   {activeApp.icon}
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">Sign in to play {activeApp.name}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">
+                  {t("apps.signInToUse", { name: activeApp.name }, `Sign in to play ${activeApp.name}`)}
+                </h3>
                 <p className="text-slate-400 mb-6 sm:mb-8 max-w-md text-xs sm:text-sm">{activeApp.description}</p>
                 <button 
                   onClick={() => navigate("/auth")} 
                   className="px-6 py-2.5 sm:px-8 sm:py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors text-sm"
                 >
-                  Sign In to Continue
+                  {t("apps.signInToContinue", undefined, "Sign In to Continue")}
                 </button>
               </div>
             )}
@@ -198,15 +225,19 @@ export default function Games() {
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Games</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
+            {t("games.title", undefined, "Games")}
+          </h2>
           <p className="text-sm sm:text-base text-slate-400">
-            Enjoy our collection of fun games!
+            {t("games.subtitle", undefined, "Play interactive and retro games built right into the browser!")}
           </p>
         </div>
         
         {isDesktopMode && (
-          <section aria-label="Game availability" className="space-y-3">
-            <h3 className="text-lg sm:text-xl font-semibold text-white">Availability</h3>
+          <section aria-label={t("apps.availability", undefined, "Availability")} className="space-y-3">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">
+              {t("apps.availability", undefined, "Availability")}
+            </h3>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 type="button"
@@ -220,7 +251,7 @@ export default function Games() {
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10",
                 )}
               >
-                {isAndroidMode ? "Web + Android" : "Web + desktop"}
+                {isAndroidMode ? t("apps.webAndAndroid", undefined, "Web + Android") : t("apps.webAndDesktop", undefined, "Web + desktop")}
               </button>
               <button
                 type="button"
@@ -237,12 +268,12 @@ export default function Games() {
                 {isAndroidMode ? (
                   <>
                     <Smartphone className="w-4 h-4" />
-                    Android only
+                    {t("apps.androidOnly", undefined, "Android only")}
                   </>
                 ) : (
                   <>
                     <Monitor className="w-4 h-4" />
-                    Desktop only
+                    {t("apps.desktopOnly", undefined, "Desktop only")}
                   </>
                 )}
               </button>
@@ -252,7 +283,7 @@ export default function Games() {
 
         <div className="space-y-4">
           <h3 className="text-lg sm:text-xl font-semibold text-white">
-            Available Games
+            {t("games.allGames", undefined, "All Games")}
           </h3>
 
           {availableApps.length > 0 ? (
@@ -281,8 +312,8 @@ export default function Games() {
             <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
               <p className="text-slate-500">
                 {isDesktopMode && selectedAvailability === "desktop-only"
-                  ? "No desktop-only games are available yet."
-                  : "No games found."}
+                  ? t("apps.noDesktopApps", undefined, "No desktop-only games are available yet.")
+                  : t("games.noGamesFound", undefined, "No games found.")}
               </p>
             </div>
           )}

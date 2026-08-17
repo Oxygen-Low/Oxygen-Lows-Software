@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +24,7 @@ type Ticket = {
 
 export default function AdminSupport() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -55,7 +57,7 @@ export default function AdminSupport() {
       setTickets(data.tickets || []);
     } catch (error: any) {
       toast({
-        title: "Error fetching tickets",
+        title: t("common.error", undefined, "Error fetching tickets"),
         description: error.message,
         variant: "destructive",
       });
@@ -71,7 +73,7 @@ export default function AdminSupport() {
         <button
           onClick={() => navigate("/admin")}
           className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-          title="Back to Admin Panel"
+          title={t("common.back", undefined, "Back to Admin Panel")}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -89,18 +91,18 @@ export default function AdminSupport() {
             <path d="M19 12H5" />
           </svg>
         </button>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Support</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("admin.allTickets", undefined, "Admin Support")}</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Support Tickets</CardTitle>
+          <CardTitle>{t("admin.allTickets", undefined, "All Support Tickets")}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading tickets...</p>
+            <p className="text-muted-foreground">{t("common.loading", undefined, "Loading tickets...")}</p>
           ) : tickets.length === 0 ? (
-            <p className="text-muted-foreground">No tickets found.</p>
+            <p className="text-muted-foreground">{t("support.noTickets", undefined, "No tickets found.")}</p>
           ) : (
             <div className="space-y-4">
               {tickets.map((ticket) => (

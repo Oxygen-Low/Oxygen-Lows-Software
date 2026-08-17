@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Card,
   CardContent,
@@ -20,6 +21,7 @@ export default function OauthConsent() {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const authorizationId = searchParams.get("authorization_id");
 
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,7 @@ export default function OauthConsent() {
       }
     } catch (err: any) {
       toast({
-        title: "Error",
+        title: t("common.error", undefined, "Error"),
         description: err.message,
         variant: "destructive",
       });
@@ -94,7 +96,7 @@ export default function OauthConsent() {
       }
     } catch (err: any) {
       toast({
-        title: "Error",
+        title: t("common.error", undefined, "Error"),
         description: err.message,
         variant: "destructive",
       });
@@ -126,7 +128,7 @@ export default function OauthConsent() {
         <Card className="w-full max-w-md bg-slate-900 border-red-900/50">
           <CardHeader>
             <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <CardTitle className="text-center text-white">Error</CardTitle>
+            <CardTitle className="text-center text-white">{t("common.error", undefined, "Error")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-slate-400">{error}</p>
@@ -136,7 +138,7 @@ export default function OauthConsent() {
               onClick={() => navigate("/")}
               className="w-full bg-slate-800 hover:bg-slate-700"
             >
-              Back
+              {t("common.back", undefined, "Back")}
             </Button>
           </CardFooter>
         </Card>
@@ -154,15 +156,17 @@ export default function OauthConsent() {
           <div className="mx-auto w-16 h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center mb-4">
             <ShieldCheck className="w-10 h-10 text-cyan-500" />
           </div>
-          <CardTitle className="text-2xl text-white">{`Authorize ${client.name}`}</CardTitle>
+          <CardTitle className="text-2xl text-white">
+            {t("oauthConsent.authorizeApp", { app: client.name }, `Authorize ${client.name}`)}
+          </CardTitle>
           <CardDescription className="text-slate-400 mt-2">
-            {`This application wants to connect to your Oxygen Low's Software account.`}
+            {t("oauthConsent.wantsAccess", { app: client.name }, `This application wants to connect to your Oxygen Low's Software account.`)}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
             <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-              Requested Permissions:
+              {t("oauthConsent.requestedPermissions", undefined, "Requested Permissions:")}
             </h4>
             <ul className="space-y-2">
               {scopes && scopes.length > 0 ? (
@@ -197,7 +201,7 @@ export default function OauthConsent() {
           <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
             <p className="text-xs text-slate-400">
-              Only authorize applications you trust.
+              {t("oauthConsent.warning", undefined, "Only authorize applications you trust.")}
             </p>
           </div>
         </CardContent>
@@ -207,7 +211,7 @@ export default function OauthConsent() {
             disabled={processing}
             className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-11 font-bold"
           >
-            {processing ? "Processing..." : "Approve"}
+            {processing ? t("common.loading", undefined, "Processing...") : t("oauthConsent.approve", undefined, "Approve")}
           </Button>
           <Button
             variant="ghost"
@@ -215,7 +219,7 @@ export default function OauthConsent() {
             disabled={processing}
             className="w-full text-slate-500 hover:text-red-400 hover:bg-red-400/10"
           >
-            Deny Access
+            {t("oauthConsent.deny", undefined, "Deny Access")}
           </Button>
         </CardFooter>
       </Card>

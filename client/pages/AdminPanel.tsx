@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { LifeBuoy, Settings, Users, Database } from "lucide-react";
+import { LifeBuoy } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Card,
   CardHeader,
@@ -11,11 +12,12 @@ import {
 
 export default function AdminPanel() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const apps = [
     {
-      title: "Support",
-      description: "Manage and respond to user support tickets.",
+      title: t("admin.supportTitle", undefined, "Support"),
+      description: t("admin.supportDesc", undefined, "Manage and respond to user support tickets."),
       icon: LifeBuoy,
       href: "/admin/support",
       color: "text-blue-500",
@@ -27,10 +29,10 @@ export default function AdminPanel() {
       <div className="min-h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-slate-200 p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-          Admin Control Panel
+          {t("admin.title", undefined, "Admin Control Panel")}
         </h1>
         <p className="text-slate-500 mt-2">
-          Select an application to manage system resources.
+          {t("admin.subtitle", undefined, "Select an application to manage system resources.")}
         </p>
       </div>
 
@@ -39,7 +41,7 @@ export default function AdminPanel() {
           const Icon = app.icon;
           return (
             <Card
-              key={app.title}
+              key={app.href}
               className="cursor-pointer hover:shadow-md transition-shadow border-slate-200 bg-white"
               onClick={() => navigate(app.href)}
             >

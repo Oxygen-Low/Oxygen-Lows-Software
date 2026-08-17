@@ -2,21 +2,17 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useMusicContext } from "@/contexts/MusicContext";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Button } from "@/components/ui/button";
 import {
-  Zap,
   Music,
   Trash2,
   Play,
-  Image as ImageIcon,
   Type,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
 
 interface PlaylistTrack {
   id: string;
@@ -85,6 +81,7 @@ const FONTS = [
 export default function Customize() {
   const { theme, setTheme, font, setFont, useGradient, setUseGradient } =
     useTheme();
+  const { t } = useTranslation();
 
   const {
     playlist,
@@ -98,7 +95,6 @@ export default function Customize() {
     toggleLoop,
   } = useMusicContext();
 
-  const { session } = useAuth();
   const { toast } = useToast();
 
   const [customPrimaryColor, setCustomPrimaryColor] = useState(() => {
@@ -143,7 +139,7 @@ export default function Customize() {
     if (!alreadyInPlaylist) {
       addTrack(finalTrack);
       toast({
-        title: "Success",
+        title: t("common.success", undefined, "Success"),
         description: `Added "${finalTrack.name}" to playlist`,
       });
     } else {
@@ -157,7 +153,7 @@ export default function Customize() {
   const handleRemoveTrack = (trackFileName: string) => {
     removeTrack(trackFileName);
     toast({
-      title: "Success",
+      title: t("common.success", undefined, "Success"),
       description: "Track removed from playlist",
     });
   };
@@ -165,21 +161,23 @@ export default function Customize() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Customize</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-foreground">
+          {t("customize.title", undefined, "Customize")}
+        </h1>
 
         {/* Theme Section */}
         <div className="mb-8 sm:mb-12">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-foreground">
-            Appearance
+            {t("customize.themesTitle", undefined, "Appearance")}
           </h2>
 
           <div className="mb-6 p-3.5 sm:p-4 bg-card rounded-lg border border-border flex items-center justify-between gap-3">
             <div>
               <label className="text-foreground font-medium block text-sm sm:text-base">
-                Use gradient
+                {t("customize.gradientTitle", undefined, "Use gradient")}
               </label>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Apply a dynamic gradient across backgrounds and headers
+                {t("customize.gradientDesc", undefined, "Apply a dynamic gradient across backgrounds and headers")}
               </p>
             </div>
             <button
@@ -191,12 +189,12 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {useGradient ? "On" : "Off"}
+              {useGradient ? t("common.yes", undefined, "On") : t("common.no", undefined, "Off")}
             </button>
           </div>
 
           <h3 className="text-base sm:text-lg font-medium mb-3 text-foreground">
-            Preset Themes
+            {t("customize.themesTitle", undefined, "Preset Themes")}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {THEMES.map((themeOption) => (
@@ -268,7 +266,9 @@ export default function Customize() {
 
         {/* Font Section */}
         <div className="mb-8 sm:mb-12">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-foreground">Font</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-foreground">
+            {t("customize.fontsTitle", undefined, "Font")}
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {FONTS.map((fontOption) => (
               <button
@@ -295,7 +295,7 @@ export default function Customize() {
             onSelect={(file) => {
               setFont(`font-custom:${file.name}`);
               toast({
-                title: "Success",
+                title: t("common.success", undefined, "Success"),
                 description: `Custom font loaded: ${file.name}`,
               });
             }}
@@ -316,7 +316,7 @@ export default function Customize() {
         {/* Music Playlist Section */}
         <div>
           <h2 className="text-xl font-semibold mb-4 text-foreground">
-            Music Playlist
+            {t("customize.musicSectionTitle", undefined, "Music Playlist")}
           </h2>
 
           {/* Music Player */}
@@ -326,7 +326,9 @@ export default function Customize() {
 
           {/* Shuffle Toggle */}
           <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
-            <label className="text-foreground font-medium">Shuffle</label>
+            <label className="text-foreground font-medium">
+              {t("customize.shuffle", undefined, "Shuffle")}
+            </label>
             <button
               onClick={() => toggleShuffle(!shuffle)}
               aria-pressed={shuffle}
@@ -336,14 +338,16 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {shuffle ? "On" : "Off"}
+              {shuffle ? t("common.yes", undefined, "On") : t("common.no", undefined, "Off")}
             </button>
           </div>
 
           {/* Loop Toggle */}
           <div className="mb-6 p-4 bg-card rounded-lg border border-border flex items-center justify-between">
             <div>
-              <label className="text-foreground font-medium block">Loop</label>
+              <label className="text-foreground font-medium block">
+                {t("customize.loop", undefined, "Loop")}
+              </label>
               <p className="text-sm text-muted-foreground">
                 Keep looping the current song
               </p>
@@ -357,7 +361,7 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {loop ? "On" : "Off"}
+              {loop ? t("common.yes", undefined, "On") : t("common.no", undefined, "Off")}
             </button>
           </div>
 
@@ -368,8 +372,7 @@ export default function Customize() {
             </h3>
             {playlist.length === 0 ? (
               <p className="text-muted-foreground">
-                Your playlist is empty right now. Add some of your favorite
-                tracks below to get started!
+                {t("customize.noTracks", undefined, "Your playlist is empty right now. Add some of your favorite tracks below to get started!")}
               </p>
             ) : (
               <div className="space-y-2">

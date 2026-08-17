@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ type Ticket = {
 
 export default function Support() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -67,7 +69,7 @@ export default function Support() {
       setTickets(data || []);
     } catch (error: any) {
       toast({
-        title: "Error fetching tickets",
+        title: t("common.error", undefined, "Error fetching tickets"),
         description: error.message,
         variant: "destructive",
       });
@@ -93,7 +95,7 @@ export default function Support() {
       if (error) throw error;
 
       toast({
-        title: "Ticket created successfully",
+        title: t("support.ticketCreated", undefined, "Ticket created successfully"),
       });
       setIsDialogOpen(false);
       setTitle("");
@@ -103,7 +105,7 @@ export default function Support() {
       fetchTickets();
     } catch (error: any) {
       toast({
-        title: "Error creating ticket",
+        title: t("common.error", undefined, "Error creating ticket"),
         description: error.message,
         variant: "destructive",
       });
@@ -116,18 +118,18 @@ export default function Support() {
     <Layout>
       <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Support Tickets</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("support.title", undefined, "Support Tickets")}</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Create Ticket</Button>
+            <Button>{t("support.createTicket", undefined, "Create Ticket")}</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Create a Support Ticket</DialogTitle>
+              <DialogTitle>{t("support.createTicket", undefined, "Create a Support Ticket")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateTicket} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Title *</label>
+                <label className="text-sm font-medium">{t("support.subject", undefined, "Title")} *</label>
                 <Input
                   required
                   placeholder="e.g., File Compressor error"
@@ -136,7 +138,7 @@ export default function Support() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
+                <label className="text-sm font-medium">{t("support.description", undefined, "Description")}</label>
                 <Textarea
                   placeholder="Details of your issue..."
                   value={description}
@@ -144,28 +146,28 @@ export default function Support() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Priority *</label>
+                <label className="text-sm font-medium">{t("support.priority", undefined, "Priority")} *</label>
                 <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Highest">Highest (Security)</SelectItem>
-                    <SelectItem value="High">High (Broken Feature)</SelectItem>
-                    <SelectItem value="Medium">Medium (General)</SelectItem>
-                    <SelectItem value="Low">Low (Visual Bug)</SelectItem>
+                    <SelectItem value="High">{t("support.priorityHigh", undefined, "High")}</SelectItem>
+                    <SelectItem value="Medium">{t("support.priorityMedium", undefined, "Medium")}</SelectItem>
+                    <SelectItem value="Low">{t("support.priorityLow", undefined, "Low")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Type *</label>
+                <label className="text-sm font-medium">{t("support.type", undefined, "Type")} *</label>
                 <Select value={type} onValueChange={setType}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Suggestion">Suggestion</SelectItem>
-                    <SelectItem value="Bug Report">Bug Report</SelectItem>
+                    <SelectItem value="Suggestion">{t("support.typeSuggestion", undefined, "Suggestion")}</SelectItem>
+                    <SelectItem value="Bug Report">{t("support.typeBug", undefined, "Bug Report")}</SelectItem>
                     <SelectItem value="Security Vulnerability Report">
                       Security Vulnerability
                     </SelectItem>
@@ -174,12 +176,12 @@ export default function Support() {
                     <SelectItem value="Account Deletion Request">
                       Account Deletion Request
                     </SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectItem value="Other">{t("support.typeOther", undefined, "Other")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Ticket"}
+                {isSubmitting ? t("common.submitting", undefined, "Submitting...") : t("support.createTicket", undefined, "Submit Ticket")}
               </Button>
             </form>
           </DialogContent>
@@ -188,13 +190,13 @@ export default function Support() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Tickets</CardTitle>
+          <CardTitle>{t("support.myTickets", undefined, "Your Tickets")}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading tickets...</p>
+            <p className="text-muted-foreground">{t("common.loading", undefined, "Loading tickets...")}</p>
           ) : tickets.length === 0 ? (
-            <p className="text-muted-foreground">No tickets found.</p>
+            <p className="text-muted-foreground">{t("support.noTickets", undefined, "No tickets found.")}</p>
           ) : (
             <div className="space-y-4">
               {tickets.map((ticket) => (

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Scale, Shield, ScrollText, FileText, Copyright, ShieldAlert, ChevronRight } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 const OPERATOR = "Oxygen Low's Software";
 
@@ -37,46 +38,72 @@ function LegalCard({ href, icon: Icon, title, description, index }: LegalCardPro
   );
 }
 
-const legalDocuments: Omit<LegalCardProps, "index">[] = [
-  {
-    href: "/terms",
-    icon: ScrollText,
-    title: "Terms of Use",
-    description: "The rules and conditions that govern your use of the Service, including eligibility, accounts, and permitted use.",
-  },
-  {
-    href: "/privacy",
-    icon: Shield,
-    title: "Privacy Policy",
-    description: "How we collect, use, share, and protect your personal data, and the rights you have under UK GDPR and CCPA.",
-  },
-  {
-    href: "/eula",
-    icon: FileText,
-    title: "End User Licence Agreement",
-    description: "The licence granted to you to use the Software, and the restrictions and obligations that apply.",
-  },
-  {
-    href: "/dmca",
-    icon: Copyright,
-    title: "DMCA & Copyright Policy",
-    description: "How to report copyright infringement, submit a counter-notice, and our repeat-infringer policy.",
-  },
-  {
-    href: "/acceptable-use",
-    icon: ShieldAlert,
-    title: "Acceptable Use Policy",
-    description: "The conduct standards for using the Service, including prohibited activities and enforcement actions.",
-  },
-  {
-    href: "/license",
-    icon: FileText,
-    title: "License",
-    description: "The Mozilla Public License Version 2.0 applied to this project.",
-  },
-];
-
 export default function Legal() {
+  const { t } = useTranslation();
+
+  const legalDocuments = [
+    {
+      href: "/terms",
+      icon: ScrollText,
+      title: t("legal.termsTitle", undefined, "Terms of Use"),
+      description: t(
+        "legal.termsDesc",
+        undefined,
+        "The rules and conditions that govern your use of the Service, including eligibility, accounts, and permitted use.",
+      ),
+    },
+    {
+      href: "/privacy",
+      icon: Shield,
+      title: t("legal.privacyTitle", undefined, "Privacy Policy"),
+      description: t(
+        "legal.privacyDesc",
+        undefined,
+        "How we collect, use, share, and protect your personal data, and the rights you have under UK GDPR and CCPA.",
+      ),
+    },
+    {
+      href: "/eula",
+      icon: FileText,
+      title: t("legal.eulaTitle", undefined, "End User Licence Agreement"),
+      description: t(
+        "legal.eulaDesc",
+        undefined,
+        "The licence granted to you to use the Software, and the restrictions and obligations that apply.",
+      ),
+    },
+    {
+      href: "/dmca",
+      icon: Copyright,
+      title: t("legal.dmcaTitle", undefined, "DMCA & Copyright Policy"),
+      description: t(
+        "legal.dmcaDesc",
+        undefined,
+        "How to report copyright infringement, submit a counter-notice, and our repeat-infringer policy.",
+      ),
+    },
+    {
+      href: "/acceptable-use",
+      icon: ShieldAlert,
+      title: t("legal.aupTitle", undefined, "Acceptable Use Policy"),
+      description: t(
+        "legal.aupDesc",
+        undefined,
+        "The conduct standards for using the Service, including prohibited activities and enforcement actions.",
+      ),
+    },
+    {
+      href: "/license",
+      icon: FileText,
+      title: t("legal.licenseTitle", undefined, "License"),
+      description: t(
+        "legal.licenseDesc",
+        undefined,
+        "The Mozilla Public License Version 2.0 applied to this project.",
+      ),
+    },
+  ];
+
   return (
     <Layout>
       <div className="max-w-3xl mx-auto w-full px-2 py-6 space-y-10 pb-20">
@@ -91,11 +118,13 @@ export default function Legal() {
             <Scale className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Legal</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight">{t("legal.title", undefined, "Legal")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Legal documents for{" "}
-              <span className="font-medium text-foreground">{OPERATOR}</span>
-              &nbsp;·&nbsp; United Kingdom
+              {t(
+                "legal.subtitle",
+                { operator: OPERATOR },
+                `Legal documents for ${OPERATOR} · United Kingdom`,
+              )}
             </p>
           </div>
         </motion.div>
@@ -107,9 +136,11 @@ export default function Legal() {
           transition={{ delay: 0.15, duration: 0.35 }}
           className="text-sm text-muted-foreground leading-relaxed -mt-4"
         >
-          The documents below govern your use of our Service. Please read each
-          one carefully. By using the Service you agree to be bound by all
-          applicable policies listed here.
+          {t(
+            "legal.intro",
+            undefined,
+            "The documents below govern your use of our Service. Please read each one carefully. By using the Service you agree to be bound by all applicable policies listed here.",
+          )}
         </motion.p>
 
         {/* Document cards */}
@@ -126,7 +157,7 @@ export default function Legal() {
           transition={{ delay: 0.55, duration: 0.35 }}
           className="text-xs text-muted-foreground/60 text-center pt-2"
         >
-          Questions? Contact us at{" "}
+          {t("legal.questionsContact", undefined, "Questions? Contact us at")}{" "}
           <a
             href="mailto:support@oxygenlow.com"
             className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"

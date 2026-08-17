@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Copyright } from "lucide-react";
 import { Layout } from "@/components/Layout";
 
-const LAST_UPDATED = "16 August 2026";
+const LAST_UPDATED = "17 August 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
 const DMCA_EMAIL = "dmca@oxygenlow.com";
 const OPERATOR = "Oxygen Low's Software";
@@ -213,7 +213,7 @@ export default function Dmca() {
               "Your name, postal address, telephone number, and email address.",
               "Identification of the material that was removed and the location where it appeared before removal.",
               "A statement under penalty of perjury that you have a good faith belief that the material was removed as a result of mistake or misidentification.",
-              "A statement that you consent to the jurisdiction of the courts of England and Wales (or, if you are outside the UK, the federal district court for the district where you reside) and that you will accept service of process from the person who filed the original DMCA notice.",
+              "A statement that you consent to the jurisdiction of the Federal District Court for the judicial district in which your address is located (or, if your address is outside the United States, that you consent to the jurisdiction of any judicial district in which the service provider may be found or the courts of England and Wales), and that you will accept service of process from the person who provided the initial infringement notification or an agent of such person.",
               "Your physical or electronic signature.",
             ]}
           />

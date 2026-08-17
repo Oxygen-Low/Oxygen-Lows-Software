@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ export default function AdminTicket() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -94,11 +96,6 @@ export default function AdminTicket() {
 
   const fetchTicketData = async () => {
     try {
-      // Fetch ticket info - we can fetch this via admin API or standard supabase if it doesn't matter,
-      // but since RLS blocks it, we MUST fetch it via standard supabase with service key? No, RLS blocks admin unless they use API.
-      // Wait, let's fetch tickets list API to get this ticket, or just make an endpoint for single ticket.
-      // Actually, I didn't create a GET /tickets/:id endpoint. Let me fetch all and find it, or use the standard supabase?
-      // RLS blocks it. I should fetch the ticket from the list.
       const ticketsRes = await fetch(`/api/admin/support/tickets/${id}`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
@@ -121,7 +118,7 @@ export default function AdminTicket() {
       setMessages(messagesData.messages || []);
     } catch (error: any) {
       toast({
-        title: "Error fetching ticket",
+        title: t("common.error", undefined, "Error fetching ticket"),
         description: error.message,
         variant: "destructive",
       });
@@ -168,7 +165,7 @@ export default function AdminTicket() {
       setNewMessage("");
     } catch (error: any) {
       toast({
-        title: "Error sending message",
+        title: t("common.error", undefined, "Error sending message"),
         description: error.message,
         variant: "destructive",
       });
@@ -196,7 +193,7 @@ export default function AdminTicket() {
       toast({ title: `Ticket marked as ${newStatus}` });
     } catch (error: any) {
       toast({
-        title: "Error updating status",
+        title: t("common.error", undefined, "Error updating status"),
         description: error.message,
         variant: "destructive",
       });
@@ -207,7 +204,7 @@ export default function AdminTicket() {
     return (
       <Layout>
         <div className="p-8 text-center text-muted-foreground">
-          Loading ticket...
+          {t("common.loading", undefined, "Loading ticket...")}
         </div>
       </Layout>
     );
@@ -217,7 +214,7 @@ export default function AdminTicket() {
     return (
       <Layout>
         <div className="p-8 text-center text-muted-foreground">
-          Ticket not found.
+          {t("supportTicket.ticketClosed", undefined, "Ticket not found.")}
         </div>
       </Layout>
     );
@@ -231,6 +228,7 @@ export default function AdminTicket() {
           variant="ghost"
           size="icon"
           onClick={() => navigate("/admin/support")}
+          aria-label={t("supportTicket.backToTickets", undefined, "Back to support tickets")}
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -261,7 +259,7 @@ export default function AdminTicket() {
       <Card className="flex-1 flex flex-col overflow-hidden">
         <CardHeader className="py-4 border-b">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Description
+            {t("supportTicket.description", undefined, "Description")}
           </CardTitle>
           <p className="text-sm mt-2 whitespace-pre-wrap">
             {ticket.description || "No description provided."}
@@ -328,8 +326,8 @@ export default function AdminTicket() {
               <Input
                 placeholder={
                   ticket.status === "Closed"
-                    ? "Ticket is closed"
-                    : "Type your reply..."
+                    ? t("supportTicket.ticketClosed", undefined, "Ticket is closed")
+                    : t("supportTicket.writeReply", undefined, "Type your reply...")
                 }
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
@@ -342,6 +340,7 @@ export default function AdminTicket() {
                 disabled={
                   isSending || ticket.status === "Closed" || !newMessage.trim()
                 }
+                aria-label={t("supportTicket.sendReply", undefined, "Send reply")}
               >
                 <Send className="w-4 h-4" />
               </Button>

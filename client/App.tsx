@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MusicProvider } from "@/contexts/MusicContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Suspense, lazy, ComponentType } from "react";
 
 const lazyWithRetry = (componentImport: () => Promise<{ default: ComponentType<any> }>) =>
@@ -60,147 +61,149 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <ThemeProvider>
-        <BrowserRouter>
-          <MusicProvider>
-            <Toaster />
-            <Sonner />
-            <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
-              <Routes>
-                <Route
-                  path="/"
-                  element={<Apps />}
-                />
-                <Route
-                  path="/apps"
-                  element={<Apps />}
-                />
-                <Route
-                  path="/apps/:appId"
-                  element={<Apps />}
-                />
-                <Route
-                  path="/games"
-                  element={<Games />}
-                />
-                <Route
-                  path="/games/:appId"
-                  element={<Games />}
-                />
-                <Route
-                  path="/storage"
-                  element={
-                    <ProtectedRoute>
-                      <Storage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/friends"
-                  element={
-                    <ProtectedRoute>
-                      <Friends />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/account"
-                  element={
-                    <ProtectedRoute>
-                      <Account />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/customize"
-                  element={
-                    <ProtectedRoute>
-                      <Customize />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/characters"
-                  element={
-                    <ProtectedRoute>
-                      <Characters />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/changelogs"
-                  element={
-                    <ProtectedRoute>
-                      <Changelogs />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/users/:username"
-                  element={
-                    <ProtectedRoute>
-                      <UserProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/oauth/consent" element={<OauthConsent />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/eula" element={<Eula />} />
-                <Route path="/dmca" element={<Dmca />} />
-                <Route path="/acceptable-use" element={<AcceptableUse />} />
-                <Route path="/legal" element={<Legal />} />
-                <Route path="/license" element={<License />} />
-                <Route
-                  path="/support"
-                  element={
-                    <ProtectedRoute>
-                      <Support />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/support/:id"
-                  element={
-                    <ProtectedRoute>
-                      <SupportTicket />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute>
-                      <AdminPanel />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/support"
-                  element={
-                    <ProtectedRoute>
-                      <AdminSupport />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/support/:id"
-                  element={
-                    <ProtectedRoute>
-                      <AdminTicket />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/download" element={<Download />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </MusicProvider>
-        </BrowserRouter>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <BrowserRouter>
+            <MusicProvider>
+              <Toaster />
+              <Sonner />
+              <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
+                <Routes>
+                  <Route
+                    path="/"
+                    element={<Apps />}
+                  />
+                  <Route
+                    path="/apps"
+                    element={<Apps />}
+                  />
+                  <Route
+                    path="/apps/:appId"
+                    element={<Apps />}
+                  />
+                  <Route
+                    path="/games"
+                    element={<Games />}
+                  />
+                  <Route
+                    path="/games/:appId"
+                    element={<Games />}
+                  />
+                  <Route
+                    path="/storage"
+                    element={
+                      <ProtectedRoute>
+                        <Storage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/friends"
+                    element={
+                      <ProtectedRoute>
+                        <Friends />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/account"
+                    element={
+                      <ProtectedRoute>
+                        <Account />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/customize"
+                    element={
+                      <ProtectedRoute>
+                        <Customize />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/characters"
+                    element={
+                      <ProtectedRoute>
+                        <Characters />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/changelogs"
+                    element={
+                      <ProtectedRoute>
+                        <Changelogs />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/users/:username"
+                    element={
+                      <ProtectedRoute>
+                        <UserProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/oauth/consent" element={<OauthConsent />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/eula" element={<Eula />} />
+                  <Route path="/dmca" element={<Dmca />} />
+                  <Route path="/acceptable-use" element={<AcceptableUse />} />
+                  <Route path="/legal" element={<Legal />} />
+                  <Route path="/license" element={<License />} />
+                  <Route
+                    path="/support"
+                    element={
+                      <ProtectedRoute>
+                        <Support />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/support/:id"
+                    element={
+                      <ProtectedRoute>
+                        <SupportTicket />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute>
+                        <AdminPanel />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/support"
+                    element={
+                      <ProtectedRoute>
+                        <AdminSupport />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/support/:id"
+                    element={
+                      <ProtectedRoute>
+                        <AdminTicket />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/download" element={<Download />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </MusicProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+      </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

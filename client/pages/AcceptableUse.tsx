@@ -3,7 +3,7 @@ import { ShieldAlert } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Link } from "react-router-dom";
 
-const LAST_UPDATED = "16 August 2026";
+const LAST_UPDATED = "17 August 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
 const OPERATOR = "Oxygen Low's Software";
 const SITE_URL = "https://oxygenlow.com";
@@ -174,7 +174,7 @@ export default function AcceptableUse() {
                   "Introducing viruses, malware, ransomware, spyware, worms, Trojan horses, or any other harmful or disruptive code.",
                   "Conducting denial-of-service (DoS) or distributed denial-of-service (DDoS) attacks against the Service or any third party.",
                   "Using automated tools (bots, crawlers, scrapers) to access the Service at a volume or frequency that places unreasonable load on our infrastructure, without our prior written consent.",
-                  "Using the Web Defender security package to intentionally block legitimate services or users for malicious purposes, or relying on Web Defender as your sole security measure against critical threats without implementing appropriate defense-in-depth strategies.",
+                  "Using our security features, proxy endpoints, or APIs to intentionally disrupt legitimate third-party services, conduct unauthorized vulnerability testing, or stage distributed denial-of-service attacks.",
                 ]}
               />
             </div>

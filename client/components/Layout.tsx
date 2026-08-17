@@ -1,6 +1,7 @@
-import { ReactNode, useState, useCallback, useRef, useEffect } from "react";
+import { ReactNode, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   LogOut,
   Package,
@@ -11,7 +12,6 @@ import {
   Contact,
   LifeBuoy,
   GitCommit,
-  Monitor,
   Gamepad2,
   Scale,
   Menu,
@@ -27,28 +27,26 @@ interface LayoutProps {
   fullWidth?: boolean;
 }
 
-/**
- * ⚡ Bolt Performance Optimization:
- * Moved static array outside of the component to prevent recreating it on every render.
- */
-interface NavItem {
-  label: string;
+interface NavItemDef {
+  key: string;
+  labelKey: string;
+  defaultLabel: string;
   href: string;
   icon: any;
   external?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { label: "Apps", href: "/apps", icon: Package },
-  { label: "Games", href: "/games", icon: Gamepad2 },
-  { label: "Storage", href: "/storage", icon: HardDrive },
-  { label: "Account", href: "/account", icon: User },
-  { label: "Friends", href: "/friends", icon: Users },
-  { label: "Customize", href: "/customize", icon: Palette },
-  { label: "Characters", href: "/characters", icon: Contact },
-  { label: "Changelogs", href: "/changelogs", icon: GitCommit },
-  { label: "Support", href: "/support", icon: LifeBuoy },
-  { label: "Legal", href: "/legal", icon: Scale },
+const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
+  { key: "apps", labelKey: "nav.apps", defaultLabel: "Apps", href: "/apps", icon: Package },
+  { key: "games", labelKey: "nav.games", defaultLabel: "Games", href: "/games", icon: Gamepad2 },
+  { key: "storage", labelKey: "nav.storage", defaultLabel: "Storage", href: "/storage", icon: HardDrive },
+  { key: "account", labelKey: "nav.account", defaultLabel: "Account", href: "/account", icon: User },
+  { key: "friends", labelKey: "nav.friends", defaultLabel: "Friends", href: "/friends", icon: Users },
+  { key: "customize", labelKey: "nav.customize", defaultLabel: "Customize", href: "/customize", icon: Palette },
+  { key: "characters", labelKey: "nav.characters", defaultLabel: "Characters", href: "/characters", icon: Contact },
+  { key: "changelogs", labelKey: "nav.changelogs", defaultLabel: "Changelogs", href: "/changelogs", icon: GitCommit },
+  { key: "support", labelKey: "nav.support", defaultLabel: "Support", href: "/support", icon: LifeBuoy },
+  { key: "legal", labelKey: "nav.legal", defaultLabel: "Legal", href: "/legal", icon: Scale },
 ];
 
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */
@@ -57,6 +55,7 @@ const SWIPE_THRESHOLD = 40;
 
 export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -140,6 +139,15 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
     }
   };
 
+  const navItems = useMemo(
+    () =>
+      NAV_ITEM_DEFINITIONS.map((item) => ({
+        ...item,
+        label: t(item.labelKey as any, undefined, item.defaultLabel),
+      })),
+    [t],
+  );
+
   return (
     <div className={styles["layout-wrapper"]}>
       <div className={styles["background-gradient"]} />
@@ -153,7 +161,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             <button
               type="button"
               onClick={() => setSidebarOpen((prev) => !prev)}
-              aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+              aria-label={sidebarOpen ? t("nav.closeMenu", undefined, "Close menu") : t("nav.openMenu", undefined, "Open menu")}
               aria-expanded={sidebarOpen}
               className="p-2 -ml-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary md:hidden flex items-center justify-center shrink-0"
             >
@@ -172,13 +180,13 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               rel="noopener noreferrer"
               className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
             >
-              Beta
+              {t("nav.beta", undefined, "Beta")}
             </a>
 
             <Link
               to="/download"
               className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0"
-              title="Download Desktop App"
+              title={t("nav.downloadApp", undefined, "Download Desktop App")}
             >
               <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </Link>
@@ -188,7 +196,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white shrink-0"
-              title="Join our Discord"
+              title={t("nav.discord", undefined, "Join our Discord")}
             >
               <svg width="18" height="18" viewBox="0 0 127.14 96.36" fill="currentColor">
                 <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" />
@@ -205,10 +213,10 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 <button
                   onClick={handleSignOut}
                   className={`${styles["sign-out-button"]} flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border transition duration-200 text-xs sm:text-sm font-medium`}
-                  title="Sign Out"
+                  title={t("nav.signOut", undefined, "Sign Out")}
                 >
                   <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Sign Out</span>
+                  <span className="hidden sm:inline">{t("nav.signOut", undefined, "Sign Out")}</span>
                 </button>
               </>
             ) : (
@@ -217,7 +225,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 className={`${styles["sign-out-button"]} flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border transition duration-200 text-xs sm:text-sm font-medium hover:bg-white/5`}
               >
                 <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>Sign In</span>
+                <span>{t("nav.signIn", undefined, "Sign In")}</span>
               </button>
             )}
           </div>
@@ -232,7 +240,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
         onClick={openSidebar}
         role="button"
         tabIndex={0}
-        aria-label="Open sidebar"
+        aria-label={t("nav.openSidebar", undefined, "Open sidebar")}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             openSidebar();
@@ -260,12 +268,12 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           <div className="flex md:hidden items-center justify-between p-4 border-b border-border/70 shrink-0">
             <div className="flex items-center gap-2">
               <span className={`${styles["logo"]} font-bold text-base`}>Oxygen Low</span>
-              <span className="px-2 py-0.5 text-[10px] font-bold text-yellow-900 bg-yellow-400 rounded uppercase">Beta</span>
+              <span className="px-2 py-0.5 text-[10px] font-bold text-yellow-900 bg-yellow-400 rounded uppercase">{t("nav.beta", undefined, "Beta")}</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              aria-label="Close sidebar"
+              aria-label={t("nav.closeSidebar", undefined, "Close sidebar")}
             >
               <X className="w-5 h-5" />
             </button>
@@ -287,7 +295,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                   onClick={handleSignOut}
                   className="flex items-center justify-center gap-2 w-full py-1.5 px-3 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium border border-red-500/20 transition-colors"
                 >
-                  <LogOut className="w-3.5 h-3.5" /> Sign Out
+                  <LogOut className="w-3.5 h-3.5" /> {t("nav.signOut", undefined, "Sign Out")}
                 </button>
               </div>
             ) : (
@@ -298,7 +306,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 }}
                 className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition-colors"
               >
-                <User className="w-3.5 h-3.5" /> Sign In / Register
+                <User className="w-3.5 h-3.5" /> {t("nav.signInRegister", undefined, "Sign In / Register")}
               </button>
             )}
           </div>
@@ -345,7 +353,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 transition-colors"
               >
                 <DownloadIcon className="w-4 h-4 text-slate-400" />
-                Download Desktop App
+                {t("nav.downloadApp", undefined, "Download Desktop App")}
               </Link>
               <a
                 href="https://discord.gg/tNczTe66jK"
@@ -357,7 +365,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="currentColor">
                   <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" />
                 </svg>
-                Join Discord Community
+                {t("nav.discord", undefined, "Join Discord Community")}
               </a>
               <a
                 href="https://trello.com/b/OmFTZeVK/oxygen-lows-software-development"
@@ -367,7 +375,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-yellow-400 hover:bg-slate-800 transition-colors"
               >
                 <ExternalLink className="w-4 h-4 text-yellow-400" />
-                Development Roadmap (Trello)
+                {t("nav.roadmap", undefined, "Development Roadmap (Trello)")}
               </a>
             </div>
           </nav>
@@ -382,8 +390,8 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
         onClick={openSidebar}
         role="button"
         tabIndex={0}
-        aria-label="Open sidebar"
-        title="Open sidebar"
+        aria-label={t("nav.openSidebar", undefined, "Open sidebar")}
+        title={t("nav.openSidebar", undefined, "Open sidebar")}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             openSidebar();

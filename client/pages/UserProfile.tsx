@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Users,
   Loader2,
@@ -22,7 +23,8 @@ import { getLanguageOption } from "@/lib/languages";
 export default function UserProfile() {
   const { username } = useParams();
   const navigate = useNavigate();
-  const { session, loading: authLoading } = useAuth();
+  const { session } = useAuth();
+  const { t } = useTranslation();
   const currentUser = session?.user;
 
   const [profile, setProfile] = useState<any>(null);
@@ -57,7 +59,7 @@ export default function UserProfile() {
 
       if (profileError) {
         if (profileError.code === "PGRST116") {
-          setError("No items");
+          setError(t("userProfile.userNotFound", undefined, "User not found"));
         } else {
           setError(profileError.message);
         }
@@ -153,47 +155,57 @@ export default function UserProfile() {
 
     try {
       if (!friendship) {
-        const { data, error } = await supabase
-          .from("friendships")
-          .insert({
-            user_id: currentUser.id,
-            friend_id: profile.user_id,
-            status: "pending",
-          })
-          .select()
-          .limit(1)
-          .maybeSingle();
+        const { error } = await supabase.from("friendships").insert({
+          user_id: currentUser.id,
+          friend_id: profile.user_id,
+          status: "pending",
+        });
         if (error) {
           toast.error("Failed to send friend request: " + error.message);
           return;
         }
-        setFriendship(data);
+        setFriendship({
+          user_id: currentUser.id,
+          friend_id: profile.user_id,
+          status: "pending",
+        });
         toast.success("Friend request sent");
-      } else if (
-        friendship.status === "pending" &&
-        friendship.friend_id === currentUser.id
-      ) {
-        const { data, error } = await supabase
-          .from("friendships")
-          .update({ status: "accepted" })
-          .eq("id", friendship.id)
-          .select()
-          .limit(1)
-          .maybeSingle();
-        if (error) {
-          toast.error("Failed to accept friend request: " + error.message);
-          return;
+      } else if (friendship.status === "pending") {
+        if (friendship.user_id === currentUser.id) {
+          const { error } = await supabase
+            .from("friendships")
+            .delete()
+            .eq("user_id", currentUser.id)
+            .eq("friend_id", profile.user_id);
+          if (error) {
+            toast.error("Failed to cancel request: " + error.message);
+            return;
+          }
+          setFriendship(null);
+          toast.success("Friend request cancelled");
+        } else {
+          const { error } = await supabase
+            .from("friendships")
+            .update({ status: "accepted" })
+            .eq("user_id", profile.user_id)
+            .eq("friend_id", currentUser.id);
+          if (error) {
+            toast.error("Failed to accept request: " + error.message);
+            return;
+          }
+          setFriendship((f: any) => ({ ...f, status: "accepted" }));
+          setStats((s) => ({ ...s, friends: s.friends + 1 }));
+          toast.success("Friend request accepted");
         }
-        setFriendship(data);
-        toast.success("Accept Request");
-        setStats((s) => ({ ...s, friends: s.friends + 1 }));
-      } else {
+      } else if (friendship.status === "accepted") {
         const { error } = await supabase
           .from("friendships")
           .delete()
-          .eq("id", friendship.id);
+          .or(
+            `and(user_id.eq.${currentUser.id},friend_id.eq.${profile.user_id}),and(user_id.eq.${profile.user_id},friend_id.eq.${currentUser.id})`,
+          );
         if (error) {
-          toast.error("Failed to remove friendship: " + error.message);
+          toast.error("Failed to unfriend: " + error.message);
           return;
         }
         const wasAccepted = friendship.status === "accepted";
@@ -265,32 +277,14 @@ export default function UserProfile() {
         setIsBlocked(false);
         toast.success("User unblocked");
       } else {
-        // Start block transaction
-        const { error: blockError } = await supabase
-          .from("blocks")
-          .insert({ blocker_id: currentUser.id, blocked_id: profile.user_id });
-
-        if (blockError) {
-          toast.error("Failed to block user: " + blockError.message);
+        const { error } = await supabase.from("blocks").insert({
+          blocker_id: currentUser.id,
+          blocked_id: profile.user_id,
+        });
+        if (error) {
+          toast.error("Failed to block: " + error.message);
           return;
         }
-
-        // Use RPC for privileged cleanup of relations
-        const { error: cleanupError } = await supabase.rpc(
-          "handle_block_cleanup",
-          {
-            p_blocker_id: currentUser.id,
-            p_blocked_id: profile.user_id,
-          },
-        );
-
-        if (cleanupError) {
-          toast.error(
-            "Failed to cleanup relations after block: " + cleanupError.message,
-          );
-          return;
-        }
-
         setIsBlocked(true);
         setIsFollowing(false);
         setFriendship(null);
@@ -309,17 +303,17 @@ export default function UserProfile() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
             <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
-            <p className="text-slate-400">Loading...</p>
+            <p className="text-slate-400">{t("common.loading", undefined, "Loading...")}</p>
           </div>
         ) : error || !profile ? (
           <div className="text-center py-12">
-            <p className="text-red-400 text-lg">{error ?? "No items"}</p>
+            <p className="text-red-400 text-lg">{error ?? t("userProfile.userNotFound", undefined, "User not found")}</p>
             <Button
               variant="link"
               onClick={() => navigate(-1)}
               className="text-slate-500"
             >
-              Back
+              {t("common.back", undefined, "Back")}
             </Button>
           </div>
         ) : (
@@ -370,7 +364,7 @@ export default function UserProfile() {
                         {stats.friends}
                       </p>
                       <p className="text-slate-500 text-xs uppercase tracking-wider">
-                        Friends
+                        {t("userProfile.friends", undefined, "Friends")}
                       </p>
                     </div>
                     <div className="text-center md:text-left">
@@ -378,7 +372,7 @@ export default function UserProfile() {
                         {stats.followers}
                       </p>
                       <p className="text-slate-500 text-xs uppercase tracking-wider">
-                        Followers
+                        {t("userProfile.followers", undefined, "Followers")}
                       </p>
                     </div>
                     <div className="text-center md:text-left">
@@ -386,7 +380,7 @@ export default function UserProfile() {
                         {stats.following}
                       </p>
                       <p className="text-slate-500 text-xs uppercase tracking-wider">
-                        Following
+                        {t("userProfile.following", undefined, "Following")}
                       </p>
                     </div>
                   </div>
@@ -408,24 +402,24 @@ export default function UserProfile() {
                         ) : !friendship ? (
                           <>
                             <UserPlus className="w-4 h-4 mr-2" />
-                            Add Friend
+                            {t("userProfile.addFriend", undefined, "Add Friend")}
                           </>
                         ) : friendship.status === "pending" ? (
                           friendship.user_id === currentUser.id ? (
                             <>
                               <UserX className="w-4 h-4 mr-2" />
-                              Cancel Request
+                              {t("userProfile.cancelRequest", undefined, "Cancel Request")}
                             </>
                           ) : (
                             <>
                               <UserCheck className="w-4 h-4 mr-2" />
-                              Accept Request
+                              {t("userProfile.acceptRequest", undefined, "Accept Request")}
                             </>
                           )
                         ) : (
                           <>
                             <UserMinus className="w-4 h-4 mr-2" />
-                            Unfriend
+                            {t("userProfile.unfriend", undefined, "Unfriend")}
                           </>
                         )}
                       </Button>
@@ -441,7 +435,7 @@ export default function UserProfile() {
                             : "text-slate-300",
                         )}
                       >
-                        {isFollowing ? "Following" : "Follow"}
+                        {isFollowing ? t("userProfile.following", undefined, "Following") : t("userProfile.follow", undefined, "Follow")}
                       </Button>
 
                       <Button
@@ -455,7 +449,7 @@ export default function UserProfile() {
                             ? "text-red-500 bg-red-500/10"
                             : "text-slate-500 hover:text-red-400 hover:bg-red-400/10",
                         )}
-                        title={isBlocked ? "Unblock" : "Block"}
+                        title={isBlocked ? t("userProfile.unblock", undefined, "Unblock") : t("userProfile.block", undefined, "Block")}
                       >
                         {isBlocked ? (
                           <ShieldCheck className="w-5 h-5" />
@@ -470,11 +464,11 @@ export default function UserProfile() {
 
               <div className="mt-8 pt-8 border-t border-slate-800/50">
                 <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                  Bio
+                  {t("account.bio", undefined, "Bio")}
                 </h3>
                 <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
                   <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {profile.bio || "This user hasn't written a bio yet."}
+                    {profile.bio || t("userProfile.noBio", undefined, "This user hasn't written a bio yet.")}
                   </p>
                 </div>
               </div>

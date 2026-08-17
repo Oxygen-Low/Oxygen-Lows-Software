@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -19,6 +19,12 @@ import {
   Users,
   Bot,
   QrCode,
+  Server,
+  Shield,
+  Monitor,
+  Smartphone,
+  Braces,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -31,17 +37,23 @@ import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
-import { Server, Shield, Monitor, Smartphone, Braces, ShieldCheck } from "lucide-react";
 
 type Category =
-  "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
+  | "All"
+  | "Utility"
+  | "LLM/AI"
+  | "Development"
+  | "Social"
+  | "Security";
 
 type Availability = "web-and-desktop" | "desktop-only";
 
 interface AppMetadata {
   id: string;
-  name: string;
-  description: string;
+  nameKey: string;
+  defaultName: string;
+  descKey: string;
+  defaultDesc: string;
   categories: Category[];
   availability: Availability;
   icon: React.ReactNode;
@@ -51,61 +63,71 @@ interface AppMetadata {
   androidSupported?: boolean;
 }
 
-/**
- * ⚡ Bolt Performance Optimization:
- * Moved static configurations (`CATEGORIES` and `apps`) outside of the `Apps` component body.
- * This prevents the recreation of these large arrays (and their internal JSX elements) on every render,
- * saving memory allocations and preventing unnecessary recalculations in downstream useMemo hooks.
- */
-const CATEGORIES: {
+const CATEGORY_DEFINITIONS: {
   name: Category;
-  label: string;
+  labelKey: string;
+  defaultLabel: string;
   icon: React.ReactNode;
-  description: string;
+  descKey: string;
+  defaultDesc: string;
 }[] = [
   {
     name: "All",
-    label: "All",
+    labelKey: "apps.categoryAll",
+    defaultLabel: "All",
     icon: <Box className="w-5 h-5" />,
-    description: "All available applications",
+    descKey: "apps.categoryAllDesc",
+    defaultDesc: "All available applications",
   },
   {
     name: "Utility",
-    label: "Utility",
+    labelKey: "apps.categoryUtility",
+    defaultLabel: "Utility",
     icon: <Wrench className="w-5 h-5" />,
-    description: "Tools and utilities",
+    descKey: "apps.categoryUtilityDesc",
+    defaultDesc: "Tools and utilities",
   },
   {
     name: "LLM/AI",
-    label: "LLM/AI",
+    labelKey: "apps.categoryAI",
+    defaultLabel: "LLM/AI",
     icon: <Sparkles className="w-5 h-5" />,
-    description: "AI powered applications",
+    descKey: "apps.categoryAIDesc",
+    defaultDesc: "AI powered applications",
   },
   {
     name: "Development",
-    label: "Development",
+    labelKey: "apps.categoryDevelopment",
+    defaultLabel: "Development",
     icon: <Code className="w-5 h-5" />,
-    description: "Developer tools",
+    descKey: "apps.categoryDevelopmentDesc",
+    defaultDesc: "Developer tools",
   },
   {
     name: "Social",
-    label: "Social",
+    labelKey: "apps.categorySocial",
+    defaultLabel: "Social",
     icon: <MessageSquare className="w-5 h-5" />,
-    description: "Connect with others",
+    descKey: "apps.categorySocialDesc",
+    defaultDesc: "Connect with others",
   },
   {
     name: "Security",
-    label: "Security",
+    labelKey: "apps.categorySecurity",
+    defaultLabel: "Security",
     icon: <Shield className="w-5 h-5" />,
-    description: "Protection for software and devices.",
+    descKey: "apps.categorySecurityDesc",
+    defaultDesc: "Protection for software and devices.",
   },
 ];
 
-const apps: AppMetadata[] = [
+const APPS: AppMetadata[] = [
   {
     id: "base64-encoder",
-    name: "Base64 Encoder/Decoder",
-    description: "Easily encode or decode text and data using Base64.",
+    nameKey: "apps.base64Title",
+    defaultName: "Base64 Encoder/Decoder",
+    descKey: "apps.base64Desc",
+    defaultDesc: "Easily encode or decode text and data using Base64.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Code className="w-8 h-8 text-cyan-500" />,
@@ -113,8 +135,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "json-formatter",
-    name: "JSON Formatter",
-    description: "Format, beautify, and validate JSON strings.",
+    nameKey: "apps.jsonFormatterTitle",
+    defaultName: "JSON Formatter",
+    descKey: "apps.jsonFormatterDesc",
+    defaultDesc: "Format, beautify, and validate JSON strings.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Braces className="w-8 h-8 text-cyan-500" />,
@@ -122,8 +146,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "chatbot",
-    name: "Chatbot",
-    description: "Chat and brainstorm with intelligent AI assistants.",
+    nameKey: "apps.chatbotTitle",
+    defaultName: "Chatbot",
+    descKey: "apps.chatbotDesc",
+    defaultDesc: "Chat and brainstorm with intelligent AI assistants.",
     categories: ["All", "LLM/AI"],
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
@@ -131,8 +157,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "file-compressor",
-    name: "File Compressor",
-    description: "Easily compress your files to free up storage space.",
+    nameKey: "apps.fileCompressorTitle",
+    defaultName: "File Compressor",
+    descKey: "apps.fileCompressorDesc",
+    defaultDesc: "Easily compress your files to free up storage space.",
     categories: ["All", "Utility"],
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
@@ -140,9 +168,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "public-characters",
-    name: "Public Characters",
-    description:
-      "Discover, download, and share characters and universes with the community.",
+    nameKey: "apps.publicCharactersTitle",
+    defaultName: "Public Characters",
+    descKey: "apps.publicCharactersDesc",
+    defaultDesc: "Discover, download, and share characters and universes with the community.",
     categories: ["All", "Social"],
     availability: "web-and-desktop",
     icon: <Users className="w-8 h-8 text-cyan-500" />,
@@ -151,8 +180,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "data-save",
-    name: "Data Save",
-    description: "Securely store and manage your custom data and text snippets.",
+    nameKey: "apps.dataSaveTitle",
+    defaultName: "Data Save",
+    descKey: "apps.dataSaveDesc",
+    defaultDesc: "Securely store and manage your custom data and text snippets.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Server className="w-8 h-8 text-cyan-500" />,
@@ -161,8 +192,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "qrcode-generator",
-    name: "QR Code Generator",
-    description: "Convert links or text into custom QR codes.",
+    nameKey: "apps.qrcodeGeneratorTitle",
+    defaultName: "QR Code Generator",
+    descKey: "apps.qrcodeGeneratorDesc",
+    defaultDesc: "Convert links or text into custom QR codes.",
     categories: ["All", "Utility"],
     availability: "web-and-desktop",
     icon: <QrCode className="w-8 h-8 text-cyan-500" />,
@@ -170,9 +203,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "llm-agent",
-    name: "LLM Agent",
-    description:
-      "An autonomous AI coding agent that reads, edits, and builds your projects.",
+    nameKey: "apps.llmAgentTitle",
+    defaultName: "LLM Agent",
+    descKey: "apps.llmAgentDesc",
+    defaultDesc: "An autonomous AI coding agent that reads, edits, and builds your projects.",
     categories: ["All", "LLM/AI", "Development"],
     availability: "desktop-only",
     icon: <Sparkles className="w-8 h-8 text-cyan-500" />,
@@ -181,8 +215,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "vpn",
-    name: "VPN",
-    description: "Manage your VPN configurations.",
+    nameKey: "apps.vpnTitle",
+    defaultName: "VPN",
+    descKey: "apps.vpnDesc",
+    defaultDesc: "Manage your VPN configurations.",
     categories: ["All", "Utility"],
     availability: "desktop-only",
     icon: <Shield className="w-8 h-8 text-cyan-500" />,
@@ -193,8 +229,10 @@ const apps: AppMetadata[] = [
   },
   {
     id: "defender",
-    name: "Web Defender",
-    description: "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
+    nameKey: "apps.webDefenderTitle",
+    defaultName: "Web Defender",
+    descKey: "apps.webDefenderDesc",
+    defaultDesc: "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
     categories: ["All", "Security", "Development"],
     availability: "web-and-desktop",
     icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
@@ -205,6 +243,7 @@ const apps: AppMetadata[] = [
 
 export default function Apps() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const hasDesktopParam = searchParams.get("desktop") === "1";
@@ -235,17 +274,29 @@ export default function Apps() {
   
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
-  const activeApp = useMemo(() => apps.find(a => a.id === appId) || null, [appId]);
+
+  const localizedApps = useMemo(() => {
+    return APPS.map((app) => ({
+      ...app,
+      name: t(app.nameKey as any, undefined, app.defaultName),
+      description: t(app.descKey as any, undefined, app.defaultDesc),
+    }));
+  }, [t]);
+
+  const activeApp = useMemo(
+    () => localizedApps.find((a) => a.id === appId) || null,
+    [appId, localizedApps],
+  );
 
   const availableApps = useMemo(
     () =>
-      apps.filter((app) => {
+      localizedApps.filter((app) => {
         if (!isDesktopMode && !isAndroidMode) return app.availability === "web-and-desktop";
         if (isAndroidMode && app.availability === "desktop-only" && !app.androidSupported) return false;
         if (selectedAvailability === "web-and-desktop") return true;
         return app.availability === "desktop-only";
       }),
-    [isDesktopMode, isAndroidMode, selectedAvailability],
+    [isDesktopMode, isAndroidMode, selectedAvailability, localizedApps],
   );
 
   const filteredApps = useMemo(() => {
@@ -272,7 +323,17 @@ export default function Apps() {
     return counts;
   }, [availableApps]);
 
-  const handleAppClick = (app: AppMetadata) => {
+  const localizedCategories = useMemo(
+    () =>
+      CATEGORY_DEFINITIONS.map((cat) => ({
+        ...cat,
+        label: t(cat.labelKey as any, undefined, cat.defaultLabel),
+        description: t(cat.descKey as any, undefined, cat.defaultDesc),
+      })),
+    [t],
+  );
+
+  const handleAppClick = (app: typeof localizedApps[0]) => {
     if (app.requiresAdmin && isDesktopMode && (window as any).chrome?.webview) {
       const id = Date.now().toString();
       const listener = (event: any) => {
@@ -283,7 +344,7 @@ export default function Apps() {
             if (data.success) {
               navigate(`/apps/${app.id}`);
             } else {
-              import("sonner").then((m) => m.toast.error("Administrator permissions are required to use this app."));
+              import("sonner").then((m) => m.toast.error(t("apps.adminRequired", undefined, "Administrator permissions are required to use this app.")));
             }
           }
         } catch {}
@@ -311,8 +372,8 @@ export default function Apps() {
             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8 shrink-0">
               <button
                 onClick={() => navigate("/apps")}
-                aria-label="Back to apps list"
-                title="Back to apps list"
+                aria-label={t("apps.backToApps", undefined, "Back to apps list")}
+                title={t("apps.backToApps", undefined, "Back to apps list")}
                 className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none shrink-0"
               >
                 <AppWindow className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -327,13 +388,15 @@ export default function Apps() {
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-500/10 rounded-full flex items-center justify-center mb-4 sm:mb-6 text-cyan-500">
                   {activeApp.icon}
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">Sign in to use {activeApp.name}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">
+                  {t("apps.signInToUse", { name: activeApp.name }, `Sign in to use ${activeApp.name}`)}
+                </h3>
                 <p className="text-slate-400 mb-6 sm:mb-8 max-w-md text-xs sm:text-sm">{activeApp.description}</p>
                 <button 
                   onClick={() => navigate("/auth")} 
                   className="px-6 py-2.5 sm:px-8 sm:py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors text-sm"
                 >
-                  Sign In to Continue
+                  {t("apps.signInToContinue", undefined, "Sign In to Continue")}
                 </button>
               </div>
             )}
@@ -350,14 +413,18 @@ export default function Apps() {
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Apps</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
+            {t("apps.title", undefined, "Apps")}
+          </h2>
           <p className="text-sm sm:text-base text-slate-400">
-            Explore and try out our collection of awesome tools!
+            {t("apps.subtitle", undefined, "Explore and try out our collection of awesome tools!")}
           </p>
         </div>
         {isDesktopMode && (
-          <section aria-label="App availability" className="space-y-3">
-            <h3 className="text-lg sm:text-xl font-semibold text-white">Availability</h3>
+          <section aria-label={t("apps.availability", undefined, "Availability")} className="space-y-3">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">
+              {t("apps.availability", undefined, "Availability")}
+            </h3>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 type="button"
@@ -371,7 +438,7 @@ export default function Apps() {
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10",
                 )}
               >
-                {isAndroidMode ? "Web + Android" : "Web + desktop"}
+                {isAndroidMode ? t("apps.webAndAndroid", undefined, "Web + Android") : t("apps.webAndDesktop", undefined, "Web + desktop")}
               </button>
               <button
                 type="button"
@@ -388,12 +455,12 @@ export default function Apps() {
                 {isAndroidMode ? (
                   <>
                     <Smartphone className="w-4 h-4" />
-                    Android only
+                    {t("apps.androidOnly", undefined, "Android only")}
                   </>
                 ) : (
                   <>
                     <Monitor className="w-4 h-4" />
-                    Desktop only
+                    {t("apps.desktopOnly", undefined, "Desktop only")}
                   </>
                 )}
               </button>
@@ -402,7 +469,7 @@ export default function Apps() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {CATEGORIES.map((cat) => {
+          {localizedCategories.map((cat) => {
             const hasApps = categoryAppCounts[cat.name] > 0;
             return (
               <Card
@@ -444,7 +511,7 @@ export default function Apps() {
 
         <div className="space-y-4">
           <h3 className="text-lg sm:text-xl font-semibold text-white">
-            {`${selectedCategory} ${isDesktopMode ? `${selectedAvailability === "desktop-only" ? "Desktop only" : "Web + desktop"} ` : ""}Apps`}
+            {`${selectedCategory} ${isDesktopMode ? `${selectedAvailability === "desktop-only" ? t("apps.desktopOnly", undefined, "Desktop only") : t("apps.webAndDesktop", undefined, "Web + desktop")} ` : ""}${t("apps.title", undefined, "Apps")}`}
           </h3>
 
           {filteredApps.length > 0 ? (
@@ -473,8 +540,8 @@ export default function Apps() {
             <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
               <p className="text-slate-500">
                 {isDesktopMode && selectedAvailability === "desktop-only"
-                  ? "No desktop-only apps are available yet."
-                  : "No apps found in this category."}
+                  ? t("apps.noDesktopApps", undefined, "No desktop-only apps are available yet.")
+                  : t("apps.noAppsFound", undefined, "No apps found in this category.")}
               </p>
             </div>
           )}

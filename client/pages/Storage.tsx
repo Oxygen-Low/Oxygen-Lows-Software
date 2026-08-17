@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Upload,
   Trash2,
@@ -39,21 +40,10 @@ import {
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 
 export default function Storage() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);
   const [cloudFileSignedUrls, setCloudFileSignedUrls] = useState<
     Record<string, string>
@@ -147,7 +137,7 @@ export default function Storage() {
         .upload(`${session.user.id}/${file.name}`, file, { upsert: false });
 
       if (error) throw error;
-      toast.success("File uploaded successfully");
+      toast.success(t("storage.fileUploaded", undefined, "File uploaded successfully"));
       fetchCloudFiles();
     } catch (error: any) {
       toast.error(error.message);
@@ -163,18 +153,13 @@ export default function Storage() {
         .from("Storage")
         .remove([`${session?.user.id}/${name}`]);
       if (error) throw error;
-      toast.success("File deleted");
+      toast.success(t("storage.fileDeleted", undefined, "File deleted successfully"));
       fetchCloudFiles();
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
-  /**
-   * ⚡ Bolt Performance Optimization:
-   * Memoize the categories calculation to prevent recalculating file sizes
-   * and array groups on every render (especially when hovering items).
-   */
   const categories = useMemo(() => {
     const cats = {
       text: {
@@ -243,16 +228,16 @@ export default function Storage() {
       <div className="space-y-8 animate-in fade-in duration-500">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Storage
+            {t("storage.title", undefined, "Storage")}
           </h2>
           <p className="text-sm sm:text-base text-slate-400">
-            Keep track of your uploaded files and data usage.
+            {t("storage.subtitle", undefined, "Upload, manage, and share your files securely in the cloud.")}
           </p>
         </div>
 
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl text-white">Overall Usage</CardTitle>
+            <CardTitle className="text-lg sm:text-xl text-white">{t("storage.storageUsed", undefined, "Overall Usage")}</CardTitle>
             <CardDescription className="text-xs sm:text-sm text-slate-400">
               Total space used by files and application data
             </CardDescription>
@@ -320,7 +305,7 @@ export default function Storage() {
                               ))}
                             {cat.files.length === 0 && (
                               <p className="p-4 text-center text-xs text-slate-500 italic">
-                                No items
+                                {t("common.noData", undefined, "No items")}
                               </p>
                             )}
                           </div>
@@ -361,7 +346,7 @@ export default function Storage() {
                 ) : (
                   <Upload className="w-4 h-4 mr-2" />
                 )}
-                Upload File
+                {t("storage.uploadFile", undefined, "Upload File")}
               </Button>
             </div>
             <input
@@ -423,7 +408,7 @@ export default function Storage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        <ExternalLink className="w-4 h-4 mr-2" /> View
+                        <ExternalLink className="w-4 h-4 mr-2" /> {t("common.view", undefined, "View")}
                       </a>
                     </Button>
                   ) : (
@@ -433,7 +418,7 @@ export default function Storage() {
                       className="flex-1 bg-slate-800 text-white opacity-50 cursor-not-allowed"
                       disabled
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" /> View
+                      <ExternalLink className="w-4 h-4 mr-2" /> {t("common.view", undefined, "View")}
                     </Button>
                   )}
                   <AlertDialog>
@@ -449,21 +434,20 @@ export default function Storage() {
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>
-                          Are you absolutely sure?
+                          {t("storage.deleteConfirmTitle", undefined, "Are you sure you want to delete this file?")}
                           <span className="sr-only"> Delete {file.name}</span>
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action cannot be undone. This will permanently
-                          delete your file "{file.name}" from our servers.
+                          {t("storage.deleteConfirmDesc", undefined, "This action cannot be undone. This will permanently delete your file from cloud storage.")}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("common.cancel", undefined, "Cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => deleteCloudFile(file.name)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                          Delete
+                          {t("common.delete", undefined, "Delete")}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

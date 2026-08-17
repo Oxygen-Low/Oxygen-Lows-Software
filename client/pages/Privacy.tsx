@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Shield } from "lucide-react";
 import { Layout } from "@/components/Layout";
 
-const LAST_UPDATED = "16 August 2026";
+const LAST_UPDATED = "17 August 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
 const OPERATOR = "Oxygen Low's Software";
 const SITE_URL = "https://oxygenlow.com";
@@ -290,9 +290,12 @@ export default function Privacy() {
             We process your data on the following legal bases (UK GDPR Article
             6): (a) <strong>contract</strong> — to perform the Service you have
             signed up for; (b) <strong>legitimate interests</strong> — for
-            security monitoring and abuse prevention; and (c){" "}
+            security monitoring, fraud prevention, and system stability; (c){" "}
             <strong>legal obligation</strong> — where the law requires us to
-            retain or disclose data.
+            retain or disclose data; and (d) <strong>consent</strong> — where you
+            have explicitly given consent for optional features (such as making
+            your profile public, sharing custom characters, or authorizing OAuth
+            applications).
           </P>
         </Section>
 
@@ -389,6 +392,23 @@ export default function Privacy() {
               </tbody>
             </table>
           </div>
+          <div className="space-y-2 pt-2">
+            <p className="font-semibold text-foreground">
+              4.1 International Data Transfers
+            </p>
+            <P>
+              Because some of our third-party infrastructure and AI processors
+              (including OpenAI, Anthropic, Google, and Supabase) are based in the
+              United States or other countries outside the United Kingdom and
+              European Economic Area, your personal data may be transferred
+              internationally. We ensure that appropriate safeguards are in place
+              in accordance with UK GDPR Chapter V and EU GDPR Articles 44–49,
+              such as the UK International Data Transfer Agreement (IDTA), the UK
+              Addendum to the EU Standard Contractual Clauses (SCCs), and applicable
+              adequacy decisions (including participation in the Data Privacy
+              Framework where applicable).
+            </P>
+          </div>
           <P>
             Each third-party processor is bound by their own privacy policy and,
             where applicable, a Data Processing Agreement. We encourage you to
@@ -420,7 +440,7 @@ export default function Privacy() {
         {/* GDPR rights */}
         <Section
           id="gdpr-rights"
-          title="6. Your Rights Under UK GDPR"
+          title="6. Your Rights Under UK &amp; EU GDPR"
           index={6}
         >
           <P>
@@ -446,8 +466,8 @@ export default function Privacy() {
             >
               {CONTACT_EMAIL}
             </a>
-            . We will respond within one month. You also have the right to lodge
-            a complaint with the{" "}
+            . We will respond within one month. If you are in the UK, you also
+            have the right to lodge a complaint with the{" "}
             <a
               href="https://ico.org.uk"
               className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
@@ -456,7 +476,9 @@ export default function Privacy() {
             >
               Information Commissioner's Office (ICO)
             </a>
-            .
+            . If you are located in the EEA, you may lodge a complaint with your
+            national Data Protection Authority (supervisory authority) in your
+            country of residence.
           </P>
         </Section>
 
@@ -510,11 +532,14 @@ export default function Privacy() {
         {/* Children */}
         <Section id="children" title="9. Children's Privacy" index={9}>
           <P>
-            The Service is not directed at children under the age of 13 (or
-            under 16 in the UK and EEA, in line with UK GDPR Article 8). We do
-            not knowingly collect personal data from children below these ages.
-            If you believe a child has provided us with personal data, please
-            contact us at{" "}
+            The Service is not directed at children under the age of 13. In the
+            UK, pursuant to the Data Protection Act 2018 (Section 9) and UK GDPR
+            Article 8, the age of digital consent for information society services
+            is 13. Users in the EEA must meet their respective national age of
+            digital consent (up to 16, unless a lower age has been enacted under
+            domestic legislation). We do not knowingly collect personal data from
+            children below these applicable age limits. If you believe a child has
+            provided us with personal data, please contact us at{" "}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
               className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
