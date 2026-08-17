@@ -172,7 +172,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               rel="noopener noreferrer"
               className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
             >
-              Open Beta
+              Beta
             </a>
 
             <Link

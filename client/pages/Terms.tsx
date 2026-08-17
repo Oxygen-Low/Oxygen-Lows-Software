@@ -287,7 +287,7 @@ export default function Terms() {
             THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE.
           </P>
           <P>
-            The Service is in Open Beta. Features may change, be removed, or
+            The Service is in Beta. Features may change, be removed, or
             become temporarily unavailable without notice. We are not liable for
             any loss of data or interruption of service during the Beta period.
           </P>

@@ -100,7 +100,7 @@ app.use("*", async (c, next) => {
 app.use('*', async (c, next) => {
   const accept = c.req.header('Accept') || '';
   if (accept.includes('text/markdown') && !c.req.path.startsWith('/api/')) {
-    const md = `# Oxygen Low's Software\n\nOxygen Low's Software - Open Beta. A platform for apps, storage, and customization.`;
+    const md = `# Oxygen Low's Software\n\nOxygen Low's Software - Beta. A platform for apps, storage, and customization.`;
     const tokens = md.split(/\s+/).length.toString();
     return c.text(md, 200, {
       'Content-Type': 'text/markdown',

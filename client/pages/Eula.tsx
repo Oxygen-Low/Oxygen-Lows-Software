@@ -248,7 +248,7 @@ export default function Eula() {
             OR ERROR-FREE, OR THAT DEFECTS WILL BE CORRECTED.
           </P>
           <P>
-            The Software is currently in Open Beta. Features, data, and
+            The Software is currently in Beta. Features, data, and
             availability may change without prior notice.
           </P>
         </Section>
