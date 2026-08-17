@@ -162,7 +162,6 @@ type Event = {
   method: string;
   path: string;
   blocked: boolean;
-  user_agent: string | null;
 };
 
 type Outbound = {
@@ -880,7 +879,7 @@ function EventBadge({ type }: { type: string }) {
   return <Badge variant="outline" className={cn(c.color, "whitespace-nowrap")}>{c.label}</Badge>;
 }
 
-function EventsTab({ events }: { events: Event[] }) {
+export function EventsTab({ events }: { events: Event[] }) {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [page, setPage] = useState(1);
@@ -935,13 +934,12 @@ function EventsTab({ events }: { events: Event[] }) {
               <TableHead className="whitespace-nowrap">Type</TableHead>
               <TableHead className="w-full">Target</TableHead>
               <TableHead className="whitespace-nowrap">Status</TableHead>
-              <TableHead className="whitespace-nowrap">User Agent</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paged.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-slate-500 py-8">No events found matching filters.</TableCell>
+                <TableCell colSpan={6} className="text-center text-slate-500 py-8">No events found matching filters.</TableCell>
               </TableRow>
             ) : paged.map(e => (
               <TableRow key={e.id} className="border-slate-800 hover:bg-slate-800/50">
@@ -964,9 +962,6 @@ function EventsTab({ events }: { events: Event[] }) {
                   <Badge variant={e.blocked ? 'destructive' : 'default'} className={cn(!e.blocked && 'bg-emerald-500/10 text-emerald-500', "whitespace-nowrap")}>
                     {e.blocked ? 'blocked' : 'allowed'}
                   </Badge>
-                </TableCell>
-                <TableCell className="text-xs text-slate-500 max-w-[200px] truncate" title={e.user_agent || ''}>
-                  {e.user_agent?.substring(0, 50)}{e.user_agent && e.user_agent.length > 50 ? '...' : ''}
                 </TableCell>
               </TableRow>
             ))}

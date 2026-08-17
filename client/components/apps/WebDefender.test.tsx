@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
-import { getAppConfig, CountryFlag, COUNTRIES } from "./WebDefender";
+import { getAppConfig, CountryFlag, COUNTRIES, EventsTab } from "./WebDefender";
 
 describe("Defender getAppConfig", () => {
   it("returns default configuration when defenderConfig is null or undefined", () => {
@@ -112,3 +112,38 @@ describe("Defender CountryFlag and COUNTRIES", () => {
     expect(container.querySelector("svg")).not.toBeNull();
   });
 });
+
+describe("Defender EventsTab", () => {
+  it("renders table headers without User Agent", () => {
+    const mockEvents = [
+      {
+        id: "evt-1",
+        created_at: new Date().toISOString(),
+        ip: "192.168.1.1",
+        country_code: "US",
+        event_type: "sql_injection",
+        method: "POST",
+        path: "/api/login",
+        blocked: true
+      }
+    ];
+
+    const { queryByText, getAllByRole, container } = render(<EventsTab events={mockEvents} />);
+    const headers = getAllByRole("columnheader").map((th) => th.textContent);
+    expect(headers).toEqual(["Time", "IP", "Location", "Type", "Target", "Status"]);
+    expect(queryByText("User Agent")).toBeNull();
+
+    // Verify row rendered without User Agent cell
+    expect(container.textContent).toContain("192.168.1.1");
+    expect(container.textContent).toContain("/api/login");
+    expect(container.textContent).toContain("blocked");
+  });
+
+  it("renders empty state with colSpan 6", () => {
+    const { getByText, container } = render(<EventsTab events={[]} />);
+    expect(getByText("No events found matching filters.")).toBeDefined();
+    const emptyCell = container.querySelector("tbody td");
+    expect(emptyCell?.getAttribute("colspan")).toBe("6");
+  });
+});
+
