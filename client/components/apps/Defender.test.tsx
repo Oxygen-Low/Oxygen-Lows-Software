@@ -1,5 +1,8 @@
+/** @vitest-environment jsdom */
 import { describe, it, expect } from "vitest";
-import { getAppConfig } from "./Defender";
+import { render } from "@testing-library/react";
+import React from "react";
+import { getAppConfig, CountryFlag, COUNTRIES } from "./Defender";
 
 describe("Defender getAppConfig", () => {
   it("returns default configuration when defenderConfig is null or undefined", () => {
@@ -54,5 +57,33 @@ describe("Defender getAppConfig", () => {
     const config = getAppConfig([]);
     expect(config.block_sql_injection).toBe(true);
     expect(config.block_tor).toBe(true);
+  });
+});
+
+describe("Defender CountryFlag and COUNTRIES", () => {
+  it("exports COUNTRIES list containing country codes and names", () => {
+    expect(COUNTRIES.length).toBeGreaterThan(50);
+    const argentina = COUNTRIES.find((c) => c.code === "AR");
+    expect(argentina).toBeDefined();
+    expect(argentina?.name).toBe("Argentina");
+
+    const us = COUNTRIES.find((c) => c.code === "US");
+    expect(us).toBeDefined();
+    expect(us?.name).toBe("United States");
+  });
+
+  it("renders CountryFlag img element for valid 2-letter country code", () => {
+    const { container } = render(<CountryFlag countryCode="AR" />);
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute("src")).toBe("https://flagcdn.com/w40/ar.png");
+    expect(img?.getAttribute("alt")).toBe("AR flag");
+  });
+
+  it("renders globe fallback when country code is invalid or empty", () => {
+    const { container } = render(<CountryFlag countryCode="" />);
+    const img = container.querySelector("img");
+    expect(img).toBeNull();
+    expect(container.querySelector("svg")).not.toBeNull();
   });
 });
