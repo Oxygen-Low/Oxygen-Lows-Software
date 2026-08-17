@@ -7,7 +7,7 @@ export function discoverRoutes(app: any): Array<{ method: string; path: string }
   // Hono app detection
   if (app.routes && Array.isArray(app.routes)) {
     for (const route of app.routes) {
-      if (route.method && route.path && typeof route.method === 'string') {
+      if (route && route.method && route.path && typeof route.method === 'string') {
         const method = route.method.toUpperCase();
         if (method === 'ALL') continue;
         
