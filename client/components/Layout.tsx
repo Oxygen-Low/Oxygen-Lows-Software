@@ -53,6 +53,8 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
 const TOUCH_EDGE_ZONE = 30;
 const SWIPE_THRESHOLD = 40;
 
+const MOBILE_MENU_BUTTON_CLASSES = "p-2 -ml-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary md:hidden flex items-center justify-center shrink-0";
+
 export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const { t } = useTranslation();
@@ -163,7 +165,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               onClick={() => setSidebarOpen((prev) => !prev)}
               aria-label={sidebarOpen ? t("nav.closeMenu", undefined, "Close menu") : t("nav.openMenu", undefined, "Open menu")}
               aria-expanded={sidebarOpen}
-              className="p-2 -ml-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary md:hidden flex items-center justify-center shrink-0"
+              className={MOBILE_MENU_BUTTON_CLASSES}
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
