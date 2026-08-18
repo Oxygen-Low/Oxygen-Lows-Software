@@ -19,9 +19,6 @@ import {
   Bot,
   FileKey,
   CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  ShieldAlert,
   ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -205,7 +202,7 @@ export default function Security() {
       " ZERO-KNOWLEDGE NOTICE:",
       " Store this masterkey in a secure password manager (e.g., Bitwarden,",
       " 1Password, KeePass) or offline vault.",
-      " Oxygen Low does not store or have access to your masterkey.",
+      " Oxygen Low's Software does not store or have access to your masterkey.",
       " If you lose your masterkey, your encrypted data cannot be recovered.",
       "===========================================================",
     ].join("\n");
@@ -636,7 +633,7 @@ export default function Security() {
               </div>
             </div>
 
-            {/* Toggle 3: Chatbot Chats & Custom AI Provider API Keys */}
+            {/* Toggle 3: Chatbot Chats */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-colors gap-4">
               <div className="flex items-start gap-3.5">
                 <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5 sm:mt-0">
@@ -645,7 +642,7 @@ export default function Security() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="toggle-chatbot" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
-                      {t("security.chatbotChats", undefined, "Chatbot Chats & AI Provider Keys")}
+                      {t("security.chatbotChats", undefined, "Chatbot Chats")}
                     </Label>
                     {encryptChatbot ? (
                       keyBytes ? (
@@ -664,7 +661,7 @@ export default function Security() {
                     )}
                   </div>
                   <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-                    {t("security.chatbotChatsDesc", undefined, "Encrypt AI conversations, message history, system prompts, and custom AI provider API keys.")}
+                    {t("security.chatbotChatsDesc", undefined, "Encrypt AI conversations, message history, and system prompts.")}
                   </p>
                 </div>
               </div>
@@ -679,45 +676,6 @@ export default function Security() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Section 3: Zero-Knowledge Privacy Architecture & AI Keys Protection */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            {t("security.architectureTitle", undefined, "Zero-Knowledge & Privacy Architecture")}
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-slate-900/40 border-slate-800 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-cyan-400 font-semibold text-sm">
-                <ShieldCheck className="w-4 h-4" />
-                <span>{t("security.arch1Title", undefined, "Client-Side AES-256 Encryption")}</span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {t("security.arch1Desc", undefined, "All encryption takes place directly inside your browser before transmitting or storing data. Server and database administrators cannot read your content.")}
-              </p>
-            </Card>
-
-            <Card className="bg-slate-900/40 border-slate-800 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-cyan-400 font-semibold text-sm">
-                <KeyRound className="w-4 h-4" />
-                <span>{t("security.arch2Title", undefined, "Custom AI Provider API Keys")}</span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {t("security.arch2Desc", undefined, "Upcoming custom AI provider keys (OpenAI, Anthropic, OpenRouter, etc.) and conversations are encrypted with your masterkey so your credentials stay secret.")}
-              </p>
-            </Card>
-
-            <Card className="bg-slate-900/40 border-slate-800 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm">
-                <AlertTriangle className="w-4 h-4" />
-                <span>{t("security.arch3Title", undefined, "Backup Your Masterkey")}</span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {t("security.arch3Desc", undefined, "Because Oxygen Low uses zero-knowledge encryption, we cannot recover your data if you lose your masterkey. Store your key in a secure password vault.")}
-              </p>
-            </Card>
-          </div>
-        </div>
       </div>
     </Layout>
   );
