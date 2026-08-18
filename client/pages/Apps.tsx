@@ -231,7 +231,7 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.webDefenderTitle",
     defaultName: "Web Defender",
     descKey: "apps.webDefenderDesc",
-    defaultDesc: "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
+    defaultDesc: "Protect your website or API from DDoS, injection attacks, bots, VPNs, and malicious traffic.",
     categories: ["All", "Security", "Development"],
     availability: "web-and-desktop",
     icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,

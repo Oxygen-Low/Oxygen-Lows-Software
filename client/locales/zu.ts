@@ -183,7 +183,7 @@ export const zu = {
     vpnOffline: "Akuxhunyiwe ku-inthanethi",
     vpnPinging: "Iyahlola...",
     webDefenderTitle: "I-Web Defender",
-    webDefenderDesc: "Vikela iwebhusayithi yakho noma i-API kwi-DDoS, ukuhlaselwa ngemijovo, ama-bots, nethrafikhi enonya.",
+    webDefenderDesc: "Vikela iwebhusayithi yakho noma i-API kwi-DDoS, ukuhlaselwa ngemijovo, ama-bots, ama-VPN, nethrafikhi enonya.",
   },
   games: {
     title: "Imidlalo",

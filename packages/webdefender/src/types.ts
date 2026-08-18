@@ -19,7 +19,7 @@ export interface BlockedEvent {
 
 export type EventType = 
   | 'sql_injection' | 'shell_injection' | 'path_traversal' | 'ssrf'
-  | 'tor' | 'country_block' | 'bot' | 'ddos' | 'rate_limit' | 'allowed'
+  | 'tor' | 'vpn' | 'country_block' | 'bot' | 'ddos' | 'rate_limit' | 'allowed'
   | 'threat_bruteforce' | 'threat_dos' | 'threat_exploit' | 'threat_botnet';
 
 export type BotCategory = 
@@ -36,6 +36,7 @@ export interface AppConfig {
   blockPathTraversal: boolean;
   blockSsrf: boolean;
   blockTor: boolean;
+  blockVpn: boolean;
   blockCountries: string[];
   blockAdBots: boolean;
   blockAiAssistants: boolean;

@@ -183,7 +183,7 @@ export const tr = {
     vpnOffline: "Çevrimdışı",
     vpnPinging: "Ping atılıyor...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Web sitenizi veya API'nizi DDoS, enjeksiyon saldırıları, botlar ve kötü amaçlı trafiğe karşı koruyun.",
+    webDefenderDesc: "Web sitenizi veya API'nizi DDoS, enjeksiyon saldırıları, botlar, VPN'ler ve kötü amaçlı trafiğe karşı koruyun.",
   },
   games: {
     title: "Oyunlar",

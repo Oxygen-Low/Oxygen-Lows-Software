@@ -1,5 +1,6 @@
 import { DefenderConfig, AppConfig, BlockedEvent, EventType, OutboundConnection, RouteConfig } from './types.js';
 import { TorDetector } from './tor.js';
+import { VpnDetector } from './vpn.js';
 import { ThreatActorDetector } from './threatActors.js';
 import { OutboundMonitor } from './outbound.js';
 import { RateLimiter } from './rateLimiter.js';
@@ -35,6 +36,7 @@ export class DefenderClient {
   private exactRoutes = new Map<string, Map<string, RouteConfig>>();
   private prefixRoutes = new Map<string, RouteTrieNode>();
   private torDetector: TorDetector;
+  private vpnDetector: VpnDetector;
   private threatActorDetector: ThreatActorDetector;
   private outboundMonitor: OutboundMonitor;
   private rateLimiter: RateLimiter;
@@ -46,6 +48,7 @@ export class DefenderClient {
     this.config = config;
     this.apiUrl = config.apiUrl || 'https://oxygenlow.com';
     this.torDetector = new TorDetector();
+    this.vpnDetector = new VpnDetector();
     this.threatActorDetector = new ThreatActorDetector();
     this.rateLimiter = new RateLimiter();
     this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn), new URL(this.apiUrl).hostname);
@@ -108,6 +111,7 @@ export class DefenderClient {
       blockPathTraversal: cfg.block_path_traversal ?? true,
       blockSsrf: cfg.block_ssrf ?? true,
       blockTor: cfg.block_tor ?? true,
+      blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
       blockAdBots: cfg.block_ad_bots ?? false,
       blockAiAssistants: cfg.block_ai_assistants ?? false,
@@ -341,6 +345,13 @@ export class DefenderClient {
       }
     }
 
+    // 2b. Known VPN Check
+    if (!isBlocked && this.appConfig.blockVpn) {
+      if (this.vpnDetector.isVpn(ip)) {
+        fail('vpn', 'VPN connection detected');
+      }
+    }
+
     // 3. Known Threat Actor Check
     if (!isBlocked) {
       const threatActor = this.threatActorDetector.checkThreatActor(ip);
@@ -458,6 +469,7 @@ export class DefenderClient {
       this.configSyncIntervalId = undefined;
     }
     this.torDetector.destroy();
+    this.vpnDetector.destroy();
     this.threatActorDetector.destroy();
     this.outboundMonitor.uninstall();
     this.rateLimiter.destroy();

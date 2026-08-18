@@ -183,7 +183,7 @@ export const hi = {
     vpnOffline: "ऑफ़लाइन",
     vpnPinging: "पिंग हो रहा है...",
     webDefenderTitle: "वेब डिफेंडर",
-    webDefenderDesc: "अपनी वेबसाइट या API को DDoS, इंजेक्शन हमलों, बॉट्स और दुर्भावनापूर्ण ट्रैफ़िक से सुरक्षित रखें।",
+    webDefenderDesc: "अपनी वेबसाइट या API को DDoS, इंजेक्शन हमलों, बॉट्स, VPN और दुर्भावनापूर्ण ट्रैफ़िक से सुरक्षित रखें।",
   },
   games: {
     title: "गेम्स",

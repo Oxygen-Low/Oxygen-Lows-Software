@@ -183,7 +183,7 @@ export const uk = {
     vpnOffline: "Офлайн",
     vpnPinging: "Пінг...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Захистіть свій вебсайт або API від DDoS-атак, ін'єкцій, ботів і зловмисного трафіку.",
+    webDefenderDesc: "Захистіть свій вебсайт або API від DDoS-атак, ін'єкцій, ботів, VPN і зловмисного трафіку.",
   },
   games: {
     title: "Ігри",

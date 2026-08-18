@@ -183,7 +183,7 @@ export const id = {
     vpnOffline: "Offline",
     vpnPinging: "Melakukan ping...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Lindungi situs web atau API Anda dari DDoS, serangan injeksi, bot, dan lalu lintas berbahaya.",
+    webDefenderDesc: "Lindungi situs web atau API Anda dari DDoS, serangan injeksi, bot, VPN, dan lalu lintas berbahaya.",
   },
   games: {
     title: "Game",

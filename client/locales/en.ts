@@ -193,7 +193,7 @@ export const en = {
     vpnOffline: "Offline",
     vpnPinging: "Pinging...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
+    webDefenderDesc: "Protect your website or API from DDoS, injection attacks, bots, VPNs, and malicious traffic.",
   },
   games: {
     title: "Games",

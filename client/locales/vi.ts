@@ -183,7 +183,7 @@ export const vi = {
     vpnOffline: "Ngoại tuyến",
     vpnPinging: "Đang ping...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Bảo vệ trang web hoặc API của bạn khỏi DDoS, các cuộc tấn công injection, bot và lưu lượng truy cập độc hại.",
+    webDefenderDesc: "Bảo vệ trang web hoặc API của bạn khỏi DDoS, các cuộc tấn công injection, bot, VPN và lưu lượng truy cập độc hại.",
   },
   games: {
     title: "Trò chơi",

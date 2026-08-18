@@ -183,7 +183,7 @@ export const zhTW = {
     vpnOffline: "離線",
     vpnPinging: "正在 Ping...",
     webDefenderTitle: "網頁防禦者",
-    webDefenderDesc: "保護您的網站或 API 免受 DDoS、注入攻擊、機器人和惡意流量的侵害。",
+    webDefenderDesc: "保護您的網站或 API 免受 DDoS、注入攻擊、機器人、VPN 和惡意流量的侵害。",
   },
   games: {
     title: "遊戲",

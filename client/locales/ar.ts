@@ -182,8 +182,8 @@ export const ar = {
     vpnDirectConnection: "اتصال مباشر",
     vpnOffline: "غير متصل",
     vpnPinging: "جاري فحص الاستجابة...",
-    webDefenderTitle: "حامي الويب",
-    webDefenderDesc: "حماية موقعك أو واجهة برمجة التطبيقات من هجمات حجب الخدمة، الحقن، الروبوتات، والزيارات الضارة.",
+    webDefenderTitle: "Web Defender",
+    webDefenderDesc: "حماية موقعك أو واجهة برمجة التطبيقات من هجمات حجب الخدمة، الحقن، الروبوتات، شبكات VPN، والزيارات الضارة.",
   },
   games: {
     title: "الألعاب",

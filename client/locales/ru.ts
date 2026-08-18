@@ -183,7 +183,7 @@ export const ru = {
     vpnOffline: "Не в сети",
     vpnPinging: "Проверка пинга...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Защитите ваш сайт или API от DDoS, инъекций, ботов и вредоносного трафика.",
+    webDefenderDesc: "Защитите ваш сайт или API от DDoS, инъекций, ботов, VPN и вредоносного трафика.",
   },
   games: {
     title: "Игры",

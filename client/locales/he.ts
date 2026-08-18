@@ -183,7 +183,7 @@ export const he = {
     vpnOffline: "לא מקוון",
     vpnPinging: "בודק פינג...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "הגן על האתר או ה-API שלך מפני DDoS, מתקפות הזרקה, בוטים ותעבורה זדונית.",
+    webDefenderDesc: "הגן על האתר או ה-API שלך מפני DDoS, מתקפות הזרקה, בוטים, רשתות VPN ותעבורה זדונית.",
   },
   games: {
     title: "משחקים",

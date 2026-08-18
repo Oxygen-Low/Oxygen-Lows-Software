@@ -16,6 +16,7 @@ Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injectio
 - **Injection Scanning**: Heuristic detection of SQL injection, shell injection, path traversal, and Server-Side Request Forgery (SSRF) payloads in URL parameters, body, and headers.
 - **Geo-IP Blocking**: Block requests originating from specific countries.
 - **TOR Exit Node Detection**: Identify and optionally block traffic coming from known TOR exit nodes.
+- **VPN IP Blocking**: Identify and block traffic from known VPN providers (VPNBook, NordVPN, Surfshark, ProtonVPN, Mullvad, etc.) to prevent bypassing geo-blocks and IP restrictions.
 - **Outbound Connection Monitoring**: Track and log outbound HTTP/HTTPS connections made by your application.
 - **Auto-Discovery**: Automatically discover and sync routes with the central dashboard for Express and Hono apps.
 
@@ -104,10 +105,12 @@ When initialized, the middleware fetches its configuration from the central API 
 On every incoming request, it executes the following pipeline:
 1. **IP Geo Check**: Verifies if the request originates from a blocked country.
 2. **TOR Check**: Checks if the IP is a known TOR exit node.
-3. **Bot Detection**: Scans the User-Agent string against known bot signatures.
-4. **Injection Scanning**: Analyzes the request method, path, query parameters, headers, and body for SQLi, Shell Injection, Path Traversal, and SSRF patterns.
-5. **DDoS Protection**: Enforces global API rate limits.
-6. **Route Rate Limiting**: Applies route-specific token-bucket rate limiting based on central configuration.
+3. **VPN Check**: Checks if the IP is a known commercial VPN exit node / server.
+4. **Known Threat Actor Check**: Cross-references with real-time threat intelligence feeds.
+5. **Bot Detection**: Scans the User-Agent string against known bot signatures.
+6. **Injection Scanning**: Analyzes the request method, path, query parameters, headers, and body for SQLi, Shell Injection, Path Traversal, and SSRF patterns.
+7. **DDoS Protection**: Enforces global API rate limits.
+8. **Route Rate Limiting**: Applies route-specific token-bucket rate limiting based on central configuration.
 
 ## License
 

@@ -183,7 +183,7 @@ export const zhCN = {
     vpnOffline: "离线",
     vpnPinging: "正在 Ping...",
     webDefenderTitle: "网页防御者",
-    webDefenderDesc: "保护您的网站或 API 免受 DDoS、注入攻击、机器人和恶意流量的侵害。",
+    webDefenderDesc: "保护您的网站或 API 免受 DDoS、注入攻击、机器人、VPN 和恶意流量的侵害。",
   },
   games: {
     title: "游戏",

@@ -183,7 +183,7 @@ export const ko = {
     vpnOffline: "오프라인",
     vpnPinging: "핑 측정 중...",
     webDefenderTitle: "웹 디펜더",
-    webDefenderDesc: "DDoS, 인젝션 공격, 봇 및 악성 트래픽으로부터 웹사이트나 API를 보호합니다.",
+    webDefenderDesc: "DDoS, 인젝션 공격, 봇, VPN 및 악성 트래픽으로부터 웹사이트나 API를 보호합니다.",
   },
   games: {
     title: "게임",

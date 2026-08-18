@@ -96,6 +96,7 @@ type AppConfig = {
   block_path_traversal: boolean;
   block_ssrf: boolean;
   block_tor: boolean;
+  block_vpn: boolean;
   ddos_protection: boolean;
   ddos_threshold_rpm: number;
   block_countries: string[];
@@ -834,6 +835,7 @@ function EventBadge({ type }: { type: string }) {
     path_traversal: { color: 'bg-orange-500/10 text-orange-500 border-orange-500/20', label: 'Path Trav' },
     ssrf: { color: 'bg-orange-500/10 text-orange-500 border-orange-500/20', label: 'SSRF' },
     tor: { color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', label: 'TOR' },
+    vpn: { color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', label: 'VPN' },
     country_block: { color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Geo Block' },
     bot: { color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Bot' },
     threat_bruteforce: { color: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Bruteforce' },
@@ -1030,6 +1032,7 @@ const defaultDefenderConfig: AppConfig = {
   block_path_traversal: true,
   block_ssrf: true,
   block_tor: true,
+  block_vpn: true,
   ddos_protection: true,
   ddos_threshold_rpm: 1000,
   block_countries: [],
@@ -1177,6 +1180,14 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
               <p className="text-sm text-slate-400">Deny access from known TOR exit nodes.</p>
             </div>
             <Switch checked={config.block_tor} onCheckedChange={(c) => updateConfig({ block_tor: c })} />
+          </div>
+          <Separator className="bg-slate-800" />
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base text-white">Block VPN Network</Label>
+              <p className="text-sm text-slate-400">Deny access from known VPN providers (VPNBook, NordVPN, etc.) to prevent bypassing geo-blocks and IP restrictions.</p>
+            </div>
+            <Switch checked={config.block_vpn} onCheckedChange={(c) => updateConfig({ block_vpn: c })} />
           </div>
           <Separator className="bg-slate-800" />
           <div className="flex items-center justify-between">

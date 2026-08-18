@@ -183,7 +183,7 @@ export const la = {
     vpnOffline: "Non in linea",
     vpnPinging: "Pulsatur...",
     webDefenderTitle: "Defensor Telae",
-    webDefenderDesc: "Protege situm tuum aut API ab incursionibus DDoS, incursionibus iniectionis, robotis, et mercatura perniciosa.",
+    webDefenderDesc: "Protege situm tuum aut API ab incursionibus DDoS, incursionibus iniectionis, robotis, retibus VPN, et mercatura perniciosa.",
   },
   games: {
     title: "Ludi",

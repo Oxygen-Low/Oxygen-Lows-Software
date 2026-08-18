@@ -10,6 +10,7 @@ describe("Defender getAppConfig", () => {
     expect(configNull.block_sql_injection).toBe(true);
     expect(configNull.block_shell_injection).toBe(true);
     expect(configNull.block_tor).toBe(true);
+    expect(configNull.block_vpn).toBe(true);
     expect(configNull.block_countries).toEqual([]);
     expect(configNull.ddos_threshold_rpm).toBe(1000);
     expect(configNull.block_bruteforce).toBe(true);
@@ -19,6 +20,7 @@ describe("Defender getAppConfig", () => {
 
     const configUndefined = getAppConfig(undefined);
     expect(configUndefined.block_sql_injection).toBe(true);
+    expect(configUndefined.block_vpn).toBe(true);
     expect(configUndefined.block_bruteforce).toBe(true);
     expect(configUndefined.block_http_dos).toBe(true);
     expect(configUndefined.block_http_exploit).toBe(true);
@@ -31,6 +33,7 @@ describe("Defender getAppConfig", () => {
       block_sql_injection: false,
       block_shell_injection: true,
       block_tor: false,
+      block_vpn: false,
       block_countries: ["US", "CA"],
       ddos_threshold_rpm: 500,
       block_bruteforce: false,
@@ -43,6 +46,7 @@ describe("Defender getAppConfig", () => {
     expect(config.block_sql_injection).toBe(false);
     expect(config.block_shell_injection).toBe(true);
     expect(config.block_tor).toBe(false);
+    expect(config.block_vpn).toBe(false);
     expect(config.block_countries).toEqual(["US", "CA"]);
     expect(config.ddos_threshold_rpm).toBe(500);
     expect(config.block_bruteforce).toBe(false);
@@ -60,6 +64,7 @@ describe("Defender getAppConfig", () => {
         block_sql_injection: false,
         block_countries: ["FR"],
         block_ad_bots: true,
+        block_vpn: true,
         block_bruteforce: true,
         block_botnets: false
       }
@@ -69,6 +74,7 @@ describe("Defender getAppConfig", () => {
     expect(config.block_sql_injection).toBe(false);
     expect(config.block_countries).toEqual(["FR"]);
     expect(config.block_ad_bots).toBe(true);
+    expect(config.block_vpn).toBe(true);
     expect(config.block_bruteforce).toBe(true);
     expect(config.block_botnets).toBe(false);
     expect(config.block_http_dos).toBe(true);
@@ -78,6 +84,7 @@ describe("Defender getAppConfig", () => {
     const config = getAppConfig([]);
     expect(config.block_sql_injection).toBe(true);
     expect(config.block_tor).toBe(true);
+    expect(config.block_vpn).toBe(true);
     expect(config.block_bruteforce).toBe(true);
     expect(config.block_http_dos).toBe(true);
     expect(config.block_http_exploit).toBe(true);
