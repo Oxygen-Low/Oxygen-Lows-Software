@@ -363,7 +363,7 @@ export const ja = {
     copyKey: "クリップボードにコピー",
     copied: "コピー完了！",
     keyCopiedToast: "マスターキーをクリップボードにコピーしました",
-    downloadKey: "バックアップをダウンロード",
+    downloadKey: "キーをダウンロード",
     keyDownloadedToast: "マスターキーをファイルに保存しました",
     maskKey: "キーを隠す",
     revealKey: "キーを表示",

@@ -157,9 +157,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       <div className={styles["background-gradient"]} />
       {/* Header */}
       <header
-        className={`${styles["header"]} backdrop-blur-md sticky top-0 z-[60]`}
+        className={`${styles["header"]} backdrop-blur-md sticky top-0 z-[60] h-[61px] sm:h-[73px] flex items-center`}
       >
-        <div className="w-full px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="w-full px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             {/* Mobile Hamburger Toggle Button */}
             <button

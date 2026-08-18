@@ -363,7 +363,7 @@ export const ko = {
     copyKey: "클립보드에 복사",
     copied: "복사됨!",
     keyCopiedToast: "마스터 키가 클립보드에 복사되었습니다",
-    downloadKey: "백업 다운로드",
+    downloadKey: "키 다운로드",
     keyDownloadedToast: "마스터 키가 파일로 저장되었습니다",
     maskKey: "키 숨기기",
     revealKey: "키 표시",

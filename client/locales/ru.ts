@@ -363,7 +363,7 @@ export const ru = {
     copyKey: "Скопировать в буфер обмена",
     copied: "Скопировано!",
     keyCopiedToast: "Мастер-ключ скопирован в буфер обмена",
-    downloadKey: "Скачать резервную копию",
+    downloadKey: "Скачать ключ",
     keyDownloadedToast: "Мастер-ключ сохранен в файл",
     maskKey: "Скрыть ключ",
     revealKey: "Показать ключ",

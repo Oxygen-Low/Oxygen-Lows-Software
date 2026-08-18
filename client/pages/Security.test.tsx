@@ -104,7 +104,7 @@ describe("Security Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Masterkey Active")).toBeDefined();
       expect(screen.getByText("Copy to Clipboard")).toBeDefined();
-      expect(screen.getByText("Download Backup")).toBeDefined();
+      expect(screen.getByText("Download key")).toBeDefined();
       expect(screen.getByText("Lock / Clear Key")).toBeDefined();
       expect(screen.queryByText("Show QR Code")).toBeNull();
       expect(screen.queryByText("Hide QR Code")).toBeNull();

@@ -471,7 +471,7 @@ export default function Security() {
                     className="border-slate-700 bg-slate-800/80 hover:bg-slate-750 text-slate-200 hover:text-white gap-2 transition-colors"
                   >
                     <Download className="w-4 h-4" />
-                    <span>{t("security.downloadKey", undefined, "Download Backup")}</span>
+                    <span>{t("security.downloadKey", undefined, "Download key")}</span>
                   </Button>
 
                   <Button

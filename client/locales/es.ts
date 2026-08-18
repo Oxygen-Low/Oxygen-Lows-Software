@@ -363,7 +363,7 @@ export const es = {
     copyKey: "Copiar al Portapapeles",
     copied: "¡Copiado!",
     keyCopiedToast: "Clave maestra copiada al portapapeles",
-    downloadKey: "Descargar Copia de Seguridad",
+    downloadKey: "Descargar clave",
     keyDownloadedToast: "Clave maestra guardada en archivo",
     maskKey: "Ocultar clave",
     revealKey: "Mostrar clave",

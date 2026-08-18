@@ -27,10 +27,10 @@
 /* ── Auto-hide sidebar ── */
 .sidebar-trigger {
   position: fixed;
-  top: 65px;
+  top: 73px;
   left: 0;
   width: 18px;
-  height: calc(100vh - 65px);
+  height: calc(100vh - 73px);
   z-index: 49;
   cursor: pointer;
 }
@@ -38,6 +38,8 @@
 @media (max-width: 768px) {
   .sidebar-trigger {
     width: 20px;
+    top: 61px;
+    height: calc(100vh - 61px);
   }
 }
 
@@ -72,9 +74,9 @@
 
 .sidebar {
   position: relative;
-  margin-top: 65px;
+  margin-top: 73px;
   width: min(300px, 85vw);
-  height: calc(100vh - 65px);
+  height: calc(100vh - 73px);
   border-right: 1px solid hsl(var(--border));
   background-color: hsl(var(--background) / 0.95);
   backdrop-filter: blur(24px);

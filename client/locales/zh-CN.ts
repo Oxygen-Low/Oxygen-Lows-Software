@@ -363,7 +363,7 @@ export const zhCN = {
     copyKey: "复制到剪贴板",
     copied: "已复制！",
     keyCopiedToast: "主密钥已复制到剪贴板",
-    downloadKey: "下载备份",
+    downloadKey: "下载密钥",
     keyDownloadedToast: "主密钥已保存到文件",
     maskKey: "隐藏密钥",
     revealKey: "显示密钥",

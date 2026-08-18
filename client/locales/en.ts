@@ -373,7 +373,7 @@ export const en = {
     copyKey: "Copy to Clipboard",
     copied: "Copied!",
     keyCopiedToast: "Masterkey copied to clipboard",
-    downloadKey: "Download Backup",
+    downloadKey: "Download key",
     keyDownloadedToast: "Masterkey saved to file",
     maskKey: "Hide key",
     revealKey: "Reveal key",
