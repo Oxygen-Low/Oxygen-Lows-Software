@@ -432,7 +432,7 @@ app.get("/api/openapi.json", (c) => {
       version: "1.0.0",
       description: "API services for Oxygen Low's Software platform, including AI agents, changelogs, VPN, support, and authentication metadata.",
       contact: {
-        name: "Oxygen Low Support",
+        name: "Oxygen Low's Software Support",
         url: `${baseUrl}/legal`
       }
     },
