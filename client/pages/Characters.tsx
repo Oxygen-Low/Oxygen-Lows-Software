@@ -28,7 +28,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
-import { isCategoryLocked } from "@/lib/crypto";
+import {
+  isCategoryLocked,
+  isCategoryEncryptionEnabled,
+  getActiveMasterKey,
+  encryptCharacterData,
+  decryptCharacterData,
+} from "@/lib/crypto";
 
 interface Character {
   id: string;
@@ -109,7 +115,11 @@ export default function Characters() {
       if (error) throw error;
 
       let processedData = data || [];
-      const charsWithUrls = await attachSignedImageUrls(processedData);
+      const key = getActiveMasterKey();
+      const decryptedList = await Promise.all(
+        processedData.map((c: any) => decryptCharacterData(c, key))
+      );
+      const charsWithUrls = await attachSignedImageUrls(decryptedList);
       setCharacters(charsWithUrls);
     } catch (err: any) {
       console.error("Error fetching characters", err);
@@ -135,7 +145,7 @@ export default function Characters() {
     }
 
     try {
-      const payload: any = {
+      let payload: any = {
         user_id: session.user.id,
         name: currentCharacter.name,
         short_description: currentCharacter.short_description,
@@ -147,6 +157,13 @@ export default function Characters() {
         hidden_description: currentCharacter.hidden_description,
         is_universe: currentCharacter.is_universe || false,
       };
+
+      if (isCategoryEncryptionEnabled("characters")) {
+        const key = getActiveMasterKey();
+        if (key) {
+          payload = await encryptCharacterData(payload, key);
+        }
+      }
 
       if (currentCharacter.id) {
         const { error } = await supabase

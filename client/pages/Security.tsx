@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
   ShieldCheck,
   KeyRound,
@@ -21,6 +22,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   Upload,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -48,6 +50,8 @@ import {
   getActiveMasterKey,
   setActiveMasterKey,
   clearActiveMasterKey,
+  migrateCategoryEncryption,
+  type EncryptionCategory,
 } from "@/lib/crypto";
 
 export type KeyFormat = "hex" | "base64" | "base58" | "words";
@@ -59,6 +63,7 @@ const STORAGE_KEYS = {
 };
 
 export default function Security() {
+  const { session } = useAuth();
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -96,6 +101,7 @@ export default function Security() {
     }
   });
 
+  const [migratingCategory, setMigratingCategory] = useState<EncryptionCategory | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -296,29 +302,60 @@ export default function Security() {
     toast.info(t("security.keyClearedToast", undefined, "Masterkey cleared from session"));
   }, [t]);
 
-  // Update encryption toggles in localStorage
-  const handleToggleCharacters = (checked: boolean) => {
-    setEncryptCharacters(checked);
-    try {
-      localStorage.setItem(STORAGE_KEYS.ENCRYPT_CHARACTERS, String(checked));
-    } catch {}
-    toast.success(t("security.settingsSavedToast", undefined, "Encryption settings updated"));
-  };
+  // Update encryption toggles and immediately migrate data in Supabase
+  const handleToggleCategory = async (category: EncryptionCategory, checked: boolean) => {
+    if (!keyBytes) {
+      toast.error(
+        t(
+          "security.masterKeyRequiredToToggle",
+          undefined,
+          "An active masterkey is required to enable or disable encryption. Please generate or unlock a masterkey first."
+        )
+      );
+      return;
+    }
 
-  const handleToggleDataSave = (checked: boolean) => {
-    setEncryptDataSave(checked);
+    setMigratingCategory(category);
     try {
-      localStorage.setItem(STORAGE_KEYS.ENCRYPT_DATA_SAVE, String(checked));
-    } catch {}
-    toast.success(t("security.settingsSavedToast", undefined, "Encryption settings updated"));
-  };
+      const result = await migrateCategoryEncryption({
+        category,
+        enable: checked,
+        keyBytes,
+        userId: session?.user?.id,
+      });
 
-  const handleToggleChatbot = (checked: boolean) => {
-    setEncryptChatbot(checked);
-    try {
-      localStorage.setItem(STORAGE_KEYS.ENCRYPT_CHATBOT, String(checked));
-    } catch {}
-    toast.success(t("security.settingsSavedToast", undefined, "Encryption settings updated"));
+      if (category === "characters") {
+        setEncryptCharacters(checked);
+        localStorage.setItem(STORAGE_KEYS.ENCRYPT_CHARACTERS, String(checked));
+      } else if (category === "data_save") {
+        setEncryptDataSave(checked);
+        localStorage.setItem(STORAGE_KEYS.ENCRYPT_DATA_SAVE, String(checked));
+      } else if (category === "chatbot") {
+        setEncryptChatbot(checked);
+        localStorage.setItem(STORAGE_KEYS.ENCRYPT_CHATBOT, String(checked));
+      }
+
+      const msg = checked
+        ? t(
+            "security.migrationEncryptedToast",
+            { count: result.updatedCount },
+            `Encryption enabled. ${result.updatedCount} records encrypted and updated in cloud.`
+          )
+        : t(
+            "security.migrationDecryptedToast",
+            { count: result.updatedCount },
+            `Encryption disabled. ${result.updatedCount} records decrypted and restored in cloud.`
+          );
+      toast.success(msg);
+    } catch (err: any) {
+      console.error("Encryption migration failed:", err);
+      toast.error(
+        err.message ||
+          t("security.migrationFailed", undefined, "Failed to update encryption on existing cloud records.")
+      );
+    } finally {
+      setMigratingCategory(null);
+    }
   };
 
   return (
@@ -696,11 +733,15 @@ export default function Security() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end sm:pl-4">
+              <div className="flex items-center justify-end sm:pl-4 gap-2">
+                {migratingCategory === "characters" && (
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                )}
                 <Switch
                   id="toggle-characters"
                   checked={encryptCharacters}
-                  onCheckedChange={handleToggleCharacters}
+                  disabled={migratingCategory !== null}
+                  onCheckedChange={(checked) => handleToggleCategory("characters", checked)}
                 />
               </div>
             </div>
@@ -738,11 +779,15 @@ export default function Security() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end sm:pl-4">
+              <div className="flex items-center justify-end sm:pl-4 gap-2">
+                {migratingCategory === "data_save" && (
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                )}
                 <Switch
                   id="toggle-datasave"
                   checked={encryptDataSave}
-                  onCheckedChange={handleToggleDataSave}
+                  disabled={migratingCategory !== null}
+                  onCheckedChange={(checked) => handleToggleCategory("data_save", checked)}
                 />
               </div>
             </div>
@@ -780,11 +825,15 @@ export default function Security() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end sm:pl-4">
+              <div className="flex items-center justify-end sm:pl-4 gap-2">
+                {migratingCategory === "chatbot" && (
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                )}
                 <Switch
                   id="toggle-chatbot"
                   checked={encryptChatbot}
-                  onCheckedChange={handleToggleChatbot}
+                  disabled={migratingCategory !== null}
+                  onCheckedChange={(checked) => handleToggleCategory("chatbot", checked)}
                 />
               </div>
             </div>

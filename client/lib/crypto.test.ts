@@ -18,6 +18,20 @@ import {
   setCategoryEncryptionEnabled,
   isCategoryLocked,
   parseKeyFileContent,
+  isEncrypted,
+  encryptField,
+  decryptField,
+  encryptCharacterData,
+  decryptCharacterData,
+  encryptDataSaveData,
+  decryptDataSaveData,
+  encryptDataSaveCategoryData,
+  decryptDataSaveCategoryData,
+  encryptChatData,
+  decryptChatData,
+  encryptChatMessageData,
+  decryptChatMessageData,
+  migrateCategoryEncryption,
 } from "./crypto";
 
 describe("Crypto Utilities (AES-256)", () => {
