@@ -1,4 +1,4 @@
-# Engineering Guidelines
+# LLM Agent Guidelines
 
 ## Hardcoded Supabase Credentials
 
