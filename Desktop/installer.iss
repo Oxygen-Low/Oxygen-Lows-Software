@@ -9,7 +9,7 @@
 [Setup]
 AppName=Oxygen Low's Software
 AppVersion={#AppVersion}
-AppPublisher=Oxygen Low
+AppPublisher=Oxygen Low's Software
 DefaultDirName={localappdata}\OxygenLowsSoftware
 DefaultGroupName=Oxygen Low's Software
 OutputDir=Output
