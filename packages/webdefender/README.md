@@ -7,7 +7,7 @@ Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injectio
 
 ## Description
 
-`@oxygenlow/webdefender` is a robust security middleware package designed by Oxygen Low to safeguard your web applications and APIs. It seamlessly integrates into your existing server architecture to monitor, filter, and optionally block malicious requests in real-time, leveraging the Oxygen Low's Software dashboard for configuration and observability.
+`@oxygenlow/webdefender` is a robust security middleware package designed by Oxygen Low's Software to safeguard your web applications and APIs. It seamlessly integrates into your existing server architecture to monitor, filter, and optionally block malicious requests in real-time, leveraging the Oxygen Low's Software dashboard for configuration and observability.
 
 ## Features
 
