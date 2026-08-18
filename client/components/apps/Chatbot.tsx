@@ -33,7 +33,16 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
-import { isCategoryLocked } from "@/lib/crypto";
+import {
+  isCategoryLocked,
+  isCategoryEncryptionEnabled,
+  getActiveMasterKey,
+  encryptChatData,
+  decryptChatData,
+  encryptChatMessageData,
+  decryptChatMessageData,
+  decryptCharacterData,
+} from "@/lib/crypto";
 
 const InteractiveBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -733,8 +742,12 @@ export function ChatbotApp() {
       .select("*")
       .eq("user_id", session.user.id);
 
+    const key = getActiveMasterKey();
     if (chars) {
-      setAvailableCharacters(chars);
+      const decryptedChars = await Promise.all(
+        chars.map((c: any) => decryptCharacterData(c, key))
+      );
+      setAvailableCharacters(decryptedChars);
     }
 
     const { data: chatsData } = await supabase
@@ -744,7 +757,10 @@ export function ChatbotApp() {
       .order("updated_at", { ascending: false });
 
     if (chatsData) {
-      setChats(chatsData);
+      const decryptedChats = await Promise.all(
+        chatsData.map((c: any) => decryptChatData(c, key))
+      );
+      setChats(decryptedChats);
     }
   }, [session?.user?.id]);
 
@@ -774,7 +790,11 @@ export function ChatbotApp() {
         .order("created_at", { ascending: true });
 
       if (data) {
-        const processed = data.map((m) => {
+        const key = getActiveMasterKey();
+        const decryptedMessages = await Promise.all(
+          data.map((m: any) => decryptChatMessageData(m, key))
+        );
+        const processed = decryptedMessages.map((m) => {
           return {
             id: m.id,
             parent_id: m.parent_id,
@@ -825,9 +845,16 @@ export function ChatbotApp() {
   const updateChatSetting = async (updates: Partial<Chat>) => {
     if (!currentChatId) return;
     try {
+      let dbUpdates: any = { ...updates };
+      if (isCategoryEncryptionEnabled("chatbot")) {
+        const key = getActiveMasterKey();
+        if (key) {
+          dbUpdates = await encryptChatData(dbUpdates, key);
+        }
+      }
       const { error } = await supabase
         .from("chats")
-        .update(updates)
+        .update(dbUpdates)
         .eq("id", currentChatId);
       if (error) throw error;
       setChats((prev) =>
@@ -873,9 +900,17 @@ export function ChatbotApp() {
       }
 
       if (session?.user?.id) {
+        let dbTitle = title;
+        if (isCategoryEncryptionEnabled("chatbot")) {
+          const key = getActiveMasterKey();
+          if (key) {
+            const enc = await encryptChatData({ title }, key);
+            dbTitle = enc.title || title;
+          }
+        }
         await supabase
           .from("chats")
-          .update({ title })
+          .update({ title: dbTitle })
           .eq("id", chatId);
       }
 
@@ -1108,15 +1143,24 @@ export function ChatbotApp() {
     if (!activeChatId) {
       const title = "New Chat";
       if (!isGuest) {
+        let chatPayload: any = {
+          user_id: session!.user.id,
+          title: title,
+          llm_character_id: selectedLlmCharacter,
+          user_character_id: selectedUserCharacter,
+          universe_id: selectedUniverse,
+        };
+
+        if (isCategoryEncryptionEnabled("chatbot")) {
+          const key = getActiveMasterKey();
+          if (key) {
+            chatPayload = await encryptChatData(chatPayload, key);
+          }
+        }
+
         const { data, error } = await supabase
           .from("chats")
-          .insert({
-            user_id: session!.user.id,
-            title: title,
-            llm_character_id: selectedLlmCharacter,
-            user_character_id: selectedUserCharacter,
-            universe_id: selectedUniverse,
-          })
+          .insert(chatPayload)
           .select()
           .single();
 
@@ -1126,7 +1170,7 @@ export function ChatbotApp() {
         }
 
         activeChatId = data.id;
-        setChats((prev) => [data, ...prev]);
+        setChats((prev) => [{ ...data, title }, ...prev]);
       } else {
         activeChatId = "guest-chat-" + Math.random().toString(36).substring(2);
         setChats((prev) => [{ id: activeChatId, title, llm_character_id: null, user_character_id: null, universe_id: null }, ...prev] as any);
@@ -1186,14 +1230,23 @@ export function ChatbotApp() {
       // 2. Save User Message
       let userMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
       if (!isGuest) {
+        let userInsertPayload: any = {
+          parent_id: lastMessageId,
+          chat_id: activeChatId,
+          role: "user",
+          content: originalInput,
+        };
+
+        if (isCategoryEncryptionEnabled("chatbot")) {
+          const key = getActiveMasterKey();
+          if (key) {
+            userInsertPayload = await encryptChatMessageData(userInsertPayload, key);
+          }
+        }
+
         const { data, error: userInsertError } = await supabase
           .from("chat_messages")
-          .insert({
-            parent_id: lastMessageId,
-            chat_id: activeChatId,
-            role: "user",
-            content: originalInput,
-          })
+          .insert(userInsertPayload)
           .select()
           .single();
 
@@ -1377,10 +1430,18 @@ export function ChatbotApp() {
 
         let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
         if (!isGuest) {
+          let assistantInsertPayload: any = { ...insertData };
+          if (isCategoryEncryptionEnabled("chatbot")) {
+            const key = getActiveMasterKey();
+            if (key) {
+              assistantInsertPayload = await encryptChatMessageData(assistantInsertPayload, key);
+            }
+          }
+
           const { data, error: assistantInsertError } =
             await supabase
               .from("chat_messages")
-              .insert(insertData)
+              .insert(assistantInsertPayload)
               .select()
               .single();
 
@@ -1389,10 +1450,10 @@ export function ChatbotApp() {
               assistantInsertError.message?.includes("reasoning") ||
               assistantInsertError.details?.includes("reasoning")
             ) {
-              delete insertData.reasoning;
+              delete assistantInsertPayload.reasoning;
               const { data: retryData, error: retryError } = await supabase
                 .from("chat_messages")
-                .insert(insertData)
+                .insert(assistantInsertPayload)
                 .select()
                 .single();
               if (retryError) throw retryError;
@@ -1575,10 +1636,18 @@ export function ChatbotApp() {
       let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
       
       if (!isGuest) {
+        let assistantInsertPayload: any = { ...insertData };
+        if (isCategoryEncryptionEnabled("chatbot")) {
+          const key = getActiveMasterKey();
+          if (key) {
+            assistantInsertPayload = await encryptChatMessageData(assistantInsertPayload, key);
+          }
+        }
+
         const { data, error: assistantInsertError } =
           await supabase
             .from("chat_messages")
-            .insert(insertData)
+            .insert(assistantInsertPayload)
             .select()
             .single();
 

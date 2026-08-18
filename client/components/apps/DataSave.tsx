@@ -44,7 +44,15 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
-import { isCategoryLocked } from "@/lib/crypto";
+import {
+  isCategoryLocked,
+  isCategoryEncryptionEnabled,
+  getActiveMasterKey,
+  encryptDataSaveData,
+  decryptDataSaveData,
+  encryptDataSaveCategoryData,
+  decryptDataSaveCategoryData,
+} from "@/lib/crypto";
 
 interface KeyValuePair {
   id: string;
@@ -170,8 +178,23 @@ export function DataSaveApp() {
       if (savesRes.error) throw savesRes.error;
       if (catsRes.error) throw catsRes.error;
 
-      setSaves(savesRes.data || []);
-      setCategories(catsRes.data || []);
+      const key = getActiveMasterKey();
+      const decryptedSaves = await Promise.all(
+        (savesRes.data || []).map(async (s: any) => {
+          const decSave = await decryptDataSaveData(s, key);
+          if (decSave.category) {
+            decSave.category = await decryptDataSaveCategoryData(decSave.category, key);
+          }
+          return decSave;
+        })
+      );
+
+      const decryptedCats = await Promise.all(
+        (catsRes.data || []).map((c: any) => decryptDataSaveCategoryData(c, key))
+      );
+
+      setSaves(decryptedSaves);
+      setCategories(decryptedCats);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast.error(error.message || "Failed to load data");
@@ -197,9 +220,17 @@ export function DataSaveApp() {
 
     if (!userId) return null;
 
+    let payload = { user_id: userId, name: trimmed };
+    if (isCategoryEncryptionEnabled("data_save")) {
+      const key = getActiveMasterKey();
+      if (key) {
+        payload = await encryptDataSaveCategoryData(payload, key);
+      }
+    }
+
     const { data: newCat, error: catError } = await supabase
       .from("data_save_categories")
-      .insert({ user_id: userId, name: trimmed })
+      .insert(payload)
       .select()
       .single();
 
@@ -239,14 +270,23 @@ export function DataSaveApp() {
           return;
         }
 
+        let updatePayload: any = {
+          key_name: trimmedKey,
+          content: finalContent,
+          category_id: categoryId,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (isCategoryEncryptionEnabled("data_save")) {
+          const key = getActiveMasterKey();
+          if (key) {
+            updatePayload = await encryptDataSaveData(updatePayload, key);
+          }
+        }
+
         const { error: updateError } = await supabase
           .from("data_saves")
-          .update({
-            key_name: trimmedKey,
-            content: finalContent,
-            category_id: categoryId,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq("id", editingFormSaveId);
 
         if (updateError) throw updateError;
@@ -261,24 +301,42 @@ export function DataSaveApp() {
 
         let error;
         if (existing) {
+          let updatePayload: any = {
+            content: finalContent,
+            category_id: categoryId,
+            updated_at: new Date().toISOString(),
+          };
+
+          if (isCategoryEncryptionEnabled("data_save")) {
+            const key = getActiveMasterKey();
+            if (key) {
+              updatePayload = await encryptDataSaveData(updatePayload, key);
+            }
+          }
+
           const { error: updateError } = await supabase
             .from("data_saves")
-            .update({
-              content: finalContent,
-              category_id: categoryId,
-              updated_at: new Date().toISOString(),
-            })
+            .update(updatePayload)
             .eq("id", existing.id);
           error = updateError;
         } else {
+          let insertPayload: any = {
+            user_id: session?.user?.id,
+            key_name: trimmedKey,
+            content: finalContent,
+            category_id: categoryId,
+          };
+
+          if (isCategoryEncryptionEnabled("data_save")) {
+            const key = getActiveMasterKey();
+            if (key) {
+              insertPayload = await encryptDataSaveData(insertPayload, key);
+            }
+          }
+
           const { error: insertError } = await supabase
             .from("data_saves")
-            .insert({
-              user_id: session?.user?.id,
-              key_name: trimmedKey,
-              content: finalContent,
-              category_id: categoryId,
-            });
+            .insert(insertPayload);
           error = insertError;
         }
 
@@ -368,14 +426,23 @@ export function DataSaveApp() {
         session?.user?.id
       );
 
+      let updatePayload: any = {
+        key_name: trimmedKey,
+        content: finalContent,
+        category_id: categoryId,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (isCategoryEncryptionEnabled("data_save")) {
+        const key = getActiveMasterKey();
+        if (key) {
+          updatePayload = await encryptDataSaveData(updatePayload, key);
+        }
+      }
+
       const { error } = await supabase
         .from("data_saves")
-        .update({
-          key_name: trimmedKey,
-          content: finalContent,
-          category_id: categoryId,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", editingSave.id);
 
       if (error) throw error;

@@ -18,6 +18,20 @@ import {
   setCategoryEncryptionEnabled,
   isCategoryLocked,
   parseKeyFileContent,
+  isEncrypted,
+  encryptField,
+  decryptField,
+  encryptCharacterData,
+  decryptCharacterData,
+  encryptDataSaveData,
+  decryptDataSaveData,
+  encryptDataSaveCategoryData,
+  decryptDataSaveCategoryData,
+  encryptChatData,
+  decryptChatData,
+  encryptChatMessageData,
+  decryptChatMessageData,
+  migrateCategoryEncryption,
 } from "./crypto";
 
 describe("Crypto Utilities (AES-256)", () => {
@@ -178,6 +192,169 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(() => parseKeyFileContent("random words without any valid 256-bit key")).toThrow(
         "No valid 256-bit AES masterkey found"
       );
+    });
+  });
+
+  describe("isEncrypted / encryptField / decryptField", () => {
+    it("should detect encrypted values by prefix", () => {
+      expect(isEncrypted("ENC:aes-256-gcm:someciphertext")).toBe(true);
+      expect(isEncrypted("plaintext")).toBe(false);
+      expect(isEncrypted("")).toBe(false);
+      expect(isEncrypted(null as any)).toBe(false);
+      expect(isEncrypted(undefined as any)).toBe(false);
+    });
+
+    it("should encrypt a field and produce the ENC prefix", async () => {
+      const key = generateAes256Key();
+      const result = await encryptField("hello world", key);
+      expect(result).toMatch(/^ENC:aes-256-gcm:/);
+      expect(result).not.toContain("hello world");
+    });
+
+    it("should not double-encrypt an already-encrypted field", async () => {
+      const key = generateAes256Key();
+      const encrypted = await encryptField("my value", key);
+      const doubleEncrypt = await encryptField(encrypted, key);
+      expect(doubleEncrypt).toBe(encrypted);
+    });
+
+    it("should decrypt an encrypted field back to plaintext", async () => {
+      const key = generateAes256Key();
+      const plain = "super secret value";
+      const encrypted = await encryptField(plain, key);
+      const decrypted = await decryptField(encrypted, key);
+      expect(decrypted).toBe(plain);
+    });
+
+    it("should return plaintext unchanged by decryptField when not encrypted", async () => {
+      const key = generateAes256Key();
+      const result = await decryptField("plaintext", key);
+      expect(result).toBe("plaintext");
+    });
+
+    it("should return the value unchanged when key is null for encryptField", async () => {
+      const result = await encryptField("plaintext", null);
+      expect(result).toBe("plaintext");
+    });
+
+    it("should return the value unchanged when key is null for decryptField", async () => {
+      const encrypted = "ENC:aes-256-gcm:somefakedata";
+      const result = await decryptField(encrypted, null);
+      expect(result).toBe(encrypted);
+    });
+  });
+
+  describe("Character data transformers", () => {
+    it("should encrypt and decrypt character data correctly", async () => {
+      const key = generateAes256Key();
+      const char = {
+        id: "char-1",
+        user_id: "user-1",
+        name: "Alice",
+        short_description: "A brave adventurer",
+        display_name: "Alice the Brave",
+        appearance: "Tall with red hair",
+        personality: "Courageous",
+        backstory: "Born in the mountains",
+        hidden_description: "Secret details",
+      };
+
+      const encrypted = await encryptCharacterData(char, key);
+      expect(encrypted.id).toBe("char-1");
+      expect(encrypted.user_id).toBe("user-1");
+      expect(encrypted.name).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.short_description).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.display_name).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.appearance).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.personality).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.backstory).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.hidden_description).toMatch(/^ENC:aes-256-gcm:/);
+
+      const decrypted = await decryptCharacterData(encrypted, key);
+      expect(decrypted.name).toBe("Alice");
+      expect(decrypted.short_description).toBe("A brave adventurer");
+      expect(decrypted.appearance).toBe("Tall with red hair");
+      expect(decrypted.personality).toBe("Courageous");
+      expect(decrypted.backstory).toBe("Born in the mountains");
+      expect(decrypted.hidden_description).toBe("Secret details");
+    });
+
+    it("should handle null/undefined fields gracefully in character data", async () => {
+      const key = generateAes256Key();
+      const char = { id: "char-2", name: "Bob", short_description: null, appearance: undefined };
+      const encrypted = await encryptCharacterData(char, key);
+      expect(encrypted.name).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.short_description).toBeNull();
+      expect(encrypted.appearance).toBeUndefined();
+    });
+  });
+
+  describe("DataSave data transformers", () => {
+    it("should encrypt and decrypt data save fields correctly", async () => {
+      const key = generateAes256Key();
+      const save = { id: "save-1", key_name: "myKey", content: "myValue", user_id: "u1" };
+      const encrypted = await encryptDataSaveData(save, key);
+      expect(encrypted.key_name).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.content).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.id).toBe("save-1");
+      expect(encrypted.user_id).toBe("u1");
+
+      const decrypted = await decryptDataSaveData(encrypted, key);
+      expect(decrypted.key_name).toBe("myKey");
+      expect(decrypted.content).toBe("myValue");
+    });
+
+    it("should encrypt and decrypt data save category name", async () => {
+      const key = generateAes256Key();
+      const cat = { id: "cat-1", name: "My Category", user_id: "u1" };
+      const encrypted = await encryptDataSaveCategoryData(cat, key);
+      expect(encrypted.name).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.id).toBe("cat-1");
+
+      const decrypted = await decryptDataSaveCategoryData(encrypted, key);
+      expect(decrypted.name).toBe("My Category");
+    });
+  });
+
+  describe("Chat data transformers", () => {
+    it("should encrypt and decrypt chat title correctly", async () => {
+      const key = generateAes256Key();
+      const chat = { id: "chat-1", title: "My Chat Title", user_id: "u1" };
+      const encrypted = await encryptChatData(chat, key);
+      expect(encrypted.title).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.id).toBe("chat-1");
+
+      const decrypted = await decryptChatData(encrypted, key);
+      expect(decrypted.title).toBe("My Chat Title");
+    });
+
+    it("should encrypt and decrypt chat message content and reasoning", async () => {
+      const key = generateAes256Key();
+      const msg = {
+        id: "msg-1",
+        chat_id: "chat-1",
+        role: "assistant",
+        content: "Hello there!",
+        reasoning: "Step by step reasoning...",
+      };
+      const encrypted = await encryptChatMessageData(msg, key);
+      expect(encrypted.content).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.reasoning).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.id).toBe("msg-1");
+      expect(encrypted.role).toBe("assistant");
+
+      const decrypted = await decryptChatMessageData(encrypted, key);
+      expect(decrypted.content).toBe("Hello there!");
+      expect(decrypted.reasoning).toBe("Step by step reasoning...");
+    });
+
+    it("should handle null reasoning gracefully", async () => {
+      const key = generateAes256Key();
+      const msg = { id: "msg-2", content: "Hello", reasoning: null };
+      const encrypted = await encryptChatMessageData(msg, key);
+      expect(encrypted.reasoning).toBeNull();
+      const decrypted = await decryptChatMessageData(encrypted, key);
+      expect(decrypted.reasoning).toBeNull();
     });
   });
 });

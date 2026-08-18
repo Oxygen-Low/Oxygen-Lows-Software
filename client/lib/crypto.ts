@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 /**
  * Cryptographic utilities for AES-256 master key generation, format conversion,
  * and AES-256-GCM client-side encryption and decryption.
@@ -438,4 +440,418 @@ export async function decryptAes256Gcm(ciphertextBase64: string, keyBytes: Uint8
 
   const decoder = new TextDecoder();
   return decoder.decode(decryptedBuffer);
+}
+
+export const ENCRYPTED_PREFIX = "ENC:aes-256-gcm:";
+
+/**
+ * Check if a string value is an encrypted AES-256-GCM envelope.
+ */
+export function isEncrypted(value: unknown): boolean {
+  return typeof value === "string" && value.startsWith(ENCRYPTED_PREFIX);
+}
+
+/**
+ * Encrypt a string field using AES-256-GCM.
+ * Handles null/undefined, empty strings, and skips values that are already encrypted.
+ */
+export async function encryptField(
+  value: string | null | undefined,
+  keyBytes: Uint8Array | null
+): Promise<string | null | undefined> {
+  if (value === null || value === undefined || value === "") {
+    return value;
+  }
+  if (isEncrypted(value)) {
+    return value;
+  }
+  if (!keyBytes) {
+    return value;
+  }
+  const ciphertext = await encryptAes256Gcm(value, keyBytes);
+  return `${ENCRYPTED_PREFIX}${ciphertext}`;
+}
+
+/**
+ * Decrypt a string field.
+ * Handles null/undefined, plaintext strings, and missing or failed keys gracefully.
+ */
+export async function decryptField(
+  value: string | null | undefined,
+  keyBytes: Uint8Array | null
+): Promise<string | null | undefined> {
+  if (value === null || value === undefined || value === "") {
+    return value;
+  }
+  if (!isEncrypted(value)) {
+    return value;
+  }
+  if (!keyBytes) {
+    return value;
+  }
+  try {
+    const rawCiphertext = value.slice(ENCRYPTED_PREFIX.length);
+    return await decryptAes256Gcm(rawCiphertext, keyBytes);
+  } catch (err) {
+    console.warn("Failed to decrypt field:", err);
+    return "[Encrypted]";
+  }
+}
+
+export interface CharacterData {
+  id?: string;
+  user_id?: string;
+  name?: string;
+  short_description?: string | null;
+  display_name?: string | null;
+  image_path?: string | null;
+  image_url?: string | null;
+  appearance?: string | null;
+  personality?: string | null;
+  backstory?: string | null;
+  hidden_description?: string | null;
+  is_universe?: boolean;
+  [key: string]: any;
+}
+
+export async function encryptCharacterData<T extends CharacterData>(
+  char: T,
+  keyBytes: Uint8Array
+): Promise<T> {
+  const result: any = { ...char };
+  if (char.name !== undefined) result.name = (await encryptField(char.name, keyBytes)) ?? char.name;
+  if (char.short_description !== undefined) result.short_description = await encryptField(char.short_description, keyBytes);
+  if (char.display_name !== undefined) result.display_name = await encryptField(char.display_name, keyBytes);
+  if (char.appearance !== undefined) result.appearance = await encryptField(char.appearance, keyBytes);
+  if (char.personality !== undefined) result.personality = await encryptField(char.personality, keyBytes);
+  if (char.backstory !== undefined) result.backstory = await encryptField(char.backstory, keyBytes);
+  if (char.hidden_description !== undefined) result.hidden_description = await encryptField(char.hidden_description, keyBytes);
+  return result;
+}
+
+export async function decryptCharacterData<T extends CharacterData>(
+  char: T,
+  keyBytes: Uint8Array | null
+): Promise<T> {
+  const result: any = { ...char };
+  if (char.name !== undefined) result.name = (await decryptField(char.name, keyBytes)) ?? char.name;
+  if (char.short_description !== undefined) result.short_description = await decryptField(char.short_description, keyBytes);
+  if (char.display_name !== undefined) result.display_name = await decryptField(char.display_name, keyBytes);
+  if (char.appearance !== undefined) result.appearance = await decryptField(char.appearance, keyBytes);
+  if (char.personality !== undefined) result.personality = await decryptField(char.personality, keyBytes);
+  if (char.backstory !== undefined) result.backstory = await decryptField(char.backstory, keyBytes);
+  if (char.hidden_description !== undefined) result.hidden_description = await decryptField(char.hidden_description, keyBytes);
+  return result;
+}
+
+export interface DataSaveData {
+  id?: string;
+  user_id?: string;
+  key_name?: string;
+  content?: string;
+  category_id?: string | null;
+  [key: string]: any;
+}
+
+export async function encryptDataSaveData<T extends DataSaveData>(
+  item: T,
+  keyBytes: Uint8Array
+): Promise<T> {
+  const result: any = { ...item };
+  if (item.key_name !== undefined) result.key_name = (await encryptField(item.key_name, keyBytes)) ?? item.key_name;
+  if (item.content !== undefined) result.content = (await encryptField(item.content, keyBytes)) ?? item.content;
+  return result;
+}
+
+export async function decryptDataSaveData<T extends DataSaveData>(
+  item: T,
+  keyBytes: Uint8Array | null
+): Promise<T> {
+  const result: any = { ...item };
+  if (item.key_name !== undefined) result.key_name = (await decryptField(item.key_name, keyBytes)) ?? item.key_name;
+  if (item.content !== undefined) result.content = (await decryptField(item.content, keyBytes)) ?? item.content;
+  return result;
+}
+
+export interface DataSaveCategoryData {
+  id?: string;
+  user_id?: string;
+  name?: string;
+  [key: string]: any;
+}
+
+export async function encryptDataSaveCategoryData<T extends DataSaveCategoryData>(
+  cat: T,
+  keyBytes: Uint8Array
+): Promise<T> {
+  const result: any = { ...cat };
+  if (cat.name !== undefined) result.name = (await encryptField(cat.name, keyBytes)) ?? cat.name;
+  return result;
+}
+
+export async function decryptDataSaveCategoryData<T extends DataSaveCategoryData>(
+  cat: T,
+  keyBytes: Uint8Array | null
+): Promise<T> {
+  const result: any = { ...cat };
+  if (cat.name !== undefined) result.name = (await decryptField(cat.name, keyBytes)) ?? cat.name;
+  return result;
+}
+
+export interface ChatData {
+  id?: string;
+  user_id?: string;
+  title?: string;
+  system_prompt?: string | null;
+  [key: string]: any;
+}
+
+export async function encryptChatData<T extends ChatData>(
+  chat: T,
+  keyBytes: Uint8Array
+): Promise<T> {
+  const result: any = { ...chat };
+  if (chat.title !== undefined) result.title = (await encryptField(chat.title, keyBytes)) ?? chat.title;
+  if (chat.system_prompt !== undefined) result.system_prompt = await encryptField(chat.system_prompt, keyBytes);
+  return result;
+}
+
+export async function decryptChatData<T extends ChatData>(
+  chat: T,
+  keyBytes: Uint8Array | null
+): Promise<T> {
+  const result: any = { ...chat };
+  if (chat.title !== undefined) result.title = (await decryptField(chat.title, keyBytes)) ?? chat.title;
+  if (chat.system_prompt !== undefined) result.system_prompt = await decryptField(chat.system_prompt, keyBytes);
+  return result;
+}
+
+export interface ChatMessageData {
+  id?: string;
+  chat_id?: string;
+  role?: string;
+  content?: string;
+  reasoning?: string | null;
+  [key: string]: any;
+}
+
+export async function encryptChatMessageData<T extends ChatMessageData>(
+  msg: T,
+  keyBytes: Uint8Array
+): Promise<T> {
+  const result: any = { ...msg };
+  if (msg.content !== undefined) result.content = (await encryptField(msg.content, keyBytes)) ?? msg.content;
+  if (msg.reasoning !== undefined) result.reasoning = await encryptField(msg.reasoning, keyBytes);
+  return result;
+}
+
+export async function decryptChatMessageData<T extends ChatMessageData>(
+  msg: T,
+  keyBytes: Uint8Array | null
+): Promise<T> {
+  const result: any = { ...msg };
+  if (msg.content !== undefined) result.content = (await decryptField(msg.content, keyBytes)) ?? msg.content;
+  if (msg.reasoning !== undefined) result.reasoning = await decryptField(msg.reasoning, keyBytes);
+  return result;
+}
+
+export interface MigrateOptions {
+  category: EncryptionCategory;
+  enable: boolean;
+  keyBytes: Uint8Array;
+  userId?: string;
+  client?: any;
+}
+
+/**
+ * Migrate all user data in Supabase for a given category:
+ * When enabling: encrypts all unencrypted fields in Supabase.
+ * When disabling: decrypts all encrypted fields in Supabase back to plaintext.
+ */
+export async function migrateCategoryEncryption({
+  category,
+  enable,
+  keyBytes,
+  userId,
+  client,
+}: MigrateOptions): Promise<{ updatedCount: number }> {
+  const db = client || supabase;
+  let updatedCount = 0;
+
+  if (category === "characters") {
+    let query = db.from("characters").select("*");
+    if (userId) query = query.eq("user_id", userId);
+    const { data: chars, error } = await query;
+    if (error) throw error;
+
+    if (chars && chars.length > 0) {
+      for (const char of chars) {
+        if (enable) {
+          const enc = await encryptCharacterData(char, keyBytes);
+          const { error: updateError } = await db
+            .from("characters")
+            .update({
+              name: enc.name,
+              short_description: enc.short_description,
+              display_name: enc.display_name,
+              appearance: enc.appearance,
+              personality: enc.personality,
+              backstory: enc.backstory,
+              hidden_description: enc.hidden_description,
+            })
+            .eq("id", char.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        } else {
+          const dec = await decryptCharacterData(char, keyBytes);
+          const { error: updateError } = await db
+            .from("characters")
+            .update({
+              name: dec.name,
+              short_description: dec.short_description,
+              display_name: dec.display_name,
+              appearance: dec.appearance,
+              personality: dec.personality,
+              backstory: dec.backstory,
+              hidden_description: dec.hidden_description,
+            })
+            .eq("id", char.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    }
+  } else if (category === "data_save") {
+    let querySaves = db.from("data_saves").select("*");
+    if (userId) querySaves = querySaves.eq("user_id", userId);
+    const { data: saves, error: savesError } = await querySaves;
+    if (savesError) throw savesError;
+
+    if (saves && saves.length > 0) {
+      for (const save of saves) {
+        if (enable) {
+          const enc = await encryptDataSaveData(save, keyBytes);
+          const { error: updateError } = await db
+            .from("data_saves")
+            .update({
+              key_name: enc.key_name,
+              content: enc.content,
+            })
+            .eq("id", save.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        } else {
+          const dec = await decryptDataSaveData(save, keyBytes);
+          const { error: updateError } = await db
+            .from("data_saves")
+            .update({
+              key_name: dec.key_name,
+              content: dec.content,
+            })
+            .eq("id", save.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    }
+
+    let queryCats = db.from("data_save_categories").select("*");
+    if (userId) queryCats = queryCats.eq("user_id", userId);
+    const { data: cats, error: catsError } = await queryCats;
+    if (catsError) throw catsError;
+
+    if (cats && cats.length > 0) {
+      for (const cat of cats) {
+        if (enable) {
+          const enc = await encryptDataSaveCategoryData(cat, keyBytes);
+          const { error: updateError } = await db
+            .from("data_save_categories")
+            .update({ name: enc.name })
+            .eq("id", cat.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        } else {
+          const dec = await decryptDataSaveCategoryData(cat, keyBytes);
+          const { error: updateError } = await db
+            .from("data_save_categories")
+            .update({ name: dec.name })
+            .eq("id", cat.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    }
+  } else if (category === "chatbot") {
+    let queryChats = db.from("chats").select("*");
+    if (userId) queryChats = queryChats.eq("user_id", userId);
+    const { data: chats, error: chatsError } = await queryChats;
+    if (chatsError) throw chatsError;
+
+    if (chats && chats.length > 0) {
+      const chatIds = chats.map((c: any) => c.id);
+      for (const chat of chats) {
+        if (enable) {
+          const enc = await encryptChatData(chat, keyBytes);
+          const { error: updateError } = await db
+            .from("chats")
+            .update({
+              title: enc.title,
+              system_prompt: enc.system_prompt,
+            })
+            .eq("id", chat.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        } else {
+          const dec = await decryptChatData(chat, keyBytes);
+          const { error: updateError } = await db
+            .from("chats")
+            .update({
+              title: dec.title,
+              system_prompt: dec.system_prompt,
+            })
+            .eq("id", chat.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+
+      if (chatIds.length > 0) {
+        const { data: msgs, error: msgsError } = await db
+          .from("chat_messages")
+          .select("*")
+          .in("chat_id", chatIds);
+        if (msgsError) throw msgsError;
+
+        if (msgs && msgs.length > 0) {
+          for (const msg of msgs) {
+            if (enable) {
+              const enc = await encryptChatMessageData(msg, keyBytes);
+              const { error: updateError } = await db
+                .from("chat_messages")
+                .update({
+                  content: enc.content,
+                  reasoning: enc.reasoning,
+                })
+                .eq("id", msg.id);
+              if (updateError) throw updateError;
+              updatedCount++;
+            } else {
+              const dec = await decryptChatMessageData(msg, keyBytes);
+              const { error: updateError } = await db
+                .from("chat_messages")
+                .update({
+                  content: dec.content,
+                  reasoning: dec.reasoning,
+                })
+                .eq("id", msg.id);
+              if (updateError) throw updateError;
+              updatedCount++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return { updatedCount };
 }

@@ -3,6 +3,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import {
+  getActiveMasterKey,
+  isCategoryEncryptionEnabled,
+  encryptCharacterData,
+  decryptCharacterData,
+} from "@/lib/crypto";
+import {
   Loader2,
   Download,
   Upload,
@@ -165,7 +171,11 @@ export function PublicCharactersApp() {
       if (error) throw error;
 
       const processedData = data || [];
-      setLocalCharacters(processedData);
+      const key = getActiveMasterKey();
+      const decryptedData = await Promise.all(
+        processedData.map((c: any) => decryptCharacterData(c, key))
+      );
+      setLocalCharacters(decryptedData);
     } catch (err: any) {
       console.error(err);
     }
@@ -230,7 +240,7 @@ export function PublicCharactersApp() {
   const handleDownload = async (item: PublicCharacter) => {
     if (!session?.user?.id) return;
     try {
-      const payload = {
+      let payload: any = {
         user_id: session.user.id,
         name: item.name,
         short_description: item.short_description,
@@ -242,6 +252,13 @@ export function PublicCharactersApp() {
         image_path: item.image_path,
         is_universe: item.is_universe,
       };
+
+      if (isCategoryEncryptionEnabled("characters")) {
+        const key = getActiveMasterKey();
+        if (key) {
+          payload = await encryptCharacterData(payload, key);
+        }
+      }
 
       const { error } = await supabase.from("characters").insert(payload);
       if (error) throw error;
