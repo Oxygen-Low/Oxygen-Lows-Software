@@ -64,12 +64,12 @@ describe("Security Page Component", () => {
     expect(screen.queryByText("Show QR Code")).toBeNull();
   });
 
-  it("renders encryption toggles for Characters, Data Save, and Chatbot / AI Keys", () => {
+  it("renders encryption toggles for Characters, Data Save, and Chatbot", () => {
     renderWithRouter();
     expect(screen.getByText("Protected Data Categories")).toBeDefined();
     expect(screen.getByText("Characters and Universes")).toBeDefined();
     expect(screen.getByText("Data Save Entries")).toBeDefined();
-    expect(screen.getByText("Chatbot Chats & AI Provider Keys")).toBeDefined();
+    expect(screen.getByText("Chatbot Chats")).toBeDefined();
   });
 
   it("allows toggling encryption and saves to localStorage", async () => {
@@ -198,11 +198,9 @@ describe("Security Page Component", () => {
     });
   });
 
-  it("renders Zero-Knowledge and AI Provider architecture cards", () => {
+  it("does not render removed architecture section", () => {
     renderWithRouter();
-    expect(screen.getByText("Zero-Knowledge & Privacy Architecture")).toBeDefined();
-    expect(screen.getByText("Client-Side AES-256 Encryption")).toBeDefined();
-    expect(screen.getByText("Custom AI Provider API Keys")).toBeDefined();
-    expect(screen.getByText("Backup Your Masterkey")).toBeDefined();
+    expect(screen.queryByText("Zero-Knowledge & Privacy Architecture")).toBeNull();
+    expect(screen.queryByText("Custom AI Provider API Keys")).toBeNull();
   });
 });
