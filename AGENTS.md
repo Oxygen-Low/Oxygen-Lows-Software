@@ -23,3 +23,7 @@
 -- After finishing code changes and calling the translation subagent, use a subagent with "pro" model to code review all changes. Only call the code review after more than 100 lines of code have been modified.
 
 -- Tell subagents to ignore this section of AGENTS.md to prevent a subagent calling loop.
+
+## Hono Routing
+
+-- NEVER add a root route (e.g., `app.get("/")`) in `server/index.ts`. This intercepts the request and prevents the Vite SPA from loading in production. The root route is already correctly handled by a fallback in `server/serve.ts`.
