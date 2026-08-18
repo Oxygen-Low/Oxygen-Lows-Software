@@ -12,3 +12,6 @@
 
 -- When making changes or adding text that users would see, add translations to every language.
 
+## App Name
+
+-- The app/website is NOT named "Oxygen Low"; it is named "Oxygen Low's Software".
