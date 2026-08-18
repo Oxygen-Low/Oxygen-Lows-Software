@@ -1679,7 +1679,7 @@ export function ChatbotApp() {
           category="chatbot"
           returnTo="/apps?app=chatbot"
           onUnlocked={() => setEncryptionLocked(false)}
-          categoryLabel="Chatbot Chats & AI Provider Keys"
+          categoryLabel="Chatbot Chats"
         />
       </div>
     );
