@@ -334,7 +334,7 @@ export const en = {
   },
   oauthConsent: {
     title: "Authorize Application",
-    subtitle: "wants to access your Oxygen Low account",
+    subtitle: "wants to access your Oxygen Low's Software account",
     permissions: "Requested Permissions",
     authorizeApp: "Authorize {app}",
     wantsAccess: "This application wants to connect to your Oxygen Low's Software account.",
@@ -382,8 +382,8 @@ export const en = {
     charactersUniversesDesc: "Encrypt character bios, appearances, personalities, private notes, and universe lore.",
     dataSave: "Data Save Entries",
     dataSaveDesc: "Encrypt custom key-value snippets, code snippets, notes, and stored data records.",
-    chatbotChats: "Chatbot Chats & AI Provider Keys",
-    chatbotChatsDesc: "Encrypt AI conversations, message history, system prompts, and custom AI provider API keys.",
+    chatbotChats: "Chatbot Chats",
+    chatbotChatsDesc: "Encrypt AI conversations, message history, and system prompts.",
     encryptionEnabled: "Encrypted",
     encryptionDisabled: "Unencrypted",
     keyRequiredBadge: "Key Required",
@@ -396,13 +396,6 @@ export const en = {
     quickUnlockButton: "Unlock & Decrypt",
     returnToPrompt: "Masterkey active. You can now return to your previous page:",
     returnToButton: "Return to Page",
-    architectureTitle: "Zero-Knowledge & Privacy Architecture",
-    arch1Title: "Client-Side AES-256 Encryption",
-    arch1Desc: "All encryption takes place directly inside your browser before transmitting or storing data. Server and database administrators cannot read your content.",
-    arch2Title: "Custom AI Provider API Keys",
-    arch2Desc: "Upcoming custom AI provider keys (OpenAI, Anthropic, OpenRouter, etc.) and conversations are encrypted with your masterkey so your credentials stay secret.",
-    arch3Title: "Backup Your Masterkey",
-    arch3Desc: "Because Oxygen Low uses zero-knowledge encryption, we cannot recover your data if you lose your masterkey. Store your key in a secure password vault.",
   },
 } as const;
 
