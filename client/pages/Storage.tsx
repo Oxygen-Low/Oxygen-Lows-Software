@@ -100,6 +100,9 @@ export default function Storage() {
         "user_preferences",
         "data_saves",
         "data_save_categories",
+        "defender_routes",
+        "defender_events",
+        "defender_outbound",
       ];
       const stats = await Promise.all(
         tables.map(async (table) => {
@@ -209,7 +212,24 @@ export default function Storage() {
 
     const totalDataSize = dbStats.reduce((acc, s) => acc + s.size, 0);
     cats.data.size = totalDataSize;
-    cats.data.files = dbStats.map((s) => ({ name: s.name, size: s.size }));
+
+    const tableNames: Record<string, string> = {
+      characters: "Characters",
+      chats: "Chats",
+      chat_messages: "Chat Messages",
+      user_preferences: "Preferences",
+      data_saves: "Data Saves",
+      data_save_categories: "Data Save Categories",
+      defender_routes: "Web Defender (Routes)",
+      defender_events: "Web Defender (Events)",
+      defender_outbound: "Web Defender (Outbounds)",
+    };
+
+    cats.data.files = dbStats.map((s) => ({
+      name: tableNames[s.name] || s.name,
+      rawName: s.name,
+      size: s.size
+    }));
 
     return cats;
   }, [cloudFiles, dbStats]);
@@ -322,6 +342,11 @@ export default function Storage() {
                     <span className="text-xs text-slate-400">{cat.label}</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="p-3 bg-slate-950/70 rounded-lg border border-slate-800 text-xs text-slate-400 leading-relaxed">
+                <span className="text-cyan-400 font-semibold mr-1">{t("storage.webDefenderAdviceTitle", undefined, "Web Defender Storage:")}</span>
+                {t("storage.webDefenderAdviceDesc", undefined, "Stored data (routes, event log, outbounds) from Web Defender counts towards your storage usage. You are advised to keep event limits low if multiple Web Defender apps are enabled.")}
               </div>
             </div>
           </CardContent>

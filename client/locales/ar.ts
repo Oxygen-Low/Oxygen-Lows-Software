@@ -213,6 +213,8 @@ export const ar = {
     deleteConfirmDesc: "لا يمكن التراجع عن هذا الإجراء. سيؤدي هذا إلى حذف ملفك نهائياً من التخزين السحابي.",
     fileUploaded: "تم رفع الملف بنجاح",
     fileDeleted: "تم حذف الملف بنجاح",
+    webDefenderAdviceTitle: "مساحة تخزين Web Defender:",
+    webDefenderAdviceDesc: "البيانات المخزنة (المسارات، سجل الأحداث، الاتصالات الصادرة) من Web Defender تُحسب ضمن استخدام التخزين. يُنصح بالحفاظ على حدود أحداث منخفضة إذا تم تمكين تطبيقات Web Defender متعددة.",
   },
   customize: {
     title: "تخصيص",

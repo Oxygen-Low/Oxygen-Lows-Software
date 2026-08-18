@@ -213,6 +213,8 @@ export const hi = {
     deleteConfirmDesc: "इस कार्रवाई को पूर्ववत नहीं किया जा सकता है। यह आपकी फ़ाइल को क्लाउड स्टोरेज से स्थायी रूप से हटा देगा।",
     fileUploaded: "फ़ाइल सफलतापूर्वक अपलोड की गई",
     fileDeleted: "फ़ाइल सफलतापूर्वक हटाई गई",
+    webDefenderAdviceTitle: "Web Defender संग्रहण:",
+    webDefenderAdviceDesc: "Web Defender से संग्रहीत डेटा (रूट, ईवेंट लॉग, आउटबाउंड) आपके स्टोरेज उपयोग में गिना जाता है। यदि कई Web Defender ऐप्स सक्षम हैं तो ईवेंट सीमा कम रखने की सलाह दी जाती है।",
   },
   customize: {
     title: "अनुकूलित करें",

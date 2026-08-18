@@ -213,6 +213,8 @@ export const zhCN = {
     deleteConfirmDesc: "此操作无法撤销。这将从云存储中永久删除您的文件。",
     fileUploaded: "文件上传成功",
     fileDeleted: "文件删除成功",
+    webDefenderAdviceTitle: "Web Defender 存储：",
+    webDefenderAdviceDesc: "来自 Web Defender 的存储数据（路由、事件日志、出站连接）会计入您的存储空间用量。如果启用了多个 Web Defender 应用程序，建议保持较低的事件上限。",
   },
   customize: {
     title: "个性化",

@@ -17,6 +17,7 @@ describe("Defender getAppConfig", () => {
     expect(configNull.block_http_dos).toBe(true);
     expect(configNull.block_http_exploit).toBe(true);
     expect(configNull.block_botnets).toBe(true);
+    expect(configNull.events_limit).toBe(50);
 
     const configUndefined = getAppConfig(undefined);
     expect(configUndefined.block_sql_injection).toBe(true);
@@ -25,6 +26,7 @@ describe("Defender getAppConfig", () => {
     expect(configUndefined.block_http_dos).toBe(true);
     expect(configUndefined.block_http_exploit).toBe(true);
     expect(configUndefined.block_botnets).toBe(true);
+    expect(configUndefined.events_limit).toBe(50);
   });
 
   it("extracts config correctly from a single object (1-to-1 relation)", () => {
@@ -89,6 +91,18 @@ describe("Defender getAppConfig", () => {
     expect(config.block_http_dos).toBe(true);
     expect(config.block_http_exploit).toBe(true);
     expect(config.block_botnets).toBe(true);
+    expect(config.events_limit).toBe(50);
+  });
+
+  it("extracts and clamps custom events_limit within 1-1000 range", () => {
+    const configCustom = getAppConfig({ events_limit: 500 });
+    expect(configCustom.events_limit).toBe(500);
+
+    const configMaxClamped = getAppConfig({ events_limit: 2500 });
+    expect(configMaxClamped.events_limit).toBe(1000);
+
+    const configMinClamped = getAppConfig({ events_limit: -10 });
+    expect(configMinClamped.events_limit).toBe(1);
   });
 });
 

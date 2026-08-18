@@ -223,6 +223,8 @@ export const en = {
     deleteConfirmDesc: "This action cannot be undone. This will permanently delete your file from cloud storage.",
     fileUploaded: "File uploaded successfully",
     fileDeleted: "File deleted successfully",
+    webDefenderAdviceTitle: "Web Defender Storage:",
+    webDefenderAdviceDesc: "Stored data (routes, event log, outbounds) from Web Defender counts towards your storage usage. You are advised to keep event limits low if multiple Web Defender apps are enabled.",
   },
   customize: {
     title: "Customize",

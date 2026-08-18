@@ -49,6 +49,7 @@ export interface AppConfig {
   blockBotnets: boolean;
   ddosProtection: boolean;
   ddosThresholdRpm: number;
+  eventsLimit?: number;
   routes: RouteConfig[];
 }
 

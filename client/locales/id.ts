@@ -213,6 +213,8 @@ export const id = {
     deleteConfirmDesc: "Tindakan ini tidak dapat dibatalkan. Ini akan menghapus file Anda secara permanen dari penyimpanan cloud.",
     fileUploaded: "File berhasil diunggah",
     fileDeleted: "File berhasil dihapus",
+    webDefenderAdviceTitle: "Penyimpanan Web Defender:",
+    webDefenderAdviceDesc: "Data tersimpan (rute, log peristiwa, keluar) dari Web Defender dihitung dalam penggunaan penyimpanan Anda. Disarankan untuk menjaga batas peristiwa tetap rendah jika beberapa aplikasi Web Defender diaktifkan.",
   },
   customize: {
     title: "Sesuaikan",

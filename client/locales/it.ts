@@ -213,6 +213,8 @@ export const it = {
     deleteConfirmDesc: "Questa azione non può essere annullata. Questo eliminerà definitivamente il tuo file dall'archiviazione cloud.",
     fileUploaded: "File caricato con successo",
     fileDeleted: "File eliminato con successo",
+    webDefenderAdviceTitle: "Archiviazione Web Defender:",
+    webDefenderAdviceDesc: "I dati archiviati (percorsi, registro eventi, connessioni in uscita) di Web Defender vengono conteggiati nell'utilizzo dello spazio di archiviazione. Si consiglia di mantenere bassi i limiti degli eventi se sono abilitate più app Web Defender.",
   },
   customize: {
     title: "Personalizza",

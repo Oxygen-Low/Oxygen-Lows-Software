@@ -213,6 +213,8 @@ export const ko = {
     deleteConfirmDesc: "이 작업은 되돌릴 수 없습니다. 파일이 클라우드 저장소에서 영구적으로 삭제됩니다.",
     fileUploaded: "파일이 성공적으로 업로드되었습니다",
     fileDeleted: "파일이 성공적으로 삭제되었습니다",
+    webDefenderAdviceTitle: "Web Defender 저장공간:",
+    webDefenderAdviceDesc: "Web Defender의 저장된 데이터(라우트, 이벤트 로그, 아웃바운드)는 저장공간 사용량에 반영됩니다. 여러 Web Defender 앱을 활성화한 경우 이벤트 제한을 낮게 유지하는 것이 좋습니다.",
   },
   customize: {
     title: "커스터마이즈",

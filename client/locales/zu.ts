@@ -213,6 +213,8 @@ export const zu = {
     deleteConfirmDesc: "Lesi senzo asinakuhlehliswa. Lokhu kuzosusa unomphela ifayela lakho kusitoreji samafu.",
     fileUploaded: "Ifayela lilayishwe ngempumelelo",
     fileDeleted: "Ifayela lisuswe ngempumelelo",
+    webDefenderAdviceTitle: "Isitoreji se-Web Defender:",
+    webDefenderAdviceDesc: "Idatha egciniwe (imizila, ilogi yezehlakalo, okuphumayo) evela ku-Web Defender ibalwa ekusetshenzisweni kwesitoreji sakho. Uyayalwa ukuthi ugcine imikhawulo yezehlakalo iphansi uma kunikwe amandla izinhlelo zokusebenza eziningi ze-Web Defender.",
   },
   customize: {
     title: "Enza ngendlela oyifisayo",

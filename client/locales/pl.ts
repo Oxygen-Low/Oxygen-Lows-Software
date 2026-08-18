@@ -213,6 +213,8 @@ export const pl = {
     deleteConfirmDesc: "Tej akcji nie można cofnąć. Spowoduje to trwałe usunięcie pliku z pamięci w chmurze.",
     fileUploaded: "Plik pomyślnie przesłany",
     fileDeleted: "Plik pomyślnie usunięty",
+    webDefenderAdviceTitle: "Pamięć Web Defender:",
+    webDefenderAdviceDesc: "Zapisane dane (trasy, dziennik zdarzeń, połączenia wychodzące) z Web Defender wliczają się do wykorzystania pamięci. Zaleca się utrzymywanie niskich limitów zdarzeń w przypadku włączenia wielu aplikacji Web Defender.",
   },
   customize: {
     title: "Dostosuj",

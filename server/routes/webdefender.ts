@@ -149,6 +149,29 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
     return c.json({ error: error.message }, 500);
   }
 
+  // Ensure total events do not exceed configured events_limit (default 50, range 1-1000)
+  try {
+    const config = Array.isArray(app.defender_config)
+      ? (app.defender_config[0] || {})
+      : (app.defender_config || {});
+    const maxEvents = Math.min(1000, Math.max(1, config.events_limit || 50));
+    const { data: excess } = await supabase
+      .from("defender_events")
+      .select("id")
+      .eq("app_id", app.id)
+      .order("created_at", { ascending: false })
+      .range(maxEvents, maxEvents + 20);
+
+    if (excess && excess.length > 0) {
+      await supabase
+        .from("defender_events")
+        .delete()
+        .in("id", excess.map((e: any) => e.id));
+    }
+  } catch (_) {
+    // Non-blocking prune fallback
+  }
+
   return c.json({}, 201);
 });
 
@@ -327,13 +350,18 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
     "block_http_exploit",
     "block_botnets",
     "ddos_protection",
-    "ddos_threshold_rpm"
+    "ddos_threshold_rpm",
+    "events_limit"
   ];
 
   const updatePayload: Record<string, any> = { app_id: id };
   for (const key of allowedKeys) {
     if (key in body) {
-      updatePayload[key] = body[key];
+      if (key === "events_limit") {
+        updatePayload[key] = Math.min(1000, Math.max(1, parseInt(body[key]) || 50));
+      } else {
+        updatePayload[key] = body[key];
+      }
     }
   }
 
@@ -344,6 +372,28 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
     .single();
 
   if (error) return c.json({ error: error.message }, 500);
+
+  // If events_limit was configured, prune any existing events exceeding the new limit
+  if (updatePayload.events_limit !== undefined) {
+    try {
+      const { data: excessEvents } = await supabase
+        .from("defender_events")
+        .select("id")
+        .eq("app_id", id)
+        .order("created_at", { ascending: false })
+        .range(updatePayload.events_limit, 999999);
+
+      if (excessEvents && excessEvents.length > 0) {
+        await supabase
+          .from("defender_events")
+          .delete()
+          .in("id", excessEvents.map((e: any) => e.id));
+      }
+    } catch (_) {
+      // Non-blocking prune
+    }
+  }
+
   return c.json(data);
 });
 
@@ -389,7 +439,7 @@ defenderRouter.get("/apps/:id/events", uiLimiter, requireJwt, async (c) => {
   const id = c.req.param("id");
   
   const page = parseInt(c.req.query("page") || "1");
-  const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+  const limit = Math.min(Math.max(1, parseInt(c.req.query("limit") || "1000")), 1000);
   const eventType = c.req.query("eventType");
   const blockedStr = c.req.query("blocked");
   const startDate = c.req.query("startDate");

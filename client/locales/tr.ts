@@ -213,6 +213,8 @@ export const tr = {
     deleteConfirmDesc: "Bu işlem geri alınamaz. Bu, dosyanızı bulut depolama alanından kalıcı olarak silecektir.",
     fileUploaded: "Dosya başarıyla yüklendi",
     fileDeleted: "Dosya başarıyla silindi",
+    webDefenderAdviceTitle: "Web Defender Depolama Alanı:",
+    webDefenderAdviceDesc: "Web Defender tarafından depolanan veriler (rotalar, olay günlüğü, giden bağlantılar) depolama kullanımınıza dahil edilir. Birden fazla Web Defender uygulaması etkinse olay sınırlarını düşük tutmanız önerilir.",
   },
   customize: {
     title: "Özelleştir",

@@ -213,6 +213,8 @@ export const la = {
     deleteConfirmDesc: "Haec actio revocari non potest. Hoc in perpetuum delebit plicaturam tuam e receptaculo nubis.",
     fileUploaded: "Plicatura feliciter inposita",
     fileDeleted: "Plicatura feliciter deleta",
+    webDefenderAdviceTitle: "Web Defender Repositorium:",
+    webDefenderAdviceDesc: "Data reposita (itinera, actorum eventuum, nexus exeuntes) de Web Defender in usum repositorii computantur. Commendatur limites eventuum parvos tenere si plures Web Defender applicationes activatae sunt.",
   },
   customize: {
     title: "Aptare",

@@ -213,6 +213,8 @@ export const he = {
     deleteConfirmDesc: "לא ניתן לבטל פעולה זו. זה ימחק לצמיתות את הקובץ שלך מאחסון הענן.",
     fileUploaded: "הקובץ הועלה בהצלחה",
     fileDeleted: "הקובץ נמחק בהצלחה",
+    webDefenderAdviceTitle: "אחסון Web Defender:",
+    webDefenderAdviceDesc: "נתונים מאוחסנים (נתיבים, יומן אירועים, תעבורה יוצאת) מ-Web Defender נספרים כחלק מנפח האחסון שלך. מומלץ להגדיר מגבלות אירועים נמוכות אם מופעלות מספר אפליקציות Web Defender.",
   },
   customize: {
     title: "התאמה אישית",

@@ -213,6 +213,8 @@ export const pt = {
     deleteConfirmDesc: "Esta ação não pode ser desfeita. Isso excluirá permanentemente seu arquivo do armazenamento em nuvem.",
     fileUploaded: "Arquivo enviado com sucesso",
     fileDeleted: "Arquivo excluído com sucesso",
+    webDefenderAdviceTitle: "Armazenamento do Web Defender:",
+    webDefenderAdviceDesc: "Os dados armazenados (rotas, registo de eventos, conexões de saída) do Web Defender contam para o seu uso de armazenamento. É aconselhável manter limites de eventos baixos se várias aplicações do Web Defender estiverem ativadas.",
   },
   customize: {
     title: "Personalizar",

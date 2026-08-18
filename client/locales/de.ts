@@ -213,6 +213,8 @@ export const de = {
     deleteConfirmDesc: "Diese Aktion kann nicht rückgängig gemacht werden. Ihre Datei wird dauerhaft aus dem Cloud-Speicher gelöscht.",
     fileUploaded: "Datei erfolgreich hochgeladen",
     fileDeleted: "Datei erfolgreich gelöscht",
+    webDefenderAdviceTitle: "Web Defender-Speicher:",
+    webDefenderAdviceDesc: "Gespeicherte Daten (Routen, Ereignisprotokoll, ausgehende Verbindungen) von Web Defender zählen zum Speicherverbrauch. Es wird empfohlen, Ereignislimits niedrig zu halten, wenn mehrere Web Defender-Apps aktiviert sind.",
   },
   customize: {
     title: "Anpassen",

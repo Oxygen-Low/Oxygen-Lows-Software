@@ -213,6 +213,8 @@ export const vi = {
     deleteConfirmDesc: "Hành động này không thể hoàn tác. Điều này sẽ xóa vĩnh viễn tệp của bạn khỏi bộ nhớ đám mây.",
     fileUploaded: "Đã tải tệp lên thành công",
     fileDeleted: "Đã xóa tệp thành công",
+    webDefenderAdviceTitle: "Dung lượng Web Defender:",
+    webDefenderAdviceDesc: "Dữ liệu được lưu trữ (tuyến đường, nhật ký sự kiện, kết nối ra ngoài) từ Web Defender được tính vào dung lượng lưu trữ của bạn. Bạn nên duy trì giới hạn sự kiện ở mức thấp nếu bật nhiều ứng dụng Web Defender.",
   },
   customize: {
     title: "Tùy chỉnh",

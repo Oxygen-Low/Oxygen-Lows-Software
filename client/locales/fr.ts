@@ -213,6 +213,8 @@ export const fr = {
     deleteConfirmDesc: "Cette action est irréversible. Cela supprimera définitivement votre fichier du stockage cloud.",
     fileUploaded: "Fichier importé avec succès",
     fileDeleted: "Fichier supprimé avec succès",
+    webDefenderAdviceTitle: "Stockage Web Defender :",
+    webDefenderAdviceDesc: "Les données stockées (routes, journal des événements, connexions sortantes) de Web Defender sont prises en compte dans votre utilisation de stockage. Il est conseillé de maintenir des limites d'événements faibles si plusieurs applications Web Defender sont activées.",
   },
   customize: {
     title: "Personnaliser",

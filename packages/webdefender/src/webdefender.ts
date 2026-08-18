@@ -124,6 +124,7 @@ export class DefenderClient {
       blockBotnets: cfg.block_botnets ?? true,
       ddosProtection: cfg.ddos_protection ?? true,
       ddosThresholdRpm: cfg.ddos_threshold_rpm ?? 1000,
+      eventsLimit: cfg.events_limit ?? 50,
       routes,
     };
   }

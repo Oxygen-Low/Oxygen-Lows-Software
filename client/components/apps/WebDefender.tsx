@@ -109,6 +109,7 @@ type AppConfig = {
   block_http_dos: boolean;
   block_http_exploit: boolean;
   block_botnets: boolean;
+  events_limit: number;
 };
 
 type Route = {
@@ -474,7 +475,7 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
       const [appRes, routesRes, eventsRes, outboundsRes] = await Promise.all([
         authFetch(`/api/defender/apps/${appId}`),
         authFetch(`/api/defender/apps/${appId}/routes`).catch(() => ({ json: () => ({ routes: [] }) })),
-        authFetch(`/api/defender/apps/${appId}/events`).catch(() => ({ json: () => ({ events: [] }) })),
+        authFetch(`/api/defender/apps/${appId}/events?limit=1000`).catch(() => ({ json: () => ({ events: [] }) })),
         authFetch(`/api/defender/apps/${appId}/outbound`).catch(() => ({ json: () => ({ outbounds: [] }) }))
       ]);
 
@@ -1044,13 +1045,19 @@ const defaultDefenderConfig: AppConfig = {
   block_bruteforce: true,
   block_http_dos: true,
   block_http_exploit: true,
-  block_botnets: true
+  block_botnets: true,
+  events_limit: 50
 };
 
 export function getAppConfig(defenderConfig: any): AppConfig {
   if (!defenderConfig) return defaultDefenderConfig;
   const raw = Array.isArray(defenderConfig) ? defenderConfig[0] : defenderConfig;
-  return raw ? { ...defaultDefenderConfig, ...raw } : defaultDefenderConfig;
+  if (!raw) return defaultDefenderConfig;
+  return {
+    ...defaultDefenderConfig,
+    ...raw,
+    events_limit: typeof raw.events_limit === "number" ? Math.min(1000, Math.max(1, raw.events_limit)) : defaultDefenderConfig.events_limit
+  };
 }
 
 function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFetch: any, onUpdate: () => void, onDelete: () => void }) {
@@ -1302,6 +1309,46 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
               </ScrollArea>
             </SelectContent>
           </Select>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>Event Log Retention & Storage</CardTitle>
+          <CardDescription>
+            Configure the maximum number of security events stored for this application.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base text-white">Total Events Limit (1 - 1000)</Label>
+                <p className="text-xs text-slate-400">
+                  Maximum retained event records. When exceeded, the oldest events are pruned automatically.
+                </p>
+              </div>
+              <div className="w-32">
+                <Input 
+                  type="number" 
+                  min={1} 
+                  max={1000} 
+                  value={config.events_limit ?? 50} 
+                  onChange={e => {
+                    const val = parseInt(e.target.value);
+                    if (!isNaN(val)) {
+                      updateConfig({ events_limit: Math.min(1000, Math.max(1, val)) });
+                    }
+                  }} 
+                  className="bg-slate-950 border-slate-700 text-right font-mono" 
+                />
+              </div>
+            </div>
+            <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800 text-xs text-slate-400 leading-relaxed">
+              <span className="text-cyan-400 font-semibold mr-1">Note:</span>
+              Stored data (routes, event log, outbounds) counts toward your account storage usage. It is recommended to keep this limit low if multiple Web Defender apps are enabled.
+            </div>
+          </div>
         </CardContent>
       </Card>
 

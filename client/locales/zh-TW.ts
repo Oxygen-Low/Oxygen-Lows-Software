@@ -213,6 +213,8 @@ export const zhTW = {
     deleteConfirmDesc: "此操作無法復原。這將從雲端儲存空間中永久刪除您的檔案。",
     fileUploaded: "檔案上傳成功",
     fileDeleted: "檔案刪除成功",
+    webDefenderAdviceTitle: "Web Defender 儲存空間：",
+    webDefenderAdviceDesc: "來自 Web Defender 的儲存資料（路由、事件日誌、出站連線）會計入您的儲存空間用量。如果啟用了多個 Web Defender 應用程式，建議將事件上限維持在較低水準。",
   },
   customize: {
     title: "個人化",

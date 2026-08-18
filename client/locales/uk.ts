@@ -213,6 +213,8 @@ export const uk = {
     deleteConfirmDesc: "Цю дію неможливо скасувати. Це назавжди видалить ваш файл із хмарного сховища.",
     fileUploaded: "Файл успішно завантажено",
     fileDeleted: "Файл успішно видалено",
+    webDefenderAdviceTitle: "Сховище Web Defender:",
+    webDefenderAdviceDesc: "Збережені дані (маршрути, журнал подій, вихідні з'єднання) Web Defender враховуються у використанні сховища. Рекомендується встановлювати низькі ліміти подій, якщо ввімкнено кілька програм Web Defender.",
   },
   customize: {
     title: "Налаштувати",

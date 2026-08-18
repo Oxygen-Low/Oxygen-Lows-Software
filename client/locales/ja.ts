@@ -213,6 +213,8 @@ export const ja = {
     deleteConfirmDesc: "この操作は元に戻せません。ファイルがクラウドストレージから完全に削除されます。",
     fileUploaded: "ファイルが正常にアップロードされました",
     fileDeleted: "ファイルが正常に削除されました",
+    webDefenderAdviceTitle: "Web Defender ストレージ:",
+    webDefenderAdviceDesc: "Web Defender の保存データ（ルート、イベントログ、送信接続）はストレージ使用量に加算されます。複数の Web Defender アプリを有効にしている場合は、イベント制限を低く抑えることをお勧めします。",
   },
   customize: {
     title: "カスタマイズ",
