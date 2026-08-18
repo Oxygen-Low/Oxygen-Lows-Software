@@ -68,7 +68,17 @@ function expressPlugin(): Plugin {
         const accept = req.headers.accept || "";
         const isMarkdown = accept.includes("text/markdown");
 
-        if (!url.startsWith("/api/") && !url.startsWith("/health") && !isMarkdown) {
+        if (
+          !url.startsWith("/api/") &&
+          !url.startsWith("/health") &&
+          !url.startsWith("/.well-known/") &&
+          !url.startsWith("/agent/") &&
+          url !== "/auth.md" &&
+          url !== "/llms.txt" &&
+          url !== "/robots.txt" &&
+          url !== "/sitemap.xml" &&
+          !isMarkdown
+        ) {
           return next();
         }
         try {

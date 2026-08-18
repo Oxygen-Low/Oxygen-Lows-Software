@@ -97,14 +97,36 @@ app.use("*", async (c, next) => {
   c.header("X-Request-Id", requestId);
 });
 
+export function getLinkHeaders(): string {
+  return [
+    '</.well-known/api-catalog>; rel="api-catalog"',
+    '</api/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.0"',
+    '</api/docs>; rel="service-doc"; type="text/html"',
+    '</llms.txt>; rel="describedby"; type="text/plain"',
+    '</auth.md>; rel="describedby"; type="text/markdown"',
+    '</.well-known/oauth-protected-resource>; rel="oauth-protected-resource"',
+    '</.well-known/oauth-authorization-server>; rel="oauth-authorization-server"',
+  ].join(', ');
+}
+
 app.use('*', async (c, next) => {
+  const path = c.req.path;
   const accept = c.req.header('Accept') || '';
-  if (accept.includes('text/markdown') && !c.req.path.startsWith('/api/')) {
+  if (
+    accept.includes('text/markdown') &&
+    !path.startsWith('/api/') &&
+    !path.startsWith('/.well-known/') &&
+    path !== '/auth.md' &&
+    path !== '/llms.txt' &&
+    path !== '/robots.txt' &&
+    path !== '/sitemap.xml'
+  ) {
     const md = `# Oxygen Low's Software\n\nOxygen Low's Software - Beta. A platform for apps, storage, and customization.`;
     const tokens = md.split(/\s+/).length.toString();
     return c.text(md, 200, {
-      'Content-Type': 'text/markdown',
-      'x-markdown-tokens': tokens
+      'Content-Type': 'text/markdown; charset=utf-8',
+      'x-markdown-tokens': tokens,
+      'Link': getLinkHeaders(),
     });
   }
   await next();
@@ -112,20 +134,20 @@ app.use('*', async (c, next) => {
 
 // RFC 8288 / RFC 9727 Link headers for agent discovery on homepage and frontend routes
 app.use('*', async (c, next) => {
-  await next();
   const path = c.req.path;
-  // Only inject on non-API, non-asset routes (i.e. HTML pages served to agents/browsers)
-  if (!path.startsWith('/api/') && !path.startsWith('/.well-known/') && !path.match(/\.(js|css|png|ico|svg|woff2?|ttf|eot|map|json|xml|txt)$/i)) {
-    const host = c.req.header('host') || 'oxygenlow.com';
-    const protocol = (c.req.header('x-forwarded-proto') || 'https').split(',')[0].trim();
-    const baseUrl = `${protocol}://${host}`;
-    const linkHeaders = [
-      `<${baseUrl}/.well-known/api-catalog>; rel="api-catalog"`,
-      `<${baseUrl}/api/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.0"`,
-      `<${baseUrl}/api/docs>; rel="service-doc"; type="text/html"`,
-      `<${baseUrl}/auth.md>; rel="describedby"; type="text/markdown"`,
-    ].join(', ');
-    c.header('Link', linkHeaders);
+  const isAsset =
+    path.startsWith('/api/') ||
+    path.startsWith('/.well-known/') ||
+    /\.(js|css|png|ico|svg|woff2?|ttf|eot|map|json|xml|txt|jpg|jpeg|gif|webp)$/i.test(path);
+
+  if (!isAsset) {
+    c.header('Link', getLinkHeaders());
+  }
+
+  await next();
+
+  if (!isAsset) {
+    c.header('Link', getLinkHeaders());
   }
 });
 
@@ -372,6 +394,427 @@ app.get("/.well-known/api-catalog", (c) => {
   return c.json(catalog, 200, {
     "Content-Type": "application/linkset+json",
     "Cache-Control": "public, max-age=3600"
+  });
+});
+
+app.post("/agent/auth", async (c) => {
+  return c.json({
+    status: "ok",
+    message: "Agent authentication endpoint",
+    token_type: "bearer"
+  });
+});
+
+app.post("/agent/auth/revoke", async (c) => {
+  return c.json({
+    status: "ok",
+    message: "Agent token revocation endpoint"
+  });
+});
+
+app.all("/agent/auth/claim", async (c) => {
+  return c.json({
+    status: "ok",
+    message: "Agent token claim endpoint",
+    token_type: "bearer"
+  });
+});
+
+app.get("/api/openapi.json", (c) => {
+  const host = c.req.header("host") || "oxygenlow.com";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const baseUrl = `${protocol}://${host}`;
+
+  const openapiSpec = {
+    openapi: "3.0.3",
+    info: {
+      title: "Oxygen Low's Software API",
+      version: "1.0.0",
+      description: "API services for Oxygen Low's Software platform, including AI agents, changelogs, VPN, support, and authentication metadata.",
+      contact: {
+        name: "Oxygen Low Support",
+        url: `${baseUrl}/legal`
+      }
+    },
+    servers: [
+      {
+        url: baseUrl,
+        description: "Current environment"
+      }
+    ],
+    paths: {
+      "/health": {
+        get: {
+          summary: "Health Check",
+          description: "Returns health status of the server.",
+          responses: {
+            "200": {
+              description: "Server is healthy",
+              content: { "text/plain": { schema: { type: "string", example: "OK" } } }
+            }
+          }
+        }
+      },
+      "/api/ping": {
+        get: {
+          summary: "Ping",
+          description: "Ping the API server.",
+          responses: {
+            "200": {
+              description: "Ping response",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: { message: { type: "string", example: "ping" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/demo": {
+        get: {
+          summary: "Demo Endpoint",
+          description: "Demonstration API endpoint.",
+          responses: {
+            "200": {
+              description: "Demo message",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: { message: { type: "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/ai": {
+        post: {
+          summary: "AI Prompt Completion",
+          description: "Process prompts with AI models.",
+          responses: {
+            "200": {
+              description: "AI response"
+            }
+          }
+        }
+      },
+      "/api/changelogs": {
+        get: {
+          summary: "Changelogs",
+          description: "Retrieve public changelog updates.",
+          responses: {
+            "200": {
+              description: "List of changelog entries"
+            }
+          }
+        }
+      },
+      "/api/vpn": {
+        get: {
+          summary: "VPN Status",
+          description: "Retrieve VPN configuration and connection status.",
+          responses: {
+            "200": {
+              description: "VPN status response"
+            }
+          }
+        }
+      },
+      "/api/defender": {
+        get: {
+          summary: "Defender Status",
+          description: "Retrieve Web Defender protection status.",
+          responses: {
+            "200": {
+              description: "Defender status"
+            }
+          }
+        }
+      },
+      "/.well-known/api-catalog": {
+        get: {
+          summary: "RFC 9727 API Catalog",
+          description: "Machine-readable API catalog in linkset JSON format.",
+          responses: {
+            "200": {
+              description: "API catalog linkset",
+              content: { "application/linkset+json": {} }
+            }
+          }
+        }
+      },
+      "/.well-known/oauth-authorization-server": {
+        get: {
+          summary: "OAuth Authorization Server Metadata",
+          description: "RFC 8414 OAuth 2.0 metadata with agent auth flows.",
+          responses: {
+            "200": {
+              description: "OAuth authorization metadata",
+              content: { "application/json": {} }
+            }
+          }
+        }
+      },
+      "/.well-known/oauth-protected-resource": {
+        get: {
+          summary: "OAuth Protected Resource Metadata",
+          description: "RFC 9728 OAuth 2.0 protected resource metadata.",
+          responses: {
+            "200": {
+              description: "OAuth protected resource metadata",
+              content: { "application/json": {} }
+            }
+          }
+        }
+      },
+      "/auth.md": {
+        get: {
+          summary: "Agent Authentication Guide",
+          description: "Markdown documentation for agent registration and authentication.",
+          responses: {
+            "200": {
+              description: "Authentication guide markdown",
+              content: { "text/markdown": {} }
+            }
+          }
+        }
+      },
+      "/llms.txt": {
+        get: {
+          summary: "LLMs Discovery File",
+          description: "Standard llms.txt file detailing site purpose and links for AI agents.",
+          responses: {
+            "200": {
+              description: "llms.txt content",
+              content: { "text/plain": {} }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  return c.json(openapiSpec, 200, {
+    "Content-Type": "application/vnd.oai.openapi+json;version=3.0",
+    "Cache-Control": "public, max-age=3600",
+    "Link": getLinkHeaders(),
+  });
+});
+
+app.get("/api/docs", (c) => {
+  const host = c.req.header("host") || "oxygenlow.com";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const baseUrl = `${protocol}://${host}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxygen Low's Software - API Documentation</title>
+  <!-- RFC 8288 / RFC 9727 Discovery Links -->
+  <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json" />
+  <link rel="service-desc" href="/api/openapi.json" type="application/vnd.oai.openapi+json;version=3.0" />
+  <link rel="service-doc" href="/api/docs" type="text/html" />
+  <link rel="describedby" href="/llms.txt" type="text/plain" />
+  <link rel="describedby" href="/auth.md" type="text/markdown" />
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent: #38bdf8;
+      --tag-get: #10b981;
+      --tag-post: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { margin-bottom: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+    h1 { font-size: 2rem; color: #fff; margin-bottom: 0.5rem; }
+    p.subtitle { color: var(--text-muted); font-size: 1.1rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      background: #1e293b;
+      color: var(--accent);
+      margin-top: 0.5rem;
+    }
+    .discovery-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .discovery-box h2 { font-size: 1.2rem; margin-bottom: 0.75rem; color: var(--accent); }
+    .discovery-box ul { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .discovery-box li { display: flex; align-items: center; justify-content: space-between; font-size: 0.95rem; }
+    .discovery-box a { color: var(--accent); text-decoration: none; word-break: break-all; }
+    .discovery-box a:hover { text-decoration: underline; }
+    .endpoint {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .endpoint-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .method {
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .method.get { background: rgba(16, 185, 129, 0.2); color: var(--tag-get); }
+    .method.post { background: rgba(59, 130, 246, 0.2); color: var(--tag-post); }
+    .path { font-family: monospace; font-size: 1rem; font-weight: 600; color: #fff; }
+    .desc { color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Oxygen Low's Software API Documentation</h1>
+      <p class="subtitle">Machine-readable and interactive API documentation for humans and autonomous agents.</p>
+      <span class="badge">OpenAPI 3.0.3 Compatible</span>
+    </header>
+
+    <section class="discovery-box">
+      <h2>Agent Discovery & Machine-Readable Specifications</h2>
+      <ul>
+        <li>
+          <span><strong>API Catalog (RFC 9727):</strong></span>
+          <a href="${baseUrl}/.well-known/api-catalog">${baseUrl}/.well-known/api-catalog</a>
+        </li>
+        <li>
+          <span><strong>OpenAPI Specification:</strong></span>
+          <a href="${baseUrl}/api/openapi.json">${baseUrl}/api/openapi.json</a>
+        </li>
+        <li>
+          <span><strong>LLMs Description:</strong></span>
+          <a href="${baseUrl}/llms.txt">${baseUrl}/llms.txt</a>
+        </li>
+        <li>
+          <span><strong>Agent Authentication (auth.md):</strong></span>
+          <a href="${baseUrl}/auth.md">${baseUrl}/auth.md</a>
+        </li>
+      </ul>
+    </section>
+
+    <h2 style="margin-bottom: 1rem; font-size: 1.3rem;">Core Endpoints</h2>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/health</span>
+      </div>
+      <div class="desc">System health check endpoint returning 200 OK.</div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/ping</span>
+      </div>
+      <div class="desc">Lightweight ping endpoint returning {"message": "ping"}.</div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/openapi.json</span>
+      </div>
+      <div class="desc">Returns the full OpenAPI 3.0 JSON specification.</div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/changelogs</span>
+      </div>
+      <div class="desc">Retrieves software changelogs and platform release history.</div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method post">POST</span>
+        <span class="path">/agent/auth</span>
+      </div>
+      <div class="desc">Agent registration and identity assertion exchange endpoint.</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return c.html(html, 200, {
+    "Cache-Control": "public, max-age=3600",
+    "Link": getLinkHeaders(),
+  });
+});
+
+app.get("/llms.txt", (c) => {
+  const content = `# Oxygen Low's Software\n\nOxygen Low's Software is a platform for apps, storage, and customization.\n\n## Resources\n- [Main Website](/)\n- [API Documentation](/api/docs)\n- [API Catalog](/.well-known/api-catalog)\n- [OpenAPI Specification](/api/openapi.json)\n- [Agent Authentication](/auth.md)\n- [Contact Support](/support)\n- [About Us](/about)\n`;
+  return c.text(content, 200, {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "public, max-age=3600",
+    "Link": getLinkHeaders(),
+  });
+});
+
+app.get("/robots.txt", (c) => {
+  const host = c.req.header("host") || "oxygenlow.com";
+  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const baseUrl = `${protocol}://${host}`;
+
+  const content = `User-agent: *\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml\nContent-Signal: ai-train=yes, search=yes, ai-input=yes\n`;
+  return c.text(content, 200, {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "public, max-age=3600"
+  });
+});
+
+app.get("/", (c) => {
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Oxygen Low's Software - Beta. A platform for apps, storage, and customization." />
+    <title>Oxygen Low's Software</title>
+    <!-- RFC 8288 / RFC 9727 Discovery Links -->
+    <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json" />
+    <link rel="service-desc" href="/api/openapi.json" type="application/vnd.oai.openapi+json;version=3.0" />
+    <link rel="service-doc" href="/api/docs" type="text/html" />
+    <link rel="describedby" href="/llms.txt" type="text/plain" />
+    <link rel="describedby" href="/auth.md" type="text/markdown" />
+  </head>
+  <body>
+    <div id="root">
+      <h1>Oxygen Low's Software</h1>
+    </div>
+  </body>
+</html>`;
+  return c.html(html, 200, {
+    "Link": getLinkHeaders(),
   });
 });
 
