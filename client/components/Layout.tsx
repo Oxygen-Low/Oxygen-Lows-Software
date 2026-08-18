@@ -271,7 +271,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           {/* Mobile Drawer Header */}
           <div className="flex md:hidden items-center justify-between p-4 border-b border-border/70 shrink-0">
             <div className="flex items-center gap-2">
-              <span className={`${styles["logo"]} font-bold text-base`}>Oxygen Low</span>
+              <span className={`${styles["logo"]} font-bold text-base`}>Oxygen Low's Software</span>
               <span className="px-2 py-0.5 text-[10px] font-bold text-yellow-900 bg-yellow-400 rounded uppercase">{t("nav.beta", undefined, "Beta")}</span>
             </div>
             <button
