@@ -2,46 +2,16 @@ import { en } from "./en";
 import { ko } from "./ko";
 import { ja } from "./ja";
 import { zhCN } from "./zh-CN";
-import { zhTW } from "./zh-TW";
-import { ru } from "./ru";
-import { fr } from "./fr";
-import { de } from "./de";
 import { es } from "./es";
-import { it } from "./it";
-import { pt } from "./pt";
-import { pl } from "./pl";
-import { tr } from "./tr";
-import { vi } from "./vi";
-import { id } from "./id";
-import { hi } from "./hi";
-import { ar } from "./ar";
-import { zu } from "./zu";
-import { la } from "./la";
-import { he } from "./he";
-import { uk } from "./uk";
+import { ru } from "./ru";
 
 export {
   en,
   ko,
   ja,
   zhCN,
-  zhTW,
-  ru,
-  fr,
-  de,
   es,
-  it,
-  pt,
-  pl,
-  tr,
-  vi,
-  id,
-  hi,
-  ar,
-  zu,
-  la,
-  he,
-  uk,
+  ru,
 };
 
 export type StringLeaves<T> = {
@@ -75,7 +45,7 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   japanese: ja,
   "日本語": ja,
 
-  // Chinese (Simplified - China 🇨🇳)
+  // Chinese (China 🇨🇳)
   zh: zhCN,
   "zh-CN": zhCN,
   "zh-cn": zhCN,
@@ -84,31 +54,7 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   "Chinese (Simplified)": zhCN,
   "Simplified Chinese": zhCN,
   "简体中文": zhCN,
-
-  // Chinese (Traditional - Taiwan 🇹🇼)
-  "zh-TW": zhTW,
-  "zh-tw": zhTW,
-  "Chinese (Traditional)": zhTW,
-  "Traditional Chinese": zhTW,
-  "繁體中文": zhTW,
-
-  // Russian (Russia 🇷🇺)
-  ru,
-  Russian: ru,
-  russian: ru,
-  "Русский": ru,
-
-  // French (France 🇫🇷)
-  fr,
-  French: fr,
-  french: fr,
-  "Français": fr,
-
-  // German (Germany 🇩🇪)
-  de,
-  German: de,
-  german: de,
-  Deutsch: de,
+  "中文": zhCN,
 
   // Spanish (Spain 🇪🇸)
   es,
@@ -116,77 +62,11 @@ export const LOCALES: Record<string, DeepPartial<TranslationSchema> | Translatio
   spanish: es,
   "Español": es,
 
-  // Italian (Italy 🇮🇹)
-  it,
-  Italian: it,
-  italian: it,
-  Italiano: it,
-
-  // Portuguese (Portugal / Brazil 🇵🇹)
-  pt,
-  Portuguese: pt,
-  portuguese: pt,
-  "Português": pt,
-
-  // Polish (Poland 🇵🇱)
-  pl,
-  Polish: pl,
-  polish: pl,
-  Polski: pl,
-
-  // Turkish (Turkey 🇹🇷)
-  tr,
-  Turkish: tr,
-  turkish: tr,
-  "Türkçe": tr,
-
-  // Vietnamese (Vietnam 🇻🇳)
-  vi,
-  Vietnamese: vi,
-  vietnamese: vi,
-  "Tiếng Việt": vi,
-
-  // Indonesian (Indonesia 🇮🇩)
-  id,
-  Indonesian: id,
-  indonesian: id,
-  "Bahasa Indonesia": id,
-
-  // Hindi (India 🇮🇳)
-  hi,
-  Hindi: hi,
-  hindi: hi,
-  "हिन्दी": hi,
-
-  // Arabic (Saudi Arabia 🇸🇦)
-  ar,
-  Arabic: ar,
-  arabic: ar,
-  "العربية": ar,
-
-  // Zulu (South Africa 🇿🇦)
-  zu,
-  Zulu: zu,
-  zulu: zu,
-  isiZulu: zu,
-
-  // Latin (Vatican City 🇻🇦)
-  la,
-  Latin: la,
-  latin: la,
-  Latina: la,
-
-  // Hebrew (Israel 🇮🇱)
-  he,
-  Hebrew: he,
-  hebrew: he,
-  "עברית": he,
-
-  // Ukrainian (Ukraine 🇺🇦)
-  uk,
-  Ukrainian: uk,
-  ukrainian: uk,
-  "Українська": uk,
+  // Russian (Russia 🇷🇺)
+  ru,
+  Russian: ru,
+  russian: ru,
+  "Русский": ru,
 };
 
 export const DEFAULT_LOCALE = "English";

@@ -30,38 +30,10 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
   },
   {
     code: "zh-CN",
-    name: "Chinese (Simplified)",
+    name: "Chinese",
     flag: "🇨🇳",
     countryCode: "cn",
-    nativeName: "简体中文",
-  },
-  {
-    code: "zh-TW",
-    name: "Chinese (Traditional)",
-    flag: "🇹🇼",
-    countryCode: "tw",
-    nativeName: "繁體中文",
-  },
-  {
-    code: "ru",
-    name: "Russian",
-    flag: "🇷🇺",
-    countryCode: "ru",
-    nativeName: "Русский",
-  },
-  {
-    code: "fr",
-    name: "French",
-    flag: "🇫🇷",
-    countryCode: "fr",
-    nativeName: "Français",
-  },
-  {
-    code: "de",
-    name: "German",
-    flag: "🇩🇪",
-    countryCode: "de",
-    nativeName: "Deutsch",
+    nativeName: "中文",
   },
   {
     code: "es",
@@ -71,88 +43,11 @@ export const SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
     nativeName: "Español",
   },
   {
-    code: "it",
-    name: "Italian",
-    flag: "🇮🇹",
-    countryCode: "it",
-    nativeName: "Italiano",
-  },
-  {
-    code: "pt",
-    name: "Portuguese",
-    flag: "🇵🇹",
-    countryCode: "pt",
-    nativeName: "Português",
-  },
-  {
-    code: "pl",
-    name: "Polish",
-    flag: "🇵🇱",
-    countryCode: "pl",
-    nativeName: "Polski",
-  },
-  {
-    code: "tr",
-    name: "Turkish",
-    flag: "🇹🇷",
-    countryCode: "tr",
-    nativeName: "Türkçe",
-  },
-  {
-    code: "vi",
-    name: "Vietnamese",
-    flag: "🇻🇳",
-    countryCode: "vn",
-    nativeName: "Tiếng Việt",
-  },
-  {
-    code: "id",
-    name: "Indonesian",
-    flag: "🇮🇩",
-    countryCode: "id",
-    nativeName: "Bahasa Indonesia",
-  },
-  {
-    code: "hi",
-    name: "Hindi",
-    flag: "🇮🇳",
-    countryCode: "in",
-    nativeName: "हिन्दी",
-  },
-  {
-    code: "ar",
-    name: "Arabic",
-    flag: "🇸🇦",
-    countryCode: "sa",
-    nativeName: "العربية",
-  },
-  {
-    code: "zu",
-    name: "Zulu",
-    flag: "🇿🇦",
-    countryCode: "za",
-    nativeName: "isiZulu",
-  },
-  {
-    code: "la",
-    name: "Latin",
-    flag: "🇻🇦",
-    countryCode: "va",
-    nativeName: "Latina",
-  },
-  {
-    code: "he",
-    name: "Hebrew",
-    flag: "🇮🇱",
-    countryCode: "il",
-    nativeName: "עברית",
-  },
-  {
-    code: "uk",
-    name: "Ukrainian",
-    flag: "🇺🇦",
-    countryCode: "ua",
-    nativeName: "Українська",
+    code: "ru",
+    name: "Russian",
+    flag: "🇷🇺",
+    countryCode: "ru",
+    nativeName: "Русский",
   },
 ] as const;
 
@@ -201,16 +96,13 @@ export function getLanguageOption(value?: string | null): LanguageOption {
     }
 
     // Specific alias mappings
-    const foundZh = languageMapCache.get("zh-cn");
+    const foundZh = languageMapCache.get("zh-cn") || languageMapCache.get("chinese");
     if (foundZh) {
       languageMapCache.set("chinese", foundZh);
       languageMapCache.set("zh", foundZh);
       languageMapCache.set("simplified chinese", foundZh);
-    }
-
-    const foundZhTw = languageMapCache.get("zh-tw");
-    if (foundZhTw) {
-      languageMapCache.set("traditional chinese", foundZhTw);
+      languageMapCache.set("chinese (simplified)", foundZh);
+      languageMapCache.set("简体中文", foundZh);
     }
   }
 

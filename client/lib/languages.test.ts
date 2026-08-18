@@ -13,7 +13,7 @@ describe("languages utility", () => {
   });
 
   it("contains English with flag in SUPPORTED_LANGUAGES", () => {
-    expect(SUPPORTED_LANGUAGES.length).toBeGreaterThanOrEqual(21);
+    expect(SUPPORTED_LANGUAGES.length).toBe(6);
     const english = SUPPORTED_LANGUAGES.find((l) => l.name === "English");
     expect(english).toBeDefined();
     expect(english?.flag).toBe("🇬🇧");
@@ -38,35 +38,19 @@ describe("languages utility", () => {
     expect(japanese?.code).toBe("ja");
   });
 
-  it("contains Chinese variants with appropriate country codes", () => {
-    const simplified = SUPPORTED_LANGUAGES.find((l) => l.code === "zh-CN");
-    const traditional = SUPPORTED_LANGUAGES.find((l) => l.code === "zh-TW");
-    expect(simplified).toBeDefined();
-    expect(simplified?.flag).toBe("🇨🇳");
-    expect(simplified?.countryCode).toBe("cn");
-    expect(traditional).toBeDefined();
-    expect(traditional?.flag).toBe("🇹🇼");
-    expect(traditional?.countryCode).toBe("tw");
+  it("contains Chinese with China flag and countryCode 'cn'", () => {
+    const chinese = SUPPORTED_LANGUAGES.find((l) => l.code === "zh-CN");
+    expect(chinese).toBeDefined();
+    expect(chinese?.name).toBe("Chinese");
+    expect(chinese?.flag).toBe("🇨🇳");
+    expect(chinese?.countryCode).toBe("cn");
+    expect(chinese?.nativeName).toBe("中文");
   });
 
-  it("contains all other requested languages with valid 2-letter country codes", () => {
+  it("contains Spanish and Russian with valid country codes", () => {
     const expected = [
-      { code: "ru", countryCode: "ru" },
-      { code: "fr", countryCode: "fr" },
-      { code: "de", countryCode: "de" },
       { code: "es", countryCode: "es" },
-      { code: "it", countryCode: "it" },
-      { code: "pt", countryCode: "pt" },
-      { code: "pl", countryCode: "pl" },
-      { code: "tr", countryCode: "tr" },
-      { code: "vi", countryCode: "vn" },
-      { code: "id", countryCode: "id" },
-      { code: "hi", countryCode: "in" },
-      { code: "ar", countryCode: "sa" },
-      { code: "zu", countryCode: "za" },
-      { code: "la", countryCode: "va" },
-      { code: "he", countryCode: "il" },
-      { code: "uk", countryCode: "ua" },
+      { code: "ru", countryCode: "ru" },
     ];
     expected.forEach(({ code, countryCode }) => {
       const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
@@ -89,13 +73,10 @@ describe("languages utility", () => {
     expect(getLanguageOption("ko").name).toBe("Korean");
     expect(getLanguageOption("Korean").flag).toBe("🇰🇷");
     expect(getLanguageOption("chinese").code).toBe("zh-CN");
-    expect(getLanguageOption("Polish").code).toBe("pl");
-    expect(getLanguageOption("Vietnamese").code).toBe("vi");
-    expect(getLanguageOption("Turkish").code).toBe("tr");
-    expect(getLanguageOption("Italian").code).toBe("it");
-    expect(getLanguageOption("Indonesian").code).toBe("id");
-    expect(getLanguageOption("Hindi").code).toBe("hi");
-    expect(getLanguageOption("Portuguese").code).toBe("pt");
+    expect(getLanguageOption("Chinese").name).toBe("Chinese");
+    expect(getLanguageOption("Spanish").code).toBe("es");
+    expect(getLanguageOption("Russian").code).toBe("ru");
+    expect(getLanguageOption("Japanese").code).toBe("ja");
   });
 
   it("falls back to default language for null or invalid inputs", () => {

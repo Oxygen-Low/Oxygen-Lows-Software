@@ -5,23 +5,8 @@ import {
   ko,
   ja,
   zhCN,
-  zhTW,
   ru,
-  fr,
-  de,
   es,
-  it as itLocale,
-  pt,
-  pl,
-  tr,
-  vi,
-  id,
-  hi,
-  ar,
-  zu,
-  la,
-  he,
-  uk,
   getLocaleDictionary,
 } from "./index";
 import {
@@ -35,24 +20,9 @@ describe("All Locales Verification", () => {
   const allLocales = [
     { code: "ko", name: "Korean", flag: "🇰🇷", countryCode: "kr", dict: ko },
     { code: "ja", name: "Japanese", flag: "🇯🇵", countryCode: "jp", dict: ja },
-    { code: "zh-CN", name: "Chinese (Simplified)", flag: "🇨🇳", countryCode: "cn", dict: zhCN },
-    { code: "zh-TW", name: "Chinese (Traditional)", flag: "🇹🇼", countryCode: "tw", dict: zhTW },
-    { code: "ru", name: "Russian", flag: "🇷🇺", countryCode: "ru", dict: ru },
-    { code: "fr", name: "French", flag: "🇫🇷", countryCode: "fr", dict: fr },
-    { code: "de", name: "German", flag: "🇩🇪", countryCode: "de", dict: de },
+    { code: "zh-CN", name: "Chinese", flag: "🇨🇳", countryCode: "cn", dict: zhCN },
     { code: "es", name: "Spanish", flag: "🇪🇸", countryCode: "es", dict: es },
-    { code: "it", name: "Italian", flag: "🇮🇹", countryCode: "it", dict: itLocale },
-    { code: "pt", name: "Portuguese", flag: "🇵🇹", countryCode: "pt", dict: pt },
-    { code: "pl", name: "Polish", flag: "🇵🇱", countryCode: "pl", dict: pl },
-    { code: "tr", name: "Turkish", flag: "🇹🇷", countryCode: "tr", dict: tr },
-    { code: "vi", name: "Vietnamese", flag: "🇻🇳", countryCode: "vn", dict: vi },
-    { code: "id", name: "Indonesian", flag: "🇮🇩", countryCode: "id", dict: id },
-    { code: "hi", name: "Hindi", flag: "🇮🇳", countryCode: "in", dict: hi },
-    { code: "ar", name: "Arabic", flag: "🇸🇦", countryCode: "sa", dict: ar },
-    { code: "zu", name: "Zulu", flag: "🇿🇦", countryCode: "za", dict: zu },
-    { code: "la", name: "Latin", flag: "🇻🇦", countryCode: "va", dict: la },
-    { code: "he", name: "Hebrew", flag: "🇮🇱", countryCode: "il", dict: he },
-    { code: "uk", name: "Ukrainian", flag: "🇺🇦", countryCode: "ua", dict: uk },
+    { code: "ru", name: "Russian", flag: "🇷🇺", countryCode: "ru", dict: ru },
   ];
 
   it("should have all requested languages present in SUPPORTED_LANGUAGES", () => {
@@ -70,43 +40,17 @@ describe("All Locales Verification", () => {
     expect(getLanguageOption("ko").flag).toBe("🇰🇷");
     expect(getLanguageOption("Japanese").code).toBe("ja");
     expect(getLanguageOption("Chinese").code).toBe("zh-CN");
-    expect(getLanguageOption("zh-TW").name).toBe("Chinese (Traditional)");
-    expect(getLanguageOption("Latin").code).toBe("la");
-    expect(getLanguageOption("Hebrew").code).toBe("he");
-    expect(getLanguageOption("Zulu").code).toBe("zu");
-    expect(getLanguageOption("Ukrainian").code).toBe("uk");
-    expect(getLanguageOption("French").code).toBe("fr");
-    expect(getLanguageOption("German").code).toBe("de");
+    expect(getLanguageOption("zh-CN").name).toBe("Chinese");
     expect(getLanguageOption("Spanish").code).toBe("es");
-    expect(getLanguageOption("Arabic").code).toBe("ar");
-    expect(getLanguageOption("Polish").code).toBe("pl");
-    expect(getLanguageOption("Vietnamese").code).toBe("vi");
-    expect(getLanguageOption("Turkish").code).toBe("tr");
-    expect(getLanguageOption("Italian").code).toBe("it");
-    expect(getLanguageOption("Indonesian").code).toBe("id");
-    expect(getLanguageOption("Hindi").code).toBe("hi");
-    expect(getLanguageOption("Portuguese").code).toBe("pt");
+    expect(getLanguageOption("Russian").code).toBe("ru");
   });
 
   it("should format all languages with their flags correctly", () => {
     expect(formatLanguageWithFlag("Korean")).toBe("🇰🇷 Korean");
     expect(formatLanguageWithFlag("Japanese")).toBe("🇯🇵 Japanese");
-    expect(formatLanguageWithFlag("Russian")).toBe("🇷🇺 Russian");
-    expect(formatLanguageWithFlag("French")).toBe("🇫🇷 French");
-    expect(formatLanguageWithFlag("German")).toBe("🇩🇪 German");
+    expect(formatLanguageWithFlag("Chinese")).toBe("🇨🇳 Chinese");
     expect(formatLanguageWithFlag("Spanish")).toBe("🇪🇸 Spanish");
-    expect(formatLanguageWithFlag("Arabic")).toBe("🇸🇦 Arabic");
-    expect(formatLanguageWithFlag("Zulu")).toBe("🇿🇦 Zulu");
-    expect(formatLanguageWithFlag("Latin")).toBe("🇻🇦 Latin");
-    expect(formatLanguageWithFlag("Hebrew")).toBe("🇮🇱 Hebrew");
-    expect(formatLanguageWithFlag("Ukrainian")).toBe("🇺🇦 Ukrainian");
-    expect(formatLanguageWithFlag("Polish")).toBe("🇵🇱 Polish");
-    expect(formatLanguageWithFlag("Vietnamese")).toBe("🇻🇳 Vietnamese");
-    expect(formatLanguageWithFlag("Turkish")).toBe("🇹🇷 Turkish");
-    expect(formatLanguageWithFlag("Italian")).toBe("🇮🇹 Italian");
-    expect(formatLanguageWithFlag("Indonesian")).toBe("🇮🇩 Indonesian");
-    expect(formatLanguageWithFlag("Hindi")).toBe("🇮🇳 Hindi");
-    expect(formatLanguageWithFlag("Portuguese")).toBe("🇵🇹 Portuguese");
+    expect(formatLanguageWithFlag("Russian")).toBe("🇷🇺 Russian");
   });
 
   it("should have all dictionaries mapped in LOCALES registry", () => {
@@ -119,7 +63,7 @@ describe("All Locales Verification", () => {
   });
 
   it("should correctly translate common keys and interpolate placeholders across all locales", () => {
-    allLocales.forEach(({ name, dict }) => {
+    allLocales.forEach(({ dict }) => {
       const t = createTranslator(dict, en);
       expect(t("common.save")).toBeTruthy();
       expect(t("nav.home")).toBeTruthy();

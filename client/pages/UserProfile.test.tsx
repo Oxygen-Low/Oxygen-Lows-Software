@@ -109,7 +109,7 @@ describe("UserProfile Component", () => {
       show_email: false,
       email: "poly@example.com",
       language: "English",
-      additional_languages: ["Korean", "French", "Spanish"],
+      additional_languages: ["Korean", "Japanese", "Spanish"],
     };
 
     render(
@@ -125,12 +125,12 @@ describe("UserProfile Component", () => {
       expect(screen.getByText("@polyglot")).toBeDefined();
       expect(screen.getByText("English")).toBeDefined();
       expect(screen.getByText("Korean")).toBeDefined();
-      expect(screen.getByText("French")).toBeDefined();
+      expect(screen.getByText("Japanese")).toBeDefined();
       expect(screen.getByText("Spanish")).toBeDefined();
 
       expect(document.querySelector("img[src*='flagcdn.com/w40/gb.png']")).not.toBeNull();
       expect(document.querySelector("img[src*='flagcdn.com/w40/kr.png']")).not.toBeNull();
-      expect(document.querySelector("img[src*='flagcdn.com/w40/fr.png']")).not.toBeNull();
+      expect(document.querySelector("img[src*='flagcdn.com/w40/jp.png']")).not.toBeNull();
       expect(document.querySelector("img[src*='flagcdn.com/w40/es.png']")).not.toBeNull();
     });
   });
