@@ -21,3 +21,5 @@
 -- Instead of manually updating all of the translations, use a subagent with "pro" model to translate everything.
 
 -- After finishing code changes and calling the translation subagent, use a subagent with "pro" model to code review all changes.
+
+-- Tell subagents to ignore this section of AGENTS.md to prevent a subagent calling loop.
