@@ -102,10 +102,44 @@ vi.mock("browser-image-compression", () => ({
   default: vi.fn().mockResolvedValue(new Blob([], { type: "image/jpeg" })),
 }));
 
+// Mock @ffmpeg/ffmpeg and @ffmpeg/util
+const mockExec = vi.fn().mockResolvedValue(0);
+const mockWriteFile = vi.fn().mockResolvedValue(true);
+const mockReadFile = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));
+const mockDeleteFile = vi.fn().mockResolvedValue(true);
+const mockLoad = vi.fn().mockResolvedValue(true);
+const mockOn = vi.fn();
+const mockOff = vi.fn();
+
+vi.mock("@ffmpeg/ffmpeg", () => {
+  return {
+    FFmpeg: vi.fn().mockImplementation(function (this: any) {
+      this.loaded = true;
+      this.load = mockLoad;
+      this.exec = mockExec;
+      this.writeFile = mockWriteFile;
+      this.readFile = mockReadFile;
+      this.deleteFile = mockDeleteFile;
+      this.on = mockOn;
+      this.off = mockOff;
+    }),
+  };
+});
+
+vi.mock("@ffmpeg/util", () => ({
+  fetchFile: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+  toBlobURL: vi.fn().mockResolvedValue("blob:http://localhost/mock-core"),
+}));
+
 describe("FileCompressorApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDownload.mockResolvedValue({ data: new Blob(), error: null });
+    mockLoad.mockResolvedValue(true);
+    mockExec.mockResolvedValue(0);
+    mockWriteFile.mockResolvedValue(true);
+    mockReadFile.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    mockDeleteFile.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -148,6 +182,68 @@ describe("FileCompressorApp", () => {
         expect(screen.getByText("Compression Complete")).toBeDefined();
       },
       { timeout: 3000 },
+    );
+  });
+
+  it("handles audio compression with FFmpeg", async () => {
+    const { container } = render(
+      <ThemeProvider>
+        <FileCompressorApp />
+      </ThemeProvider>,
+    );
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['audio content'], 'song.mp3', { type: 'audio/mp3' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.queryAllByText("song.mp3").length).toBeGreaterThan(0);
+    });
+
+    const startButtons = screen.getAllByText("Start Compression");
+    fireEvent.click(startButtons[0]);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("Compression Complete")).toBeDefined();
+      },
+      { timeout: 3000 },
+    );
+
+    expect(mockLoad).toHaveBeenCalled();
+    expect(mockWriteFile).toHaveBeenCalled();
+    expect(mockExec).toHaveBeenCalled();
+    expect(mockReadFile).toHaveBeenCalled();
+    expect(mockDeleteFile).toHaveBeenCalled();
+  });
+
+  it("handles video compression with FFmpeg", async () => {
+    const { container } = render(
+      <ThemeProvider>
+        <FileCompressorApp />
+      </ThemeProvider>,
+    );
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['video content'], 'clip.mp4', { type: 'video/mp4' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.queryAllByText("clip.mp4").length).toBeGreaterThan(0);
+    });
+
+    const startButtons = screen.getAllByText("Start Compression");
+    fireEvent.click(startButtons[0]);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("Compression Complete")).toBeDefined();
+      },
+      { timeout: 3000 },
+    );
+
+    expect(mockExec).toHaveBeenCalledWith(
+      expect.arrayContaining(["-vcodec", "libx264"]),
     );
   });
 });

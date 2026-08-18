@@ -35,16 +35,52 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import { useAuth } from "@/hooks/useAuth";
 
-let ffmpeg: FFmpeg | null = null;
-const loadFfmpeg = async () => {
-  if (ffmpeg) return ffmpeg;
-  ffmpeg = new FFmpeg();
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+let ffmpegInstance: FFmpeg | null = null;
+let ffmpegLoadPromise: Promise<FFmpeg> | null = null;
+
+const loadFfmpeg = async (): Promise<FFmpeg> => {
+  if (ffmpegInstance && ffmpegInstance.loaded) {
+    return ffmpegInstance;
+  }
+  if (ffmpegLoadPromise) {
+    return ffmpegLoadPromise;
+  }
+
+  ffmpegLoadPromise = (async () => {
+    const instance = new FFmpeg();
+    const cdnBaseUrls = [
+      "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm",
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm",
+    ];
+
+    let lastError: any = null;
+
+    for (const baseURL of cdnBaseUrls) {
+      try {
+        const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
+        const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
+        await instance.load({
+          coreURL,
+          wasmURL,
+        });
+        if (instance.loaded) {
+          ffmpegInstance = instance;
+          return instance;
+        }
+      } catch (err) {
+        console.warn(`[FFmpeg] Failed to load from ${baseURL}:`, err);
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error("Failed to load FFmpeg engine");
+  })().catch((err) => {
+    ffmpegInstance = null;
+    ffmpegLoadPromise = null;
+    throw err;
   });
-  return ffmpeg;
+
+  return ffmpegLoadPromise;
 };
 
 type SelectedFile = {
@@ -113,38 +149,55 @@ export function FileCompressorApp() {
         selectedFile.type.startsWith("audio/") ||
         selectedFile.type.startsWith("video/")
       ) {
-        const ext = selectedFile.name.split(".").pop()?.toLowerCase();
-        const inputName = `input.${ext}`;
-        const outputName = `output.${ext}`;
-        
         const isVideo = selectedFile.type.startsWith("video/");
-        
-        const ffmpegInstance = await loadFfmpeg();
-        ffmpegInstance.on("progress", ({ progress }) => {
-          setProgress(Math.round(progress * 100));
-        });
+        const defaultExt = isVideo ? "mp4" : "mp3";
+        const rawExt = selectedFile.name.split(".").pop()?.toLowerCase();
+        const ext = rawExt && rawExt.length <= 5 ? rawExt : defaultExt;
+        const timestamp = Date.now();
+        const inputName = `input_${timestamp}.${ext}`;
+        const outputName = `output_${timestamp}.${ext}`;
 
-        await ffmpegInstance.writeFile(inputName, await fetchFile(fileToCompress));
-        
-        if (isVideo) {
-          // Compress video
-          await ffmpegInstance.exec([
-            "-i", inputName,
-            "-vcodec", "libx264",
-            "-crf", (100 - quality).toString(), // lower quality = higher crf
-            outputName,
-          ]);
-        } else {
-          // Compress audio
-          await ffmpegInstance.exec([
-            "-i", inputName,
-            "-b:a", `${Math.max(32, Math.floor(quality * 1.2))}k`, // Example scaling
-            outputName,
-          ]);
+        const ffmpeg = await loadFfmpeg();
+        const progressHandler = ({ progress }: { progress: number }) => {
+          setProgress(Math.round(Math.max(0, Math.min(100, progress * 100))));
+        };
+        ffmpeg.on("progress", progressHandler);
+
+        try {
+          const fileData = await fetchFile(fileToCompress);
+          await ffmpeg.writeFile(inputName, fileData);
+
+          if (isVideo) {
+            // Compress video
+            await ffmpeg.exec([
+              "-i", inputName,
+              "-vcodec", "libx264",
+              "-crf", (100 - quality).toString(), // lower quality = higher crf
+              outputName,
+            ]);
+          } else {
+            // Compress audio
+            const bitrate = Math.max(32, Math.min(320, Math.floor(32 + (quality / 100) * 160)));
+            await ffmpeg.exec([
+              "-i", inputName,
+              "-b:a", `${bitrate}k`,
+              outputName,
+            ]);
+          }
+
+          const data = await ffmpeg.readFile(outputName);
+          compressedBlob = new Blob([data as unknown as BlobPart], {
+            type: selectedFile.type || (isVideo ? "video/mp4" : "audio/mpeg"),
+          });
+        } finally {
+          ffmpeg.off("progress", progressHandler);
+          try {
+            await ffmpeg.deleteFile(inputName);
+          } catch {}
+          try {
+            await ffmpeg.deleteFile(outputName);
+          } catch {}
         }
-        
-        const data = await ffmpegInstance.readFile(outputName);
-        compressedBlob = new Blob([data as unknown as BlobPart], { type: selectedFile.type });
       } else {
         throw new Error("Unsupported file type");
       }

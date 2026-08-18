@@ -5,6 +5,9 @@ import path from "node:path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  optimizeDeps: {
+    exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util"],
+  },
   server: {
     host: "::",
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : 8080,

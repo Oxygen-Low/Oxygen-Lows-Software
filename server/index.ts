@@ -48,13 +48,26 @@ app.use(
   secureHeaders({
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // required for Vite HMR in dev
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'wasm-unsafe-eval'",
+        "blob:",
+        "https://unpkg.com",
+        "https://cdn.jsdelivr.net",
+      ], // required for Vite HMR in dev and FFmpeg WASM
+      workerSrc: ["'self'", "blob:"],
+      childSrc: ["'self'", "blob:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      mediaSrc: ["'self'", "https://vqmukrmpgvavscsyefqd.supabase.co"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      mediaSrc: ["'self'", "blob:", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co"],
       connectSrc: [
         "'self'",
+        "blob:",
+        "data:",
+        "https://unpkg.com",
+        "https://cdn.jsdelivr.net",
         "https://vqmukrmpgvavscsyefqd.supabase.co",
         "wss://vqmukrmpgvavscsyefqd.supabase.co",
         "https://oai.stablehorde.net",
@@ -72,6 +85,9 @@ app.use(
       formAction: ["'self'"],
       upgradeInsecureRequests: [],
     },
+    crossOriginOpenerPolicy: "same-origin",
+    crossOriginEmbedderPolicy: "require-corp",
+    crossOriginResourcePolicy: "cross-origin",
     xFrameOptions: "DENY",
     xContentTypeOptions: "nosniff",
     referrerPolicy: "strict-origin-when-cross-origin",
