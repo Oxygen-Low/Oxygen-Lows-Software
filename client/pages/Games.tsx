@@ -18,6 +18,12 @@ import {
   Smartphone,
   Type,
   Grid3x3,
+  Users,
+  User,
+  Sparkles,
+  Puzzle,
+  Boxes,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MinesweeperApp } from "@/components/apps/Minesweeper";
@@ -27,17 +33,19 @@ import { PokerApp } from "@/components/apps/Poker";
 import { SudokuApp } from "@/components/apps/Sudoku";
 import { WordSearchApp } from "@/components/apps/WordSearch";
 
-type Category = "All";
+export type GameMode = "Multiplayer" | "Singleplayer";
+export type GameGenre = "Puzzle" | "Strategy" | "Card" | "Board" | "Casual";
 
-type Availability = "web-and-desktop" | "desktop-only";
+export type Availability = "web-and-desktop" | "desktop-only";
 
-interface GameMetadata {
+export interface GameMetadata {
   id: string;
   nameKey: string;
   defaultName: string;
   descKey: string;
   defaultDesc: string;
-  categories: Category[];
+  modes: GameMode[];
+  genres: GameGenre[];
   availability: Availability;
   icon: React.ReactNode;
   component: React.ComponentType;
@@ -46,14 +54,89 @@ interface GameMetadata {
   androidSupported?: boolean;
 }
 
-const GAMES: GameMetadata[] = [
+export interface ModeDefinition {
+  id: GameMode | "All";
+  labelKey: string;
+  defaultLabel: string;
+  icon: React.ReactNode;
+}
+
+export interface GenreDefinition {
+  id: GameGenre | "All";
+  labelKey: string;
+  defaultLabel: string;
+  icon: React.ReactNode;
+}
+
+export const MODE_DEFINITIONS: ModeDefinition[] = [
+  {
+    id: "All",
+    labelKey: "games.allModes",
+    defaultLabel: "All Modes",
+    icon: <Gamepad2 className="w-4 h-4" />,
+  },
+  {
+    id: "Multiplayer",
+    labelKey: "games.multiplayer",
+    defaultLabel: "Multiplayer",
+    icon: <Users className="w-4 h-4" />,
+  },
+  {
+    id: "Singleplayer",
+    labelKey: "games.singleplayer",
+    defaultLabel: "Singleplayer",
+    icon: <User className="w-4 h-4" />,
+  },
+];
+
+export const GENRE_DEFINITIONS: GenreDefinition[] = [
+  {
+    id: "All",
+    labelKey: "games.allGenres",
+    defaultLabel: "All Genres",
+    icon: <Boxes className="w-4 h-4" />,
+  },
+  {
+    id: "Puzzle",
+    labelKey: "games.puzzle",
+    defaultLabel: "Puzzle",
+    icon: <Puzzle className="w-4 h-4" />,
+  },
+  {
+    id: "Strategy",
+    labelKey: "games.strategy",
+    defaultLabel: "Strategy",
+    icon: <Crown className="w-4 h-4" />,
+  },
+  {
+    id: "Card",
+    labelKey: "games.card",
+    defaultLabel: "Card",
+    icon: <Spade className="w-4 h-4" />,
+  },
+  {
+    id: "Board",
+    labelKey: "games.board",
+    defaultLabel: "Board",
+    icon: <Grid3x3 className="w-4 h-4" />,
+  },
+  {
+    id: "Casual",
+    labelKey: "games.casual",
+    defaultLabel: "Casual",
+    icon: <Sparkles className="w-4 h-4" />,
+  },
+];
+
+export const GAMES: GameMetadata[] = [
   {
     id: "chess",
     nameKey: "games.chessTitle",
     defaultName: "Chess",
     descKey: "games.chessDesc",
     defaultDesc: "Play a game of chess against an AI opponent.",
-    categories: ["All"],
+    modes: ["Singleplayer", "Multiplayer"],
+    genres: ["Strategy", "Board"],
     availability: "web-and-desktop",
     icon: <Crown className="w-8 h-8 text-cyan-500" />,
     component: ChessApp,
@@ -64,7 +147,8 @@ const GAMES: GameMetadata[] = [
     defaultName: "Minesweeper",
     descKey: "games.minesweeperDesc",
     defaultDesc: "The classic game of Minesweeper. Clear the board without detonating any mines!",
-    categories: ["All"],
+    modes: ["Singleplayer"],
+    genres: ["Puzzle", "Strategy"],
     availability: "web-and-desktop",
     icon: <Bomb className="w-8 h-8 text-cyan-500" />,
     component: MinesweeperApp,
@@ -75,7 +159,8 @@ const GAMES: GameMetadata[] = [
     defaultName: "Solitaire",
     descKey: "games.solitaireDesc",
     defaultDesc: "Play the classic Klondike Solitaire card game.",
-    categories: ["All"],
+    modes: ["Singleplayer"],
+    genres: ["Card", "Casual"],
     availability: "web-and-desktop",
     icon: <Spade className="w-8 h-8 text-green-500" />,
     component: SolitaireApp,
@@ -86,7 +171,8 @@ const GAMES: GameMetadata[] = [
     defaultName: "Texas Hold'em",
     descKey: "games.pokerDesc",
     defaultDesc: "Play Heads-Up Texas Hold'em against an AI opponent.",
-    categories: ["All"],
+    modes: ["Singleplayer", "Multiplayer"],
+    genres: ["Card", "Strategy"],
     availability: "web-and-desktop",
     icon: <Gamepad2 className="w-8 h-8 text-yellow-500" />,
     component: PokerApp,
@@ -97,7 +183,8 @@ const GAMES: GameMetadata[] = [
     defaultName: "Sudoku",
     descKey: "games.sudokuDesc",
     defaultDesc: "Challenge your mind with the classic numbers puzzle.",
-    categories: ["All"],
+    modes: ["Singleplayer"],
+    genres: ["Puzzle", "Strategy"],
     availability: "web-and-desktop",
     icon: <Grid3x3 className="w-8 h-8 text-indigo-400" />,
     component: SudokuApp,
@@ -108,7 +195,8 @@ const GAMES: GameMetadata[] = [
     defaultName: "Word Search",
     descKey: "games.wordSearchDesc",
     defaultDesc: "Find hidden words in a grid of letters.",
-    categories: ["All"],
+    modes: ["Singleplayer"],
+    genres: ["Puzzle", "Casual"],
     availability: "web-and-desktop",
     icon: <Type className="w-8 h-8 text-indigo-500" />,
     component: WordSearchApp,
@@ -142,6 +230,8 @@ export default function Games() {
     }
   }, [hasDesktopParam, hasAndroidParam]);
 
+  const [selectedMode, setSelectedMode] = useState<GameMode | "All">("All");
+  const [selectedGenre, setSelectedGenre] = useState<GameGenre | "All">("All");
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
   
@@ -169,8 +259,52 @@ export default function Games() {
     [isDesktopMode, isAndroidMode, selectedAvailability, localizedGames],
   );
 
+  const filteredGames = useMemo(() => {
+    return availableApps.filter((app) => {
+      const matchesMode = selectedMode === "All" || app.modes.includes(selectedMode);
+      const matchesGenre = selectedGenre === "All" || app.genres.includes(selectedGenre);
+      return matchesMode && matchesGenre;
+    });
+  }, [selectedMode, selectedGenre, availableApps]);
+
+  const modeCounts = useMemo(() => {
+    const counts: Record<GameMode | "All", number> = {
+      All: availableApps.length,
+      Multiplayer: 0,
+      Singleplayer: 0,
+    };
+    availableApps.forEach((app) => {
+      app.modes.forEach((mode) => {
+        counts[mode]++;
+      });
+    });
+    return counts;
+  }, [availableApps]);
+
+  const genreCounts = useMemo(() => {
+    const counts: Record<GameGenre | "All", number> = {
+      All: availableApps.length,
+      Puzzle: 0,
+      Strategy: 0,
+      Card: 0,
+      Board: 0,
+      Casual: 0,
+    };
+    availableApps.forEach((app) => {
+      app.genres.forEach((genre) => {
+        counts[genre]++;
+      });
+    });
+    return counts;
+  }, [availableApps]);
+
   const handleAppClick = (app: typeof localizedGames[0]) => {
     navigate(`/games/${app.id}`);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedMode("All");
+    setSelectedGenre("All");
   };
 
   if (activeApp) {
@@ -281,40 +415,173 @@ export default function Games() {
           </section>
         )}
 
-        <div className="space-y-4">
-          <h3 className="text-lg sm:text-xl font-semibold text-white">
-            {t("games.allGames", undefined, "All Games")}
-          </h3>
+        {/* Category Row 1: Player Modes */}
+        <section aria-label={t("games.playerModes", undefined, "Player Modes")} className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              {t("games.playerModes", undefined, "Player Modes")}
+            </h3>
+            {(selectedMode !== "All" || selectedGenre !== "All") && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                {t("games.clearFilters", undefined, "Clear Filters")}
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2 sm:gap-2.5">
+            {MODE_DEFINITIONS.map((def) => {
+              const count = modeCounts[def.id];
+              const isSelected = selectedMode === def.id;
+              const label = t(def.labelKey as any, undefined, def.defaultLabel);
+              return (
+                <button
+                  key={def.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`${label} (${count} games)`}
+                  onClick={() => setSelectedMode(def.id)}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex items-center gap-2 border",
+                    isSelected
+                      ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                      : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800 hover:border-slate-700",
+                    count === 0 && def.id !== "All" && "opacity-40 pointer-events-none",
+                  )}
+                >
+                  {def.icon}
+                  <span>{label}</span>
+                  <span
+                    className={cn(
+                      "text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full font-semibold",
+                      isSelected ? "bg-cyan-500/30 text-cyan-200" : "bg-slate-800 text-slate-400",
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-          {availableApps.length > 0 ? (
+        {/* Category Row 2: Game Genres */}
+        <section aria-label={t("games.genres", undefined, "Genres")} className="space-y-2.5">
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-300 uppercase tracking-wider">
+            {t("games.genres", undefined, "Genres")}
+          </h3>
+          <div className="flex flex-wrap gap-2 sm:gap-2.5">
+            {GENRE_DEFINITIONS.map((def) => {
+              const count = genreCounts[def.id];
+              const isSelected = selectedGenre === def.id;
+              const label = t(def.labelKey as any, undefined, def.defaultLabel);
+              return (
+                <button
+                  key={def.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`${label} (${count} games)`}
+                  onClick={() => setSelectedGenre(def.id)}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex items-center gap-2 border",
+                    isSelected
+                      ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                      : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800 hover:border-slate-700",
+                    count === 0 && def.id !== "All" && "opacity-40 pointer-events-none",
+                  )}
+                >
+                  {def.icon}
+                  <span>{label}</span>
+                  <span
+                    className={cn(
+                      "text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full font-semibold",
+                      isSelected ? "bg-cyan-500/30 text-cyan-200" : "bg-slate-800 text-slate-400",
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">
+              {selectedMode === "All" && selectedGenre === "All"
+                ? t("games.allGames", undefined, "All Games")
+                : `${selectedMode !== "All" ? selectedMode : ""} ${selectedGenre !== "All" ? selectedGenre : ""} ${t("games.title", undefined, "Games")}`.trim()}
+            </h3>
+            <span className="text-xs sm:text-sm text-slate-400">
+              {filteredGames.length} {filteredGames.length === 1 ? "game" : "games"}
+            </span>
+          </div>
+
+          {filteredGames.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {availableApps.map((app) => (
+              {filteredGames.map((app) => (
                 <Card
                   key={app.id}
-                  className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden"
+                  className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden flex flex-col justify-between"
                   onClick={() => handleAppClick(app)}
                 >
-                  <CardHeader className="p-4 sm:p-6">
-                    <div className="mb-3 sm:mb-4 transition-transform group-hover:scale-110">
-                      {app.icon}
+                  <CardHeader className="p-4 sm:p-6 flex-1 flex flex-col">
+                    <div className="flex items-start justify-between mb-3 sm:mb-4 gap-2">
+                      <div className="transition-transform group-hover:scale-110 shrink-0">
+                        {app.icon}
+                      </div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {app.modes.map((mode) => (
+                          <span
+                            key={mode}
+                            className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700/60"
+                          >
+                            {t(`games.${mode.toLowerCase()}` as any, undefined, mode)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
                       {app.name}
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm text-slate-400">
+                    <CardDescription className="text-xs sm:text-sm text-slate-400 flex-1">
                       {app.description}
                     </CardDescription>
+                    <div className="flex flex-wrap gap-1.5 pt-3 mt-auto">
+                      {app.genres.map((genre) => (
+                        <span
+                          key={genre}
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-cyan-950/40 text-cyan-400/90 border border-cyan-800/30"
+                        >
+                          {t(`games.${genre.toLowerCase()}` as any, undefined, genre)}
+                        </span>
+                      ))}
+                    </div>
                   </CardHeader>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
-              <p className="text-slate-500">
+            <div className="py-16 text-center border-2 border-dashed border-slate-800 rounded-xl p-6">
+              <Gamepad2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400 font-medium mb-1">
                 {isDesktopMode && selectedAvailability === "desktop-only"
-                  ? t("apps.noDesktopApps", undefined, "No desktop-only games are available yet.")
-                  : t("games.noGamesFound", undefined, "No games found.")}
+                  ? t("games.noDesktopGames", undefined, "No desktop-only games are available yet.")
+                  : t("games.noFilteredGames", undefined, "No games found matching the selected filters.")}
               </p>
+              {(selectedMode !== "All" || selectedGenre !== "All") && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="mt-4 px-4 py-2 text-xs sm:text-sm rounded-lg bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-600/30 transition-colors"
+                >
+                  {t("games.clearFilters", undefined, "Clear Filters")}
+                </button>
+              )}
             </div>
           )}
         </div>
