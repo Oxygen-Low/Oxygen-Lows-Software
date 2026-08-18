@@ -20,7 +20,7 @@
 
 -- Instead of manually updating all of the translations, use a subagent with "pro" model to translate everything.
 
--- After finishing code changes and calling the translation subagent, use a subagent with "pro" model to code review all changes. Only call the code review after more than 100 lines of code have been modified.
+-- After finishing code changes and calling the translation subagent, use a subagent with "pro" model to code review all changes. Only call the code review after more than 500 lines of code have been modified.
 
 -- Tell subagents to ignore this section of AGENTS.md to prevent a subagent calling loop.
 
