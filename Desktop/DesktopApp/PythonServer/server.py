@@ -216,7 +216,7 @@ def find_available_port(preferred_port: int) -> int:
 def main():
     global HTTP_SERVER
 
-    parser = argparse.ArgumentParser(description="Oxygen Low's Desktop Python Background Server")
+    parser = argparse.ArgumentParser(description="Oxygen Low's Software Desktop Python Background Server")
     parser.add_argument("--port", type=int, default=54123, help="Port to bind (default: 54123)")
     parser.add_argument("--parent-pid", type=int, default=0, help="Parent process PID to monitor")
     parser.add_argument("--watch-stdin", action="store_true", help="Monitor stdin for EOF to terminate")
