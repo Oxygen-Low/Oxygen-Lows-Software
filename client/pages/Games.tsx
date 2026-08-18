@@ -32,6 +32,7 @@ import { ChessApp } from "@/components/apps/Chess";
 import { PokerApp } from "@/components/apps/Poker";
 import { SudokuApp } from "@/components/apps/Sudoku";
 import { WordSearchApp } from "@/components/apps/WordSearch";
+import { TicTacToeApp } from "@/components/apps/TicTacToe";
 
 export type GameMode = "Multiplayer" | "Singleplayer";
 export type GameGenre = "Puzzle" | "Strategy" | "Card" | "Board" | "Casual";
@@ -200,6 +201,18 @@ export const GAMES: GameMetadata[] = [
     availability: "web-and-desktop",
     icon: <Type className="w-8 h-8 text-indigo-500" />,
     component: WordSearchApp,
+  },
+  {
+    id: "tictactoe",
+    nameKey: "games.tictactoeTitle",
+    defaultName: "Tic Tac Toe",
+    descKey: "games.tictactoeDesc",
+    defaultDesc: "The classic game of Tic Tac Toe.",
+    modes: ["Singleplayer", "Multiplayer"],
+    genres: ["Casual", "Board"],
+    availability: "web-and-desktop",
+    icon: <Grid3x3 className="w-8 h-8 text-blue-500" />,
+    component: TicTacToeApp,
   },
 ];
 
