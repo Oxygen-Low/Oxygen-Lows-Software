@@ -16,7 +16,7 @@
 
 -- The app/website is NOT named "Oxygen Low"; it is named "Oxygen Low's Software".
 
-## For Antigravity Agents
+## Agents Capable Of Subagents
 
 -- Instead of manually updating all of the translations, use a subagent with "pro" model to translate everything.
 
