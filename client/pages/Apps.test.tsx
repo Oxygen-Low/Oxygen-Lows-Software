@@ -58,4 +58,15 @@ describe("Apps", () => {
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.getByText("File Compressor")).toBeDefined();
   });
+
+  it("renders Web Defender app when navigating to /apps/webdefender", () => {
+    render(
+      <MemoryRouter initialEntries={["/apps/webdefender"]}>
+        <Apps />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText("Web Defender").length).toBeGreaterThan(0);
+  });
 });
+

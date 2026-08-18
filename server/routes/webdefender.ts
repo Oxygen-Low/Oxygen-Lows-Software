@@ -340,6 +340,7 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
     "block_tor",
     "block_vpn",
     "block_countries",
+    "block_ips",
     "block_ad_bots",
     "block_ai_assistants",
     "block_ai_scrapers",

@@ -227,7 +227,7 @@ const APPS: AppMetadata[] = [
     androidSupported: true,
   },
   {
-    id: "defender",
+    id: "webdefender",
     nameKey: "apps.webDefenderTitle",
     defaultName: "Web Defender",
     descKey: "apps.webDefenderDesc",

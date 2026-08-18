@@ -12,6 +12,7 @@ describe("Defender getAppConfig", () => {
     expect(configNull.block_tor).toBe(true);
     expect(configNull.block_vpn).toBe(true);
     expect(configNull.block_countries).toEqual([]);
+    expect(configNull.block_ips).toEqual([]);
     expect(configNull.ddos_threshold_rpm).toBe(1000);
     expect(configNull.block_bruteforce).toBe(true);
     expect(configNull.block_http_dos).toBe(true);
@@ -22,6 +23,7 @@ describe("Defender getAppConfig", () => {
     const configUndefined = getAppConfig(undefined);
     expect(configUndefined.block_sql_injection).toBe(true);
     expect(configUndefined.block_vpn).toBe(true);
+    expect(configUndefined.block_ips).toEqual([]);
     expect(configUndefined.block_bruteforce).toBe(true);
     expect(configUndefined.block_http_dos).toBe(true);
     expect(configUndefined.block_http_exploit).toBe(true);
@@ -37,6 +39,7 @@ describe("Defender getAppConfig", () => {
       block_tor: false,
       block_vpn: false,
       block_countries: ["US", "CA"],
+      block_ips: ["192.168.1.100", "10.0.0.1"],
       ddos_threshold_rpm: 500,
       block_bruteforce: false,
       block_http_dos: true,
@@ -50,6 +53,7 @@ describe("Defender getAppConfig", () => {
     expect(config.block_tor).toBe(false);
     expect(config.block_vpn).toBe(false);
     expect(config.block_countries).toEqual(["US", "CA"]);
+    expect(config.block_ips).toEqual(["192.168.1.100", "10.0.0.1"]);
     expect(config.ddos_threshold_rpm).toBe(500);
     expect(config.block_bruteforce).toBe(false);
     expect(config.block_http_dos).toBe(true);

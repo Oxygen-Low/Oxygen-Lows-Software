@@ -100,6 +100,7 @@ type AppConfig = {
   ddos_protection: boolean;
   ddos_threshold_rpm: number;
   block_countries: string[];
+  block_ips: string[];
   block_ad_bots: boolean;
   block_ai_assistants: boolean;
   block_ai_scrapers: boolean;
@@ -173,7 +174,7 @@ export function DefenderApp() {
   const loadApps = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await authFetch('/api/defender/apps');
+      const res = await authFetch('/api/webdefender/apps');
       const data = await res.json();
       setApps(data || []);
     } catch (err) {
@@ -192,7 +193,7 @@ export function DefenderApp() {
 
   const handleCreateApp = async () => {
     try {
-      const res = await authFetch('/api/defender/apps', {
+      const res = await authFetch('/api/webdefender/apps', {
         method: 'POST',
         body: JSON.stringify({ name: newAppName })
       });
@@ -210,7 +211,7 @@ export function DefenderApp() {
     if (!appToDelete) return;
     setIsDeleting(true);
     try {
-      await authFetch(`/api/defender/apps/${appToDelete.id}`, { method: 'DELETE' });
+      await authFetch(`/api/webdefender/apps/${appToDelete.id}`, { method: 'DELETE' });
       toast.success("App deleted successfully.");
       setAppToDelete(null);
       setDeleteConfirmText("");
@@ -473,10 +474,10 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
     try {
       setIsLoading(true);
       const [appRes, routesRes, eventsRes, outboundsRes] = await Promise.all([
-        authFetch(`/api/defender/apps/${appId}`),
-        authFetch(`/api/defender/apps/${appId}/routes`).catch(() => ({ json: () => ({ routes: [] }) })),
-        authFetch(`/api/defender/apps/${appId}/events?limit=1000`).catch(() => ({ json: () => ({ events: [] }) })),
-        authFetch(`/api/defender/apps/${appId}/outbound`).catch(() => ({ json: () => ({ outbounds: [] }) }))
+        authFetch(`/api/webdefender/apps/${appId}`),
+        authFetch(`/api/webdefender/apps/${appId}/routes`).catch(() => ({ json: () => ({ routes: [] }) })),
+        authFetch(`/api/webdefender/apps/${appId}/events?limit=1000`).catch(() => ({ json: () => ({ events: [] }) })),
+        authFetch(`/api/webdefender/apps/${appId}/outbound`).catch(() => ({ json: () => ({ outbounds: [] }) }))
       ]);
 
       const appData = await appRes.json();
@@ -586,7 +587,7 @@ function StatCard({ title, value, icon, color = "text-cyan-500" }: { title: stri
 function OverviewTab({ app, events, authFetch, onUpdate }: { app: App, events: Event[], authFetch: any, onUpdate: () => void }) {
   const toggleBlockMode = async () => {
     try {
-      await authFetch(`/api/defender/apps/${app.id}/block-mode`, {
+      await authFetch(`/api/webdefender/apps/${app.id}/block-mode`, {
         method: 'PUT',
         body: JSON.stringify({ enabled: !app.block_mode_enabled })
       });
@@ -730,7 +731,7 @@ function RoutesTab({ routes, authFetch, onUpdate }: { routes: Route[], authFetch
 
   const handleSave = async (id: string) => {
     try {
-      await authFetch(`/api/defender/routes/${id}`, {
+      await authFetch(`/api/webdefender/routes/${id}`, {
         method: 'PUT',
         body: JSON.stringify(editData)
       });
@@ -838,6 +839,7 @@ function EventBadge({ type }: { type: string }) {
     tor: { color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', label: 'TOR' },
     vpn: { color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', label: 'VPN' },
     country_block: { color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Geo Block' },
+    ip_block: { color: 'bg-rose-500/10 text-rose-500 border-rose-500/20', label: 'IP Block' },
     bot: { color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Bot' },
     threat_bruteforce: { color: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Bruteforce' },
     threat_dos: { color: 'bg-rose-600/10 text-rose-600 border-rose-600/20', label: 'HTTP DoS' },
@@ -952,7 +954,7 @@ export function EventsTab({ events }: { events: Event[] }) {
 function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds: Outbound[], blockMode: boolean, authFetch: any, onUpdate: () => void }) {
   const handleToggle = async (id: string, isAllowed: boolean) => {
     try {
-      await authFetch(`/api/defender/outbound/${id}`, { method: 'PUT', body: JSON.stringify({ allowed: isAllowed }) });
+      await authFetch(`/api/webdefender/outbound/${id}`, { method: 'PUT', body: JSON.stringify({ allowed: isAllowed }) });
       onUpdate();
     } catch (err) { toast.error("Failed to update outbound rule"); }
   };
@@ -960,7 +962,7 @@ function OutboundTab({ outbounds, blockMode, authFetch, onUpdate }: { outbounds:
   const handleRemove = async (id: string) => {
     if (!confirm("Remove this outbound connection record?")) return;
     try {
-      await authFetch(`/api/defender/outbound/${id}`, { method: 'DELETE' });
+      await authFetch(`/api/webdefender/outbound/${id}`, { method: 'DELETE' });
       onUpdate();
     } catch (err) { toast.error("Failed to delete outbound rule"); }
   };
@@ -1037,6 +1039,7 @@ const defaultDefenderConfig: AppConfig = {
   ddos_protection: true,
   ddos_threshold_rpm: 1000,
   block_countries: [],
+  block_ips: [],
   block_ad_bots: false,
   block_ai_assistants: false,
   block_ai_scrapers: true,
@@ -1066,6 +1069,23 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [newIpInput, setNewIpInput] = useState("");
+
+  const handleAddIp = () => {
+    const trimmed = newIpInput.trim();
+    if (!trimmed) return;
+    const currentIps = config.block_ips || [];
+    if (currentIps.includes(trimmed)) {
+      toast.error("IP address is already blocked");
+      return;
+    }
+    updateConfig({ block_ips: [...currentIps, trimmed] });
+    setNewIpInput("");
+  };
+
+  const handleRemoveIp = (ipToRemove: string) => {
+    updateConfig({ block_ips: (config.block_ips || []).filter(ip => ip !== ipToRemove) });
+  };
 
   useEffect(() => {
     setConfig(getAppConfig(app.defender_config));
@@ -1075,7 +1095,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
     const newConfig = { ...config, ...updates };
     setConfig(newConfig);
     try {
-      await authFetch(`/api/defender/apps/${app.id}/config`, {
+      await authFetch(`/api/webdefender/apps/${app.id}/config`, {
         method: 'PUT',
         body: JSON.stringify(newConfig)
       });
@@ -1091,7 +1111,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
     if (!confirm("Are you sure? The old API key will stop working immediately.")) return;
     setIsRotating(true);
     try {
-      const res = await authFetch(`/api/defender/apps/${app.id}/rotate-key`, { method: 'POST' });
+      const res = await authFetch(`/api/webdefender/apps/${app.id}/rotate-key`, { method: 'POST' });
       const data = await res.json();
       setNewKey(data.apiKey);
       toast.success("API Key rotated");
@@ -1107,7 +1127,7 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
     if (deleteConfirm !== app.name) return;
     setIsDeleting(true);
     try {
-      await authFetch(`/api/defender/apps/${app.id}`, { method: 'DELETE' });
+      await authFetch(`/api/webdefender/apps/${app.id}`, { method: 'DELETE' });
       toast.success("App deleted");
       onDelete();
     } catch (err) {
@@ -1309,6 +1329,51 @@ function SettingsTab({ app, authFetch, onUpdate, onDelete }: { app: App, authFet
               </ScrollArea>
             </SelectContent>
           </Select>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>IP Blocking</CardTitle>
+          <CardDescription>Block requests from specific IP addresses.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {(config.block_ips || []).length === 0 ? (
+              <p className="text-xs text-slate-500 italic">No IP addresses currently blocked.</p>
+            ) : (
+              (config.block_ips || []).map(ip => (
+                <Badge key={ip} variant="secondary" className="bg-slate-800 hover:bg-slate-700 flex items-center gap-2 py-1 px-2.5 font-mono text-xs">
+                  <span>{ip}</span>
+                  <button onClick={() => handleRemoveIp(ip)} className="ml-1 text-slate-400 hover:text-white" aria-label={`Remove ${ip}`}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. 192.0.2.1 or 2001:db8::1"
+              value={newIpInput}
+              onChange={e => setNewIpInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddIp();
+                }
+              }}
+              className="bg-slate-950 border-slate-800 font-mono text-sm"
+            />
+            <Button
+              variant="outline"
+              onClick={handleAddIp}
+              disabled={!newIpInput.trim()}
+              className="border-slate-700 hover:bg-slate-800 shrink-0"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Block IP
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

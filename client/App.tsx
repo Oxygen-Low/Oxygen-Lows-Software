@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MusicProvider } from "@/contexts/MusicContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -205,6 +205,9 @@ const App = () => (
                     }
                   />
                   <Route path="/download" element={<Download />} />
+                  <Route path="/webdefender" element={<Navigate to="/apps/webdefender" replace />} />
+                  <Route path="/defender" element={<Navigate to="/apps/webdefender" replace />} />
+                  <Route path="/apps/defender" element={<Navigate to="/apps/webdefender" replace />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

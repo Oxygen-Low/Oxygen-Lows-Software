@@ -113,6 +113,7 @@ export class DefenderClient {
       blockTor: cfg.block_tor ?? true,
       blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
+      blockIps: cfg.block_ips ?? [],
       blockAdBots: cfg.block_ad_bots ?? false,
       blockAiAssistants: cfg.block_ai_assistants ?? false,
       blockAiScrapers: cfg.block_ai_scrapers ?? true,
@@ -141,7 +142,7 @@ export class DefenderClient {
 
     try {
       // 1. Validate API key
-      const response = await fetch(`${this.apiUrl}/api/defender/verify`, {
+      const response = await fetch(`${this.apiUrl}/api/webdefender/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,7 +161,7 @@ export class DefenderClient {
         const routes = discoverRoutes(app);
         if (routes.length > 0) {
           try {
-            await fetch(`${this.apiUrl}/api/defender/register`, {
+            await fetch(`${this.apiUrl}/api/webdefender/register`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -170,7 +171,7 @@ export class DefenderClient {
             });
 
             // Refetch config to get the populated route IDs and rate limits
-            const verifyRes = await fetch(`${this.apiUrl}/api/defender/verify`, {
+            const verifyRes = await fetch(`${this.apiUrl}/api/webdefender/verify`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -218,7 +219,7 @@ export class DefenderClient {
     }
 
     try {
-      const response = await fetch(`${this.apiUrl}/api/defender/verify`, {
+      const response = await fetch(`${this.apiUrl}/api/webdefender/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -242,7 +243,7 @@ export class DefenderClient {
       return;
     }
 
-    fetch(`${this.apiUrl}/api/defender/outbound`, {
+    fetch(`${this.apiUrl}/api/webdefender/outbound`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -262,7 +263,7 @@ export class DefenderClient {
       return;
     }
 
-    fetch(`${this.apiUrl}/api/defender/event`, {
+    fetch(`${this.apiUrl}/api/webdefender/event`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -330,6 +331,14 @@ export class DefenderClient {
       blockReason = reason;
       isBlocked = true;
     };
+
+    // 0. Individual IP Check
+    if (!isBlocked && this.appConfig.blockIps && this.appConfig.blockIps.length > 0) {
+      const cleanIp = (ip || '').trim().toLowerCase();
+      if (this.appConfig.blockIps.some(blocked => (blocked || '').trim().toLowerCase() === cleanIp)) {
+        fail('ip_block', `IP blocked: ${ip}`);
+      }
+    }
 
     // 1. IP Geo Check
     if (!isBlocked && this.appConfig.blockCountries && this.appConfig.blockCountries.length > 0) {

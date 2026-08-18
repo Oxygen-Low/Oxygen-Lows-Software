@@ -16,7 +16,7 @@ const app = new Hono();
 let defenderPromise: Promise<any> | null = null;
 
 app.use('*', async (c, next) => {
-  if (c.req.path.startsWith('/api/defender')) {
+  if (c.req.path.startsWith('/api/webdefender') || c.req.path.startsWith('/api/defender')) {
     return next();
   }
   if (!defenderPromise) {
@@ -171,7 +171,7 @@ app.get("/sitemap.xml", (c) => {
     { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/qrcode-generator`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8" },
-    { loc: `${baseUrl}/apps/defender`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/webdefender`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/privacy`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/terms`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/eula`, changefreq: "monthly", priority: "0.5" },
@@ -526,9 +526,20 @@ app.get("/api/openapi.json", (c) => {
           }
         }
       },
+      "/api/webdefender": {
+        get: {
+          summary: "Web Defender Status",
+          description: "Retrieve Web Defender protection status.",
+          responses: {
+            "200": {
+              description: "Web Defender status"
+            }
+          }
+        }
+      },
       "/api/defender": {
         get: {
-          summary: "Defender Status",
+          summary: "Defender Status (Legacy)",
           description: "Retrieve Web Defender protection status.",
           responses: {
             "200": {
@@ -825,6 +836,7 @@ app.route("/api/admin/support", adminSupportRouter);
 app.route("/api/ai", aiRouter);
 app.route("/api/changelogs", changelogsRouter);
 app.route("/api/vpn", vpnRouter);
+app.route("/api/webdefender", defenderRouter);
 app.route("/api/defender", defenderRouter);
 
 export function createServer() {
