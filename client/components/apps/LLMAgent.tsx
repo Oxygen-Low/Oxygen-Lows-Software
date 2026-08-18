@@ -1070,6 +1070,15 @@ export function LLMAgentApp() {
       toolCalls: ToolCall[];
       finishReason: string;
     }> => {
+      // Determine if the provider supports native tool calling
+      const supportsNativeTools = [
+        "openai",
+        "anthropic",
+        "google",
+        "openrouter",
+        "grok",
+      ].includes(selectedProvider);
+
       const apiMessages = msgs
         .filter((m) => m.role !== "system" || msgs.indexOf(m) === 0)
         .map((m) => {
@@ -1101,15 +1110,6 @@ export function LLMAgentApp() {
               : {}),
           };
         });
-
-      // Determine if the provider supports native tool calling
-      const supportsNativeTools = [
-        "openai",
-        "anthropic",
-        "google",
-        "openrouter",
-        "grok",
-      ].includes(selectedProvider);
 
       let url = "/api/ai/proxy";
       let fetchOptions: RequestInit = {
