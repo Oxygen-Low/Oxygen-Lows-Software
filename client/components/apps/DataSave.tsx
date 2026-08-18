@@ -43,6 +43,8 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
+import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
+import { isCategoryLocked } from "@/lib/crypto";
 
 interface KeyValuePair {
   id: string;
@@ -139,6 +141,16 @@ export function DataSaveApp() {
   const [editKvPairs, setEditKvPairs] = useState<KeyValuePair[]>([]);
   const [editEditorTab, setEditEditorTab] = useState<"raw" | "kv">("raw");
   const [dialogSaving, setDialogSaving] = useState(false);
+  const [encryptionLocked, setEncryptionLocked] = useState(() => isCategoryLocked("data_save"));
+
+  useEffect(() => {
+    setEncryptionLocked(isCategoryLocked("data_save"));
+  }, []);
+
+  const handleUnlocked = () => {
+    setEncryptionLocked(false);
+    fetchData();
+  };
 
   const fetchData = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -480,6 +492,17 @@ export function DataSaveApp() {
       return matchesSearch && matchesCategory;
     });
   }, [saves, searchTerm, selectedCategoryFilter]);
+
+  if (encryptionLocked) {
+    return (
+      <EncryptionRequiredPrompt
+        category="data_save"
+        returnTo="/apps?app=datasave"
+        onUnlocked={handleUnlocked}
+        categoryLabel="Data Save Entries"
+      />
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

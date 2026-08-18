@@ -27,6 +27,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
+import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
+import { isCategoryLocked } from "@/lib/crypto";
 
 interface Character {
   id: string;
@@ -54,6 +56,16 @@ export default function Characters() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>({});
+  const [encryptionLocked, setEncryptionLocked] = useState(() => isCategoryLocked("characters"));
+
+  useEffect(() => {
+    setEncryptionLocked(isCategoryLocked("characters"));
+  }, []);
+
+  const handleUnlocked = () => {
+    setEncryptionLocked(false);
+    fetchCharacters();
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -496,7 +508,14 @@ export default function Characters() {
           </Dialog>
         </div>
 
-        {loading ? (
+        {encryptionLocked ? (
+          <EncryptionRequiredPrompt
+            category="characters"
+            returnTo="/characters"
+            onUnlocked={handleUnlocked}
+            categoryLabel={activeTab === "characters" ? t("characters.charactersTab", undefined, "My Characters") : t("characters.universesTab", undefined, "My Universes")}
+          />
+        ) : loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
           </div>

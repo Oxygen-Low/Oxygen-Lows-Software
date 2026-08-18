@@ -1,9 +1,11 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { DataSaveApp } from "./DataSave";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { clearActiveMasterKey, setCategoryEncryptionEnabled } from "@/lib/crypto";
 
 global.ResizeObserver = class {
   observe() {}
@@ -244,5 +246,21 @@ describe("DataSaveApp", () => {
 
     expect(screen.queryByText("API_CONFIG")).toBeNull();
     expect(screen.queryByText("NOTE_PLAIN")).not.toBeNull();
+  });
+
+  it("renders EncryptionRequiredPrompt when data save encryption is enabled and no masterkey active", () => {
+    clearActiveMasterKey();
+    setCategoryEncryptionEnabled("data_save", true);
+
+    render(
+      <MemoryRouter>
+        <DataSaveApp />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Decryption Required")).toBeDefined();
+    expect(screen.getByText("Go to Security to Unlock")).toBeDefined();
+
+    setCategoryEncryptionEnabled("data_save", false);
   });
 });

@@ -1,10 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import Characters from "./Characters";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { clearActiveMasterKey, setCategoryEncryptionEnabled } from "@/lib/crypto";
 
 const mockToast = vi.fn();
 
@@ -185,5 +187,21 @@ describe("Characters Component", () => {
         description: "Invalid file name",
       }),
     );
+  });
+
+  it("renders EncryptionRequiredPrompt when characters encryption is enabled and no masterkey active", () => {
+    clearActiveMasterKey();
+    setCategoryEncryptionEnabled("characters", true);
+
+    render(
+      <MemoryRouter>
+        <Characters />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Decryption Required")).toBeDefined();
+    expect(screen.getByText("Go to Security to Unlock")).toBeDefined();
+
+    setCategoryEncryptionEnabled("characters", false);
   });
 });

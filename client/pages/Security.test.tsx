@@ -1,0 +1,208 @@
+/** @vitest-environment jsdom */
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import Security from "./Security";
+import { useAuth } from "@/hooks/useAuth";
+import { clearActiveMasterKey } from "@/lib/crypto";
+
+// Mock Supabase
+vi.mock("@/lib/supabase", () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u" } } }),
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "u" } } },
+        error: null,
+      }),
+      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+    },
+  },
+}));
+
+vi.mock("@/hooks/useAuth", () => ({ useAuth: vi.fn() }));
+vi.mock("@/components/Layout", () => ({
+  __esModule: true,
+  default: ({ children }: any) => <div data-testid="layout">{children}</div>,
+}));
+
+const renderWithRouter = (initialEntries = ["/security"]) =>
+  render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <Security />
+    </MemoryRouter>
+  );
+
+describe("Security Page Component", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
+    clearActiveMasterKey();
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "u", email: "user@test.com" } },
+    });
+
+    // Mock clipboard API
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders Security page with header and AES-256 master key card", () => {
+    renderWithRouter();
+    expect(screen.getByText("Security & Data Encryption")).toBeDefined();
+    expect(screen.getByText("AES-256 Masterkey")).toBeDefined();
+    expect(document.getElementById("generate-masterkey-btn")).toBeDefined();
+    expect(screen.getByText("No Masterkey Set")).toBeDefined();
+    expect(screen.queryByText("Show QR Code")).toBeNull();
+  });
+
+  it("renders encryption toggles for Characters, Data Save, and Chatbot / AI Keys", () => {
+    renderWithRouter();
+    expect(screen.getByText("Protected Data Categories")).toBeDefined();
+    expect(screen.getByText("Characters and Universes")).toBeDefined();
+    expect(screen.getByText("Data Save Entries")).toBeDefined();
+    expect(screen.getByText("Chatbot Chats & AI Provider Keys")).toBeDefined();
+  });
+
+  it("allows toggling encryption and saves to localStorage", async () => {
+    renderWithRouter();
+    const charactersToggle = document.getElementById("toggle-characters") as HTMLButtonElement;
+    expect(charactersToggle).toBeDefined();
+
+    fireEvent.click(charactersToggle);
+    expect(localStorage.getItem("oxygen_encrypt_characters")).toBe("true");
+
+    fireEvent.click(charactersToggle);
+    expect(localStorage.getItem("oxygen_encrypt_characters")).toBe("false");
+  });
+
+  it("allows toggling encryption for Data Save and Chatbot", async () => {
+    renderWithRouter();
+    const dataSaveToggle = document.getElementById("toggle-datasave") as HTMLButtonElement;
+    const chatbotToggle = document.getElementById("toggle-chatbot") as HTMLButtonElement;
+
+    fireEvent.click(dataSaveToggle);
+    expect(localStorage.getItem("oxygen_encrypt_data_save")).toBe("true");
+
+    fireEvent.click(chatbotToggle);
+    expect(localStorage.getItem("oxygen_encrypt_chatbot")).toBe("true");
+  });
+
+  it("generates a 256-bit key when clicking Generate Masterkey and displays actions without QR code", async () => {
+    renderWithRouter();
+    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+      expect(screen.getByText("Copy to Clipboard")).toBeDefined();
+      expect(screen.getByText("Download Backup")).toBeDefined();
+      expect(screen.getByText("Lock / Clear Key")).toBeDefined();
+      expect(screen.queryByText("Show QR Code")).toBeNull();
+      expect(screen.queryByText("Hide QR Code")).toBeNull();
+    });
+  });
+
+  it("copies generated master key to clipboard", async () => {
+    renderWithRouter();
+    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Copy to Clipboard")).toBeDefined();
+    });
+
+    const copyBtn = screen.getByText("Copy to Clipboard");
+    fireEvent.click(copyBtn);
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalled();
+  });
+
+  it("switches key display format between Hex, Base64, Base58 and Words", async () => {
+    renderWithRouter();
+    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Base64 (44 chars)")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Base64 (44 chars)"));
+    fireEvent.click(screen.getByText("Base58"));
+    fireEvent.click(screen.getByText("Passphrase Words"));
+    fireEvent.click(screen.getByText("Hex (64 chars)"));
+  });
+
+  it("allows unlocking / activating an existing master key", async () => {
+    renderWithRouter();
+    const testKeyHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const input = screen.getByPlaceholderText("Paste 64-char Hex or 256-bit Base64 masterkey...") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: testKeyHex } });
+
+    const unlockBtn = screen.getByText("Unlock / Activate Key");
+    fireEvent.click(unlockBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(testKeyHex);
+    });
+  });
+
+  it("shows error for invalid key during manual activation", async () => {
+    renderWithRouter();
+    const input = screen.getByPlaceholderText("Paste 64-char Hex or 256-bit Base64 masterkey...") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "invalid-key" } });
+
+    const unlockBtn = screen.getByText("Unlock / Activate Key");
+    fireEvent.click(unlockBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).")).toBeDefined();
+    });
+  });
+
+  it("clears / locks active master key on Lock / Clear Key click", async () => {
+    renderWithRouter();
+    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Lock / Clear Key")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Lock / Clear Key"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No Masterkey Set")).toBeDefined();
+      expect(sessionStorage.getItem("oxygen_active_master_key")).toBeNull();
+    });
+  });
+
+  it("shows returnTo banner when redirected with returnTo query param and masterkey active", async () => {
+    renderWithRouter(["/security?returnTo=%2Fcharacters"]);
+    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey active. You can now return to your previous page:")).toBeDefined();
+      expect(screen.getByText("/characters")).toBeDefined();
+      expect(screen.getByText("Return to Page")).toBeDefined();
+    });
+  });
+
+  it("renders Zero-Knowledge and AI Provider architecture cards", () => {
+    renderWithRouter();
+    expect(screen.getByText("Zero-Knowledge & Privacy Architecture")).toBeDefined();
+    expect(screen.getByText("Client-Side AES-256 Encryption")).toBeDefined();
+    expect(screen.getByText("Custom AI Provider API Keys")).toBeDefined();
+    expect(screen.getByText("Backup Your Masterkey")).toBeDefined();
+  });
+});

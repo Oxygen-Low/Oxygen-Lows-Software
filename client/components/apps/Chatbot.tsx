@@ -32,6 +32,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
+import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
+import { isCategoryLocked } from "@/lib/crypto";
 
 const InteractiveBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -447,6 +449,12 @@ export function ChatbotApp() {
   const [activeChildren, setActiveChildren] = useState<Record<string, string>>(
     {},
   );
+  const [encryptionLocked, setEncryptionLocked] = useState(() => isCategoryLocked("chatbot"));
+
+  useEffect(() => {
+    setEncryptionLocked(isCategoryLocked("chatbot"));
+  }, []);
+
   const activeChildrenRef = useRef(activeChildren);
   useEffect(() => {
     activeChildrenRef.current = activeChildren;
@@ -1663,6 +1671,19 @@ export function ChatbotApp() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [allMessages, messages, isTyping, handleRegenerate]);
+
+  if (encryptionLocked) {
+    return (
+      <div className="min-h-[500px] flex items-center justify-center p-4">
+        <EncryptionRequiredPrompt
+          category="chatbot"
+          returnTo="/apps?app=chatbot"
+          onUnlocked={() => setEncryptionLocked(false)}
+          categoryLabel="Chatbot Chats & AI Provider Keys"
+        />
+      </div>
+    );
+  }
 
   const appStateClass =
     !currentChatId && messages.length === 0 ? "state-empty" : "state-active";
