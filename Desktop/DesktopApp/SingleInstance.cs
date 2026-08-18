@@ -98,7 +98,7 @@ public static class SingleInstance
             if (string.IsNullOrEmpty(appPath)) return;
 
             using var key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\{protocol}");
-            key.SetValue(string.Empty, "Oxygen Lows Software Desktop");
+            key.SetValue(string.Empty, "Oxygen Low's Software Desktop");
             key.SetValue("URL Protocol", string.Empty);
 
             using var commandKey = key.CreateSubKey(@"shell\open\command");
