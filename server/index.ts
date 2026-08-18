@@ -154,6 +154,7 @@ app.use('*', async (c, next) => {
 
 app.get("/health", (c) => c.text("OK"));
 app.get("/api/ping", (c) => c.json({ message: "ping" }));
+app.get("/", (c) => c.text("Oxygen Low's Software", 200, { "Link": getLinkHeaders() }));
 
 app.get("/sitemap.xml", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";

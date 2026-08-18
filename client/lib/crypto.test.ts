@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   AES_KEY_BYTES,
   generateAes256Key,
@@ -11,6 +11,16 @@ import {
   formatHexChunks,
   encryptAes256Gcm,
   decryptAes256Gcm,
+  importAes256GcmCryptoKey,
+  getActiveCryptoKey,
+  zeroizeBytes,
+  AUTO_LOCK_TIMEOUT_MS,
+  AUTO_LOCK_LAST_ACTIVITY_KEY,
+  recordUserActivity,
+  getLastUserActivity,
+  setLastUserActivityForTesting,
+  checkAutoLockExpiry,
+  onAutoLock,
   getActiveMasterKey,
   setActiveMasterKey,
   clearActiveMasterKey,
@@ -35,6 +45,97 @@ import {
 } from "./crypto";
 
 describe("Crypto Utilities (AES-256)", () => {
+  it("should import non-extractable AES-GCM CryptoKey by default", async () => {
+    const key = generateAes256Key();
+    const cryptoKey = await importAes256GcmCryptoKey(key);
+    expect(cryptoKey).toBeDefined();
+    expect(cryptoKey.type).toBe("secret");
+    expect(cryptoKey.algorithm.name).toBe("AES-GCM");
+    expect(cryptoKey.extractable).toBe(false);
+  });
+
+  it("should encrypt and decrypt using non-extractable CryptoKey object", async () => {
+    const key = generateAes256Key();
+    const cryptoKey = await importAes256GcmCryptoKey(key, false);
+    const plaintext = "Zero-Knowledge Protected Secret";
+    const ciphertext = await encryptAes256Gcm(plaintext, cryptoKey);
+    expect(ciphertext).toBeDefined();
+    expect(ciphertext).not.toBe(plaintext);
+
+    const decrypted = await decryptAes256Gcm(ciphertext, cryptoKey);
+    expect(decrypted).toBe(plaintext);
+  });
+
+  it("should cache and retrieve active CryptoKey", async () => {
+    const key = generateAes256Key();
+    clearActiveMasterKey();
+    expect(await getActiveCryptoKey()).toBeNull();
+
+    setActiveMasterKey(key);
+    const cryptoKey1 = await getActiveCryptoKey();
+    expect(cryptoKey1).toBeDefined();
+    expect(cryptoKey1?.extractable).toBe(false);
+
+    // Should return cached instance
+    const cryptoKey2 = await getActiveCryptoKey();
+    expect(cryptoKey2).toBe(cryptoKey1);
+
+    clearActiveMasterKey();
+    expect(await getActiveCryptoKey()).toBeNull();
+  });
+
+  it("should zeroize byte arrays in memory", () => {
+    const key = generateAes256Key();
+    expect(key.some((b) => b !== 0)).toBe(true);
+    zeroizeBytes(key);
+    expect(key.every((b) => b === 0)).toBe(true);
+  });
+
+  describe("Inactivity Auto-Lock (30 minutes)", () => {
+    it("should define AUTO_LOCK_TIMEOUT_MS as 30 minutes", () => {
+      expect(AUTO_LOCK_TIMEOUT_MS).toBe(30 * 60 * 1000);
+      expect(AUTO_LOCK_TIMEOUT_MS).toBe(1800000);
+    });
+
+    it("should update and get last user activity", () => {
+      const before = Date.now();
+      recordUserActivity();
+      const last = getLastUserActivity();
+      expect(last).toBeGreaterThanOrEqual(before);
+    });
+
+    it("should auto-lock when inactive for more than 30 minutes", () => {
+      const key = generateAes256Key();
+      setActiveMasterKey(key);
+      expect(getActiveMasterKey()).toEqual(key);
+
+      // Simulate inactivity older than 30 minutes
+      const expiredTime = Date.now() - (AUTO_LOCK_TIMEOUT_MS + 5000);
+      setLastUserActivityForTesting(expiredTime);
+
+      let autoLockFired = false;
+      const unsubscribe = onAutoLock(() => {
+        autoLockFired = true;
+      });
+
+      const didLock = checkAutoLockExpiry();
+      expect(didLock).toBe(true);
+      expect(getActiveMasterKey()).toBeNull();
+      expect(autoLockFired).toBe(true);
+      unsubscribe();
+    });
+
+    it("should not auto-lock when active within 30 minutes", () => {
+      const key = generateAes256Key();
+      setActiveMasterKey(key);
+      recordUserActivity();
+
+      const didLock = checkAutoLockExpiry();
+      expect(didLock).toBe(false);
+      expect(getActiveMasterKey()).toEqual(key);
+      clearActiveMasterKey();
+    });
+  });
   it("should generate 32 bytes (256 bits) for AES-256 key", () => {
     const key = generateAes256Key();
     expect(key).toBeInstanceOf(Uint8Array);

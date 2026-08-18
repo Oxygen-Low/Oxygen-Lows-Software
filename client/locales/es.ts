@@ -406,5 +406,6 @@ export const es = {
     keyFileUploadedToast: "Clave maestra cargada y activada desde el archivo",
     invalidKeyFileError: "No se encontró una clave maestra de 256 bits válida en el archivo subido.",
     readKeyFileError: "Error al leer el archivo .key.",
+    autoLockedToast: "Clave maestra bloqueada debido a 30 minutos de inactividad.",
   },
 } as const;

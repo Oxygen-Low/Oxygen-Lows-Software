@@ -406,5 +406,6 @@ export const ja = {
     keyFileUploadedToast: "マスターキーがファイルから読み込まれ、アクティブ化されました",
     invalidKeyFileError: "アップロードされたファイルに有効な256ビットのマスターキーが見つかりませんでした。",
     readKeyFileError: ".key ファイルの読み込みに失敗しました。",
+    autoLockedToast: "30分間操作がなかったため、マスターキーがロックされました。",
   },
 } as const;

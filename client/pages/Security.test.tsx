@@ -7,18 +7,31 @@ import { useAuth } from "@/hooks/useAuth";
 import { clearActiveMasterKey } from "@/lib/crypto";
 
 // Mock Supabase
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u" } } }),
-      getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "u" } } },
-        error: null,
-      }),
-      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+vi.mock("@/lib/supabase", () => {
+  const queryBuilder: any = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
+    delete: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    then: vi.fn((resolve: any) => resolve({ data: [], error: null })),
+  };
+  return {
+    supabase: {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u" } } }),
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: { user: { id: "u" } } },
+          error: null,
+        }),
+        onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+      },
+      from: vi.fn().mockReturnValue(queryBuilder),
     },
-  },
-}));
+  };
+});
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: vi.fn() }));
 vi.mock("@/components/Layout", () => ({
@@ -74,26 +87,40 @@ describe("Security Page Component", () => {
 
   it("allows toggling encryption and saves to localStorage", async () => {
     renderWithRouter();
+    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
     const charactersToggle = document.getElementById("toggle-characters") as HTMLButtonElement;
     expect(charactersToggle).toBeDefined();
 
     fireEvent.click(charactersToggle);
-    expect(localStorage.getItem("oxygen_encrypt_characters")).toBe("true");
+    await waitFor(() => {
+      expect(localStorage.getItem("oxygen_encrypt_characters")).toBe("true");
+    });
 
     fireEvent.click(charactersToggle);
-    expect(localStorage.getItem("oxygen_encrypt_characters")).toBe("false");
+    await waitFor(() => {
+      expect(localStorage.getItem("oxygen_encrypt_characters")).toBe("false");
+    });
   });
 
   it("allows toggling encryption for Data Save and Chatbot", async () => {
     renderWithRouter();
+    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
     const dataSaveToggle = document.getElementById("toggle-datasave") as HTMLButtonElement;
     const chatbotToggle = document.getElementById("toggle-chatbot") as HTMLButtonElement;
 
     fireEvent.click(dataSaveToggle);
-    expect(localStorage.getItem("oxygen_encrypt_data_save")).toBe("true");
+    await waitFor(() => {
+      expect(localStorage.getItem("oxygen_encrypt_data_save")).toBe("true");
+    });
 
     fireEvent.click(chatbotToggle);
-    expect(localStorage.getItem("oxygen_encrypt_chatbot")).toBe("true");
+    await waitFor(() => {
+      expect(localStorage.getItem("oxygen_encrypt_chatbot")).toBe("true");
+    });
   });
 
   it("generates a 256-bit key when clicking Generate Masterkey and displays actions without QR code", async () => {
@@ -220,8 +247,7 @@ describe("Security Page Component", () => {
     const testKeyHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     const file = new File([testKeyHex], "masterkey.key", { type: "text/plain" });
     
-    const uploadBtn = screen.getByText("Upload .key File");
-    const dropContainer = uploadBtn.closest("div[class*='rounded-xl']")!;
+    const dropContainer = screen.getByTestId("key-drop-zone");
 
     fireEvent.dragOver(dropContainer);
     fireEvent.drop(dropContainer, {

@@ -406,5 +406,6 @@ export const ko = {
     keyFileUploadedToast: "파일에서 마스터 키를 불러와 활성화했습니다",
     invalidKeyFileError: "업로드된 파일에서 유효한 256비트 마스터 키를 찾을 수 없습니다.",
     readKeyFileError: ".key 파일을 읽지 못했습니다.",
+    autoLockedToast: "30분 동안 활동이 없어 마스터 키가 잠겼습니다.",
   },
 } as const;

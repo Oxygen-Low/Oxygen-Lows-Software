@@ -406,5 +406,6 @@ export const zhCN = {
     keyFileUploadedToast: "主密钥已从文件中加载并激活",
     invalidKeyFileError: "在上传的文件中未找到有效的256位主密钥。",
     readKeyFileError: "读取 .key 文件失败。",
+    autoLockedToast: "由于 30 分钟无操作，主密钥已锁定。",
   },
 } as const;

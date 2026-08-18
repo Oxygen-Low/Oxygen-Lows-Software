@@ -406,5 +406,6 @@ export const ru = {
     keyFileUploadedToast: "Мастер-ключ загружен и активирован из файла",
     invalidKeyFileError: "В загруженном файле не найден действительный 256-битный мастер-ключ.",
     readKeyFileError: "Не удалось прочитать файл .key.",
+    autoLockedToast: "Мастер-ключ заблокирован из-за 30 минут бездействия.",
   },
 } as const;

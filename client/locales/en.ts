@@ -416,6 +416,7 @@ export const en = {
     keyFileUploadedToast: "Masterkey loaded and activated from file",
     invalidKeyFileError: "No valid 256-bit masterkey found in the uploaded file.",
     readKeyFileError: "Failed to read .key file.",
+    autoLockedToast: "Masterkey locked due to 30 minutes of inactivity.",
   },
 } as const;
 

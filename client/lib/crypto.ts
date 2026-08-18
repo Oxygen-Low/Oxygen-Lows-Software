@@ -267,12 +267,211 @@ export function parseKeyFileContent(content: string): Uint8Array {
 }
 
 let inMemoryMasterKeyHex: string | null = null;
+let inMemoryKeyBytes: Uint8Array | null = null;
+let cachedCryptoKey: CryptoKey | null = null;
+let cachedCryptoKeyHex: string | null = null;
 const inMemoryLocalStorage: Record<string, string> = {};
+
+export const AUTO_LOCK_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+export const AUTO_LOCK_LAST_ACTIVITY_KEY = "oxygen_master_key_last_active";
+export const AUTO_LOCK_EVENT = "oxygen:masterkey:autolock";
+
+let inMemoryLastActivity: number = Date.now();
+
+/**
+ * Record user activity to keep the masterkey active.
+ */
+export function recordUserActivity(): void {
+  inMemoryLastActivity = Date.now();
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(AUTO_LOCK_LAST_ACTIVITY_KEY, String(inMemoryLastActivity));
+    }
+  } catch {}
+}
+
+/**
+ * Get the timestamp of the last recorded user activity.
+ */
+export function getLastUserActivity(): number {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      const stored = sessionStorage.getItem(AUTO_LOCK_LAST_ACTIVITY_KEY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed)) {
+          return Math.max(parsed, inMemoryLastActivity);
+        }
+      }
+    }
+  } catch {}
+  return inMemoryLastActivity;
+}
+
+/**
+ * Helper to explicitly set the last activity timestamp for unit testing.
+ */
+export function setLastUserActivityForTesting(timestamp: number): void {
+  inMemoryLastActivity = timestamp;
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(AUTO_LOCK_LAST_ACTIVITY_KEY, String(timestamp));
+    }
+  } catch {}
+}
+
+const autoLockListeners: Set<() => void> = new Set();
+
+/**
+ * Check if the active masterkey has expired due to 30 minutes of inactivity.
+ * Automatically clears the key and dispatches an event if expired.
+ */
+export function checkAutoLockExpiry(): boolean {
+  const hasKey =
+    inMemoryKeyBytes !== null ||
+    inMemoryMasterKeyHex !== null ||
+    (typeof sessionStorage !== "undefined" && sessionStorage.getItem(ACTIVE_MASTER_KEY_STORAGE_KEY) !== null);
+
+  if (!hasKey) return false;
+
+  const now = Date.now();
+  const lastActive = getLastUserActivity();
+
+  if (now - lastActive > AUTO_LOCK_TIMEOUT_MS) {
+    clearActiveMasterKey();
+    autoLockListeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error("Error in autoLock listener callback:", err);
+      }
+    });
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      try {
+        window.dispatchEvent(new CustomEvent(AUTO_LOCK_EVENT));
+      } catch {}
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Subscribe to the masterkey auto-lock event.
+ */
+export function onAutoLock(callback: () => void): () => void {
+  autoLockListeners.add(callback);
+
+  let domHandler: (() => void) | null = null;
+  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    domHandler = () => callback();
+    window.addEventListener(AUTO_LOCK_EVENT, domHandler);
+  }
+
+  return () => {
+    autoLockListeners.delete(callback);
+    if (domHandler && typeof window !== "undefined" && typeof window.removeEventListener === "function") {
+      window.removeEventListener(AUTO_LOCK_EVENT, domHandler);
+    }
+  };
+}
+
+let autoLockListenerInitialized = false;
+let autoLockCleanup: (() => void) | null = null;
+
+/**
+ * Initialize global event listeners to detect user activity and auto-lock after 30 minutes.
+ */
+export function initAutoLockListener(): () => void {
+  if (typeof window === "undefined") return () => {};
+  if (autoLockListenerInitialized && autoLockCleanup) {
+    return autoLockCleanup;
+  }
+
+  let lastThrottle = 0;
+  const handleActivity = () => {
+    const now = Date.now();
+    // Throttle activity recording to once every 2 seconds
+    if (now - lastThrottle > 2000) {
+      lastThrottle = now;
+      recordUserActivity();
+    }
+  };
+
+  const events = ["mousedown", "keydown", "touchstart", "scroll", "mousemove"];
+  events.forEach((evt) => {
+    window.addEventListener(evt, handleActivity, { passive: true });
+  });
+
+  // Periodic check every 15 seconds
+  const intervalId = setInterval(() => {
+    checkAutoLockExpiry();
+  }, 15000);
+
+  autoLockListenerInitialized = true;
+  autoLockCleanup = () => {
+    events.forEach((evt) => {
+      window.removeEventListener(evt, handleActivity);
+    });
+    clearInterval(intervalId);
+    autoLockListenerInitialized = false;
+    autoLockCleanup = null;
+  };
+
+  return autoLockCleanup;
+}
+
+/**
+ * Securely zeroize a Uint8Array buffer in memory.
+ */
+export function zeroizeBytes(bytes: Uint8Array | null | undefined): void {
+  if (bytes && bytes instanceof Uint8Array) {
+    bytes.fill(0);
+  }
+}
+
+/**
+ * Import a 256-bit key into a Web Cryptography CryptoKey object.
+ * By default, extractable is set to false to prevent runtime exfiltration of raw bytes.
+ */
+export async function importAes256GcmCryptoKey(
+  keyBytes: Uint8Array,
+  extractable = false
+): Promise<CryptoKey> {
+  const cryptoObj = getCrypto();
+  return await cryptoObj.subtle.importKey(
+    "raw",
+    keyBytes as BufferSource,
+    { name: "AES-GCM" },
+    extractable,
+    ["encrypt", "decrypt"]
+  );
+}
+
+/**
+ * Get the cached active CryptoKey or import it from active master key bytes.
+ */
+export async function getActiveCryptoKey(): Promise<CryptoKey | null> {
+  const activeBytes = getActiveMasterKey();
+  if (!activeBytes) {
+    cachedCryptoKey = null;
+    cachedCryptoKeyHex = null;
+    return null;
+  }
+  const hex = bytesToHex(activeBytes);
+  if (cachedCryptoKey && cachedCryptoKeyHex === hex) {
+    return cachedCryptoKey;
+  }
+  cachedCryptoKey = await importAes256GcmCryptoKey(activeBytes, false);
+  cachedCryptoKeyHex = hex;
+  return cachedCryptoKey;
+}
 
 /**
  * Retrieve the active master key from session storage (or in-memory fallback), if set.
  */
 export function getActiveMasterKey(): Uint8Array | null {
+  checkAutoLockExpiry();
   try {
     if (typeof sessionStorage !== "undefined") {
       const storedHex = sessionStorage.getItem(ACTIVE_MASTER_KEY_STORAGE_KEY);
@@ -281,6 +480,9 @@ export function getActiveMasterKey(): Uint8Array | null {
       }
     }
   } catch {}
+  if (inMemoryKeyBytes && inMemoryKeyBytes.length === AES_KEY_BYTES) {
+    return new Uint8Array(inMemoryKeyBytes);
+  }
   if (inMemoryMasterKeyHex && isValidMasterKeyString(inMemoryMasterKeyHex)) {
     return hexToBytes(inMemoryMasterKeyHex);
   }
@@ -291,27 +493,58 @@ export function getActiveMasterKey(): Uint8Array | null {
  * Store or clear the active master key in session storage (and in-memory fallback).
  */
 export function setActiveMasterKey(key: Uint8Array | string | null): void {
-  const hex = key ? (typeof key === "string" ? bytesToHex(parseMasterKeyString(key)) : bytesToHex(key)) : null;
+  if (inMemoryKeyBytes) {
+    zeroizeBytes(inMemoryKeyBytes);
+    inMemoryKeyBytes = null;
+  }
+  cachedCryptoKey = null;
+  cachedCryptoKeyHex = null;
+
+  if (!key) {
+    inMemoryMasterKeyHex = null;
+    try {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem(ACTIVE_MASTER_KEY_STORAGE_KEY);
+        sessionStorage.removeItem(AUTO_LOCK_LAST_ACTIVITY_KEY);
+      }
+    } catch {}
+    return;
+  }
+
+  let bytes: Uint8Array;
+  if (typeof key === "string") {
+    bytes = parseMasterKeyString(key);
+  } else {
+    bytes = new Uint8Array(key);
+  }
+
+  const hex = bytesToHex(bytes);
+  inMemoryKeyBytes = new Uint8Array(bytes);
   inMemoryMasterKeyHex = hex;
+  recordUserActivity();
+
   try {
     if (typeof sessionStorage !== "undefined") {
-      if (!hex) {
-        sessionStorage.removeItem(ACTIVE_MASTER_KEY_STORAGE_KEY);
-      } else {
-        sessionStorage.setItem(ACTIVE_MASTER_KEY_STORAGE_KEY, hex);
-      }
+      sessionStorage.setItem(ACTIVE_MASTER_KEY_STORAGE_KEY, hex);
     }
   } catch {}
 }
 
 /**
- * Clear the active master key from session storage and in-memory fallback.
+ * Clear and zeroize the active master key from session storage, in-memory buffers, and crypto caches.
  */
 export function clearActiveMasterKey(): void {
+  if (inMemoryKeyBytes) {
+    zeroizeBytes(inMemoryKeyBytes);
+    inMemoryKeyBytes = null;
+  }
   inMemoryMasterKeyHex = null;
+  cachedCryptoKey = null;
+  cachedCryptoKeyHex = null;
   try {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem(ACTIVE_MASTER_KEY_STORAGE_KEY);
+      sessionStorage.removeItem(AUTO_LOCK_LAST_ACTIVITY_KEY);
     }
   } catch {}
 }
@@ -365,22 +598,33 @@ export function isCategoryLocked(category: EncryptionCategory): boolean {
  * Encrypt plaintext using AES-256-GCM.
  * Returns Base64 string containing: [12-byte IV + Ciphertext with 16-byte Auth Tag].
  */
-export async function encryptAes256Gcm(plaintext: string, keyBytes: Uint8Array): Promise<string> {
-  if (keyBytes.length !== AES_KEY_BYTES) {
-    throw new Error(`Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyBytes.length}`);
+export async function encryptAes256Gcm(
+  plaintext: string,
+  keyOrBytes: Uint8Array | CryptoKey
+): Promise<string> {
+  const cryptoObj = getCrypto();
+  let cryptoKey: CryptoKey;
+
+  if (keyOrBytes instanceof Uint8Array) {
+    if (keyOrBytes.length !== AES_KEY_BYTES) {
+      throw new Error(`Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyOrBytes.length}`);
+    }
+    const hex = bytesToHex(keyOrBytes);
+    if (cachedCryptoKey && cachedCryptoKeyHex === hex) {
+      cryptoKey = cachedCryptoKey;
+    } else {
+      cryptoKey = await importAes256GcmCryptoKey(keyOrBytes, false);
+      if (inMemoryMasterKeyHex === hex) {
+        cachedCryptoKey = cryptoKey;
+        cachedCryptoKeyHex = hex;
+      }
+    }
+  } else {
+    cryptoKey = keyOrBytes;
   }
 
-  const cryptoObj = getCrypto();
   const iv = new Uint8Array(AES_GCM_IV_BYTES);
   cryptoObj.getRandomValues(iv);
-
-  const cryptoKey = await cryptoObj.subtle.importKey(
-    "raw",
-    keyBytes as BufferSource,
-    { name: "AES-GCM" },
-    false,
-    ["encrypt"]
-  );
 
   const encoder = new TextEncoder();
   const encodedPlaintext = encoder.encode(plaintext);
@@ -406,12 +650,31 @@ export async function encryptAes256Gcm(plaintext: string, keyBytes: Uint8Array):
  * Decrypt ciphertext using AES-256-GCM.
  * Input: Base64 string containing [12-byte IV + Ciphertext with 16-byte Auth Tag].
  */
-export async function decryptAes256Gcm(ciphertextBase64: string, keyBytes: Uint8Array): Promise<string> {
-  if (keyBytes.length !== AES_KEY_BYTES) {
-    throw new Error(`Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyBytes.length}`);
+export async function decryptAes256Gcm(
+  ciphertextBase64: string,
+  keyOrBytes: Uint8Array | CryptoKey
+): Promise<string> {
+  const cryptoObj = getCrypto();
+  let cryptoKey: CryptoKey;
+
+  if (keyOrBytes instanceof Uint8Array) {
+    if (keyOrBytes.length !== AES_KEY_BYTES) {
+      throw new Error(`Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyOrBytes.length}`);
+    }
+    const hex = bytesToHex(keyOrBytes);
+    if (cachedCryptoKey && cachedCryptoKeyHex === hex) {
+      cryptoKey = cachedCryptoKey;
+    } else {
+      cryptoKey = await importAes256GcmCryptoKey(keyOrBytes, false);
+      if (inMemoryMasterKeyHex === hex) {
+        cachedCryptoKey = cryptoKey;
+        cachedCryptoKeyHex = hex;
+      }
+    }
+  } else {
+    cryptoKey = keyOrBytes;
   }
 
-  const cryptoObj = getCrypto();
   const combined = base64ToBytes(ciphertextBase64);
 
   if (combined.length < AES_GCM_IV_BYTES + 16) {
@@ -420,14 +683,6 @@ export async function decryptAes256Gcm(ciphertextBase64: string, keyBytes: Uint8
 
   const iv = combined.slice(0, AES_GCM_IV_BYTES);
   const encryptedData = combined.slice(AES_GCM_IV_BYTES);
-
-  const cryptoKey = await cryptoObj.subtle.importKey(
-    "raw",
-    keyBytes as BufferSource,
-    { name: "AES-GCM" },
-    false,
-    ["decrypt"]
-  );
 
   const decryptedBuffer = await cryptoObj.subtle.decrypt(
     {
@@ -457,9 +712,12 @@ export function isEncrypted(value: unknown): boolean {
  */
 export async function encryptField(
   value: string | null | undefined,
-  keyBytes: Uint8Array
+  keyBytes: Uint8Array | null | undefined
 ): Promise<string | null | undefined> {
   if (value === null || value === undefined || value === "") {
+    return value;
+  }
+  if (!keyBytes) {
     return value;
   }
   if (isEncrypted(value)) {
@@ -475,7 +733,7 @@ export async function encryptField(
  */
 export async function decryptField(
   value: string | null | undefined,
-  keyBytes: Uint8Array | null
+  keyBytes: Uint8Array | null | undefined
 ): Promise<string | null | undefined> {
   if (value === null || value === undefined || value === "") {
     return value;
@@ -484,14 +742,14 @@ export async function decryptField(
     return value;
   }
   if (!keyBytes) {
-    return "[Encrypted]";
+    return value;
   }
   try {
     const rawCiphertext = value.slice(ENCRYPTED_PREFIX.length);
     return await decryptAes256Gcm(rawCiphertext, keyBytes);
   } catch (err) {
     console.warn("Failed to decrypt field:", err);
-    return "[Encrypted]";
+    return value;
   }
 }
 
