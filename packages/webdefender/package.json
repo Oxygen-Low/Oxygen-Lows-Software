@@ -1,7 +1,7 @@
 {
   "name": "@oxygenlow/webdefender",
-  "version": "0.4.0",
-  "author": "Oxygen Low",
+  "version": "0.4.1",
+  "author": "Oxygen Low's Software",
   "description": "Oxygen Low's Software Web Defender: Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
   "type": "module",
   "main": "dist/index.js",
