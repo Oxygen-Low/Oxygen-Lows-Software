@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -186,9 +187,23 @@ export function DefenderApp() {
   }, [authFetch]);
 
   useEffect(() => {
-    if (session) {
-      loadApps();
-    }
+    if (!session) return;
+    loadApps();
+
+    const channel = supabase
+      .channel(`webdefender_user_apps_${session.user?.id || 'all'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'defender_apps' },
+        () => {
+          loadApps();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session, loadApps]);
 
   const handleCreateApp = async () => {
@@ -463,11 +478,13 @@ export const config = {
 }
 
 function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () => void, authFetch: any }) {
+  const { t } = useTranslation();
   const [app, setApp] = useState<App | null>(null);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [outbounds, setOutbounds] = useState<Outbound[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRealtime, setIsRealtime] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   const loadData = useCallback(async () => {
@@ -498,9 +515,135 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
-  }, [loadData]);
+
+    // Set up Supabase Realtime channel for Web Defender app
+    const channel = supabase
+      .channel(`webdefender_app_${appId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'defender_events',
+          filter: `app_id=eq.${appId}`,
+        },
+        (payload) => {
+          const newEvent = payload.new as Event;
+          setEvents((prev) => {
+            if (prev.some((e) => e.id === newEvent.id)) return prev;
+            return [newEvent, ...prev];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'defender_events',
+          filter: `app_id=eq.${appId}`,
+        },
+        (payload) => {
+          const oldId = payload.old?.id;
+          if (oldId) {
+            setEvents((prev) => prev.filter((e) => e.id !== oldId));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'defender_outbound',
+          filter: `app_id=eq.${appId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newConn = payload.new as Outbound;
+            setOutbounds((prev) => {
+              if (prev.some((o) => o.id === newConn.id)) return prev;
+              return [newConn, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Outbound;
+            setOutbounds((prev) =>
+              prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old?.id;
+            if (deletedId) {
+              setOutbounds((prev) => prev.filter((o) => o.id !== deletedId));
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'defender_routes',
+          filter: `app_id=eq.${appId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newRoute = payload.new as Route;
+            setRoutes((prev) => {
+              if (prev.some((r) => r.id === newRoute.id)) return prev;
+              return [...prev, newRoute];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Route;
+            setRoutes((prev) =>
+              prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old?.id;
+            if (deletedId) {
+              setRoutes((prev) => prev.filter((r) => r.id !== deletedId));
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'defender_apps',
+          filter: `id=eq.${appId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Partial<App>;
+          setApp((prev) => (prev ? { ...prev, ...updated } : null));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'defender_config',
+          filter: `app_id=eq.${appId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const updated = payload.new;
+            setApp((prev) => (prev ? { ...prev, defender_config: updated } : null));
+          }
+        }
+      )
+      .subscribe((status) => {
+        setIsRealtime(status === 'SUBSCRIBED');
+      });
+
+    const interval = setInterval(loadData, 60000); // 60s background safety poll
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [appId, loadData]);
 
   if (isLoading && !app) {
     return <div className="flex h-full items-center justify-center"><Activity className="w-8 h-8 text-cyan-500 animate-spin" /></div>;
@@ -524,6 +667,10 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
             <Badge variant={app.block_mode_enabled ? "destructive" : "default"} className={cn(!app.block_mode_enabled && "bg-emerald-500/10 text-emerald-500")}>
               {app.block_mode_enabled ? "Block Mode" : "Observe Mode"}
             </Badge>
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-slate-900 border-slate-800 text-slate-300">
+              <span className={cn("w-2 h-2 rounded-full", isRealtime ? "bg-emerald-400 animate-pulse" : "bg-amber-400")} />
+              <span>{isRealtime ? t("apps.webDefenderRealTime", undefined, "Real-Time") : t("apps.webDefenderConnecting", undefined, "Connecting...")}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -896,7 +1043,13 @@ export function EventsTab({ events }: { events: Event[] }) {
             </SelectContent>
           </Select>
         </div>
-        <div className="text-sm text-slate-400">Total: {filtered.length}</div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Live Feed</span>
+          </div>
+          <div className="text-sm text-slate-400">Total: {filtered.length}</div>
+        </div>
       </div>
       <div className="flex-1 overflow-auto">
         <Table>

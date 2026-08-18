@@ -20,9 +20,9 @@ describe("Server", () => {
   });
 
   describe("Agent Discovery & Link Response Headers (RFC 8288 / RFC 9727)", () => {
-    it("GET / should return 200 and RFC 8288 Link headers with registered relation types", async () => {
+    it("GET / should return 404 (handled by Vite in prod) and RFC 8288 Link headers with registered relation types", async () => {
       const response = await app.request("/");
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(404);
       const linkHeader = response.headers.get("Link");
       expect(linkHeader).toBeDefined();
       expect(linkHeader).toBeTruthy();

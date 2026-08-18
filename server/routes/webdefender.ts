@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { getAuthenticatedClient, getAdminClient } from "../lib/supabase.ts";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { createHash, randomBytes } from "node:crypto";
@@ -7,6 +8,67 @@ import type { Context, Next } from "hono";
 export const defenderRouter = new Hono<{
   Variables: { defenderApp: any; supabase: any };
 }>();
+
+// SSE Config Listeners for Real-Time SDK Updates
+type ConfigListener = (data: any) => void;
+const configListeners = new Map<string, Set<ConfigListener>>();
+
+export function addConfigListener(appId: string, listener: ConfigListener) {
+  let listeners = configListeners.get(appId);
+  if (!listeners) {
+    listeners = new Set();
+    configListeners.set(appId, listeners);
+  }
+  listeners.add(listener);
+}
+
+export function removeConfigListener(appId: string, listener: ConfigListener) {
+  const listeners = configListeners.get(appId);
+  if (listeners) {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      configListeners.delete(appId);
+    }
+  }
+}
+
+export async function broadcastConfigUpdate(appId: string) {
+  const listeners = configListeners.get(appId);
+  if (!listeners || listeners.size === 0) return;
+
+  try {
+    const supabase = getAdminClient();
+    const { data: app } = await supabase
+      .from("defender_apps")
+      .select("*, defender_config(*), defender_routes(*)")
+      .eq("id", appId)
+      .single();
+
+    if (!app) return;
+
+    const config = Array.isArray(app.defender_config)
+      ? app.defender_config[0] || {}
+      : app.defender_config || {};
+
+    const payload = {
+      id: app.id,
+      name: app.name,
+      block_mode_enabled: app.block_mode_enabled,
+      config,
+      routes: app.defender_routes || []
+    };
+
+    for (const listener of listeners) {
+      try {
+        listener(payload);
+      } catch (err) {
+        console.error("[Defender] Error broadcasting to listener:", err);
+      }
+    }
+  } catch (err) {
+    console.error("[Defender] Failed to broadcast config update:", err);
+  }
+}
 
 // Helper to hash API keys
 function hashApiKey(key: string): string {
@@ -90,6 +152,63 @@ defenderRouter.post("/verify", packageLimiter, requireApiKey, async (c) => {
   });
 });
 
+// 1b. GET /config-stream - Real-time SSE stream of app config updates for SDK
+defenderRouter.get("/config-stream", requireApiKey, async (c) => {
+  const app = c.get("defenderApp");
+  return streamSSE(c, async (stream) => {
+    // Send initial config payload
+    const supabase = getAdminClient();
+    const { data: freshApp } = await supabase
+      .from("defender_apps")
+      .select("*, defender_config(*), defender_routes(*)")
+      .eq("id", app.id)
+      .single();
+
+    const config = Array.isArray(freshApp?.defender_config)
+      ? (freshApp.defender_config[0] || {})
+      : (freshApp?.defender_config || {});
+
+    await stream.writeSSE({
+      event: "config",
+      data: JSON.stringify({
+        id: freshApp?.id || app.id,
+        name: freshApp?.name || app.name,
+        block_mode_enabled: freshApp?.block_mode_enabled ?? app.block_mode_enabled,
+        config: config,
+        routes: freshApp?.defender_routes || app.defender_routes || []
+      })
+    });
+
+    const listener = async (payload: any) => {
+      try {
+        await stream.writeSSE({
+          event: "config",
+          data: JSON.stringify(payload)
+        });
+      } catch (_) {
+        // stream closed
+      }
+    };
+
+    addConfigListener(app.id, listener);
+
+    stream.onAbort(() => {
+      removeConfigListener(app.id, listener);
+    });
+
+    // Keepalive ping loop
+    while (!stream.aborted) {
+      await stream.sleep(30000);
+      try {
+        await stream.writeSSE({ event: "ping", data: "heartbeat" });
+      } catch (_) {
+        break;
+      }
+    }
+    removeConfigListener(app.id, listener);
+  });
+});
+
 // 2. POST /register - Register/sync routes
 defenderRouter.post("/register", packageLimiter, requireApiKey, async (c) => {
   const app = c.get("defenderApp");
@@ -116,6 +235,8 @@ defenderRouter.post("/register", packageLimiter, requireApiKey, async (c) => {
   if (error) {
     return c.json({ error: error.message }, 500);
   }
+
+  broadcastConfigUpdate(app.id).catch(() => {});
 
   return c.json({ registered: data?.length || 0 });
 });
@@ -323,6 +444,7 @@ defenderRouter.put("/apps/:id/block-mode", uiLimiter, requireJwt, async (c) => {
     .single();
 
   if (error) return c.json({ error: error.message }, 500);
+  broadcastConfigUpdate(id).catch(() => {});
   return c.json(data);
 });
 
@@ -395,6 +517,8 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
     }
   }
 
+  broadcastConfigUpdate(id).catch(() => {});
+
   return c.json(data);
 });
 
@@ -431,6 +555,9 @@ defenderRouter.put("/routes/:routeId", uiLimiter, requireJwt, async (c) => {
     .single();
 
   if (error) return c.json({ error: error.message }, 500);
+  if (data && data.app_id) {
+    broadcastConfigUpdate(data.app_id).catch(() => {});
+  }
   return c.json(data);
 });
 
@@ -537,6 +664,8 @@ defenderRouter.post("/apps/:id/rotate-key", uiLimiter, requireJwt, async (c) => 
     .eq("id", id);
 
   if (error) return c.json({ error: error.message }, 500);
+
+  broadcastConfigUpdate(id).catch(() => {});
 
   return c.json({
     apiKey: rawKey,

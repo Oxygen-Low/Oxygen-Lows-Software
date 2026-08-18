@@ -43,6 +43,8 @@ export class DefenderClient {
   private apiUrl: string;
   private isInitialized = false;
   private configSyncIntervalId?: ReturnType<typeof setInterval>;
+  private realtimeAbortController?: AbortController;
+  private realtimeReconnectTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(config: DefenderConfig) {
     this.config = config;
@@ -191,13 +193,90 @@ export class DefenderClient {
       this.outboundMonitor.install();
       this.isInitialized = true;
 
-      // 6. Start periodic config sync
+      // 6. Start real-time config stream and periodic sync
+      this.startRealtimeSync();
       this.startConfigSync();
     } catch (error) {
       if (this.config.onError && error instanceof Error) {
         this.config.onError(error);
       }
       console.error('[Defender] Initialization failed:', error);
+    }
+  }
+
+  private startRealtimeSync(): void {
+    if (this.config.realtime === false) return;
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    if (this.config.offlineMode || noApiKey) return;
+
+    this.stopRealtimeSync();
+
+    this.realtimeAbortController = new AbortController();
+    const signal = this.realtimeAbortController.signal;
+
+    (async () => {
+      try {
+        const response = await fetch(`${this.apiUrl}/api/webdefender/config-stream`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Accept': 'text/event-stream'
+          },
+          signal
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`SSE stream failed: ${response.statusText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (!signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          let currentEvent = 'message';
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('event:')) {
+              currentEvent = trimmed.slice(6).trim();
+            } else if (trimmed.startsWith('data:')) {
+              const dataStr = trimmed.slice(5).trim();
+              if (currentEvent === 'config' && dataStr) {
+                try {
+                  const rawConfig = JSON.parse(dataStr);
+                  this.appConfig = this.normalizeConfig(rawConfig);
+                } catch (_) {}
+              }
+              currentEvent = 'message';
+            }
+          }
+        }
+      } catch (_) {
+        if (signal.aborted) return;
+        this.realtimeReconnectTimeout = setTimeout(() => {
+          if (!this.realtimeAbortController?.signal.aborted) {
+            this.startRealtimeSync();
+          }
+        }, 5000);
+      }
+    })();
+  }
+
+  private stopRealtimeSync(): void {
+    if (this.realtimeReconnectTimeout) {
+      clearTimeout(this.realtimeReconnectTimeout);
+      this.realtimeReconnectTimeout = undefined;
+    }
+    if (this.realtimeAbortController) {
+      this.realtimeAbortController.abort();
+      this.realtimeAbortController = undefined;
     }
   }
 
@@ -474,6 +553,7 @@ export class DefenderClient {
   }
 
   destroy(): void {
+    this.stopRealtimeSync();
     if (this.configSyncIntervalId) {
       clearInterval(this.configSyncIntervalId);
       this.configSyncIntervalId = undefined;

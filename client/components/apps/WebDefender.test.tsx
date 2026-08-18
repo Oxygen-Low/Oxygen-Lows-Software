@@ -1,8 +1,12 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, it, expect, afterEach } from "vitest";
+import { render, cleanup } from "@testing-library/react";
 import React from "react";
 import { getAppConfig, CountryFlag, COUNTRIES, EventsTab } from "./WebDefender";
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("Defender getAppConfig", () => {
   it("returns default configuration when defenderConfig is null or undefined", () => {
@@ -170,5 +174,11 @@ describe("Defender EventsTab", () => {
     const emptyCell = container.querySelector("tbody td");
     expect(emptyCell?.getAttribute("colspan")).toBe("6");
   });
+
+  it("renders the Live Feed badge in the EventsTab toolbar", () => {
+    const { getByText } = render(<EventsTab events={[]} />);
+    expect(getByText("Live Feed")).toBeDefined();
+  });
 });
+
 

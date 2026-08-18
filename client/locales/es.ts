@@ -184,6 +184,8 @@ export const es = {
     vpnPinging: "Haciendo ping...",
     webDefenderTitle: "Web Defender",
     webDefenderDesc: "Protege tu sitio web o API de DDoS, ataques de inyección, bots, VPNs y tráfico malicioso.",
+    webDefenderRealTime: "En tiempo real",
+    webDefenderConnecting: "Conectando...",
   },
   games: {
     title: "Juegos",

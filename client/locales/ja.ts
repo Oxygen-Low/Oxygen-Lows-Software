@@ -184,6 +184,8 @@ export const ja = {
     vpnPinging: "ping測定中...",
     webDefenderTitle: "Web Defender",
     webDefenderDesc: "DDoS攻撃、インジェクション攻撃、ボット、VPN、および悪意のあるトラフィックからウェブサイトやAPIを保護します。",
+    webDefenderRealTime: "リアルタイム",
+    webDefenderConnecting: "接続中...",
   },
   games: {
     title: "ゲーム",

@@ -184,6 +184,8 @@ export const ru = {
     vpnPinging: "Проверка пинга...",
     webDefenderTitle: "Web Defender",
     webDefenderDesc: "Защитите ваш сайт или API от DDoS, инъекций, ботов, VPN и вредоносного трафика.",
+    webDefenderRealTime: "В реальном времени",
+    webDefenderConnecting: "Подключение...",
   },
   games: {
     title: "Игры",
