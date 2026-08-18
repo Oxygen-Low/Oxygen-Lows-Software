@@ -268,21 +268,6 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           onMouseEnter={openSidebar}
           onMouseLeave={scheduleSidebarClose}
         >
-          {/* Mobile Drawer Header */}
-          <div className="flex md:hidden items-center justify-between p-4 border-b border-border/70 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className={`${styles["logo"]} font-bold text-base`}>Oxygen Low's Software</span>
-              <span className="px-2 py-0.5 text-[10px] font-bold text-yellow-900 bg-yellow-400 rounded uppercase">{t("nav.beta", undefined, "Beta")}</span>
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              aria-label={t("nav.closeSidebar", undefined, "Close sidebar")}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
           {/* Mobile User Banner */}
           <div className="md:hidden px-4 pt-3 pb-2 border-b border-border/50 bg-slate-900/40">
             {session ? (
