@@ -410,6 +410,12 @@ export const en = {
     quickUnlockButton: "Unlock & Decrypt",
     returnToPrompt: "Masterkey active. You can now return to your previous page:",
     returnToButton: "Return to Page",
+    uploadKeyFile: "Upload .key File",
+    dropKeyHere: "Drop .key file here or click to browse",
+    uploadKeyDesc: "Upload your saved .key backup file to automatically activate and unlock your masterkey.",
+    keyFileUploadedToast: "Masterkey loaded and activated from file",
+    invalidKeyFileError: "No valid 256-bit masterkey found in the uploaded file.",
+    readKeyFileError: "Failed to read .key file.",
   },
 } as const;
 

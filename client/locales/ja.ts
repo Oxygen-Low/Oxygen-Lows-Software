@@ -400,5 +400,11 @@ export const ja = {
     quickUnlockButton: "ロック解除＆復号化",
     returnToPrompt: "マスターキーが有効化されました。前のページに戻ることができます：",
     returnToButton: "ページに戻る",
+    uploadKeyFile: ".key ファイルをアップロード",
+    dropKeyHere: "ここに .key ファイルをドロップするか、クリックして参照",
+    uploadKeyDesc: "保存した .key バックアップファイルをアップロードして、マスターキーを自動的にアクティブ化しロックを解除します。",
+    keyFileUploadedToast: "マスターキーがファイルから読み込まれ、アクティブ化されました",
+    invalidKeyFileError: "アップロードされたファイルに有効な256ビットのマスターキーが見つかりませんでした。",
+    readKeyFileError: ".key ファイルの読み込みに失敗しました。",
   },
 } as const;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -20,6 +20,7 @@ import {
   FileKey,
   CheckCircle2,
   ArrowLeft,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -43,6 +44,7 @@ import {
   formatHexChunks,
   isValidMasterKeyString,
   parseMasterKeyString,
+  parseKeyFileContent,
   getActiveMasterKey,
   setActiveMasterKey,
   clearActiveMasterKey,
@@ -95,6 +97,74 @@ export default function Security() {
   });
 
   const [importError, setImportError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Process and activate a .key file
+  const processKeyFile = useCallback(
+    async (file: File) => {
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsedBytes = parseKeyFileContent(text);
+        setKeyBytes(parsedBytes);
+        setActiveMasterKey(parsedBytes);
+        setInputMasterKey("");
+        setImportError(null);
+        toast.success(
+          t(
+            "security.keyFileUploadedToast",
+            undefined,
+            "Masterkey loaded and activated from file"
+          )
+        );
+      } catch (err: any) {
+        console.error("Failed to parse key file:", err);
+        const errMsg =
+          err?.message ||
+          t(
+            "security.invalidKeyFileError",
+            undefined,
+            "No valid 256-bit masterkey found in the uploaded file."
+          );
+        setImportError(errMsg);
+        toast.error(errMsg);
+      }
+    },
+    [t]
+  );
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processKeyFile(file);
+    }
+    if (e.target) {
+      e.target.value = "";
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processKeyFile(file);
+    }
+  };
 
   // Keep session storage synced
   useEffect(() => {
@@ -478,46 +548,90 @@ export default function Security() {
                   </div>
 
                   {/* Option 2: Enter Existing Masterkey */}
-                  <div className="p-5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-4 flex flex-col justify-between">
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`p-5 rounded-xl bg-slate-950/70 border transition-all space-y-4 flex flex-col justify-between ${
+                      isDragging
+                        ? "border-cyan-500 bg-cyan-950/20 ring-2 ring-cyan-500/30"
+                        : "border-slate-800"
+                    }`}
+                  >
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-slate-200 font-semibold text-base">
                         <FileKey className="w-5 h-5 text-slate-400" />
                         <span>{t("security.importKeyTitle", undefined, "Use Existing Masterkey")}</span>
                       </div>
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        If you already generated a masterkey, paste your 64-character Hex or Base64 key here to unlock your data.
+                        {t(
+                          "security.uploadKeyDesc",
+                          undefined,
+                          "Upload your saved .key backup file to automatically activate and unlock your masterkey."
+                        )}
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Input
-                        type="password"
-                        placeholder={t("security.importKeyPlaceholder", undefined, "Paste 64-char Hex or Base64 masterkey...")}
-                        value={inputMasterKey}
-                        onChange={(e) => {
-                          setInputMasterKey(e.target.value);
-                          if (importError) setImportError(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleImportKey();
-                        }}
-                        className="bg-slate-900 border-slate-800 font-mono text-xs text-slate-100 placeholder:text-slate-500"
+                    {/* File Upload Drop Area */}
+                    <div className="space-y-3">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".key,.txt"
+                        className="hidden"
+                        id="key-file-upload-input"
+                        aria-label="Upload .key file"
                       />
-                      {importError && (
-                        <p className="text-xs text-rose-400 leading-tight font-medium">
-                          {importError}
-                        </p>
-                      )}
+
                       <Button
-                        id="activate-key-btn"
-                        onClick={handleImportKey}
-                        disabled={!inputMasterKey.trim()}
-                        variant="secondary"
-                        className="w-full gap-2 text-xs font-medium"
+                        type="button"
+                        id="upload-key-file-btn"
+                        onClick={() => fileInputRef.current?.click()}
+                        variant="outline"
+                        className="w-full border-dashed border-cyan-500/40 bg-cyan-500/5 hover:bg-cyan-500/10 hover:border-cyan-400 text-cyan-300 hover:text-cyan-200 gap-2 h-auto py-2.5 text-xs font-medium transition-colors"
                       >
-                        <Unlock className="w-3.5 h-3.5" />
-                        {t("security.activateKeyButton", undefined, "Unlock / Activate Key")}
+                        <Upload className="w-4 h-4" />
+                        <span>{t("security.uploadKeyFile", undefined, "Upload .key File")}</span>
                       </Button>
+
+                      <div className="relative flex items-center justify-center">
+                        <div className="border-t border-slate-800 w-full" />
+                        <span className="bg-slate-950 px-2 text-[10px] uppercase tracking-wider text-slate-500 absolute font-mono">
+                          {t("common.or", undefined, "or enter text")}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Input
+                          type="password"
+                          placeholder={t("security.importKeyPlaceholder", undefined, "Paste 64-char Hex or 256-bit Base64 masterkey...")}
+                          value={inputMasterKey}
+                          onChange={(e) => {
+                            setInputMasterKey(e.target.value);
+                            if (importError) setImportError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleImportKey();
+                          }}
+                          className="bg-slate-900 border-slate-800 font-mono text-xs text-slate-100 placeholder:text-slate-500"
+                        />
+                        {importError && (
+                          <p className="text-xs text-rose-400 leading-tight font-medium">
+                            {importError}
+                          </p>
+                        )}
+                        <Button
+                          id="activate-key-btn"
+                          onClick={handleImportKey}
+                          disabled={!inputMasterKey.trim()}
+                          variant="secondary"
+                          className="w-full gap-2 text-xs font-medium"
+                        >
+                          <Unlock className="w-3.5 h-3.5" />
+                          {t("security.activateKeyButton", undefined, "Unlock / Activate Key")}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -400,5 +400,11 @@ export const zhCN = {
     quickUnlockButton: "解锁并解密",
     returnToPrompt: "主密钥已激活。您可以返回上一页：",
     returnToButton: "返回页面",
+    uploadKeyFile: "上传 .key 文件",
+    dropKeyHere: "将 .key 文件拖放到此处或点击浏览",
+    uploadKeyDesc: "上传您保存的 .key 备份文件，以自动激活并解锁您的主密钥。",
+    keyFileUploadedToast: "主密钥已从文件中加载并激活",
+    invalidKeyFileError: "在上传的文件中未找到有效的256位主密钥。",
+    readKeyFileError: "读取 .key 文件失败。",
   },
 } as const;

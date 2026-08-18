@@ -400,5 +400,11 @@ export const es = {
     quickUnlockButton: "Desbloquear y Descifrar",
     returnToPrompt: "Clave maestra activa. Puedes volver a tu página anterior:",
     returnToButton: "Volver a la Página",
+    uploadKeyFile: "Subir archivo .key",
+    dropKeyHere: "Arrastra el archivo .key aquí o haz clic para buscar",
+    uploadKeyDesc: "Sube tu archivo de respaldo .key para activar y desbloquear automáticamente tu clave maestra.",
+    keyFileUploadedToast: "Clave maestra cargada y activada desde el archivo",
+    invalidKeyFileError: "No se encontró una clave maestra de 256 bits válida en el archivo subido.",
+    readKeyFileError: "Error al leer el archivo .key.",
   },
 } as const;

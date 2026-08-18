@@ -17,6 +17,7 @@ import {
   isCategoryEncryptionEnabled,
   setCategoryEncryptionEnabled,
   isCategoryLocked,
+  parseKeyFileContent,
 } from "./crypto";
 
 describe("Crypto Utilities (AES-256)", () => {
@@ -101,5 +102,82 @@ describe("Crypto Utilities (AES-256)", () => {
 
     setCategoryEncryptionEnabled("characters", false);
     expect(isCategoryLocked("characters")).toBe(false); // Not locked because encryption is off
+  });
+
+  describe("parseKeyFileContent", () => {
+    it("should parse full exported .key file backup format", () => {
+      const key = generateAes256Key();
+      const hex = bytesToHex(key);
+      const b64 = bytesToBase64(key);
+      const b58 = bytesToBase58(key);
+      const words = bytesToPassphraseWords(key);
+
+      const exportedFile = [
+        "===========================================================",
+        " Oxygen Low's Software - AES-256 Masterkey Backup",
+        " Generated: " + new Date().toISOString(),
+        " Algorithm: AES-256 (256-bit / 32 bytes)",
+        " Entropy: 256 bits (CSPRNG hardware entropy)",
+        "===========================================================",
+        "",
+        "[HEXADECIMAL MASTERKEY - 64 CHARACTERS]",
+        hex,
+        "",
+        "[BASE64 MASTERKEY - 44 CHARACTERS]",
+        b64,
+        "",
+        "[BASE58 MASTERKEY]",
+        b58,
+        "",
+        "[24-WORD PASSPHRASE REPRESENTATION]",
+        words,
+        "",
+        "===========================================================",
+        " ZERO-KNOWLEDGE NOTICE:",
+        " Store this masterkey in a secure password manager (e.g., Bitwarden,",
+        " 1Password, KeePass) or offline vault.",
+        " Oxygen Low's Software does not store or have access to your masterkey.",
+        " If you lose your masterkey, your encrypted data cannot be recovered.",
+        "===========================================================",
+      ].join("\n");
+
+      const parsed = parseKeyFileContent(exportedFile);
+      expect(parsed).toEqual(key);
+    });
+
+    it("should parse raw 64-char hex strings with surrounding whitespace", () => {
+      const key = generateAes256Key();
+      const hex = bytesToHex(key);
+      const content = `  \n\t  ${hex}  \n\n`;
+      expect(parseKeyFileContent(content)).toEqual(key);
+    });
+
+    it("should parse raw 44-char base64 strings with surrounding whitespace", () => {
+      const key = generateAes256Key();
+      const b64 = bytesToBase64(key);
+      const content = `\n  ${b64}\n  `;
+      expect(parseKeyFileContent(content)).toEqual(key);
+    });
+
+    it("should handle files with UTF-8 BOM", () => {
+      const key = generateAes256Key();
+      const hex = bytesToHex(key);
+      const content = `\uFEFF${hex}`;
+      expect(parseKeyFileContent(content)).toEqual(key);
+    });
+
+    it("should extract key from custom text file containing a 64-char hex key", () => {
+      const key = generateAes256Key();
+      const hex = bytesToHex(key);
+      const content = `My Secret Master Key:\nKey = ${hex}\nKeep this safe!`;
+      expect(parseKeyFileContent(content)).toEqual(key);
+    });
+
+    it("should throw error for invalid or empty file content", () => {
+      expect(() => parseKeyFileContent("")).toThrow();
+      expect(() => parseKeyFileContent("random words without any valid 256-bit key")).toThrow(
+        "No valid 256-bit AES masterkey found"
+      );
+    });
   });
 });

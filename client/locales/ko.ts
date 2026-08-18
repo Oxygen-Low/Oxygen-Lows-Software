@@ -400,5 +400,11 @@ export const ko = {
     quickUnlockButton: "잠금 해제 및 복호화",
     returnToPrompt: "마스터 키가 활성화되었습니다. 이전 페이지로 돌아갈 수 있습니다:",
     returnToButton: "페이지로 돌아가기",
+    uploadKeyFile: ".key 파일 업로드",
+    dropKeyHere: "여기에 .key 파일을 놓거나 클릭하여 찾아보기",
+    uploadKeyDesc: "저장된 .key 백업 파일을 업로드하여 마스터 키를 자동으로 활성화하고 잠금을 해제하세요.",
+    keyFileUploadedToast: "파일에서 마스터 키를 불러와 활성화했습니다",
+    invalidKeyFileError: "업로드된 파일에서 유효한 256비트 마스터 키를 찾을 수 없습니다.",
+    readKeyFileError: ".key 파일을 읽지 못했습니다.",
   },
 } as const;

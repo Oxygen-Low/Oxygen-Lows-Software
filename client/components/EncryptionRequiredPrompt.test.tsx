@@ -94,4 +94,62 @@ describe("EncryptionRequiredPrompt Component", () => {
       expect(onUnlockedMock).toHaveBeenCalled();
     });
   });
+
+  it("supports unlocking by uploading a .key file", async () => {
+    const onUnlockedMock = vi.fn();
+    const testKey = generateAes256Key();
+    const testKeyHex = bytesToHex(testKey);
+    const fileContent = `===========================================================\n Oxygen Low's Software - AES-256 Masterkey Backup\n===========================================================\n\n[HEXADECIMAL MASTERKEY - 64 CHARACTERS]\n${testKeyHex}\n`;
+    const file = new File([fileContent], "backup.key", { type: "text/plain" });
+
+    render(
+      <MemoryRouter>
+        <EncryptionRequiredPrompt
+          category="characters"
+          returnTo="/characters"
+          onUnlocked={onUnlockedMock}
+        />
+      </MemoryRouter>
+    );
+
+    const fileInput = document.getElementById("prompt-upload-key-input") as HTMLInputElement;
+    expect(fileInput).toBeDefined();
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(getActiveMasterKey()).toEqual(testKey);
+      expect(onUnlockedMock).toHaveBeenCalled();
+    });
+  });
+
+  it("supports unlocking by dropping a .key file onto the prompt card", async () => {
+    const onUnlockedMock = vi.fn();
+    const testKey = generateAes256Key();
+    const testKeyHex = bytesToHex(testKey);
+    const file = new File([testKeyHex], "masterkey.key", { type: "text/plain" });
+
+    render(
+      <MemoryRouter>
+        <EncryptionRequiredPrompt
+          category="data_save"
+          returnTo="/apps?app=datasave"
+          onUnlocked={onUnlockedMock}
+        />
+      </MemoryRouter>
+    );
+
+    const promptContainer = screen.getByTestId("encryption-required-prompt");
+    fireEvent.dragOver(promptContainer);
+    fireEvent.drop(promptContainer, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    await waitFor(() => {
+      expect(getActiveMasterKey()).toEqual(testKey);
+      expect(onUnlockedMock).toHaveBeenCalled();
+    });
+  });
 });

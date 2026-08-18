@@ -198,6 +198,56 @@ describe("Security Page Component", () => {
     });
   });
 
+  it("allows activating masterkey by uploading a .key file", async () => {
+    renderWithRouter();
+    const testKeyHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const fileContent = `===========================================================\n Oxygen Low's Software - AES-256 Masterkey Backup\n===========================================================\n\n[HEXADECIMAL MASTERKEY - 64 CHARACTERS]\n${testKeyHex}\n`;
+    
+    const file = new File([fileContent], "oxygen-masterkey.key", { type: "text/plain" });
+    const fileInput = document.getElementById("key-file-upload-input") as HTMLInputElement;
+    expect(fileInput).toBeDefined();
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(testKeyHex);
+    });
+  });
+
+  it("allows activating masterkey by dropping a .key file", async () => {
+    renderWithRouter();
+    const testKeyHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const file = new File([testKeyHex], "masterkey.key", { type: "text/plain" });
+    
+    const uploadBtn = screen.getByText("Upload .key File");
+    const dropContainer = uploadBtn.closest("div[class*='rounded-xl']")!;
+
+    fireEvent.dragOver(dropContainer);
+    fireEvent.drop(dropContainer, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(testKeyHex);
+    });
+  });
+
+  it("shows error when uploading an invalid file", async () => {
+    renderWithRouter();
+    const file = new File(["not a valid masterkey"], "invalid.key", { type: "text/plain" });
+    const fileInput = document.getElementById("key-file-upload-input") as HTMLInputElement;
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText("No valid 256-bit AES masterkey found in the provided .key file.")).toBeDefined();
+    });
+  });
+
   it("does not render removed architecture section", () => {
     renderWithRouter();
     expect(screen.queryByText("Zero-Knowledge & Privacy Architecture")).toBeNull();

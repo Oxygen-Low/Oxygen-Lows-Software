@@ -193,6 +193,77 @@ export function parseMasterKeyString(keyStr: string): Uint8Array {
   throw new Error("Invalid master key: Must be a 64-character Hex string or 256-bit Base64 string.");
 }
 
+/**
+ * Parse a .key file content (or any exported key backup text / raw key string)
+ * and return the 32-byte master key as a Uint8Array.
+ */
+export function parseKeyFileContent(content: string): Uint8Array {
+  if (!content || typeof content !== "string") {
+    throw new Error("File content is empty or invalid.");
+  }
+
+  // Strip BOM and normalize line breaks
+  const normalized = content.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  const trimmed = normalized.trim();
+
+  // 1. Direct validation if user provided raw key string (hex or base64)
+  if (isValidMasterKeyString(trimmed)) {
+    return parseMasterKeyString(trimmed);
+  }
+
+  // 2. Check for explicit Hexadecimal masterkey section from backup format
+  const hexSectionMatch = normalized.match(/\[HEXADECIMAL MASTERKEY[^\]]*\]\s*([0-9a-fA-F]{64})/i);
+  if (hexSectionMatch && hexSectionMatch[1]) {
+    return hexToBytes(hexSectionMatch[1]);
+  }
+
+  // 3. Check for explicit Base64 masterkey section from backup format
+  const base64SectionMatch = normalized.match(/\[BASE64 MASTERKEY[^\]]*\]\s*([A-Za-z0-9+/]{43}=)/i);
+  if (base64SectionMatch && base64SectionMatch[1]) {
+    try {
+      const bytes = base64ToBytes(base64SectionMatch[1]);
+      if (bytes.length === AES_KEY_BYTES) {
+        return bytes;
+      }
+    } catch {}
+  }
+
+  // 4. Scan line by line for an exact 64-character hex string or 44-character base64 string
+  const lines = normalized.split("\n").map((l) => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    if (/^[0-9a-fA-F]{64}$/.test(line)) {
+      return hexToBytes(line);
+    }
+    if (/^[A-Za-z0-9+/]{43}=$/.test(line)) {
+      try {
+        const bytes = base64ToBytes(line);
+        if (bytes.length === AES_KEY_BYTES) {
+          return bytes;
+        }
+      } catch {}
+    }
+  }
+
+  // 5. Scan whole text for 64-char hex word match
+  const anyHexMatch = normalized.match(/\b([0-9a-fA-F]{64})\b/);
+  if (anyHexMatch && anyHexMatch[1]) {
+    return hexToBytes(anyHexMatch[1]);
+  }
+
+  // 6. Scan whole text for base64 32-byte key pattern
+  const anyB64Match = normalized.match(/\b([A-Za-z0-9+/]{43}=)\b/);
+  if (anyB64Match && anyB64Match[1]) {
+    try {
+      const bytes = base64ToBytes(anyB64Match[1]);
+      if (bytes.length === AES_KEY_BYTES) {
+        return bytes;
+      }
+    } catch {}
+  }
+
+  throw new Error("No valid 256-bit AES masterkey found in the provided .key file.");
+}
+
 let inMemoryMasterKeyHex: string | null = null;
 const inMemoryLocalStorage: Record<string, string> = {};
 
