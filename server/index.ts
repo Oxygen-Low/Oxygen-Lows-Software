@@ -803,31 +803,7 @@ app.get("/robots.txt", (c) => {
   });
 });
 
-app.get("/", (c) => {
-  const html = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Oxygen Low's Software - Beta. A platform for apps, storage, and customization." />
-    <title>Oxygen Low's Software</title>
-    <!-- RFC 8288 / RFC 9727 Discovery Links -->
-    <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json" />
-    <link rel="service-desc" href="/api/openapi.json" type="application/vnd.oai.openapi+json;version=3.0" />
-    <link rel="service-doc" href="/api/docs" type="text/html" />
-    <link rel="describedby" href="/llms.txt" type="text/plain" />
-    <link rel="describedby" href="/auth.md" type="text/markdown" />
-  </head>
-  <body>
-    <div id="root">
-      <h1>Oxygen Low's Software</h1>
-    </div>
-  </body>
-</html>`;
-  return c.html(html, 200, {
-    "Link": getLinkHeaders(),
-  });
-});
+
 
 app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);
