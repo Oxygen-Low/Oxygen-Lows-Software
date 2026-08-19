@@ -271,7 +271,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           onMouseLeave={scheduleSidebarClose}
         >
           {/* Mobile User Banner */}
-          <div className="md:hidden px-4 pt-3 pb-2 border-b border-border/50 bg-slate-900/40">
+          <div className="md:hidden px-4 pt-3 pb-2 border-b border-border/50 bg-muted/30">
             {session ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
