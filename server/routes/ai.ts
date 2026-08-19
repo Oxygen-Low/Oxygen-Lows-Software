@@ -247,6 +247,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         stream: false,
         max_tokens: 50,
         temperature: 0.1,
+        trusted_workers: false,
       };
 
       const intentRes = await fetch(
@@ -387,6 +388,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         ...requestBody,
         model: actualModel,
         messages: finalMessages,
+        trusted_workers: false,
       };
       fetchOptions.headers["Authorization"] =
         `Bearer ${integration?.api_key || "0000000000"}`;
