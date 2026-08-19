@@ -28,6 +28,26 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
         
         SingleInstance.OnMessageReceived += SingleInstance_OnMessageReceived;
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
+        KeyDown += MainWindow_KeyDown;
+    }
+
+    private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.F11 || (e.Key == System.Windows.Input.Key.System && e.SystemKey == System.Windows.Input.Key.F11))
+        {
+            ToggleFullscreen();
+            e.Handled = true;
+        }
+    }
+
+    private void MainWindow_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.F11 || (e.Key == System.Windows.Input.Key.System && e.SystemKey == System.Windows.Input.Key.F11))
+        {
+            ToggleFullscreen();
+            e.Handled = true;
+        }
     }
 
     private void SingleInstance_OnMessageReceived(string message)
@@ -63,6 +83,18 @@ public partial class MainWindow : Window
         await webView.EnsureCoreWebView2Async(environment);
         
         webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+        webView.CoreWebView2.ContainsFullScreenElementChanged += CoreWebView2_ContainsFullScreenElementChanged;
+        webView.PreviewKeyDown += MainWindow_PreviewKeyDown;
+        webView.KeyDown += MainWindow_KeyDown;
+
+        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'F11') {
+                    e.preventDefault();
+                    window.chrome?.webview?.postMessage(JSON.stringify({ command: 'toggle_fullscreen' }));
+                }
+            });
+        ");
 
         // Start isolated Python background server
         PythonServerManager.Instance.OnServerReady += (url) =>
@@ -87,6 +119,18 @@ public partial class MainWindow : Window
         else
         {
             webView.CoreWebView2.Navigate("https://oxygenlow.com/?desktop=1");
+        }
+    }
+
+    private void CoreWebView2_ContainsFullScreenElementChanged(object? sender, object e)
+    {
+        if (webView.CoreWebView2.ContainsFullScreenElement)
+        {
+            SetFullscreen(true);
+        }
+        else
+        {
+            SetFullscreen(false);
         }
     }
 
@@ -502,6 +546,21 @@ public partial class MainWindow : Window
 
                     SendWebMessage(new { id, success = true, data = models });
                 }
+                else if (cmd == "toggle_fullscreen")
+                {
+                    Dispatcher.Invoke(ToggleFullscreen);
+                    SendWebMessage(new { id, success = true, data = new { isFullscreen = _isFullscreen } });
+                }
+                else if (cmd == "set_fullscreen")
+                {
+                    bool fs = doc.RootElement.TryGetProperty("fullscreen", out var fsProp) && fsProp.GetBoolean();
+                    Dispatcher.Invoke(() => SetFullscreen(fs));
+                    SendWebMessage(new { id, success = true, data = new { isFullscreen = _isFullscreen } });
+                }
+                else if (cmd == "is_fullscreen")
+                {
+                    SendWebMessage(new { id, success = true, data = new { isFullscreen = _isFullscreen } });
+                }
             }
             catch (Exception ex)
             {
@@ -548,6 +607,60 @@ public partial class MainWindow : Window
             webView.CoreWebView2.PostWebMessageAsJson(json);
         }
         catch { }
+    }
+
+    private bool _isFullscreen = false;
+    private WindowState _previousWindowState = WindowState.Normal;
+    private WindowStyle _previousWindowStyle = WindowStyle.SingleBorderWindow;
+    private ResizeMode _previousResizeMode = ResizeMode.CanResize;
+    private DateTime _lastToggleTime = DateTime.MinValue;
+
+    private void SetFullscreen(bool fullscreen)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => SetFullscreen(fullscreen));
+            return;
+        }
+
+        if (_isFullscreen == fullscreen) return;
+        ToggleFullscreen();
+    }
+
+    private void ToggleFullscreen()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(ToggleFullscreen);
+            return;
+        }
+
+        if ((DateTime.UtcNow - _lastToggleTime).TotalMilliseconds < 250)
+            return;
+        _lastToggleTime = DateTime.UtcNow;
+
+        if (!_isFullscreen)
+        {
+            _previousWindowState = WindowState;
+            _previousWindowStyle = WindowStyle;
+            _previousResizeMode = ResizeMode;
+
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            if (WindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+            }
+            WindowState = WindowState.Maximized;
+            _isFullscreen = true;
+        }
+        else
+        {
+            WindowStyle = _previousWindowStyle;
+            ResizeMode = _previousResizeMode;
+            WindowState = _previousWindowState == WindowState.Minimized ? WindowState.Normal : _previousWindowState;
+            _isFullscreen = false;
+        }
     }
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)

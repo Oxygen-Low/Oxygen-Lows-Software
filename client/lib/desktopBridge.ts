@@ -62,3 +62,16 @@ export function callDesktopBridge<T = any>(
     webview.postMessage(JSON.stringify({ command, id, ...params }));
   });
 }
+
+export async function toggleFullscreen(): Promise<{ isFullscreen: boolean }> {
+  return callDesktopBridge<{ isFullscreen: boolean }>("toggle_fullscreen");
+}
+
+export async function setFullscreen(fullscreen: boolean): Promise<{ isFullscreen: boolean }> {
+  return callDesktopBridge<{ isFullscreen: boolean }>("set_fullscreen", { fullscreen });
+}
+
+export async function isFullscreen(): Promise<{ isFullscreen: boolean }> {
+  return callDesktopBridge<{ isFullscreen: boolean }>("is_fullscreen");
+}
+
