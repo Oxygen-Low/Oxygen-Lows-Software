@@ -16,15 +16,26 @@ export function BattlegroundsGameApp() {
   const wsRef = useRef<WebSocket | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
 
-  // Fetch characters
   useEffect(() => {
     const fetchChars = async () => {
+      const defaultChar = {
+        id: 'default-fighter',
+        name: 'Default Fighter',
+        spritesheet_url: null,
+        moveset_json: {}
+      };
+      
       const { data, error } = await supabase
         .from('battlegrounds_characters')
         .select('*')
         .eq('is_public', true)
         .limit(20);
-      if (data) setCharacters(data);
+        
+      if (data && data.length > 0) {
+        setCharacters([defaultChar, ...data]);
+      } else {
+        setCharacters([defaultChar]);
+      }
     };
     fetchChars();
   }, []);
@@ -227,9 +238,6 @@ export function BattlegroundsGameApp() {
                     <p className="text-xs font-bold truncate">{char.name}</p>
                   </div>
                 ))}
-                {characters.length === 0 && (
-                    <p className="text-sm text-slate-500 col-span-full">No public characters available. Create one in the Creator app!</p>
-                )}
               </div>
             </div>
             
