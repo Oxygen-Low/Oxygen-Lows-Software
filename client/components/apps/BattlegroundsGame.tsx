@@ -62,8 +62,8 @@ export function BattlegroundsGameApp() {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = process.env.NODE_ENV === 'development' 
-      ? `ws://localhost:3000` // Assuming backend dev server port
-      : `${protocol}//${window.location.host}`;
+      ? `ws://localhost:3000/ws/battlegrounds` 
+      : `${protocol}//${window.location.host}/ws/battlegrounds`;
       
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
