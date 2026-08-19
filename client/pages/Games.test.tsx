@@ -58,15 +58,22 @@ describe("Games Page", () => {
       </MemoryRouter>,
     );
 
-    // Click Multiplayer
+    // Click Multiplayer (0 games)
     fireEvent.click(screen.getByLabelText(/Multiplayer \(\d+ games\)/));
+
+    expect(screen.getByText("No games found matching the selected filters.")).toBeDefined();
+    expect(screen.queryByText("Chess")).toBeNull();
+    expect(screen.queryByText("Texas Hold'em")).toBeNull();
+
+    // Click Singleplayer (all 6 games)
+    fireEvent.click(screen.getByLabelText(/Singleplayer \(\d+ games\)/));
 
     expect(screen.getByText("Chess")).toBeDefined();
     expect(screen.getByText("Texas Hold'em")).toBeDefined();
-    expect(screen.queryByText("Minesweeper")).toBeNull();
-    expect(screen.queryByText("Solitaire")).toBeNull();
-    expect(screen.queryByText("Sudoku")).toBeNull();
-    expect(screen.queryByText("Word Search")).toBeNull();
+    expect(screen.getByText("Minesweeper")).toBeDefined();
+    expect(screen.getByText("Solitaire")).toBeDefined();
+    expect(screen.getByText("Sudoku")).toBeDefined();
+    expect(screen.getByText("Word Search")).toBeDefined();
   });
 
   it("filters games by genre", () => {
@@ -92,15 +99,18 @@ describe("Games Page", () => {
       </MemoryRouter>,
     );
 
-    // Select Multiplayer and Strategy
-    fireEvent.click(screen.getByLabelText(/Multiplayer \(\d+ games\)/));
+    // Select Singleplayer and Strategy
+    fireEvent.click(screen.getByLabelText(/Singleplayer \(\d+ games\)/));
     fireEvent.click(screen.getByLabelText(/Strategy \(\d+ games\)/));
 
     expect(screen.getByText("Chess")).toBeDefined();
+    expect(screen.getByText("Minesweeper")).toBeDefined();
     expect(screen.getByText("Texas Hold'em")).toBeDefined();
+    expect(screen.getByText("Sudoku")).toBeDefined();
+    expect(screen.queryByText("Solitaire")).toBeNull();
 
-    // Select Puzzle while Multiplayer is active (0 results)
-    fireEvent.click(screen.getByLabelText(/Puzzle \(\d+ games\)/));
+    // Select Multiplayer while Strategy is active (0 results)
+    fireEvent.click(screen.getByLabelText(/Multiplayer \(\d+ games\)/));
     expect(screen.getByText("No games found matching the selected filters.")).toBeDefined();
 
     // Clear filters button in empty state
