@@ -238,6 +238,222 @@ Important guidelines:
 - Explain your reasoning briefly as you work, but focus on getting the task done
 - When you are finished, provide a clear summary of all changes made`;
 
+// ─── Tool Call Parser Helpers ──────────────────────────────────────────
+
+export function parseJsonSafely(str: string): any {
+  if (!str || typeof str !== "string") return null;
+  const trimmed = str.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Try removing trailing commas
+    try {
+      const cleaned = trimmed.replace(/,\s*([}\]])/g, "$1");
+      return JSON.parse(cleaned);
+    } catch {
+      // Try to extract first valid JSON substring {...} or [...]
+      const firstBrace = trimmed.indexOf("{");
+      const lastBrace = trimmed.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        try {
+          const sub = trimmed.slice(firstBrace, lastBrace + 1);
+          return JSON.parse(sub.replace(/,\s*([}\]])/g, "$1"));
+        } catch {
+          // ignore
+        }
+      }
+      return null;
+    }
+  }
+}
+
+export function extractToolCallsFromContent(
+  rawContent: string,
+  knownTools: { function: { name: string } }[] = AGENT_TOOLS,
+): {
+  cleanedContent: string;
+  reasoning: string;
+  toolCalls: { id: string; name: string; arguments: string }[];
+} {
+  let content = rawContent || "";
+  let extractedReasoning = "";
+  const toolCalls: { id: string; name: string; arguments: string }[] = [];
+
+  const addCall = (name: string, args: Record<string, any> | string) => {
+    if (!name || typeof name !== "string") return;
+    const isKnown = knownTools.some((t) => t.function.name === name);
+    let resolvedName = name;
+    let resolvedArgs = args;
+
+    if (!isKnown) {
+      if (typeof args === "object" && args !== null && "command" in args) {
+        resolvedName = "run_command";
+      } else if (
+        name.startsWith("run_") ||
+        name.startsWith("exec_") ||
+        name.startsWith("shell_") ||
+        name.startsWith("bash_")
+      ) {
+        resolvedName = "run_command";
+      }
+    }
+
+    toolCalls.push({
+      id: `call_${toolCalls.length}`,
+      name: resolvedName,
+      arguments:
+        typeof resolvedArgs === "string"
+          ? resolvedArgs
+          : JSON.stringify(resolvedArgs || {}),
+    });
+  };
+
+  const processJson = (obj: any): boolean => {
+    if (!obj || typeof obj !== "object") return false;
+    let found = false;
+
+    if (obj.reasoning && typeof obj.reasoning === "string") {
+      extractedReasoning = obj.reasoning;
+    }
+
+    // 1. Array of commands / tool_calls
+    const list = Array.isArray(obj)
+      ? obj
+      : Array.isArray(obj.commands)
+      ? obj.commands
+      : Array.isArray(obj.tool_calls)
+      ? obj.tool_calls
+      : Array.isArray(obj.tools)
+      ? obj.tools
+      : Array.isArray(obj.actions)
+      ? obj.actions
+      : null;
+
+    if (list) {
+      for (const item of list) {
+        if (!item || typeof item !== "object") continue;
+        const toolName =
+          item.name ||
+          item.command ||
+          item.tool ||
+          item.action ||
+          item.function?.name;
+        const toolArgs =
+          item.arguments !== undefined
+            ? item.arguments
+            : item.args !== undefined
+            ? item.args
+            : item.parameters !== undefined
+            ? item.parameters
+            : item.params !== undefined
+            ? item.params
+            : item.function?.arguments !== undefined
+            ? item.function.arguments
+            : item;
+        if (toolName) {
+          addCall(toolName, toolArgs);
+          found = true;
+        }
+      }
+      return found;
+    }
+
+    // 2. Single command / tool call object
+    const singleName =
+      obj.name ||
+      obj.command ||
+      obj.tool ||
+      obj.action ||
+      obj.function?.name;
+    const isKnown =
+      singleName && knownTools.some((t) => t.function.name === singleName);
+
+    if (
+      singleName &&
+      (isKnown ||
+        obj.arguments !== undefined ||
+        obj.args !== undefined ||
+        obj.parameters !== undefined ||
+        obj.path !== undefined ||
+        obj.query !== undefined)
+    ) {
+      const singleArgs =
+        obj.arguments !== undefined
+          ? obj.arguments
+          : obj.args !== undefined
+          ? obj.args
+          : obj.parameters !== undefined
+          ? obj.parameters
+          : obj.params !== undefined
+          ? obj.params
+          : obj.function?.arguments !== undefined
+          ? obj.function.arguments
+          : obj;
+      addCall(singleName, singleArgs);
+      return true;
+    }
+
+    return found;
+  };
+
+  // Step 1: Check for <tool_call> tags (both closed <tool_call>...</tool_call> and unclosed <tool_call>...)
+  if (content.includes("<tool_call>")) {
+    const closedRegex = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/gi;
+    let match;
+    let matchedAny = false;
+
+    while ((match = closedRegex.exec(content)) !== null) {
+      const jsonStr = match[1].trim();
+      const parsed = parseJsonSafely(jsonStr);
+      if (parsed && processJson(parsed)) {
+        matchedAny = true;
+      }
+    }
+
+    if (matchedAny) {
+      content = content.replace(/<tool_call>\s*[\s\S]*?\s*<\/tool_call>/gi, "").trim();
+    } else {
+      // Unclosed <tool_call> tag
+      const unclosedRegex = /<tool_call>\s*([\s\S]*)$/i;
+      const unclosedMatch = unclosedRegex.exec(content);
+      if (unclosedMatch) {
+        const jsonStr = unclosedMatch[1].trim();
+        const parsed = parseJsonSafely(jsonStr);
+        if (parsed && processJson(parsed)) {
+          content = content.replace(unclosedRegex, "").trim();
+        }
+      }
+    }
+  }
+
+  // Step 2: Check for markdown code blocks (```json ... ``` or ``` ... ```)
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  let cbMatch;
+  while ((cbMatch = codeBlockRegex.exec(content)) !== null) {
+    const jsonStr = cbMatch[1].trim();
+    if (jsonStr.startsWith("{") || jsonStr.startsWith("[")) {
+      const parsed = parseJsonSafely(jsonStr);
+      if (parsed && processJson(parsed)) {
+        content = content.replace(cbMatch[0], "").trim();
+      }
+    }
+  }
+
+  // Step 3: Check for standalone raw JSON with "commands" or known tools
+  if (toolCalls.length === 0) {
+    const rawJsonRegex = /({[\s\S]*?"commands"\s*:\s*\[[\s\S]*?\][\s\S]*?})/i;
+    const rawMatch = rawJsonRegex.exec(content);
+    if (rawMatch) {
+      const parsed = parseJsonSafely(rawMatch[1]);
+      if (parsed && processJson(parsed)) {
+        content = content.replace(rawMatch[0], "").trim();
+      }
+    }
+  }
+
+  return { cleanedContent: content, reasoning: extractedReasoning, toolCalls };
+}
+
 // ─── Tool Executor ─────────────────────────────────────────────────────
 
 async function executeToolCall(
@@ -1304,76 +1520,25 @@ export function LLMAgentApp() {
         }
       }
 
-      // If the provider doesn't support native tools, try parsing tool calls from content
-      if (!supportsNativeTools) {
-        if (fullContent.includes("<tool_call>")) {
-          const toolCallRegex =
-            /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
-          let match;
-          while ((match = toolCallRegex.exec(fullContent)) !== null) {
-            if (match.index === toolCallRegex.lastIndex) {
-              toolCallRegex.lastIndex++;
-            }
-            try {
-              const parsed = JSON.parse(match[1]);
-              const idx = Object.keys(accumulatedToolCalls).length;
-              accumulatedToolCalls[idx] = {
-                id: `call_${idx}`,
-                name: parsed.name,
-                arguments: JSON.stringify(parsed.args || parsed.arguments || {}),
-              };
-              finishReason = "tool_calls";
-            } catch {
-              // ignore
-            }
+
+
+      // If no native tool calls were received, or if content contains text-based tool calls,
+      // extract tool calls from fullContent
+      if (
+        Object.keys(accumulatedToolCalls).length === 0 ||
+        fullContent.includes("<tool_call>")
+      ) {
+        const extracted = extractToolCallsFromContent(fullContent, AGENT_TOOLS);
+        if (extracted.toolCalls.length > 0) {
+          extracted.toolCalls.forEach((tc) => {
+            const idx = Object.keys(accumulatedToolCalls).length;
+            accumulatedToolCalls[idx] = tc;
+          });
+          fullContent = extracted.cleanedContent;
+          if (extracted.reasoning && !fullReasoning) {
+            fullReasoning = extracted.reasoning;
           }
-          // Strip tool_call tags from content
-          fullContent = fullContent.replace(
-            /<tool_call>[\s\S]*?<\/tool_call>/g,
-            "",
-          ).trim();
-        } else {
-          // Fallback for models outputting JSON blocks with "commands"
-          const jsonMatch = fullContent.match(/```(?:json)?\n([\s\S]*?)\n```/) || fullContent.match(/({[\s\S]*"commands"[\s\S]*})/);
-          if (jsonMatch) {
-            try {
-              const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-              if (parsed.commands && Array.isArray(parsed.commands)) {
-                parsed.commands.forEach((cmd: any) => {
-                  const idx = Object.keys(accumulatedToolCalls).length;
-                  if (cmd.command && !cmd.name) {
-                    const isKnownTool = AGENT_TOOLS.some(t => t.function.name === cmd.command);
-                    if (isKnownTool) {
-                      accumulatedToolCalls[idx] = {
-                        id: `call_${idx}`,
-                        name: cmd.command,
-                        arguments: JSON.stringify(cmd.arguments || cmd.args || cmd)
-                      };
-                    } else {
-                      accumulatedToolCalls[idx] = {
-                        id: `call_${idx}`,
-                        name: "run_command",
-                        arguments: JSON.stringify({ command: cmd.command })
-                      };
-                    }
-                  } else if (cmd.name) {
-                    accumulatedToolCalls[idx] = {
-                      id: `call_${idx}`,
-                      name: cmd.name,
-                      arguments: JSON.stringify(cmd.arguments || cmd.args || {})
-                    };
-                  }
-                });
-                if (Object.keys(accumulatedToolCalls).length > 0) {
-                  finishReason = "tool_calls";
-                }
-                if (parsed.reasoning && !fullReasoning) {
-                  fullReasoning = parsed.reasoning;
-                }
-                fullContent = fullContent.replace(jsonMatch[0], "").trim();
-              }
-            } catch (e) {}
-          }
+          finishReason = "tool_calls";
         }
       }
 
