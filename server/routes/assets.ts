@@ -142,7 +142,7 @@ assetsRouter.post("/verifications/submit", async (c) => {
   }
 });
 
-// DELETE /api/assets/verifications/:id - Delete own verification log/record (pending, approved, or rejected)
+// DELETE /api/assets/verifications/:id - Delete own verification request (pending, approved, or rejected)
 assetsRouter.delete("/verifications/:id", async (c) => {
   try {
     const user = c.get("user" as any);
@@ -156,7 +156,7 @@ assetsRouter.delete("/verifications/:id", async (c) => {
 
     const { data: verif, error: fetchErr } = await supabase
       .from("asset_verifications")
-      .select("id, user_id")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -168,7 +168,39 @@ assetsRouter.delete("/verifications/:id", async (c) => {
       return c.json({ error: "Forbidden: You do not own this verification request" }, 403);
     }
 
-    // Delete the verification record (does not unpublish or reset character verification status)
+    // If it was an approved public_usage verification on a character, reset is_verified_public
+    if (verif.status === "approved" && verif.target_type === "public_usage") {
+      if (verif.asset_type === "character" && verif.original_id) {
+        await supabase
+          .from("characters")
+          .update({ is_verified_public: false })
+          .eq("id", verif.original_id)
+          .eq("user_id", verif.user_id);
+      }
+    }
+
+    // If it was an approved public_asset verification, also remove published asset if present
+    if (verif.status === "approved" && verif.target_type === "public_asset") {
+      if (verif.asset_type === "file" && verif.public_asset_id) {
+        const { data: asset } = await supabase
+          .from("public_assets")
+          .select("*")
+          .eq("id", verif.public_asset_id)
+          .single();
+        if (asset) {
+          if (asset.file_path) {
+            await supabase.storage.from("public-assets").remove([asset.file_path]);
+          }
+          await supabase.from("public_asset_likes").delete().eq("public_asset_id", verif.public_asset_id);
+          await supabase.from("public_assets").delete().eq("id", verif.public_asset_id);
+        }
+      } else if ((verif.asset_type === "character" || verif.asset_type === "universe") && verif.public_character_id) {
+        await supabase.from("public_character_likes").delete().eq("public_character_id", verif.public_character_id);
+        await supabase.from("public_characters").delete().eq("id", verif.public_character_id);
+      }
+    }
+
+    // Delete the verification record
     const { error: delErr } = await supabase
       .from("asset_verifications")
       .delete()
@@ -178,7 +210,7 @@ assetsRouter.delete("/verifications/:id", async (c) => {
 
     return c.json({ success: true });
   } catch (error: any) {
-    console.error("Error deleting verification record:", error);
+    console.error("Error deleting verification request:", error);
     return c.json({ error: error.message || "Internal server error" }, 500);
   }
 });
