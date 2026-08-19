@@ -377,6 +377,8 @@ export const ko = {
     keyActivatedToast: "마스터 키가 성공적으로 활성화되었습니다",
     invalidKeyError: "잘못된 마스터 키 형식입니다. 256비트 키(64자 16진수 또는 Base64)여야 합니다.",
     keyFormat: "키 형식",
+    showKeyFormat: "키 형식",
+    hideKeyFormat: "키 형식 숨기기",
     formatHex: "16진수 (64자)",
     formatBase64: "Base64 (44자)",
     formatBase58: "Base58",

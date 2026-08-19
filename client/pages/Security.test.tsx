@@ -153,10 +153,22 @@ describe("Security Page Component", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
   });
 
-  it("switches key display format between Hex, Base64, Base58 and Words", async () => {
+  it("has key format hidden by default and allows toggling to switch format between Hex, Base64, Base58 and Words", async () => {
     renderWithRouter();
     const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
     fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Key Format")).toBeDefined();
+    });
+
+    // Key format options should be hidden by default
+    expect(screen.queryByText("Base64 (44 chars)")).toBeNull();
+    expect(screen.queryByText("Base58")).toBeNull();
+
+    // Toggle format options visible
+    const toggleFormatBtn = screen.getByText("Key Format");
+    fireEvent.click(toggleFormatBtn);
 
     await waitFor(() => {
       expect(screen.getByText("Base64 (44 chars)")).toBeDefined();
@@ -166,6 +178,14 @@ describe("Security Page Component", () => {
     fireEvent.click(screen.getByText("Base58"));
     fireEvent.click(screen.getByText("Passphrase Words"));
     fireEvent.click(screen.getByText("Hex (64 chars)"));
+
+    // Toggle format options hidden
+    const hideFormatBtn = screen.getByText("Hide Key Format");
+    fireEvent.click(hideFormatBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Base64 (44 chars)")).toBeNull();
+    });
   });
 
   it("allows unlocking / activating an existing master key", async () => {

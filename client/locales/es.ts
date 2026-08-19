@@ -377,6 +377,8 @@ export const es = {
     keyActivatedToast: "Clave maestra activada exitosamente",
     invalidKeyError: "Formato inválido. Debe ser una clave de 256 bits (64 caracteres Hex o Base64).",
     keyFormat: "Formato de Clave",
+    showKeyFormat: "Formato de Clave",
+    hideKeyFormat: "Ocultar Formato de Clave",
     formatHex: "Hex (64 car.)",
     formatBase64: "Base64 (44 car.)",
     formatBase58: "Base58",

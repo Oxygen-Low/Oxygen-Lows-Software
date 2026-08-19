@@ -377,6 +377,8 @@ export const ru = {
     keyActivatedToast: "Мастер-ключ успешно активирован",
     invalidKeyError: "Неверный формат ключа. Требуется 256-битный ключ (64 символа Hex или Base64).",
     keyFormat: "Формат ключа",
+    showKeyFormat: "Формат ключа",
+    hideKeyFormat: "Скрыть формат ключа",
     formatHex: "Hex (64 симв.)",
     formatBase64: "Base64 (44 симв.)",
     formatBase58: "Base58",

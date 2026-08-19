@@ -377,6 +377,8 @@ export const zhCN = {
     keyActivatedToast: "主密钥已成功激活",
     invalidKeyError: "主密钥格式无效。必须为256位密钥（64位十六进制或Base64）。",
     keyFormat: "密钥格式",
+    showKeyFormat: "密钥格式",
+    hideKeyFormat: "隐藏密钥格式",
     formatHex: "十六进制 (64字符)",
     formatBase64: "Base64 (44字符)",
     formatBase58: "Base58",

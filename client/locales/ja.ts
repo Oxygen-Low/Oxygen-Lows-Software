@@ -377,6 +377,8 @@ export const ja = {
     keyActivatedToast: "マスターキーが正常に有効化されました",
     invalidKeyError: "無効なマスターキー形式です。256ビットキー（64文字の16進数またはBase64）である必要があります。",
     keyFormat: "キー形式",
+    showKeyFormat: "キー形式",
+    hideKeyFormat: "キー形式を隠す",
     formatHex: "16進数 (64文字)",
     formatBase64: "Base64 (44文字)",
     formatBase58: "Base58",

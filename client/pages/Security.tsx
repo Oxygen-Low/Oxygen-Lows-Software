@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   Upload,
   Loader2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -76,6 +77,7 @@ export default function Security() {
   const [keyBytes, setKeyBytes] = useState<Uint8Array | null>(() => getActiveMasterKey());
   const [inputMasterKey, setInputMasterKey] = useState<string>("");
   const [keyFormat, setKeyFormat] = useState<KeyFormat>("hex");
+  const [showKeyFormat, setShowKeyFormat] = useState<boolean>(false);
   const [isMasked, setIsMasked] = useState<boolean>(false);
   const [hasCopied, setHasCopied] = useState<boolean>(false);
 
@@ -473,6 +475,20 @@ export default function Security() {
                   </Button>
 
                   <Button
+                    id="toggle-key-format-btn"
+                    onClick={() => setShowKeyFormat((prev) => !prev)}
+                    variant={showKeyFormat ? "secondary" : "outline"}
+                    className="gap-2"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>
+                      {showKeyFormat
+                        ? t("security.hideKeyFormat", undefined, "Hide Key Format")
+                        : t("security.showKeyFormat", undefined, "Key Format")}
+                    </span>
+                  </Button>
+
+                  <Button
                     onClick={() => setIsMasked((prev) => !prev)}
                     variant="ghost"
                     size="icon"
@@ -491,33 +507,35 @@ export default function Security() {
                   </Button>
                 </div>
 
-                {/* Key Format Tabs */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("security.keyFormat", undefined, "Key Format")}:
-                  </span>
+                {/* Key Format Tabs (Hidden by default) */}
+                {showKeyFormat && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 animate-in fade-in-50 duration-200">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t("security.keyFormat", undefined, "Key Format")}:
+                    </span>
 
-                  <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg border border-border">
-                    {(["hex", "base64", "base58", "words"] as const).map((fmt) => (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => setKeyFormat(fmt)}
-                        className={cn(
-                          "px-3 py-1 text-xs font-medium rounded-md transition-colors",
-                          keyFormat === fmt
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        {fmt === "hex" && t("security.formatHex", undefined, "Hex (64 chars)")}
-                        {fmt === "base64" && t("security.formatBase64", undefined, "Base64 (44 chars)")}
-                        {fmt === "base58" && t("security.formatBase58", undefined, "Base58")}
-                        {fmt === "words" && t("security.formatWords", undefined, "Passphrase Words")}
-                      </button>
-                    ))}
+                    <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg border border-border">
+                      {(["hex", "base64", "base58", "words"] as const).map((fmt) => (
+                        <button
+                          key={fmt}
+                          type="button"
+                          onClick={() => setKeyFormat(fmt)}
+                          className={cn(
+                            "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                            keyFormat === fmt
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {fmt === "hex" && t("security.formatHex", undefined, "Hex (64 chars)")}
+                          {fmt === "base64" && t("security.formatBase64", undefined, "Base64 (44 chars)")}
+                          {fmt === "base58" && t("security.formatBase58", undefined, "Base58")}
+                          {fmt === "words" && t("security.formatWords", undefined, "Passphrase Words")}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Key Display Area */}
                 <div className="relative rounded-lg bg-muted/60 border border-border p-4 font-mono text-xs sm:text-sm leading-relaxed break-all select-all text-foreground">

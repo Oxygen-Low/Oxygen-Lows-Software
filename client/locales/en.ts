@@ -387,6 +387,8 @@ export const en = {
     keyActivatedToast: "Masterkey activated successfully",
     invalidKeyError: "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
     keyFormat: "Key Format",
+    showKeyFormat: "Key Format",
+    hideKeyFormat: "Hide Key Format",
     formatHex: "Hex (64 chars)",
     formatBase64: "Base64 (44 chars)",
     formatBase58: "Base58",
