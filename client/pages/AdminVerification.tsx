@@ -54,6 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabase";
 
 interface VerificationItem {
   id: string;
@@ -89,6 +90,7 @@ export default function AdminVerification() {
   const { toast } = useToast();
 
   const [verifications, setVerifications] = useState<VerificationItem[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   const [statusFilter, setStatusFilter] = useState<string>("pending");
@@ -131,7 +133,25 @@ export default function AdminVerification() {
       }
 
       const data = await response.json();
-      setVerifications(data.verifications || []);
+      const list = data.verifications || [];
+      setVerifications(list);
+
+      // Load signed URLs for file previews
+      const urls: Record<string, string> = {};
+      await Promise.all(
+        list.map(async (item: VerificationItem) => {
+          if (item.asset_type === "file" && item.original_file_path) {
+            const { data: urlData } = await supabase.storage
+              .from("Storage")
+              .createSignedUrl(item.original_file_path, 3600)
+              .catch(() => ({ data: null }));
+            if (urlData?.signedUrl) {
+              urls[item.id] = urlData.signedUrl;
+            }
+          }
+        }),
+      );
+      setPreviewUrls(urls);
     } catch (error: any) {
       toast({
         title: t("common.error", undefined, "Error fetching verifications"),
@@ -441,15 +461,34 @@ export default function AdminVerification() {
                         </p>
 
                         {item.asset_type === "file" && (
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
-                            <div>
-                              <span className="text-slate-500">File Path:</span>
-                              <p className="font-mono text-slate-300 truncate">{item.original_file_path || "N/A"}</p>
+                          <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="text-slate-500">File Path:</span>
+                                <p className="font-mono text-slate-300 truncate">{item.original_file_path || "N/A"}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">File Size:</span>
+                                <p className="text-slate-300">{formatSize(item.file_size)}</p>
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-slate-500">File Size:</span>
-                              <p className="text-slate-300">{formatSize(item.file_size)}</p>
-                            </div>
+
+                            {previewUrls[item.id] && (
+                              <div className="pt-2">
+                                {(item.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(item.original_file_path || item.title)) ? (
+                                  <div className="p-3 bg-slate-900 rounded border border-slate-800 space-y-2">
+                                    <div className="flex items-center gap-2 text-cyan-400 font-semibold text-[11px]">
+                                      <Music className="w-4 h-4" /> Audio Preview
+                                    </div>
+                                    <audio controls preload="metadata" src={previewUrls[item.id]} className="w-full h-8" />
+                                  </div>
+                                ) : (item.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(item.original_file_path || item.title)) ? (
+                                  <div className="p-2 bg-slate-900 rounded border border-slate-800">
+                                    <img src={previewUrls[item.id]} alt={item.title} className="max-h-48 rounded object-contain mx-auto" />
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

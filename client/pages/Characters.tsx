@@ -244,11 +244,29 @@ export default function Characters() {
       let savedId = currentCharacter.id;
 
       if (currentCharacter.id) {
+        // If modified, reset is_verified_public status
+        payload.is_verified_public = false;
+
         const { error } = await supabase
           .from("characters")
           .update(payload)
           .eq("id", currentCharacter.id);
         if (error) throw error;
+
+        // Invalidate previous verification in backend
+        if (session.access_token) {
+          await fetch("/api/assets/verifications/invalidate", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              asset_type: currentCharacter.is_universe ? "universe" : "character",
+              original_id: currentCharacter.id,
+            }),
+          }).catch(() => {});
+        }
       } else {
         const { data: inserted, error } = await supabase
           .from("characters")
@@ -825,9 +843,9 @@ export default function Characters() {
                             </Badge>
                           )}
                           {usageApproved && !pubChar && (
-                            <Badge className="bg-cyan-500/80 text-white text-[10px] backdrop-blur-sm">
+                            <Badge className="bg-cyan-500/90 text-white text-[10px] backdrop-blur-sm border border-cyan-400/40">
                               <ShieldCheck className="w-3 h-3 mr-1" />
-                              {t("verification.verifiedForPublicUsageBadge", undefined, "Verified for Public")}
+                              {t("characters.verifiedBadge", undefined, "Verified for Multiplayer")}
                             </Badge>
                           )}
                           {pendingVerif && (
@@ -948,7 +966,7 @@ export default function Characters() {
                                   ) : (
                                     <ShieldCheck className="w-3 h-3 mr-1 text-emerald-400" />
                                   )}
-                                  {t("verification.verifyForPublicUsage", undefined, "Verify Usage")}
+                                  {t("characters.verifyForMultiplayer", undefined, "Verify for Multiplayer")}
                                 </Button>
                               )}
                             </>

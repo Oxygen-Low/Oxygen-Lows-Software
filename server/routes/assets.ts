@@ -127,6 +127,48 @@ assetsRouter.post("/verifications/submit", async (c) => {
   }
 });
 
+// POST /api/assets/verifications/invalidate - Invalidate/reset verification status when an asset is edited
+assetsRouter.post("/verifications/invalidate", async (c) => {
+  try {
+    const user = c.get("user" as any);
+    const body = await c.req.json().catch(() => ({}));
+    const { asset_type, original_id, original_file_path } = body;
+
+    const supabase = getAdminClient(getServiceRoleKey(c));
+
+    if (asset_type === "character" || asset_type === "universe") {
+      if (original_id) {
+        await supabase
+          .from("characters")
+          .update({ is_verified_public: false })
+          .eq("id", original_id)
+          .eq("user_id", user.id);
+
+        await supabase
+          .from("asset_verifications")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("original_id", original_id)
+          .eq("target_type", "public_usage");
+      }
+    } else if (asset_type === "file") {
+      if (original_file_path) {
+        await supabase
+          .from("asset_verifications")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("original_file_path", original_file_path)
+          .eq("target_type", "public_usage");
+      }
+    }
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error("Error invalidating verification:", error);
+    return c.json({ error: error.message || "Internal server error" }, 500);
+  }
+});
+
 // POST /api/assets/unpublish - Delete/Unpublish public asset or character to make private again
 assetsRouter.post("/unpublish", async (c) => {
   try {

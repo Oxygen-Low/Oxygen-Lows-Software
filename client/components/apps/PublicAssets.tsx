@@ -239,9 +239,10 @@ export function PublicAssetsApp() {
         const isLiked = likes.some((l: any) => l.user_id === session.user.id);
         const profile = profilesData.find((p: any) => p.user_id === item.uploader_id);
 
+        const cleanPath = (item.file_path || "").replace(/^\/+/, "");
         const { data: pubUrlData } = supabase.storage
           .from("public-assets")
-          .getPublicUrl(item.file_path);
+          .getPublicUrl(cleanPath);
 
         return {
           ...item,
@@ -1115,20 +1116,22 @@ export function PublicAssetsApp() {
             >
               <div>
                 <div className="aspect-video bg-slate-950 relative flex items-center justify-center overflow-hidden border-b border-slate-800">
-                  {file.mime_type?.startsWith("image/") && file.public_url ? (
+                  {((file.category === "image" || file.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(file.name || file.file_path)) && file.public_url) ? (
                     <img
                       src={file.public_url}
                       alt={file.name}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
-                  ) : file.mime_type?.startsWith("audio/") && file.public_url ? (
-                    <div className="flex flex-col items-center gap-2 p-4 w-full">
-                      <Music className="w-10 h-10 text-blue-400" />
+                  ) : ((file.category === "audio" || file.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(file.name || file.file_path)) && file.public_url) ? (
+                    <div className="flex flex-col items-center justify-center gap-2 p-4 w-full" onClick={(e) => e.stopPropagation()}>
+                      <Music className="w-10 h-10 text-cyan-400" />
                       <audio
                         controls
+                        preload="metadata"
                         src={file.public_url}
                         className="w-full h-8"
                         onClick={(e) => e.stopPropagation()}
+                        onPlay={(e) => e.stopPropagation()}
                       />
                     </div>
                   ) : (
@@ -1419,16 +1422,16 @@ export function PublicAssetsApp() {
           {selectedFile && (
             <>
               <div className="h-48 relative bg-slate-950 shrink-0 flex items-center justify-center border-b border-slate-800">
-                {selectedFile.mime_type?.startsWith("image/") && selectedFile.public_url ? (
+                {((selectedFile.category === "image" || selectedFile.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(selectedFile.name || selectedFile.file_path)) && selectedFile.public_url) ? (
                   <img
                     src={selectedFile.public_url}
                     alt={selectedFile.name}
                     className="w-full h-full object-cover"
                   />
-                ) : selectedFile.mime_type?.startsWith("audio/") && selectedFile.public_url ? (
+                ) : ((selectedFile.category === "audio" || selectedFile.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(selectedFile.name || selectedFile.file_path)) && selectedFile.public_url) ? (
                   <div className="flex flex-col items-center gap-3 p-6 w-full">
-                    <Music className="w-12 h-12 text-blue-400" />
-                    <audio controls src={selectedFile.public_url} className="w-full" />
+                    <Music className="w-12 h-12 text-cyan-400" />
+                    <audio controls preload="metadata" src={selectedFile.public_url} className="w-full" />
                   </div>
                 ) : (
                   getFileCategoryIcon(selectedFile.category, selectedFile.mime_type)
