@@ -265,7 +265,19 @@ export default function Privacy() {
                 IP addresses, user agents, request paths, and potential attack vectors) and outbound 
                 connection data. This information is used to provide rate limiting, threat blocking, 
                 and security analytics for your protected applications. We use third-party IP geolocation 
-                services to support country-level blocking.
+                services to support country-level blocking. We also process IP addresses for commercial 
+                VPN detection and matching against known threat-actor feeds.
+              </P>
+            </div>
+
+            <div>
+              <p className="font-semibold text-foreground">
+                2.13 Client-Side Encrypted Data
+              </p>
+              <P>
+                Certain data, including characters, data saves, chatbot sessions, and third-party API 
+                keys (Integrations), are encrypted client-side using AES-256-GCM before transmission. 
+                We host the encrypted ciphertext but we cannot read, decrypt, or access the underlying data.
               </P>
             </div>
           </div>
@@ -381,6 +393,21 @@ export default function Privacy() {
                     "Tor Project",
                     "TOR Exit Node Detection",
                     "No personal data shared (we fetch their public exit node list)",
+                  ],
+                  [
+                    "Google Jules",
+                    "Coding agent workflows",
+                    "Codebase and repository content",
+                  ],
+                  [
+                    "Google Stitch MCP",
+                    "Model Context Protocol endpoint",
+                    "Agent context",
+                  ],
+                  [
+                    "GitHub",
+                    "Code/commits atom feed integration",
+                    "Repository access metadata",
                   ],
                 ].map(([proc, purpose, data]) => (
                   <tr key={proc} className="hover:bg-muted/10 transition-colors">

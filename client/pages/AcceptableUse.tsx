@@ -175,6 +175,7 @@ export default function AcceptableUse() {
                   "Conducting denial-of-service (DoS) or distributed denial-of-service (DDoS) attacks against the Service or any third party.",
                   "Using automated tools (bots, crawlers, scrapers) to access the Service at a volume or frequency that places unreasonable load on our infrastructure, without our prior written consent.",
                   "Using our security features, proxy endpoints, or APIs to intentionally disrupt legitimate third-party services, conduct unauthorized vulnerability testing, or stage distributed denial-of-service attacks.",
+                  "Attempting to bypass Server-Side Request Forgery (SSRF) protections, IP pinning, or DNS rebinding defenses.",
                 ]}
               />
             </div>
@@ -217,6 +218,7 @@ export default function AcceptableUse() {
                   "Sharing, selling, transferring, or otherwise granting access to your account to any third party.",
                   "Impersonating any person or entity, or misrepresenting your identity or affiliation.",
                   "Providing false information during account registration or in communications with us.",
+                  "Abusing Machine-to-Machine (M2M) Agent Auth endpoints (e.g., ID-JAG token abuse) or spamming agent discovery endpoints.",
                 ]}
               />
             </div>

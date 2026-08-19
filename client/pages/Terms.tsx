@@ -139,6 +139,13 @@ export default function Terms() {
             ]}
           />
           <P>
+            <strong>Client-Side Master Key:</strong> Certain sensitive data (including character details, 
+            data saves, chat histories, and integrations) is secured using Zero-Knowledge Client-Side 
+            Encryption (AES-256-GCM). You are solely responsible for securely storing your master key or 
+            downloaded <code>.key</code> backups. <strong>We cannot recover or reset lost keys.</strong> 
+            Losing your key will result in the permanent, irreversible loss of access to your encrypted data.
+          </P>
+          <P>
             We reserve the right to suspend or terminate your account upon reasonable
             notice if we believe that your account information is false, that you have
             violated these Terms, or where necessary to prevent harm or comply with legal
@@ -240,6 +247,12 @@ export default function Terms() {
           index={8}
         >
           <P>
+            The Service employs an automated Web Application Firewall (Web Defender) which monitors 
+            traffic for malicious activity, including brute-force attempts, DDoS patterns, known threat 
+            actor IPs, and commercial VPN exit nodes. Your access may be temporarily or permanently blocked 
+            if our automated systems detect high-risk or prohibited activity originating from your IP address.
+          </P>
+          <P>
             If you use our Web Defender security service or install the @oxygenlow/webdefender package on your 
             applications, you are responsible for configuring the service appropriately for your needs. 
             The service is designed to mitigate common web attacks, bots, and excessive traffic, but we 
@@ -271,18 +284,28 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 10. Third-party services */}
+        {/* 10. Third-Party Services & Integrations */}
         <Section
           id="third-party"
-          title="10. Third-Party Services"
+          title="10. Third-Party Services &amp; Integrations"
           index={10}
         >
           <P>
             The Service integrates with third-party services (including Supabase,
-            OpenAI, Anthropic, Google, Cloudflare, and others listed in our
+            OpenAI, Anthropic, Google, Cloudflare, GitHub, and others listed in our
             Privacy Policy). Your use of those services is governed by their
             respective terms and privacy policies. We are not responsible for
             the availability, accuracy, or practices of any third-party service.
+          </P>
+          <P>
+            <strong>Integrations &amp; API Keys:</strong> Any third-party API keys you provide to the Service 
+            are stored using Zero-Knowledge Encryption on your device before transmission. We do not have 
+            access to your raw API keys.
+          </P>
+          <P>
+            <strong>Autonomous Agents &amp; M2M Auth:</strong> Access by autonomous agents via our 
+            Machine-to-Machine (M2M) authentication endpoints (such as ID-JAG assertions) must strictly 
+            comply with our API limits and Acceptable Use Policy.
           </P>
         </Section>
 

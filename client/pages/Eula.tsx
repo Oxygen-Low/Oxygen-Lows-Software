@@ -173,7 +173,7 @@ export default function Eula() {
         </Section>
 
         {/* 5. User Content */}
-        <Section id="user-content" title="5. User-Generated Content" index={5}>
+        <Section id="user-content" title="5. User-Generated Content &amp; Data" index={5}>
           <P>
             You retain ownership of any content you create, upload, or submit
             through the Software ("User Content"). By submitting User Content,
@@ -186,6 +186,13 @@ export default function Eula() {
             grant this licence and that your User Content does not infringe
             any third-party intellectual property rights, violate any applicable
             law, or breach any obligation of confidentiality.
+          </P>
+          <P>
+            <strong>Zero-Knowledge Encryption:</strong> The Software uses Zero-Knowledge Client-Side 
+            Encryption for sensitive User Content (such as character data, saves, and integrations). 
+            You acknowledge that the Licensor does not hold your decryption keys and cannot decrypt your data. 
+            The Licensor is not liable for any data loss arising from a forgotten password, lost <code>.key</code> file, 
+            or compromised local device.
           </P>
         </Section>
 

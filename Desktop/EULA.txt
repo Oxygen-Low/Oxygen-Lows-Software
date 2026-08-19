@@ -27,10 +27,12 @@ The Software application, desktop binaries, branding, trademarks, and hosted ser
 
 Where portions of the Software are made available as open-source software in the project repository under the Mozilla Public License Version 2.0 (MPL-2.0), your rights in the source code form are governed by the MPL-2.0. This EULA governs the compiled desktop binaries, official installers, and connection to our cloud infrastructure.
 
-5. User-Generated Content
+5. User-Generated Content & Data
 You retain ownership of any content you create, upload, or submit through the Software ("User Content"). By submitting User Content, you grant the Licensor a worldwide, royalty-free, non-exclusive licence to host, store, process, and display that content solely as necessary to operate and provide the Software to you.
 
 You represent and warrant that you have all rights necessary to grant this licence and that your User Content does not infringe any third-party intellectual property rights, violate any applicable law, or breach any obligation of confidentiality.
+
+Zero-Knowledge Encryption: The Software uses Zero-Knowledge Client-Side Encryption for sensitive User Content (such as character data, saves, and integrations). You acknowledge that the Licensor does not hold your decryption keys and cannot decrypt your data. The Licensor is not liable for any data loss arising from a forgotten password, lost .key file, or compromised local device.
 
 6. Updates & Modifications
 The Licensor may, from time to time, issue updates, patches, or new versions of the Software. Such updates may be applied automatically or may require your action. This EULA applies to all updates and supplements to the original Software unless a separate licence accompanies an update, in which case that separate licence governs.
