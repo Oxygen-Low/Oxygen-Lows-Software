@@ -371,8 +371,8 @@ export default function Privacy() {
                   ],
                   [
                     "Stable Horde",
-                    "Image generation",
-                    "Image generation prompts",
+                    "AI response generation",
+                    "AI prompts you submit",
                   ],
                   [
                     "DuckDuckGo",
