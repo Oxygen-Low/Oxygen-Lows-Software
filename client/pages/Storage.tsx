@@ -706,7 +706,7 @@ export default function Storage() {
                             {usageApproved && !pubAsset && (
                               <Badge className="bg-cyan-500/90 text-white text-[10px] backdrop-blur-sm border border-cyan-400/40">
                                 <ShieldCheck className="w-3 h-3 mr-1" />
-                                {t("storage.verifiedBadge", undefined, "Verified for Multiplayer")}
+                                {t("storage.verifiedBadge", undefined, "Verified")}
                               </Badge>
                             )}
                             {pendingVerif && (
@@ -929,7 +929,7 @@ export default function Storage() {
                         {sub.status === "approved" && (
                           <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs">
                             <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                            {sub.target_type === "public_asset" ? "Approved & Public" : "Verified for Multiplayer"}
+                            {sub.target_type === "public_asset" ? "Approved & Public" : t("verification.verifiedForMultiplayerBadge", undefined, "Verified")}
                           </Badge>
                         )}
                         {sub.status === "rejected" && (

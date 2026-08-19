@@ -845,7 +845,7 @@ export default function Characters() {
                           {usageApproved && !pubChar && (
                             <Badge className="bg-cyan-500/90 text-white text-[10px] backdrop-blur-sm border border-cyan-400/40">
                               <ShieldCheck className="w-3 h-3 mr-1" />
-                              {t("characters.verifiedBadge", undefined, "Verified for Multiplayer")}
+                              {t("characters.verifiedBadge", undefined, "Verified")}
                             </Badge>
                           )}
                           {pendingVerif && (
