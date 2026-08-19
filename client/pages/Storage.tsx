@@ -861,7 +861,7 @@ export default function Storage() {
                                   className="flex-1 text-[11px] h-7 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
                                 >
                                   <ShieldCheck className="w-3 h-3 mr-1 text-emerald-400" />
-                                  {t("storage.verifyForMultiplayer", undefined, "Verify for Multiplayer")}
+                                  {t("storage.verifyForMultiplayer", undefined, "Verify")}
                                 </Button>
                               )}
                             </>
@@ -984,12 +984,12 @@ export default function Storage() {
             <DialogTitle>
               {actionType === "publish"
                 ? t("publicAssets.publishTitle", undefined, "Publish to Public Assets")
-                : t("verification.verifyForMultiplayerTitle", undefined, "Verify for Multiplayer Usage")}
+                : t("verification.verifyForMultiplayerTitle", undefined, "Verify Asset")}
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               {actionType === "publish"
                 ? t("publicAssets.verificationNotice", undefined, "Submissions must be verified by an administrator before appearing publicly.")
-                : t("verification.verifyForMultiplayerDesc", undefined, "Submit this private asset for verification to use in multiplayer games without publishing it publicly.")}
+                : t("verification.verifyForMultiplayerDesc", undefined, "Submit this private asset for verification to use in multiplayer games and other settings without publishing it publicly.")}
             </DialogDescription>
           </DialogHeader>
 

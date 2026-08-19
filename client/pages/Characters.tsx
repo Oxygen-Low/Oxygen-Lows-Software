@@ -966,7 +966,7 @@ export default function Characters() {
                                   ) : (
                                     <ShieldCheck className="w-3 h-3 mr-1 text-emerald-400" />
                                   )}
-                                  {t("characters.verifyForMultiplayer", undefined, "Verify for Multiplayer")}
+                                  {t("characters.verifyForMultiplayer", undefined, "Verify")}
                                 </Button>
                               )}
                             </>

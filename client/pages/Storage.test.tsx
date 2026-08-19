@@ -101,11 +101,11 @@ describe("Storage Page", () => {
       expect(screen.getByText("test-audio.mp3")).toBeDefined();
     });
 
-    const verifyBtn = screen.getByRole("button", { name: /Verify for Multiplayer/i });
+    const verifyBtn = screen.getByRole("button", { name: /^Verify$/i });
     expect(verifyBtn).toBeDefined();
 
     fireEvent.click(verifyBtn);
 
-    expect(screen.getByText(/Verify for Multiplayer Usage/i)).toBeDefined();
+    expect(screen.getByText(/Verify Asset/i)).toBeDefined();
   });
 });
