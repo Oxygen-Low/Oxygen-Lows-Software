@@ -150,6 +150,7 @@ describe('RateLimiter', () => {
     limiter.destroy();
 
     expect(buckets.size).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
 
     // Further check that timer is cleared
     // We can advance timers indefinitely and nothing should happen
