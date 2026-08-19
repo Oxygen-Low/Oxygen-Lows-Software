@@ -151,10 +151,10 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "Google Jules",
     category: "llm_integrations",
     descriptionKey: "integrations.googleJulesDesc",
-    defaultDescription: "Access token and integration credentials for Google Jules coding workflows.",
-    placeholder: "Enter Jules access token or credentials...",
-    docsUrl: "https://jules.google.com",
-    defaultBaseUrl: "https://jules.google.com",
+    defaultDescription: "API key and integration credentials for Google Jules coding workflows.",
+    placeholder: "Enter Jules API key or access token...",
+    docsUrl: "https://developers.google.com/jules/api",
+    defaultBaseUrl: "https://jules.googleapis.com/v1alpha",
     iconType: "integration",
   },
 
@@ -166,7 +166,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     descriptionKey: "integrations.googleStitchMcpDesc",
     defaultDescription: "Model Context Protocol (MCP) server token and endpoint for Google Stitch.",
     placeholder: "Enter Stitch MCP token or connection string...",
-    defaultBaseUrl: "http://localhost:3000/sse",
+    docsUrl: "https://stitch.withgoogle.com",
+    defaultBaseUrl: "https://stitch.googleapis.com/mcp",
     iconType: "mcp",
   },
   {
@@ -205,7 +206,6 @@ export default function Integrations() {
   const [editingDef, setEditingDef] = useState<IntegrationDefinition | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [inputApiKey, setInputApiKey] = useState<string>("");
-  const [inputBaseUrl, setInputBaseUrl] = useState<string>("");
   const [isMaskedInput, setIsMaskedInput] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -303,7 +303,6 @@ export default function Integrations() {
     const existing = integrations.find((i) => i.provider === def.provider);
     setEditingDef(def);
     setInputApiKey(existing?.api_key || "");
-    setInputBaseUrl(existing?.base_url || def.defaultBaseUrl || "");
     setIsMaskedInput(true);
     setModalOpen(true);
   };
@@ -332,7 +331,7 @@ export default function Integrations() {
         provider: editingDef.provider,
         name: editingDef.name,
         api_key: trimmedKey,
-        base_url: inputBaseUrl.trim() || null,
+        base_url: editingDef.defaultBaseUrl || null,
       };
 
       const encrypted = await encryptIntegrationData(integrationPayload, key);
@@ -744,9 +743,12 @@ export default function Integrations() {
                               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("integrations.apiKeyLabel", undefined, "API Key / Token")}:
                               </span>
-                              {stored?.base_url && (
-                                <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[200px]" title={stored.base_url}>
-                                  {stored.base_url}
+                              {(stored?.base_url || def.defaultBaseUrl) && (
+                                <span
+                                  className="text-[10px] font-mono text-muted-foreground truncate max-w-[200px]"
+                                  title={stored?.base_url || def.defaultBaseUrl}
+                                >
+                                  {stored?.base_url || def.defaultBaseUrl}
                                 </span>
                               )}
                             </div>
@@ -929,26 +931,23 @@ export default function Integrations() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="input-base-url" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("integrations.baseUrlLabel", undefined, "Endpoint / Base URL (Optional)")}
-                </Label>
-                <Input
-                  id="input-base-url"
-                  type="text"
-                  placeholder={editingDef?.defaultBaseUrl || "https://..."}
-                  value={inputBaseUrl}
-                  onChange={(e) => setInputBaseUrl(e.target.value)}
-                  className="font-mono text-xs"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  {t(
-                    "integrations.baseUrlHelp",
-                    undefined,
-                    "Leave default or customize if connecting via a proxy, custom gateway, or local relay."
-                  )}
-                </p>
-              </div>
+              {editingDef?.defaultBaseUrl && (
+                <div className="space-y-1 p-2.5 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                    {t("integrations.defaultEndpointLabel", undefined, "Default Endpoint")}:
+                  </span>
+                  <p className="font-mono text-xs text-foreground/80 break-all">
+                    {editingDef.defaultBaseUrl}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(
+                      "integrations.fixedBaseUrlHelp",
+                      undefined,
+                      "This integration always uses the standard official endpoint."
+                    )}
+                  </p>
+                </div>
+              )}
 
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 shrink-0" />

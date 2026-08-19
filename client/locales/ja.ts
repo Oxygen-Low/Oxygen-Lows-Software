@@ -442,6 +442,8 @@ export const ja = {
     apiKeyLabel: "APIキー / トークン",
     baseUrlLabel: "エンドポイント / ベースURL (任意)",
     baseUrlHelp: "デフォルトのままにするか、プロキシ、カスタムゲートウェイ、ローカルリレー経由で接続する場合はカスタマイズしてください。",
+    defaultEndpointLabel: "デフォルトエンドポイント",
+    fixedBaseUrlHelp: "この統合は常に標準の公式エンドポイントを使用します。",
     copyKey: "キーをコピー",
     copiedToast: "APIキーをクリップボードにコピーしました",
     noKeyStored: "APIキーはまだ設定されていません",

@@ -261,4 +261,44 @@ describe("Integrations Page Component", () => {
       expect(screen.queryByText("Configure OpenAI / ChatGPT")).toBeNull();
     });
   });
+
+  it("verifies Stitch MCP, Jules, and GitHub MCP definitions have correct default endpoints and docs URLs", () => {
+    const stitchDef = INTEGRATION_DEFINITIONS.find((d) => d.provider === "google_stitch_mcp");
+    expect(stitchDef).toBeDefined();
+    expect(stitchDef?.defaultBaseUrl).toBe("https://stitch.googleapis.com/mcp");
+    expect(stitchDef?.docsUrl).toBe("https://stitch.withgoogle.com");
+
+    const julesDef = INTEGRATION_DEFINITIONS.find((d) => d.provider === "google_jules");
+    expect(julesDef).toBeDefined();
+    expect(julesDef?.defaultBaseUrl).toBe("https://jules.googleapis.com/v1alpha");
+    expect(julesDef?.docsUrl).toBe("https://developers.google.com/jules/api");
+
+    const githubDef = INTEGRATION_DEFINITIONS.find((d) => d.provider === "github_mcp");
+    expect(githubDef).toBeDefined();
+    expect(githubDef?.defaultBaseUrl).toBe("https://api.github.com");
+    expect(githubDef?.docsUrl).toBe("https://github.com/settings/tokens");
+  });
+
+  it("displays default endpoint and does not show custom base URL input in configure modal", async () => {
+    const key = generateAes256Key();
+    setActiveMasterKey(key);
+    setCategoryEncryptionEnabled("integrations", true);
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText("Google Stitch MCP")).toBeDefined();
+    });
+
+    const stitchCard = screen.getByTestId("integration-card-google_stitch_mcp");
+    const configureBtn = stitchCard.querySelector("button:last-child") as HTMLButtonElement;
+    fireEvent.click(configureBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Configure Google Stitch MCP")).toBeDefined();
+      expect(screen.getByText("https://stitch.googleapis.com/mcp")).toBeDefined();
+      expect(screen.getByText(/Default Endpoint/i)).toBeDefined();
+      expect(document.getElementById("input-base-url")).toBeNull();
+    });
+  });
 });

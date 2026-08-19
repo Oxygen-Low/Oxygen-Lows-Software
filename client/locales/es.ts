@@ -442,6 +442,8 @@ export const es = {
     apiKeyLabel: "Clave API / Token",
     baseUrlLabel: "Endpoint / URL Base (Opcional)",
     baseUrlHelp: "Deja el valor predeterminado o personalízalo si te conectas a través de un proxy, puerta de enlace personalizada o relé local.",
+    defaultEndpointLabel: "Endpoint predeterminado",
+    fixedBaseUrlHelp: "Esta integración siempre utiliza el endpoint oficial estándar.",
     copyKey: "Copiar Clave",
     copiedToast: "Clave API copiada al portapapeles",
     noKeyStored: "Aún no se ha configurado ninguna clave API",

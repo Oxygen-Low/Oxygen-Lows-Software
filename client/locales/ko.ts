@@ -442,6 +442,8 @@ export const ko = {
     apiKeyLabel: "API 키 / 토큰",
     baseUrlLabel: "엔드포인트 / 기본 URL (선택 사항)",
     baseUrlHelp: "기본값을 유지하거나 프록시, 사용자 지정 게이트웨이 또는 로컬 릴레이를 통해 연결하는 경우 사용자 지정하세요.",
+    defaultEndpointLabel: "기본 엔드포인트",
+    fixedBaseUrlHelp: "이 통합은 항상 표준 공식 엔드포인트를 사용합니다.",
     copyKey: "키 복사",
     copiedToast: "API 키가 클립보드에 복사되었습니다",
     noKeyStored: "아직 구성된 API 키가 없습니다",

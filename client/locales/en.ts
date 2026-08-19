@@ -452,6 +452,8 @@ export const en = {
     apiKeyLabel: "API Key / Token",
     baseUrlLabel: "Endpoint / Base URL (Optional)",
     baseUrlHelp: "Leave default or customize if connecting via a proxy, custom gateway, or local relay.",
+    defaultEndpointLabel: "Default Endpoint",
+    fixedBaseUrlHelp: "This integration always uses the standard official endpoint.",
     copyKey: "Copy Key",
     copiedToast: "API key copied to clipboard",
     noKeyStored: "No API key configured yet",

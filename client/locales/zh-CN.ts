@@ -442,6 +442,8 @@ export const zhCN = {
     apiKeyLabel: "API 密钥 / 令牌",
     baseUrlLabel: "端点 / 基础 URL (选填)",
     baseUrlHelp: "保留默认值，或在通过代理、自定义网关或本地中继连接时进行自定义。",
+    defaultEndpointLabel: "默认端点",
+    fixedBaseUrlHelp: "此集成始终使用标准官方端点。",
     copyKey: "复制密钥",
     copiedToast: "API 密钥已复制到剪贴板",
     noKeyStored: "尚未配置 API 密钥",
