@@ -82,4 +82,10 @@ describe("LLMAgent tool call parser", () => {
     const parsed = parseJsonSafely('{"command": "write_file", "arguments": {"path": "a.txt",},}');
     expect(parsed).toEqual({ command: "write_file", arguments: { path: "a.txt" } });
   });
+
+  it("handles malformed or non-string inputs safely in parseJsonSafely", () => {
+    expect(parseJsonSafely("")).toBeNull();
+    expect(parseJsonSafely(null as any)).toBeNull();
+    expect(parseJsonSafely("invalid json here")).toBeNull();
+  });
 });
