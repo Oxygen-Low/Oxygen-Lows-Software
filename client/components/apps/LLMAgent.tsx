@@ -844,18 +844,27 @@ function AnimatedBackground() {
 
 // ─── Model Selector Dropdown ───────────────────────────────────────────
 
+interface PointsStatus {
+  available: number;
+  given: number;
+}
+
 function ModelSelector({
   models,
   selectedModel,
   selectedProvider,
   onSelect,
   compact = false,
+  pointsStatus,
+  onOpen,
 }: {
   models: Model[];
   selectedModel: string;
   selectedProvider: string;
   onSelect: (model: string, provider: string) => void;
   compact?: boolean;
+  pointsStatus?: PointsStatus | null;
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -870,6 +879,14 @@ function ModelSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const handleToggle = () => {
+    const nextState = !open;
+    setOpen(nextState);
+    if (nextState && onOpen) {
+      onOpen();
+    }
+  };
+
   const label = formatModelLabel(selectedProvider, selectedModel);
 
   // Group models by provider
@@ -883,15 +900,25 @@ function ModelSelector({
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className={`flex items-center gap-2 rounded-full border border-slate-700 transition-colors text-sm font-medium hover:bg-slate-800 ${
           compact
             ? "px-3 py-1.5 bg-slate-900/50 text-slate-300"
             : "px-3 py-2 bg-slate-900/50 text-slate-300"
         }`}
+        title={
+          selectedProvider === "cloudflare" && pointsStatus !== null && pointsStatus !== undefined
+            ? `Points: ${pointsStatus.available}/${pointsStatus.given}`
+            : undefined
+        }
       >
         <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
         <span className="max-w-[160px] truncate text-xs">{label}</span>
+        {selectedProvider === "cloudflare" && pointsStatus !== null && pointsStatus !== undefined && (
+          <span className="text-[10px] font-mono text-cyan-400 font-medium bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
+            {pointsStatus.available}/{pointsStatus.given}
+          </span>
+        )}
         <ChevronDown className="w-3 h-3 text-slate-500" />
       </button>
 
@@ -959,8 +986,25 @@ function ModelSelector({
               )}
               {cloudflareModels.length > 0 && (
                 <>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-1">
-                    Cloudflare Workers AI
+                  <div className="px-3 pb-1 pt-2 flex justify-between items-center">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                      Cloudflare Workers AI
+                    </p>
+                    {pointsStatus !== null && pointsStatus !== undefined && (
+                      <div className="flex flex-col items-end gap-1 mr-1">
+                        <span className="text-[10px] font-mono text-cyan-400 font-medium">
+                          {pointsStatus.available}/{pointsStatus.given}
+                        </span>
+                        <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-cyan-400 transition-all duration-300"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, (pointsStatus.available / pointsStatus.given) * 100))}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {cloudflareModels.map((m) => (
                     <button
@@ -1168,6 +1212,10 @@ function AgentMarkdown({ content }: { content: string }) {
 export function LLMAgentApp() {
   // Auth
   const [session, setSession] = useState<any>(null);
+  const [pointsStatus, setPointsStatus] = useState<{
+    available: number;
+    given: number;
+  } | null>(null);
 
   // Models
   const {
@@ -1212,6 +1260,24 @@ export function LLMAgentApp() {
     } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch points
+  const fetchPoints = useCallback(async () => {
+    if (!session?.user?.id) {
+      setPointsStatus(null);
+      return;
+    }
+    try {
+      const { data } = await supabase.rpc("get_points_status");
+      if (data) setPointsStatus(data as any);
+    } catch {
+      // ignore
+    }
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    fetchPoints();
+  }, [fetchPoints, messages]);
 
   // Load sessions from localStorage
   useEffect(() => {
@@ -1779,6 +1845,8 @@ export function LLMAgentApp() {
             ...sessions.filter((s) => s.id !== sessionId),
           ].slice(0, 50),
         );
+
+        fetchPoints();
       }
     },
     [
@@ -1792,6 +1860,7 @@ export function LLMAgentApp() {
       selectedProvider,
       sessions,
       saveSessions,
+      fetchPoints,
     ],
   );
 
@@ -1956,6 +2025,8 @@ export function LLMAgentApp() {
                     models={models}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
+                    pointsStatus={pointsStatus}
+                    onOpen={fetchPoints}
                     onSelect={(m, p) => {
                       if (p === 'cloudflare' && !session?.access_token) {
                         toast.error("Sign In to access better models.");
@@ -2154,6 +2225,8 @@ export function LLMAgentApp() {
                     models={models}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
+                    pointsStatus={pointsStatus}
+                    onOpen={fetchPoints}
                     compact
                     onSelect={(m, p) => {
                       if (p === 'cloudflare' && !session?.access_token) {
