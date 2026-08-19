@@ -824,7 +824,7 @@ function AnimatedBackground() {
   }, []);
 
   return (
-    <div className="fixed inset-0 -z-10 w-full h-full bg-[#0a0a0c] overflow-hidden">
+    <div className="absolute inset-0 z-0 w-full h-full bg-[#0a0a0c] overflow-hidden">
       <div
         ref={parallaxRef}
         className="absolute inset-[-40px] w-[calc(100%+80px)] h-[calc(100%+80px)] transition-transform duration-100 ease-out"
@@ -1979,7 +1979,7 @@ export function LLMAgentApp() {
   // ═══════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden bg-slate-950">
+    <div className="relative w-full h-full flex flex-col overflow-hidden bg-transparent">
       {/* ─── Animated Background (shown on home state) ─── */}
       {!showWorkspace && <AnimatedBackground />}
 
@@ -1987,7 +1987,7 @@ export function LLMAgentApp() {
       {!showWorkspace && (
         <main className="flex-1 flex flex-col px-4 py-8 relative overflow-hidden w-full h-full max-w-7xl mx-auto z-10 justify-center">
           <div className="w-full flex flex-col items-center space-y-6 z-10 shrink-0 transition-opacity duration-500">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white text-center tracking-tight leading-tight drop-shadow-lg">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-primary text-center tracking-tight leading-tight drop-shadow-lg">
               What do you want to code today?
             </h1>
 
