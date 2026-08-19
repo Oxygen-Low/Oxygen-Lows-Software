@@ -44,5 +44,5 @@ const server = serve({
   console.log(`Listening on http://localhost:${info.port}`);
 });
 
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, path: '/ws/battlegrounds' });
 setupBattlegroundsWS(wss);
