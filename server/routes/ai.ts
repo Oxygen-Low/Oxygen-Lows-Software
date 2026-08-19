@@ -11,7 +11,6 @@ const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 const DEFAULT_MODELS = [
   { provider: "horde", model_id: "Fast" },
   { provider: "horde", model_id: "Smart" },
-  { provider: "horde", model_id: "Coder" },
   { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b" },
   { provider: "cloudflare", model_id: "@cf/google/gemma-4-26b-a4b-it" },
   { provider: "cloudflare", model_id: "@cf/zai-org/glm-4.7-flash" },
@@ -23,7 +22,6 @@ const HORDE_MODELS_MAP: Record<string, string[]> = {
   TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
   Fast: ["google/gemma-4-31b"],
   Smart: ["koboldcpp/Behemoth-128B-v3b-Q4_K_M"],
-  Coder: ["koboldcpp/Qwen3-Coder-Next-Q4_K_M"],
 };
 
 export interface SearchIntent {
@@ -247,7 +245,6 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         stream: false,
         max_tokens: 50,
         temperature: 0.1,
-        trusted_workers: false,
       };
 
       const intentRes = await fetch(
@@ -388,7 +385,6 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         ...requestBody,
         model: actualModel,
         messages: finalMessages,
-        trusted_workers: false,
       };
       fetchOptions.headers["Authorization"] =
         `Bearer ${integration?.api_key || "0000000000"}`;
