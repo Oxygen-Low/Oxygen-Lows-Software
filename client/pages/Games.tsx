@@ -24,6 +24,7 @@ import {
   Puzzle,
   Boxes,
   RotateCcw,
+  Swords,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MinesweeperApp } from "@/components/apps/Minesweeper";
@@ -32,9 +33,10 @@ import { ChessApp } from "@/components/apps/Chess";
 import { PokerApp } from "@/components/apps/Poker";
 import { SudokuApp } from "@/components/apps/Sudoku";
 import { WordSearchApp } from "@/components/apps/WordSearch";
+import { BattlegroundsGameApp } from "@/components/apps/BattlegroundsGame";
 
 export type GameMode = "Multiplayer" | "Singleplayer";
-export type GameGenre = "Puzzle" | "Strategy" | "Card" | "Board" | "Casual";
+export type GameGenre = "Puzzle" | "Strategy" | "Card" | "Board" | "Casual" | "Action";
 
 export type Availability = "web-and-desktop" | "desktop-only";
 
@@ -126,6 +128,12 @@ export const GENRE_DEFINITIONS: GenreDefinition[] = [
     defaultLabel: "Casual",
     icon: <Sparkles className="w-4 h-4" />,
   },
+  {
+    id: "Action",
+    labelKey: "games.action",
+    defaultLabel: "Action",
+    icon: <Swords className="w-4 h-4" />,
+  },
 ];
 
 export const GAMES: GameMetadata[] = [
@@ -200,6 +208,18 @@ export const GAMES: GameMetadata[] = [
     availability: "web-and-desktop",
     icon: <Type className="w-8 h-8 text-indigo-500" />,
     component: WordSearchApp,
+  },
+  {
+    id: "battlegrounds",
+    nameKey: "games.battlegroundsTitle",
+    defaultName: "Battlegrounds",
+    descKey: "games.battlegroundsDesc",
+    defaultDesc: "A chaotic 2D platform fighter for up to 10 players.",
+    modes: ["Multiplayer"],
+    genres: ["Action"],
+    availability: "web-and-desktop",
+    icon: <Swords className="w-8 h-8 text-red-500" />,
+    component: BattlegroundsGameApp,
   },
 ];
 
@@ -289,6 +309,7 @@ export default function Games() {
       Card: 0,
       Board: 0,
       Casual: 0,
+      Action: 0,
     };
     availableApps.forEach((app) => {
       app.genres.forEach((genre) => {

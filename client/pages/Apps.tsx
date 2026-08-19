@@ -37,6 +37,7 @@ import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
+import { BattlegroundsCreatorApp } from "@/components/apps/BattlegroundsCreator";
 
 type Category =
   | "All"
@@ -44,7 +45,8 @@ type Category =
   | "LLM/AI"
   | "Development"
   | "Social"
-  | "Security";
+  | "Security"
+  | "Gaming";
 
 type Availability = "web-and-desktop" | "desktop-only";
 
@@ -118,6 +120,14 @@ const CATEGORY_DEFINITIONS: {
     icon: <Shield className="w-5 h-5" />,
     descKey: "apps.categorySecurityDesc",
     defaultDesc: "Protection for software and devices.",
+  },
+  {
+    name: "Gaming",
+    labelKey: "apps.categoryGaming",
+    defaultLabel: "Gaming",
+    icon: <Monitor className="w-5 h-5" />,
+    descKey: "apps.categoryGamingDesc",
+    defaultDesc: "Gaming utilities and creators.",
   },
 ];
 
@@ -238,6 +248,18 @@ const APPS: AppMetadata[] = [
     component: DefenderApp,
     authRequired: true,
   },
+  {
+    id: "battlegrounds-creator",
+    nameKey: "apps.battlegroundsCreatorTitle",
+    defaultName: "Battlegrounds Creator",
+    descKey: "apps.battlegroundsCreatorDesc",
+    defaultDesc: "Create custom characters, movesets, and spritesheets for the Battlegrounds game.",
+    categories: ["All", "Gaming", "Utility"],
+    availability: "web-and-desktop",
+    icon: <Monitor className="w-8 h-8 text-cyan-500" />,
+    component: BattlegroundsCreatorApp,
+    authRequired: true,
+  }
 ];
 
 export default function Apps() {
@@ -313,6 +335,7 @@ export default function Apps() {
       Development: 0,
       Social: 0,
       Security: 0,
+      Gaming: 0,
     };
     availableApps.forEach((app) => {
       app.categories.forEach((cat) => {

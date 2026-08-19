@@ -126,15 +126,29 @@ export default function Storage() {
       const { data: pubData } = await supabase.storage
         .from("public-assets")
         .list(session.user.id);
+        
+      // 2.5 Fetch battlegrounds-assets
+      const { data: bgData } = await supabase.storage
+        .from("battlegrounds-assets")
+        .list(session.user.id);
 
       const files = privData || [];
       const publicFiles = pubData || [];
-      setCloudFiles(files);
+      const bgFiles = bgData || [];
+      
+      // Mark bucket for rendering and deletion
+      files.forEach(f => { (f as any).bucket = "Storage"; });
+      publicFiles.forEach(f => { (f as any).bucket = "public-assets"; });
+      bgFiles.forEach(f => { (f as any).bucket = "battlegrounds-assets"; });
 
-      // Aggregate total size across both private Storage and public-assets
+      const allFiles = [...files, ...publicFiles, ...bgFiles];
+      setCloudFiles(allFiles);
+
+      // Aggregate total size
       const privateSize = files.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
       const pubSize = publicFiles.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
-      setTotalSize(privateSize + pubSize);
+      const bgSize = bgFiles.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
+      setTotalSize(privateSize + pubSize + bgSize);
 
       // Get signed URLs for private files
       if (files.length > 0) {
@@ -287,7 +301,7 @@ export default function Storage() {
     }
   };
 
-  const deleteCloudFile = async (name: string) => {
+  const deleteCloudFile = async (name: string, bucket = "Storage") => {
     try {
       if (name.includes("..")) throw new Error("Invalid file name");
       const filePath = `${session?.user?.id}/${name}`;
@@ -308,7 +322,7 @@ export default function Storage() {
       }
 
       const { error } = await supabase.storage
-        .from("Storage")
+        .from(bucket)
         .remove([filePath]);
       if (error) throw error;
       toast.success(t("storage.fileDeleted", undefined, "File deleted successfully"));
@@ -727,7 +741,7 @@ export default function Storage() {
                                 src={signedUrl}
                                 filePath={`${session?.user?.id}/${file.name}`}
                                 fileName={file.name}
-                                bucket="Storage"
+                                bucket={file.bucket || "Storage"}
                                 className="w-full"
                               />
                             </div>
@@ -837,7 +851,7 @@ export default function Storage() {
                                   {t("common.cancel", undefined, "Cancel")}
                                 </AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => deleteCloudFile(file.name)}
+                                  onClick={() => deleteCloudFile(file.name, file.bucket || "Storage")}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   {t("common.delete", undefined, "Delete")}
