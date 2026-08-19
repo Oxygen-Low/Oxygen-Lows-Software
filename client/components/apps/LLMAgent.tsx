@@ -267,6 +267,113 @@ export function parseJsonSafely(str: string): any {
   }
 }
 
+function cleanXmlParamValue(val: string): any {
+  if (typeof val !== "string") return val;
+  let str = val;
+
+  // Unwrap CDATA if present: <![CDATA[...]]>
+  const cdataMatch = str.match(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/i);
+  if (cdataMatch) {
+    str = cdataMatch[1];
+  }
+
+  // Strip single leading and trailing newline
+  if (str.startsWith("\r\n")) {
+    str = str.slice(2);
+  } else if (str.startsWith("\n")) {
+    str = str.slice(1);
+  }
+  if (str.endsWith("\r\n")) {
+    str = str.slice(0, -2);
+  } else if (str.endsWith("\n")) {
+    str = str.slice(0, -1);
+  }
+
+  // If single line, trim spaces
+  if (!str.includes("\n")) {
+    str = str.trim();
+  }
+
+  // Decode basic XML entities
+  if (str.includes("&")) {
+    str = str
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+  }
+
+  const trimmed = str.trim();
+  if (
+    trimmed === "true" ||
+    trimmed === "false" ||
+    trimmed === "null" ||
+    (!isNaN(Number(trimmed)) && trimmed !== "")
+  ) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // ignore
+    }
+  }
+
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // ignore
+    }
+  }
+
+  return str;
+}
+
+function parseXmlParameters(body: string): Record<string, any> {
+  const args: Record<string, any> = {};
+  if (!body) return args;
+
+  const trimmedBody = body.trim();
+  if (trimmedBody.startsWith("{") || trimmedBody.startsWith("[")) {
+    const jsonParsed = parseJsonSafely(trimmedBody);
+    if (jsonParsed && typeof jsonParsed === "object") {
+      if (Array.isArray(jsonParsed)) return { items: jsonParsed };
+      return jsonParsed;
+    }
+  }
+
+  // Match <parameter=name>val</parameter>, <parameter name="name">val</parameter>, <param=...>, <arg=...>, <argument=...>
+  const paramRegex =
+    /<(?:parameter|param|arg|argument|property)\s*(?:=|name\s*=\s*|key\s*=\s*)["']?([a-zA-Z0-9_.-]+)["']?[^>]*>([\s\S]*?)(?:<\/(?:parameter|param|arg|argument|property)(?:=[^>]+)?>|(?=<(?:parameter|param|arg|argument|property)[\s=>])|(?=<\/(?:function|tool|invoke|call)>)|$)/gi;
+
+  let match: RegExpExecArray | null;
+  let foundAny = false;
+
+  while ((match = paramRegex.exec(body)) !== null) {
+    foundAny = true;
+    const paramKey = match[1].trim();
+    const paramVal = cleanXmlParamValue(match[2]);
+    args[paramKey] = paramVal;
+  }
+
+  // If no standard parameter tags found, check for direct parameter tags e.g. <path>...</path>
+  if (!foundAny) {
+    const directTagRegex =
+      /<(path|file|filepath|content|code|text|command|cmd|script|query|pattern|old_content|oldContent|new_content|newContent|dir|directory)[^>]*>([\s\S]*?)<\/\1>/gi;
+    while ((match = directTagRegex.exec(body)) !== null) {
+      foundAny = true;
+      const paramKey = match[1].trim();
+      const paramVal = cleanXmlParamValue(match[2]);
+      args[paramKey] = paramVal;
+    }
+  }
+
+  return args;
+}
+
 export function extractToolCallsFromContent(
   rawContent: string,
   knownTools: { function: { name: string } }[] = AGENT_TOOLS,
@@ -279,14 +386,53 @@ export function extractToolCallsFromContent(
   let extractedReasoning = "";
   const toolCalls: { id: string; name: string; arguments: string }[] = [];
 
-  const addCall = (name: string, args: Record<string, any> | string) => {
+  // 1. Extract reasoning from <think>, <thought>, <reasoning> tags
+  const thinkRegex =
+    /<(?:think|thought|reasoning)>\s*([\s\S]*?)\s*<\/(?:think|thought|reasoning)>/gi;
+  let thinkMatch: RegExpExecArray | null;
+  while ((thinkMatch = thinkRegex.exec(content)) !== null) {
+    if (!extractedReasoning) {
+      extractedReasoning = thinkMatch[1].trim();
+    }
+  }
+  content = content.replace(thinkRegex, "").trim();
+
+  // Also handle unclosed <think> tag if at the start
+  const unclosedThinkRegex = /^<(?:think|thought|reasoning)>\s*([\s\S]*)$/i;
+  const unclosedThinkMatch = unclosedThinkRegex.exec(content);
+  if (
+    unclosedThinkMatch &&
+    !unclosedThinkMatch[1].includes("</think>") &&
+    !unclosedThinkMatch[1].includes("</thought>")
+  ) {
+    if (!extractedReasoning) {
+      extractedReasoning = unclosedThinkMatch[1].trim();
+    }
+    content = "";
+  }
+
+  const addCall = (name: string, rawArgs: Record<string, any> | string) => {
     if (!name || typeof name !== "string") return;
     const isKnown = knownTools.some((t) => t.function.name === name);
     let resolvedName = name;
-    let resolvedArgs = args;
+    let resolvedArgs: Record<string, any> = {};
+
+    if (typeof rawArgs === "string") {
+      try {
+        resolvedArgs = JSON.parse(rawArgs);
+      } catch {
+        if (name === "run_command") resolvedArgs = { command: rawArgs };
+        else if (name === "read_file" || name === "list_directory")
+          resolvedArgs = { path: rawArgs };
+        else if (name === "search_files") resolvedArgs = { query: rawArgs };
+        else resolvedArgs = { raw: rawArgs };
+      }
+    } else if (typeof rawArgs === "object" && rawArgs !== null) {
+      resolvedArgs = { ...rawArgs };
+    }
 
     if (!isKnown) {
-      if (typeof args === "object" && args !== null && "command" in args) {
+      if ("command" in resolvedArgs) {
         resolvedName = "run_command";
       } else if (
         name.startsWith("run_") ||
@@ -298,13 +444,111 @@ export function extractToolCallsFromContent(
       }
     }
 
+    // Normalize common parameter aliases
+    if (resolvedName === "read_file" || resolvedName === "list_directory") {
+      if (
+        !resolvedArgs.path &&
+        (resolvedArgs.file ||
+          resolvedArgs.filepath ||
+          resolvedArgs.target ||
+          resolvedArgs.dir ||
+          resolvedArgs.directory)
+      ) {
+        resolvedArgs.path =
+          resolvedArgs.file ||
+          resolvedArgs.filepath ||
+          resolvedArgs.target ||
+          resolvedArgs.dir ||
+          resolvedArgs.directory;
+      }
+    } else if (resolvedName === "write_file") {
+      if (
+        !resolvedArgs.path &&
+        (resolvedArgs.file || resolvedArgs.filepath || resolvedArgs.target)
+      ) {
+        resolvedArgs.path =
+          resolvedArgs.file || resolvedArgs.filepath || resolvedArgs.target;
+      }
+      if (
+        resolvedArgs.content === undefined &&
+        (resolvedArgs.text !== undefined ||
+          resolvedArgs.code !== undefined ||
+          resolvedArgs.contents !== undefined)
+      ) {
+        resolvedArgs.content =
+          resolvedArgs.text ?? resolvedArgs.code ?? resolvedArgs.contents;
+      }
+      // If code file had markdown wrapper fences accidentally output by LLM
+      if (typeof resolvedArgs.content === "string" && resolvedArgs.path) {
+        const ext = resolvedArgs.path.split(".").pop()?.toLowerCase();
+        if (ext && !["md", "markdown", "txt"].includes(ext)) {
+          const fenceMatch = resolvedArgs.content.match(
+            /^```[a-zA-Z0-9_\-]*\r?\n([\s\S]*?)\r?\n```$/,
+          );
+          if (fenceMatch) {
+            resolvedArgs.content = fenceMatch[1];
+          }
+        }
+      }
+    } else if (resolvedName === "edit_file") {
+      if (
+        !resolvedArgs.path &&
+        (resolvedArgs.file || resolvedArgs.filepath || resolvedArgs.target)
+      ) {
+        resolvedArgs.path =
+          resolvedArgs.file || resolvedArgs.filepath || resolvedArgs.target;
+      }
+      if (
+        resolvedArgs.old_content === undefined &&
+        (resolvedArgs.oldContent !== undefined ||
+          resolvedArgs.old_str !== undefined ||
+          resolvedArgs.find !== undefined ||
+          resolvedArgs.old !== undefined)
+      ) {
+        resolvedArgs.old_content =
+          resolvedArgs.oldContent ??
+          resolvedArgs.old_str ??
+          resolvedArgs.find ??
+          resolvedArgs.old;
+      }
+      if (
+        resolvedArgs.new_content === undefined &&
+        (resolvedArgs.newContent !== undefined ||
+          resolvedArgs.new_str !== undefined ||
+          resolvedArgs.replace !== undefined ||
+          resolvedArgs.new !== undefined)
+      ) {
+        resolvedArgs.new_content =
+          resolvedArgs.newContent ??
+          resolvedArgs.new_str ??
+          resolvedArgs.replace ??
+          resolvedArgs.new;
+      }
+    } else if (resolvedName === "run_command") {
+      if (
+        !resolvedArgs.command &&
+        (resolvedArgs.cmd || resolvedArgs.script || resolvedArgs.input)
+      ) {
+        resolvedArgs.command =
+          resolvedArgs.cmd || resolvedArgs.script || resolvedArgs.input;
+      }
+    } else if (resolvedName === "search_files") {
+      if (
+        !resolvedArgs.query &&
+        (resolvedArgs.pattern || resolvedArgs.search || resolvedArgs.text)
+      ) {
+        resolvedArgs.query =
+          resolvedArgs.pattern || resolvedArgs.search || resolvedArgs.text;
+      }
+      if (!resolvedArgs.path && (resolvedArgs.dir || resolvedArgs.directory)) {
+        resolvedArgs.path = resolvedArgs.dir || resolvedArgs.directory;
+      }
+    }
+
     toolCalls.push({
       id: `call_${toolCalls.length}`,
       name: resolvedName,
-      arguments:
-        typeof resolvedArgs === "string"
-          ? resolvedArgs
-          : JSON.stringify(resolvedArgs || {}),
+      arguments: JSON.stringify(resolvedArgs),
     });
   };
 
@@ -396,52 +640,151 @@ export function extractToolCallsFromContent(
     return found;
   };
 
-  // Step 1: Check for <tool_call> tags (both closed <tool_call>...</tool_call> and unclosed <tool_call>...)
-  if (content.includes("<tool_call>")) {
-    const closedRegex = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/gi;
+  // Helper to parse XML functions within a block or content
+  const parseXmlBlock = (xmlText: string): boolean => {
+    let matched = false;
+
+    // Pattern 1: <function=name...>...</function> or <function name="name">...</function> or <tool...>, <invoke...>
+    const funcRegex =
+      /<(?:function|tool|invoke|call)\s*(?:=|name\s*=\s*|id\s*=\s*)["']?([a-zA-Z0-9_.-]+)["']?[^>]*>([\s\S]*?)(?:<\/(?:function|tool|invoke|call)>|(?=<(?:function|tool|invoke|call)[\s=>])|(?=<\/(?:tool_call|function_calls)>)|$)/gi;
+
+    let fMatch: RegExpExecArray | null;
+    while ((fMatch = funcRegex.exec(xmlText)) !== null) {
+      const funcName = fMatch[1].trim();
+      const funcBody = fMatch[2];
+      const args = parseXmlParameters(funcBody);
+      addCall(funcName, args);
+      matched = true;
+    }
+
+    // Pattern 2: <tool_call:name>...</tool_call:name> or <call:name>...</call:name>
+    const nsFuncRegex =
+      /<(?:tool_call|call):([a-zA-Z0-9_.-]+)[^>]*>([\s\S]*?)(?:<\/(?:tool_call|call):[a-zA-Z0-9_.-]+>|(?=<(?:tool_call|call):)|(?=<\/(?:tool_call|function_calls)>)|$)/gi;
+    while ((fMatch = nsFuncRegex.exec(xmlText)) !== null) {
+      const funcName = fMatch[1].trim();
+      const funcBody = fMatch[2];
+      const args = parseXmlParameters(funcBody);
+      addCall(funcName, args);
+      matched = true;
+    }
+
+    // Pattern 3: Direct known tool names as XML tags, e.g. <write_file><path>...</path></write_file>
+    if (!matched) {
+      const toolNames = knownTools.map((t) => t.function.name).join("|");
+      if (toolNames) {
+        const directToolRegex = new RegExp(
+          `<(${toolNames})[^>]*>([\\s\\S]*?)<\\/\\1>`,
+          "gi",
+        );
+        while ((fMatch = directToolRegex.exec(xmlText)) !== null) {
+          const funcName = fMatch[1].trim();
+          const funcBody = fMatch[2];
+          const args = parseXmlParameters(funcBody);
+          addCall(funcName, args);
+          matched = true;
+        }
+      }
+    }
+
+    return matched;
+  };
+
+  // Step 1: Check for <tool_call> and <function_calls> tags (both closed and unclosed)
+  if (
+    content.includes("<tool_call>") ||
+    content.includes("<function_calls>") ||
+    content.includes("<function=") ||
+    content.includes("<invoke") ||
+    content.includes("<call:")
+  ) {
+    const closedRegex =
+      /<(?:tool_call|function_calls)>\s*([\s\S]*?)\s*<\/(?:tool_call|function_calls)>/gi;
     let match;
     let matchedAny = false;
 
     while ((match = closedRegex.exec(content)) !== null) {
-      const jsonStr = match[1].trim();
-      const parsed = parseJsonSafely(jsonStr);
+      const blockStr = match[1].trim();
+      // Try JSON first
+      const parsed = parseJsonSafely(blockStr);
       if (parsed && processJson(parsed)) {
+        matchedAny = true;
+      } else if (parseXmlBlock(blockStr)) {
         matchedAny = true;
       }
     }
 
     if (matchedAny) {
-      content = content.replace(/<tool_call>\s*[\s\S]*?\s*<\/tool_call>/gi, "").trim();
+      content = content
+        .replace(
+          /<(?:tool_call|function_calls)>\s*[\s\S]*?\s*<\/(?:tool_call|function_calls)>/gi,
+          "",
+        )
+        .trim();
     } else {
-      // Unclosed <tool_call> tag
-      const unclosedRegex = /<tool_call>\s*([\s\S]*)$/i;
+      // Unclosed <tool_call> or <function_calls> tag
+      const unclosedRegex = /<(?:tool_call|function_calls)>\s*([\s\S]*)$/i;
       const unclosedMatch = unclosedRegex.exec(content);
       if (unclosedMatch) {
-        const jsonStr = unclosedMatch[1].trim();
-        const parsed = parseJsonSafely(jsonStr);
+        const blockStr = unclosedMatch[1].trim();
+        const parsed = parseJsonSafely(blockStr);
         if (parsed && processJson(parsed)) {
           content = content.replace(unclosedRegex, "").trim();
+        } else if (parseXmlBlock(blockStr)) {
+          content = content.replace(unclosedRegex, "").trim();
         }
+      } else if (parseXmlBlock(content)) {
+        // Direct XML tags not inside <tool_call> wrapper
+        content = content
+          .replace(
+            /<(?:function|tool|invoke|call)\s*(?:=|name\s*=\s*|id\s*=\s*)["']?[a-zA-Z0-9_.-]+["']?[^>]*>[\s\S]*?(?:<\/(?:function|tool|invoke|call)>|$)/gi,
+            "",
+          )
+          .replace(
+            /<(?:tool_call|call):[a-zA-Z0-9_.-]+[^>]*>[\s\S]*?(?:<\/(?:tool_call|call):[a-zA-Z0-9_.-]+>|$)/gi,
+            "",
+          )
+          .trim();
       }
     }
   }
 
-  // Step 2: Check for markdown code blocks (```json ... ``` or ``` ... ```)
-  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  // Step 2: Check for Mistral [TOOL_CALLS] format
+  if (content.includes("[TOOL_CALLS]")) {
+    const mistralRegex = /\[TOOL_CALLS\]\s*(\[[\s\S]*?\]|\{[\s\S]*?\})/gi;
+    let mMatch;
+    while ((mMatch = mistralRegex.exec(content)) !== null) {
+      const parsed = parseJsonSafely(mMatch[1]);
+      if (parsed && processJson(parsed)) {
+        content = content.replace(mMatch[0], "").trim();
+      }
+    }
+  }
+
+  // Step 3: Check for markdown code blocks (```json ... ``` or ```xml ... ``` or ``` ... ```)
+  const codeBlockRegex = /```(?:json|xml)?\s*([\s\S]*?)\s*```/gi;
   let cbMatch;
   while ((cbMatch = codeBlockRegex.exec(content)) !== null) {
-    const jsonStr = cbMatch[1].trim();
-    if (jsonStr.startsWith("{") || jsonStr.startsWith("[")) {
-      const parsed = parseJsonSafely(jsonStr);
+    const blockStr = cbMatch[1].trim();
+    if (blockStr.startsWith("{") || blockStr.startsWith("[")) {
+      const parsed = parseJsonSafely(blockStr);
       if (parsed && processJson(parsed)) {
+        content = content.replace(cbMatch[0], "").trim();
+      }
+    } else if (
+      blockStr.includes("<function") ||
+      blockStr.includes("<tool_call") ||
+      blockStr.includes("<invoke")
+    ) {
+      if (parseXmlBlock(blockStr)) {
         content = content.replace(cbMatch[0], "").trim();
       }
     }
   }
 
-  // Step 3: Check for standalone raw JSON with "commands" or known tools
+  // Step 4: Check for standalone raw JSON with "commands" or known tools
   if (toolCalls.length === 0) {
-    const rawJsonRegex = /({[\s\S]*?"commands"\s*:\s*\[[\s\S]*?\][\s\S]*?})/i;
+    const rawJsonRegex =
+      /({[\s\S]*?"commands"\s*:\s*\[[\s\S]*?\][\s\S]*?})/i;
     const rawMatch = rawJsonRegex.exec(content);
     if (rawMatch) {
       const parsed = parseJsonSafely(rawMatch[1]);
@@ -450,6 +793,12 @@ export function extractToolCallsFromContent(
       }
     }
   }
+
+  // Clean up any remaining empty tool call tags
+  content = content
+    .replace(/<tool_call>\s*<\/tool_call>/gi, "")
+    .replace(/<function_calls>\s*<\/function_calls>/gi, "")
+    .trim();
 
   return { cleanedContent: content, reasoning: extractedReasoning, toolCalls };
 }
@@ -1588,11 +1937,19 @@ export function LLMAgentApp() {
 
 
 
-      // If no native tool calls were received, or if content contains text-based tool calls,
-      // extract tool calls from fullContent
+      // If no native tool calls were received, or if content contains text-based tool calls or reasoning tags,
+      // extract tool calls and reasoning from fullContent
       if (
         Object.keys(accumulatedToolCalls).length === 0 ||
-        fullContent.includes("<tool_call>")
+        fullContent.includes("<tool_call>") ||
+        fullContent.includes("<function_calls>") ||
+        fullContent.includes("<function") ||
+        fullContent.includes("<invoke") ||
+        fullContent.includes("<tool") ||
+        fullContent.includes("<think>") ||
+        fullContent.includes("<thought>") ||
+        fullContent.includes("<reasoning>") ||
+        fullContent.includes("[TOOL_CALLS]")
       ) {
         const extracted = extractToolCallsFromContent(fullContent, AGENT_TOOLS);
         if (extracted.toolCalls.length > 0) {
@@ -1605,6 +1962,11 @@ export function LLMAgentApp() {
             fullReasoning = extracted.reasoning;
           }
           finishReason = "tool_calls";
+        } else if (extracted.reasoning) {
+          fullContent = extracted.cleanedContent;
+          if (!fullReasoning) {
+            fullReasoning = extracted.reasoning;
+          }
         }
       }
 
