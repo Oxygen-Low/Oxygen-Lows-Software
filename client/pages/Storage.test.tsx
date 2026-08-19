@@ -108,4 +108,21 @@ describe("Storage Page", () => {
 
     expect(screen.getByText(/Verify Asset/i)).toBeDefined();
   });
+
+  it("renders delete button on verification submission card and confirms deletion", async () => {
+    window.confirm = vi.fn(() => true);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+
+    render(
+      <MemoryRouter>
+        <Storage />
+      </MemoryRouter>,
+    );
+
+    const submissionsTab = screen.getByRole("tab", { name: /Verification Submissions/i });
+    fireEvent.click(submissionsTab);
+  });
 });

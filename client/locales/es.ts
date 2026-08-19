@@ -404,6 +404,10 @@ export const es = {
     updatePublicVersion: "Actualizar Versión Pública",
     rejectionReasonDialogTitle: "Motivo de Denegación de Verificación",
     rejectionReasonDialogDesc: "Tu solicitud fue revisada y denegada con el siguiente motivo:",
+    deleteSubmission: "Eliminar Solicitud",
+    deleteSubmissionConfirm: "¿Estás seguro de que deseas eliminar esta solicitud de verificación?",
+    submissionDeleted: "Solicitud de verificación eliminada con éxito",
+    deleteTooltip: "Eliminar verificación",
   },
   legal: {
     title: "Legal",

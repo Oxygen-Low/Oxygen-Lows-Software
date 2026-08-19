@@ -404,6 +404,10 @@ export const ja = {
     updatePublicVersion: "公開バージョンを更新",
     rejectionReasonDialogTitle: "検証拒否の理由",
     rejectionReasonDialogDesc: "あなたの提出物は管理者によって審査され、次の理由で拒否されました：",
+    deleteSubmission: "申請を削除",
+    deleteSubmissionConfirm: "この検証申請を削除してもよろしいですか？",
+    submissionDeleted: "検証申請が正常に削除されました",
+    deleteTooltip: "検証申請を削除",
   },
   legal: {
     title: "法的情報",

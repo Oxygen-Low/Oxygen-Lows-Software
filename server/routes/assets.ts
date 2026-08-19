@@ -91,6 +91,21 @@ assetsRouter.post("/verifications/submit", async (c) => {
 
     const supabase = getAdminClient(getServiceRoleKey(c));
 
+    // Enforce 1 verification per file/asset for the user by deleting previous verification requests
+    if (asset_type === "file" && original_file_path) {
+      await supabase
+        .from("asset_verifications")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("original_file_path", original_file_path);
+    } else if (original_id) {
+      await supabase
+        .from("asset_verifications")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("original_id", original_id);
+    }
+
     const payload = {
       user_id: user.id,
       asset_type,
@@ -123,6 +138,47 @@ assetsRouter.post("/verifications/submit", async (c) => {
     return c.json({ success: true, verification });
   } catch (error: any) {
     console.error("Error submitting verification request:", error);
+    return c.json({ error: error.message || "Internal server error" }, 500);
+  }
+});
+
+// DELETE /api/assets/verifications/:id - Delete own verification log/record (pending, approved, or rejected)
+assetsRouter.delete("/verifications/:id", async (c) => {
+  try {
+    const user = c.get("user" as any);
+    const id = c.req.param("id");
+    if (!id) {
+      return c.json({ error: "Verification ID is required" }, 400);
+    }
+
+    const supabase = getAdminClient(getServiceRoleKey(c));
+    const isAdmin = ADMIN_USER_IDS.has(user.id);
+
+    const { data: verif, error: fetchErr } = await supabase
+      .from("asset_verifications")
+      .select("id, user_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !verif) {
+      return c.json({ error: "Verification request not found" }, 404);
+    }
+
+    if (verif.user_id !== user.id && !isAdmin) {
+      return c.json({ error: "Forbidden: You do not own this verification request" }, 403);
+    }
+
+    // Delete the verification record (does not unpublish or reset character verification status)
+    const { error: delErr } = await supabase
+      .from("asset_verifications")
+      .delete()
+      .eq("id", id);
+
+    if (delErr) throw delErr;
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting verification record:", error);
     return c.json({ error: error.message || "Internal server error" }, 500);
   }
 });

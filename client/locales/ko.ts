@@ -404,6 +404,10 @@ export const ko = {
     updatePublicVersion: "공개 버전 업데이트",
     rejectionReasonDialogTitle: "검증 거부 사유",
     rejectionReasonDialogDesc: "귀하의 제출물은 관리자에 의해 검토되었으며 다음 사유로 거부되었습니다:",
+    deleteSubmission: "신청 삭제",
+    deleteSubmissionConfirm: "이 검증 신청을 삭제하시겠습니까?",
+    submissionDeleted: "검증 신청이 성공적으로 삭제되었습니다",
+    deleteTooltip: "검증 신청 삭제",
   },
   legal: {
     title: "법률",

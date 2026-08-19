@@ -404,6 +404,10 @@ export const ru = {
     updatePublicVersion: "Обновить публичную версию",
     rejectionReasonDialogTitle: "Причина отклонения верификации",
     rejectionReasonDialogDesc: "Ваша заявка была проверена администратором и отклонена со следующей причиной:",
+    deleteSubmission: "Удалить заявку",
+    deleteSubmissionConfirm: "Вы уверены, что хотите удалить этот запрос на верификацию?",
+    submissionDeleted: "Запрос на верификацию успешно удален",
+    deleteTooltip: "Удалить верификацию",
   },
   legal: {
     title: "Правовая информация",

@@ -414,6 +414,10 @@ export const en = {
     updatePublicVersion: "Update Public Version",
     rejectionReasonDialogTitle: "Verification Denial Reason",
     rejectionReasonDialogDesc: "Your submission was reviewed and denied with the following reason:",
+    deleteSubmission: "Delete Submission",
+    deleteSubmissionConfirm: "Are you sure you want to delete this verification request?",
+    submissionDeleted: "Verification request deleted successfully",
+    deleteTooltip: "Delete verification",
   },
   legal: {
     title: "Legal",

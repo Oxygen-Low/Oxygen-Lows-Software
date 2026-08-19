@@ -100,6 +100,7 @@ export default function Characters() {
 
   // Submitting verification state
   const [submittingVerifId, setSubmittingVerifId] = useState<string | null>(null);
+  const [deletingVerifId, setDeletingVerifId] = useState<string | null>(null);
 
   useEffect(() => {
     setEncryptionLocked(isCategoryLocked("characters"));
@@ -447,6 +448,52 @@ export default function Characters() {
       });
     } finally {
       setSubmittingVerifId(null);
+    }
+  };
+
+  const handleDeleteVerification = async (verifId: string) => {
+    if (
+      !window.confirm(
+        t(
+          "verification.deleteSubmissionConfirm",
+          undefined,
+          "Are you sure you want to delete this verification request?",
+        ),
+      )
+    ) {
+      return;
+    }
+    setDeletingVerifId(verifId);
+    try {
+      if (!session?.access_token) return;
+      const res = await fetch(`/api/assets/verifications/${verifId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to delete verification request");
+      }
+
+      toast({
+        title: t("common.success", undefined, "Success"),
+        description: t(
+          "verification.submissionDeleted",
+          undefined,
+          "Verification request deleted successfully",
+        ),
+      });
+      fetchCharacters();
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingVerifId(null);
     }
   };
 
@@ -967,6 +1014,23 @@ export default function Characters() {
                                     <ShieldCheck className="w-3 h-3 mr-1 text-emerald-400" />
                                   )}
                                   {t("characters.verifyForMultiplayer", undefined, "Verify")}
+                                </Button>
+                              )}
+
+                              {charVerifs[0] && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={deletingVerifId === charVerifs[0].id}
+                                  onClick={() => handleDeleteVerification(charVerifs[0].id)}
+                                  className="text-[11px] h-7 px-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 border border-slate-800"
+                                  title={t("verification.deleteTooltip", undefined, "Delete verification")}
+                                >
+                                  {deletingVerifId === charVerifs[0].id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin text-slate-400" />
+                                  ) : (
+                                    <Trash2 className="w-3 h-3" />
+                                  )}
                                 </Button>
                               )}
                             </>

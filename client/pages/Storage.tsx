@@ -111,6 +111,7 @@ export default function Storage() {
 
   // Denial Reason Dialog State
   const [selectedDenialReason, setSelectedDenialReason] = useState<string | null>(null);
+  const [deletingVerifId, setDeletingVerifId] = useState<string | null>(null);
 
   const fetchCloudFiles = async () => {
     if (!session?.user?.id) return;
@@ -404,6 +405,47 @@ export default function Storage() {
       toast.error(err.message);
     } finally {
       setSubmittingAction(false);
+    }
+  };
+
+  const handleDeleteVerification = async (id: string) => {
+    if (
+      !window.confirm(
+        t(
+          "verification.deleteSubmissionConfirm",
+          undefined,
+          "Are you sure you want to delete this verification request?",
+        ),
+      )
+    ) {
+      return;
+    }
+    setDeletingVerifId(id);
+    try {
+      if (!session?.access_token) throw new Error("Not authenticated");
+      const res = await fetch(`/api/assets/verifications/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to delete verification request");
+      }
+      toast.success(
+        t(
+          "verification.submissionDeleted",
+          undefined,
+          "Verification request deleted successfully",
+        ),
+      );
+      await fetchCloudFiles();
+    } catch (err: any) {
+      console.error("Error deleting verification:", err);
+      toast.error(err.message || "Failed to delete verification request");
+    } finally {
+      setDeletingVerifId(null);
     }
   };
 
@@ -951,6 +993,21 @@ export default function Storage() {
                             )}
                           </div>
                         )}
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deletingVerifId === sub.id}
+                          onClick={() => handleDeleteVerification(sub.id)}
+                          className="text-xs text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 h-7 px-2"
+                          title={t("verification.deleteTooltip", undefined, "Delete verification")}
+                        >
+                          {deletingVerifId === sub.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
                       </div>
                     </div>
 

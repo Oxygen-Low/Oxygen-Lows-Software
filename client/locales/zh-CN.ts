@@ -404,6 +404,10 @@ export const zhCN = {
     updatePublicVersion: "更新公开版本",
     rejectionReasonDialogTitle: "验证拒绝原因",
     rejectionReasonDialogDesc: "您的提交已由管理员审核并被拒绝，原因如下：",
+    deleteSubmission: "删除申请",
+    deleteSubmissionConfirm: "您确定要删除此验证申请吗？",
+    submissionDeleted: "验证申请删除成功",
+    deleteTooltip: "删除验证申请",
   },
   legal: {
     title: "法律",
