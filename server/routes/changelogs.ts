@@ -6,92 +6,143 @@ export const changelogsRouter = new Hono();
 // A01: use the shared rate-limiter (handles x-forwarded-for correctly)
 const apiLimiter = rateLimiter(2, 60_000, "changelogs");
 
-// Cache for top-level commits list
-let listCache: { data: any; expiry: number } | null = null;
+export interface ChangelogCommit {
+  sha: string;
+  html_url: string;
+  commit: {
+    message: string;
+    author: {
+      name: string;
+      date: string;
+    };
+  };
+}
+
+export function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16)),
+    );
+}
+
+export function parseAtomFeed(xml: string): ChangelogCommit[] {
+  const entries = xml.split(/<entry[\s>]/i).slice(1);
+  return entries.map((entryXml) => {
+    // Extract SHA
+    const idMatch = entryXml.match(
+      /<id[^>]*>[\s\S]*?Commit\/([a-f0-9]{7,40})[\s\S]*?<\/id>/i,
+    );
+    const linkMatch = entryXml.match(
+      /<link[^>]*href=["']([^"']*\/commit\/([a-f0-9]{7,40}))["']/i,
+    );
+    const sha = idMatch?.[1] || linkMatch?.[2] || "";
+
+    // Extract HTML link
+    const html_url =
+      linkMatch?.[1] ||
+      (sha
+        ? `https://github.com/Oxygen-Low/Oxygen-Lows-Software/commit/${sha}`
+        : "");
+
+    // Extract author name
+    const authorMatch = entryXml.match(
+      /<author>[\s\S]*?<name>([\s\S]*?)<\/name>[\s\S]*?<\/author>/i,
+    );
+    const authorName = authorMatch
+      ? decodeHtmlEntities(authorMatch[1].trim())
+      : "Unknown";
+
+    // Extract date
+    const updatedMatch = entryXml.match(/<updated>([\s\S]*?)<\/updated>/i);
+    const date = updatedMatch
+      ? updatedMatch[1].trim()
+      : new Date().toISOString();
+
+    // Extract commit message from <content> (which has <pre>...</pre>) or fallback to <title>
+    let message = "";
+    const contentMatch = entryXml.match(/<content[^>]*>([\s\S]*?)<\/content>/i);
+    if (contentMatch) {
+      const rawContent = decodeHtmlEntities(contentMatch[1]);
+      const preMatch = rawContent.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+      if (preMatch) {
+        message = decodeHtmlEntities(preMatch[1]).trim();
+      } else {
+        message = rawContent.replace(/<[^>]*>/g, "").trim();
+      }
+    }
+
+    if (!message) {
+      const titleMatch = entryXml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      if (titleMatch) {
+        message = decodeHtmlEntities(titleMatch[1]).trim();
+      }
+    }
+
+    return {
+      sha,
+      html_url,
+      commit: {
+        message,
+        author: {
+          name: authorName,
+          date,
+        },
+      },
+    };
+  });
+}
+
+// Cache for changelogs commits list
+let listCache: { data: ChangelogCommit[]; expiry: number } | null = null;
 const LIST_CACHE_TTL = 60_000; // 1 minute
 
-// Cache for individual commit stats
-const commitCache = new Map<string, { stats: any; expiry: number }>();
-const COMMIT_CACHE_TTL = 3600_000; // 1 hour
+export const ATOM_FEED_URL =
+  "https://github.com/Oxygen-Low/Oxygen-Lows-Software/commits.atom";
 
-// Periodically clean up expired commit cache entries
-setInterval(() => {
-  const now = Date.now();
-  for (const [sha, entry] of commitCache) {
-    if (now > entry.expiry) {
-      commitCache.delete(sha);
-    }
-  }
-}, 600_000).unref(); // Clean up every 10 minutes, unref so it doesn't block exit
+export function clearChangelogsCache() {
+  listCache = null;
+}
 
 changelogsRouter.get("/", apiLimiter, async (c) => {
   try {
-    const token = process.env.CHANGELOGS_API;
-    const headers: HeadersInit = {
-      Accept: "application/vnd.github.v3+json",
-    };
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    let data;
     const now = Date.now();
     if (listCache && now < listCache.expiry) {
-      data = listCache.data;
-    } else {
-      const response = await fetch(
-        "https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/commits?per_page=10",
-        { headers },
-      );
-
-      if (!response.ok) {
-        // A08: do not leak upstream error bodies to the client
-        console.error(
-          "GitHub commits fetch failed:",
-          response.status,
-          await response.text(),
-        );
-        return c.json(
-          { error: "Failed to fetch changelogs" },
-          response.status as any,
-        );
-      }
-
-      data = await response.json();
-      listCache = { data, expiry: now + LIST_CACHE_TTL };
+      return c.json(listCache.data);
     }
 
-    const commitsWithStats = await Promise.all(
-      data.map(async (commit: any) => {
-        const now = Date.now();
-        const cached = commitCache.get(commit.sha);
+    const response = await fetch(ATOM_FEED_URL, {
+      headers: {
+        Accept:
+          "application/atom+xml, application/xml, text/xml; q=0.9, */*; q=0.8",
+        "User-Agent": "Oxygen-Lows-Software",
+      },
+    });
 
-        if (cached && now < cached.expiry) {
-          return { ...commit, stats: cached.stats };
-        }
+    if (!response.ok) {
+      // A08: do not leak upstream error bodies to the client
+      console.error(
+        "GitHub Atom commits feed fetch failed:",
+        response.status,
+        await response.text(),
+      );
+      return c.json(
+        { error: "Failed to fetch changelogs" },
+        response.status as any,
+      );
+    }
 
-        try {
-          const detailRes = await fetch(
-            `https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/commits/${commit.sha}`,
-            { headers },
-          );
-          if (detailRes.ok) {
-            const detailData = await detailRes.json();
-            commitCache.set(commit.sha, {
-              stats: detailData.stats,
-              expiry: now + COMMIT_CACHE_TTL,
-            });
-            return { ...commit, stats: detailData.stats };
-          }
-        } catch (e) {
-          console.error("Failed to fetch stats for commit", commit.sha);
-        }
-        return commit;
-      }),
-    );
+    const xml = await response.text();
+    const commits = parseAtomFeed(xml);
 
-    return c.json(commitsWithStats);
+    listCache = { data: commits, expiry: now + LIST_CACHE_TTL };
+
+    return c.json(commits);
   } catch (error: any) {
     // A09: log internally, return generic message to client
     console.error("Error fetching changelogs:", error);
