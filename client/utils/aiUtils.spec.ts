@@ -5,6 +5,7 @@ describe("formatModelLabel", () => {
   it("should handle horde provider", () => {
     expect(formatModelLabel("horde", "Fast")).toBe("Fast - google/gemma-4-31b");
     expect(formatModelLabel("horde", "Smart")).toBe("Smart - koboldcpp/Behemoth-128B-v3b-Q4_K_M");
+    expect(formatModelLabel("horde", "Coder")).toBe("Coder - koboldcpp/Qwen3-Coder-Next-Q4_K_M");
     expect(formatModelLabel("horde", "UnknownModel")).toBe("AI Horde - UnknownModel");
   });
 

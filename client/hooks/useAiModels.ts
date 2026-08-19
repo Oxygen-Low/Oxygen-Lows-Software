@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/hooks/useTheme";
 import { callDesktopBridge, isDesktopBridgeAvailable } from "@/lib/desktopBridge";
@@ -13,7 +13,7 @@ export const useAiModels = (
   defaultProvider = "openai",
 ) => {
   const { lastModelId, lastProvider, setModelPreference } = useTheme();
-  const [models, setModels] = useState<Model[]>([]);
+  const [rawModels, setRawModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>(
     lastModelId || defaultModelId,
   );
@@ -37,6 +37,15 @@ export const useAiModels = (
       { workers: number; queued: number; speed: string; eta: number }
     >
   >({});
+
+  const models = useMemo(() => {
+    return rawModels.filter((m) => {
+      if (m.provider === "horde" && m.model_id === "Coder") {
+        return (hordeStatus[m.model_id]?.workers ?? 0) > 0;
+      }
+      return true;
+    });
+  }, [rawModels, hordeStatus]);
 
   const fetchModels = useCallback(async () => {
     setIsLoading(true);
@@ -158,42 +167,42 @@ export const useAiModels = (
       }
 
       const allModels: Model[] = [...(dbModels || []), ...localModels, ...discoveredLocalModels];
-      setModels(allModels);
-
-      if (allModels.length > 0) {
-        // Check if current selection is valid in the new list
-        const isValid = allModels.some(
-          (m) =>
-            m.model_id === selectedModelRef.current &&
-            m.provider === selectedProviderRef.current,
-        );
-
-        if (!isValid) {
-          // If not valid, try to use last known good from preferences if not already tried
-          const prefValid =
-            lastModelId &&
-            lastProvider &&
-            allModels.some(
-              (m) => m.model_id === lastModelId && m.provider === lastProvider,
-            );
-
-          if (prefValid) {
-            setSelectedModel(lastModelId!);
-            setSelectedProvider(lastProvider!);
-          } else {
-            // Otherwise, default to the first one but ONLY if we don't have a valid selection yet
-            // or if the current selection is completely invalid (which it is here)
-            setSelectedModel(allModels[0].model_id);
-            setSelectedProvider(allModels[0].provider);
-          }
-        }
-      }
+      setRawModels(allModels);
     } catch (e) {
       console.error("Failed to fetch models", e);
     } finally {
       setIsLoading(false);
     }
-  }, [lastModelId, lastProvider]);
+  }, []);
+
+  useEffect(() => {
+    if (models.length > 0) {
+      // Check if current selection is valid in the visible models list
+      const isValid = models.some(
+        (m) =>
+          m.model_id === selectedModel &&
+          m.provider === selectedProvider,
+      );
+
+      if (!isValid) {
+        // If not valid, try to use last known good from preferences if not already tried
+        const prefValid =
+          lastModelId &&
+          lastProvider &&
+          models.some(
+            (m) => m.model_id === lastModelId && m.provider === lastProvider,
+          );
+
+        if (prefValid) {
+          setSelectedModel(lastModelId!);
+          setSelectedProvider(lastProvider!);
+        } else {
+          setSelectedModel(models[0].model_id);
+          setSelectedProvider(models[0].provider);
+        }
+      }
+    }
+  }, [models, selectedModel, selectedProvider, lastModelId, lastProvider]);
 
   useEffect(() => {
     fetchModels();
