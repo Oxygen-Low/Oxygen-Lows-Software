@@ -415,6 +415,8 @@ export const ja = {
     integrations: "APIキーと連携",
     integrationsDesc: "保存されたAPIキー、LLM認証情報、およびMCPアクセストークンを暗号化します。",
     cannotDisableIntegrationsWithKeys: "APIキー/連携が保存されている間は暗号化を無効にできません。まず、保存されているすべての連携を削除してください。",
+    masterKeyRequiredToChange: "保護対象データカテゴリを有効化または無効化するには、アクティブなマスターキーが必要です。",
+    masterKeyRequiredNotice: "保護対象データカテゴリの暗号化設定を変更するには、アクティブなマスターキーが必要です。これらの設定を変更するには、上記でマスターキーを生成またはロック解除してください。",
   },
   integrations: {
     title: "連携とAPIキー",

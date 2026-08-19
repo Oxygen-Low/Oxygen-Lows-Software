@@ -415,6 +415,8 @@ export const es = {
     integrations: "Claves API e Integraciones",
     integrationsDesc: "Cifra las claves API almacenadas, credenciales de LLM y tokens de acceso de MCP.",
     cannotDisableIntegrationsWithKeys: "No se puede deshabilitar el cifrado mientras haya claves API/integraciones almacenadas. Por favor, elimina primero todas las integraciones almacenadas.",
+    masterKeyRequiredToChange: "Se requiere una clave maestra activa para habilitar o deshabilitar categorías de datos protegidas.",
+    masterKeyRequiredNotice: "Se requiere una clave maestra activa para cambiar la configuración de las categorías de datos protegidas. Genera o desbloquea una clave maestra arriba para modificar estos ajustes.",
   },
   integrations: {
     title: "Integraciones y Claves API",

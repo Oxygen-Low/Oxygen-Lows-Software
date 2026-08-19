@@ -86,6 +86,28 @@ describe("Security Page Component", () => {
     expect(screen.getByText("API Keys & Integrations")).toBeDefined();
   });
 
+  it("disables category toggles and displays requirement notice when no masterkey is set", () => {
+    renderWithRouter();
+    expect(
+      screen.getByText(
+        "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings."
+      )
+    ).toBeDefined();
+
+    const charactersToggle = document.getElementById("toggle-characters") as HTMLButtonElement;
+    const dataSaveToggle = document.getElementById("toggle-datasave") as HTMLButtonElement;
+    const chatbotToggle = document.getElementById("toggle-chatbot") as HTMLButtonElement;
+    const integrationsToggle = document.getElementById("toggle-integrations") as HTMLButtonElement;
+
+    expect(charactersToggle.disabled).toBe(true);
+    expect(dataSaveToggle.disabled).toBe(true);
+    expect(chatbotToggle.disabled).toBe(true);
+    expect(integrationsToggle.disabled).toBe(true);
+
+    fireEvent.click(charactersToggle);
+    expect(localStorage.getItem("oxygen_encrypt_characters")).toBeNull();
+  });
+
   it("allows toggling encryption and saves to localStorage", async () => {
     renderWithRouter();
     const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;

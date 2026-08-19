@@ -415,6 +415,8 @@ export const zhCN = {
     integrations: "API 密钥与集成",
     integrationsDesc: "加密存储的 API 密钥、LLM 凭据和 MCP 访问令牌。",
     cannotDisableIntegrationsWithKeys: "存在已存储的 API 密钥/集成时无法禁用加密。请先删除所有存储的集成。",
+    masterKeyRequiredToChange: "启用或禁用受保护数据分类需要激活的主密钥。",
+    masterKeyRequiredNotice: "更改受保护数据分类的加密设置需要激活的主密钥。请在上方生成或解锁主密钥以修改这些设置。",
   },
   integrations: {
     title: "集成与 API 密钥",

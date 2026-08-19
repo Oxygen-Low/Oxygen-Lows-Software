@@ -425,6 +425,8 @@ export const en = {
     invalidKeyFileError: "No valid 256-bit masterkey found in the uploaded file.",
     readKeyFileError: "Failed to read .key file.",
     autoLockedToast: "Masterkey locked due to 30 minutes of inactivity.",
+    masterKeyRequiredToChange: "An active masterkey is required to enable or disable protected data categories.",
+    masterKeyRequiredNotice: "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
   },
   integrations: {
     title: "Integrations & API Keys",

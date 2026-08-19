@@ -415,6 +415,8 @@ export const ko = {
     integrations: "API 키 및 통합",
     integrationsDesc: "저장된 API 키, LLM 자격 증명 및 MCP 액세스 토큰을 암호화합니다.",
     cannotDisableIntegrationsWithKeys: "API 키/통합이 저장되어 있는 동안에는 암호화를 비활성화할 수 없습니다. 먼저 저장된 모든 통합을 제거하십시오.",
+    masterKeyRequiredToChange: "보호 대상 데이터 범주를 활성화하거나 비활성화하려면 활성 마스터 키가 필요합니다.",
+    masterKeyRequiredNotice: "보호 대상 데이터 범주 암호화 설정을 변경하려면 활성 마스터 키가 필요합니다. 설정을 변경하려면 위에서 마스터 키를 생성하거나 잠금을 해제하세요.",
   },
   integrations: {
     title: "통합 및 API 키",

@@ -332,6 +332,17 @@ export default function Security() {
 
   // Update encryption toggles and immediately migrate data in Supabase
   const handleToggleCategory = async (category: EncryptionCategory, checked: boolean) => {
+    if (!keyBytes) {
+      toast.error(
+        t(
+          "security.masterKeyRequiredToChange",
+          undefined,
+          "An active masterkey is required to enable or disable protected data categories."
+        )
+      );
+      return;
+    }
+
     if (category === "integrations" && !checked) {
       // Cannot disable while api keys/integrations are stored
       try {
@@ -367,17 +378,6 @@ export default function Security() {
     } else if (category === "integrations") {
       setEncryptIntegrations(checked);
       localStorage.setItem(STORAGE_KEYS.ENCRYPT_INTEGRATIONS, String(checked));
-    }
-
-    if (!keyBytes) {
-      toast.info(
-        t(
-          "security.settingsSavedToast",
-          undefined,
-          "Encryption settings updated"
-        )
-      );
-      return;
     }
 
     setMigratingCategory(category);
@@ -739,6 +739,19 @@ export default function Security() {
           </CardHeader>
 
           <CardContent className="space-y-4">
+            {!keyBytes && (
+              <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-500">
+                <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  {t(
+                    "security.masterKeyRequiredNotice",
+                    undefined,
+                    "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings."
+                  )}
+                </span>
+              </div>
+            )}
+
             {/* Toggle 1: Characters and Universes */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-card/40 hover:bg-card/70 transition-colors gap-4">
               <div className="flex items-start gap-3.5">
@@ -779,7 +792,7 @@ export default function Security() {
                 <Switch
                   id="toggle-characters"
                   checked={encryptCharacters}
-                  disabled={migratingCategory !== null}
+                  disabled={!keyBytes || migratingCategory !== null}
                   onCheckedChange={(checked) => handleToggleCategory("characters", checked)}
                 />
               </div>
@@ -825,7 +838,7 @@ export default function Security() {
                 <Switch
                   id="toggle-datasave"
                   checked={encryptDataSave}
-                  disabled={migratingCategory !== null}
+                  disabled={!keyBytes || migratingCategory !== null}
                   onCheckedChange={(checked) => handleToggleCategory("data_save", checked)}
                 />
               </div>
@@ -871,7 +884,7 @@ export default function Security() {
                 <Switch
                   id="toggle-chatbot"
                   checked={encryptChatbot}
-                  disabled={migratingCategory !== null}
+                  disabled={!keyBytes || migratingCategory !== null}
                   onCheckedChange={(checked) => handleToggleCategory("chatbot", checked)}
                 />
               </div>
@@ -917,7 +930,7 @@ export default function Security() {
                 <Switch
                   id="toggle-integrations"
                   checked={encryptIntegrations}
-                  disabled={migratingCategory !== null}
+                  disabled={!keyBytes || migratingCategory !== null}
                   onCheckedChange={(checked) => handleToggleCategory("integrations", checked)}
                 />
               </div>
