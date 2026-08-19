@@ -29,7 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { ChatbotApp } from "@/components/apps/Chatbot";
-import { PublicCharactersApp } from "@/components/apps/PublicCharacters";
+import { PublicAssetsApp } from "@/components/apps/PublicAssets";
 import { DataSaveApp } from "@/components/apps/DataSave";
 import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
 import { LLMAgentApp } from "@/components/apps/LLMAgent";
@@ -167,15 +167,15 @@ const APPS: AppMetadata[] = [
     component: FileCompressorApp,
   },
   {
-    id: "public-characters",
-    nameKey: "apps.publicCharactersTitle",
-    defaultName: "Public Characters",
-    descKey: "apps.publicCharactersDesc",
-    defaultDesc: "Discover, download, and share characters and universes with the community.",
-    categories: ["All", "Social"],
+    id: "public-assets",
+    nameKey: "apps.publicAssetsTitle",
+    defaultName: "Public Assets",
+    descKey: "apps.publicAssetsDesc",
+    defaultDesc: "Discover, download, and share assets, characters, and universes with the community.",
+    categories: ["All", "Social", "Utility"],
     availability: "web-and-desktop",
     icon: <Users className="w-8 h-8 text-cyan-500" />,
-    component: PublicCharactersApp,
+    component: PublicAssetsApp,
     authRequired: true,
   },
   {

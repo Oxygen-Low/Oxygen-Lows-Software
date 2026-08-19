@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LifeBuoy } from "lucide-react";
+import { LifeBuoy, ShieldCheck } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import {
@@ -21,6 +21,13 @@ export default function AdminPanel() {
       icon: LifeBuoy,
       href: "/admin/support",
       color: "text-blue-500",
+    },
+    {
+      title: t("admin.verificationTitle", undefined, "Asset Verification"),
+      description: t("admin.verificationDesc", undefined, "Review, approve, or deny public assets and multiplayer verification requests."),
+      icon: ShieldCheck,
+      href: "/admin/verification",
+      color: "text-cyan-500",
     },
   ];
 

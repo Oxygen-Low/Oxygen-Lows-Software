@@ -8,9 +8,16 @@ import {
   Image as ImageIcon,
   Loader2,
   Globe,
+  ShieldCheck,
+  Clock,
+  XCircle,
+  AlertTriangle,
+  Send,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +27,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
@@ -49,6 +67,15 @@ interface Character {
   backstory: string | null;
   hidden_description: string | null;
   is_universe?: boolean;
+  is_verified_public?: boolean;
+}
+
+interface CharVerificationInfo {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  target_type: "public_asset" | "public_usage";
+  rejection_reason: string | null;
+  public_character_id: string | null;
 }
 
 export default function Characters() {
@@ -63,6 +90,16 @@ export default function Characters() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>({});
   const [encryptionLocked, setEncryptionLocked] = useState(() => isCategoryLocked("characters"));
+
+  // Public characters and verifications map
+  const [publicCharsMap, setPublicCharsMap] = useState<Record<string, any>>({});
+  const [verificationsMap, setVerificationsMap] = useState<Record<string, CharVerificationInfo[]>>({});
+
+  // Denial Reason Dialog State
+  const [selectedDenialReason, setSelectedDenialReason] = useState<string | null>(null);
+
+  // Submitting verification state
+  const [submittingVerifId, setSubmittingVerifId] = useState<string | null>(null);
 
   useEffect(() => {
     setEncryptionLocked(isCategoryLocked("characters"));
@@ -121,6 +158,45 @@ export default function Characters() {
       );
       const charsWithUrls = await attachSignedImageUrls(decryptedList);
       setCharacters(charsWithUrls);
+
+      // Fetch public characters for user
+      if (session?.user?.id) {
+        const { data: pubData } = await supabase
+          .from("public_characters")
+          .select("*")
+          .eq("uploader_id", session.user.id);
+
+        const pMap: Record<string, any> = {};
+        (pubData || []).forEach((pc: any) => {
+          if (pc.original_character_id) {
+            pMap[pc.original_character_id] = pc;
+          }
+          pMap[pc.name] = pc;
+        });
+        setPublicCharsMap(pMap);
+
+        // Fetch verifications
+        const { data: verifs } = await supabase
+          .from("asset_verifications")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .in("asset_type", ["character", "universe"])
+          .order("created_at", { ascending: false });
+
+        const vMap: Record<string, CharVerificationInfo[]> = {};
+        (verifs || []).forEach((v: any) => {
+          const key = v.original_id || v.title;
+          if (!vMap[key]) vMap[key] = [];
+          vMap[key].push({
+            id: v.id,
+            status: v.status,
+            target_type: v.target_type,
+            rejection_reason: v.rejection_reason,
+            public_character_id: v.public_character_id,
+          });
+        });
+        setVerificationsMap(vMap);
+      }
     } catch (err: any) {
       console.error("Error fetching characters", err);
       toast({
@@ -133,7 +209,7 @@ export default function Characters() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (submitForReverification = false) => {
     if (!session?.user?.id) return;
     if (!currentCharacter.name) {
       toast({
@@ -165,6 +241,8 @@ export default function Characters() {
         }
       }
 
+      let savedId = currentCharacter.id;
+
       if (currentCharacter.id) {
         const { error } = await supabase
           .from("characters")
@@ -172,13 +250,51 @@ export default function Characters() {
           .eq("id", currentCharacter.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("characters").insert(payload);
+        const { data: inserted, error } = await supabase
+          .from("characters")
+          .insert(payload)
+          .select()
+          .single();
         if (error) throw error;
+        if (inserted) savedId = inserted.id;
+      }
+
+      // If user requested re-verification on save
+      if (submitForReverification && savedId && session.access_token) {
+        const pubChar = publicCharsMap[savedId];
+        await fetch("/api/assets/verifications/submit", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            asset_type: currentCharacter.is_universe ? "universe" : "character",
+            target_type: "public_asset",
+            title: currentCharacter.display_name || currentCharacter.name,
+            description: currentCharacter.short_description || "",
+            original_id: savedId,
+            public_character_id: pubChar?.id || null,
+            metadata: {
+              name: currentCharacter.name,
+              display_name: currentCharacter.display_name,
+              short_description: currentCharacter.short_description,
+              appearance: currentCharacter.appearance,
+              personality: currentCharacter.personality,
+              backstory: currentCharacter.backstory,
+              hidden_description: currentCharacter.hidden_description,
+              image_path: currentCharacter.image_path,
+              is_universe: currentCharacter.is_universe || false,
+            },
+          }),
+        });
       }
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("characters.characterSaved", undefined, "Character saved successfully"),
+        description: submitForReverification
+          ? t("verification.requestSubmitted", undefined, "Saved and submitted for verification!")
+          : t("characters.characterSaved", undefined, "Character saved successfully"),
       });
 
       setIsEditing(false);
@@ -212,6 +328,107 @@ export default function Characters() {
         description: err.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleUnpublishChar = async (char: Character) => {
+    if (!session?.access_token) return;
+    const pubChar = publicCharsMap[char.id] || publicCharsMap[char.name];
+    if (!pubChar) return;
+
+    try {
+      const res = await fetch("/api/assets/unpublish", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type: "character", id: pubChar.id }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to unpublish character");
+      }
+
+      toast({
+        title: t("common.success", undefined, "Success"),
+        description: t("publicAssets.unpublishSuccess", undefined, "Asset unpublished successfully."),
+      });
+      fetchCharacters();
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubmitVerification = async (
+    char: Character,
+    targetType: "public_asset" | "public_usage",
+  ) => {
+    if (!session?.access_token) return;
+
+    if (char.name === "[Encrypted]") {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: t("publicAssets.unauthorizedEncrypted", undefined, "Cannot upload an encrypted character. Please unlock first."),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingVerifId(char.id);
+    try {
+      const pubChar = publicCharsMap[char.id];
+      const res = await fetch("/api/assets/verifications/submit", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          asset_type: char.is_universe ? "universe" : "character",
+          target_type: targetType,
+          title: char.display_name || char.name,
+          description: char.short_description || "",
+          original_id: char.id,
+          public_character_id: pubChar?.id || null,
+          metadata: {
+            name: char.name,
+            display_name: char.display_name,
+            short_description: char.short_description,
+            appearance: char.appearance,
+            personality: char.personality,
+            backstory: char.backstory,
+            hidden_description: char.hidden_description,
+            image_path: char.image_path,
+            image_url: char.image_url,
+            is_universe: Boolean(char.is_universe),
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to submit verification request");
+      }
+
+      toast({
+        title: t("common.success", undefined, "Success"),
+        description: t("verification.requestSubmitted", undefined, "Verification request submitted successfully!"),
+      });
+      fetchCharacters();
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingVerifId(null);
     }
   };
 
@@ -289,6 +506,21 @@ export default function Characters() {
                     : "Tell us a bit about your character and what makes them unique."}
                 </DialogDescription>
               </DialogHeader>
+
+              {/* Versioning Notice if Character is Public */}
+              {currentCharacter.id && publicCharsMap[currentCharacter.id] && (
+                <div className="p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-lg text-xs text-cyan-300 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
+                  <span>
+                    {t(
+                      "verification.versionNotice",
+                      undefined,
+                      "Editing this asset locally does not affect the published version. To update the public asset, submit a new update verification request.",
+                    )}
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-4 py-4">
                 <div className="flex gap-4">
                   <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
@@ -506,7 +738,7 @@ export default function Characters() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:gap-0">
                 <Button
                   variant="outline"
                   onClick={() => setIsEditing(false)}
@@ -514,9 +746,20 @@ export default function Characters() {
                 >
                   {t("common.cancel", undefined, "Cancel")}
                 </Button>
+
+                {currentCharacter.id && publicCharsMap[currentCharacter.id] && (
+                  <Button
+                    onClick={() => handleSave(true)}
+                    className="bg-cyan-700 hover:bg-cyan-800 text-white"
+                  >
+                    <Send className="w-4 h-4 mr-1.5" />
+                    {t("verification.updatePublicVersion", undefined, "Update & Re-verify")}
+                  </Button>
+                )}
+
                 <Button
-                  onClick={handleSave}
-                  className="bg-cyan-600 hover:bg-cyan-700"
+                  onClick={() => handleSave(false)}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
                 >
                   {t("common.save", undefined, "Save")} {currentCharacter.is_universe ? "Universe" : "Character"}
                 </Button>
@@ -542,59 +785,180 @@ export default function Characters() {
               .filter((c) =>
                 activeTab === "characters" ? !c.is_universe : c.is_universe,
               )
-              .map((char) => (
-                <Card
-                  key={char.id}
-                  className="bg-slate-900/50 border-slate-800 overflow-hidden hover:border-cyan-500/50 transition-colors group"
-                >
-                  <div className="aspect-square bg-slate-800 relative overflow-hidden">
-                    {char.image_url ? (
-                      <img
-                        src={char.image_url}
-                        alt={char.name}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-700">
-                        {char.is_universe ? (
-                          <Globe className="w-16 h-16" />
+              .map((char) => {
+                const pubChar = publicCharsMap[char.id] || publicCharsMap[char.name];
+                const charVerifs = verificationsMap[char.id] || verificationsMap[char.name] || [];
+                const pendingVerif = charVerifs.find((v) => v.status === "pending");
+                const rejectedVerif = charVerifs.find((v) => v.status === "rejected");
+                const usageApproved = char.is_verified_public || charVerifs.some((v) => v.target_type === "public_usage" && v.status === "approved");
+
+                return (
+                  <Card
+                    key={char.id}
+                    className="bg-slate-900/50 border-slate-800 overflow-hidden hover:border-cyan-500/50 transition-colors group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="aspect-square bg-slate-800 relative overflow-hidden">
+                        {char.image_url ? (
+                          <img
+                            src={char.image_url}
+                            alt={char.name}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          />
                         ) : (
-                          <User className="w-16 h-16" />
+                          <div className="w-full h-full flex items-center justify-center text-slate-700">
+                            {char.is_universe ? (
+                              <Globe className="w-16 h-16" />
+                            ) : (
+                              <User className="w-16 h-16" />
+                            )}
+                          </div>
                         )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
+
+                        {/* Badges */}
+                        <div className="absolute top-3 left-3 flex flex-col gap-1 items-start">
+                          {pubChar && (
+                            <Badge className="bg-emerald-500/80 text-white text-[10px] backdrop-blur-sm">
+                              <Globe className="w-3 h-3 mr-1" />
+                              {t("verification.publicBadge", undefined, "Public Asset")}
+                            </Badge>
+                          )}
+                          {usageApproved && !pubChar && (
+                            <Badge className="bg-cyan-500/80 text-white text-[10px] backdrop-blur-sm">
+                              <ShieldCheck className="w-3 h-3 mr-1" />
+                              {t("verification.verifiedForPublicUsageBadge", undefined, "Verified for Public")}
+                            </Badge>
+                          )}
+                          {pendingVerif && (
+                            <Badge className="bg-amber-500/80 text-white text-[10px] backdrop-blur-sm">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {t("verification.pendingReviewBadge", undefined, "Pending Review")}
+                            </Badge>
+                          )}
+                          {rejectedVerif && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDenialReason(rejectedVerif.rejection_reason || "No reason provided.")}
+                              className="text-left"
+                            >
+                              <Badge className="bg-rose-500/80 hover:bg-rose-600 text-white text-[10px] backdrop-blur-sm cursor-pointer">
+                                <XCircle className="w-3 h-3 mr-1" />
+                                {t("verification.rejectedBadge", undefined, "Verification Denied")}
+                              </Badge>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <h3 className="text-xl font-bold text-white truncate">
+                            {char.display_name || char.name}
+                          </h3>
+                          <p className="text-sm text-slate-300 truncate">
+                            {char.short_description || "No description"}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <h3 className="text-xl font-bold text-white truncate">
-                        {char.display_name || char.name}
-                      </h3>
-                      <p className="text-sm text-slate-300 truncate">
-                        {char.short_description || "No description"}
-                      </p>
+
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
+                            onClick={() => {
+                              setCurrentCharacter(char);
+                              setIsEditing(true);
+                            }}
+                          >
+                            <Edit2 className="w-4 h-4 mr-2" />
+                            {t("common.edit", undefined, "Edit")}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => handleDelete(char.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        {/* Verification / Unpublish Actions */}
+                        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap gap-1.5">
+                          {pubChar ? (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-rose-400"
+                                >
+                                  <Lock className="w-3 h-3 mr-1" />
+                                  {t("publicAssets.makePrivate", undefined, "Make Private / Unpublish")}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    {t("publicAssets.makePrivate", undefined, "Unpublish Asset?")}
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="text-slate-400">
+                                    {t("publicAssets.makePrivateConfirm", undefined, "Are you sure you want to unpublish this asset? It will be removed from the public hub and reverted to private.")}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="bg-slate-800 text-white border-slate-700">
+                                    {t("common.cancel", undefined, "Cancel")}
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleUnpublishChar(char)}
+                                    className="bg-destructive text-destructive-foreground"
+                                  >
+                                    {t("common.delete", undefined, "Unpublish")}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          ) : (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={submittingVerifId === char.id}
+                                onClick={() => handleSubmitVerification(char, "public_asset")}
+                                className="flex-1 text-[11px] h-7 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                              >
+                                {submittingVerifId === char.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                ) : (
+                                  <Globe className="w-3 h-3 mr-1 text-cyan-400" />
+                                )}
+                                {t("verification.publishToPublicAssets", undefined, "Publish")}
+                              </Button>
+
+                              {!usageApproved && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={submittingVerifId === char.id}
+                                  onClick={() => handleSubmitVerification(char, "public_usage")}
+                                  className="flex-1 text-[11px] h-7 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                >
+                                  {submittingVerifId === char.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                  ) : (
+                                    <ShieldCheck className="w-3 h-3 mr-1 text-emerald-400" />
+                                  )}
+                                  {t("verification.verifyForPublicUsage", undefined, "Verify Usage")}
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </CardContent>
                     </div>
-                  </div>
-                  <CardContent className="p-4 flex gap-2">
-                    <Button
-                      variant="secondary"
-                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
-                      onClick={() => {
-                        setCurrentCharacter(char);
-                        setIsEditing(true);
-                      }}
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      {t("common.edit", undefined, "Edit")}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDelete(char.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             {characters.filter((c) =>
               activeTab === "characters" ? !c.is_universe : c.is_universe,
             ).length === 0 && (
@@ -609,6 +973,43 @@ export default function Characters() {
           </div>
         )}
       </div>
+
+      {/* Denial Reason Dialog */}
+      <Dialog
+        open={Boolean(selectedDenialReason)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedDenialReason(null);
+        }}
+      >
+        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-400">
+              <AlertTriangle className="w-5 h-5" />
+              {t("verification.rejectionReasonDialogTitle", undefined, "Verification Denial Reason")}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {t(
+                "verification.rejectionReasonDialogDesc",
+                undefined,
+                "Your submission was reviewed and denied with the following reason:",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-4 bg-rose-950/40 border border-rose-800/60 rounded-lg text-sm text-rose-200 leading-relaxed whitespace-pre-wrap">
+            {selectedDenialReason}
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => setSelectedDenialReason(null)}
+              className="bg-slate-800 hover:bg-slate-700 text-white"
+            >
+              {t("common.close", undefined, "Close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

@@ -46,6 +46,7 @@ const Support = lazyWithRetry(() => import("./pages/Support"));
 const SupportTicket = lazyWithRetry(() => import("./pages/SupportTicket"));
 const AdminSupport = lazyWithRetry(() => import("./pages/AdminSupport"));
 const AdminTicket = lazyWithRetry(() => import("./pages/AdminTicket"));
+const AdminVerification = lazyWithRetry(() => import("./pages/AdminVerification"));
 const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
 const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
@@ -222,6 +223,14 @@ const App = () => (
                     element={
                       <ProtectedRoute>
                         <AdminPanel />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/verification"
+                    element={
+                      <ProtectedRoute>
+                        <AdminVerification />
                       </ProtectedRoute>
                     }
                   />
