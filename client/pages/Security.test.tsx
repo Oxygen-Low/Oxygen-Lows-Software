@@ -77,12 +77,13 @@ describe("Security Page Component", () => {
     expect(screen.queryByText("Show QR Code")).toBeNull();
   });
 
-  it("renders encryption toggles for Characters, Data Save, and Chatbot", () => {
+  it("renders encryption toggles for Characters, Data Save, Chatbot, and Integrations", () => {
     renderWithRouter();
     expect(screen.getByText("Protected Data Categories")).toBeDefined();
     expect(screen.getByText("Characters and Universes")).toBeDefined();
     expect(screen.getByText("Data Save Entries")).toBeDefined();
     expect(screen.getByText("Chatbot Chats")).toBeDefined();
+    expect(screen.getByText("API Keys & Integrations")).toBeDefined();
   });
 
   it("allows toggling encryption and saves to localStorage", async () => {
@@ -104,13 +105,14 @@ describe("Security Page Component", () => {
     });
   });
 
-  it("allows toggling encryption for Data Save and Chatbot", async () => {
+  it("allows toggling encryption for Data Save, Chatbot, and Integrations", async () => {
     renderWithRouter();
     const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
     const dataSaveToggle = document.getElementById("toggle-datasave") as HTMLButtonElement;
     const chatbotToggle = document.getElementById("toggle-chatbot") as HTMLButtonElement;
+    const integrationsToggle = document.getElementById("toggle-integrations") as HTMLButtonElement;
 
     fireEvent.click(dataSaveToggle);
     await waitFor(() => {
@@ -120,6 +122,11 @@ describe("Security Page Component", () => {
     fireEvent.click(chatbotToggle);
     await waitFor(() => {
       expect(localStorage.getItem("oxygen_encrypt_chatbot")).toBe("true");
+    });
+
+    fireEvent.click(integrationsToggle);
+    await waitFor(() => {
+      expect(localStorage.getItem("oxygen_encrypt_integrations")).toBe("true");
     });
   });
 

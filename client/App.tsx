@@ -34,6 +34,7 @@ const Games = lazyWithRetry(() => import("./pages/Games"));
 const Friends = lazyWithRetry(() => import("./pages/Friends"));
 const Account = lazyWithRetry(() => import("./pages/Account"));
 const Security = lazyWithRetry(() => import("./pages/Security"));
+const Integrations = lazyWithRetry(() => import("./pages/Integrations"));
 const Storage = lazyWithRetry(() => import("./pages/Storage"));
 const Customize = lazyWithRetry(() => import("./pages/Customize"));
 const Characters = lazyWithRetry(() => import("./pages/Characters"));
@@ -147,6 +148,14 @@ const App = () => (
                     element={
                       <ProtectedRoute>
                         <Security />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/integrations"
+                    element={
+                      <ProtectedRoute>
+                        <Integrations />
                       </ProtectedRoute>
                     }
                   />

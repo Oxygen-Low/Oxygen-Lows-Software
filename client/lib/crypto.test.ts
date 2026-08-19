@@ -41,6 +41,8 @@ import {
   decryptChatData,
   encryptChatMessageData,
   decryptChatMessageData,
+  encryptIntegrationData,
+  decryptIntegrationData,
   migrateCategoryEncryption,
 } from "./crypto";
 
@@ -456,6 +458,63 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(encrypted.reasoning).toBeNull();
       const decrypted = await decryptChatMessageData(encrypted, key);
       expect(decrypted.reasoning).toBeNull();
+    });
+  });
+
+  describe("Integration data transformers", () => {
+    it("should encrypt and decrypt integration api_key and base_url", async () => {
+      const key = generateAes256Key();
+      const item = {
+        id: "int-1",
+        user_id: "u1",
+        provider: "openai",
+        name: "OpenAI / ChatGPT",
+        api_key: "sk-proj-test-12345",
+        base_url: "https://api.openai.com/v1",
+      };
+
+      const encrypted = await encryptIntegrationData(item, key);
+      expect(encrypted.api_key).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.base_url).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.provider).toBe("openai");
+
+      const decrypted = await decryptIntegrationData(encrypted, key);
+      expect(decrypted.api_key).toBe("sk-proj-test-12345");
+      expect(decrypted.base_url).toBe("https://api.openai.com/v1");
+      expect(decrypted.provider).toBe("openai");
+    });
+
+    it("should support integrations category encryption toggles", () => {
+      setCategoryEncryptionEnabled("integrations", true);
+      expect(isCategoryEncryptionEnabled("integrations")).toBe(true);
+      setCategoryEncryptionEnabled("integrations", false);
+      expect(isCategoryEncryptionEnabled("integrations")).toBe(false);
+    });
+
+    it("should migrate integrations category data", async () => {
+      const key = generateAes256Key();
+      const mockItems = [
+        { id: "1", provider: "openai", api_key: "sk-plain-1", base_url: null },
+      ];
+
+      const mockDb = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          then: vi.fn((resolve: any) => resolve({ data: mockItems, error: null })),
+        }),
+      };
+
+      const result = await migrateCategoryEncryption({
+        category: "integrations",
+        enable: true,
+        keyBytes: key,
+        userId: "u1",
+        client: mockDb as any,
+      });
+
+      expect(result.updatedCount).toBe(1);
     });
   });
 });

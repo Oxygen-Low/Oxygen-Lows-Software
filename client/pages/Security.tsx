@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import {
   generateAes256Key,
   bytesToHex,
@@ -64,6 +65,7 @@ const STORAGE_KEYS = {
   ENCRYPT_CHARACTERS: "oxygen_encrypt_characters",
   ENCRYPT_DATA_SAVE: "oxygen_encrypt_data_save",
   ENCRYPT_CHATBOT: "oxygen_encrypt_chatbot",
+  ENCRYPT_INTEGRATIONS: "oxygen_encrypt_integrations",
 };
 
 export default function Security() {
@@ -101,6 +103,14 @@ export default function Security() {
   const [encryptChatbot, setEncryptChatbot] = useState<boolean>(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.ENCRYPT_CHATBOT) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const [encryptIntegrations, setEncryptIntegrations] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.ENCRYPT_INTEGRATIONS) === "true";
     } catch {
       return false;
     }
@@ -322,6 +332,29 @@ export default function Security() {
 
   // Update encryption toggles and immediately migrate data in Supabase
   const handleToggleCategory = async (category: EncryptionCategory, checked: boolean) => {
+    if (category === "integrations" && !checked) {
+      // Cannot disable while api keys/integrations are stored
+      try {
+        let query = supabase.from("user_integrations").select("id", { count: "exact", head: true });
+        if (session?.user?.id) {
+          query = query.eq("user_id", session.user.id);
+        }
+        const { count, error } = await query;
+        if (!error && count && count > 0) {
+          toast.error(
+            t(
+              "security.cannotDisableIntegrationsWithKeys",
+              undefined,
+              "Cannot disable encryption while API keys/integrations are stored. Please remove all stored integrations first."
+            )
+          );
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to check stored integrations:", err);
+      }
+    }
+
     if (category === "characters") {
       setEncryptCharacters(checked);
       localStorage.setItem(STORAGE_KEYS.ENCRYPT_CHARACTERS, String(checked));
@@ -331,6 +364,9 @@ export default function Security() {
     } else if (category === "chatbot") {
       setEncryptChatbot(checked);
       localStorage.setItem(STORAGE_KEYS.ENCRYPT_CHATBOT, String(checked));
+    } else if (category === "integrations") {
+      setEncryptIntegrations(checked);
+      localStorage.setItem(STORAGE_KEYS.ENCRYPT_INTEGRATIONS, String(checked));
     }
 
     if (!keyBytes) {
@@ -837,6 +873,52 @@ export default function Security() {
                   checked={encryptChatbot}
                   disabled={migratingCategory !== null}
                   onCheckedChange={(checked) => handleToggleCategory("chatbot", checked)}
+                />
+              </div>
+            </div>
+
+            {/* Toggle 4: API Keys and Integrations */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-card/40 hover:bg-card/70 transition-colors gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5 sm:mt-0">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="toggle-integrations" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
+                      {t("security.integrations", undefined, "API Keys & Integrations")}
+                    </Label>
+                    {encryptIntegrations ? (
+                      keyBytes ? (
+                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                          {t("security.encryptionEnabled", undefined, "Encrypted")}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30">
+                          {t("security.keyRequiredBadge", undefined, "Key Required")}
+                        </Badge>
+                      )
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-muted text-muted-foreground border-border">
+                        {t("security.encryptionDisabled", undefined, "Unencrypted")}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                    {t("security.integrationsDesc", undefined, "Encrypt stored API keys, LLM credentials, and MCP access tokens.")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end sm:pl-4 gap-2">
+                {migratingCategory === "integrations" && (
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                )}
+                <Switch
+                  id="toggle-integrations"
+                  checked={encryptIntegrations}
+                  disabled={migratingCategory !== null}
+                  onCheckedChange={(checked) => handleToggleCategory("integrations", checked)}
                 />
               </div>
             </div>
