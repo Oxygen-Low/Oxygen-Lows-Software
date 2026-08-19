@@ -231,6 +231,7 @@ export function AudioPlayerPreview({
         <audio
           ref={audioRef}
           src={audioUrl}
+          crossOrigin="anonymous"
           preload="metadata"
           autoPlay={autoPlay}
           onLoadedMetadata={handleLoadedMetadata}

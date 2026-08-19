@@ -63,7 +63,7 @@ app.use(
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
-      mediaSrc: ["'self'", "blob:", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co"],
+      mediaSrc: ["'self'", "blob:", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "https:"],
       connectSrc: [
         "'self'",
         "blob:",
@@ -88,7 +88,7 @@ app.use(
       upgradeInsecureRequests: [],
     },
     crossOriginOpenerPolicy: "same-origin",
-    crossOriginEmbedderPolicy: "require-corp",
+    crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: "cross-origin",
     xFrameOptions: "DENY",
     xContentTypeOptions: "nosniff",
