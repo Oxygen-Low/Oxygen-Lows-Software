@@ -430,7 +430,7 @@ export const en = {
   },
   integrations: {
     title: "Integrations & API Keys",
-    subtitle: "Securely manage API keys and credentials for LLM models, integrations, and MCP servers with AES-256 zero-knowledge client encryption.",
+    subtitle: "Securely manage API keys and credentials for LLM models, integrations, and MCP servers.",
     aesEncryptedBadge: "AES-256 Encrypted",
     encryptionDisabledBadge: "Encryption Required",
     encryptionRequiredTitle: "Zero-Knowledge Encryption Required",

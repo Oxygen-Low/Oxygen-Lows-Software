@@ -420,7 +420,7 @@ export const es = {
   },
   integrations: {
     title: "Integraciones y Claves API",
-    subtitle: "Gestiona de forma segura las claves API y credenciales para modelos LLM, integraciones y servidores MCP con cifrado de cliente de conocimiento cero AES-256.",
+    subtitle: "Gestiona de forma segura las claves API y credenciales para modelos LLM, integraciones y servidores MCP.",
     aesEncryptedBadge: "Cifrado AES-256",
     encryptionDisabledBadge: "Cifrado Requerido",
     encryptionRequiredTitle: "Se Requiere Cifrado de Conocimiento Cero",

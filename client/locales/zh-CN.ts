@@ -420,7 +420,7 @@ export const zhCN = {
   },
   integrations: {
     title: "集成与 API 密钥",
-    subtitle: "使用 AES-256 零知识客户端加密，安全地管理 LLM 模型、集成和 MCP 服务器的 API 密钥与凭据。",
+    subtitle: "安全地管理 LLM 模型、集成和 MCP 服务器的 API 密钥与凭据。",
     aesEncryptedBadge: "AES-256 已加密",
     encryptionDisabledBadge: "需要加密",
     encryptionRequiredTitle: "需要零知识加密",

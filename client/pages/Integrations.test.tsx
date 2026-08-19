@@ -162,10 +162,19 @@ describe("Integrations Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Integrations & API Keys")).toBeDefined();
+      expect(
+        screen.getByText("Securely manage API keys and credentials for LLM models, integrations, and MCP servers.")
+      ).toBeDefined();
       expect(screen.getByText("LLM Models")).toBeDefined();
       expect(screen.getByText("LLM Integrations")).toBeDefined();
       expect(screen.getByText("LLM Mcps")).toBeDefined();
     });
+
+    // Ensure Protection card and AES-256 Encrypted top badge are not rendered
+    expect(screen.queryByText("Protection")).toBeNull();
+    expect(screen.queryByText("AES-256 Encrypted")).toBeNull();
+    expect(screen.getByText("Total Supported")).toBeDefined();
+    expect(screen.getByText("Configured")).toBeDefined();
 
     // Check all requested providers are present in the list
     expect(screen.getByText("OpenAI / ChatGPT")).toBeDefined();

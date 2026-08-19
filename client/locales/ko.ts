@@ -420,7 +420,7 @@ export const ko = {
   },
   integrations: {
     title: "통합 및 API 키",
-    subtitle: "AES-256 영지식 클라이언트 암호화를 통해 LLM 모델, 통합 및 MCP 서버에 대한 API 키와 자격 증명을 안전하게 관리합니다.",
+    subtitle: "LLM 모델, 통합 및 MCP 서버에 대한 API 키와 자격 증명을 안전하게 관리합니다.",
     aesEncryptedBadge: "AES-256 암호화됨",
     encryptionDisabledBadge: "암호화 필요",
     encryptionRequiredTitle: "영지식 암호화 필요",

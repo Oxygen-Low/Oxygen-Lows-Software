@@ -6,7 +6,6 @@ import {
   KeyRound,
   ShieldCheck,
   Lock,
-  Unlock,
   Eye,
   EyeOff,
   Copy,
@@ -20,7 +19,6 @@ import {
   Cpu,
   Layers,
   Bot,
-  AlertCircle,
   Plus,
   Loader2,
   RefreshCw,
@@ -473,48 +471,18 @@ export default function Integrations() {
     <Layout>
       <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500">
         {/* Header Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
-              <KeyRound className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
-              <span>{t("integrations.title", undefined, "Integrations & API Keys")}</span>
-            </h2>
-            <p className="text-sm sm:text-base text-slate-400 max-w-3xl">
-              {t(
-                "integrations.subtitle",
-                undefined,
-                "Securely manage API keys and credentials for LLM models, integrations, and MCP servers with AES-256 zero-knowledge client encryption."
-              )}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {encryptionEnabled && !encryptionLocked ? (
-              <Badge
-                variant="outline"
-                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 gap-1.5 py-1 px-3 text-xs font-medium"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                {t("integrations.aesEncryptedBadge", undefined, "AES-256 Encrypted")}
-              </Badge>
-            ) : encryptionLocked ? (
-              <Badge
-                variant="outline"
-                className="border-amber-500/40 bg-amber-500/10 text-amber-400 gap-1.5 py-1 px-3 text-xs font-medium"
-              >
-                <Unlock className="w-3.5 h-3.5" />
-                {t("security.keyRequiredBadge", undefined, "Key Required")}
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="border-destructive/40 bg-destructive/10 text-destructive gap-1.5 py-1 px-3 text-xs font-medium"
-              >
-                <AlertCircle className="w-3.5 h-3.5" />
-                {t("integrations.encryptionDisabledBadge", undefined, "Encryption Required")}
-              </Badge>
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
+            <KeyRound className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
+            <span>{t("integrations.title", undefined, "Integrations & API Keys")}</span>
+          </h2>
+          <p className="text-sm sm:text-base text-slate-400 max-w-3xl">
+            {t(
+              "integrations.subtitle",
+              undefined,
+              "Securely manage API keys and credentials for LLM models, integrations, and MCP servers."
             )}
-          </div>
+          </p>
         </div>
 
         {/* Case 1: Masterkey Encryption is completely disabled */}
@@ -566,7 +534,7 @@ export default function Integrations() {
           /* Case 3: Fully Active & Unlocked */
           <div className="space-y-6">
             {/* Stats Summary Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -592,21 +560,6 @@ export default function Integrations() {
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </Card>
-
-              <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    {t("integrations.securityStatus", undefined, "Protection")}
-                  </p>
-                  <p className="text-sm font-semibold text-cyan-400 mt-1 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>{t("integrations.aesProtected", undefined, "AES-256 Zero-Knowledge")}</span>
-                  </p>
-                </div>
-                <div className="p-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  <KeyRound className="w-5 h-5" />
                 </div>
               </Card>
             </div>

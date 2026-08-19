@@ -420,7 +420,7 @@ export const ja = {
   },
   integrations: {
     title: "連携とAPIキー",
-    subtitle: "AES-256ゼロ知識クライアント暗号化を使用して、LLMモデル、連携、およびMCPサーバーのAPIキーと認証情報を安全に管理します。",
+    subtitle: "LLMモデル、連携、およびMCPサーバーのAPIキーと認証情報を安全に管理します。",
     aesEncryptedBadge: "AES-256 暗号化済み",
     encryptionDisabledBadge: "暗号化が必要",
     encryptionRequiredTitle: "ゼロ知識暗号化が必要です",
