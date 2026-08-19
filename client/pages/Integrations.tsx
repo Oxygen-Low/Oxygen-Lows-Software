@@ -471,15 +471,15 @@ export default function Integrations() {
 
   return (
     <Layout>
-      <div className="space-y-6 sm:space-y-8 max-w-6xl mx-auto pb-24 animate-in fade-in duration-500">
+      <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500">
         {/* Header Banner */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-              <KeyRound className="w-7 h-7 text-primary" />
-              {t("integrations.title", undefined, "Integrations & API Keys")}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-1.5 max-w-3xl">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
+              <KeyRound className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
+              <span>{t("integrations.title", undefined, "Integrations & API Keys")}</span>
+            </h2>
+            <p className="text-sm sm:text-base text-slate-400 max-w-3xl">
               {t(
                 "integrations.subtitle",
                 undefined,
@@ -492,7 +492,7 @@ export default function Integrations() {
             {encryptionEnabled && !encryptionLocked ? (
               <Badge
                 variant="outline"
-                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 gap-1.5 py-1 px-3 text-xs"
+                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 gap-1.5 py-1 px-3 text-xs font-medium"
               >
                 <Lock className="w-3.5 h-3.5" />
                 {t("integrations.aesEncryptedBadge", undefined, "AES-256 Encrypted")}
@@ -500,7 +500,7 @@ export default function Integrations() {
             ) : encryptionLocked ? (
               <Badge
                 variant="outline"
-                className="border-amber-500/40 bg-amber-500/10 text-amber-400 gap-1.5 py-1 px-3 text-xs"
+                className="border-amber-500/40 bg-amber-500/10 text-amber-400 gap-1.5 py-1 px-3 text-xs font-medium"
               >
                 <Unlock className="w-3.5 h-3.5" />
                 {t("security.keyRequiredBadge", undefined, "Key Required")}
@@ -508,7 +508,7 @@ export default function Integrations() {
             ) : (
               <Badge
                 variant="outline"
-                className="border-destructive/40 bg-destructive/10 text-destructive gap-1.5 py-1 px-3 text-xs"
+                className="border-destructive/40 bg-destructive/10 text-destructive gap-1.5 py-1 px-3 text-xs font-medium"
               >
                 <AlertCircle className="w-3.5 h-3.5" />
                 {t("integrations.encryptionDisabledBadge", undefined, "Encryption Required")}
@@ -519,7 +519,8 @@ export default function Integrations() {
 
         {/* Case 1: Masterkey Encryption is completely disabled */}
         {!encryptionEnabled ? (
-          <Card className="border-amber-500/40 bg-amber-500/5 shadow-lg">
+          <Card className="border-amber-500/30 bg-slate-900/80 shadow-2xl backdrop-blur-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 left-0 h-[2px] bg-gradient-to-r from-amber-500/0 via-amber-500/80 to-amber-500/0" />
             <CardHeader className="space-y-2">
               <div className="flex items-center gap-2.5 text-amber-400 font-semibold text-lg">
                 <Lock className="w-5 h-5" />
@@ -534,8 +535,8 @@ export default function Integrations() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3.5 rounded-lg bg-card/60 border border-border text-xs text-muted-foreground flex items-center gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+              <div className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs text-slate-400 flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
                 <span>
                   {t(
                     "integrations.encryptionNoticeDetail",
@@ -547,7 +548,7 @@ export default function Integrations() {
               <Button
                 id="enable-integration-encryption-btn"
                 onClick={handleEnableEncryption}
-                className="gap-2 bg-primary text-primary-foreground font-medium"
+                className="gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-lg shadow-cyan-950/40"
               >
                 <Lock className="w-4 h-4" />
                 <span>{t("integrations.enableEncryptionButton", undefined, "Enable Integration Encryption")}</span>
@@ -566,45 +567,45 @@ export default function Integrations() {
           <div className="space-y-6">
             {/* Stats Summary Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Card className="bg-card/70 border-border p-4 flex items-center justify-between">
+              <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                     {t("integrations.totalAvailable", undefined, "Total Supported")}
                   </p>
-                  <p className="text-2xl font-bold text-foreground mt-0.5">
+                  <p className="text-2xl font-bold text-white mt-0.5">
                     {INTEGRATION_DEFINITIONS.length}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-primary/10 text-primary border border-primary/20">
+                <div className="p-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                   <Layers className="w-5 h-5" />
                 </div>
               </Card>
 
-              <Card className="bg-card/70 border-border p-4 flex items-center justify-between">
+              <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                     {t("integrations.configuredCount", undefined, "Configured")}
                   </p>
                   <p className="text-2xl font-bold text-emerald-400 mt-0.5">
                     {configuredCount}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
               </Card>
 
-              <Card className="bg-card/70 border-border p-4 flex items-center justify-between">
+              <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                     {t("integrations.securityStatus", undefined, "Protection")}
                   </p>
-                  <p className="text-sm font-semibold text-primary mt-1 flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-cyan-400 mt-1 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
                     <span>{t("integrations.aesProtected", undefined, "AES-256 Zero-Knowledge")}</span>
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-primary/10 text-primary border border-primary/20">
+                <div className="p-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                   <KeyRound className="w-5 h-5" />
                 </div>
               </Card>
@@ -617,19 +618,31 @@ export default function Integrations() {
                 onValueChange={(val) => setActiveCategory(val as IntegrationCategoryKey)}
                 className="w-full md:w-auto"
               >
-                <TabsList className="bg-muted/70 p-1 border border-border">
-                  <TabsTrigger value="all" className="text-xs sm:text-sm">
+                <TabsList className="bg-slate-900/80 p-1 border border-slate-800 rounded-xl flex flex-wrap h-auto gap-1">
+                  <TabsTrigger
+                    value="all"
+                    className="text-xs sm:text-sm rounded-lg px-3 py-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
+                  >
                     {t("common.all", undefined, "All")} ({INTEGRATION_DEFINITIONS.length})
                   </TabsTrigger>
-                  <TabsTrigger value="llm_models" className="text-xs sm:text-sm gap-1.5">
+                  <TabsTrigger
+                    value="llm_models"
+                    className="text-xs sm:text-sm rounded-lg px-3 py-1.5 gap-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
+                  >
                     <Cpu className="w-3.5 h-3.5" />
                     <span>{t("integrations.categoryModels", undefined, "LLM Models")}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="llm_integrations" className="text-xs sm:text-sm gap-1.5">
+                  <TabsTrigger
+                    value="llm_integrations"
+                    className="text-xs sm:text-sm rounded-lg px-3 py-1.5 gap-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
+                  >
                     <Bot className="w-3.5 h-3.5" />
                     <span>{t("integrations.categoryIntegrations", undefined, "LLM Integrations")}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="llm_mcps" className="text-xs sm:text-sm gap-1.5">
+                  <TabsTrigger
+                    value="llm_mcps"
+                    className="text-xs sm:text-sm rounded-lg px-3 py-1.5 gap-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
+                  >
                     <Server className="w-3.5 h-3.5" />
                     <span>{t("integrations.categoryMcps", undefined, "LLM Mcps")}</span>
                   </TabsTrigger>
@@ -637,17 +650,17 @@ export default function Integrations() {
               </Tabs>
 
               <div className="relative w-full md:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <Input
                   placeholder={t("integrations.searchPlaceholder", undefined, "Search integrations...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 text-xs sm:text-sm bg-card border-border"
+                  className="pl-9 text-xs sm:text-sm bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:ring-cyan-500"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300"
                   >
                     ✕
                   </button>
@@ -657,13 +670,13 @@ export default function Integrations() {
 
             {/* Integrations Grid */}
             {loading ? (
-              <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <div className="flex items-center justify-center py-20 text-slate-400 gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
                 <span>{t("common.loading", undefined, "Loading integrations...")}</span>
               </div>
             ) : filteredDefinitions.length === 0 ? (
-              <Card className="bg-card/40 border-border p-12 text-center">
-                <p className="text-sm text-muted-foreground">
+              <Card className="bg-slate-900/50 border-slate-800 p-12 text-center">
+                <p className="text-sm text-slate-400">
                   {t("integrations.noIntegrationsFound", undefined, "No integrations found matching your search.")}
                 </p>
               </Card>
@@ -679,16 +692,16 @@ export default function Integrations() {
                       key={def.provider}
                       data-testid={`integration-card-${def.provider}`}
                       className={cn(
-                        "bg-card/60 border transition-all duration-200 flex flex-col justify-between hover:border-primary/40",
-                        isConfigured ? "border-border shadow-sm" : "border-border/60"
+                        "bg-slate-900/50 border-slate-800 transition-all duration-200 flex flex-col justify-between hover:bg-slate-900 hover:border-cyan-500/40 overflow-hidden",
+                        isConfigured ? "border-slate-800/90 shadow-sm" : "border-slate-800/60"
                       )}
                     >
-                      <CardHeader className="pb-3">
+                      <CardHeader className="pb-3 p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3">
                             <div
                               className={cn(
-                                "p-2.5 rounded-lg border shrink-0 mt-0.5",
+                                "p-2.5 rounded-xl border shrink-0 mt-0.5",
                                 def.iconType === "model"
                                   ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
                                   : def.iconType === "integration"
@@ -705,10 +718,10 @@ export default function Integrations() {
                               )}
                             </div>
                             <div>
-                              <CardTitle className="text-base sm:text-lg text-foreground font-semibold flex items-center gap-2">
+                              <CardTitle className="text-base sm:text-lg text-white font-semibold flex items-center gap-2">
                                 <span>{def.name}</span>
                               </CardTitle>
-                              <CardDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                              <CardDescription className="text-xs text-slate-400 mt-1 leading-relaxed">
                                 {t(def.descriptionKey as any, undefined, def.defaultDescription)}
                               </CardDescription>
                             </div>
@@ -726,7 +739,7 @@ export default function Integrations() {
                             ) : (
                               <Badge
                                 variant="outline"
-                                className="border-border bg-muted/50 text-muted-foreground text-[10px] font-mono uppercase tracking-wider py-0.5 px-2"
+                                className="border-slate-800 bg-slate-950/80 text-slate-500 text-[10px] font-mono uppercase tracking-wider py-0.5 px-2"
                               >
                                 {t("integrations.notConfiguredBadge", undefined, "Not Set")}
                               </Badge>
@@ -735,17 +748,17 @@ export default function Integrations() {
                         </div>
                       </CardHeader>
 
-                      <CardContent className="space-y-4 pt-0">
+                      <CardContent className="space-y-4 pt-0 px-4 sm:px-5 pb-4 sm:pb-5">
                         {/* Stored Key Preview Box */}
                         {isConfigured ? (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                                 {t("integrations.apiKeyLabel", undefined, "API Key / Token")}:
                               </span>
                               {(stored?.base_url || def.defaultBaseUrl) && (
                                 <span
-                                  className="text-[10px] font-mono text-muted-foreground truncate max-w-[200px]"
+                                  className="text-[10px] font-mono text-slate-500 truncate max-w-[200px]"
                                   title={stored?.base_url || def.defaultBaseUrl}
                                 >
                                   {stored?.base_url || def.defaultBaseUrl}
@@ -753,7 +766,7 @@ export default function Integrations() {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/60 border border-border font-mono text-xs text-foreground">
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-xs text-slate-200">
                               <div className="flex-1 truncate select-all">
                                 {isRevealed ? stored?.api_key : formatMaskedKey(stored?.api_key)}
                               </div>
@@ -763,7 +776,7 @@ export default function Integrations() {
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-800"
                                   onClick={() => toggleReveal(def.provider)}
                                   title={isRevealed ? t("security.maskKey", undefined, "Hide") : t("security.revealKey", undefined, "Reveal")}
                                 >
@@ -774,7 +787,7 @@ export default function Integrations() {
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-800"
                                   onClick={() => handleCopyKey(def.provider, stored?.api_key)}
                                   title={t("integrations.copyKey", undefined, "Copy Key")}
                                 >
@@ -788,14 +801,14 @@ export default function Integrations() {
                             </div>
                           </div>
                         ) : (
-                          <div className="p-3 rounded-lg border border-dashed border-border/80 bg-muted/20 text-xs text-muted-foreground flex items-center justify-between">
+                          <div className="p-3 rounded-lg border border-dashed border-slate-800 bg-slate-950/40 text-xs text-slate-500 flex items-center justify-between">
                             <span>{t("integrations.noKeyStored", undefined, "No API key configured yet")}</span>
                             {def.docsUrl && (
                               <a
                                 href={def.docsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                className="inline-flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline"
                               >
                                 <span>{t("integrations.getKeyLink", undefined, "Get API Key")}</span>
                                 <ExternalLink className="w-3 h-3" />
@@ -805,13 +818,13 @@ export default function Integrations() {
                         )}
 
                         {/* Action Buttons */}
-                        <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
                           {def.docsUrl ? (
                             <a
                               href={def.docsUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors"
+                              className="text-xs text-slate-400 hover:text-cyan-400 inline-flex items-center gap-1 transition-colors"
                             >
                               <span>{t("integrations.documentation", undefined, "Documentation")}</span>
                               <ExternalLink className="w-3 h-3" />
@@ -830,7 +843,7 @@ export default function Integrations() {
                                   setDeletingIntegration(stored!);
                                   setDeleteConfirmOpen(true);
                                 }}
-                                className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5"
+                                className="h-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs gap-1.5"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 <span>{t("common.delete", undefined, "Delete")}</span>
@@ -842,7 +855,12 @@ export default function Integrations() {
                               variant={isConfigured ? "outline" : "default"}
                               size="sm"
                               onClick={() => handleOpenConfigure(def)}
-                              className="h-8 text-xs gap-1.5"
+                              className={cn(
+                                "h-8 text-xs gap-1.5 transition-all font-medium",
+                                isConfigured
+                                  ? "border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
+                                  : "bg-cyan-600 hover:bg-cyan-500 text-white"
+                              )}
                             >
                               {isConfigured ? (
                                 <>
@@ -869,10 +887,10 @@ export default function Integrations() {
 
         {/* Configure / Edit Dialog */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="sm:max-w-lg bg-card border-border text-foreground">
+          <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-800 text-white">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-lg">
-                <KeyRound className="w-5 h-5 text-primary" />
+              <DialogTitle className="flex items-center gap-2 text-lg text-white">
+                <KeyRound className="w-5 h-5 text-cyan-400" />
                 <span>
                   {editingDef
                     ? t(
@@ -883,7 +901,7 @@ export default function Integrations() {
                     : t("integrations.configureModalDefaultTitle", undefined, "Configure Integration")}
                 </span>
               </DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
+              <DialogDescription className="text-xs sm:text-sm text-slate-400">
                 {editingDef &&
                   t(editingDef.descriptionKey as any, undefined, editingDef.defaultDescription)}
               </DialogDescription>
@@ -892,7 +910,7 @@ export default function Integrations() {
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="input-api-key" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  <Label htmlFor="input-api-key" className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                     {t("integrations.apiKeyLabel", undefined, "API Key / Access Token")} *
                   </Label>
                   {editingDef?.docsUrl && (
@@ -900,7 +918,7 @@ export default function Integrations() {
                       href={editingDef.docsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline inline-flex items-center gap-1"
                     >
                       <span>{t("integrations.getKeyLink", undefined, "Get API Key")}</span>
                       <ExternalLink className="w-3 h-3" />
@@ -915,7 +933,7 @@ export default function Integrations() {
                     placeholder={editingDef?.placeholder || "Enter API key..."}
                     value={inputApiKey}
                     onChange={(e) => setInputApiKey(e.target.value)}
-                    className="font-mono text-xs pr-10"
+                    className="font-mono text-xs pr-10 bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:ring-cyan-500"
                     autoFocus
                   />
                   <Button
@@ -923,7 +941,7 @@ export default function Integrations() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setIsMaskedInput((prev) => !prev)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white"
                     title={isMaskedInput ? t("security.revealKey", undefined, "Reveal") : t("security.maskKey", undefined, "Hide")}
                   >
                     {isMaskedInput ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -932,14 +950,14 @@ export default function Integrations() {
               </div>
 
               {editingDef?.defaultBaseUrl && (
-                <div className="space-y-1 p-2.5 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                <div className="space-y-1 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs text-slate-400">
+                  <span className="font-semibold text-slate-300 uppercase tracking-wider text-[10px]">
                     {t("integrations.defaultEndpointLabel", undefined, "Default Endpoint")}:
                   </span>
-                  <p className="font-mono text-xs text-foreground/80 break-all">
+                  <p className="font-mono text-xs text-slate-200 break-all">
                     {editingDef.defaultBaseUrl}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-slate-400">
                     {t(
                       "integrations.fixedBaseUrlHelp",
                       undefined,
@@ -950,7 +968,7 @@ export default function Integrations() {
               )}
 
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
                 <span>
                   {t(
                     "integrations.dialogEncryptionNotice",
@@ -967,6 +985,7 @@ export default function Integrations() {
                 variant="ghost"
                 onClick={() => setModalOpen(false)}
                 disabled={saving}
+                className="text-slate-300 hover:bg-slate-800 hover:text-white"
               >
                 {t("common.cancel", undefined, "Cancel")}
               </Button>
@@ -975,7 +994,7 @@ export default function Integrations() {
                 type="button"
                 onClick={handleSaveIntegration}
                 disabled={saving || !inputApiKey.trim()}
-                className="gap-2"
+                className="gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium"
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{t("common.save", undefined, "Save")}</span>
@@ -986,9 +1005,9 @@ export default function Integrations() {
 
         {/* Delete Confirmation Alert Dialog */}
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-          <AlertDialogContent className="bg-card border-border text-foreground">
+          <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
             <AlertDialogHeader>
-              <AlertDialogTitle>
+              <AlertDialogTitle className="text-white">
                 {deletingIntegration
                   ? t(
                       "integrations.deleteConfirmTitle",
@@ -997,7 +1016,7 @@ export default function Integrations() {
                     )
                   : t("integrations.deleteConfirmDefaultTitle", undefined, "Delete integration?")}
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-muted-foreground text-xs sm:text-sm">
+              <AlertDialogDescription className="text-slate-400 text-xs sm:text-sm">
                 {t(
                   "integrations.deleteConfirmDesc",
                   undefined,
@@ -1006,7 +1025,7 @@ export default function Integrations() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>
+              <AlertDialogCancel disabled={isDeleting} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
                 {t("common.cancel", undefined, "Cancel")}
               </AlertDialogCancel>
               <AlertDialogAction

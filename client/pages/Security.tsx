@@ -417,30 +417,31 @@ export default function Security() {
       <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto pb-20 animate-in fade-in duration-500">
         {/* Header */}
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {t("security.title", undefined, "Security & Data Encryption")}
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
+            <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
+            <span>{t("security.title", undefined, "Security & Data Encryption")}</span>
+          </h2>
+          <p className="text-sm sm:text-base text-slate-400">
             {t("security.subtitle", undefined, "Manage your 256-bit AES masterkey and enable zero-knowledge encryption for your private data.")}
           </p>
         </div>
 
         {/* ReturnTo Banner if redirected from an encrypted section */}
         {returnTo && keyBytes && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-medium text-white">
                   {t("security.returnToPrompt", undefined, "Masterkey active. You can now return to your previous page:")}
                 </p>
-                <p className="text-xs font-mono text-muted-foreground">{returnTo}</p>
+                <p className="text-xs font-mono text-slate-400">{returnTo}</p>
               </div>
             </div>
             <Button
               onClick={() => navigate(returnTo)}
               size="sm"
-              className="gap-1.5 shrink-0"
+              className="gap-1.5 shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>{t("security.returnToButton", undefined, "Return to Page")}</span>
@@ -449,27 +450,27 @@ export default function Security() {
         )}
 
         {/* Section 1: AES-256 Masterkey Management */}
-        <Card className="bg-card border-border">
+        <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
-                <CardTitle className="text-lg sm:text-xl text-foreground flex items-center gap-2">
-                  <KeyRound className="w-5 h-5 text-primary" />
+                <CardTitle className="text-lg sm:text-xl text-white flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-cyan-400" />
                   {t("security.masterKeyTitle", undefined, "AES-256 Masterkey")}
                 </CardTitle>
-                <CardDescription className="text-xs sm:text-sm text-muted-foreground">
+                <CardDescription className="text-xs sm:text-sm text-slate-400">
                   {t("security.masterKeyDesc", undefined, "Your masterkey encrypts your private data on your device before it is stored in the cloud. Nobody else can read your data without this key.")}
                 </CardDescription>
               </div>
 
               <div className="shrink-0">
                 {keyBytes ? (
-                  <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 gap-1.5 py-0.5 px-2.5">
+                  <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 gap-1.5 py-0.5 px-2.5 font-medium">
                     <Lock className="w-3 h-3" />
                     {t("security.keyActiveBadge", undefined, "Masterkey Active")}
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-400 gap-1.5 py-0.5 px-2.5">
+                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-400 gap-1.5 py-0.5 px-2.5 font-medium">
                     <Unlock className="w-3 h-3" />
                     {t("security.keyNotSetBadge", undefined, "No Masterkey Set")}
                   </Badge>
@@ -486,7 +487,7 @@ export default function Security() {
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
                     onClick={handleCopyKey}
-                    className="gap-2"
+                    className="gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium"
                   >
                     {hasCopied ? (
                       <>
@@ -504,7 +505,7 @@ export default function Security() {
                   <Button
                     onClick={handleDownloadKey}
                     variant="outline"
-                    className="gap-2"
+                    className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
                   >
                     <Download className="w-4 h-4" />
                     <span>{t("security.downloadKey", undefined, "Download key")}</span>
@@ -513,8 +514,13 @@ export default function Security() {
                   <Button
                     id="toggle-key-format-btn"
                     onClick={() => setShowKeyFormat((prev) => !prev)}
-                    variant={showKeyFormat ? "secondary" : "outline"}
-                    className="gap-2"
+                    variant="outline"
+                    className={cn(
+                      "gap-2 border-slate-800 transition-all",
+                      showKeyFormat
+                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                        : "bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
+                    )}
                   >
                     <SlidersHorizontal className="w-4 h-4" />
                     <span>
@@ -528,6 +534,7 @@ export default function Security() {
                     onClick={() => setIsMasked((prev) => !prev)}
                     variant="ghost"
                     size="icon"
+                    className="text-slate-400 hover:text-white hover:bg-slate-800"
                     title={isMasked ? t("security.revealKey", undefined, "Reveal key") : t("security.maskKey", undefined, "Hide key")}
                   >
                     {isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -536,7 +543,7 @@ export default function Security() {
                   <Button
                     onClick={handleClearKey}
                     variant="ghost"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto text-xs gap-1.5"
+                    className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 ml-auto text-xs gap-1.5"
                   >
                     <Lock className="w-3.5 h-3.5" />
                     <span>{t("security.clearKey", undefined, "Lock / Clear Key")}</span>
@@ -546,21 +553,21 @@ export default function Security() {
                 {/* Key Format Tabs (Hidden by default) */}
                 {showKeyFormat && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 animate-in fade-in-50 duration-200">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                       {t("security.keyFormat", undefined, "Key Format")}:
                     </span>
 
-                    <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg border border-border">
+                    <div className="flex flex-wrap gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
                       {(["hex", "base64", "base58", "words"] as const).map((fmt) => (
                         <button
                           key={fmt}
                           type="button"
                           onClick={() => setKeyFormat(fmt)}
                           className={cn(
-                            "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                            "px-3 py-1 text-xs font-medium rounded-lg transition-all",
                             keyFormat === fmt
-                              ? "bg-background text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
+                              ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
                           )}
                         >
                           {fmt === "hex" && t("security.formatHex", undefined, "Hex (64 chars)")}
@@ -574,9 +581,9 @@ export default function Security() {
                 )}
 
                 {/* Key Display Area */}
-                <div className="relative rounded-lg bg-muted/60 border border-border p-4 font-mono text-xs sm:text-sm leading-relaxed break-all select-all text-foreground">
+                <div className="relative rounded-xl bg-slate-950 border border-slate-800 p-4 font-mono text-xs sm:text-sm leading-relaxed break-all select-all text-slate-200">
                   {isMasked ? (
-                    <span className="text-muted-foreground select-none tracking-widest">
+                    <span className="text-slate-600 select-none tracking-widest">
                       ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
                     </span>
                   ) : keyFormat === "hex" ? (
@@ -590,7 +597,7 @@ export default function Security() {
                     variant="ghost"
                     size="icon"
                     onClick={handleCopyKey}
-                    className="absolute top-2.5 right-2.5 h-8 w-8 text-muted-foreground hover:text-foreground"
+                    className="absolute top-2.5 right-2.5 h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
                     title={t("security.copyKey", undefined, "Copy to clipboard")}
                   >
                     {hasCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -602,13 +609,13 @@ export default function Security() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Option 1: Generate New Key */}
-                  <div className="p-4 sm:p-5 rounded-lg border border-border bg-card/60 space-y-4 flex flex-col justify-between">
+                  <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-4 flex flex-col justify-between hover:border-slate-700 transition-all">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-foreground font-semibold text-base">
-                        <Sparkles className="w-5 h-5 text-primary" />
+                      <div className="flex items-center gap-2 text-white font-semibold text-base">
+                        <Sparkles className="w-5 h-5 text-cyan-400" />
                         <span>{t("security.generateButton", undefined, "Generate Masterkey")}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <p className="text-xs text-slate-400 leading-relaxed">
                         Create a brand new 256-bit symmetric masterkey using cryptographically secure hardware random numbers.
                       </p>
                     </div>
@@ -616,7 +623,7 @@ export default function Security() {
                     <Button
                       id="generate-masterkey-btn"
                       onClick={handleGenerateKey}
-                      className="w-full gap-2"
+                      className="w-full gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-lg shadow-cyan-950/30"
                     >
                       <KeyRound className="w-4 h-4" />
                       {t("security.generateButton", undefined, "Generate Masterkey")}
@@ -630,18 +637,18 @@ export default function Security() {
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     className={cn(
-                      "p-4 sm:p-5 rounded-lg border bg-card/60 transition-all space-y-4 flex flex-col justify-between",
+                      "p-4 sm:p-5 rounded-xl border bg-slate-950/60 transition-all space-y-4 flex flex-col justify-between",
                       isDragging
-                        ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                        : "border-border"
+                        ? "border-cyan-500 bg-cyan-950/20 ring-2 ring-cyan-500/30"
+                        : "border-slate-800 hover:border-slate-700"
                     )}
                   >
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-foreground font-semibold text-base">
-                        <FileKey className="w-5 h-5 text-primary" />
+                      <div className="flex items-center gap-2 text-white font-semibold text-base">
+                        <FileKey className="w-5 h-5 text-cyan-400" />
                         <span>{t("security.importKeyTitle", undefined, "Use Existing Masterkey")}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <p className="text-xs text-slate-400 leading-relaxed">
                         {t(
                           "security.uploadKeyDesc",
                           undefined,
@@ -667,15 +674,15 @@ export default function Security() {
                         id="upload-key-file-btn"
                         onClick={() => fileInputRef.current?.click()}
                         variant="outline"
-                        className="w-full border-dashed gap-2 text-xs"
+                        className="w-full border-dashed border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-white gap-2 text-xs"
                       >
                         <Upload className="w-4 h-4" />
                         <span>{t("security.uploadKeyFile", undefined, "Upload .key File")}</span>
                       </Button>
 
                       <div className="relative flex items-center justify-center">
-                        <div className="border-t border-border w-full" />
-                        <span className="bg-card px-2 text-[10px] uppercase tracking-wider text-muted-foreground absolute font-mono">
+                        <div className="border-t border-slate-800 w-full" />
+                        <span className="bg-slate-950 px-2 text-[10px] uppercase tracking-wider text-slate-500 absolute font-mono">
                           {t("common.or", undefined, "or enter text")}
                         </span>
                       </div>
@@ -692,10 +699,10 @@ export default function Security() {
                           onKeyDown={(e) => {
                             if (e.key === "Enter") handleImportKey();
                           }}
-                          className="font-mono text-xs"
+                          className="bg-slate-900 border-slate-800 font-mono text-xs text-white placeholder:text-slate-500 focus:border-cyan-500 focus:ring-cyan-500"
                         />
                         {importError && (
-                          <p className="text-xs text-destructive leading-tight font-medium">
+                          <p className="text-xs text-rose-400 leading-tight font-medium">
                             {importError}
                           </p>
                         )}
@@ -704,7 +711,7 @@ export default function Security() {
                           onClick={handleImportKey}
                           disabled={!inputMasterKey.trim()}
                           variant="secondary"
-                          className="w-full gap-2 text-xs font-medium"
+                          className="w-full gap-2 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-white"
                         >
                           <Unlock className="w-3.5 h-3.5" />
                           {t("security.activateKeyButton", undefined, "Unlock / Activate Key")}
@@ -717,8 +724,8 @@ export default function Security() {
             )}
 
             {/* Zero-Knowledge Security Notice */}
-            <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground">
-              <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400">
+              <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
               <span>
                 {t("security.clientSideNotice", undefined, "Zero-Knowledge: Your masterkey is held only in your browser session and is never sent to any server.")}
               </span>
@@ -727,20 +734,20 @@ export default function Security() {
         </Card>
 
         {/* Section 2: Data Encryption Toggles */}
-        <Card className="bg-card border-border">
+        <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl text-foreground flex items-center gap-2">
-              <Lock className="w-5 h-5 text-primary" />
+            <CardTitle className="text-lg sm:text-xl text-white flex items-center gap-2">
+              <Lock className="w-5 h-5 text-cyan-400" />
               {t("security.encryptionSettingsTitle", undefined, "Protected Data Categories")}
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm text-muted-foreground">
+            <CardDescription className="text-xs sm:text-sm text-slate-400">
               {t("security.encryptionSettingsDesc", undefined, "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your masterkey before storage.")}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
             {!keyBytes && (
-              <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-500">
+              <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-400">
                 <Info className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
                   {t(
@@ -753,14 +760,14 @@ export default function Security() {
             )}
 
             {/* Toggle 1: Characters and Universes */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-card/40 hover:bg-card/70 transition-colors gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-950/90 hover:border-slate-700/80 transition-all gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5 sm:mt-0">
+                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 shrink-0 mt-0.5 sm:mt-0">
                   <Users className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="toggle-characters" className="text-sm sm:text-base font-semibold text-foreground cursor-pointer">
+                    <Label htmlFor="toggle-characters" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
                       {t("security.charactersUniverses", undefined, "Characters and Universes")}
                     </Label>
                     {encryptCharacters ? (
@@ -774,12 +781,12 @@ export default function Security() {
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-muted text-muted-foreground border-border">
+                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
                         {t("security.encryptionDisabled", undefined, "Unencrypted")}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
                     {t("security.charactersUniversesDesc", undefined, "Encrypt character bios, appearances, personalities, private notes, and universe lore.")}
                   </p>
                 </div>
@@ -787,7 +794,7 @@ export default function Security() {
 
               <div className="flex items-center justify-end sm:pl-4 gap-2">
                 {migratingCategory === "characters" && (
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
                 )}
                 <Switch
                   id="toggle-characters"
@@ -799,14 +806,14 @@ export default function Security() {
             </div>
 
             {/* Toggle 2: Data Save Entries */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-card/40 hover:bg-card/70 transition-colors gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-950/90 hover:border-slate-700/80 transition-all gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5 sm:mt-0">
+                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0 mt-0.5 sm:mt-0">
                   <Database className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="toggle-datasave" className="text-sm sm:text-base font-semibold text-foreground cursor-pointer">
+                    <Label htmlFor="toggle-datasave" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
                       {t("security.dataSave", undefined, "Data Save Entries")}
                     </Label>
                     {encryptDataSave ? (
@@ -820,12 +827,12 @@ export default function Security() {
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-muted text-muted-foreground border-border">
+                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
                         {t("security.encryptionDisabled", undefined, "Unencrypted")}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
                     {t("security.dataSaveDesc", undefined, "Encrypt custom key-value snippets, code snippets, notes, and stored data records.")}
                   </p>
                 </div>
@@ -833,7 +840,7 @@ export default function Security() {
 
               <div className="flex items-center justify-end sm:pl-4 gap-2">
                 {migratingCategory === "data_save" && (
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
                 )}
                 <Switch
                   id="toggle-datasave"
@@ -845,9 +852,9 @@ export default function Security() {
             </div>
 
             {/* Toggle 3: Chatbot Chats */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-card/40 hover:bg-card/70 transition-colors gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-950/90 hover:border-slate-700/80 transition-all gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5 sm:mt-0">
+                <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5 sm:mt-0">
                   <Bot className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -866,12 +873,12 @@ export default function Security() {
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-muted text-muted-foreground border-border">
+                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
                         {t("security.encryptionDisabled", undefined, "Unencrypted")}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
                     {t("security.chatbotChatsDesc", undefined, "Encrypt AI conversations, message history, and system prompts.")}
                   </p>
                 </div>
@@ -879,7 +886,7 @@ export default function Security() {
 
               <div className="flex items-center justify-end sm:pl-4 gap-2">
                 {migratingCategory === "chatbot" && (
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
                 )}
                 <Switch
                   id="toggle-chatbot"
@@ -891,9 +898,9 @@ export default function Security() {
             </div>
 
             {/* Toggle 4: API Keys and Integrations */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-card/40 hover:bg-card/70 transition-colors gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-950/90 hover:border-slate-700/80 transition-all gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5 sm:mt-0">
+                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 mt-0.5 sm:mt-0">
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -912,12 +919,12 @@ export default function Security() {
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-muted text-muted-foreground border-border">
+                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
                         {t("security.encryptionDisabled", undefined, "Unencrypted")}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
                     {t("security.integrationsDesc", undefined, "Encrypt stored API keys, LLM credentials, and MCP access tokens.")}
                   </p>
                 </div>
@@ -925,7 +932,7 @@ export default function Security() {
 
               <div className="flex items-center justify-end sm:pl-4 gap-2">
                 {migratingCategory === "integrations" && (
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
                 )}
                 <Switch
                   id="toggle-integrations"
