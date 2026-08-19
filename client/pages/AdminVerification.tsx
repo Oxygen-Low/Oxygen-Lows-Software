@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
+import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
 
 interface VerificationItem {
   id: string;
@@ -473,22 +474,26 @@ export default function AdminVerification() {
                               </div>
                             </div>
 
-                            {previewUrls[item.id] && (
-                              <div className="pt-2">
-                                {(item.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(item.original_file_path || item.title)) ? (
-                                  <div className="p-3 bg-slate-900 rounded border border-slate-800 space-y-2">
-                                    <div className="flex items-center gap-2 text-cyan-400 font-semibold text-[11px]">
-                                      <Music className="w-4 h-4" /> Audio Preview
-                                    </div>
-                                    <audio controls preload="metadata" src={previewUrls[item.id]} className="w-full h-8" />
+                            <div className="pt-2">
+                              {(item.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(item.original_file_path || item.title)) ? (
+                                <div className="p-3 bg-slate-900 rounded border border-slate-800 space-y-2">
+                                  <div className="flex items-center gap-2 text-cyan-400 font-semibold text-[11px]">
+                                    <Music className="w-4 h-4" /> Audio Preview
                                   </div>
-                                ) : (item.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(item.original_file_path || item.title)) ? (
-                                  <div className="p-2 bg-slate-900 rounded border border-slate-800">
-                                    <img src={previewUrls[item.id]} alt={item.title} className="max-h-48 rounded object-contain mx-auto" />
-                                  </div>
-                                ) : null}
-                              </div>
-                            )}
+                                  <AudioPlayerPreview
+                                    src={previewUrls[item.id]}
+                                    filePath={item.original_file_path || undefined}
+                                    fileName={item.title}
+                                    bucket="Storage"
+                                    className="w-full"
+                                  />
+                                </div>
+                              ) : (item.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(item.original_file_path || item.title)) && previewUrls[item.id] ? (
+                                <div className="p-2 bg-slate-900 rounded border border-slate-800">
+                                  <img src={previewUrls[item.id]} alt={item.title} className="max-h-48 rounded object-contain mx-auto" />
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         )}
                       </div>

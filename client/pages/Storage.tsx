@@ -69,6 +69,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
 
 interface FileVerificationInfo {
   id: string;
@@ -677,21 +678,16 @@ export default function Storage() {
                               alt={file.name}
                               className="w-full h-full object-cover transition-transform group-hover:scale-105"
                             />
-                          ) : isAudio && signedUrl ? (
-                            <div className="flex flex-col items-center justify-center gap-3 w-full p-4">
-                              <Music className="w-10 h-10 text-cyan-400" />
-                              <audio
-                                controls
-                                preload="metadata"
-                                src={signedUrl}
-                                className="w-full h-8"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
                           ) : isAudio ? (
-                            <div className="flex flex-col items-center justify-center gap-2 p-4 w-full text-slate-400">
-                              <Music className="w-10 h-10 text-cyan-500/70" />
-                              <span className="text-[11px]">Audio File</span>
+                            <div className="flex flex-col items-center justify-center gap-1.5 w-full p-3 bg-slate-950/40">
+                              <Music className="w-8 h-8 text-cyan-400 shrink-0 mb-1" />
+                              <AudioPlayerPreview
+                                src={signedUrl}
+                                filePath={`${session?.user?.id}/${file.name}`}
+                                fileName={file.name}
+                                bucket="Storage"
+                                className="w-full"
+                              />
                             </div>
                           ) : isImage ? (
                             <ImageIcon className="w-12 h-12 text-orange-500/70" />

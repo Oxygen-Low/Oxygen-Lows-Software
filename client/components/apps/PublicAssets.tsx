@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
 
 interface PublicCharacter {
   id: string;
@@ -1122,16 +1123,15 @@ export function PublicAssetsApp() {
                       alt={file.name}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
-                  ) : ((file.category === "audio" || file.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(file.name || file.file_path)) && file.public_url) ? (
-                    <div className="flex flex-col items-center justify-center gap-2 p-4 w-full" onClick={(e) => e.stopPropagation()}>
-                      <Music className="w-10 h-10 text-cyan-400" />
-                      <audio
-                        controls
-                        preload="metadata"
+                  ) : (file.category === "audio" || file.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(file.name || file.file_path)) ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 p-3 w-full bg-slate-950/40" onClick={(e) => e.stopPropagation()}>
+                      <Music className="w-8 h-8 text-cyan-400 shrink-0 mb-1" />
+                      <AudioPlayerPreview
                         src={file.public_url}
-                        className="w-full h-8"
-                        onClick={(e) => e.stopPropagation()}
-                        onPlay={(e) => e.stopPropagation()}
+                        filePath={file.file_path}
+                        fileName={file.name}
+                        bucket="public-assets"
+                        className="w-full"
                       />
                     </div>
                   ) : (
@@ -1428,10 +1428,16 @@ export function PublicAssetsApp() {
                     alt={selectedFile.name}
                     className="w-full h-full object-cover"
                   />
-                ) : ((selectedFile.category === "audio" || selectedFile.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(selectedFile.name || selectedFile.file_path)) && selectedFile.public_url) ? (
-                  <div className="flex flex-col items-center gap-3 p-6 w-full">
-                    <Music className="w-12 h-12 text-cyan-400" />
-                    <audio controls preload="metadata" src={selectedFile.public_url} className="w-full" />
+                ) : (selectedFile.category === "audio" || selectedFile.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(selectedFile.name || selectedFile.file_path)) ? (
+                  <div className="flex flex-col items-center gap-2 p-4 w-full">
+                    <Music className="w-10 h-10 text-cyan-400" />
+                    <AudioPlayerPreview
+                      src={selectedFile.public_url}
+                      filePath={selectedFile.file_path}
+                      fileName={selectedFile.name}
+                      bucket="public-assets"
+                      className="w-full max-w-md"
+                    />
                   </div>
                 ) : (
                   getFileCategoryIcon(selectedFile.category, selectedFile.mime_type)
