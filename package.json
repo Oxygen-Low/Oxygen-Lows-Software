@@ -39,7 +39,6 @@
     "leaflet": "^1.9.4",
     "music-metadata": "11.14.0",
     "ping": "^1.0.0",
-    "playwright": "^1.62.1",
     "pokersolver": "^2.1.4",
     "qrcode.react": "^4.2.0",
     "react-chessboard": "^5.12.1",
