@@ -215,7 +215,7 @@ export function BattlegroundsGameApp() {
                   <div 
                     key={char.id}
                     onClick={() => setSelectedChar(char)}
-                    className={\`cursor-pointer border-2 rounded-lg p-2 text-center transition-all \${selectedChar?.id === char.id ? 'border-cyan-500 bg-cyan-900/30' : 'border-slate-800 bg-slate-950 hover:border-slate-700'}\`}
+                    className={`cursor-pointer border-2 rounded-lg p-2 text-center transition-all ${selectedChar?.id === char.id ? 'border-cyan-500 bg-cyan-900/30' : 'border-slate-800 bg-slate-950 hover:border-slate-700'}`}
                   >
                     <div className="w-full aspect-square bg-slate-900 mb-2 flex items-center justify-center overflow-hidden rounded">
                         {char.spritesheet_url ? (
