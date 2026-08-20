@@ -213,13 +213,6 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
             publicCharacterId = newChar.id;
           }
         }
-      } else if (verification.asset_type === "battlegrounds_character") {
-        if (verification.original_id) {
-          await supabase
-            .from("battlegrounds_characters")
-            .update({ is_public: true })
-            .eq("id", verification.original_id);
-        }
       }
     } else if (verification.target_type === "public_usage") {
       if (

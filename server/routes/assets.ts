@@ -82,7 +82,7 @@ assetsRouter.post("/verifications/submit", async (c) => {
       public_character_id = null,
     } = body;
 
-    if (!asset_type || !["file", "character", "universe", "battlegrounds_character"].includes(asset_type)) {
+    if (!asset_type || !["file", "character", "universe"].includes(asset_type)) {
       return c.json({ error: "Invalid asset type" }, 400);
     }
     if (!title || typeof title !== "string" || !title.trim()) {

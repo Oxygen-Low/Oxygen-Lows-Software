@@ -127,28 +127,20 @@ export default function Storage() {
         .from("public-assets")
         .list(session.user.id);
         
-      // 2.5 Fetch battlegrounds-assets
-      const { data: bgData } = await supabase.storage
-        .from("battlegrounds-assets")
-        .list(session.user.id);
-
       const files = privData || [];
       const publicFiles = pubData || [];
-      const bgFiles = bgData || [];
       
       // Mark bucket for rendering and deletion
       files.forEach(f => { (f as any).bucket = "Storage"; });
       publicFiles.forEach(f => { (f as any).bucket = "public-assets"; });
-      bgFiles.forEach(f => { (f as any).bucket = "battlegrounds-assets"; });
 
-      const allFiles = [...files, ...publicFiles, ...bgFiles];
+      const allFiles = [...files, ...publicFiles];
       setCloudFiles(allFiles);
 
       // Aggregate total size
       const privateSize = files.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
       const pubSize = publicFiles.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
-      const bgSize = bgFiles.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
-      setTotalSize(privateSize + pubSize + bgSize);
+      setTotalSize(privateSize + pubSize);
 
       // Get signed URLs for private files
       if (files.length > 0) {

@@ -34,15 +34,9 @@ if (process.env.NODE_ENV === 'production') {
 
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-import { WebSocketServer } from 'ws';
-import { setupBattlegroundsWS } from './battlegrounds.ts';
-
 const server = serve({
   fetch: app.fetch,
   port
 }, (info) => {
   console.log(`Listening on http://localhost:${info.port}`);
 });
-
-const wss = new WebSocketServer({ server, path: '/ws/battlegrounds' });
-setupBattlegroundsWS(wss);

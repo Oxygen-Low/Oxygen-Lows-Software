@@ -37,7 +37,6 @@ import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
-import { BattlegroundsCreatorApp } from "@/components/apps/BattlegroundsCreator";
 
 type Category =
   | "All"
@@ -246,18 +245,6 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
     component: DefenderApp,
-    authRequired: true,
-  },
-  {
-    id: "battlegrounds-creator",
-    nameKey: "apps.battlegroundsCreatorTitle",
-    defaultName: "Battlegrounds Creator",
-    descKey: "apps.battlegroundsCreatorDesc",
-    defaultDesc: "Create custom characters, movesets, and spritesheets for the Battlegrounds game.",
-    categories: ["All", "Gaming", "Utility"],
-    availability: "web-and-desktop",
-    icon: <Monitor className="w-8 h-8 text-cyan-500" />,
-    component: BattlegroundsCreatorApp,
     authRequired: true,
   }
 ];

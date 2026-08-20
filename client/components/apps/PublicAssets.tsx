@@ -134,7 +134,7 @@ interface VerificationSubmission {
   metadata: any;
 }
 
-type TabType = "characters" | "universes" | "files" | "battlegrounds" | "submissions";
+type TabType = "characters" | "universes" | "files" | "submissions";
 type SortOption = "most_liked" | "most_recent" | "most_downloaded";
 
 export function PublicAssetsApp() {
@@ -149,12 +149,10 @@ export function PublicAssetsApp() {
   const [loading, setLoading] = useState(true);
   const [characters, setCharacters] = useState<PublicCharacter[]>([]);
   const [fileAssets, setFileAssets] = useState<PublicFileAsset[]>([]);
-  const [battlegroundsChars, setBattlegroundsChars] = useState<any[]>([]);
   const [mySubmissions, setMySubmissions] = useState<VerificationSubmission[]>([]);
 
   const [localCharacters, setLocalCharacters] = useState<LocalCharacter[]>([]);
   const [storageFiles, setStorageFiles] = useState<any[]>([]);
-  const [myBattlegroundsChars, setMyBattlegroundsChars] = useState<any[]>([]);
 
   // Publish / Submission Dialog State
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -192,12 +190,6 @@ export function PublicAssetsApp() {
       const { data: pubFilesData } = await supabase
         .from("public_assets")
         .select("*");
-        
-      // 2.5 Fetch Battlegrounds Characters
-      const { data: bgCharsData } = await supabase
-        .from("battlegrounds_characters")
-        .select("*")
-        .eq("is_public", true);
 
       // 3. Fetch Likes for both
       const { data: charLikesData } = await supabase
@@ -213,7 +205,6 @@ export function PublicAssetsApp() {
         ...new Set([
           ...(pubCharsData || []).map((c: any) => c.uploader_id),
           ...(pubFilesData || []).map((f: any) => f.uploader_id),
-          ...(bgCharsData || []).map((b: any) => b.user_id),
         ]),
       ].filter(Boolean);
 
@@ -265,21 +256,10 @@ export function PublicAssetsApp() {
       });
       setFileAssets(processedFiles);
 
-      // Process Battlegrounds
-      const processedBg = (bgCharsData || []).map((item: any) => {
-        const profile = profilesData.find((p: any) => p.user_id === item.user_id);
-        return {
-          ...item,
-          author_username: profile?.username || "Unknown",
-        };
-      });
-      setBattlegroundsChars(processedBg);
-
       // Fetch user's verifications & local resources
       fetchUserSubmissions();
       fetchLocalCharacters();
       fetchStorageFiles();
-      fetchMyBattlegroundsChars();
     } catch (err: any) {
       console.error("Error fetching public assets:", err);
       toast({
@@ -337,21 +317,6 @@ export function PublicAssetsApp() {
       }
     } catch (err) {
       console.error("Error fetching storage files:", err);
-    }
-  };
-
-  const fetchMyBattlegroundsChars = async () => {
-    if (!session?.user?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from("battlegrounds_characters")
-        .select("*")
-        .eq("user_id", session.user.id);
-      if (!error && data) {
-        setMyBattlegroundsChars(data);
-      }
-    } catch (err) {
-      console.error("Error fetching my battlegrounds characters:", err);
     }
   };
 
@@ -557,20 +522,11 @@ export function PublicAssetsApp() {
   const handleSubmitForVerification = async () => {
     if (!session?.access_token) return;
 
-    if (publishAssetType === "character" || publishAssetType === "universe" || publishAssetType === "battlegrounds_character") {
+    if (publishAssetType === "character" || publishAssetType === "universe") {
       let char, metadata;
       
-      if (publishAssetType === "battlegrounds_character") {
-        char = myBattlegroundsChars.find((c) => c.id === selectedCharId);
-        if (!char) return;
-        metadata = {
-            name: char.name,
-            spritesheet_url: char.spritesheet_url,
-            is_battlegrounds: true,
-        };
-      } else {
-          char = localCharacters.find((c) => c.id === selectedCharId);
-          if (!char) return;
+      char = localCharacters.find((c) => c.id === selectedCharId);
+      if (!char) return;
 
           if (char.name === "[Encrypted]") {
             toast({
@@ -591,7 +547,6 @@ export function PublicAssetsApp() {
               image_path: char.image_path,
               is_universe: publishAssetType === "universe",
           };
-      }
 
       setSubmitting(true);
       try {
@@ -792,12 +747,7 @@ export function PublicAssetsApp() {
             >
               {t("publicAssets.filesTab", undefined, "Files")}
             </TabsTrigger>
-            <TabsTrigger
-              value="battlegrounds"
-              className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400"
-            >
-              Battlegrounds
-            </TabsTrigger>
+
             <TabsTrigger
               value="submissions"
               className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400"
@@ -882,9 +832,7 @@ export function PublicAssetsApp() {
                       <SelectItem value="universe">
                         {t("characters.universesTab", undefined, "Universe")}
                       </SelectItem>
-                      <SelectItem value="battlegrounds_character">
-                        Battlegrounds Character
-                      </SelectItem>
+
                       <SelectItem value="file">
                         {t("publicAssets.filesTab", undefined, "Storage File")}
                       </SelectItem>
@@ -942,28 +890,7 @@ export function PublicAssetsApp() {
                   </div>
                 )}
                 
-                {publishAssetType === "battlegrounds_character" && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300">
-                      Select Battlegrounds Character
-                    </label>
-                    <Select
-                      value={selectedCharId}
-                      onValueChange={setSelectedCharId}
-                    >
-                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                        <SelectValue placeholder="Choose a character..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                        {myBattlegroundsChars.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+
 
                 {publishAssetType === "file" && (
                   <>
@@ -1267,41 +1194,6 @@ export function PublicAssetsApp() {
             <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
               <p className="text-slate-500">
                 {t("publicAssets.noAssetsFound", undefined, "No public assets found.")}
-              </p>
-            </div>
-          )}
-        </div>
-      ) : activeTab === "battlegrounds" ? (
-        /* Battlegrounds Tab */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {battlegroundsChars.map((char) => (
-            <Card
-              key={char.id}
-              className="bg-slate-900/50 border-slate-800 overflow-hidden transition-colors cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="aspect-square bg-slate-950 relative flex items-center justify-center overflow-hidden border-b border-slate-800 p-4">
-                    {char.spritesheet_url ? (
-                        <img src={char.spritesheet_url} alt={char.name} className="max-w-full max-h-full object-cover pixelated" />
-                    ) : (
-                        <span className="text-xs text-slate-600">No Sprite</span>
-                    )}
-                </div>
-                <CardContent className="p-4 space-y-2">
-                  <h3 className="text-base font-bold text-white truncate">
-                    {char.name}
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    By @{char.author_username}
-                  </p>
-                </CardContent>
-              </div>
-            </Card>
-          ))}
-          {battlegroundsChars.length === 0 && (
-            <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
-              <p className="text-slate-500">
-                No public battlegrounds characters found.
               </p>
             </div>
           )}

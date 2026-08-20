@@ -33,7 +33,6 @@ import { ChessApp } from "@/components/apps/Chess";
 import { PokerApp } from "@/components/apps/Poker";
 import { SudokuApp } from "@/components/apps/Sudoku";
 import { WordSearchApp } from "@/components/apps/WordSearch";
-import { BattlegroundsGameApp } from "@/components/apps/BattlegroundsGame";
 
 export type GameMode = "Multiplayer" | "Singleplayer";
 export type GameGenre = "Puzzle" | "Strategy" | "Card" | "Board" | "Casual" | "Action";
@@ -208,19 +207,7 @@ export const GAMES: GameMetadata[] = [
     availability: "web-and-desktop",
     icon: <Type className="w-8 h-8 text-indigo-500" />,
     component: WordSearchApp,
-  },
-  {
-    id: "battlegrounds",
-    nameKey: "games.battlegroundsTitle",
-    defaultName: "Battlegrounds",
-    descKey: "games.battlegroundsDesc",
-    defaultDesc: "A chaotic 2D platform fighter for up to 10 players.",
-    modes: ["Multiplayer"],
-    genres: ["Action"],
-    availability: "web-and-desktop",
-    icon: <Swords className="w-8 h-8 text-red-500" />,
-    component: BattlegroundsGameApp,
-  },
+  }
 ];
 
 export default function Games() {
