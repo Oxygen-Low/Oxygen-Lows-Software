@@ -46,9 +46,27 @@ class MainActivity : AppCompatActivity() {
         
         webView.webChromeClient = WebChromeClient()
 
-        // Load the web app with android=1 param
-        // Load the web app with android=1 param
-        webView.loadUrl("https://oxygenlow.com/?android=1")
+        if (intent?.data?.scheme == "oxygenlows") {
+            handleIntent(intent)
+        } else {
+            webView.loadUrl("https://oxygenlow.com/?android=1")
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent?.data?.let { uri ->
+            if (uri.scheme == "oxygenlows") {
+                val urlString = uri.toString().replaceFirst("oxygenlows://", "https://oxygenlow.com/")
+                val separator = if (urlString.contains("?")) "&" else "?"
+                webView.loadUrl(urlString + separator + "android=1")
+            }
+        }
     }
 
     private fun injectPolyfill() {

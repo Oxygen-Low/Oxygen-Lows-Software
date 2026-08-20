@@ -20,12 +20,19 @@
         
         <activity
             android:name=".MainActivity"
-            android:exported="false"
+            android:exported="true"
+            android:launchMode="singleTask"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:theme="@style/Theme.OxygenLowsSoftware">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="oxygenlows" android:host="auth" />
             </intent-filter>
         </activity>
 
