@@ -41,7 +41,17 @@ vi.mock("@/lib/supabase", () => {
     supabase: {
       from: vi.fn(() => builder),
       storage: {
-        from: vi.fn(() => mockStorage),
+        from: vi.fn((bucket: string) => {
+          if (bucket === "public-assets") {
+            return {
+              list: vi.fn(() => Promise.resolve({ data: [], error: null })),
+              createSignedUrls: vi.fn(() => Promise.resolve({ data: [], error: null })),
+              upload: vi.fn(() => Promise.resolve({ error: null })),
+              remove: vi.fn(() => Promise.resolve({ error: null })),
+            };
+          }
+          return mockStorage;
+        }),
       },
     },
   };

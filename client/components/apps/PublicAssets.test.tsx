@@ -52,6 +52,10 @@ describe("PublicAssetsApp Component", () => {
     (useAuth as any).mockReturnValue({
       session: { user: { id: "u123", email: "user@example.com" }, access_token: "mock-token" },
     });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    });
   });
 
   afterEach(() => {
