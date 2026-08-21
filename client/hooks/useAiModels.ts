@@ -54,34 +54,6 @@ export const useAiModels = (
         }
       };
 
-      const lmStudioUrls = [
-        "http://127.0.0.1:1234/v1/models",
-        "http://localhost:1234/v1/models",
-        "http://127.0.0.1:1234/api/v0/models",
-        "http://localhost:1234/api/v0/models",
-      ];
-
-      const ollamaUrls = [
-        "http://127.0.0.1:11434/api/tags",
-        "http://localhost:11434/api/tags",
-        "http://127.0.0.1:11434/v1/models",
-        "http://localhost:11434/v1/models",
-      ];
-
-      const koboldUrls = [
-        "http://127.0.0.1:5001/api/v1/model",
-        "http://localhost:5001/api/v1/model",
-        "http://127.0.0.1:5000/api/v1/model",
-        "http://localhost:5000/api/v1/model",
-        "http://127.0.0.1:5001/v1/models",
-        "http://localhost:5001/v1/models",
-      ];
-
-      const probeJson = (url: string) =>
-        fetch(url, { signal: AbortSignal.timeout(2000) })
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null);
-
       const bridgeTask = isDesktopBridgeAvailable()
         ? callDesktopBridge<Model[]>("fetch_local_models", {}, 2500).catch(() => [])
         : Promise.resolve([]);
@@ -90,9 +62,6 @@ export const useAiModels = (
         supabase.from("user_models").select("provider, model_id").order("provider"),
         fetch("/api/ai/local-providers").then((res) => (res.ok ? res.json() : [])).catch(() => []),
         bridgeTask,
-        Promise.allSettled(lmStudioUrls.map(probeJson)),
-        Promise.allSettled(ollamaUrls.map(probeJson)),
-        Promise.allSettled(koboldUrls.map(probeJson)),
       ];
 
       const results = await Promise.allSettled(fetchTasks);
@@ -105,55 +74,6 @@ export const useAiModels = (
       for (const bm of bridgeModels) {
         if (bm && bm.provider && bm.model_id) {
           addDiscovered(bm.provider, bm.model_id);
-        }
-      }
-
-      // Add LM Studio models from direct fetch
-      const lmStudioSettled = results[3].status === "fulfilled" ? (results[3].value as PromiseSettledResult<any>[]) : [];
-      for (const res of lmStudioSettled) {
-        if (res.status === "fulfilled" && res.value) {
-          const val = res.value;
-          const items = Array.isArray(val) ? val : Array.isArray(val.data) ? val.data : Array.isArray(val.models) ? val.models : [];
-          for (const item of items) {
-            if (item && item.type !== "embeddings") {
-              const modelId = item.id || item.name || item.model || item.key;
-              addDiscovered("local-lmstudio", modelId);
-            }
-          }
-        }
-      }
-
-      // Add Ollama models from direct fetch
-      const ollamaSettled = results[4].status === "fulfilled" ? (results[4].value as PromiseSettledResult<any>[]) : [];
-      for (const res of ollamaSettled) {
-        if (res.status === "fulfilled" && res.value) {
-          const val = res.value;
-          const items = Array.isArray(val.models) ? val.models : Array.isArray(val.data) ? val.data : Array.isArray(val) ? val : [];
-          for (const item of items) {
-            if (item) {
-              const modelId = item.name || item.model || item.id;
-              addDiscovered("local-ollama", modelId);
-            }
-          }
-        }
-      }
-
-      // Add Kobold models from direct fetch
-      const koboldSettled = results[5].status === "fulfilled" ? (results[5].value as PromiseSettledResult<any>[]) : [];
-      for (const res of koboldSettled) {
-        if (res.status === "fulfilled" && res.value) {
-          const val = res.value;
-          if (typeof val.result === "string") {
-            addDiscovered("local-kobold", val.result);
-          } else {
-            const items = Array.isArray(val.data) ? val.data : Array.isArray(val) ? val : [];
-            for (const item of items) {
-              if (item) {
-                const modelId = typeof item === "string" ? item : item.id || item.name;
-                addDiscovered("local-kobold", modelId);
-              }
-            }
-          }
         }
       }
 
