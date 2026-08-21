@@ -210,3 +210,44 @@
   background-color: transparent;
   color: hsl(var(--foreground) / 0.8);
 }
+
+/* ── Custom Scrollbar Styles for Sidebar ── */
+.sidebar::-webkit-scrollbar,
+nav[role="navigation"]::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+nav[role="navigation"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+nav[role="navigation"]::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.5);
+  border-radius: 3px;
+  transition: background-color 200ms ease;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+nav[role="navigation"]::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--border) / 0.8);
+}
+
+/* Firefox scrollbar styles */
+.sidebar,
+nav[role="navigation"] {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.5) transparent;
+}
+
+/* Hide scrollbar for mobile touch devices (but keep functionality) */
+@media (max-width: 768px) {
+  .sidebar::-webkit-scrollbar {
+    width: 0px;
+  }
+  
+  .sidebar {
+    overflow-x: hidden;
+  }
+}
