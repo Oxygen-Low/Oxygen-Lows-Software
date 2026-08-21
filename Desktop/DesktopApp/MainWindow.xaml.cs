@@ -383,20 +383,26 @@ public partial class MainWindow : Window
                 {
                     var models = new List<Dictionary<string, string>>();
                     var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    object listLock = new object();
 
                     void AddModel(string provider, string modelId)
                     {
                         if (string.IsNullOrWhiteSpace(modelId)) return;
                         string key = $"{provider}:{modelId}";
-                        if (seen.Add(key))
+                        lock (listLock)
                         {
-                            models.Add(new Dictionary<string, string>
+                            if (seen.Add(key))
                             {
-                                ["provider"] = provider,
-                                ["model_id"] = modelId
-                            });
+                                models.Add(new Dictionary<string, string>
+                                {
+                                    ["provider"] = provider,
+                                    ["model_id"] = modelId
+                                });
+                            }
                         }
                     }
+
+                    var fetchTasks = new List<Task>();
 
                     // 1. LM Studio (ports 1234 on 127.0.0.1 and localhost)
                     var lmStudioUrls = new[]
@@ -408,56 +414,59 @@ public partial class MainWindow : Window
                     };
                     foreach (var url in lmStudioUrls)
                     {
-                        try
+                        fetchTasks.Add(Task.Run(async () =>
                         {
-                            var res = await _localHttpClient.GetStringAsync(url);
-                            using var resDoc = JsonDocument.Parse(res);
-                            if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                            try
                             {
-                                foreach (var item in dataProp.EnumerateArray())
+                                var res = await _localHttpClient.GetStringAsync(url);
+                                using var resDoc = JsonDocument.Parse(res);
+                                if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
                                 {
-                                    if (item.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "embeddings")
-                                        continue;
-                                    string? modelId = null;
-                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
-                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
-                                    else if (item.TryGetProperty("model", out var mProp)) modelId = mProp.GetString();
-                                    else if (item.TryGetProperty("key", out var kProp)) modelId = kProp.GetString();
+                                    foreach (var item in dataProp.EnumerateArray())
+                                    {
+                                        if (item.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "embeddings")
+                                            continue;
+                                        string? modelId = null;
+                                        if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                        else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                        else if (item.TryGetProperty("model", out var mProp)) modelId = mProp.GetString();
+                                        else if (item.TryGetProperty("key", out var kProp)) modelId = kProp.GetString();
 
-                                    if (!string.IsNullOrEmpty(modelId))
-                                    {
-                                        AddModel("local-lmstudio", modelId);
+                                        if (!string.IsNullOrEmpty(modelId))
+                                        {
+                                            AddModel("local-lmstudio", modelId);
+                                        }
                                     }
                                 }
-                            }
-                            else if (resDoc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var item in modelsProp.EnumerateArray())
+                                else if (resDoc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
                                 {
-                                    string? modelId = null;
-                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
-                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
-                                    if (!string.IsNullOrEmpty(modelId))
+                                    foreach (var item in modelsProp.EnumerateArray())
                                     {
-                                        AddModel("local-lmstudio", modelId);
+                                        string? modelId = null;
+                                        if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                        else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                        if (!string.IsNullOrEmpty(modelId))
+                                        {
+                                            AddModel("local-lmstudio", modelId);
+                                        }
                                     }
                                 }
-                            }
-                            else if (resDoc.RootElement.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var item in resDoc.RootElement.EnumerateArray())
+                                else if (resDoc.RootElement.ValueKind == JsonValueKind.Array)
                                 {
-                                    string? modelId = null;
-                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
-                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
-                                    if (!string.IsNullOrEmpty(modelId))
+                                    foreach (var item in resDoc.RootElement.EnumerateArray())
                                     {
-                                        AddModel("local-lmstudio", modelId);
+                                        string? modelId = null;
+                                        if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                        else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                        if (!string.IsNullOrEmpty(modelId))
+                                        {
+                                            AddModel("local-lmstudio", modelId);
+                                        }
                                     }
                                 }
                             }
-                        }
-                        catch { }
+                            catch { }
+                        }));
                     }
 
                     // 2. Ollama (port 11434 on 127.0.0.1 and localhost)
@@ -470,38 +479,41 @@ public partial class MainWindow : Window
                     };
                     foreach (var url in ollamaUrls)
                     {
-                        try
+                        fetchTasks.Add(Task.Run(async () =>
                         {
-                            var res = await _localHttpClient.GetStringAsync(url);
-                            using var resDoc = JsonDocument.Parse(res);
-                            if (resDoc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
+                            try
                             {
-                                foreach (var item in modelsProp.EnumerateArray())
+                                var res = await _localHttpClient.GetStringAsync(url);
+                                using var resDoc = JsonDocument.Parse(res);
+                                if (resDoc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
                                 {
-                                    string? modelId = null;
-                                    if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
-                                    else if (item.TryGetProperty("model", out var mProp)) modelId = mProp.GetString();
-                                    if (!string.IsNullOrEmpty(modelId))
+                                    foreach (var item in modelsProp.EnumerateArray())
                                     {
-                                        AddModel("local-ollama", modelId);
+                                        string? modelId = null;
+                                        if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                        else if (item.TryGetProperty("model", out var mProp)) modelId = mProp.GetString();
+                                        if (!string.IsNullOrEmpty(modelId))
+                                        {
+                                            AddModel("local-ollama", modelId);
+                                        }
+                                    }
+                                }
+                                else if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                                {
+                                    foreach (var item in dataProp.EnumerateArray())
+                                    {
+                                        string? modelId = null;
+                                        if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                        else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
+                                        if (!string.IsNullOrEmpty(modelId))
+                                        {
+                                            AddModel("local-ollama", modelId);
+                                        }
                                     }
                                 }
                             }
-                            else if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var item in dataProp.EnumerateArray())
-                                {
-                                    string? modelId = null;
-                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
-                                    else if (item.TryGetProperty("name", out var nameProp)) modelId = nameProp.GetString();
-                                    if (!string.IsNullOrEmpty(modelId))
-                                    {
-                                        AddModel("local-ollama", modelId);
-                                    }
-                                }
-                            }
-                        }
-                        catch { }
+                            catch { }
+                        }));
                     }
 
                     // 3. Kobold / KoboldCPP (ports 5001 and 5000 on 127.0.0.1 and localhost)
@@ -516,33 +528,38 @@ public partial class MainWindow : Window
                     };
                     foreach (var url in koboldUrls)
                     {
-                        try
+                        fetchTasks.Add(Task.Run(async () =>
                         {
-                            var res = await _localHttpClient.GetStringAsync(url);
-                            using var resDoc = JsonDocument.Parse(res);
-                            if (resDoc.RootElement.TryGetProperty("result", out var resProp))
+                            try
                             {
-                                string? modelId = resProp.GetString();
-                                if (!string.IsNullOrEmpty(modelId))
+                                var res = await _localHttpClient.GetStringAsync(url);
+                                using var resDoc = JsonDocument.Parse(res);
+                                if (resDoc.RootElement.TryGetProperty("result", out var resProp))
                                 {
-                                    AddModel("local-kobold", modelId);
-                                }
-                            }
-                            else if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var item in dataProp.EnumerateArray())
-                                {
-                                    string? modelId = null;
-                                    if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                    string? modelId = resProp.GetString();
                                     if (!string.IsNullOrEmpty(modelId))
                                     {
                                         AddModel("local-kobold", modelId);
                                     }
                                 }
+                                else if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                                {
+                                    foreach (var item in dataProp.EnumerateArray())
+                                    {
+                                        string? modelId = null;
+                                        if (item.TryGetProperty("id", out var itemIdProp)) modelId = itemIdProp.GetString();
+                                        if (!string.IsNullOrEmpty(modelId))
+                                        {
+                                            AddModel("local-kobold", modelId);
+                                        }
+                                    }
+                                }
                             }
-                        }
-                        catch { }
+                            catch { }
+                        }));
                     }
+
+                    await Task.WhenAll(fetchTasks);
 
                     SendWebMessage(new { id, success = true, data = models });
                 }
