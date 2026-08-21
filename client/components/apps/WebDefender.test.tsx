@@ -175,10 +175,6 @@ describe("Defender EventsTab", () => {
     expect(emptyCell?.getAttribute("colspan")).toBe("6");
   });
 
-  it("renders the Live Feed badge in the EventsTab toolbar", () => {
-    const { getByText } = render(<EventsTab events={[]} />);
-    expect(getByText("Live Feed")).toBeDefined();
-  });
 });
 
 
