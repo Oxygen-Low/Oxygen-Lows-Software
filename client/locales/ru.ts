@@ -518,6 +518,10 @@ export const ru = {
     cannotDisableIntegrationsWithKeys: "Невозможно отключить шифрование, пока сохранены API-ключи/интеграции. Пожалуйста, сначала удалите все сохраненные интеграции.",
     masterKeyRequiredToChange: "Для включения или отключения защищенных категорий данных требуется активный мастер-ключ.",
     masterKeyRequiredNotice: "Для изменения настроек шифрования защищенных категорий данных требуется активный мастер-ключ. Сгенерируйте или разблокируйте мастер-ключ выше, чтобы изменить эти настройки.",
+    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    keyRotateFailed: "Failed to rotate masterkey.",
+    rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "Интеграции и API-ключи",

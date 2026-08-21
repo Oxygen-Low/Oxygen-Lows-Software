@@ -518,6 +518,10 @@ export const es = {
     cannotDisableIntegrationsWithKeys: "No se puede deshabilitar el cifrado mientras haya claves API/integraciones almacenadas. Por favor, elimina primero todas las integraciones almacenadas.",
     masterKeyRequiredToChange: "Se requiere una clave maestra activa para habilitar o deshabilitar categorías de datos protegidas.",
     masterKeyRequiredNotice: "Se requiere una clave maestra activa para cambiar la configuración de las categorías de datos protegidas. Genera o desbloquea una clave maestra arriba para modificar estos ajustes.",
+    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    keyRotateFailed: "Failed to rotate masterkey.",
+    rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "Integraciones y Claves API",

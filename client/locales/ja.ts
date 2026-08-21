@@ -518,6 +518,10 @@ export const ja = {
     cannotDisableIntegrationsWithKeys: "APIキー/連携が保存されている間は暗号化を無効にできません。まず、保存されているすべての連携を削除してください。",
     masterKeyRequiredToChange: "保護対象データカテゴリを有効化または無効化するには、アクティブなマスターキーが必要です。",
     masterKeyRequiredNotice: "保護対象データカテゴリの暗号化設定を変更するには、アクティブなマスターキーが必要です。これらの設定を変更するには、上記でマスターキーを生成またはロック解除してください。",
+    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    keyRotateFailed: "Failed to rotate masterkey.",
+    rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "連携とAPIキー",

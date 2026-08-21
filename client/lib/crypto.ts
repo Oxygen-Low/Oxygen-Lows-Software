@@ -1177,3 +1177,166 @@ export async function migrateCategoryEncryption({
   return { updatedCount };
 }
 
+export interface RotateKeyOptions {
+  oldKeyBytes: Uint8Array;
+  newKeyBytes: Uint8Array;
+  userId?: string;
+  client?: any;
+}
+
+/**
+ * Rotate the master key: decrypt all data across all enabled categories using the old key,
+ * and then immediately re-encrypt using the new key.
+ */
+export async function rotateMasterKey({
+  oldKeyBytes,
+  newKeyBytes,
+  userId,
+  client,
+}: RotateKeyOptions): Promise<{ updatedCount: number }> {
+  const db = client || supabase;
+  let updatedCount = 0;
+
+  const categories: EncryptionCategory[] = ["characters", "data_save", "chatbot", "integrations"];
+
+  for (const category of categories) {
+    if (!isCategoryEncryptionEnabled(category)) continue;
+
+    if (category === "characters") {
+      let query = db.from("characters").select("*");
+      if (userId) query = query.eq("user_id", userId);
+      const { data: chars, error } = await query;
+      if (error) throw error;
+
+      if (chars && chars.length > 0) {
+        for (const char of chars) {
+          const dec = await decryptCharacterData(char, oldKeyBytes);
+          const enc = await encryptCharacterData(dec, newKeyBytes);
+          const { error: updateError } = await db
+            .from("characters")
+            .update({
+              name: enc.name,
+              short_description: enc.short_description,
+              display_name: enc.display_name,
+              appearance: enc.appearance,
+              personality: enc.personality,
+              backstory: enc.backstory,
+              hidden_description: enc.hidden_description,
+            })
+            .eq("id", char.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    } else if (category === "data_save") {
+      let querySaves = db.from("data_saves").select("*");
+      if (userId) querySaves = querySaves.eq("user_id", userId);
+      const { data: saves, error: savesError } = await querySaves;
+      if (savesError) throw savesError;
+
+      if (saves && saves.length > 0) {
+        for (const save of saves) {
+          const dec = await decryptDataSaveData(save, oldKeyBytes);
+          const enc = await encryptDataSaveData(dec, newKeyBytes);
+          const { error: updateError } = await db
+            .from("data_saves")
+            .update({
+              key_name: enc.key_name,
+              content: enc.content,
+            })
+            .eq("id", save.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+
+      let queryCats = db.from("data_save_categories").select("*");
+      if (userId) queryCats = queryCats.eq("user_id", userId);
+      const { data: cats, error: catsError } = await queryCats;
+      if (catsError) throw catsError;
+
+      if (cats && cats.length > 0) {
+        for (const cat of cats) {
+          const dec = await decryptDataSaveCategoryData(cat, oldKeyBytes);
+          const enc = await encryptDataSaveCategoryData(dec, newKeyBytes);
+          const { error: updateError } = await db
+            .from("data_save_categories")
+            .update({ name: enc.name })
+            .eq("id", cat.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    } else if (category === "chatbot") {
+      let queryChats = db.from("chats").select("*");
+      if (userId) queryChats = queryChats.eq("user_id", userId);
+      const { data: chats, error: chatsError } = await queryChats;
+      if (chatsError) throw chatsError;
+
+      if (chats && chats.length > 0) {
+        const chatIds = chats.map((c: any) => c.id);
+        for (const chat of chats) {
+          const dec = await decryptChatData(chat, oldKeyBytes);
+          const enc = await encryptChatData(dec, newKeyBytes);
+          const { error: updateError } = await db
+            .from("chats")
+            .update({
+              title: enc.title,
+              system_prompt: enc.system_prompt,
+            })
+            .eq("id", chat.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+
+        if (chatIds.length > 0) {
+          const { data: msgs, error: msgsError } = await db
+            .from("chat_messages")
+            .select("*")
+            .in("chat_id", chatIds);
+          if (msgsError) throw msgsError;
+
+          if (msgs && msgs.length > 0) {
+            for (const msg of msgs) {
+              const dec = await decryptChatMessageData(msg, oldKeyBytes);
+              const enc = await encryptChatMessageData(dec, newKeyBytes);
+              const { error: updateError } = await db
+                .from("chat_messages")
+                .update({
+                  content: enc.content,
+                  reasoning: enc.reasoning,
+                })
+                .eq("id", msg.id);
+              if (updateError) throw updateError;
+              updatedCount++;
+            }
+          }
+        }
+      }
+    } else if (category === "integrations") {
+      let queryIntegrations = db.from("user_integrations").select("*");
+      if (userId) queryIntegrations = queryIntegrations.eq("user_id", userId);
+      const { data: list, error: integrationsError } = await queryIntegrations;
+      if (integrationsError) throw integrationsError;
+
+      if (list && list.length > 0) {
+        for (const item of list) {
+          const dec = await decryptIntegrationData(item, oldKeyBytes);
+          const enc = await encryptIntegrationData(dec, newKeyBytes);
+          const { error: updateError } = await db
+            .from("user_integrations")
+            .update({
+              api_key: enc.api_key,
+              base_url: enc.base_url,
+            })
+            .eq("id", item.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    }
+  }
+
+  return { updatedCount };
+}
+

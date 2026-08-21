@@ -518,6 +518,10 @@ export const ko = {
     cannotDisableIntegrationsWithKeys: "API 키/통합이 저장되어 있는 동안에는 암호화를 비활성화할 수 없습니다. 먼저 저장된 모든 통합을 제거하십시오.",
     masterKeyRequiredToChange: "보호 대상 데이터 범주를 활성화하거나 비활성화하려면 활성 마스터 키가 필요합니다.",
     masterKeyRequiredNotice: "보호 대상 데이터 범주 암호화 설정을 변경하려면 활성 마스터 키가 필요합니다. 설정을 변경하려면 위에서 마스터 키를 생성하거나 잠금을 해제하세요.",
+    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    keyRotateFailed: "Failed to rotate masterkey.",
+    rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "통합 및 API 키",

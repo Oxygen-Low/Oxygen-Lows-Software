@@ -56,6 +56,7 @@ import {
   zeroizeBytes,
   onAutoLock,
   migrateCategoryEncryption,
+  rotateMasterKey,
   type EncryptionCategory,
 } from "@/lib/crypto";
 
@@ -120,6 +121,83 @@ export default function Security() {
   const [importError, setImportError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isRotatingKey, setIsRotatingKey] = useState<boolean>(false);
+
+  const handleRotateKey = async () => {
+    if (!keyBytes) return;
+
+    if (!confirm(t("security.rotateKeyConfirm", undefined, "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished."))) {
+      return;
+    }
+
+    try {
+      setIsRotatingKey(true);
+      const newKey = generateAes256Key();
+      
+      const result = await rotateMasterKey({
+        oldKeyBytes: keyBytes,
+        newKeyBytes: newKey,
+        userId: session?.user?.id,
+      });
+
+      setKeyBytes(newKey);
+      setImportError(null);
+      setInputMasterKey("");
+      
+      toast.success(t("security.keyRotatedToast", { count: result.updatedCount }, `Masterkey rotated successfully! ${result.updatedCount} records re-encrypted.`));
+
+      // Auto-download the new key for safety
+      const hex = bytesToHex(newKey);
+      const b64 = bytesToBase64(newKey);
+      const b58 = bytesToBase58(newKey);
+      const words = bytesToPassphraseWords(newKey);
+
+      const fileContent = [
+        "===========================================================",
+        " Oxygen Low's Software - AES-256 Masterkey Backup (Rotated)",
+        " Generated: " + new Date().toISOString(),
+        " Algorithm: AES-256 (256-bit / 32 bytes)",
+        " Entropy: 256 bits (CSPRNG hardware entropy)",
+        "===========================================================",
+        "",
+        "[HEXADECIMAL MASTERKEY - 64 CHARACTERS]",
+        hex,
+        "",
+        "[BASE64 MASTERKEY - 44 CHARACTERS]",
+        b64,
+        "",
+        "[BASE58 MASTERKEY]",
+        b58,
+        "",
+        "[24-WORD PASSPHRASE REPRESENTATION]",
+        words,
+        "",
+        "===========================================================",
+        " ZERO-KNOWLEDGE NOTICE:",
+        " Store this masterkey in a secure password manager (e.g., Bitwarden,",
+        " 1Password, KeePass) or offline vault.",
+        " Oxygen Low's Software does not store or have access to your masterkey.",
+        " If you lose your masterkey, your encrypted data cannot be recovered.",
+        "===========================================================",
+      ].join("\n");
+
+      const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `oxygen-masterkey-rotated-aes256-${Date.now()}.key`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(t("security.keyDownloadedToast", undefined, "Masterkey saved to file"));
+    } catch (err: any) {
+      console.error("Failed to rotate key:", err);
+      toast.error(err.message || t("security.keyRotateFailed", undefined, "Failed to rotate masterkey."));
+    } finally {
+      setIsRotatingKey(false);
+    }
+  };
 
   // Process and activate a .key file
   const processKeyFile = useCallback(
@@ -538,6 +616,16 @@ export default function Security() {
                     title={isMasked ? t("security.revealKey", undefined, "Reveal key") : t("security.maskKey", undefined, "Hide key")}
                   >
                     {isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+
+                  <Button
+                    onClick={handleRotateKey}
+                    disabled={isRotatingKey}
+                    variant="outline"
+                    className="gap-2 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300"
+                  >
+                    {isRotatingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                    <span>{t("security.rotateKeyButton", undefined, "Rotate Masterkey")}</span>
                   </Button>
 
                   <Button

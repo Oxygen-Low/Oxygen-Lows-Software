@@ -518,6 +518,10 @@ export const zhCN = {
     cannotDisableIntegrationsWithKeys: "存在已存储的 API 密钥/集成时无法禁用加密。请先删除所有存储的集成。",
     masterKeyRequiredToChange: "启用或禁用受保护数据分类需要激活的主密钥。",
     masterKeyRequiredNotice: "更改受保护数据分类的加密设置需要激活的主密钥。请在上方生成或解锁主密钥以修改这些设置。",
+    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    keyRotateFailed: "Failed to rotate masterkey.",
+    rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "集成与 API 密钥",

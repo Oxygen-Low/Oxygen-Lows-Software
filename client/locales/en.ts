@@ -529,6 +529,10 @@ export const en = {
     autoLockedToast: "Masterkey locked due to 30 minutes of inactivity.",
     masterKeyRequiredToChange: "An active masterkey is required to enable or disable protected data categories.",
     masterKeyRequiredNotice: "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
+    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    keyRotateFailed: "Failed to rotate masterkey.",
+    rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "Integrations & API Keys",
