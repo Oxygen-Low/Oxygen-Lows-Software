@@ -667,10 +667,7 @@ function AppDashboard({ appId, onBack, authFetch }: { appId: string, onBack: () 
             <Badge variant={app.block_mode_enabled ? "destructive" : "default"} className={cn(!app.block_mode_enabled && "bg-emerald-500/10 text-emerald-500")}>
               {app.block_mode_enabled ? "Block Mode" : "Observe Mode"}
             </Badge>
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-slate-900 border-slate-800 text-slate-300">
-              <span className={cn("w-2 h-2 rounded-full", isRealtime ? "bg-emerald-400 animate-pulse" : "bg-amber-400")} />
-              <span>{isRealtime ? t("apps.webDefenderRealTime", undefined, "Real-Time") : t("apps.webDefenderConnecting", undefined, "Connecting...")}</span>
-            </div>
+
           </div>
         </div>
       </div>
@@ -1044,10 +1041,6 @@ export function EventsTab({ events }: { events: Event[] }) {
           </Select>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Live Feed</span>
-          </div>
           <div className="text-sm text-slate-400">Total: {filtered.length}</div>
         </div>
       </div>
