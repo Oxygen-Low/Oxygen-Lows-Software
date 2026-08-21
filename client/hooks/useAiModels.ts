@@ -55,7 +55,7 @@ export const useAiModels = (
       };
 
       const bridgeTask = isDesktopBridgeAvailable()
-        ? callDesktopBridge<Model[]>("fetch_local_models", {}, 3500).catch(() => [])
+        ? callDesktopBridge<Model[]>("fetch_local_models", {}, 2500).catch(() => [])
         : Promise.resolve([]);
 
       const fetchTasks = [
