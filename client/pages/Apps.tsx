@@ -44,8 +44,7 @@ type Category =
   | "LLM/AI"
   | "Development"
   | "Social"
-  | "Security"
-  | "Gaming";
+  | "Security";
 
 type Availability = "web-and-desktop" | "desktop-only";
 
@@ -119,14 +118,6 @@ const CATEGORY_DEFINITIONS: {
     icon: <Shield className="w-5 h-5" />,
     descKey: "apps.categorySecurityDesc",
     defaultDesc: "Protection for software and devices.",
-  },
-  {
-    name: "Gaming",
-    labelKey: "apps.categoryGaming",
-    defaultLabel: "Gaming",
-    icon: <Monitor className="w-5 h-5" />,
-    descKey: "apps.categoryGamingDesc",
-    defaultDesc: "Gaming utilities and creators.",
   },
 ];
 
@@ -322,7 +313,6 @@ export default function Apps() {
       Development: 0,
       Social: 0,
       Security: 0,
-      Gaming: 0,
     };
     availableApps.forEach((app) => {
       app.categories.forEach((cat) => {

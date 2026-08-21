@@ -144,8 +144,6 @@ export const en = {
     categorySocialDesc: "Connect with others",
     categorySecurity: "Security",
     categorySecurityDesc: "Protection for software and devices.",
-    categoryGaming: "Gaming",
-    categoryGamingDesc: "Gaming utilities and creators.",
     noAppsFound: "No apps found in this category.",
     noDesktopApps: "No desktop-only apps are available yet.",
     signInToUse: "Sign in to use {name}",
