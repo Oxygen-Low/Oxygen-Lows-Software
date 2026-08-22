@@ -10,7 +10,7 @@ const ADMIN_USER_IDS = new Set(["3cb76293-8c6c-49b9-b431-1ff5fce471ee"]);
 
 export const storageRouter = new Hono();
 const STORAGE_DIR = path.join(process.cwd(), "uploads");
-const MAX_QUOTA = 500 * 1024 * 1024; // 500 MB
+const MAX_QUOTA = 300 * 1024 * 1024; // 300 MB
 
 const authMiddleware = async (c: any, next: any) => {
   let token = c.req.header("Authorization")?.replace(/^Bearer /i, "");
@@ -82,7 +82,7 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
   const currentSize = getUserTotalSize(user.id);
   
   if (currentSize + newFileSize > MAX_QUOTA) {
-    return c.json({ error: "Quota exceeded. Maximum 500MB allowed per user." }, 400);
+    return c.json({ error: "Quota exceeded. Maximum 300MB allowed per user." }, 400);
   }
 
   const targetDir = path.join(STORAGE_DIR, bucket, path.dirname(filePath));
