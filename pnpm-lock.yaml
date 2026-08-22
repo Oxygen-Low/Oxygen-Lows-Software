@@ -74,6 +74,9 @@ importers:
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
+      mime-types:
+        specifier: ^3.0.2
+        version: 3.0.2
       music-metadata:
         specifier: 11.14.0
         version: 11.14.0
