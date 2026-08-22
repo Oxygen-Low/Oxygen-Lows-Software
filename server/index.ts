@@ -19,7 +19,7 @@ const app = new Hono();
 let defenderPromise: Promise<any> | null = null;
 
 app.use('*', async (c, next) => {
-  if (c.req.path.startsWith('/api/webdefender') || c.req.path.startsWith('/api/defender')) {
+  if (c.req.path.startsWith('/api/webdefender') || c.req.path.startsWith('/api/defender') || c.req.path.startsWith('/api/storage')) {
     return next();
   }
   if (!defenderPromise) {
