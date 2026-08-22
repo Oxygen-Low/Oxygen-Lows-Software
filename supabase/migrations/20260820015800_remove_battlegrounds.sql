@@ -4,9 +4,6 @@ DROP POLICY IF EXISTS "Users can upload their own battlegrounds assets." ON stor
 DROP POLICY IF EXISTS "Users can update their own battlegrounds assets." ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete their own battlegrounds assets." ON storage.objects;
 
--- Delete storage bucket for battlegrounds assets
-DELETE FROM storage.buckets WHERE id = 'battlegrounds-assets';
-
 -- Drop policies for battlegrounds_characters
 DROP POLICY IF EXISTS "Battlegrounds characters are viewable by everyone if public." ON public.battlegrounds_characters;
 DROP POLICY IF EXISTS "Users can insert their own battlegrounds characters." ON public.battlegrounds_characters;
