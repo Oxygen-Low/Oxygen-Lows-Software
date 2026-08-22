@@ -238,8 +238,6 @@ export const ja = {
     verifiedBadge: "検証済み",
     reverificationRequired: "ファイルが変更されました。前回の検証はリセットされたため、再検証が必要です。",
     noSubmissions: "ストレージファイルの検証申請はまだありません。",
-    webDefenderAdviceTitle: "Web Defender ストレージ:",
-    webDefenderAdviceDesc: "Web Defender の保存データ（ルート、イベントログ、送信接続）はストレージ使用量に加算されます。複数の Web Defender アプリを有効にしている場合は、イベント制限を低く抑えることをお勧めします。",
   },
   customize: {
     title: "カスタマイズ",

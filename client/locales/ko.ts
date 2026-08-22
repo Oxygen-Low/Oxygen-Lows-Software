@@ -238,8 +238,6 @@ export const ko = {
     verifiedBadge: "검증 완료",
     reverificationRequired: "파일이 수정되었습니다. 이전 검증이 초기화되었으며 재검증이 필요합니다.",
     noSubmissions: "저장소 파일에 대한 검증 신청이 아직 없습니다.",
-    webDefenderAdviceTitle: "Web Defender 저장공간:",
-    webDefenderAdviceDesc: "Web Defender의 저장된 데이터(라우트, 이벤트 로그, 아웃바운드)는 저장공간 사용량에 반영됩니다. 여러 Web Defender 앱을 활성화한 경우 이벤트 제한을 낮게 유지하는 것이 좋습니다.",
   },
   customize: {
     title: "커스터마이즈",

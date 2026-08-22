@@ -658,11 +658,6 @@ export default function Storage() {
                       </div>
                     ))}
                   </div>
-
-                  <div className="p-3 bg-slate-950/70 rounded-lg border border-slate-800 text-xs text-slate-400 leading-relaxed">
-                    <span className="text-cyan-400 font-semibold mr-1">{t("storage.webDefenderAdviceTitle", undefined, "Web Defender Storage:")}</span>
-                    {t("storage.webDefenderAdviceDesc", undefined, "Stored data (routes, event log, outbounds) from Web Defender counts towards your storage usage. You are advised to keep event limits low if multiple Web Defender apps are enabled.")}
-                  </div>
                 </div>
               </CardContent>
             </Card>

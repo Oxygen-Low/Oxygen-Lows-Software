@@ -238,8 +238,6 @@ export const es = {
     verifiedBadge: "Verificado",
     reverificationRequired: "Archivo modificado. La verificación anterior se ha restablecido y requiere una nueva verificación.",
     noSubmissions: "Aún no hay solicitudes de verificación para archivos de almacenamiento.",
-    webDefenderAdviceTitle: "Almacenamiento de Web Defender:",
-    webDefenderAdviceDesc: "Los datos almacenados (rutas, registro de eventos, conexiones salientes) de Web Defender cuentan para su uso de almacenamiento. Se recomienda mantener los límites de eventos bajos si hay varias aplicaciones de Web Defender habilitadas.",
   },
   customize: {
     title: "Personalizar",

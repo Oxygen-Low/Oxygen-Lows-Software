@@ -238,8 +238,6 @@ export const zhCN = {
     verifiedBadge: "已验证",
     reverificationRequired: "文件已被修改。之前的验证已重置，需要重新验证。",
     noSubmissions: "暂无存储文件的验证申请记录。",
-    webDefenderAdviceTitle: "Web Defender 存储：",
-    webDefenderAdviceDesc: "来自 Web Defender 的存储数据（路由、事件日志、出站连接）会计入您的存储空间用量。如果启用了多个 Web Defender 应用程序，建议保持较低的事件上限。",
   },
   customize: {
     title: "个性化",
