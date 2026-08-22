@@ -110,6 +110,7 @@ storageRouter.post("/list/:bucket", authMiddleware, async (c) => {
         const fullPath = path.join(targetDir, f.name);
         const stats = fs.statSync(fullPath);
         return {
+          id: f.isDirectory() ? null : (prefixPath ? `${prefixPath}/${f.name}` : f.name),
           name: f.name,
           metadata: { size: stats.size, mimetype: mime.lookup(f.name) || "application/octet-stream" },
           created_at: stats.birthtime.toISOString(),
