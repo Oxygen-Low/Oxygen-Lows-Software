@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import fs from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
+import mime from "mime-types";
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
@@ -110,7 +111,7 @@ storageRouter.post("/list/:bucket", authMiddleware, async (c) => {
         const stats = fs.statSync(fullPath);
         return {
           name: f.name,
-          metadata: { size: stats.size, mimetype: "application/octet-stream" },
+          metadata: { size: stats.size, mimetype: mime.lookup(f.name) || "application/octet-stream" },
           created_at: stats.birthtime.toISOString(),
           updated_at: stats.mtime.toISOString(),
         };
