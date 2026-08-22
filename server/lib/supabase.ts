@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
+import fs from "fs";
+import path from "path";
 
 const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const supabaseAnonKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
@@ -15,15 +17,56 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 const clientCache = new Map<string, any>();
 
+class LocalServerStorage {
+  from(bucket: string) {
+    const STORAGE_DIR = path.join(process.cwd(), "uploads");
+    return {
+      remove: async (paths: string[]) => {
+        for (const p of paths) {
+          const fp = path.join(STORAGE_DIR, bucket, p);
+          if (fs.existsSync(fp)) fs.unlinkSync(fp);
+        }
+        return { data: paths, error: null };
+      },
+      upload: async (p: string, data: any, options?: any) => {
+        const fp = path.join(STORAGE_DIR, bucket, p);
+        fs.mkdirSync(path.dirname(fp), { recursive: true });
+        if (data instanceof Blob) {
+           fs.writeFileSync(fp, Buffer.from(await data.arrayBuffer()));
+        } else {
+           fs.writeFileSync(fp, Buffer.from(data));
+        }
+        return { data: { path: p }, error: null };
+      },
+      download: async (p: string) => {
+        const fp = path.join(STORAGE_DIR, bucket, p);
+        if (fs.existsSync(fp)) {
+          const buf = fs.readFileSync(fp);
+          const blob = new Blob([buf]);
+          return { data: blob, error: null };
+        }
+        return { data: null, error: new Error("Not found") };
+      }
+    };
+  }
+}
+
+const patchStorage = (client: any) => {
+  client.storage = new LocalServerStorage();
+  return client;
+};
+
+patchStorage(supabase);
+
 export function getAuthenticatedClient(token?: string) {
   if (token && token !== supabaseAnonKey) {
     if (clientCache.has(token)) {
       return clientCache.get(token);
     }
-    const client = createClient(supabaseUrl, supabaseAnonKey, {
+    const client = patchStorage(createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
-    });
+    }));
     clientCache.set(token, client);
     return client;
   }
@@ -69,7 +112,7 @@ export function getAdminClient(serviceRoleKeyParam?: string) {
   if (!serviceRoleKey) {
     throw new Error("SUPABASE_SECRET is not set");
   }
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return patchStorage(createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
-  });
+  }));
 }

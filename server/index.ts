@@ -11,6 +11,7 @@ import { aiRouter } from "./routes/ai.ts";
 import { changelogsRouter } from "./routes/changelogs.ts";
 import { vpnRouter } from "./routes/vpn.ts";
 import { defenderRouter } from "./routes/webdefender.ts";
+import { storageRouter } from "./routes/storage.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 
 const app = new Hono();
@@ -834,6 +835,7 @@ app.route("/api/changelogs", changelogsRouter);
 app.route("/api/vpn", vpnRouter);
 app.route("/api/webdefender", defenderRouter);
 app.route("/api/defender", defenderRouter);
+app.route("/api/storage", storageRouter);
 
 export function createServer() {
   return app;
