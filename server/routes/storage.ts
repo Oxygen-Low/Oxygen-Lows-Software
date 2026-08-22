@@ -58,11 +58,17 @@ const getUserTotalSize = (userId: string) => {
 
 storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
   const bucket = c.req.param("bucket");
-  const filePath = c.req.param("*");
+  let filePath = c.req.param("*") || c.req.param("path") || (c.req.path.split(`/upload/${bucket}/`)[1]);
+  if (filePath) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath.startsWith("/")) filePath = filePath.substring(1);
+    if (filePath.includes("..")) return c.json({ error: "Invalid path" }, 400);
+  }
   const user = c.get("user" as any) as any;
+  console.log(`[UPLOAD DEBUG] bucket=${bucket} param*=${c.req.param("*")} filePath=${filePath} user.id=${user.id}`);
 
   if (!filePath.startsWith(user.id + "/") && !ADMIN_USER_IDS.has(user.id)) {
-     return c.json({ error: "Cannot upload to other user's directory" }, 403);
+     return c.json({ error: "Cannot upload to other user's directory" }, 400);
   }
 
   const body = await c.req.parseBody();
@@ -135,7 +141,12 @@ storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
 
 storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
   const bucket = c.req.param("bucket");
-  const filePath = c.req.param("*");
+  let filePath = c.req.param("*") || (c.req.path.split(`/download/${bucket}/`)[1]);
+  if (filePath) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath.startsWith("/")) filePath = filePath.substring(1);
+    if (filePath.includes("..")) return c.json({ error: "Invalid path" }, 400);
+  }
   const fullPath = path.join(STORAGE_DIR, bucket, filePath);
   
   if (!fs.existsSync(fullPath)) {
@@ -150,7 +161,12 @@ storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
 
 storageRouter.get("/public/:bucket/*", async (c) => {
   const bucket = c.req.param("bucket");
-  const filePath = c.req.param("*");
+  let filePath = c.req.param("*") || (c.req.path.split(`/public/${bucket}/`)[1]);
+  if (filePath) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath.startsWith("/")) filePath = filePath.substring(1);
+    if (filePath.includes("..")) return c.json({ error: "Invalid path" }, 400);
+  }
   const fullPath = path.join(STORAGE_DIR, bucket, filePath);
   
   if (!fs.existsSync(fullPath)) {
