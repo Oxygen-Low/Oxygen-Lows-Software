@@ -249,8 +249,6 @@ export const en = {
     verifiedBadge: "Verified",
     reverificationRequired: "File modified. Previous verification has been reset and requires re-verification.",
     noSubmissions: "No verification submissions for storage files yet.",
-    webDefenderAdviceTitle: "Web Defender Storage:",
-    webDefenderAdviceDesc: "Stored data (routes, event log, outbounds) from Web Defender counts towards your storage usage. You are advised to keep event limits low if multiple Web Defender apps are enabled.",
   },
   customize: {
     title: "Customize",
