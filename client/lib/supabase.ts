@@ -114,6 +114,28 @@ const fetchFn = typeof fetch !== "undefined" ? fetch : (globalThis as any).fetch
           return { data: null, error: e };
         }
       },
+      createSignedUrl: async (path: string, expiresIn: number) => {
+        const token = await this.getToken();
+        try {
+          const fetchFn = typeof fetch !== "undefined" ? fetch : (globalThis as any).fetch;
+          const res = await fetchFn(`/api/storage/signed-urls/${bucket}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ paths: [path], expiresIn })
+          });
+          const json = await res.json();
+          if (res.status >= 400) return { data: null, error: new Error(json.error) };
+          if (json.data && json.data.length > 0) {
+            return { data: { signedUrl: json.data[0].signedUrl }, error: null };
+          }
+          return { data: null, error: new Error("Failed to create signed URL") };
+        } catch (e: any) {
+          return { data: null, error: e };
+        }
+      },
       getPublicUrl: (path: string) => {
         return { data: { publicUrl: `/api/storage/public/${bucket}/${path}` } };
       }
