@@ -12,24 +12,53 @@ vi.mock("@/components/Layout", () => ({
   default: ({ children }: any) => <div data-testid="layout">{children}</div>,
 }));
 
-vi.mock("@/lib/supabase", () => {
-  const mockStorage = {
-    list: vi.fn(() =>
-      Promise.resolve({
-        data: [{ id: "f1", name: "test-audio.mp3", metadata: { size: 1024, mimetype: "audio/mp3" }, created_at: new Date().toISOString() }],
-        error: null,
-      }),
-    ),
-    createSignedUrls: vi.fn(() =>
-      Promise.resolve({
-        data: [{ signedUrl: "https://example.com/test-audio.mp3" }],
-        error: null,
-      }),
-    ),
-    upload: vi.fn(() => Promise.resolve({ error: null })),
-    remove: vi.fn(() => Promise.resolve({ error: null })),
-  };
+const mockStorage = {
+  list: vi.fn(() =>
+    Promise.resolve({
+      data: [{ id: "f1", name: "test-audio.mp3", metadata: { size: 1024, mimetype: "audio/mp3" }, created_at: new Date().toISOString() }],
+      error: null,
+    }),
+  ),
+  createSignedUrls: vi.fn(() =>
+    Promise.resolve({
+      data: [{ signedUrl: "https://example.com/test-audio.mp3" }],
+      error: null,
+    }),
+  ),
+  upload: vi.fn(() => Promise.resolve({ error: null })),
+  remove: vi.fn(() => Promise.resolve({ error: null })),
+};
 
+vi.mock("@/lib/storage", () => ({
+  storage: {
+    from: vi.fn((bucket: string) => {
+      if (bucket === "public-assets") {
+        return {
+          list: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          createSignedUrls: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          upload: vi.fn(() => Promise.resolve({ error: null })),
+          remove: vi.fn(() => Promise.resolve({ error: null })),
+        };
+      }
+      return mockStorage;
+    }),
+  },
+  customStorage: {
+    from: vi.fn((bucket: string) => {
+      if (bucket === "public-assets") {
+        return {
+          list: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          createSignedUrls: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          upload: vi.fn(() => Promise.resolve({ error: null })),
+          remove: vi.fn(() => Promise.resolve({ error: null })),
+        };
+      }
+      return mockStorage;
+    }),
+  },
+}));
+
+vi.mock("@/lib/supabase", () => {
   const builder: any = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
@@ -40,19 +69,6 @@ vi.mock("@/lib/supabase", () => {
   return {
     supabase: {
       from: vi.fn(() => builder),
-      storage: {
-        from: vi.fn((bucket: string) => {
-          if (bucket === "public-assets") {
-            return {
-              list: vi.fn(() => Promise.resolve({ data: [], error: null })),
-              createSignedUrls: vi.fn(() => Promise.resolve({ data: [], error: null })),
-              upload: vi.fn(() => Promise.resolve({ error: null })),
-              remove: vi.fn(() => Promise.resolve({ error: null })),
-            };
-          }
-          return mockStorage;
-        }),
-      },
     },
   };
 });

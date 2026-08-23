@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,7 +83,7 @@ export default function UserProfile() {
       setProfile(combinedProfile);
 
       if (combinedProfile.profile_picture_path) {
-        const { data } = await supabase.storage
+        const { data } = await storage
           .from("Storage")
           .createSignedUrl(combinedProfile.profile_picture_path, 3600);
         if (data?.signedUrl) setProfilePicture(data.signedUrl);

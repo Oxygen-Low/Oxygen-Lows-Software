@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import {
   getActiveMasterKey,
   isCategoryEncryptionEnabled,
@@ -186,7 +187,7 @@ export function PublicCharactersApp() {
       (chars || []).map(async (char) => {
         if (char.image_path) {
           if (char.image_path.includes("..")) return { ...char, image_url: "" };
-          const { data: urlData } = await supabase.storage
+          const { data: urlData } = await storage
             .from("Storage")
             .createSignedUrl(char.image_path, 3600)
             .catch(() => ({ data: null }));

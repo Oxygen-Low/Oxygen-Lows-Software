@@ -67,6 +67,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
@@ -117,13 +118,13 @@ export default function Storage() {
     if (!session?.user?.id) return;
     try {
       // 1. Fetch private storage files
-      const { data: privData, error: privError } = await supabase.storage
+      const { data: privData, error: privError } = await storage
         .from("Storage")
         .list(session.user.id);
       if (privError) throw privError;
 
       // 2. Fetch public-assets storage files for this user
-      const { data: pubData } = await supabase.storage
+      const { data: pubData } = await storage
         .from("public-assets")
         .list(session.user.id);
         
@@ -145,7 +146,7 @@ export default function Storage() {
       // Get signed URLs for private files
       if (files.length > 0) {
         const filePaths = files.map((f) => `${session.user.id}/${f.name}`);
-        const { data: signedData, error: signedError } = await supabase.storage
+        const { data: signedData, error: signedError } = await storage
           .from("Storage")
           .createSignedUrls(filePaths, 3600);
 
@@ -165,7 +166,7 @@ export default function Storage() {
         // Fallback for any file without a signed URL
         for (const file of files) {
           if (!urls[file.id] && !urls[file.name]) {
-            const { data } = await supabase.storage
+            const { data } = await storage
               .from("Storage")
               .createSignedUrl(`${session.user.id}/${file.name}`, 3600)
               .catch(() => ({ data: null }));
@@ -279,7 +280,7 @@ export default function Storage() {
         toast.info(t("storage.reverificationRequired", undefined, "File modified. Previous verification has been reset and requires re-verification."));
       }
 
-      const { error } = await supabase.storage
+      const { error } = await storage
         .from("Storage")
         .upload(filePath, file, { upsert: true });
 
@@ -313,7 +314,7 @@ export default function Storage() {
         }).catch(() => {});
       }
 
-      const { error } = await supabase.storage
+      const { error } = await storage
         .from(bucket)
         .remove([filePath]);
       if (error) throw error;

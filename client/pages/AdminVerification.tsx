@@ -54,7 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
 
 interface VerificationItem {
@@ -142,7 +142,7 @@ export default function AdminVerification() {
       await Promise.all(
         list.map(async (item: VerificationItem) => {
           if (item.asset_type === "file" && item.original_file_path) {
-            const { data: urlData } = await supabase.storage
+            const { data: urlData } = await storage
               .from("Storage")
               .createSignedUrl(item.original_file_path, 3600)
               .catch(() => ({ data: null }));

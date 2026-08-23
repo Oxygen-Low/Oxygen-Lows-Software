@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Play, Pause, Volume2, VolumeX, Loader2, AlertCircle, RotateCcw } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 interface AudioPlayerPreviewProps {
@@ -62,7 +62,7 @@ export function AudioPlayerPreview({
       const cleanPath = (filePath || fileName || "").replace(/^\/+/, "");
 
       // 1. Try to create signed URL from the specified bucket
-      const { data: signedData, error: signedErr } = await supabase.storage
+      const { data: signedData, error: signedErr } = await storage
         .from(bucket)
         .createSignedUrl(cleanPath, 3600)
         .catch(() => ({ data: null, error: true }));
@@ -74,7 +74,7 @@ export function AudioPlayerPreview({
 
       // 2. If signed URL fails or for public bucket, try public URL
       if (bucket === "public-assets") {
-        const { data: pubData } = supabase.storage
+        const { data: pubData } = storage
           .from("public-assets")
           .getPublicUrl(cleanPath);
         if (pubData?.publicUrl) {
@@ -84,7 +84,7 @@ export function AudioPlayerPreview({
       }
 
       // 3. Fallback: Download file as Blob and create Blob URL
-      const { data: blobData, error: downloadErr } = await supabase.storage
+      const { data: blobData, error: downloadErr } = await storage
         .from(bucket)
         .download(cleanPath);
 
@@ -105,7 +105,7 @@ export function AudioPlayerPreview({
       if (filePath || fileName) {
         try {
           const cleanPath = (filePath || fileName || "").replace(/^\/+/, "");
-          const { data: blobData } = await supabase.storage.from(bucket).download(cleanPath);
+          const { data: blobData } = await storage.from(bucket).download(cleanPath);
           if (blobData) {
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
             const blobUrl = URL.createObjectURL(blobData);
@@ -155,7 +155,7 @@ export function AudioPlayerPreview({
     if (audioUrl && !audioUrl.startsWith("blob:") && (filePath || fileName)) {
       try {
         const cleanPath = (filePath || fileName || "").replace(/^\/+/, "");
-        const { data: blobData, error: downloadErr } = await supabase.storage
+        const { data: blobData, error: downloadErr } = await storage
           .from(bucket)
           .download(cleanPath);
 

@@ -41,6 +41,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -130,7 +131,7 @@ export default function Characters() {
       (chars || []).map(async (char) => {
         if (char.image_path) {
           if (char.image_path.includes("..")) return { ...char, image_url: "" };
-          const { data: urlData } = await supabase.storage
+          const { data: urlData } = await storage
             .from("Storage")
             .createSignedUrl(char.image_path, 3600)
             .catch(() => ({ data: null }));
@@ -510,7 +511,7 @@ export default function Characters() {
       ...prev,
       image_path: file.name,
     }));
-    const { data } = await supabase.storage
+    const { data } = await storage
       .from("Storage")
       .createSignedUrl(file.name, 3600);
     if (data?.signedUrl) {

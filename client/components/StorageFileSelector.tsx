@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
@@ -61,7 +61,7 @@ export function StorageFileSelector({
     setLoading(true);
     const basePath = userId ? `${userId}` : "";
     const fullPath = path ? `${basePath}/${path}` : basePath;
-    const { data, error } = await supabase.storage
+    const { data, error } = await storage
       .from("Storage")
       .list(fullPath, {
         sortBy: { column: "name", order: "asc" },

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getAdminClient } from "../lib/supabase.ts";
 import { createClient } from "@supabase/supabase-js";
+import { serverStorage } from "../lib/storage.ts";
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
@@ -120,17 +121,15 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
       if (verification.asset_type === "file") {
         // Copy file from private Storage bucket to public-assets bucket if filePath present
         if (verification.original_file_path) {
-          const { data: fileData, error: downloadErr } = await supabase.storage
-            .from("Storage")
-            .download(verification.original_file_path);
+          const { data: fileData, error: downloadErr } =
+            await serverStorage.download("Storage", verification.original_file_path);
 
           if (!downloadErr && fileData) {
-            await supabase.storage
-              .from("public-assets")
-              .upload(verification.original_file_path, fileData, {
-                upsert: true,
-                contentType: verification.mime_type || undefined,
-              });
+            await serverStorage.upload(
+              "public-assets",
+              verification.original_file_path,
+              fileData,
+            );
           }
         }
 

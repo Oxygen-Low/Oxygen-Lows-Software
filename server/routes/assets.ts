@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getAdminClient } from "../lib/supabase.ts";
 import { createClient } from "@supabase/supabase-js";
+import { serverStorage } from "../lib/storage.ts";
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
@@ -189,7 +190,7 @@ assetsRouter.delete("/verifications/:id", async (c) => {
           .single();
         if (asset) {
           if (asset.file_path) {
-            await supabase.storage.from("public-assets").remove([asset.file_path]);
+            await serverStorage.remove("public-assets", [asset.file_path]);
           }
           await supabase.from("public_asset_likes").delete().eq("public_asset_id", verif.public_asset_id);
           await supabase.from("public_assets").delete().eq("id", verif.public_asset_id);
@@ -288,7 +289,7 @@ assetsRouter.post("/unpublish", async (c) => {
 
       // Remove from public-assets storage bucket if path exists
       if (asset.file_path) {
-        await supabase.storage.from("public-assets").remove([asset.file_path]);
+        await serverStorage.remove("public-assets", [asset.file_path]);
       }
 
       // Delete likes and public asset record

@@ -1,16 +1,18 @@
 import { Hono } from "hono";
-import fs from "fs";
-import path from "path";
 import { createClient } from "@supabase/supabase-js";
-import mime from "mime-types";
+import {
+  serverStorage,
+  getUserTotalSize,
+  MAX_USER_QUOTA,
+  getMimeType,
+  sanitizePath,
+} from "../lib/storage.ts";
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 const ADMIN_USER_IDS = new Set(["3cb76293-8c6c-49b9-b431-1ff5fce471ee"]);
 
 export const storageRouter = new Hono();
-const STORAGE_DIR = path.join(process.cwd(), "uploads");
-const MAX_QUOTA = 300 * 1024 * 1024; // 300 MB
 
 const authMiddleware = async (c: any, next: any) => {
   let token = c.req.header("Authorization")?.replace(/^Bearer /i, "");
@@ -25,7 +27,10 @@ const authMiddleware = async (c: any, next: any) => {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -36,170 +41,184 @@ const authMiddleware = async (c: any, next: any) => {
   await next();
 };
 
-const getFolderSize = (folderPath: string): number => {
-  let size = 0;
-  if (!fs.existsSync(folderPath)) return 0;
-  const files = fs.readdirSync(folderPath, { withFileTypes: true });
-  for (const file of files) {
-    const filePath = path.join(folderPath, file.name);
-    if (file.isDirectory()) {
-      size += getFolderSize(filePath);
-    } else {
-      size += fs.statSync(filePath).size;
-    }
-  }
-  return size;
-};
-
-const getUserTotalSize = (userId: string) => {
-  const sizeStorage = getFolderSize(path.join(STORAGE_DIR, "Storage", userId));
-  const sizePublic = getFolderSize(path.join(STORAGE_DIR, "public-assets", userId));
-  return sizeStorage + sizePublic;
-};
-
 storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
-  const bucket = c.req.param("bucket");
-  let filePath = c.req.param("*") || c.req.param("path") || (c.req.path.split(`/upload/${bucket}/`)[1]);
-  if (filePath) {
-    filePath = decodeURIComponent(filePath);
-    if (filePath.startsWith("/")) filePath = filePath.substring(1);
-    if (filePath.includes("..")) return c.json({ error: "Invalid path" }, 400);
-  }
-  const user = c.get("user" as any) as any;
-  console.log(`[UPLOAD DEBUG] bucket=${bucket} param*=${c.req.param("*")} filePath=${filePath} user.id=${user.id}`);
+  try {
+    const bucket = c.req.param("bucket");
+    let rawFilePath =
+      c.req.param("*") ||
+      c.req.param("path") ||
+      c.req.path.split(`/upload/${bucket}/`)[1];
 
-  if (!filePath.startsWith(user.id + "/") && !ADMIN_USER_IDS.has(user.id)) {
-     return c.json({ error: "Cannot upload to other user's directory" }, 400);
-  }
+    let filePath: string;
+    try {
+      filePath = sanitizePath(rawFilePath);
+    } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
 
-  const body = await c.req.parseBody();
-  const file = body["file"] as any;
-  if (!file) {
-    return c.json({ error: "No file provided" }, 400);
-  }
+    const user = c.get("user" as any) as any;
 
-  const newFileSize = file.size;
-  const currentSize = getUserTotalSize(user.id);
-  
-  if (currentSize + newFileSize > MAX_QUOTA) {
-    return c.json({ error: "Quota exceeded. Maximum 300MB allowed per user." }, 400);
-  }
+    if (!filePath.startsWith(user.id + "/") && !ADMIN_USER_IDS.has(user.id)) {
+      return c.json({ error: "Cannot upload to other user's directory" }, 400);
+    }
 
-  const targetDir = path.join(STORAGE_DIR, bucket, path.dirname(filePath));
-  fs.mkdirSync(targetDir, { recursive: true });
-  
-  const arrayBuffer = await file.arrayBuffer();
-  fs.writeFileSync(path.join(STORAGE_DIR, bucket, filePath), Buffer.from(arrayBuffer));
-  
-  return c.json({ data: { path: filePath }, error: null });
+    const body = await c.req.parseBody();
+    const file = body["file"] as any;
+    if (!file) {
+      return c.json({ error: "No file provided" }, 400);
+    }
+
+    const newFileSize = file.size || 0;
+    const currentSize = getUserTotalSize(user.id);
+
+    if (currentSize + newFileSize > MAX_USER_QUOTA) {
+      return c.json(
+        { error: "Quota exceeded. Maximum 300MB allowed per user." },
+        400,
+      );
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const { data, error } = await serverStorage.upload(
+      bucket,
+      filePath,
+      Buffer.from(arrayBuffer),
+    );
+
+    if (error) {
+      return c.json({ error: error.message }, 500);
+    }
+
+    return c.json({ data, error: null });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Upload failed" }, 500);
+  }
 });
 
 storageRouter.post("/list/:bucket", authMiddleware, async (c) => {
-  const bucket = c.req.param("bucket");
-  const body = await c.req.json().catch(() => ({}));
-  const prefixPath = body.path || "";
-  
-  const targetDir = path.join(STORAGE_DIR, bucket, prefixPath);
-  if (!fs.existsSync(targetDir)) {
-    return c.json({ data: [], error: null });
-  }
-  
   try {
-      const files = fs.readdirSync(targetDir, { withFileTypes: true });
-      const result = files.map(f => {
-        const fullPath = path.join(targetDir, f.name);
-        const stats = fs.statSync(fullPath);
-        return {
-          id: f.isDirectory() ? null : (prefixPath ? `${prefixPath}/${f.name}` : f.name),
-          name: f.name,
-          metadata: { size: stats.size, mimetype: mime.lookup(f.name) || "application/octet-stream" },
-          created_at: stats.birthtime.toISOString(),
-          updated_at: stats.mtime.toISOString(),
-        };
-      });
-      return c.json({ data: result, error: null });
+    const bucket = c.req.param("bucket");
+    const body = await c.req.json().catch(() => ({}));
+    const prefixPath = body.path || "";
+
+    const { data, error } = await serverStorage.list(bucket, prefixPath);
+    if (error) {
+      return c.json({ data: [], error: error.message });
+    }
+
+    return c.json({ data, error: null });
   } catch (err: any) {
-      return c.json({ data: [], error: err.message });
+    return c.json({ data: [], error: err.message });
   }
 });
 
 storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
-  const bucket = c.req.param("bucket");
-  const body = await c.req.json().catch(() => ({}));
-  const paths = body.paths || [];
-  const user = c.get("user" as any) as any;
-  
-  for (const p of paths) {
-      if (!p.startsWith(user.id + "/") && !ADMIN_USER_IDS.has(user.id)) {
-         continue; 
+  try {
+    const bucket = c.req.param("bucket");
+    const body = await c.req.json().catch(() => ({}));
+    const paths: string[] = body.paths || [];
+    const user = c.get("user" as any) as any;
+
+    const allowedPaths = paths.filter((p) => {
+      try {
+        const clean = sanitizePath(p);
+        return clean.startsWith(user.id + "/") || ADMIN_USER_IDS.has(user.id);
+      } catch {
+        return false;
       }
-      const fullPath = path.join(STORAGE_DIR, bucket, p);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-      }
+    });
+
+    const { data, error } = await serverStorage.remove(bucket, allowedPaths);
+    if (error) {
+      return c.json({ data: [], error: error.message }, 500);
+    }
+
+    return c.json({ data, error: null });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
   }
-  return c.json({ data: paths, error: null });
 });
 
 storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
-  const bucket = c.req.param("bucket");
-  let filePath = c.req.param("*") || (c.req.path.split(`/download/${bucket}/`)[1]);
-  if (filePath) {
-    filePath = decodeURIComponent(filePath);
-    if (filePath.startsWith("/")) filePath = filePath.substring(1);
-    if (filePath.includes("..")) return c.json({ error: "Invalid path" }, 400);
+  try {
+    const bucket = c.req.param("bucket");
+    let rawFilePath =
+      c.req.param("*") || c.req.path.split(`/download/${bucket}/`)[1];
+
+    let filePath: string;
+    try {
+      filePath = sanitizePath(rawFilePath);
+    } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+
+    const { data, error } = await serverStorage.download(bucket, filePath);
+    if (error || !data) {
+      return c.text("Not found", 404);
+    }
+
+    const mimeType = getMimeType(filePath);
+    return c.body(data as any, 200, {
+      "Content-Type": mimeType,
+      "Content-Disposition": `inline; filename="${encodeURIComponent(filePath.split("/").pop() || "file")}"`,
+    });
+  } catch (err: any) {
+    return c.text("Error downloading file", 500);
   }
-  const fullPath = path.join(STORAGE_DIR, bucket, filePath);
-  
-  if (!fs.existsSync(fullPath)) {
-    return c.text("Not found", 404);
-  }
-  
-  const buffer = fs.readFileSync(fullPath);
-  return c.body(buffer, 200, {
-      "Content-Type": "application/octet-stream",
-  });
 });
 
 storageRouter.get("/public/:bucket/*", async (c) => {
-  const bucket = c.req.param("bucket");
-  let filePath = c.req.param("*") || (c.req.path.split(`/public/${bucket}/`)[1]);
-  if (filePath) {
-    filePath = decodeURIComponent(filePath);
-    if (filePath.startsWith("/")) filePath = filePath.substring(1);
-    if (filePath.includes("..")) return c.json({ error: "Invalid path" }, 400);
-  }
-  const fullPath = path.join(STORAGE_DIR, bucket, filePath);
-  
-  if (!fs.existsSync(fullPath)) {
-    return c.text("Not found", 404);
-  }
-  
-  const buffer = fs.readFileSync(fullPath);
-  let mimeType = "application/octet-stream";
-  if (filePath.match(/\.(png|jpe?g|gif|webp)$/i)) {
-    mimeType = "image/" + filePath.split('.').pop()?.toLowerCase();
-    if (mimeType === "image/jpg") mimeType = "image/jpeg";
-  } else if (filePath.match(/\.(mp3|wav|ogg)$/i)) {
-    mimeType = "audio/" + filePath.split('.').pop()?.toLowerCase();
-    if (mimeType === "audio/mp3") mimeType = "audio/mpeg";
-  }
+  try {
+    const bucket = c.req.param("bucket");
+    let rawFilePath =
+      c.req.param("*") || c.req.path.split(`/public/${bucket}/`)[1];
 
-  return c.body(buffer, 200, {
+    let filePath: string;
+    try {
+      filePath = sanitizePath(rawFilePath);
+    } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+
+    const { data, error } = await serverStorage.download(bucket, filePath);
+    if (error || !data) {
+      return c.text("Not found", 404);
+    }
+
+    const mimeType = getMimeType(filePath);
+    return c.body(data as any, 200, {
       "Content-Type": mimeType,
-  });
+      "Cache-Control": "public, max-age=31536000, immutable",
+    });
+  } catch (err: any) {
+    return c.text("Error reading public asset", 500);
+  }
 });
 
 storageRouter.post("/signed-urls/:bucket", authMiddleware, async (c) => {
-  const bucket = c.req.param("bucket");
-  const body = await c.req.json().catch(() => ({}));
-  const paths = body.paths || [];
-  const token = c.get("token" as any);
-  
-  const result = paths.map((p: string) => ({
-      error: null,
-      signedUrl: `/api/storage/download/${bucket}/${p}?token=${token}`
-  }));
-  
-  return c.json({ data: result, error: null });
+  try {
+    const bucket = c.req.param("bucket");
+    const body = await c.req.json().catch(() => ({}));
+    const paths = body.paths || [];
+    const token = c.get("token" as any);
+
+    const result = paths.map((p: string) => {
+      try {
+        const clean = sanitizePath(p);
+        return {
+          error: null,
+          signedUrl: serverStorage.createSignedUrl(bucket, clean, token),
+        };
+      } catch {
+        return {
+          error: "Invalid path",
+          signedUrl: null,
+        };
+      }
+    });
+
+    return c.json({ data: result, error: null });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
 });

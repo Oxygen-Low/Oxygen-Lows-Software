@@ -6,17 +6,29 @@ import Characters from "./Characters";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { clearActiveMasterKey, setCategoryEncryptionEnabled } from "@/lib/crypto";
 
 const mockToast = vi.fn();
 
-vi.mock("@/lib/supabase", () => {
+const { mockStorage, mockStorageFrom } = vi.hoisted(() => {
   const mockStorageFrom = {
     createSignedUrl: vi.fn((path: string) =>
       Promise.resolve({ data: { signedUrl: `https://example.com/${path}` }, error: null }),
     ),
   };
+  const mockStorage = {
+    from: vi.fn(() => mockStorageFrom),
+  };
+  return { mockStorage, mockStorageFrom };
+});
 
+vi.mock("@/lib/storage", () => ({
+  storage: mockStorage,
+  customStorage: mockStorage,
+}));
+
+vi.mock("@/lib/supabase", () => {
   const builder: any = {
     select: vi.fn(() => builder),
     order: vi.fn(() => Promise.resolve({ data: [], error: null })),
@@ -24,14 +36,12 @@ vi.mock("@/lib/supabase", () => {
     update: vi.fn(() => builder),
     delete: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    in: vi.fn(() => builder),
   };
 
   return {
     supabase: {
       from: vi.fn(() => builder),
-      storage: {
-        from: vi.fn(() => mockStorageFrom),
-      },
     },
   };
 });
@@ -134,7 +144,7 @@ describe("Characters Component", () => {
     fireEvent.click(selectValidBtn);
 
     await waitFor(() => {
-      expect(supabase.storage.from).toHaveBeenCalledWith("Storage");
+      expect(storage.from).toHaveBeenCalledWith("Storage");
     });
   });
 

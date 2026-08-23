@@ -42,13 +42,19 @@ let mockSession: any = {
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     from: (table: string) => mockSupabase.from(table),
-    storage: {
-      from: (bucket: string) => mockSupabase.storage.from(bucket),
-    },
   },
   getAuthenticatedClient: () => ({
     rpc: (...args: any[]) => mockRpc(...args),
   }),
+}));
+
+vi.mock("@/lib/storage", () => ({
+  storage: {
+    from: (bucket: string) => mockSupabase.storage.from(bucket),
+  },
+  customStorage: {
+    from: (bucket: string) => mockSupabase.storage.from(bucket),
+  },
 }));
 
 vi.mock("@/hooks/useAuth", () => ({

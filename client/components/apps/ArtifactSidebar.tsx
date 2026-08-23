@@ -5,6 +5,7 @@ import { X, Download, Save, Loader2, FileCode } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { toast } from "sonner";
 
 interface ArtifactSidebarProps {
@@ -36,7 +37,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
 
       const filePath = `${user.id}/${Date.now()}_${artifact.filename}`;
       if (filePath.includes("..")) throw new Error("Invalid file path");
-      const { error } = await supabase.storage
+      const { error } = await storage
         .from("Storage")
         .upload(filePath, file);
 

@@ -8,6 +8,7 @@ import {
   useMemo,
 } from "react";
 import { supabase, getAuthenticatedClient } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 
 // Allow custom string which can be "custom:<primaryHex>-<backgroundHex>"
@@ -192,7 +193,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
             previous = path;
             path = path.replace(/\.\.\//g, "");
           } while (path !== previous);
-          const { data } = await supabase.storage
+          const { data } = await storage
             .from("Storage")
             .createSignedUrl(path, 3600);
 

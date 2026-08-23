@@ -8,6 +8,7 @@ import React, {
   useMemo,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -91,7 +92,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         previous = path;
         path = path.replace(/\.\.\//g, "");
       } while (path !== previous);
-      const { data } = await supabase.storage
+      const { data } = await storage
         .from("Storage")
         .createSignedUrl(path, 3600);
       return data?.signedUrl || null;

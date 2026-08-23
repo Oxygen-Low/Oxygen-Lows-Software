@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import {
   getActiveMasterKey,
   isCategoryEncryptionEnabled,
@@ -241,7 +242,7 @@ export function PublicAssetsApp() {
         const profile = profilesData.find((p: any) => p.user_id === item.uploader_id);
 
         const cleanPath = (item.file_path || "").replace(/^\/+/, "");
-        const { data: pubUrlData } = supabase.storage
+        const { data: pubUrlData } = storage
           .from("public-assets")
           .getPublicUrl(cleanPath);
 
@@ -309,7 +310,7 @@ export function PublicAssetsApp() {
   const fetchStorageFiles = async () => {
     if (!session?.user?.id) return;
     try {
-      const { data, error } = await supabase.storage
+      const { data, error } = await storage
         .from("Storage")
         .list(session.user.id);
       if (!error && data) {
@@ -325,7 +326,7 @@ export function PublicAssetsApp() {
       (chars || []).map(async (char) => {
         if (char.image_path) {
           if (char.image_path.includes("..")) return { ...char, image_url: "" };
-          const { data: urlData } = await supabase.storage
+          const { data: urlData } = await storage
             .from("Storage")
             .createSignedUrl(char.image_path, 3600)
             .catch(() => ({ data: null }));
@@ -462,7 +463,7 @@ export function PublicAssetsApp() {
       const fileName = item.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const targetPath = `${session.user.id}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await storage
         .from("Storage")
         .upload(targetPath, blob, { upsert: true });
 

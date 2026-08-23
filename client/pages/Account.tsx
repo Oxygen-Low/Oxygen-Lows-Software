@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import Cropper, { Area } from "react-easy-crop";
 import {
   Card,
@@ -85,7 +86,7 @@ export default function Account() {
       .eq("user_id", session.user.id)
       .single();
     if (pic) {
-      const { data: signedData } = await supabase.storage
+      const { data: signedData } = await storage
         .from("Storage")
         .createSignedUrl(pic.image_url, 3600);
       setProfilePicture({ ...pic, image_url: signedData?.signedUrl || "" });
@@ -125,7 +126,7 @@ export default function Account() {
     setSelectedStoragePath(file.name);
     setFitImage(false);
     setZoom(1);
-    const { data } = await supabase.storage
+    const { data } = await storage
       .from("Storage")
       .createSignedUrl(file.name, 3600);
     if (data?.signedUrl) setSelectedImage(data.signedUrl);
@@ -140,7 +141,7 @@ export default function Account() {
     )
       return;
     try {
-      const { data: signedData } = await supabase.storage
+      const { data: signedData } = await storage
         .from("Storage")
         .createSignedUrl(selectedStoragePath, 3600);
       const publicUrl = signedData?.signedUrl || "";

@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
-import { supabase } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import imageCompression from "browser-image-compression";
@@ -124,7 +124,7 @@ export function FileCompressorApp() {
       let fileToCompress: File;
 
       if (selectedFile.source === "storage") {
-        const { data: downloadData, error: downloadError } = await supabase.storage
+        const { data: downloadData, error: downloadError } = await storage
           .from("Storage")
           .download(selectedFile.name);
 
@@ -498,7 +498,7 @@ export function FileCompressorApp() {
                             ? result.name 
                             : result.name.replace(/(\.[^.]+)$/, `_compressed$1`);
                           
-                          const { error: uploadError } = await supabase.storage
+                          const { error: uploadError } = await storage
                             .from("Storage")
                             .upload(newPath, result.compressedBlob, { upsert: true });
                           

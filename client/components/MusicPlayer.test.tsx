@@ -19,19 +19,24 @@ const mockCreateSignedUrl = vi.fn().mockResolvedValue({
 
 const mockSupabase = {
   from: vi.fn((_table?: string) => ({} as any)),
-  storage: {
-    from: vi.fn((_bucket?: string) => ({
-      createSignedUrl: mockCreateSignedUrl,
-    })),
-  },
 };
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     from: (table: string) => mockSupabase.from(table),
-    storage: {
-      from: (bucket: string) => mockSupabase.storage.from(bucket),
-    },
+  },
+}));
+
+vi.mock("@/lib/storage", () => ({
+  storage: {
+    from: vi.fn((_bucket?: string) => ({
+      createSignedUrl: mockCreateSignedUrl,
+    })),
+  },
+  customStorage: {
+    from: vi.fn((_bucket?: string) => ({
+      createSignedUrl: mockCreateSignedUrl,
+    })),
   },
 }));
 
