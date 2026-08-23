@@ -1231,33 +1231,7 @@ export function ChatbotApp() {
       ];
     };
 
-    // 1. Internal Reasoning Process (if enabled)
-    if (isReasoningEnabled) {
-      const reasoningMessages = [
-        ...baseChatMessages,
-        {
-          role: "user",
-          content:
-            "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
-        } as Message,
-      ];
-
-      reasoningContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
-        getApiMessages(reasoningMessages),
-        signal,
-        (content) => {
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
-            ),
-          );
-        },
-      );
-    }
-
-    // 2. Web Search / Agentic Research (if enabled)
+    // 1. Web Search / Agentic Research (if enabled)
     if (isWebSearchEnabled) {
       setAllMessages((prevAll) =>
         prevAll.map((m) =>
@@ -1275,14 +1249,6 @@ export function ChatbotApp() {
 
       const searchPlanMessages = [
         ...baseChatMessages,
-        ...(reasoningContent
-          ? [
-              {
-                role: "assistant",
-                content: `My internal reasoning:\n${reasoningContent}`,
-              } as Message,
-            ]
-          : []),
         { role: "user", content: planPrompt } as Message,
       ];
 
@@ -1344,6 +1310,7 @@ export function ChatbotApp() {
       const reader = agentRes.body?.getReader();
       const decoder = new TextDecoder();
       let streamBuf = "";
+      let searchResult = "";
 
       if (reader) {
         while (true) {
@@ -1362,31 +1329,9 @@ export function ChatbotApp() {
             try {
               const data = JSON.parse(dataStr);
               if (data.type === "delta") {
-                finalContent += data.content;
-                setAllMessages((prevAll) =>
-                  prevAll.map((m) =>
-                    m.id === "temp-streaming"
-                      ? {
-                          ...m,
-                          content: finalContent,
-                          is_web_search: true,
-                          web_search_status: "searched",
-                        }
-                      : m,
-                  ),
-                );
-                if (
-                  finalContent.length - lastParsedLengthRef.current > 50 ||
-                  finalContent.includes("\\\\")
-                ) {
-                  const arts = parseArtifacts(finalContent);
-                  if (arts.length > 0)
-                    setActiveArtifact(arts[arts.length - 1]);
-                  lastParsedLengthRef.current = finalContent.length;
-                }
-              } else if (data.type === "result") {
-                if (!finalContent) {
-                  finalContent = data.content;
+                searchResult += data.content;
+                if (!isReasoningEnabled) {
+                  finalContent = searchResult;
                   setAllMessages((prevAll) =>
                     prevAll.map((m) =>
                       m.id === "temp-streaming"
@@ -1399,6 +1344,34 @@ export function ChatbotApp() {
                         : m,
                     ),
                   );
+                  if (
+                    finalContent.length - lastParsedLengthRef.current > 50 ||
+                    finalContent.includes("\\\\")
+                  ) {
+                    const arts = parseArtifacts(finalContent);
+                    if (arts.length > 0)
+                      setActiveArtifact(arts[arts.length - 1]);
+                    lastParsedLengthRef.current = finalContent.length;
+                  }
+                }
+              } else if (data.type === "result") {
+                if (!searchResult) {
+                  searchResult = data.content;
+                  if (!isReasoningEnabled) {
+                    finalContent = searchResult;
+                    setAllMessages((prevAll) =>
+                      prevAll.map((m) =>
+                        m.id === "temp-streaming"
+                          ? {
+                              ...m,
+                              content: finalContent,
+                              is_web_search: true,
+                              web_search_status: "searched",
+                            }
+                          : m,
+                      ),
+                    );
+                  }
                 }
               }
             } catch {}
@@ -1417,8 +1390,99 @@ export function ChatbotApp() {
             : m,
         ),
       );
+
+      // If reasoning is also enabled, run reasoning AFTER web search
+      if (isReasoningEnabled) {
+        const reasoningMessages = [
+          ...baseChatMessages,
+          {
+            role: "assistant",
+            content: `Web Search Findings:\n${searchResult}`,
+          } as Message,
+          {
+            role: "user",
+            content:
+              "Based on the web search findings above, please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+          } as Message,
+        ];
+
+        reasoningContent = await callAiStream(
+          selectedProvider,
+          selectedModel,
+          getApiMessages(reasoningMessages),
+          signal,
+          (content) => {
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+              ),
+            );
+          },
+        );
+
+        const finalMessages = [
+          ...baseChatMessages,
+          {
+            role: "assistant",
+            content: `Web Search Findings:\n${searchResult}\n\nMy internal reasoning:\n${reasoningContent}`,
+          } as Message,
+          {
+            role: "user",
+            content:
+              "Great. Now based on your web search findings and reasoning, provide the final response.",
+          } as Message,
+        ];
+
+        finalContent = await callAiStream(
+          selectedProvider,
+          selectedModel,
+          getApiMessages(finalMessages),
+          signal,
+          (content) => {
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, content } : m,
+              ),
+            );
+
+            if (
+              content.length - lastParsedLengthRef.current > 50 ||
+              content.includes("\\\\")
+            ) {
+              const arts = parseArtifacts(content);
+              if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+              lastParsedLengthRef.current = content.length;
+            }
+          },
+        );
+      } else {
+        finalContent = searchResult;
+      }
     } else if (isReasoningEnabled) {
-      // Reasoning only
+      // Reasoning only (no web search)
+      const reasoningMessages = [
+        ...baseChatMessages,
+        {
+          role: "user",
+          content:
+            "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+        } as Message,
+      ];
+
+      reasoningContent = await callAiStream(
+        selectedProvider,
+        selectedModel,
+        getApiMessages(reasoningMessages),
+        signal,
+        (content) => {
+          setAllMessages((prevAll) =>
+            prevAll.map((m) =>
+              m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+            ),
+          );
+        },
+      );
+
       const finalMessages = [
         ...baseChatMessages,
         {
