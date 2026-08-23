@@ -34,13 +34,61 @@ function stripHtmlTags(input: unknown): string {
   return sanitized.trim();
 }
 
+function normalizeUrl(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  let clean = input.trim();
+  if (!clean) return null;
+
+  // Strip markdown links e.g. [text](https://url)
+  const mdMatch = clean.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
+  if (mdMatch) clean = mdMatch[1];
+
+  // Strip wrapping quotes, brackets, backticks
+  clean = clean.replace(/^[<"'\`\(\[]+|[>"'\`\)\]]+$/g, "").trim();
+
+  // Handle DuckDuckGo redirect URLs e.g. //duckduckgo.com/l/?uddg=https%3A%2F%2F...
+  if (clean.includes("uddg=")) {
+    try {
+      const match = clean.match(/uddg=([^&]+)/);
+      if (match) clean = decodeURIComponent(match[1]);
+    } catch {}
+  }
+
+  // Prepend https:// if protocol is missing
+  if (!/^https?:\/\//i.test(clean)) {
+    if (clean.startsWith("//")) {
+      clean = "https:" + clean;
+    } else {
+      clean = "https://" + clean;
+    }
+  }
+
+  // Force https
+  if (clean.startsWith("http://")) {
+    clean = "https://" + clean.slice(7);
+  }
+
+  return clean;
+}
+
 function isSafeUrl(urlString: string): boolean {
+  const cleanUrl = normalizeUrl(urlString);
+  if (!cleanUrl) return false;
+
   try {
-    const url = new URL(urlString);
+    const url = new URL(cleanUrl);
     if (url.protocol !== "https:") return false;
 
-    const host = url.hostname;
-    if (host === "localhost" || host === "metadata.google.internal") return false;
+    const host = url.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host === "metadata.google.internal" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host === "[::1]"
+    ) {
+      return false;
+    }
 
     const ipMatch = host.match(/^(\d+)\.(\d+)\.(\d+)$/);
     if (ipMatch) {
@@ -51,8 +99,6 @@ function isSafeUrl(urlString: string): boolean {
       if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
       if (parts[0] === 169 && parts[1] === 254 && parts[2] === 169 && parts[3] === 254) return false;
     }
-
-    if (host === "[::1]" || host === "::1") return false;
 
     return true;
   } catch {
@@ -111,15 +157,33 @@ async function performWebSearch(query: string) {
     const snippets: string[] = [];
     const urls: string[] = [];
 
-    const snippetRegex = /class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+    // Extract snippets and their matching hrefs
+    const snippetRegex = /class="result__snippet[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
     let match;
     while ((match = snippetRegex.exec(html)) !== null && snippets.length < 10) {
-      snippets.push(stripHtmlTags(match[1]));
+      const cleanSnippet = stripHtmlTags(match[2]).trim();
+      const normalizedHref = normalizeUrl(match[1]);
+      if (cleanSnippet) {
+        snippets.push(cleanSnippet);
+        if (normalizedHref) urls.push(normalizedHref);
+      }
     }
 
-    const urlRegex = /class="result__url"[^>]*>([\s\S]*?)<\/a>/g;
-    while ((match = urlRegex.exec(html)) !== null && urls.length < 10) {
-      urls.push(stripHtmlTags(match[1]).trim());
+    // Fallback if snippet links weren't found
+    if (urls.length === 0) {
+      const urlRegex = /class="result__url"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+      while ((match = urlRegex.exec(html)) !== null && urls.length < 10) {
+        const normalizedHref = normalizeUrl(match[1]);
+        if (normalizedHref) urls.push(normalizedHref);
+      }
+    }
+
+    if (snippets.length === 0) {
+      const genericSnippetRegex = /class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+      while ((match = genericSnippetRegex.exec(html)) !== null && snippets.length < 10) {
+        const cleanSnippet = stripHtmlTags(match[1]).trim();
+        if (cleanSnippet) snippets.push(cleanSnippet);
+      }
     }
 
     return { snippets, urls };
@@ -128,16 +192,25 @@ async function performWebSearch(query: string) {
   }
 }
 
-async function fetchPageContent(url: string, maxChars: number = 6000) {
-  if (!isSafeUrl(url)) return "Error: Invalid or blocked URL. Cannot fetch localhost or internal IPs.";
+async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
+  const cleanUrl = normalizeUrl(rawUrl);
+  if (!cleanUrl || !isSafeUrl(cleanUrl)) {
+    return "Error: Invalid or blocked URL. Cannot fetch localhost or internal IPs.";
+  }
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const res = await fetch(cleanUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(6000),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     const cleanText = stripHtmlTags(text);
     return cleanText.substring(0, maxChars);
-  } catch (err) {
-    return "Error: Failed to fetch page content. The website may be down, blocking bots, or timed out.";
+  } catch (err: any) {
+    return `Error: Failed to fetch page content from ${cleanUrl} (${err.message || 'network failed'}).`;
   }
 }
 
