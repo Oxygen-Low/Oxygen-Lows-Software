@@ -37,9 +37,21 @@ describe("Agent Search Route", () => {
       body: "invalid json"
     });
     
-    // Auth fails first if we mock it, or JSON parse fails.
-    // If we want to test validation, we'd mock auth. For now, testing 401 is sufficient,
-    // but we can check if it returns 401.
+    // Auth fails first with fake_token since Supabase auth is not mocked
+    expect(res.status).toBe(401);
+  });
+
+  test("Requires query parameter", async () => {
+    const res = await app.request("/api/ai/agent-search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        responseFormat: "summary"
+      })
+    });
+    
     expect(res.status).toBe(401);
   });
 });
