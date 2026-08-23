@@ -1298,6 +1298,7 @@ export function ChatbotApp() {
         body: JSON.stringify({
           query: parsedQuery,
           responseFormat: parsedFormat,
+          researchOnly: true,
           stream: true,
         }),
         signal,
@@ -1310,7 +1311,7 @@ export function ChatbotApp() {
       const reader = agentRes.body?.getReader();
       const decoder = new TextDecoder();
       let streamBuf = "";
-      let searchResult = "";
+      let searchFindings = "";
 
       if (reader) {
         while (true) {
@@ -1328,51 +1329,12 @@ export function ChatbotApp() {
 
             try {
               const data = JSON.parse(dataStr);
-              if (data.type === "delta") {
-                searchResult += data.content;
-                if (!isReasoningEnabled) {
-                  finalContent = searchResult;
-                  setAllMessages((prevAll) =>
-                    prevAll.map((m) =>
-                      m.id === "temp-streaming"
-                        ? {
-                            ...m,
-                            content: finalContent,
-                            is_web_search: true,
-                            web_search_status: "searched",
-                          }
-                        : m,
-                    ),
-                  );
-                  if (
-                    finalContent.length - lastParsedLengthRef.current > 50 ||
-                    finalContent.includes("\\\\")
-                  ) {
-                    const arts = parseArtifacts(finalContent);
-                    if (arts.length > 0)
-                      setActiveArtifact(arts[arts.length - 1]);
-                    lastParsedLengthRef.current = finalContent.length;
-                  }
-                }
-              } else if (data.type === "result") {
-                if (!searchResult) {
-                  searchResult = data.content;
-                  if (!isReasoningEnabled) {
-                    finalContent = searchResult;
-                    setAllMessages((prevAll) =>
-                      prevAll.map((m) =>
-                        m.id === "temp-streaming"
-                          ? {
-                              ...m,
-                              content: finalContent,
-                              is_web_search: true,
-                              web_search_status: "searched",
-                            }
-                          : m,
-                      ),
-                    );
-                  }
-                }
+              if (data.type === "research_complete" && data.context) {
+                searchFindings = data.context;
+              } else if (data.type === "result" && data.content) {
+                if (!searchFindings) searchFindings = data.content;
+              } else if (data.type === "delta" && data.content) {
+                searchFindings += data.content;
               }
             } catch {}
           }
@@ -1391,13 +1353,13 @@ export function ChatbotApp() {
         ),
       );
 
-      // If reasoning is also enabled, run reasoning AFTER web search
+      // Perform synthesis with the selected chatbot model
       if (isReasoningEnabled) {
         const reasoningMessages = [
           ...baseChatMessages,
           {
             role: "assistant",
-            content: `Web Search Findings:\n${searchResult}`,
+            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
           } as Message,
           {
             role: "user",
@@ -1424,7 +1386,7 @@ export function ChatbotApp() {
           ...baseChatMessages,
           {
             role: "assistant",
-            content: `Web Search Findings:\n${searchResult}\n\nMy internal reasoning:\n${reasoningContent}`,
+            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nMy internal reasoning:\n${reasoningContent}`,
           } as Message,
           {
             role: "user",
@@ -1456,7 +1418,41 @@ export function ChatbotApp() {
           },
         );
       } else {
-        finalContent = searchResult;
+        const synthesisMessages = [
+          ...baseChatMessages,
+          {
+            role: "assistant",
+            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
+          } as Message,
+          {
+            role: "user",
+            content:
+              "Based on the web search findings above, synthesize a high-quality, comprehensive, and well-structured response to answer my request. Cite sources where relevant.",
+          } as Message,
+        ];
+
+        finalContent = await callAiStream(
+          selectedProvider,
+          selectedModel,
+          getApiMessages(synthesisMessages),
+          signal,
+          (content) => {
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, content } : m,
+              ),
+            );
+
+            if (
+              content.length - lastParsedLengthRef.current > 50 ||
+              content.includes("\\\\")
+            ) {
+              const arts = parseArtifacts(content);
+              if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+              lastParsedLengthRef.current = content.length;
+            }
+          },
+        );
       }
     } else if (isReasoningEnabled) {
       // Reasoning only (no web search)
