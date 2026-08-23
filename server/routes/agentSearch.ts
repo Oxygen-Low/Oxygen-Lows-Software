@@ -11,6 +11,9 @@ const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
 const HORDE_FAST_MODEL = "google/gemma-4-31b";
 const CLOUDFLARE_SMART_MODEL = "@cf/qwen/qwen3.8-27b";
 
+// Max research tool rounds with Horde to prevent exceeding edge gateway timeouts (100s)
+const MAX_RESEARCH_ROUNDS = 3;
+
 function extractBearerToken(header: string | undefined): string | null {
   if (!header) return null;
   const match = header.match(/^Bearer\s+(.*)$/i);
@@ -96,7 +99,8 @@ async function performWebSearch(query: string) {
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-      }
+      },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) throw new Error("Search request failed");
 
@@ -124,7 +128,7 @@ async function performWebSearch(query: string) {
 async function fetchPageContent(url: string) {
   if (!isSafeUrl(url)) return "Error: Invalid or blocked URL. Cannot fetch localhost or internal IPs.";
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     const cleanText = stripHtmlTags(text);
@@ -187,7 +191,7 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
     }
   } catch {}
 
-  // 3. If response starts with "Done" or gives a final answer without tools, mark done
+  // 3. If response indicates completion
   if (/^(done|research complete|information gathered)/i.test(content)) {
     return { tool: "done", args: {} };
   }
@@ -279,7 +283,7 @@ agentSearchRouter.post("/", rateLimiter(10, 60_000, "agent-search"), async (c) =
       for (const img of images) {
         if (img.data.startsWith("https://")) {
           try {
-            const imgRes = await fetch(img.data, { signal: AbortSignal.timeout(10000) });
+            const imgRes = await fetch(img.data, { signal: AbortSignal.timeout(8000) });
             if (imgRes.ok) {
               const buf = await imgRes.arrayBuffer();
               const b64 = Buffer.from(buf).toString("base64");
@@ -292,7 +296,6 @@ agentSearchRouter.post("/", rateLimiter(10, 60_000, "agent-search"), async (c) =
       }
     }
 
-    const MAX_ITERATIONS = 10;
     const allSearches: any[] = [];
     const fetchedPages: Array<{ url: string; content: string }> = [];
 
@@ -300,26 +303,21 @@ agentSearchRouter.post("/", rateLimiter(10, 60_000, "agent-search"), async (c) =
     const hordeMessages: any[] = [
       {
         role: "system",
-        content: `You are a fast autonomous research agent. Your goal is to gather information from the web to answer the user query.
+        content: `You are a fast autonomous research agent. Your goal is to gather facts from the web to answer the user's query.
 
-Available actions (reply with a single JSON object):
+Available actions (respond ONLY with a single JSON object):
 1. Search the web:
 {"action": "web_search", "query": "<search query>"}
 
 2. Fetch and read a webpage:
 {"action": "fetch_page", "url": "https://..."}
 
-3. Finished research (you have gathered enough facts/sources):
-{"action": "done"}
-
-Rules:
-- Respond ONLY with the JSON object for the next action.
-- Plan targeted search queries.
-- When you have enough information, reply with {"action": "done"}.`,
+3. Finished research (enough facts gathered):
+{"action": "done"}`,
       },
       {
         role: "user",
-        content: `Query to research: "${query}". Determine the first research action.`,
+        content: `Research topic: "${query}". What is your first research action?`,
       },
     ];
 
@@ -335,8 +333,10 @@ Rules:
           messages: msgs,
           tools: SEARCH_TOOLS,
           temperature: 0.2,
-          max_tokens: 300,
+          max_tokens: 200,
         }),
+        // 10 second timeout on AI Horde calls to prevent edge gateway 524 timeouts
+        signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) {
         const errText = await res.text();
@@ -360,6 +360,7 @@ Rules:
           messages: synthesisMessages,
           stream: streamMode,
         }),
+        signal: AbortSignal.timeout(60000),
       });
       if (!res.ok) {
         const errText = await res.text();
@@ -426,17 +427,16 @@ Guidelines:
 
     // ─── Non-streaming mode ───
     if (!stream) {
-      // 1. Tool calling loop with AI Horde Fast
-      for (let i = 0; i < MAX_ITERATIONS; i++) {
-        let hordeRes: Response;
+      // 1. Fast tool calling loop with AI Horde
+      for (let i = 0; i < MAX_RESEARCH_ROUNDS; i++) {
         let action: { tool: string; args: any } | null = null;
 
         try {
-          hordeRes = await callHorde(hordeMessages);
+          const hordeRes = await callHorde(hordeMessages);
           const data = await hordeRes.json();
           action = parseHordeAction(data);
         } catch {
-          // If Horde fails on first turn, fallback to direct search query
+          // If Horde times out or fails, fallback to direct query search
           if (i === 0) {
             action = { tool: "web_search", args: { query } };
           } else {
@@ -473,11 +473,11 @@ Guidelines:
         });
         hordeMessages.push({
           role: "user",
-          content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nWhat is your next action? (Respond with JSON action or {"action": "done"})`,
+          content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nNext action? (Respond with JSON action or {"action": "done"})`,
         });
       }
 
-      // If no search was run, run at least one search for the query
+      // Ensure baseline search exists
       if (allSearches.length === 0) {
         const directSearch = await performWebSearch(query);
         if (typeof directSearch !== "string") {
@@ -530,26 +530,27 @@ Guidelines:
 
     const streamLoop = async () => {
       try {
-        await write(sseJson({ type: "status", message: "Connecting to AI Horde fast research agent..." }));
+        // Send immediate initial bytes to establish the stream and prevent edge timeout
+        await write(sseJson({ type: "status", message: "Connecting to fast research agent..." }));
 
         // 1. Tool execution loop using AI Horde Fast
-        for (let i = 0; i < MAX_ITERATIONS; i++) {
+        for (let i = 0; i < MAX_RESEARCH_ROUNDS; i++) {
           await write(sseJson({
             type: "status",
             message: i === 0
               ? "Formulating research query and planning search strategy..."
-              : `Analyzing findings & planning next research step (Round ${i + 1}/${MAX_ITERATIONS})...`
+              : `Analyzing findings & planning next research step (Round ${i + 1}/${MAX_RESEARCH_ROUNDS})...`
           }));
 
-          let hordeRes: Response;
           let action: { tool: string; args: any } | null = null;
 
           try {
-            hordeRes = await callHorde(hordeMessages);
+            const hordeRes = await callHorde(hordeMessages);
             const data = await hordeRes.json();
             action = parseHordeAction(data);
-          } catch {
-            // Fallback for first turn if Horde is busy
+          } catch (hordeErr) {
+            console.warn("AI Horde call timed out or failed, falling back to direct search", hordeErr);
+            // Fallback for first turn if Horde is busy/slow
             if (i === 0) {
               action = { tool: "web_search", args: { query } };
             } else {
@@ -581,7 +582,7 @@ Guidelines:
             await write(sseJson({
               type: "status",
               message: typeof searchRes === "string"
-                ? "Search completed with warnings. Analyzing findings..."
+                ? "Search completed. Analyzing findings..."
                 : `Found ${snippetCount} search results for "${searchQuery}". Processing insights...`
             }));
           } else if (action.tool === "fetch_page") {
@@ -612,7 +613,7 @@ Guidelines:
           });
           hordeMessages.push({
             role: "user",
-            content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nWhat is your next action? (Respond with JSON action or {"action": "done"})`,
+            content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nNext action? (Respond with JSON action or {"action": "done"})`,
           });
         }
 
