@@ -215,64 +215,80 @@ app.get("/sitemap.xml", (c) => {
     .split(",")[0]
     .trim();
   const baseUrl = `${protocol}://${host}`;
+  const today = new Date().toISOString().split("T")[0];
 
   const urls = [
-    { loc: `${baseUrl}/`, changefreq: "daily", priority: "1.0" },
-    { loc: `${baseUrl}/apps`, changefreq: "daily", priority: "0.9" },
-    { loc: `${baseUrl}/apps/chatbot`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/`, changefreq: "daily", priority: "1.0", lastmod: today },
+    { loc: `${baseUrl}/apps`, changefreq: "daily", priority: "0.9", lastmod: today },
+    { loc: `${baseUrl}/apps/chatbot`, changefreq: "weekly", priority: "0.8", lastmod: today },
     {
       loc: `${baseUrl}/apps/file-compressor`,
       changefreq: "weekly",
       priority: "0.8",
+      lastmod: today,
     },
     {
       loc: `${baseUrl}/apps/public-characters`,
       changefreq: "weekly",
       priority: "0.8",
+      lastmod: today,
     },
-    { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8", lastmod: today },
     {
       loc: `${baseUrl}/apps/qrcode-generator`,
       changefreq: "weekly",
       priority: "0.8",
+      lastmod: today,
     },
-    { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8", lastmod: today },
     {
       loc: `${baseUrl}/apps/agent-search`,
       changefreq: "weekly",
       priority: "0.8",
+      lastmod: today,
     },
     {
       loc: `${baseUrl}/apps/webdefender`,
       changefreq: "weekly",
       priority: "0.8",
+      lastmod: today,
     },
     {
       loc: `${baseUrl}/apps/base64-encoder`,
       changefreq: "weekly",
       priority: "0.7",
+      lastmod: today,
     },
     {
       loc: `${baseUrl}/apps/json-formatter`,
       changefreq: "weekly",
       priority: "0.7",
+      lastmod: today,
     },
-    { loc: `${baseUrl}/apps/vpn`, changefreq: "weekly", priority: "0.7" },
-    { loc: `${baseUrl}/games`, changefreq: "weekly", priority: "0.8" },
-    { loc: `${baseUrl}/download`, changefreq: "weekly", priority: "0.7" },
-    { loc: `${baseUrl}/changelogs`, changefreq: "weekly", priority: "0.7" },
-    { loc: `${baseUrl}/privacy`, changefreq: "monthly", priority: "0.5" },
-    { loc: `${baseUrl}/terms`, changefreq: "monthly", priority: "0.5" },
-    { loc: `${baseUrl}/eula`, changefreq: "monthly", priority: "0.5" },
-    { loc: `${baseUrl}/dmca`, changefreq: "monthly", priority: "0.5" },
+    { loc: `${baseUrl}/apps/vpn`, changefreq: "weekly", priority: "0.7", lastmod: today },
+    { loc: `${baseUrl}/games`, changefreq: "daily", priority: "0.9", lastmod: today },
+    { loc: `${baseUrl}/games/chess`, changefreq: "weekly", priority: "0.8", lastmod: today },
+    { loc: `${baseUrl}/games/minesweeper`, changefreq: "weekly", priority: "0.8", lastmod: today },
+    { loc: `${baseUrl}/games/solitaire`, changefreq: "weekly", priority: "0.8", lastmod: today },
+    { loc: `${baseUrl}/games/poker`, changefreq: "weekly", priority: "0.8", lastmod: today },
+    { loc: `${baseUrl}/games/sudoku`, changefreq: "weekly", priority: "0.8", lastmod: today },
+    { loc: `${baseUrl}/games/wordsearch`, changefreq: "weekly", priority: "0.8", lastmod: today },
+    { loc: `${baseUrl}/download`, changefreq: "weekly", priority: "0.8", lastmod: today },
+    { loc: `${baseUrl}/changelogs`, changefreq: "weekly", priority: "0.7", lastmod: today },
+    { loc: `${baseUrl}/auth`, changefreq: "monthly", priority: "0.7", lastmod: today },
+    { loc: `${baseUrl}/privacy`, changefreq: "monthly", priority: "0.5", lastmod: today },
+    { loc: `${baseUrl}/terms`, changefreq: "monthly", priority: "0.5", lastmod: today },
+    { loc: `${baseUrl}/eula`, changefreq: "monthly", priority: "0.5", lastmod: today },
+    { loc: `${baseUrl}/dmca`, changefreq: "monthly", priority: "0.5", lastmod: today },
     {
       loc: `${baseUrl}/acceptable-use`,
       changefreq: "monthly",
       priority: "0.5",
+      lastmod: today,
     },
-    { loc: `${baseUrl}/legal`, changefreq: "monthly", priority: "0.6" },
-    { loc: `${baseUrl}/license`, changefreq: "monthly", priority: "0.5" },
-    { loc: `${baseUrl}/support`, changefreq: "monthly", priority: "0.6" },
+    { loc: `${baseUrl}/legal`, changefreq: "monthly", priority: "0.6", lastmod: today },
+    { loc: `${baseUrl}/license`, changefreq: "monthly", priority: "0.5", lastmod: today },
+    { loc: `${baseUrl}/support`, changefreq: "monthly", priority: "0.6", lastmod: today },
   ];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -281,6 +297,7 @@ ${urls
   .map(
     (u) => `  <url>
     <loc>${u.loc}</loc>
+    <lastmod>${u.lastmod}</lastmod>
     <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
   </url>`,

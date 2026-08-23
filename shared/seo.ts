@@ -95,6 +95,36 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     description: "Classic single-player and multiplayer web games",
   },
   {
+    href: "/games/chess",
+    label: "Chess",
+    description: "Play chess against AI",
+  },
+  {
+    href: "/games/minesweeper",
+    label: "Minesweeper",
+    description: "Classic Minesweeper puzzle game",
+  },
+  {
+    href: "/games/solitaire",
+    label: "Solitaire",
+    description: "Classic Solitaire card game",
+  },
+  {
+    href: "/games/poker",
+    label: "Texas Hold'em Poker",
+    description: "Heads-up poker game",
+  },
+  {
+    href: "/games/sudoku",
+    label: "Sudoku",
+    description: "Classic Sudoku number puzzle",
+  },
+  {
+    href: "/games/wordsearch",
+    label: "Word Search",
+    description: "Find hidden words puzzle game",
+  },
+  {
     href: "/download",
     label: "Download",
     description: "Download desktop and Android apps",
@@ -103,6 +133,11 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     href: "/changelogs",
     label: "Changelogs",
     description: "Software release history and updates",
+  },
+  {
+    href: "/auth",
+    label: "Sign In / Register",
+    description: "Sign in or register for an account",
   },
   {
     href: "/privacy",
@@ -1030,7 +1065,7 @@ export function getSeoMetadata(pathname: string): RouteSeoData {
     return {
       path: cleanPath,
       title: `${readableName} - Oxygen Low's Software`,
-      description: `Use ${readableName} on Oxygen Low's Software. Fast, secure, and modern tools built for web and desktop.`,
+      description: `Use ${readableName} on Oxygen Low's Software. Fast, secure, and modern productivity and utility tools built for web and desktop.`,
       canonicalPath: cleanPath,
       h1: readableName,
       h2: ["Application Features", "Usage & Tools"],
@@ -1059,7 +1094,7 @@ export function getSeoMetadata(pathname: string): RouteSeoData {
     return {
       path: cleanPath,
       title: `${readableName} - Games - Oxygen Low's Software`,
-      description: `Play ${readableName} online for free directly in your browser on Oxygen Low's Software.`,
+      description: `Play ${readableName} online for free directly in your browser on Oxygen Low's Software. Fast, responsive, and fun web games.`,
       canonicalPath: cleanPath,
       h1: readableName,
       h2: ["Play Game", "Rules & Instructions"],

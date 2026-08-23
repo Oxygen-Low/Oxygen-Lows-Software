@@ -13,12 +13,27 @@ const AUDITED_URLS = [
   "/apps/llm-agent",
   "/apps/agent-search",
   "/apps/webdefender",
+  "/apps/base64-encoder",
+  "/apps/json-formatter",
+  "/apps/vpn",
+  "/games",
+  "/games/chess",
+  "/games/minesweeper",
+  "/games/solitaire",
+  "/games/poker",
+  "/games/sudoku",
+  "/games/wordsearch",
+  "/download",
+  "/changelogs",
+  "/auth",
   "/privacy",
   "/terms",
   "/eula",
   "/dmca",
   "/acceptable-use",
   "/legal",
+  "/license",
+  "/support",
 ];
 
 const BASE_HTML_TEMPLATE = `<!doctype html>
@@ -120,8 +135,8 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
         "https://oxygenlow.com",
       );
 
-      expect(renderedHtml).toContain(
-        '<meta property="og:site_name" content="Oxygen Low\'s Software" />',
+      expect(renderedHtml).toMatch(
+        /<meta property="og:site_name" content="Oxygen Low(&#039;|')s Software" \/>/,
       );
       expect(renderedHtml).toContain('<meta property="og:type"');
       expect(renderedHtml).toContain(
@@ -170,8 +185,8 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
       "/apps/base64-encoder",
       "https://oxygenlow.com",
     );
-    expect(base64Html).toContain(
-      "<title>Base64 Encoder/Decoder - Oxygen Low's Software</title>",
+    expect(base64Html).toMatch(
+      /<title>Base64 Encoder\/Decoder - Oxygen Low(&#039;|')s Software<\/title>/,
     );
     expect(base64Html).toContain(
       '<link rel="canonical" href="https://oxygenlow.com/apps/base64-encoder" />',
@@ -182,8 +197,8 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
       "/games/chess",
       "https://oxygenlow.com",
     );
-    expect(chessHtml).toContain(
-      "<title>Chess - Games - Oxygen Low's Software</title>",
+    expect(chessHtml).toMatch(
+      /<title>Chess - Games - Oxygen Low(&#039;|')s Software<\/title>/,
     );
     expect(chessHtml).toContain(
       '<link rel="canonical" href="https://oxygenlow.com/games/chess" />',
@@ -202,7 +217,7 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
     expect(md).toContain("## Related Links");
   });
 
-  it("serves comprehensive sitemap.xml with all core routes", async () => {
+  it("serves comprehensive sitemap.xml with all core routes and lastmod timestamps", async () => {
     const res = await app.request("https://oxygenlow.com/sitemap.xml");
     expect(res.status).toBe(200);
     const xml = await res.text();
@@ -211,5 +226,6 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
       const expectedLoc = `https://oxygenlow.com${url === "/" ? "/" : url}`;
       expect(xml).toContain(`<loc>${expectedLoc}</loc>`);
     }
+    expect(xml).toContain("<lastmod>");
   });
 });
