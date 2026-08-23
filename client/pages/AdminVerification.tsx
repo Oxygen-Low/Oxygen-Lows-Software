@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useToast } from "@/hooks/use-toast";
 import {
   ShieldCheck,
@@ -87,6 +88,9 @@ interface VerificationItem {
 export default function AdminVerification() {
   const { session } = useAuth();
   const { t } = useTranslation();
+  usePageTitle(t("titles.adminVerification", undefined, "Admin Verification"), {
+    description: t("admin.verificationDesc", undefined, "Review, approve, or deny public assets and multiplayer verification requests."),
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 

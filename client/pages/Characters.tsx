@@ -45,6 +45,7 @@ import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
 import {
@@ -83,6 +84,13 @@ export default function Characters() {
   const { session } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  usePageTitle(t("titles.characters", undefined, "Characters"), {
+    description: t(
+      "characters.subtitle",
+      undefined,
+      "Create, customize, and share AI characters and interactive universes.",
+    ),
+  });
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeTab, setActiveTab] = useState<"characters" | "universes">(
     "characters",

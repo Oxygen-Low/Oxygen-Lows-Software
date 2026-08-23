@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,13 @@ type Ticket = {
 export default function Support() {
   const { session } = useAuth();
   const { t } = useTranslation();
+  usePageTitle(t("titles.support", undefined, "Support"), {
+    description: t(
+      "support.subtitle",
+      undefined,
+      "Submit and manage your support tickets and feature requests.",
+    ),
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 

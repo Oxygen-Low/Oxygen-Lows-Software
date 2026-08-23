@@ -3,9 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Monitor, Smartphone } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Download() {
   const { t } = useTranslation();
+  usePageTitle(t("titles.download", undefined, "Download"), {
+    description: t(
+      "download.subtitle",
+      undefined,
+      "Get Oxygen Low's Software for your device",
+    ),
+  });
 
   return (
     <Layout>

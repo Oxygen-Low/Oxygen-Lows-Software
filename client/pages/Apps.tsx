@@ -3,6 +3,7 @@ import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   Card,
   CardDescription,
@@ -286,6 +287,15 @@ export default function Apps() {
   const activeApp = useMemo(
     () => localizedApps.find((a) => a.id === appId) || null,
     [appId, localizedApps],
+  );
+
+  usePageTitle(
+    activeApp ? activeApp.name : t("titles.apps", undefined, "Apps"),
+    {
+      description: activeApp
+        ? activeApp.description
+        : t("apps.subtitle", undefined, "Explore apps and tools."),
+    },
   );
 
   const availableApps = useMemo(

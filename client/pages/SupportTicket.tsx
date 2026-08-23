@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,15 @@ export default function SupportTicket() {
   const { t } = useTranslation();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
+
+  usePageTitle(
+    ticket
+      ? `${ticket.title} - ${t("titles.supportTicket", undefined, "Support Ticket")}`
+      : t("titles.supportTicket", undefined, "Support Ticket"),
+    {
+      description: ticket?.description || t("support.subtitle", undefined, "Support Ticket Details"),
+    },
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);

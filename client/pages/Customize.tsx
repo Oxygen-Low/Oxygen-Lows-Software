@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,13 @@ export default function Customize() {
   const { theme, setTheme, font, setFont, useGradient, setUseGradient } =
     useTheme();
   const { t } = useTranslation();
+  usePageTitle(t("titles.customize", undefined, "Customize"), {
+    description: t(
+      "customize.subtitle",
+      undefined,
+      "Personalize themes, appearance, fonts, and background music.",
+    ),
+  });
 
   const {
     playlist,

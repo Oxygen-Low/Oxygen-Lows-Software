@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   Card,
   CardContent,
@@ -22,6 +23,13 @@ export default function OauthConsent() {
   const { session, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  usePageTitle(t("titles.oauthConsent", undefined, "Authorize Application"), {
+    description: t(
+      "oauthConsent.wantsAccess",
+      undefined,
+      "Authorize application access to your account.",
+    ),
+  });
   const authorizationId = searchParams.get("authorization_id");
 
   const [loading, setLoading] = useState(true);

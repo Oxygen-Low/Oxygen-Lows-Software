@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -17,6 +18,9 @@ export default function AuthCallback() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  usePageTitle(t("titles.authCallback", undefined, "Signing In"), {
+    description: "Completing sign in...",
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

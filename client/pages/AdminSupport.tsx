@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,9 @@ type Ticket = {
 export default function AdminSupport() {
   const { session } = useAuth();
   const { t } = useTranslation();
+  usePageTitle(t("titles.adminSupport", undefined, "Admin Support"), {
+    description: t("admin.supportDesc", undefined, "Manage and respond to user support tickets."),
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 

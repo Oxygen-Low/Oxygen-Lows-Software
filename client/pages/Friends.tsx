@@ -1,9 +1,13 @@
 import { Layout } from "@/components/Layout";
 import { FriendsApp } from "@/components/apps/Friends";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Friends() {
   const { t } = useTranslation();
+  usePageTitle(t("titles.friends", undefined, "Friends"), {
+    description: t("friends.subtitle", undefined, "Connect with your friends here!"),
+  });
 
   return (
     <Layout>

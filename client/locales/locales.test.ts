@@ -75,6 +75,16 @@ describe("All Locales Verification", () => {
 
       const oauthTranslate = t("oauthConsent.authorizeApp", { app: "MyTestApp" });
       expect(oauthTranslate).toContain("MyTestApp");
+
+      // Test title keys
+      expect(t("titles.apps")).toBeTruthy();
+      expect(t("titles.games")).toBeTruthy();
+      expect(t("titles.storage")).toBeTruthy();
+      expect(t("titles.security")).toBeTruthy();
+      expect(t("titles.account")).toBeTruthy();
+      expect(t("titles.privacy")).toBeTruthy();
+      expect(t("titles.terms")).toBeTruthy();
     });
   });
 });
+

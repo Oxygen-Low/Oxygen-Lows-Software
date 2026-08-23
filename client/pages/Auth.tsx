@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Loader2 } from "lucide-react";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
 
@@ -9,6 +10,9 @@ export default function Auth() {
   const location = useLocation();
   const { session, loading, signInWithOAuth } = useAuth();
   const { t, language, setLanguage } = useTranslation();
+  usePageTitle(t("titles.auth", undefined, "Sign In"), {
+    description: t("auth.welcomeBack", undefined, "Welcome back!"),
+  });
   const [error, setError] = useState<string | null>(null);
 
   const requestedReturnTo = new URLSearchParams(location.search).get(

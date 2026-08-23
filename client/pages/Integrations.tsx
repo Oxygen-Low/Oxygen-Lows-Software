@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   KeyRound,
   ShieldCheck,
@@ -184,6 +185,13 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
 export default function Integrations() {
   const { session } = useAuth();
   const { t } = useTranslation();
+  usePageTitle(t("titles.integrations", undefined, "Integrations"), {
+    description: t(
+      "integrations.subtitle",
+      undefined,
+      "Securely manage API keys and credentials for LLM models, integrations, and MCP servers.",
+    ),
+  });
 
   // Active Integrations State
   const [integrations, setIntegrations] = useState<IntegrationData[]>([]);

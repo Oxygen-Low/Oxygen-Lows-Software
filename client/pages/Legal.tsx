@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Scale, Shield, ScrollText, FileText, Copyright, ShieldAlert, ChevronRight } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const OPERATOR = "Oxygen Low's Software";
 
@@ -40,6 +41,13 @@ function LegalCard({ href, icon: Icon, title, description, index }: LegalCardPro
 
 export default function Legal() {
   const { t } = useTranslation();
+  usePageTitle(t("titles.legal", undefined, "Legal"), {
+    description: t(
+      "legal.subtitle",
+      undefined,
+      "Policies, terms of use, and licensing information",
+    ),
+  });
 
   const legalDocuments = [
     {

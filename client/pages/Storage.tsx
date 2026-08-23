@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   Upload,
   Trash2,
@@ -86,6 +87,9 @@ interface FileVerificationInfo {
 export default function Storage() {
   const { session } = useAuth();
   const { t } = useTranslation();
+  usePageTitle(t("titles.storage", undefined, "Storage"), {
+    description: t("storage.subtitle", undefined, "Upload and manage your encrypted cloud storage."),
+  });
   const [activeMainTab, setActiveMainTab] = useState<"files" | "submissions">("files");
 
   const [cloudFiles, setCloudFiles] = useState<any[]>([]);

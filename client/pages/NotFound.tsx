@@ -1,9 +1,13 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function NotFound() {
   const { t } = useTranslation();
+  usePageTitle(t("titles.notFound", undefined, "Page Not Found"), {
+    description: t("notFound.subtitle", undefined, "Page not found"),
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

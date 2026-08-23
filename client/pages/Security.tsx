@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   ShieldCheck,
   KeyRound,
@@ -72,6 +73,13 @@ const STORAGE_KEYS = {
 export default function Security() {
   const { session } = useAuth();
   const { t } = useTranslation();
+  usePageTitle(t("titles.security", undefined, "Security"), {
+    description: t(
+      "security.subtitle",
+      undefined,
+      "Manage your 256-bit AES masterkey and enable zero-knowledge encryption for your private data.",
+    ),
+  });
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const returnTo = searchParams.get("returnTo");

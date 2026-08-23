@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { ScrollText } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Link } from "react-router-dom";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const LAST_UPDATED = "17 August 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
@@ -49,6 +51,11 @@ function Ul({ items }: { items: React.ReactNode[] }) {
 }
 
 export default function Terms() {
+  const { t } = useTranslation();
+  usePageTitle(t("titles.terms", undefined, "Terms of Use"), {
+    description: "Terms of Use and rules governing the use of Oxygen Low's Software.",
+  });
+
   return (
     <Layout>
       <div className="max-w-3xl mx-auto w-full px-2 py-6 space-y-10 pb-20">

@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { LifeBuoy, ShieldCheck } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   Card,
   CardHeader,
@@ -13,6 +14,9 @@ import {
 export default function AdminPanel() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  usePageTitle(t("titles.admin", undefined, "Admin Panel"), {
+    description: t("admin.subtitle", undefined, "Select an application to manage system resources."),
+  });
 
   const apps = [
     {

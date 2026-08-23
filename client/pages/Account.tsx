@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   Upload,
   Maximize,
@@ -59,6 +60,9 @@ export default function Account() {
   const { session } = useAuth();
   const { toast } = useToast();
   const { t, language, setLanguage } = useTranslation();
+  usePageTitle(t("titles.account", undefined, "Account"), {
+    description: t("account.profileSettings", undefined, "Profile Settings"),
+  });
   const [profilePicture, setProfilePicture] = useState<ProfilePicture | null>(
     null,
   );

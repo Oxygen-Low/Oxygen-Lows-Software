@@ -1,10 +1,16 @@
 import { motion } from "framer-motion";
 import { FileText } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 // @ts-ignore
 import licenseText from "../../LICENSE?raw";
 
 export default function License() {
+  const { t } = useTranslation();
+  usePageTitle(t("titles.license", undefined, "License"), {
+    description: t("legal.licenseDesc", undefined, "The MIT License applies to this project."),
+  });
   return (
     <Layout>
       <div className="max-w-3xl mx-auto w-full px-2 py-6 space-y-10 pb-20">

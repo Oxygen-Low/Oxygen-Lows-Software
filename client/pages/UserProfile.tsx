@@ -6,6 +6,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   Users,
   Loader2,
@@ -30,6 +31,19 @@ export default function UserProfile() {
   const currentUser = session?.user;
 
   const [profile, setProfile] = useState<any>(null);
+
+  usePageTitle(
+    profile
+      ? `${profile.display_name || profile.username} (@${profile.username})`
+      : username
+        ? `@${username}`
+        : t("titles.userProfile", undefined, "User Profile"),
+    {
+      description:
+        profile?.bio ||
+        t("userProfile.subtitle", undefined, "User profile on Oxygen Low's Software"),
+    },
+  );
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [friendship, setFriendship] = useState<any>(null);
   const [isFollowing, setIsFollowing] = useState(false);

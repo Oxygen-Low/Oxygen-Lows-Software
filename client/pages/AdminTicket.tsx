@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,15 @@ export default function AdminTicket() {
   const { t } = useTranslation();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
+
+  usePageTitle(
+    ticket
+      ? `${ticket.title} - ${t("titles.adminTicket", undefined, "Admin Support Ticket")}`
+      : t("titles.adminTicket", undefined, "Admin Support Ticket"),
+    {
+      description: ticket?.description || t("admin.supportDesc", undefined, "Manage user support tickets."),
+    },
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);

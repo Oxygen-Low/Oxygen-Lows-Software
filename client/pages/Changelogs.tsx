@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { GitCommit, Loader2 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface CommitStats {
   additions: number;
@@ -25,6 +26,13 @@ interface Commit {
 
 export default function Changelogs() {
   const { t } = useTranslation();
+  usePageTitle(t("titles.changelogs", undefined, "Changelogs"), {
+    description: t(
+      "changelogs.subtitle",
+      undefined,
+      "Latest updates, commit logs, and code contributions.",
+    ),
+  });
   const [commits, setCommits] = useState<Commit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

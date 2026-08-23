@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { Copyright } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const LAST_UPDATED = "17 August 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
@@ -49,6 +51,11 @@ function Ul({ items }: { items: React.ReactNode[] }) {
 }
 
 export default function Dmca() {
+  const { t } = useTranslation();
+  usePageTitle(t("titles.dmca", undefined, "DMCA & Copyright Policy"), {
+    description: "DMCA and Copyright Policy for Oxygen Low's Software.",
+  });
+
   return (
     <Layout>
       <div className="max-w-3xl mx-auto w-full px-2 py-6 space-y-10 pb-20">
