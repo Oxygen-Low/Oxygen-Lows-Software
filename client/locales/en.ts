@@ -430,7 +430,7 @@ export const en = {
     aupTitle: "Acceptable Use Policy",
     aupDesc: "The conduct standards for using the Service, including prohibited activities and enforcement actions.",
     licenseTitle: "License",
-    licenseDesc: "The MIT License applied to this project.",
+    licenseDesc: "The MIT License applies to this project.",
   },
   download: {
     title: "Download",
