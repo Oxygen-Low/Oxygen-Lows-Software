@@ -12,14 +12,15 @@ android {
         applicationId = "com.oxygenlow.oxygen_lows_software"
         minSdk = 31
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
+        versionName = (project.findProperty("versionName") as? String) ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             optimization {
                 enable = false
             }
