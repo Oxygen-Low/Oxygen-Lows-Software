@@ -1573,6 +1573,7 @@ export function LLMAgentApp() {
     selectedProvider,
     setSelection,
     isLoading: modelsLoading,
+    refreshModels,
   } = useAiModels("Fast", "horde");
 
   // Agent state
@@ -1623,6 +1624,11 @@ export function LLMAgentApp() {
       // ignore
     }
   }, [session?.user?.id]);
+
+  const handleModelSelectorOpen = useCallback(() => {
+    fetchPoints();
+    refreshModels?.();
+  }, [fetchPoints, refreshModels]);
 
   useEffect(() => {
     fetchPoints();
@@ -2388,7 +2394,7 @@ export function LLMAgentApp() {
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
                     pointsStatus={pointsStatus}
-                    onOpen={fetchPoints}
+                    onOpen={handleModelSelectorOpen}
                     onSelect={(m, p) => {
                       if (p === 'cloudflare' && !session?.access_token) {
                         toast.error("Sign In to access better models.");
@@ -2588,7 +2594,7 @@ export function LLMAgentApp() {
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
                     pointsStatus={pointsStatus}
-                    onOpen={fetchPoints}
+                    onOpen={handleModelSelectorOpen}
                     compact
                     onSelect={(m, p) => {
                       if (p === 'cloudflare' && !session?.access_token) {

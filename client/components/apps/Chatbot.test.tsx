@@ -811,6 +811,73 @@ describe("ChatbotApp", () => {
       global.fetch = originalFetch;
     }
   }, 30000);
+
+  it("renders local running models in the model dropdown and allows selecting them", async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = vi.fn((url: any) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/api/ai/local-providers")) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve([
+                { provider: "horde", model_id: "Fast" },
+                { provider: "local-ollama", model_id: "llama3:latest" },
+                { provider: "local-lmstudio", model_id: "deepseek-r1-7b" },
+              ]),
+          });
+        }
+        if (urlStr.includes("127.0.0.1:11434/api/tags")) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                models: [{ name: "llama3:latest" }],
+              }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }) as any;
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      // Open model dropdown
+      const modelDropdownButton = await screen.findByRole("button", {
+        name: /Fast/i,
+      });
+      fireEvent.click(modelDropdownButton);
+
+      // Verify "Local Running Apps" header is visible
+      await screen.findByText("Local Running Apps");
+      await screen.findByText("llama3:latest");
+      await screen.findByText("deepseek-r1-7b");
+
+      // Select local model
+      const ollamaOption = screen.getByText("llama3:latest");
+      fireEvent.click(ollamaOption);
+
+      // Verify the selected model is now Ollama/llama3:latest without reverting to Horde
+      await waitFor(() => {
+        expect(screen.getByText("Ollama/llama3:latest")).toBeDefined();
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
+
 
 

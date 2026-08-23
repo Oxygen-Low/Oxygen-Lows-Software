@@ -381,21 +381,40 @@ public partial class MainWindow : Window
                 }
                 else if (cmd == "fetch_local_models")
                 {
-                    var models = new List<Dictionary<string, string>>();
-                    var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var models = new System.Collections.Concurrent.ConcurrentBag<Dictionary<string, string>>();
+                    var seen = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
 
                     void AddModel(string provider, string modelId)
                     {
                         if (string.IsNullOrWhiteSpace(modelId)) return;
-                        string key = $"{provider}:{modelId}";
-                        if (seen.Add(key))
+                        string trimmed = modelId.Trim();
+                        string key = $"{provider}:{trimmed}";
+                        if (seen.TryAdd(key, 0))
                         {
                             models.Add(new Dictionary<string, string>
                             {
                                 ["provider"] = provider,
-                                ["model_id"] = modelId
+                                ["model_id"] = trimmed
                             });
                         }
+                    }
+
+                    var tasks = new List<Task>();
+
+                    async Task ProbeEndpointAsync(string url, Action<JsonDocument> parser)
+                    {
+                        try
+                        {
+                            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(1200));
+                            var response = await _localHttpClient.GetAsync(url, cts.Token);
+                            if (response.IsSuccessStatusCode)
+                            {
+                                var res = await response.Content.ReadAsStringAsync(cts.Token);
+                                using var resDoc = JsonDocument.Parse(res);
+                                parser(resDoc);
+                            }
+                        }
+                        catch { }
                     }
 
                     // 1. LM Studio (ports 1234 on 127.0.0.1 and localhost)
@@ -408,10 +427,8 @@ public partial class MainWindow : Window
                     };
                     foreach (var url in lmStudioUrls)
                     {
-                        try
+                        tasks.Add(ProbeEndpointAsync(url, resDoc =>
                         {
-                            var res = await _localHttpClient.GetStringAsync(url);
-                            using var resDoc = JsonDocument.Parse(res);
                             if (resDoc.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
                             {
                                 foreach (var item in dataProp.EnumerateArray())
@@ -456,8 +473,7 @@ public partial class MainWindow : Window
                                     }
                                 }
                             }
-                        }
-                        catch { }
+                        }));
                     }
 
                     // 2. Ollama (port 11434 on 127.0.0.1 and localhost)
@@ -470,10 +486,8 @@ public partial class MainWindow : Window
                     };
                     foreach (var url in ollamaUrls)
                     {
-                        try
+                        tasks.Add(ProbeEndpointAsync(url, resDoc =>
                         {
-                            var res = await _localHttpClient.GetStringAsync(url);
-                            using var resDoc = JsonDocument.Parse(res);
                             if (resDoc.RootElement.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
                             {
                                 foreach (var item in modelsProp.EnumerateArray())
@@ -500,8 +514,7 @@ public partial class MainWindow : Window
                                     }
                                 }
                             }
-                        }
-                        catch { }
+                        }));
                     }
 
                     // 3. Kobold / KoboldCPP (ports 5001 and 5000 on 127.0.0.1 and localhost)
@@ -516,10 +529,8 @@ public partial class MainWindow : Window
                     };
                     foreach (var url in koboldUrls)
                     {
-                        try
+                        tasks.Add(ProbeEndpointAsync(url, resDoc =>
                         {
-                            var res = await _localHttpClient.GetStringAsync(url);
-                            using var resDoc = JsonDocument.Parse(res);
                             if (resDoc.RootElement.TryGetProperty("result", out var resProp))
                             {
                                 string? modelId = resProp.GetString();
@@ -540,11 +551,11 @@ public partial class MainWindow : Window
                                     }
                                 }
                             }
-                        }
-                        catch { }
+                        }));
                     }
 
-                    SendWebMessage(new { id, success = true, data = models });
+                    await Task.WhenAll(tasks);
+                    SendWebMessage(new { id, success = true, data = models.ToList() });
                 }
                 else if (cmd == "toggle_fullscreen")
                 {

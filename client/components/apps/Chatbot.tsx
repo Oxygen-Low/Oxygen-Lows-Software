@@ -471,8 +471,14 @@ const formatHordeEta = (seconds: number): string => {
 
 export function ChatbotApp() {
   const { session } = useAuth();
-  const { models, selectedModel, selectedProvider, setSelection, hordeStatus } =
-    useAiModels();
+  const {
+    models,
+    selectedModel,
+    selectedProvider,
+    setSelection,
+    hordeStatus,
+    refreshModels,
+  } = useAiModels();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
@@ -713,7 +719,12 @@ export function ChatbotApp() {
   const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
 
   useEffect(() => {
-    if (!session?.user?.id && selectedProvider !== "horde" && hordeModels.length > 0) {
+    if (
+      !session?.user?.id &&
+      selectedProvider !== "horde" &&
+      !selectedProvider.startsWith("local-") &&
+      hordeModels.length > 0
+    ) {
       setSelection(hordeModels[0].model_id, "horde");
     }
   }, [session?.user?.id, selectedProvider, hordeModels, setSelection]);
@@ -2566,6 +2577,9 @@ export function ChatbotApp() {
                 >
                   <button
                     onClick={() => {
+                      if (!modelDropdownOpen) {
+                        refreshModels?.();
+                      }
                       setModelDropdownOpen(!modelDropdownOpen);
                       setOptionsDropdownOpen(false);
                     }}
@@ -2609,7 +2623,7 @@ export function ChatbotApp() {
                           <div className="px-2 pl-3 border-l border-white/5 ml-3">
                             {hordeModels.map((m) => (
                               <button
-                                key={m.model_id}
+                                key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
                                   setSelection(m.model_id, m.provider);
                                   setModelDropdownOpen(false);
@@ -2666,7 +2680,7 @@ export function ChatbotApp() {
                           <div className="px-2 pl-3 border-l border-white/5 ml-3">
                             {localModels.map((m) => (
                               <button
-                                key={m.model_id}
+                                key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
                                   setSelection(m.model_id, m.provider);
                                   setModelDropdownOpen(false);

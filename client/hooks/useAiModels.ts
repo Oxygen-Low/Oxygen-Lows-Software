@@ -8,6 +8,85 @@ export interface Model {
   model_id: string;
 }
 
+async function probeDirectLocalModels(): Promise<Model[]> {
+  const discovered: Model[] = [];
+  const seen = new Set<string>();
+
+  const add = (provider: string, modelId: string | null | undefined) => {
+    if (!modelId || typeof modelId !== "string" || !modelId.trim()) return;
+    const trimmed = modelId.trim();
+    const key = `${provider}:${trimmed}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      discovered.push({ provider, model_id: trimmed });
+    }
+  };
+
+  const probeUrls: Array<{ url: string; provider: string; parse: (data: any) => void }> = [
+    {
+      url: "http://127.0.0.1:1234/v1/models",
+      provider: "local-lmstudio",
+      parse: (data) => {
+        if (Array.isArray(data?.data)) {
+          for (const item of data.data) {
+            if (item.type !== "embeddings" && item.id) add("local-lmstudio", item.id);
+          }
+        }
+      },
+    },
+    {
+      url: "http://127.0.0.1:11434/api/tags",
+      provider: "local-ollama",
+      parse: (data) => {
+        if (Array.isArray(data?.models)) {
+          for (const item of data.models) {
+            if (item.name) add("local-ollama", item.name);
+          }
+        }
+      },
+    },
+    {
+      url: "http://127.0.0.1:11434/v1/models",
+      provider: "local-ollama",
+      parse: (data) => {
+        if (Array.isArray(data?.data)) {
+          for (const item of data.data) {
+            if (item.id) add("local-ollama", item.id);
+          }
+        }
+      },
+    },
+    {
+      url: "http://127.0.0.1:5001/api/v1/model",
+      provider: "local-kobold",
+      parse: (data) => {
+        if (data?.result && typeof data.result === "string") {
+          add("local-kobold", data.result);
+        }
+      },
+    },
+  ];
+
+  await Promise.allSettled(
+    probeUrls.map(async ({ url, parse }) => {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1200);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const json = await res.json();
+          parse(json);
+        }
+      } catch {
+        // Ignore unreachable local endpoints
+      }
+    }),
+  );
+
+  return discovered;
+}
+
 export const useAiModels = (
   defaultModelId = "gpt-4o",
   defaultProvider = "openai",
@@ -55,13 +134,16 @@ export const useAiModels = (
       };
 
       const bridgeTask = isDesktopBridgeAvailable()
-        ? callDesktopBridge<Model[]>("fetch_local_models", {}, 2500).catch(() => [])
+        ? callDesktopBridge<Model[]>("fetch_local_models", {}, 6000).catch(() => [])
         : Promise.resolve([]);
+
+      const directLocalTask = probeDirectLocalModels().catch(() => []);
 
       const fetchTasks = [
         supabase.from("user_models").select("provider, model_id").order("provider"),
         fetch("/api/ai/local-providers").then((res) => (res.ok ? res.json() : [])).catch(() => []),
         bridgeTask,
+        directLocalTask,
       ];
 
       const results = await Promise.allSettled(fetchTasks);
@@ -69,15 +151,34 @@ export const useAiModels = (
       const dbModels = results[0].status === "fulfilled" ? (results[0].value as any).data || [] : [];
       const localModels = results[1].status === "fulfilled" ? (results[1].value as Model[]) || [] : [];
       const bridgeModels = results[2].status === "fulfilled" ? (results[2].value as Model[]) || [] : [];
+      const directModels = results[3].status === "fulfilled" ? (results[3].value as Model[]) || [] : [];
 
-      // Add bridge models
+      // Add bridge and direct models
       for (const bm of bridgeModels) {
         if (bm && bm.provider && bm.model_id) {
           addDiscovered(bm.provider, bm.model_id);
         }
       }
+      for (const dm of directModels) {
+        if (dm && dm.provider && dm.model_id) {
+          addDiscovered(dm.provider, dm.model_id);
+        }
+      }
+      const combined = [...(dbModels || []), ...(localModels || []), ...discoveredLocalModels];
+      const allModels: Model[] = [];
+      const seenAll = new Set<string>();
 
-      const allModels: Model[] = [...(dbModels || []), ...localModels, ...discoveredLocalModels];
+      for (const m of combined) {
+        if (m && m.provider && m.model_id) {
+          const trimmed = m.model_id.trim();
+          const key = `${m.provider}:${trimmed}`;
+          if (!seenAll.has(key)) {
+            seenAll.add(key);
+            allModels.push({ provider: m.provider, model_id: trimmed });
+          }
+        }
+      }
+
       setModels(allModels);
 
       if (allModels.length > 0) {
