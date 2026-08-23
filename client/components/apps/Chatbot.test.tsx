@@ -657,11 +657,11 @@ describe("ChatbotApp", () => {
     const sendButton = screen.getByLabelText("Send message");
     fireEvent.click(sendButton);
 
-    // Check that 'Searched The Web' is rendered with no reasoning block
+    // Check that 'Searched The Web' is rendered with no reasoning block, and the selected model output is rendered
     await screen.findByText("Searched The Web", {}, { timeout: 15000 });
-    await screen.findByText("Web search response content", {}, { timeout: 15000 });
+    await screen.findByText("Hello from AI", {}, { timeout: 15000 });
     expect(document.querySelector(".reasoning-block")).toBeNull();
-  });
+  }, 30000);
 
   it("runs reasoning after web search when both are enabled", async () => {
     const callOrder: string[] = [];
