@@ -419,7 +419,7 @@ export const ja = {
     aupTitle: "利用規約 (AUP)",
     aupDesc: "禁止されている活動や執行措置を含む、サービスを使用するための行動基準。",
     licenseTitle: "ライセンス",
-    licenseDesc: "このプロジェクトに適用されるMozilla Public License Version 2.0。",
+    licenseDesc: "このプロジェクトに適用されるMIT License。",
   },
   download: {
     title: "ダウンロード",

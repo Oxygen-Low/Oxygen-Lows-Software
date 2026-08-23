@@ -419,7 +419,7 @@ export const zhCN = {
     aupTitle: "可接受使用政策",
     aupDesc: "使用本服务的行为标准，包括禁止的活动和执行行动。",
     licenseTitle: "许可证",
-    licenseDesc: "应用于该项目的 Mozilla Public License Version 2.0。",
+    licenseDesc: "应用于该项目的 MIT License。",
   },
   download: {
     title: "下载",

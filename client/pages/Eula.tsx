@@ -132,7 +132,7 @@ export default function Eula() {
             This licence governs the compiled application binaries, desktop installer,
             and hosted platform. The underlying source code of the project and published
             packages (including @oxygenlow/webdefender) are licensed under the Mozilla
-            Public License Version 2.0 (MPL-2.0). All proprietary rights in trademarks,
+            Public License Version 2.0 (MIT License). All proprietary rights in trademarks,
             branding, and hosted infrastructure not expressly granted herein remain with the
             Licensor.
           </P>
@@ -142,7 +142,7 @@ export default function Eula() {
         <Section id="restrictions" title="3. Licence Restrictions" index={3}>
           <P>
             Except as expressly permitted by applicable open-source licences (such as the
-            MPL-2.0 governing the source code) or mandatory applicable law, you
+            MIT License governing the source code) or mandatory applicable law, you
             must not, and must not permit any third party to:
           </P>
           <Ul
@@ -165,8 +165,8 @@ export default function Eula() {
           </P>
           <P>
             Where portions of the Software are made available as open-source
-            software in the project repository under the Mozilla Public License Version 2.0 (MPL-2.0),
-            your rights in the source code form are governed by the MPL-2.0. This EULA
+            software in the project repository under the MIT License,
+            your rights in the source code form are governed by the MIT License. This EULA
             governs the compiled desktop binaries, official installers, and connection to our
             cloud infrastructure.
           </P>

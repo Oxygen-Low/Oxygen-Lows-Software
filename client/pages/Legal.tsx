@@ -99,7 +99,7 @@ export default function Legal() {
       description: t(
         "legal.licenseDesc",
         undefined,
-        "The Mozilla Public License Version 2.0 applied to this project.",
+        "The MIT License applied to this project.",
       ),
     },
   ];
