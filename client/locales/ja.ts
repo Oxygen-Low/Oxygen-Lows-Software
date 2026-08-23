@@ -429,7 +429,9 @@ export const ja = {
     downloadDesktop: "デスクトップアプリをダウンロード",
     downloadDesktopApp: "デスクトップアプリをダウンロード",
     androidTitle: "Android",
-    androidDesc: "近日公開",
+    androidDesc: "すべての機能を備えたモバイル体験",
+    downloadAndroid: "Androidアプリをダウンロード",
+    downloadAndroidApp: "Androidアプリをダウンロード",
     comingSoon: "近日公開",
   },
   notFound: {

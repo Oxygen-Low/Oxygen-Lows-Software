@@ -429,7 +429,9 @@ export const zhCN = {
     downloadDesktop: "下载桌面应用",
     downloadDesktopApp: "下载桌面应用",
     androidTitle: "Android",
-    androidDesc: "敬请期待",
+    androidDesc: "拥有所有功能的完整移动端体验",
+    downloadAndroid: "下载 Android 应用",
+    downloadAndroidApp: "下载 Android 应用",
     comingSoon: "敬请期待",
   },
   notFound: {

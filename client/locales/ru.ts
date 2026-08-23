@@ -429,7 +429,9 @@ export const ru = {
     downloadDesktop: "Скачать приложение",
     downloadDesktopApp: "Скачать приложение",
     androidTitle: "Android",
-    androidDesc: "Скоро",
+    androidDesc: "Полный мобильный опыт со всеми функциями",
+    downloadAndroid: "Скачать приложение для Android",
+    downloadAndroidApp: "Скачать приложение для Android",
     comingSoon: "Скоро",
   },
   notFound: {

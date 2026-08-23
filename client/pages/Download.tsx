@@ -35,17 +35,19 @@ export default function Download() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50 opacity-50 cursor-not-allowed">
+          <Card className="border-slate-800 bg-slate-900/50 hover:bg-slate-900 transition-all">
             <CardHeader>
-              <Smartphone className="w-12 h-12 text-slate-500 mb-4" />
+              <Smartphone className="w-12 h-12 text-cyan-400 mb-4" />
               <CardTitle className="text-2xl text-white">{t("download.androidTitle", undefined, "Android")}</CardTitle>
-              <CardDescription className="text-slate-500">
-                {t("download.comingSoon", undefined, "Coming Soon")}
+              <CardDescription className="text-slate-400">
+                {t("download.androidDesc", undefined, "Mobile experience with all features")}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button disabled variant="outline" className="w-full border-slate-700 text-slate-500">
-                {t("download.comingSoon", undefined, "Coming Soon")}
+              <Button asChild className="w-full bg-cyan-600 hover:bg-cyan-700 text-white">
+                <a href="https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware.apk">
+                  {t("download.downloadAndroid", undefined, "Download Android App")}
+                </a>
               </Button>
             </CardContent>
           </Card>

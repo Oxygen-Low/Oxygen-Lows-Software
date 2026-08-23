@@ -429,7 +429,9 @@ export const ko = {
     downloadDesktop: "데스크톱 앱 다운로드",
     downloadDesktopApp: "데스크톱 앱 다운로드",
     androidTitle: "Android",
-    androidDesc: "출시 예정",
+    androidDesc: "모든 기능을 갖춘 모바일 경험",
+    downloadAndroid: "Android 앱 다운로드",
+    downloadAndroidApp: "Android 앱 다운로드",
     comingSoon: "출시 예정",
   },
   notFound: {

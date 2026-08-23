@@ -429,7 +429,9 @@ export const es = {
     downloadDesktop: "Descargar aplicación de escritorio",
     downloadDesktopApp: "Descargar aplicación de escritorio",
     androidTitle: "Android",
-    androidDesc: "Próximamente",
+    androidDesc: "Experiencia móvil con todas las funciones",
+    downloadAndroid: "Descargar aplicación de Android",
+    downloadAndroidApp: "Descargar aplicación de Android",
     comingSoon: "Próximamente",
   },
   notFound: {

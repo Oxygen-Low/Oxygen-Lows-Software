@@ -440,7 +440,9 @@ export const en = {
     downloadDesktop: "Download Desktop App",
     downloadDesktopApp: "Download Desktop App",
     androidTitle: "Android",
-    androidDesc: "Coming Soon",
+    androidDesc: "Mobile experience with all features",
+    downloadAndroid: "Download Android App",
+    downloadAndroidApp: "Download Android App",
     comingSoon: "Coming Soon",
   },
   notFound: {
