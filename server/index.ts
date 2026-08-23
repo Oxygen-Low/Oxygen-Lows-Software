@@ -12,6 +12,7 @@ import { changelogsRouter } from "./routes/changelogs.ts";
 import { vpnRouter } from "./routes/vpn.ts";
 import { defenderRouter } from "./routes/webdefender.ts";
 import { storageRouter } from "./routes/storage.ts";
+import { agentSearchRouter } from "./routes/agentSearch.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 
 const app = new Hono();
@@ -190,6 +191,7 @@ app.get("/sitemap.xml", (c) => {
     { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/qrcode-generator`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/apps/agent-search`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/apps/webdefender`, changefreq: "weekly", priority: "0.8" },
     { loc: `${baseUrl}/privacy`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/terms`, changefreq: "monthly", priority: "0.5" },
@@ -831,6 +833,7 @@ app.route("/api/admin/support", adminSupportRouter);
 app.route("/api/admin/verifications", adminVerificationRouter);
 app.route("/api/assets", assetsRouter);
 app.route("/api/ai", aiRouter);
+app.route("/api/ai/agent-search", agentSearchRouter);
 app.route("/api/changelogs", changelogsRouter);
 app.route("/api/vpn", vpnRouter);
 app.route("/api/webdefender", defenderRouter);

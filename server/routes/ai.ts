@@ -16,6 +16,7 @@ const DEFAULT_MODELS = [
   { provider: "cloudflare", model_id: "@cf/zai-org/glm-4.7-flash" },
   { provider: "cloudflare", model_id: "@cf/ibm-granite/granite-4.0-h-micro" },
   { provider: "cloudflare", model_id: "@cf/meta/llama-3.1-8b-instruct-fast" },
+  { provider: "cloudflare", model_id: "@cf/qwen/qwen3.8-27b" },
 ];
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
