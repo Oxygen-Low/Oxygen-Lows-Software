@@ -390,7 +390,7 @@ agentSearchRouter.post("/", rateLimiter(10, 60_000, "agent-search"), async (c) =
       return c.json({ error: "Invalid JSON" }, 400);
     }
 
-    const { query, responseFormat, images, stream = true } = body;
+    const { query, responseFormat, images, stream = true, researchOnly = false } = body;
 
     if (typeof query !== "string" || !query.trim()) {
       return c.json({ error: "query is required and must be a string" }, 400);
@@ -420,7 +420,7 @@ agentSearchRouter.post("/", rateLimiter(10, 60_000, "agent-search"), async (c) =
       }
     }
 
-    // Read Cloudflare credentials for smart summary/conclusion
+    // Read Cloudflare credentials for smart summary/conclusion (only needed if synthesizing)
     const rawEnv = (c.env || {}) as any;
     let cloudflareId = "";
     let cloudflareToken = "";
@@ -433,7 +433,7 @@ agentSearchRouter.post("/", rateLimiter(10, 60_000, "agent-search"), async (c) =
     if (!cloudflareId) cloudflareId = (procEnv.CLOUDFLARE_ID || "").trim();
     if (!cloudflareToken) cloudflareToken = (procEnv.CLOUDFLARE_TOKEN || "").trim();
 
-    if (!cloudflareId || !cloudflareToken) {
+    if (!researchOnly && (!cloudflareId || !cloudflareToken)) {
       return c.json({ error: "Agent search is temporarily unavailable" }, 500);
     }
 
@@ -540,8 +540,8 @@ Available actions (respond ONLY with a single JSON object):
       return res;
     }
 
-    // Build synthesis messages strictly capped at 4000 total context tokens
-    function buildSynthesisMessages() {
+    // Build research context text strictly capped at 4000 total context tokens
+    function buildResearchContext(): string {
       let researchContext = "";
 
       if (allSearches.length > 0) {
@@ -580,6 +580,12 @@ Available actions (respond ONLY with a single JSON object):
           researchContext += block;
         }
       }
+      return researchContext;
+    }
+
+    // Build synthesis messages strictly capped at 4000 total context tokens
+    function buildSynthesisMessages() {
+      const researchContext = buildResearchContext();
 
       const systemPrompt = `You are an expert research synthesizer. Using the gathered real-time web research findings below (capped at 4000 total context tokens), synthesize a high-quality, comprehensive, and well-structured response in the requested format.
 
@@ -680,6 +686,18 @@ Guidelines:
         if (typeof directSearch !== "string") {
           allSearches.push({ query, ...directSearch });
         }
+      }
+
+      const researchContext = buildResearchContext();
+
+      if (researchOnly) {
+        return c.json({
+          result: researchContext,
+          context: researchContext,
+          searches: allSearches,
+          pages: fetchedPages,
+          totalPointsUsed: 0,
+        });
       }
 
       // 2. Synthesis with Cloudflare Smart model
@@ -839,6 +857,25 @@ Guidelines:
             allSearches.push({ query, ...directSearch });
           }
           await write(sseJson({ type: "tool_result", name: "web_search", result: directSearch }));
+        }
+
+        const researchContext = buildResearchContext();
+
+        if (researchOnly) {
+          await write(sseJson({
+            type: "research_complete",
+            context: researchContext,
+            searches: allSearches,
+            pages: fetchedPages,
+          }));
+          await write(sseJson({
+            type: "result",
+            content: researchContext,
+            searches: allSearches,
+            totalPointsUsed: 0,
+          }));
+          await write(sseEvent("[DONE]"));
+          return;
         }
 
         // 2. Final Synthesis using Cloudflare Smart model
