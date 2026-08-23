@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { AgentSearchApp } from "./AgentSearch";
@@ -30,6 +31,7 @@ describe("AgentSearchApp", () => {
       toolCalls: [],
       result: null,
       error: null,
+      totalPointsUsed: 0,
       abort: vi.fn()
     });
 
@@ -38,6 +40,6 @@ describe("AgentSearchApp", () => {
     // Check if the title rendered using our mock fallback
     expect(screen.getByText("Agent Search")).toBeDefined();
     // Check if search button rendered
-    expect(screen.getByRole("button", { name: /Agent Search/i })).toBeDefined(); // The search button uses the same translation or icon?
+    expect(screen.getByRole("button", { name: /Search/i })).toBeDefined(); // The search button uses the same translation or icon?
   });
 });

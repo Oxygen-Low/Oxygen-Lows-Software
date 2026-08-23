@@ -17,7 +17,7 @@ import { useAgentSearch, AgentSearchImage } from "@/hooks/useAgentSearch";
 export const AgentSearchApp = () => {
   const { t } = useTranslation();
   const { session } = useAuth();
-  const { search, isSearching, status, toolCalls, result, error, abort } = useAgentSearch();
+  const { search, isSearching, status, toolCalls, result, error, totalPointsUsed, abort } = useAgentSearch();
 
   const [query, setQuery] = useState("");
   const [responseFormat, setResponseFormat] = useState("conclusion");
@@ -245,7 +245,7 @@ export const AgentSearchApp = () => {
                 {!isSearching && (
                   <span className="text-xs text-muted-foreground flex items-center bg-background px-2 py-1 rounded-md border border-border">
                     <Zap className="w-3 h-3 mr-1 text-yellow-500" />
-                    {t("apps.agentSearchPointsUsed", undefined, "points used")}
+                    {totalPointsUsed} {t("apps.agentSearchPointsUsed", undefined, "points used")}
                   </span>
                 )}
                 <Button variant="ghost" size="sm" onClick={handleCopy} title="Copy result">
