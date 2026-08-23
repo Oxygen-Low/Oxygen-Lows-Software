@@ -99,7 +99,7 @@ export default function Legal() {
       description: t(
         "legal.licenseDesc",
         undefined,
-        "The MIT License applied to this project.",
+        "The MIT License applies to this project.",
       ),
     },
   ];
