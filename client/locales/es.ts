@@ -419,7 +419,7 @@ export const es = {
     aupTitle: "Política de uso aceptable",
     aupDesc: "Los estándares de conducta para el uso del Servicio, incluidas las actividades prohibidas y las acciones de aplicación.",
     licenseTitle: "Licencia",
-    licenseDesc: "La Licencia Pública de Mozilla Versión 2.0 aplicada a este proyecto.",
+    licenseDesc: "La Licencia MIT se aplica a este proyecto.",
   },
   download: {
     title: "Descargar",
