@@ -9,6 +9,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
@@ -51,6 +52,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             webView.loadUrl("https://oxygenlow.com/?android=1")
         }
+
+        checkForUpdatesOnStartup()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -67,6 +70,28 @@ class MainActivity : AppCompatActivity() {
                 webView.loadUrl(urlString + separator + "android=1")
             }
         }
+    }
+
+    private fun checkForUpdatesOnStartup() {
+        Thread {
+            try {
+                val updateManager = UpdateManager(this)
+                val updateInfo = updateManager.checkForUpdates()
+                if (updateInfo.hasUpdate && !updateInfo.downloadUrl.isNullOrBlank()) {
+                    runOnUiThread {
+                        val versionStr = updateInfo.version ?: ""
+                        Toast.makeText(
+                            this,
+                            getString(R.string.update_downloading, versionStr),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    updateManager.downloadAndInstall(this, updateInfo.downloadUrl)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }.start()
     }
 
     private fun injectPolyfill() {
@@ -164,6 +189,62 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                         put("error", "Use web fallback") // The web app falls back nicely if this throws exception usually, but let's check VPN.tsx
                     }
                     sendResponse(response.toString())
+                }
+                "check_for_updates" -> {
+                    Thread {
+                        try {
+                            val updateManager = UpdateManager(context)
+                            val updateInfo = updateManager.checkForUpdates()
+                            val response = JSONObject().apply {
+                                put("id", id)
+                                put("success", true)
+                                put("data", JSONObject().apply {
+                                    put("hasUpdate", updateInfo.hasUpdate)
+                                    put("version", updateInfo.version ?: "")
+                                    put("downloadUrl", updateInfo.downloadUrl ?: "")
+                                    put("currentVersion", updateManager.currentVersion)
+                                })
+                            }
+                            sendResponse(response.toString())
+                        } catch (e: Exception) {
+                            val response = JSONObject().apply {
+                                put("id", id)
+                                put("success", false)
+                                put("error", e.message)
+                            }
+                            sendResponse(response.toString())
+                        }
+                    }.start()
+                }
+                "install_update" -> {
+                    val downloadUrl = json.optString("downloadUrl")
+                    if (downloadUrl.isNotBlank()) {
+                        Thread {
+                            try {
+                                val updateManager = UpdateManager(context)
+                                val success = updateManager.downloadAndInstall(context, downloadUrl)
+                                val response = JSONObject().apply {
+                                    put("id", id)
+                                    put("success", success)
+                                }
+                                sendResponse(response.toString())
+                            } catch (e: Exception) {
+                                val response = JSONObject().apply {
+                                    put("id", id)
+                                    put("success", false)
+                                    put("error", e.message)
+                                }
+                                sendResponse(response.toString())
+                            }
+                        }.start()
+                    } else {
+                        val response = JSONObject().apply {
+                            put("id", id)
+                            put("success", false)
+                            put("error", "Missing downloadUrl")
+                        }
+                        sendResponse(response.toString())
+                    }
                 }
                 // Fallback for unhandled commands
                 else -> {
