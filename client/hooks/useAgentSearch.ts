@@ -61,10 +61,11 @@ export function useAgentSearch(): UseAgentSearchReturn {
 
   const search = useCallback(async (options: AgentSearchOptions): Promise<AgentSearchResult> => {
     setIsSearching(true);
-    setStatus("");
+    setStatus("Connecting to search agent...");
     setToolCalls([]);
     setResult("");
     setError(null);
+    setTotalPointsUsed(0);
     
     abortControllerRef.current = new AbortController();
     
@@ -144,6 +145,12 @@ export function useAgentSearch(): UseAgentSearchReturn {
               case "tool_result":
                 setToolCalls(prev => {
                   const newCalls = [...prev];
+                  for (let idx = newCalls.length - 1; idx >= 0; idx--) {
+                    if (newCalls[idx].name === data.name && newCalls[idx].result === undefined) {
+                      newCalls[idx] = { ...newCalls[idx], result: data.result };
+                      return newCalls;
+                    }
+                  }
                   const lastCall = newCalls[newCalls.length - 1];
                   if (lastCall && lastCall.name === data.name) {
                     lastCall.result = data.result;
