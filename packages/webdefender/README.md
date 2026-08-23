@@ -1,7 +1,7 @@
 # @oxygenlow/webdefender
 
 ![npm version](https://img.shields.io/npm/v/@oxygenlow/webdefender.svg)
-![License](https://img.shields.io/badge/license-MPL--2.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injection attacks, bots, and malicious traffic with an intelligent, cloud-managed Web Application Firewall (WAF) and middleware by Oxygen Low's Software.
 
@@ -116,4 +116,4 @@ On every incoming request, it executes the following pipeline:
 
 ## License
 
-[MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
+[MIT](https://choosealicense.com/licenses/mit/)

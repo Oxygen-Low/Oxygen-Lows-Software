@@ -32,7 +32,7 @@
     "bot-detection",
     "rate-limiting"
   ],
-  "license": "MPL-2.0",
+  "license": "MIT",
   "publishConfig": {
     "access": "public"
   },

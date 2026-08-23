@@ -161,7 +161,7 @@ export default function Terms() {
             non-transferable, revocable licence to access and use the hosted
             Service and its online infrastructure for your own personal,
             non-commercial purposes. (Open-source source code of the project
-            remains governed by the Mozilla Public License v2.0 as stated in
+            remains governed by the MIT License as stated in
             Section 9). You agree not to:
           </P>
           <Ul
@@ -276,9 +276,9 @@ export default function Terms() {
           </P>
           <P>
             The underlying source code of the project is made available as
-            open-source software under the <strong>Mozilla Public License Version 2.0 (MPL-2.0)</strong>.
+            open-source software under the <strong>MIT License</strong>.
             Nothing in these Terms restricts any rights granted to you under the
-            MPL-2.0 regarding the source code form of Covered Software. These Terms
+            MIT License regarding the source code form of Covered Software. These Terms
             govern your access to and use of our hosted web application, server
             infrastructure, online accounts, and cloud services.
           </P>
