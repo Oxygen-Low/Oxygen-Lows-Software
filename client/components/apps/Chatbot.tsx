@@ -17,6 +17,7 @@ import {
   Check,
   ArrowLeft,
   MessageSquare,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -562,8 +564,9 @@ export function ChatbotApp() {
   const lastParsedLengthRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // New States for UI
+  const { t } = useTranslation();
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
+  const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
   const [optionsDropdownOpen, setOptionsDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1134,6 +1137,347 @@ export function ChatbotApp() {
     return fullContent;
   };
 
+  const getInjectedSystemPrompt = (): string => {
+    let injected = "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
+    if (selectedLlmCharacter) {
+      const char = availableCharacters.find(
+        (c) => c.id === selectedLlmCharacter,
+      );
+      if (char) {
+        injected += `You are playing the role of: ${char.display_name || char.name}.\n`;
+        if (char.short_description)
+          injected += `Description: ${char.short_description}\n`;
+        if (char.appearance)
+          injected += `Appearance: ${char.appearance}\n`;
+        if (char.personality)
+          injected += `Personality: ${char.personality}\n`;
+        if (char.backstory)
+          injected += `Backstory: ${char.backstory}\n`;
+      }
+    }
+    if (selectedUserCharacter) {
+      const char = availableCharacters.find(
+        (c) => c.id === selectedUserCharacter,
+      );
+      if (char) {
+        injected += `\nThe user is playing the role of: ${char.display_name || char.name}.\n`;
+        if (char.short_description)
+          injected += `Description: ${char.short_description}\n`;
+        if (char.appearance)
+          injected += `Appearance: ${char.appearance}\n`;
+        if (char.personality)
+          injected += `Personality: ${char.personality}\n`;
+        if (char.backstory)
+          injected += `Backstory: ${char.backstory}\n`;
+      }
+    }
+    if (selectedUniverse) {
+      const uni = availableCharacters.find((c) => c.id === selectedUniverse);
+      if (uni) {
+        injected += `\nThis interaction takes place in the universe of: ${uni.display_name || uni.name}.\n`;
+        if (uni.short_description)
+          injected += `Description: ${uni.short_description}\n`;
+        if (uni.appearance)
+          injected += `Setting details: ${uni.appearance}\n`;
+        if (uni.personality)
+          injected += `Tone/Atmosphere: ${uni.personality}\n`;
+        if (uni.backstory)
+          injected += `Lore/History: ${uni.backstory}\n`;
+      }
+    }
+    return injected;
+  };
+
+  const executeAiGeneration = async (
+    baseChatMessages: Message[],
+    signal: AbortSignal,
+  ): Promise<{ finalContent: string; reasoningContent: string }> => {
+    let finalContent = "";
+    let reasoningContent = "";
+
+    const injectedSystemPrompt = getInjectedSystemPrompt();
+    const getApiMessages = (baseMessages: Message[]): Message[] => {
+      if (!injectedSystemPrompt) return baseMessages;
+      return [
+        {
+          role: "system",
+          content: `[SYSTEM INSTRUCTIONS]\n${injectedSystemPrompt.trim()}\n[END SYSTEM INSTRUCTIONS]`,
+        },
+        ...baseMessages,
+      ];
+    };
+
+    // 1. Internal Reasoning Process (if enabled)
+    if (isReasoningEnabled) {
+      const reasoningMessages = [
+        ...baseChatMessages,
+        {
+          role: "user",
+          content:
+            "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+        } as Message,
+      ];
+
+      reasoningContent = await callAiStream(
+        selectedProvider,
+        selectedModel,
+        getApiMessages(reasoningMessages),
+        signal,
+        (content) => {
+          setAllMessages((prevAll) =>
+            prevAll.map((m) =>
+              m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+            ),
+          );
+        },
+      );
+    }
+
+    // 2. Web Search / Agentic Research (if enabled)
+    if (isWebSearchEnabled) {
+      const planPrompt = `Formulate a targeted web search query and response format to research and answer my request.\nRespond ONLY with a valid JSON object in this exact structure:\n{\n  "query": "<search query to look up on the web>",\n  "responseFormat": "<conclusion | summary | analysis | description | comparison>"\n}`;
+
+      const searchPlanMessages = [
+        ...baseChatMessages,
+        ...(reasoningContent
+          ? [
+              {
+                role: "assistant",
+                content: `My internal reasoning:\n${reasoningContent}`,
+              } as Message,
+            ]
+          : []),
+        { role: "user", content: planPrompt } as Message,
+      ];
+
+      let searchPlanningText = "";
+      setAllMessages((prevAll) =>
+        prevAll.map((m) =>
+          m.id === "temp-streaming"
+            ? {
+                ...m,
+                reasoning: reasoningContent
+                  ? `${reasoningContent}\n\n---\n\n🧠 Formulating web research query and strategy...`
+                  : "🧠 Formulating web research query and strategy...",
+              }
+            : m,
+        ),
+      );
+
+      const planOutput = await callAiStream(
+        selectedProvider,
+        selectedModel,
+        getApiMessages(searchPlanMessages),
+        signal,
+        (content) => {
+          searchPlanningText = content;
+          setAllMessages((prevAll) =>
+            prevAll.map((m) =>
+              m.id === "temp-streaming"
+                ? {
+                    ...m,
+                    reasoning: reasoningContent
+                      ? `${reasoningContent}\n\n---\n\n🧠 Formulating web research query:\n${content}`
+                      : `🧠 Formulating web research query:\n${content}`,
+                  }
+                : m,
+            ),
+          );
+        },
+      );
+
+      let parsedQuery =
+        baseChatMessages[baseChatMessages.length - 1]?.content || "";
+      let parsedFormat = "conclusion";
+
+      try {
+        const match = (planOutput || searchPlanningText).match(/\{[\s\S]*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (typeof parsed.query === "string" && parsed.query.trim()) {
+            parsedQuery = parsed.query.trim();
+          }
+          if (
+            typeof parsed.responseFormat === "string" &&
+            parsed.responseFormat.trim()
+          ) {
+            parsedFormat = parsed.responseFormat.trim();
+          }
+        }
+      } catch {}
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        throw new Error("Please sign in to use Web Search.");
+      }
+
+      let liveLogs =
+        (reasoningContent ? `${reasoningContent}\n\n---\n\n` : "") +
+        `🧠 **Research Plan:**\n- Query: \`${parsedQuery}\`\n- Format: \`${parsedFormat}\`\n\n🔍 **Live Web Research:**\n`;
+
+      setAllMessages((prevAll) =>
+        prevAll.map((m) =>
+          m.id === "temp-streaming" ? { ...m, reasoning: liveLogs } : m,
+        ),
+      );
+
+      const agentRes = await fetch("/api/ai/agent-search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          query: parsedQuery,
+          responseFormat: parsedFormat,
+          stream: true,
+        }),
+        signal,
+      });
+
+      if (!agentRes.ok) {
+        throw new Error(await parseAiProxyError(agentRes));
+      }
+
+      const reader = agentRes.body?.getReader();
+      const decoder = new TextDecoder();
+      let streamBuf = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          streamBuf += decoder.decode(value, { stream: true });
+          const lines = streamBuf.split("\n");
+          streamBuf = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith("data: ")) continue;
+            const dataStr = line.replace(/^data: /, "").trim();
+            if (dataStr === "[DONE]") break;
+
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.type === "status") {
+                liveLogs += `- ${data.message}\n`;
+                setAllMessages((prevAll) =>
+                  prevAll.map((m) =>
+                    m.id === "temp-streaming"
+                      ? { ...m, reasoning: liveLogs }
+                      : m,
+                  ),
+                );
+              } else if (data.type === "tool_call") {
+                liveLogs += `  - 🛠️ **${data.name}**: \`${JSON.stringify(data.args)}\`\n`;
+                setAllMessages((prevAll) =>
+                  prevAll.map((m) =>
+                    m.id === "temp-streaming"
+                      ? { ...m, reasoning: liveLogs }
+                      : m,
+                  ),
+                );
+              } else if (data.type === "delta") {
+                finalContent += data.content;
+                setAllMessages((prevAll) =>
+                  prevAll.map((m) =>
+                    m.id === "temp-streaming"
+                      ? { ...m, content: finalContent }
+                      : m,
+                  ),
+                );
+                if (
+                  finalContent.length - lastParsedLengthRef.current > 50 ||
+                  finalContent.includes("\\\\")
+                ) {
+                  const arts = parseArtifacts(finalContent);
+                  if (arts.length > 0)
+                    setActiveArtifact(arts[arts.length - 1]);
+                  lastParsedLengthRef.current = finalContent.length;
+                }
+              } else if (data.type === "result") {
+                if (!finalContent) {
+                  finalContent = data.content;
+                  setAllMessages((prevAll) =>
+                    prevAll.map((m) =>
+                      m.id === "temp-streaming"
+                        ? { ...m, content: finalContent }
+                        : m,
+                    ),
+                  );
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+      reasoningContent = liveLogs;
+    } else if (isReasoningEnabled) {
+      // Reasoning only
+      const finalMessages = [
+        ...baseChatMessages,
+        {
+          role: "assistant",
+          content: `My internal reasoning: \n${reasoningContent}`,
+        } as Message,
+        {
+          role: "user",
+          content:
+            "Great. Now based on your reasoning, provide the final response.",
+        } as Message,
+      ];
+      finalContent = await callAiStream(
+        selectedProvider,
+        selectedModel,
+        getApiMessages(finalMessages),
+        signal,
+        (content) => {
+          setAllMessages((prevAll) =>
+            prevAll.map((m) =>
+              m.id === "temp-streaming" ? { ...m, content } : m,
+            ),
+          );
+
+          if (
+            content.length - lastParsedLengthRef.current > 50 ||
+            content.includes("\\\\")
+          ) {
+            const arts = parseArtifacts(content);
+            if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+            lastParsedLengthRef.current = content.length;
+          }
+        },
+      );
+    } else {
+      // Direct completion
+      finalContent = await callAiStream(
+        selectedProvider,
+        selectedModel,
+        getApiMessages(baseChatMessages),
+        signal,
+        (content) => {
+          setAllMessages((prevAll) =>
+            prevAll.map((m) =>
+              m.id === "temp-streaming" ? { ...m, content } : m,
+            ),
+          );
+
+          if (
+            content.length - lastParsedLengthRef.current > 50 ||
+            content.includes("\\\\")
+          ) {
+            const arts = parseArtifacts(content);
+            if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+            lastParsedLengthRef.current = content.length;
+          }
+        },
+      );
+    }
+
+    return { finalContent, reasoningContent };
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || isTyping) return;
     
@@ -1269,69 +1613,6 @@ export function ChatbotApp() {
       };
       setActiveChildren(activeChildrenRef.current);
 
-      let finalContent = "";
-      let reasoningContent = "";
-
-      // 3. Reasoning System Logic
-      let injectedSystemMessage = "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
-      if (selectedLlmCharacter) {
-        const char = availableCharacters.find(
-          (c) => c.id === selectedLlmCharacter,
-        );
-        if (char) {
-          injectedSystemMessage += `You are playing the role of: ${char.display_name || char.name}.\n`;
-          if (char.short_description)
-            injectedSystemMessage += `Description: ${char.short_description}\n`;
-          if (char.appearance)
-            injectedSystemMessage += `Appearance: ${char.appearance}\n`;
-          if (char.personality)
-            injectedSystemMessage += `Personality: ${char.personality}\n`;
-          if (char.backstory)
-            injectedSystemMessage += `Backstory: ${char.backstory}\n`;
-        }
-      }
-      if (selectedUserCharacter) {
-        const char = availableCharacters.find(
-          (c) => c.id === selectedUserCharacter,
-        );
-        if (char) {
-          injectedSystemMessage += `\nThe user is playing the role of: ${char.display_name || char.name}.\n`;
-          if (char.short_description)
-            injectedSystemMessage += `Description: ${char.short_description}\n`;
-          if (char.appearance)
-            injectedSystemMessage += `Appearance: ${char.appearance}\n`;
-          if (char.personality)
-            injectedSystemMessage += `Personality: ${char.personality}\n`;
-          if (char.backstory)
-            injectedSystemMessage += `Backstory: ${char.backstory}\n`;
-        }
-      }
-      if (selectedUniverse) {
-        const uni = availableCharacters.find((c) => c.id === selectedUniverse);
-        if (uni) {
-          injectedSystemMessage += `\nThis interaction takes place in the universe of: ${uni.display_name || uni.name}.\n`;
-          if (uni.short_description)
-            injectedSystemMessage += `Description: ${uni.short_description}\n`;
-          if (uni.appearance)
-            injectedSystemMessage += `Setting details: ${uni.appearance}\n`;
-          if (uni.personality)
-            injectedSystemMessage += `Tone/Atmosphere: ${uni.personality}\n`;
-          if (uni.backstory)
-            injectedSystemMessage += `Lore/History: ${uni.backstory}\n`;
-        }
-      }
-
-      const getApiMessages = (baseMessages: Message[]): Message[] => {
-        if (!injectedSystemMessage) return baseMessages;
-        return [
-          {
-            role: "system",
-            content: `[SYSTEM INSTRUCTIONS]\n${injectedSystemMessage.trim()}\n[END SYSTEM INSTRUCTIONS]`,
-          },
-          ...baseMessages,
-        ];
-      };
-
       let currentMessages = [...messages, userMessage];
       let iterations = 0;
       let shouldContinue = true;
@@ -1340,85 +1621,10 @@ export function ChatbotApp() {
         iterations++;
         shouldContinue = false;
 
-        let finalContent = "";
-        let reasoningContent = "";
-
-        if (isReasoningEnabled) {
-          const reasoningMessages = [
-            ...currentMessages,
-            {
-              role: "user",
-              content:
-                "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
-            } as Message,
-          ];
-
-          reasoningContent = await callAiStream(
-            selectedProvider,
-            selectedModel,
-            getApiMessages(reasoningMessages),
-            controller.signal,
-            (content) => {
-              setAllMessages((prevAll) => 
-                prevAll.map(m => m.id === "temp-streaming" ? { ...m, reasoning: content } : m)
-              );
-            },
-          );
-
-          const finalMessages = [
-            ...currentMessages,
-            {
-              role: "assistant",
-              content: `My internal reasoning: \n${reasoningContent}`,
-            } as Message,
-            {
-              role: "user",
-              content:
-                "Great. Now based on your reasoning, provide the final response.",
-            } as Message,
-          ];
-          finalContent = await callAiStream(
-            selectedProvider,
-            selectedModel,
-            getApiMessages(finalMessages),
-            controller.signal,
-            (content) => {
-              setAllMessages((prevAll) => 
-                prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
-              );
-
-              if (
-                content.length - lastParsedLengthRef.current > 50 ||
-                content.includes("\\\\")
-              ) {
-                const arts = parseArtifacts(content);
-                if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-                lastParsedLengthRef.current = content.length;
-              }
-            },
-          );
-        } else {
-          finalContent = await callAiStream(
-            selectedProvider,
-            selectedModel,
-            getApiMessages(currentMessages),
-            controller.signal,
-            (content) => {
-              setAllMessages((prevAll) => 
-                prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
-              );
-
-              if (
-                content.length - lastParsedLengthRef.current > 50 ||
-                content.includes("\\\\")
-              ) {
-                const arts = parseArtifacts(content);
-                if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-                lastParsedLengthRef.current = content.length;
-              }
-            },
-          );
-        }
+        const { finalContent, reasoningContent } = await executeAiGeneration(
+          currentMessages,
+          controller.signal,
+        );
 
         let insertData: any = {
           parent_id: userMsgData.id,
@@ -1540,90 +1746,13 @@ export function ChatbotApp() {
 
     try {
 
-      let finalContent = "";
-      let reasoningContent = "";
-
-      // Re-use system message generation logic from handleSendMessage
-      let injectedSystemMessage = "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
-      if (selectedLlmCharacter) {
-        const char = availableCharacters.find(
-          (c) => c.id === selectedLlmCharacter,
-        );
-        if (char)
-          injectedSystemMessage += `You are playing the role of: ${char.display_name || char.name}.\n`;
-      }
-      // Simplified system message builder for regeneration (you can expand this to full as needed)
-
-      const getApiMessages = (baseMessages: Message[]): Message[] => {
-        if (!injectedSystemMessage) return baseMessages;
-        return [
-          {
-            role: "system",
-            content: `[SYSTEM INSTRUCTIONS]\n${injectedSystemMessage.trim()}\n[END SYSTEM INSTRUCTIONS]`,
-          },
-          ...baseMessages,
-        ];
-      };
-
       const lastUserMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id);
       let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
-      if (isReasoningEnabled) {
-        const reasoningMessages = [
-          ...currentMessages,
-          {
-            role: "user",
-            content:
-              "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
-          } as Message,
-        ];
-        reasoningContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
-          getApiMessages(reasoningMessages),
-          controller.signal,
-          (content) => {
-            setAllMessages((prevAll) => 
-              prevAll.map(m => m.id === "temp-streaming" ? { ...m, reasoning: content } : m)
-            );
-          },
-        );
-        const finalMessages = [
-          ...currentMessages,
-          {
-            role: "assistant",
-            content: `My internal reasoning: \n${reasoningContent}`,
-          } as Message,
-          {
-            role: "user",
-            content:
-              "Great. Now based on your reasoning, provide the final response.",
-          } as Message,
-        ];
-        finalContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
-          getApiMessages(finalMessages),
-          controller.signal,
-          (content) => {
-            setAllMessages((prevAll) => 
-              prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
-            );
-          },
-        );
-      } else {
-        finalContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
-          getApiMessages(currentMessages),
-          controller.signal,
-          (content) => {
-            setAllMessages((prevAll) => 
-              prevAll.map(m => m.id === "temp-streaming" ? { ...m, content } : m)
-            );
-          },
-        );
-      }
+      const { finalContent, reasoningContent } = await executeAiGeneration(
+        currentMessages,
+        controller.signal,
+      );
 
       let insertData: any = {
         chat_id: currentChatId,
@@ -1686,6 +1815,7 @@ export function ChatbotApp() {
     selectedProvider,
     selectedModel,
     isReasoningEnabled,
+    isWebSearchEnabled,
     selectedLlmCharacter,
     availableCharacters,
   ]);
@@ -2159,6 +2289,29 @@ export function ChatbotApp() {
                     )}
                   >
                     <div className="p-2 space-y-2 max-h-[400px] overflow-y-auto no-scrollbar">
+                      {/* Web Search Toggle */}
+                      <button
+                        onClick={() =>
+                          setIsWebSearchEnabled(!isWebSearchEnabled)
+                        }
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
+                      >
+                        <div className="flex items-center gap-3 w-full rounded-lg transition-colors group">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-white/90 font-medium font-display flex items-center gap-1.5">
+                              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                              {t("apps.chatbotWebSearch", undefined, "Web Search")}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-body">
+                              {t("apps.chatbotWebSearchDesc", undefined, "Deep agentic web research before answering")}
+                            </span>
+                          </div>
+                          {isWebSearchEnabled && (
+                            <Check className="w-4 h-4 text-primary ml-auto" />
+                          )}
+                        </div>
+                      </button>
+
                       {/* Reasoning Toggle */}
                       <button
                         onClick={() =>

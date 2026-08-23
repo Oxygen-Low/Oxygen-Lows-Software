@@ -158,6 +158,8 @@ export const ru = {
     qrcodeGeneratorDesc: "Преобразуйте ссылки или текст в пользовательские QR-коды.",
     llmAgentTitle: "LLM Агент",
     llmAgentDesc: "Автономный ИИ-агент для кодинга, который читает, редактирует и создает ваши проекты.",
+    chatbotWebSearch: "Веб-поиск",
+    chatbotWebSearchDesc: "Глубокое агентское исследование в сети перед ответом",
     agentSearchTitle: "Агентский поиск",
     agentSearchDesc: "Агентский поиск на основе ИИ, который исследует веб и синтезирует ответы.",
     agentSearchPlaceholder: "Что вы хотите исследовать?",

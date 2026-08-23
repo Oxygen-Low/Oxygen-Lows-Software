@@ -158,6 +158,8 @@ export const ja = {
     qrcodeGeneratorDesc: "リンクやテキストをカスタムQRコードに変換します。",
     llmAgentTitle: "LLM エージェント",
     llmAgentDesc: "プロジェクトを読み取り、編集し、構築する自律型AIコーディングエージェント。",
+    chatbotWebSearch: "ウェブ検索",
+    chatbotWebSearchDesc: "回答前の詳細なエージェント型ウェブ調査",
     agentSearchTitle: "エージェント検索",
     agentSearchDesc: "ウェブを調査し、回答を合成するAI搭載のエージェント検索。",
     agentSearchPlaceholder: "何を調べたいですか？",

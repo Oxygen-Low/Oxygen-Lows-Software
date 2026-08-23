@@ -168,6 +168,8 @@ export const en = {
     qrcodeGeneratorDesc: "Convert links or text into custom QR codes.",
     llmAgentTitle: "LLM Agent",
     llmAgentDesc: "An autonomous AI coding agent that reads, edits, and builds your projects.",
+    chatbotWebSearch: "Web Search",
+    chatbotWebSearchDesc: "Deep agentic web research before answering",
     agentSearchTitle: "Agent Search",
     agentSearchDesc: "AI-powered agentic search that researches the web and synthesizes answers.",
     agentSearchPlaceholder: "What would you like to research?",

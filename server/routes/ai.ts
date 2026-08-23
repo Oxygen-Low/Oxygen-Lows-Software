@@ -227,88 +227,6 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         : m.content,
   }));
   let finalMessages = [...processedMessages];
-  let searchPerformed = "";
-
-  // --- Web Search Intent Check ---
-  const lastMsg = finalMessages[finalMessages.length - 1];
-  if (lastMsg && lastMsg.role === "user") {
-    try {
-      const intentCheckBody = {
-        model:
-          HORDE_MODELS_MAP.TitleGen?.[0] || "koboldcpp/Llama-3.2-1B-Instruct",
-        messages: [
-          {
-            role: "system",
-            content: `You determine if a web search is needed to answer the user's message. Respond with {"search": true, "query": "..."} if yes, or {"search": false} if no. Examples of needing search: current weather, news, sports scores, recent facts.`,
-          },
-          { role: "user", content: lastMsg.content },
-        ],
-        stream: false,
-        max_tokens: 50,
-        temperature: 0.1,
-      };
-
-      const intentRes = await fetch(
-        "https://oai.stablehorde.net/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${provider === "horde" ? integration?.api_key || "0000000000" : "0000000000"}`,
-          },
-          body: JSON.stringify(intentCheckBody),
-        },
-      );
-
-      if (intentRes.ok) {
-        const intentData = await intentRes.json();
-        const content = intentData.choices?.[0]?.message?.content?.trim();
-
-        if (content) {
-          const intent = parseSearchIntent(content);
-          if (intent?.search && intent.query) {
-            // Perform search
-            const query = intent.query;
-            searchPerformed = query;
-            const searchResponse = await fetch(
-              "https://html.duckduckgo.com/html/?q=" +
-                encodeURIComponent(query),
-              {
-                headers: {
-                  "User-Agent":
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                },
-              },
-            );
-            if (searchResponse.ok) {
-              const text = await searchResponse.text();
-              const snippetRegex =
-                /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
-              let snippets = [];
-              let m;
-              let count = 0;
-              while ((m = snippetRegex.exec(text)) !== null && count < 5) {
-                const cleanSnippet = stripHtmlTags(m[1]);
-                if (cleanSnippet) {
-                  snippets.push(cleanSnippet);
-                }
-                count++;
-              }
-              if (snippets.length > 0) {
-                finalMessages.push({
-                  role: "system",
-                  content: `Web Search Results for "${query}":\n\n${snippets.join("\n\n")}`,
-                });
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Intent check failed", e);
-    }
-  }
-  // --------------------------------
 
   // Basic system prompt for edge (simplified, as file read isn't available)
   const baseContent = "You are an AI assistant.";
@@ -469,17 +387,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     }
 
     if (stream) {
-      if (searchPerformed) {
-        c.header("X-Tool-Search", encodeURIComponent(searchPerformed));
-      }
       c.header("Content-Type", "text/event-stream");
       c.header("Cache-Control", "no-cache");
       c.header("Connection", "keep-alive");
       return c.body(upstreamResponse.body as any);
     } else {
-      if (searchPerformed) {
-        c.header("X-Tool-Search", encodeURIComponent(searchPerformed));
-      }
       const data = await upstreamResponse.json();
       return c.json(data);
     }

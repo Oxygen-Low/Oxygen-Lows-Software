@@ -38,7 +38,6 @@ import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
-import { AgentSearchApp } from "@/components/apps/AgentSearch";
 
 type Category =
   | "All"
@@ -216,18 +215,6 @@ const APPS: AppMetadata[] = [
     authRequired: true,
   },
   {
-    id: "agent-search",
-    nameKey: "apps.agentSearchTitle",
-    defaultName: "Agent Search",
-    descKey: "apps.agentSearchDesc",
-    defaultDesc: "AI-powered agentic search that researches the web and synthesizes answers.",
-    categories: ["All", "LLM/AI", "Utility"],
-    availability: "web-and-desktop",
-    icon: <Globe className="w-8 h-8 text-cyan-500" />,
-    component: AgentSearchApp,
-    authRequired: true,
-  },
-  {
     id: "vpn",
     nameKey: "apps.vpnTitle",
     defaultName: "VPN",
@@ -376,7 +363,7 @@ export default function Apps() {
 
   if (activeApp) {
     const AppComponent = activeApp.component;
-    const isFullWidthApp = activeApp.id === "chatbot" || activeApp.id === "llm-agent" || activeApp.id === "agent-search" || activeApp.id === "vpn";
+    const isFullWidthApp = activeApp.id === "chatbot" || activeApp.id === "llm-agent" || activeApp.id === "vpn";
 
     return (
       <Layout fullWidth={isFullWidthApp}>

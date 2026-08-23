@@ -158,6 +158,8 @@ export const es = {
     qrcodeGeneratorDesc: "Convierte enlaces o texto en códigos QR personalizados.",
     llmAgentTitle: "Agente LLM",
     llmAgentDesc: "Un agente de codificación de IA autónomo que lee, edita y construye tus proyectos.",
+    chatbotWebSearch: "Búsqueda Web",
+    chatbotWebSearchDesc: "Investigación web profunda antes de responder",
     agentSearchTitle: "Búsqueda Agente",
     agentSearchDesc: "Búsqueda agéntica impulsada por IA que investiga la web y sintetiza respuestas.",
     agentSearchPlaceholder: "¿Qué te gustaría investigar?",

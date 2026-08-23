@@ -158,6 +158,8 @@ export const ko = {
     qrcodeGeneratorDesc: "링크나 텍스트를 커스텀 QR 코드로 변환합니다.",
     llmAgentTitle: "LLM 에이전트",
     llmAgentDesc: "프로젝트를 읽고, 편집하고, 빌드하는 자율적인 AI 코딩 에이전트.",
+    chatbotWebSearch: "웹 검색",
+    chatbotWebSearchDesc: "답변 전 심층 에이전트 웹 조사",
     agentSearchTitle: "에이전트 검색",
     agentSearchDesc: "웹을 조사하고 답변을 합성하는 AI 기반 에이전트 검색.",
     agentSearchPlaceholder: "무엇을 조사하시겠습니까?",

@@ -158,6 +158,8 @@ export const zhCN = {
     qrcodeGeneratorDesc: "将链接或文本转换为自定义二维码。",
     llmAgentTitle: "LLM 智能体",
     llmAgentDesc: "一个自主的 AI 编程助手，可阅读、编辑和构建您的项目。",
+    chatbotWebSearch: "网络搜索",
+    chatbotWebSearchDesc: "回答前进行深度的智能网络研究",
     agentSearchTitle: "智能搜索",
     agentSearchDesc: "由AI驱动的智能搜索，研究网络并综合答案。",
     agentSearchPlaceholder: "您想研究什么？",
