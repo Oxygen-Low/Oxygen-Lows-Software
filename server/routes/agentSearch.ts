@@ -23,15 +23,53 @@ function extractBearerToken(header: string | undefined): string | null {
   return match ? match[1].trim() : null;
 }
 
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Sec-Ch-Ua": '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+  "Sec-Ch-Ua-Mobile": "?0",
+  "Sec-Ch-Ua-Platform": '"Windows"',
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1"
+};
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
 function stripHtmlTags(input: unknown): string {
   if (typeof input !== "string") return "";
+  let text = input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ");
+
+  // Prefer main content container if present
+  const mainMatch =
+    text.match(/<div id="mw-content-text"[^>]*>([\s\S]*?)<\/div>\s*<div class="printfooter"/i) ||
+    text.match(/<(?:main|article)[^>]*>([\s\S]*?)<\/(?:main|article)>/i);
+  if (mainMatch) {
+    text = mainMatch[1];
+  }
+
   let prev = "";
-  let sanitized = input;
   do {
-    prev = sanitized;
-    sanitized = sanitized.replace(/<[^<>]*>/g, "");
-  } while (sanitized !== prev);
-  return sanitized.trim();
+    prev = text;
+    text = text.replace(/<[^<>]*>/g, " ");
+  } while (text !== prev);
+
+  return decodeHtmlEntities(text).replace(/\s+/g, " ").trim();
 }
 
 function normalizeUrl(input: unknown): string | null {
@@ -146,9 +184,7 @@ const SEARCH_TOOLS = [
 async function performWebSearch(query: string) {
   try {
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-      },
+      headers: BROWSER_HEADERS,
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) throw new Error("Search request failed");
@@ -199,16 +235,62 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
   }
   try {
     const res = await fetch(cleanUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
+      headers: BROWSER_HEADERS,
       signal: AbortSignal.timeout(6000),
     });
+
+    if (res.ok) {
+      const text = await res.text();
+      const clean = stripHtmlTags(text);
+      if (clean.length > 50) {
+        return clean.substring(0, maxChars);
+      }
+    }
+
+    // If direct HTML returned 403 / non-200 and it's a wiki page, try MediaWiki API endpoints
+    if (cleanUrl.includes("/wiki/")) {
+      try {
+        const u = new URL(cleanUrl);
+        const title = u.pathname.split("/wiki/")[1];
+        if (title) {
+          const apiEndpoints = [
+            `${u.origin}/w/api.php?action=query&format=json&prop=extracts&explaintext=1&titles=${encodeURIComponent(title)}&origin=*`,
+            `${u.origin}/api.php?action=parse&page=${encodeURIComponent(title)}&format=json&prop=text&origin=*`,
+            `${u.origin}/api.php?action=query&format=json&prop=extracts&explaintext=1&titles=${encodeURIComponent(title)}&origin=*`,
+            `${u.origin}/w/api.php?action=parse&page=${encodeURIComponent(title)}&format=json&prop=text&origin=*`,
+          ];
+
+          for (const endpoint of apiEndpoints) {
+            try {
+              const apiRes = await fetch(endpoint, {
+                headers: {
+                  "User-Agent": BROWSER_HEADERS["User-Agent"],
+                  Accept: "application/json,text/html,*/*",
+                },
+                signal: AbortSignal.timeout(4000),
+              });
+              if (apiRes.ok) {
+                const data = await apiRes.json();
+                if (data?.parse?.text?.["*"]) {
+                  const parsedText = stripHtmlTags(data.parse.text["*"]);
+                  if (parsedText.length > 50) return parsedText.substring(0, maxChars);
+                }
+                const pages = data?.query?.pages || {};
+                for (const k in pages) {
+                  if (pages[k]?.extract) {
+                    return stripHtmlTags(pages[k].extract).substring(0, maxChars);
+                  }
+                }
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
-    const cleanText = stripHtmlTags(text);
-    return cleanText.substring(0, maxChars);
+    return stripHtmlTags(text).substring(0, maxChars);
   } catch (err: any) {
     return `Error: Failed to fetch page content from ${cleanUrl} (${err.message || 'network failed'}).`;
   }
