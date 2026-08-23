@@ -23,8 +23,6 @@ export const formatModelLabel = (provider: string, modelId: string) => {
         "Cheap - ibm-granite/granite-4.0-h-micro",
       "@cf/meta/llama-3.1-8b-instruct-fast":
         "Write/Roleplay - meta/llama-3.1-8b-instruct-fast",
-      "@cf/qwen/qwen3.8-27b":
-        "Agent/Vision - qwen/qwen3.8-27b",
     };
     if (labels[modelId]) return labels[modelId];
   }
