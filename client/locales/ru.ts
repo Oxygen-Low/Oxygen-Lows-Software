@@ -29,6 +29,10 @@ export const ru = {
     required: "Обязательно",
     optional: "Необязательно",
     noData: "Нет данных",
+    reload: "Перезагрузить",
+    refresh: "Обновить",
+    somethingWentWrong: "Что-то пошло не так",
+    chunkLoadError: "Возможно, доступна новая версия приложения. Пожалуйста, обновите страницу.",
   },
   nav: {
     home: "Главная",

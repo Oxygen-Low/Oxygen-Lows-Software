@@ -29,6 +29,10 @@ export const zhCN = {
     required: "必填",
     optional: "选填",
     noData: "暂无数据",
+    reload: "重新加载",
+    refresh: "刷新",
+    somethingWentWrong: "出错了",
+    chunkLoadError: "可能已有新版本的应用程序可用。请刷新页面。",
   },
   nav: {
     home: "首页",

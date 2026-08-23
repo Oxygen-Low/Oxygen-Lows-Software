@@ -22,11 +22,20 @@ if (process.env.NODE_ENV === 'production') {
   }
 
   app.get('*', (c) => {
-    if (c.req.path.startsWith('/api/')) {
+    const reqPath = c.req.path;
+    if (
+      reqPath.startsWith('/api/') ||
+      reqPath.startsWith('/assets/') ||
+      /\.(js|css|wasm|map|json|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot|mp3|wav|ogg)$/i.test(reqPath)
+    ) {
       return c.notFound();
     }
     if (indexHtml) {
-      return c.html(indexHtml);
+      return c.html(indexHtml, 200, {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      });
     }
     return c.text('Not Found', 404);
   });

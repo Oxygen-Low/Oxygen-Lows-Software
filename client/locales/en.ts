@@ -29,6 +29,10 @@ export const en = {
     required: "Required",
     optional: "Optional",
     noData: "No data available",
+    reload: "Reload",
+    refresh: "Refresh",
+    somethingWentWrong: "Something went wrong",
+    chunkLoadError: "A new version of the app may be available. Please refresh the page.",
   },
   nav: {
     home: "Home",

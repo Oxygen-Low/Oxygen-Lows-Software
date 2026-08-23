@@ -20,7 +20,17 @@ export function getAuthenticatedClient(token?: string) {
     }
     const client = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storageKey: `sb-token-${token.slice(-10)}`,
+        storage: {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        },
+      },
     });
     clientCache.set(token, client);
     return client;

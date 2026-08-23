@@ -29,6 +29,10 @@ export const ko = {
     required: "필수",
     optional: "선택",
     noData: "데이터 없음",
+    reload: "다시 로드",
+    refresh: "새로고침",
+    somethingWentWrong: "문제가 발생했습니다",
+    chunkLoadError: "새로운 버전의 앱이 출시되었을 수 있습니다. 페이지를 새로고침해 주세요.",
   },
   nav: {
     home: "홈",

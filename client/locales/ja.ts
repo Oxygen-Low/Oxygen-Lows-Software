@@ -29,6 +29,10 @@ export const ja = {
     required: "必須",
     optional: "任意",
     noData: "データがありません",
+    reload: "再読み込み",
+    refresh: "更新",
+    somethingWentWrong: "問題が発生しました",
+    chunkLoadError: "アプリの新しいバージョンが利用可能な場合があります。ページを更新してください。",
   },
   nav: {
     home: "ホーム",
