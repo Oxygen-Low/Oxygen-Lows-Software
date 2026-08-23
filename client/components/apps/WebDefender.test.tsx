@@ -48,7 +48,7 @@ describe("Defender getAppConfig", () => {
       block_bruteforce: false,
       block_http_dos: true,
       block_http_exploit: false,
-      block_botnets: true
+      block_botnets: true,
     };
 
     const config = getAppConfig(singleObjConfig);
@@ -76,8 +76,8 @@ describe("Defender getAppConfig", () => {
         block_ad_bots: true,
         block_vpn: true,
         block_bruteforce: true,
-        block_botnets: false
-      }
+        block_botnets: false,
+      },
     ];
 
     const config = getAppConfig(arrayConfig);
@@ -153,13 +153,22 @@ describe("Defender EventsTab", () => {
         event_type: "sql_injection",
         method: "POST",
         path: "/api/login",
-        blocked: true
-      }
+        blocked: true,
+      },
     ];
 
-    const { queryByText, getAllByRole, container } = render(<EventsTab events={mockEvents} />);
+    const { queryByText, getAllByRole, container } = render(
+      <EventsTab events={mockEvents} />,
+    );
     const headers = getAllByRole("columnheader").map((th) => th.textContent);
-    expect(headers).toEqual(["Time", "IP", "Location", "Type", "Target", "Status"]);
+    expect(headers).toEqual([
+      "Time",
+      "IP",
+      "Location",
+      "Type",
+      "Target",
+      "Status",
+    ]);
     expect(queryByText("User Agent")).toBeNull();
 
     // Verify row rendered without User Agent cell
@@ -174,7 +183,4 @@ describe("Defender EventsTab", () => {
     const emptyCell = container.querySelector("tbody td");
     expect(emptyCell?.getAttribute("colspan")).toBe("6");
   });
-
 });
-
-

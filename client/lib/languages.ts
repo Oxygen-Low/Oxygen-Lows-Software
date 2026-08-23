@@ -57,7 +57,11 @@ const dynamicLanguages: LanguageOption[] = [];
 let languageMapCache: Map<string, LanguageOption> | null = null;
 
 export function registerLanguageOption(option: LanguageOption) {
-  if (!dynamicLanguages.some((l) => l.code === option.code || l.name === option.name)) {
+  if (
+    !dynamicLanguages.some(
+      (l) => l.code === option.code || l.name === option.name,
+    )
+  ) {
     dynamicLanguages.push(option);
     languageMapCache = null;
   }
@@ -66,7 +70,10 @@ export function registerLanguageOption(option: LanguageOption) {
 /**
  * Returns FlagCDN flag image URL for a given 2-letter country code.
  */
-export function getCountryFlagUrl(countryCode?: string | null, width: "w20" | "w40" | "w80" = "w40"): string {
+export function getCountryFlagUrl(
+  countryCode?: string | null,
+  width: "w20" | "w40" | "w80" = "w40",
+): string {
   if (!countryCode || countryCode.length !== 2) return "";
   return `https://flagcdn.com/${width}/${countryCode.toLowerCase()}.png`;
 }
@@ -91,12 +98,14 @@ export function getLanguageOption(value?: string | null): LanguageOption {
       if (!languageMapCache.has(code)) languageMapCache.set(code, l);
       if (l.nativeName) {
         const nativeName = l.nativeName.toLowerCase();
-        if (!languageMapCache.has(nativeName)) languageMapCache.set(nativeName, l);
+        if (!languageMapCache.has(nativeName))
+          languageMapCache.set(nativeName, l);
       }
     }
 
     // Specific alias mappings
-    const foundZh = languageMapCache.get("zh-cn") || languageMapCache.get("chinese");
+    const foundZh =
+      languageMapCache.get("zh-cn") || languageMapCache.get("chinese");
     if (foundZh) {
       languageMapCache.set("chinese", foundZh);
       languageMapCache.set("zh", foundZh);

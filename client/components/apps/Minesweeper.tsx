@@ -203,11 +203,7 @@ export function MinesweeperApp() {
   };
 
   const handleCellClick = (index: number) => {
-    if (
-      status === "won" ||
-      status === "lost" ||
-      board[index].isRevealed
-    ) {
+    if (status === "won" || status === "lost" || board[index].isRevealed) {
       return;
     }
 
@@ -395,7 +391,7 @@ export function MinesweeperApp() {
                   "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
                   touchMode === "reveal"
                     ? "bg-cyan-600 text-white shadow"
-                    : "text-slate-400 hover:text-white"
+                    : "text-slate-400 hover:text-white",
                 )}
                 title="Dig / Reveal cell mode"
                 aria-pressed={touchMode === "reveal"}
@@ -410,7 +406,7 @@ export function MinesweeperApp() {
                   "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
                   touchMode === "flag"
                     ? "bg-red-600 text-white shadow"
-                    : "text-slate-400 hover:text-white"
+                    : "text-slate-400 hover:text-white",
                 )}
                 title="Flag mine mode"
                 aria-pressed={touchMode === "flag"}

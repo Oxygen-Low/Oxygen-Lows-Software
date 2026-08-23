@@ -69,4 +69,3 @@ describe("Apps", () => {
     expect(screen.getAllByText("Web Defender").length).toBeGreaterThan(0);
   });
 });
-

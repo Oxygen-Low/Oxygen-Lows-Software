@@ -32,7 +32,8 @@ export const ja = {
     reload: "再読み込み",
     refresh: "更新",
     somethingWentWrong: "問題が発生しました",
-    chunkLoadError: "アプリの新しいバージョンが利用可能な場合があります。ページを更新してください。",
+    chunkLoadError:
+      "アプリの新しいバージョンが利用可能な場合があります。ページを更新してください。",
   },
   nav: {
     home: "ホーム",
@@ -82,10 +83,12 @@ export const ja = {
     bioPlaceholder: "自己紹介",
     saveChanges: "変更を保存",
     languageSectionTitle: "言語",
-    languageSectionDesc: "アカウントおよび公開プロフィールの優先言語を選択してください",
+    languageSectionDesc:
+      "アカウントおよび公開プロフィールの優先言語を選択してください",
     displayLanguage: "表示言語",
     emailSettingsTitle: "メール設定",
-    emailSettingsDesc: "他のユーザーにメールアドレスをどのように表示するかを選択してください",
+    emailSettingsDesc:
+      "他のユーザーにメールアドレスをどのように表示するかを選択してください",
     publicEmail: "公開メールアドレス",
     publicEmailDesc: "公開プロフィールにメールアドレスを表示する",
     uploadProfilePicture: "プロフィール画像をアップロード",
@@ -145,23 +148,30 @@ export const ja = {
     backToApps: "アプリ一覧に戻る",
     adminRequired: "このアプリを使用するには管理者権限が必要です。",
     base64Title: "Base64 エンコーダ/デコーダ",
-    base64Desc: "Base64を使用してテキストやデータを簡単にエンコードまたはデコードします。",
+    base64Desc:
+      "Base64を使用してテキストやデータを簡単にエンコードまたはデコードします。",
     jsonFormatterTitle: "JSON フォーマッタ",
     jsonFormatterDesc: "JSON文字列をフォーマットし、整形し、検証します。",
     chatbotTitle: "チャットボット",
-    chatbotDesc: "インテリジェントなAIアシスタントとチャットしてブレインストーミングしましょう。",
+    chatbotDesc:
+      "インテリジェントなAIアシスタントとチャットしてブレインストーミングしましょう。",
     fileCompressorTitle: "ファイル圧縮ツール",
-    fileCompressorDesc: "ファイルを簡単に圧縮してストレージの空き容量を増やします。",
+    fileCompressorDesc:
+      "ファイルを簡単に圧縮してストレージの空き容量を増やします。",
     publicCharactersTitle: "パブリックキャラクター",
-    publicCharactersDesc: "コミュニティとキャラクターやユニバースを発見し、ダウンロードし、共有します。",
+    publicCharactersDesc:
+      "コミュニティとキャラクターやユニバースを発見し、ダウンロードし、共有します。",
     publicAssetsTitle: "パブリックアセット",
-    publicAssetsDesc: "コミュニティとアセット、キャラクター、ユニバースを発見、ダウンロード、共有します。",
+    publicAssetsDesc:
+      "コミュニティとアセット、キャラクター、ユニバースを発見、ダウンロード、共有します。",
     dataSaveTitle: "データ保存",
-    dataSaveDesc: "カスタムデータやテキストスニペットを安全に保存および管理します。",
+    dataSaveDesc:
+      "カスタムデータやテキストスニペットを安全に保存および管理します。",
     qrcodeGeneratorTitle: "QRコード ジェネレータ",
     qrcodeGeneratorDesc: "リンクやテキストをカスタムQRコードに変換します。",
     llmAgentTitle: "LLM エージェント",
-    llmAgentDesc: "プロジェクトを読み取り、編集し、構築する自律型AIコーディングエージェント。",
+    llmAgentDesc:
+      "プロジェクトを読み取り、編集し、構築する自律型AIコーディングエージェント。",
     chatbotWebSearch: "ウェブ検索",
     chatbotWebSearchDesc: "回答前の詳細なエージェント型ウェブ調査",
     chatbotSearchedTheWeb: "ウェブを検索しました",
@@ -190,14 +200,17 @@ export const ja = {
     vpnSavedConfigs: "保存された設定",
     vpnDirectConnect: "直接接続",
     vpnDirectConnectDesc: "VPN設定を入力して、保存せずに直接接続します。",
-    vpnGuestNotice: "保存せずに直接接続するか、サインインしてデバイス間でプロファイルを保存します。",
+    vpnGuestNotice:
+      "保存せずに直接接続するか、サインインしてデバイス間でプロファイルを保存します。",
     vpnConfigName: "設定名",
     vpnConfigNamePlaceholder: "例: 一時接続",
     vpnType: "VPNタイプ",
     vpnConfigContent: "設定内容",
-    vpnConfigPlaceholder: "WireGuardまたはOpenVPNの設定をここに貼り付けてください...",
+    vpnConfigPlaceholder:
+      "WireGuardまたはOpenVPNの設定をここに貼り付けてください...",
     vpnKillSwitch: "キルスイッチ（トンネル外のトラフィックをブロック）",
-    vpnKillSwitchNote: "注: Windowsでは、OpenVPNはCLI経由のDNSリーク保護のみをネイティブサポートしています。",
+    vpnKillSwitchNote:
+      "注: Windowsでは、OpenVPNはCLI経由のDNSリーク保護のみをネイティブサポートしています。",
     vpnConnect: "VPNに接続",
     vpnDisconnect: "VPNを切断",
     vpnFreeConfigBtn: "VPNBookから無料設定を取得",
@@ -205,7 +218,8 @@ export const ja = {
     vpnManageProfilesDesc: "VPNプロファイルを管理・監視します。",
     vpnYourConfigurations: "あなたの設定",
     vpnNoConfigsFound: "設定が見つかりません。",
-    vpnNoConfigsFoundDesc: "上の「新規設定を作成」をクリックして開始するか、「直接接続」に切り替えてください。",
+    vpnNoConfigsFoundDesc:
+      "上の「新規設定を作成」をクリックして開始するか、「直接接続」に切り替えてください。",
     vpnSignInPrompt: "サインイン",
     vpnServerDetected: "サーバーを検出しました",
     vpnNoServerDetected: "設定内にサーバーが検出されませんでした",
@@ -213,22 +227,26 @@ export const ja = {
     vpnOffline: "オフライン",
     vpnPinging: "ping測定中...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "DDoS攻撃、インジェクション攻撃、ボット、VPN、および悪意のあるトラフィックからウェブサイトやAPIを保護します。",
+    webDefenderDesc:
+      "DDoS攻撃、インジェクション攻撃、ボット、VPN、および悪意のあるトラフィックからウェブサイトやAPIを保護します。",
     webDefenderRealTime: "リアルタイム",
     webDefenderConnecting: "接続中...",
   },
   games: {
     title: "ゲーム",
-    subtitle: "ブラウザに組み込まれたインタラクティブでレトロなゲームをプレイしましょう！",
+    subtitle:
+      "ブラウザに組み込まれたインタラクティブでレトロなゲームをプレイしましょう！",
     allGames: "すべてのゲーム",
     backToGames: "ゲーム一覧に戻る",
     noGamesFound: "このカテゴリにゲームが見つかりません。",
     chessTitle: "チェス",
     chessDesc: "AI対戦相手とチェスのゲームをプレイします。",
     minesweeperTitle: "マインスイーパ",
-    minesweeperDesc: "クラシックなマインスイーパ。地雷を爆発させずにボードをクリアしましょう！",
+    minesweeperDesc:
+      "クラシックなマインスイーパ。地雷を爆発させずにボードをクリアしましょう！",
     solitaireTitle: "ソリティア",
-    solitaireDesc: "クラシックなクロンダイク・ソリティアカードゲームをプレイします。",
+    solitaireDesc:
+      "クラシックなクロンダイク・ソリティアカードゲームをプレイします。",
     pokerTitle: "テキサスホールデム",
     pokerDesc: "AI対戦相手とヘッズアップ・テキサスホールデムをプレイします。",
     sudokuTitle: "数独",
@@ -247,7 +265,8 @@ export const ja = {
     board: "ボード",
     casual: "カジュアル",
     clearFilters: "フィルターを解除",
-    noFilteredGames: "選択したフィルターに一致するゲームは見つかりませんでした。",
+    noFilteredGames:
+      "選択したフィルターに一致するゲームは見つかりませんでした。",
     noDesktopGames: "デスクトップ専用ゲームはまだありません。",
   },
   storage: {
@@ -256,14 +275,16 @@ export const ja = {
     storageUsed: "使用済みストレージ",
     uploadFile: "ファイルをアップロード",
     deleteConfirmTitle: "このファイルを本当に削除しますか？",
-    deleteConfirmDesc: "この操作は元に戻せません。ファイルがクラウドストレージから完全に削除されます。",
+    deleteConfirmDesc:
+      "この操作は元に戻せません。ファイルがクラウドストレージから完全に削除されます。",
     fileUploaded: "ファイルが正常にアップロードされました",
     fileDeleted: "ファイルが正常に削除されました",
     filesTab: "ファイル",
     submissionsTab: "検証申請",
     verifyForMultiplayer: "検証",
     verifiedBadge: "検証済み",
-    reverificationRequired: "ファイルが変更されました。前回の検証はリセットされたため、再検証が必要です。",
+    reverificationRequired:
+      "ファイルが変更されました。前回の検証はリセットされたため、再検証が必要です。",
     noSubmissions: "ストレージファイルの検証申請はまだありません。",
   },
   customize: {
@@ -271,14 +292,17 @@ export const ja = {
     themesTitle: "外観",
     themesDesc: "アプリのアクセントテーマとカラーパレットを選択します",
     fontsTitle: "タイポグラフィ",
-    fontsDesc: "ヘッダーとナビゲーション全体で使用される表示フォントを選択します",
+    fontsDesc:
+      "ヘッダーとナビゲーション全体で使用される表示フォントを選択します",
     musicSectionTitle: "BGM",
     musicSectionDesc: "アプリケーションを使用しながら音楽を聴きます",
     gradientTitle: "グラデーション背景",
-    gradientDesc: "ヒーローセクションとサイドバーの放射状のカラーグラデーションを有効にします",
+    gradientDesc:
+      "ヒーローセクションとサイドバーの放射状のカラーグラデーションを有効にします",
     shuffle: "シャッフル",
     loop: "ループ",
-    noTracks: "トラックがまだ追加されていません。ストレージからトラックを選択して再生してください！",
+    noTracks:
+      "トラックがまだ追加されていません。ストレージからトラックを選択して再生してください！",
   },
   characters: {
     title: "キャラクター",
@@ -293,13 +317,16 @@ export const ja = {
     personality: "性格",
     backstory: "バックストーリー",
     hiddenDescription: "プライベートメモ",
-    noCharacters: 'まだキャラクターがいません！「新しいキャラクター」をクリックして開始し、コレクションに追加してください。',
-    noUniverses: 'まだユニバースがありません！「新しいユニバース」をクリックして、自分だけの世界を構築し始めましょう。',
+    noCharacters:
+      "まだキャラクターがいません！「新しいキャラクター」をクリックして開始し、コレクションに追加してください。",
+    noUniverses:
+      "まだユニバースがありません！「新しいユニバース」をクリックして、自分だけの世界を構築し始めましょう。",
     characterSaved: "キャラクターが正常に保存されました",
     characterDeleted: "キャラクターが正常に削除されました",
     verifyForMultiplayer: "検証",
     verifiedBadge: "検証済み",
-    reverificationRequired: "キャラクターが変更されました。検証ステータスがリセットされたため、マルチプレイヤー用に再検証が必要です。",
+    reverificationRequired:
+      "キャラクターが変更されました。検証ステータスがリセットされたため、マルチプレイヤー用に再検証が必要です。",
   },
   changelogs: {
     title: "変更履歴",
@@ -308,7 +335,8 @@ export const ja = {
   },
   support: {
     title: "サポートチケット",
-    subtitle: "お困りですか？サポートチケットを作成すると、チームから折り返しご連絡いたします。",
+    subtitle:
+      "お困りですか？サポートチケットを作成すると、チームから折り返しご連絡いたします。",
     createTicket: "チケットを作成",
     myTickets: "マイチケット",
     subject: "件名",
@@ -344,7 +372,8 @@ export const ja = {
     supportDesc: "ユーザーのサポートチケットを管理および返信します。",
     allTickets: "すべてのサポートチケット",
     verificationTitle: "アセット検証",
-    verificationDesc: "パブリックアセットおよびマルチプレイヤー検証リクエストをレビュー、承認、または拒否します。",
+    verificationDesc:
+      "パブリックアセットおよびマルチプレイヤー検証リクエストをレビュー、承認、または拒否します。",
     reviewQueue: "アセット検証キュー",
     allSubmissions: "すべての提出物",
     pendingTab: "保留中",
@@ -353,7 +382,8 @@ export const ja = {
     approve: "承認",
     deny: "拒否",
     denyTitle: "検証リクエストの拒否",
-    denyDesc: "このアセットを拒否する具体的な理由を入力してください。この理由はユーザーに表示されます。",
+    denyDesc:
+      "このアセットを拒否する具体的な理由を入力してください。この理由はユーザーに表示されます。",
     reasonPlaceholder: "拒否された理由を説明してください（必須）...",
     reasonRequiredError: "申請を拒否するには拒否理由が必要です。",
     approveSuccess: "アセットが正常に承認されました。",
@@ -382,7 +412,8 @@ export const ja = {
     mostDownloaded: "ダウンロード順",
     publishAsset: "アセットを公開",
     publishTitle: "パブリックアセットに公開",
-    publishDesc: "既存のキャラクター、ユニバース、またはストレージファイルを選択して検証に提出します。",
+    publishDesc:
+      "既存のキャラクター、ユニバース、またはストレージファイルを選択して検証に提出します。",
     assetType: "アセットタイプ",
     selectCharacter: "キャラクターを選択",
     selectUniverse: "ユニバースを選択",
@@ -391,13 +422,15 @@ export const ja = {
     assetDescription: "説明",
     assetCategory: "カテゴリ",
     submitForVerification: "審査に提出",
-    verificationNotice: "提出物は公開される前に管理者によって検証される必要があります。",
+    verificationNotice:
+      "提出物は公開される前に管理者によって検証される必要があります。",
     noAssetsFound: "パブリックアセットは見つかりませんでした。",
     noSubmissions: "まだ検証リクエストを送信していません。",
     downloadToCollection: "コレクションに追加",
     saveToStorage: "ストレージに保存",
     makePrivate: "非公開にする / 公開停止",
-    makePrivateConfirm: "このアセットの公開を停止してもよろしいですか？パブリックハブから削除され、非公開に戻ります。",
+    makePrivateConfirm:
+      "このアセットの公開を停止してもよろしいですか？パブリックハブから削除され、非公開に戻ります。",
     unpublishSuccess: "アセットの公開を停止しました。",
     statusPending: "審査待ち",
     statusApproved: "承認済み・公開中",
@@ -409,13 +442,15 @@ export const ja = {
     downloads: "ダウンロード数",
     size: "サイズ",
     uploader: "投稿者",
-    unauthorizedEncrypted: "暗号化されたキャラクターはアップロードできません。最初にロックを解除してください。",
+    unauthorizedEncrypted:
+      "暗号化されたキャラクターはアップロードできません。最初にロックを解除してください。",
   },
   verification: {
     verifyForPublicUsage: "パブリック利用の検証",
     verifyForMultiplayer: "検証",
     verifyForMultiplayerTitle: "アセットの検証",
-    verifyForMultiplayerDesc: "公開することなく、マルチプレイヤーゲーム等で使用するためにこのプライベートアセットを検証に提出します。",
+    verifyForMultiplayerDesc:
+      "公開することなく、マルチプレイヤーゲーム等で使用するためにこのプライベートアセットを検証に提出します。",
     publishToPublicAssets: "パブリックアセットに公開",
     verifiedForPublicUsageBadge: "パブリック利用検証済み",
     verifiedForMultiplayerBadge: "検証済み",
@@ -423,12 +458,15 @@ export const ja = {
     pendingReviewBadge: "審査待ち",
     rejectedBadge: "検証拒否",
     viewDenialReason: "拒否理由を表示",
-    publicUsageDescription: "パブリックマルチプレイヤーゲームや共有環境で使用するために、このアセットを検証に提出します。",
+    publicUsageDescription:
+      "パブリックマルチプレイヤーゲームや共有環境で使用するために、このアセットを検証に提出します。",
     requestSubmitted: "検証リクエストが正常に送信されました！",
-    versionNotice: "このアセットをローカルで編集しても、公開バージョンには影響しません。パブリックアセットを更新するには、新しい検証リクエストを送信してください。",
+    versionNotice:
+      "このアセットをローカルで編集しても、公開バージョンには影響しません。パブリックアセットを更新するには、新しい検証リクエストを送信してください。",
     updatePublicVersion: "公開バージョンを更新",
     rejectionReasonDialogTitle: "検証拒否の理由",
-    rejectionReasonDialogDesc: "あなたの提出物は管理者によって審査され、次の理由で拒否されました：",
+    rejectionReasonDialogDesc:
+      "あなたの提出物は管理者によって審査され、次の理由で拒否されました：",
     deleteSubmission: "申請を削除",
     deleteSubmissionConfirm: "この検証申請を削除してもよろしいですか？",
     submissionDeleted: "検証申請が正常に削除されました",
@@ -440,11 +478,14 @@ export const ja = {
     termsOfService: "利用規約",
     privacyPolicy: "プライバシーポリシー",
     eulaTitle: "エンドユーザーライセンス契約 (EULA)",
-    eulaDesc: "ソフトウェアを使用するためにお客様に付与されるライセンス、および適用される制限と義務。",
+    eulaDesc:
+      "ソフトウェアを使用するためにお客様に付与されるライセンス、および適用される制限と義務。",
     dmcaTitle: "DMCA および著作権ポリシー",
-    dmcaDesc: "著作権侵害の報告方法、異議申し立ての提出、および当社の常習的侵害ポリシーについて。",
+    dmcaDesc:
+      "著作権侵害の報告方法、異議申し立ての提出、および当社の常習的侵害ポリシーについて。",
     aupTitle: "利用規約 (AUP)",
-    aupDesc: "禁止されている活動や執行措置を含む、サービスを使用するための行動基準。",
+    aupDesc:
+      "禁止されている活動や執行措置を含む、サービスを使用するための行動基準。",
     licenseTitle: "ライセンス",
     licenseDesc: "このプロジェクトに適用されるMIT License。",
   },
@@ -469,10 +510,12 @@ export const ja = {
   },
   oauthConsent: {
     title: "アプリケーションを承認",
-    subtitle: "があなたの Oxygen Low's Software アカウントへのアクセスを求めています",
+    subtitle:
+      "があなたの Oxygen Low's Software アカウントへのアクセスを求めています",
     permissions: "リクエストされた権限",
     authorizeApp: "{app} を承認",
-    wantsAccess: "このアプリケーションは、あなたの Oxygen Low's Software アカウントへの接続を求めています。",
+    wantsAccess:
+      "このアプリケーションは、あなたの Oxygen Low's Software アカウントへの接続を求めています。",
     requestedPermissions: "リクエストされた権限：",
     warning: "信頼できるアプリケーションのみを承認してください。",
     approve: "承認",
@@ -485,9 +528,11 @@ export const ja = {
   },
   security: {
     title: "セキュリティとデータ暗号化",
-    subtitle: "256ビットAESマスターキーを管理し、個人データのゼロ知識暗号化を有効にします。",
+    subtitle:
+      "256ビットAESマスターキーを管理し、個人データのゼロ知識暗号化を有効にします。",
     masterKeyTitle: "AES-256 マスターキー",
-    masterKeyDesc: "マスターキーは、クラウドに保存される前にデバイス上で直接データを暗号化します。このキーがなければ誰もデータを読み取ることはできません。",
+    masterKeyDesc:
+      "マスターキーは、クラウドに保存される前にデバイス上で直接データを暗号化します。このキーがなければ誰もデータを読み取ることはできません。",
     keyActiveBadge: "マスターキー有効",
     keyNotSetBadge: "マスターキー未設定",
     generateButton: "マスターキーを生成",
@@ -501,10 +546,12 @@ export const ja = {
     clearKey: "キーをロック / 消去",
     keyClearedToast: "セッションからマスターキーを消去しました",
     importKeyTitle: "既存のマスターキーを使用",
-    importKeyPlaceholder: "64文字の16進数または256ビットBase64マスターキーを貼り付け...",
+    importKeyPlaceholder:
+      "64文字の16進数または256ビットBase64マスターキーを貼り付け...",
     activateKeyButton: "キーをロック解除 / 有効化",
     keyActivatedToast: "マスターキーが正常に有効化されました",
-    invalidKeyError: "無効なマスターキー形式です。256ビットキー（64文字の16進数またはBase64）である必要があります。",
+    invalidKeyError:
+      "無効なマスターキー形式です。256ビットキー（64文字の16進数またはBase64）である必要があります。",
     keyFormat: "キー形式",
     showKeyFormat: "キー形式",
     hideKeyFormat: "キー形式を隠す",
@@ -512,52 +559,73 @@ export const ja = {
     formatBase64: "Base64 (44文字)",
     formatBase58: "Base58",
     formatWords: "パスフレーズ単語",
-    clientSideNotice: "ゼロ知識（Zero-Knowledge）：マスターキーはブラウザセッション内のみに保持され、サーバーに送信されることはありません。",
+    clientSideNotice:
+      "ゼロ知識（Zero-Knowledge）：マスターキーはブラウザセッション内のみに保持され、サーバーに送信されることはありません。",
     encryptionSettingsTitle: "保護対象データカテゴリ",
-    encryptionSettingsDesc: "各データカテゴリのクライアント側AES-256暗号化を切り替えます。有効にすると保存前にマスターキーで暗号化されます。",
+    encryptionSettingsDesc:
+      "各データカテゴリのクライアント側AES-256暗号化を切り替えます。有効にすると保存前にマスターキーで暗号化されます。",
     charactersUniverses: "キャラクターとユニバース",
-    charactersUniversesDesc: "キャラクター設定、外見、性格、プライベートメモ、ユニバース詳細を暗号化します。",
+    charactersUniversesDesc:
+      "キャラクター設定、外見、性格、プライベートメモ、ユニバース詳細を暗号化します。",
     dataSave: "データ保存エントリ",
-    dataSaveDesc: "カスタムキー・バリュースニペット、コード、メモ、保存データを暗号化します。",
+    dataSaveDesc:
+      "カスタムキー・バリュースニペット、コード、メモ、保存データを暗号化します。",
     chatbotChats: "チャットボットの会話",
-    chatbotChatsDesc: "AI会話、ユーザープロンプト、システムプロンプト、履歴メッセージを暗号化します。",
+    chatbotChatsDesc:
+      "AI会話、ユーザープロンプト、システムプロンプト、履歴メッセージを暗号化します。",
     encryptionEnabled: "暗号化済み",
     encryptionDisabled: "未暗号化",
     keyRequiredBadge: "キーが必要",
     settingsSavedToast: "暗号化設定を更新しました",
     encryptionPromptTitle: "復号化が必要です",
-    encryptionPromptDesc: "このセクションは256ビットAESマスターキーで暗号化されています。データにアクセスするにはキーを入力してロックを解除してください。",
+    encryptionPromptDesc:
+      "このセクションは256ビットAESマスターキーで暗号化されています。データにアクセスするにはキーを入力してロックを解除してください。",
     goToSecurityButton: "セキュリティページに移動してロック解除",
     quickUnlockTitle: "このページでクイック解除",
-    quickUnlockPlaceholder: "64文字の16進数またはBase64マスターキーを貼り付け...",
+    quickUnlockPlaceholder:
+      "64文字の16進数またはBase64マスターキーを貼り付け...",
     quickUnlockButton: "ロック解除＆復号化",
-    returnToPrompt: "マスターキーが有効化されました。前のページに戻ることができます：",
+    returnToPrompt:
+      "マスターキーが有効化されました。前のページに戻ることができます：",
     returnToButton: "ページに戻る",
     uploadKeyFile: ".key ファイルをアップロード",
     dropKeyHere: "ここに .key ファイルをドロップするか、クリックして参照",
-    uploadKeyDesc: "保存した .key バックアップファイルをアップロードして、マスターキーを自動的にアクティブ化しロックを解除します。",
-    keyFileUploadedToast: "マスターキーがファイルから読み込まれ、アクティブ化されました",
-    invalidKeyFileError: "アップロードされたファイルに有効な256ビットのマスターキーが見つかりませんでした。",
+    uploadKeyDesc:
+      "保存した .key バックアップファイルをアップロードして、マスターキーを自動的にアクティブ化しロックを解除します。",
+    keyFileUploadedToast:
+      "マスターキーがファイルから読み込まれ、アクティブ化されました",
+    invalidKeyFileError:
+      "アップロードされたファイルに有効な256ビットのマスターキーが見つかりませんでした。",
     readKeyFileError: ".key ファイルの読み込みに失敗しました。",
-    autoLockedToast: "30分間操作がなかったため、マスターキーがロックされました。",
+    autoLockedToast:
+      "30分間操作がなかったため、マスターキーがロックされました。",
     integrations: "APIキーと連携",
-    integrationsDesc: "保存されたAPIキー、LLM認証情報、およびMCPアクセストークンを暗号化します。",
-    cannotDisableIntegrationsWithKeys: "APIキー/連携が保存されている間は暗号化を無効にできません。まず、保存されているすべての連携を削除してください。",
-    masterKeyRequiredToChange: "保護対象データカテゴリを有効化または無効化するには、アクティブなマスターキーが必要です。",
-    masterKeyRequiredNotice: "保護対象データカテゴリの暗号化設定を変更するには、アクティブなマスターキーが必要です。これらの設定を変更するには、上記でマスターキーを生成またはロック解除してください。",
-    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
-    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    integrationsDesc:
+      "保存されたAPIキー、LLM認証情報、およびMCPアクセストークンを暗号化します。",
+    cannotDisableIntegrationsWithKeys:
+      "APIキー/連携が保存されている間は暗号化を無効にできません。まず、保存されているすべての連携を削除してください。",
+    masterKeyRequiredToChange:
+      "保護対象データカテゴリを有効化または無効化するには、アクティブなマスターキーが必要です。",
+    masterKeyRequiredNotice:
+      "保護対象データカテゴリの暗号化設定を変更するには、アクティブなマスターキーが必要です。これらの設定を変更するには、上記でマスターキーを生成またはロック解除してください。",
+    rotateKeyConfirm:
+      "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast:
+      "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
     rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "連携とAPIキー",
-    subtitle: "LLMモデル、連携、およびMCPサーバーのAPIキーと認証情報を安全に管理します。",
+    subtitle:
+      "LLMモデル、連携、およびMCPサーバーのAPIキーと認証情報を安全に管理します。",
     aesEncryptedBadge: "AES-256 暗号化済み",
     encryptionDisabledBadge: "暗号化が必要",
     encryptionRequiredTitle: "ゼロ知識暗号化が必要です",
-    encryptionRequiredDesc: "プライベートなAPIキーやトークンを不正アクセスから保護するため、Oxygen Low's Softwareでは保存されるすべての連携に対し、クライアント側でのAES-256マスターキー暗号化が必要です。データは保存される前にブラウザで直接暗号化されます。",
-    encryptionNoticeDetail: "マスターキーはローカルセッション内のみに保持され、サーバーにアップロードされたりアクセスされたりすることはありません。",
+    encryptionRequiredDesc:
+      "プライベートなAPIキーやトークンを不正アクセスから保護するため、Oxygen Low's Softwareでは保存されるすべての連携に対し、クライアント側でのAES-256マスターキー暗号化が必要です。データは保存される前にブラウザで直接暗号化されます。",
+    encryptionNoticeDetail:
+      "マスターキーはローカルセッション内のみに保持され、サーバーにアップロードされたりアクセスされたりすることはありません。",
     enableEncryptionButton: "連携の暗号化を有効にする",
     encryptionEnabledToast: "APIキーと連携の暗号化が有効になりました",
     totalAvailable: "対応合計",
@@ -573,7 +641,8 @@ export const ja = {
     notConfiguredBadge: "未設定",
     apiKeyLabel: "APIキー / トークン",
     baseUrlLabel: "エンドポイント / ベースURL (任意)",
-    baseUrlHelp: "デフォルトのままにするか、プロキシ、カスタムゲートウェイ、ローカルリレー経由で接続する場合はカスタマイズしてください。",
+    baseUrlHelp:
+      "デフォルトのままにするか、プロキシ、カスタムゲートウェイ、ローカルリレー経由で接続する場合はカスタマイズしてください。",
     defaultEndpointLabel: "デフォルトエンドポイント",
     fixedBaseUrlHelp: "この統合は常に標準の公式エンドポイントを使用します。",
     copyKey: "キーをコピー",
@@ -584,7 +653,8 @@ export const ja = {
     configureButton: "設定",
     configureModalTitle: "{name} を設定",
     configureModalDefaultTitle: "連携を設定",
-    dialogEncryptionNotice: "認証情報は、送信前に256ビットのAESマスターキーで暗号化されます。",
+    dialogEncryptionNotice:
+      "認証情報は、送信前に256ビットのAESマスターキーで暗号化されます。",
     keyRequiredError: "APIキー / トークンが必要です",
     masterKeyMissingError: "連携を暗号化するにはマスターキーが必要です",
     savedToast: "{name} の認証情報が安全に保存されました。",
@@ -594,15 +664,21 @@ export const ja = {
     fetchError: "連携の読み込みに失敗しました",
     deleteConfirmTitle: "{name} の連携を削除しますか？",
     deleteConfirmDefaultTitle: "連携を削除しますか？",
-    deleteConfirmDesc: "これにより、保存されているAPIキーと認証情報が暗号化されたクラウドストレージから完全に削除されます。",
+    deleteConfirmDesc:
+      "これにより、保存されているAPIキーと認証情報が暗号化されたクラウドストレージから完全に削除されます。",
     openaiDesc: "GPT-4o、o1、o3-miniを含むOpenAIモデル用のAPIキー。",
     geminiDesc: "Google Gemini Flash、Pro、および埋め込みモデル用のAPIキー。",
-    openrouterDesc: "何百ものAIモデルへのアクセスを提供するユニバーサルAPIキー。",
+    openrouterDesc:
+      "何百ものAIモデルへのアクセスを提供するユニバーサルAPIキー。",
     xaiDesc: "xAI Grok フロンティアおよびビジョンモデル用のAPIキー。",
-    anthropicDesc: "Claude 3.5 Sonnet、Claude 3.7 Sonnet、Haiku、Opus用のAPIキー。",
-    googleJulesDesc: "Google Jules コーディングワークフロー用のアクセストークンと連携認証情報。",
-    googleStitchMcpDesc: "Google Stitch 用の Model Context Protocol (MCP) サーバートークンとエンドポイント。",
-    githubMcpDesc: "GitHub MCP リポジトリツール用の GitHub Personal Access Token (PAT)。",
+    anthropicDesc:
+      "Claude 3.5 Sonnet、Claude 3.7 Sonnet、Haiku、Opus用のAPIキー。",
+    googleJulesDesc:
+      "Google Jules コーディングワークフロー用のアクセストークンと連携認証情報。",
+    googleStitchMcpDesc:
+      "Google Stitch 用の Model Context Protocol (MCP) サーバートークンとエンドポイント。",
+    githubMcpDesc:
+      "GitHub MCP リポジトリツール用の GitHub Personal Access Token (PAT)。",
   },
   titles: {
     apps: "アプリ",

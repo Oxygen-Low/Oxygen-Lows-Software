@@ -82,7 +82,10 @@ interface CategoryRecord {
 const generateRowId = () =>
   Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 
-function parseJsonToKvPairs(raw: string): { isJson: boolean; pairs: KeyValuePair[] } {
+function parseJsonToKvPairs(raw: string): {
+  isJson: boolean;
+  pairs: KeyValuePair[];
+} {
   try {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -93,13 +96,19 @@ function parseJsonToKvPairs(raw: string): { isJson: boolean; pairs: KeyValuePair
       }));
       return {
         isJson: true,
-        pairs: pairs.length > 0 ? pairs : [{ id: generateRowId(), key: "", value: "" }],
+        pairs:
+          pairs.length > 0
+            ? pairs
+            : [{ id: generateRowId(), key: "", value: "" }],
       };
     }
   } catch {
     // Not valid JSON object
   }
-  return { isJson: false, pairs: [{ id: generateRowId(), key: "", value: "" }] };
+  return {
+    isJson: false,
+    pairs: [{ id: generateRowId(), key: "", value: "" }],
+  };
 }
 
 function kvPairsToJsonString(pairs: KeyValuePair[]): string {
@@ -129,8 +138,11 @@ export function DataSaveApp() {
     { id: generateRowId(), key: "", value: "" },
   ]);
   const [formEditorTab, setFormEditorTab] = useState<"raw" | "kv">("raw");
-  const [editingFormSaveId, setEditingFormSaveId] = useState<string | null>(null);
-  const [editingFormOriginalKey, setEditingFormOriginalKey] = useState<string>("");
+  const [editingFormSaveId, setEditingFormSaveId] = useState<string | null>(
+    null,
+  );
+  const [editingFormOriginalKey, setEditingFormOriginalKey] =
+    useState<string>("");
 
   // Data State
   const [saves, setSaves] = useState<DataSaveRecord[]>([]);
@@ -138,7 +150,9 @@ export function DataSaveApp() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<
+    string | null
+  >(null);
 
   // Edit Modal State
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -149,7 +163,9 @@ export function DataSaveApp() {
   const [editKvPairs, setEditKvPairs] = useState<KeyValuePair[]>([]);
   const [editEditorTab, setEditEditorTab] = useState<"raw" | "kv">("raw");
   const [dialogSaving, setDialogSaving] = useState(false);
-  const [encryptionLocked, setEncryptionLocked] = useState(() => isCategoryLocked("data_save"));
+  const [encryptionLocked, setEncryptionLocked] = useState(() =>
+    isCategoryLocked("data_save"),
+  );
 
   useEffect(() => {
     setEncryptionLocked(isCategoryLocked("data_save"));
@@ -183,14 +199,19 @@ export function DataSaveApp() {
         (savesRes.data || []).map(async (s: any) => {
           const decSave = await decryptDataSaveData(s, key);
           if (decSave.category) {
-            decSave.category = await decryptDataSaveCategoryData(decSave.category, key);
+            decSave.category = await decryptDataSaveCategoryData(
+              decSave.category,
+              key,
+            );
           }
           return decSave;
-        })
+        }),
       );
 
       const decryptedCats = await Promise.all(
-        (catsRes.data || []).map((c: any) => decryptDataSaveCategoryData(c, key))
+        (catsRes.data || []).map((c: any) =>
+          decryptDataSaveCategoryData(c, key),
+        ),
       );
 
       setSaves(decryptedSaves);
@@ -209,12 +230,12 @@ export function DataSaveApp() {
 
   const resolveCategoryId = async (
     catName: string,
-    userId?: string
+    userId?: string,
   ): Promise<string | null> => {
     const trimmed = catName.trim();
     if (!trimmed) return null;
     const existing = categories.find(
-      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+      (c) => c.name.toLowerCase() === trimmed.toLowerCase(),
     );
     if (existing) return existing.id;
 
@@ -255,14 +276,17 @@ export function DataSaveApp() {
 
     setLoading(true);
     try {
-      const categoryId = await resolveCategoryId(categoryName, session?.user?.id);
+      const categoryId = await resolveCategoryId(
+        categoryName,
+        session?.user?.id,
+      );
 
       if (editingFormSaveId) {
         // Check for duplicate key name when renaming
         const duplicate = saves.find(
           (s) =>
             s.id !== editingFormSaveId &&
-            s.key_name.toLowerCase() === trimmedKey.toLowerCase()
+            s.key_name.toLowerCase() === trimmedKey.toLowerCase(),
         );
         if (duplicate) {
           toast.error(`A save with the key "${trimmedKey}" already exists.`);
@@ -296,7 +320,7 @@ export function DataSaveApp() {
       } else {
         // Check if data save exists with exact key name for upsert behavior
         const existing = saves.find(
-          (s) => s.key_name.toLowerCase() === trimmedKey.toLowerCase()
+          (s) => s.key_name.toLowerCase() === trimmedKey.toLowerCase(),
         );
 
         let error;
@@ -412,7 +436,7 @@ export function DataSaveApp() {
     const duplicate = saves.find(
       (s) =>
         s.id !== editingSave.id &&
-        s.key_name.toLowerCase() === trimmedKey.toLowerCase()
+        s.key_name.toLowerCase() === trimmedKey.toLowerCase(),
     );
     if (duplicate) {
       toast.error(`A save with the key "${trimmedKey}" already exists.`);
@@ -423,7 +447,7 @@ export function DataSaveApp() {
     try {
       const categoryId = await resolveCategoryId(
         editCategoryName,
-        session?.user?.id
+        session?.user?.id,
       );
 
       let updatePayload: any = {
@@ -495,15 +519,15 @@ export function DataSaveApp() {
     id: string,
     field: "key" | "value",
     val: string,
-    isDialog: boolean
+    isDialog: boolean,
   ) => {
     if (isDialog) {
       setEditKvPairs((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, [field]: val } : p))
+        prev.map((p) => (p.id === id ? { ...p, [field]: val } : p)),
       );
     } else {
       setFormKvPairs((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, [field]: val } : p))
+        prev.map((p) => (p.id === id ? { ...p, [field]: val } : p)),
       );
     }
   };
@@ -616,7 +640,9 @@ export function DataSaveApp() {
                 >
                   Editing Mode
                 </Badge>
-                <span>Changes will update this existing save key in-place.</span>
+                <span>
+                  Changes will update this existing save key in-place.
+                </span>
               </div>
             )}
           </CardHeader>
@@ -672,7 +698,11 @@ export function DataSaveApp() {
                           setFormKvPairs(pairs);
                         } else if (content.trim()) {
                           setFormKvPairs([
-                            { id: generateRowId(), key: "value", value: content },
+                            {
+                              id: generateRowId(),
+                              key: "value",
+                              value: content,
+                            },
                           ]);
                         }
                       } else if (nextTab === "raw" && formEditorTab === "kv") {
@@ -743,7 +773,12 @@ export function DataSaveApp() {
                             placeholder="Field Key"
                             value={pair.key}
                             onChange={(e) =>
-                              handleUpdateKvPair(pair.id, "key", e.target.value, false)
+                              handleUpdateKvPair(
+                                pair.id,
+                                "key",
+                                e.target.value,
+                                false,
+                              )
                             }
                             className="bg-slate-900 border-slate-800 text-white text-xs h-8 flex-1"
                           />
@@ -751,7 +786,12 @@ export function DataSaveApp() {
                             placeholder="Field Value"
                             value={pair.value}
                             onChange={(e) =>
-                              handleUpdateKvPair(pair.id, "value", e.target.value, false)
+                              handleUpdateKvPair(
+                                pair.id,
+                                "value",
+                                e.target.value,
+                                false,
+                              )
                             }
                             className="bg-slate-900 border-slate-800 text-white text-xs h-8 flex-[1.5]"
                           />
@@ -823,8 +863,12 @@ export function DataSaveApp() {
                 <Save className="w-5 h-5 text-cyan-500" />
                 Saved Data
               </div>
-              <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-xs">
-                {filteredSaves.length} {filteredSaves.length === 1 ? "Key" : "Keys"}
+              <Badge
+                variant="secondary"
+                className="bg-slate-800 text-slate-300 text-xs"
+              >
+                {filteredSaves.length}{" "}
+                {filteredSaves.length === 1 ? "Key" : "Keys"}
               </Badge>
             </CardTitle>
             <div className="flex flex-col sm:flex-row gap-2 mt-4">
@@ -843,7 +887,9 @@ export function DataSaveApp() {
                   <select
                     className="pl-9 pr-4 h-10 w-full sm:w-40 rounded-md bg-slate-950 border-slate-800 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none cursor-pointer"
                     value={selectedCategoryFilter || ""}
-                    onChange={(e) => setSelectedCategoryFilter(e.target.value || null)}
+                    onChange={(e) =>
+                      setSelectedCategoryFilter(e.target.value || null)
+                    }
                   >
                     <option value="">All Categories</option>
                     {categories.map((c) => (
@@ -872,7 +918,8 @@ export function DataSaveApp() {
                 <div className="space-y-4">
                   {filteredSaves.map((save) => {
                     const { isJson, pairs } = parseJsonToKvPairs(save.content);
-                    const isCurrentlyFormEditing = editingFormSaveId === save.id;
+                    const isCurrentlyFormEditing =
+                      editingFormSaveId === save.id;
 
                     return (
                       <div
@@ -903,7 +950,8 @@ export function DataSaveApp() {
                                   variant="outline"
                                   className="border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-[10px] px-1.5 py-0 font-mono"
                                 >
-                                  {pairs.length} {pairs.length === 1 ? "value" : "values"}
+                                  {pairs.length}{" "}
+                                  {pairs.length === 1 ? "value" : "values"}
                                 </Badge>
                               )}
                               {isCurrentlyFormEditing && (
@@ -962,7 +1010,10 @@ export function DataSaveApp() {
                         </div>
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2">
-                          <span>Updated: {new Date(save.updated_at).toLocaleString()}</span>
+                          <span>
+                            Updated:{" "}
+                            {new Date(save.updated_at).toLocaleString()}
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleEditInForm(save)}
@@ -990,7 +1041,8 @@ export function DataSaveApp() {
               Edit Data Save & Values
             </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Update key name, category, or modify individual values without deleting the key.
+              Update key name, category, or modify individual values without
+              deleting the key.
             </DialogDescription>
           </DialogHeader>
 
@@ -1045,7 +1097,11 @@ export function DataSaveApp() {
                         setEditKvPairs(pairs);
                       } else if (editContent.trim()) {
                         setEditKvPairs([
-                          { id: generateRowId(), key: "value", value: editContent },
+                          {
+                            id: generateRowId(),
+                            key: "value",
+                            value: editContent,
+                          },
                         ]);
                       }
                     } else if (nextTab === "raw" && editEditorTab === "kv") {
@@ -1116,7 +1172,12 @@ export function DataSaveApp() {
                           placeholder="Field Key"
                           value={pair.key}
                           onChange={(e) =>
-                            handleUpdateKvPair(pair.id, "key", e.target.value, true)
+                            handleUpdateKvPair(
+                              pair.id,
+                              "key",
+                              e.target.value,
+                              true,
+                            )
                           }
                           className="bg-slate-900 border-slate-800 text-white text-xs h-8 flex-1"
                         />
@@ -1124,7 +1185,12 @@ export function DataSaveApp() {
                           placeholder="Field Value"
                           value={pair.value}
                           onChange={(e) =>
-                            handleUpdateKvPair(pair.id, "value", e.target.value, true)
+                            handleUpdateKvPair(
+                              pair.id,
+                              "value",
+                              e.target.value,
+                              true,
+                            )
                           }
                           className="bg-slate-900 border-slate-800 text-white text-xs h-8 flex-[1.5]"
                         />

@@ -46,7 +46,7 @@ describe("DefenderClient VPN blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req1.blocked).toBe(true);
     expect(req1.eventType).toBe("vpn");
@@ -60,7 +60,7 @@ describe("DefenderClient VPN blocking", () => {
       query: {},
       body: "data=test",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req2.blocked).toBe(true);
     expect(req2.eventType).toBe("vpn");
@@ -83,7 +83,7 @@ describe("DefenderClient VPN blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req.blocked).toBe(false);
     expect(req.eventType).toBe("allowed");
@@ -105,7 +105,7 @@ describe("DefenderClient VPN blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req.blocked).toBe(true);
     expect(req.eventType).toBe("vpn");

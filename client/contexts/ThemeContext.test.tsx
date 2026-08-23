@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import React from "react";
 import { ThemeProvider, useTheme } from "./ThemeContext";
 
@@ -82,7 +88,10 @@ function TestThemeConsumer() {
       <span data-testid="current-theme">{theme}</span>
       <span data-testid="current-font">{font}</span>
       <span data-testid="current-gradient">{String(useGradient)}</span>
-      <button data-testid="set-font-indie" onClick={() => setFont("font-indie")}>
+      <button
+        data-testid="set-font-indie"
+        onClick={() => setFont("font-indie")}
+      >
         Set Indie Font
       </button>
       <button
@@ -181,7 +190,9 @@ describe("ThemeContext & Provider", () => {
     await waitFor(() => {
       expect(screen.getByTestId("current-font").textContent).toBe("font-indie");
     });
-    expect(document.documentElement.classList.contains("font-indie")).toBe(true);
+    expect(document.documentElement.classList.contains("font-indie")).toBe(
+      true,
+    );
     expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
       p_user_id: "test-user-id",
       p_font: "font-indie",
@@ -248,7 +259,9 @@ describe("ThemeContext & Provider", () => {
         "custom:#ff0000-#000000",
       );
     });
-    expect(document.documentElement.classList.contains("theme-custom")).toBe(true);
+    expect(document.documentElement.classList.contains("theme-custom")).toBe(
+      true,
+    );
   });
 
   it("throws error when useTheme is used outside of ThemeProvider", () => {

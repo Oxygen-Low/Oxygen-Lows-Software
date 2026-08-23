@@ -136,7 +136,9 @@ export default function OauthConsent() {
         <Card className="w-full max-w-md bg-slate-900 border-red-900/50">
           <CardHeader>
             <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <CardTitle className="text-center text-white">{t("common.error", undefined, "Error")}</CardTitle>
+            <CardTitle className="text-center text-white">
+              {t("common.error", undefined, "Error")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-slate-400">{error}</p>
@@ -165,16 +167,28 @@ export default function OauthConsent() {
             <ShieldCheck className="w-10 h-10 text-cyan-500" />
           </div>
           <CardTitle className="text-2xl text-white">
-            {t("oauthConsent.authorizeApp", { app: client.name }, `Authorize ${client.name}`)}
+            {t(
+              "oauthConsent.authorizeApp",
+              { app: client.name },
+              `Authorize ${client.name}`,
+            )}
           </CardTitle>
           <CardDescription className="text-slate-400 mt-2">
-            {t("oauthConsent.wantsAccess", { app: client.name }, `This application wants to connect to your Oxygen Low's Software account.`)}
+            {t(
+              "oauthConsent.wantsAccess",
+              { app: client.name },
+              `This application wants to connect to your Oxygen Low's Software account.`,
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
             <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-              {t("oauthConsent.requestedPermissions", undefined, "Requested Permissions:")}
+              {t(
+                "oauthConsent.requestedPermissions",
+                undefined,
+                "Requested Permissions:",
+              )}
             </h4>
             <ul className="space-y-2">
               {scopes && scopes.length > 0 ? (
@@ -209,7 +223,11 @@ export default function OauthConsent() {
           <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
             <p className="text-xs text-slate-400">
-              {t("oauthConsent.warning", undefined, "Only authorize applications you trust.")}
+              {t(
+                "oauthConsent.warning",
+                undefined,
+                "Only authorize applications you trust.",
+              )}
             </p>
           </div>
         </CardContent>
@@ -219,7 +237,9 @@ export default function OauthConsent() {
             disabled={processing}
             className="w-full bg-cyan-600 hover:bg-cyan-700 text-white h-11 font-bold"
           >
-            {processing ? t("common.loading", undefined, "Processing...") : t("oauthConsent.approve", undefined, "Approve")}
+            {processing
+              ? t("common.loading", undefined, "Processing...")
+              : t("oauthConsent.approve", undefined, "Approve")}
           </Button>
           <Button
             variant="ghost"

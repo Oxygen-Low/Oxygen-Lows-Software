@@ -94,13 +94,18 @@ vpnRouter.get("/geocode", apiLimiter, async (c) => {
       return c.json({ error: "Invalid IP address or hostname format" }, 400);
     }
     if (isPrivateHost(ip)) {
-      return c.json({ error: "Private or loopback hosts are not allowed" }, 400);
+      return c.json(
+        { error: "Private or loopback hosts are not allowed" },
+        400,
+      );
     }
   }
 
   try {
     // A05: use HTTPS, not HTTP
-    const url = ip ? `https://ip-api.com/json/${encodeURIComponent(ip)}` : `https://ip-api.com/json/`;
+    const url = ip
+      ? `https://ip-api.com/json/${encodeURIComponent(ip)}`
+      : `https://ip-api.com/json/`;
     const res = await fetch(url);
     const data = await res.json();
     return c.json(data);

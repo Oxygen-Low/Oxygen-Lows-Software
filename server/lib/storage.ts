@@ -83,7 +83,9 @@ export function getFolderSize(folderPath: string): number {
 export function getUserTotalSize(userId: string): number {
   if (!userId) return 0;
   const sizeStorage = getFolderSize(path.join(STORAGE_DIR, "Storage", userId));
-  const sizePublic = getFolderSize(path.join(STORAGE_DIR, "public-assets", userId));
+  const sizePublic = getFolderSize(
+    path.join(STORAGE_DIR, "public-assets", userId),
+  );
   return sizeStorage + sizePublic;
 }
 
@@ -102,12 +104,16 @@ export const serverStorage = {
   upload: async (
     bucket: string,
     rawFilePath: string,
-    data: Buffer | Blob | Uint8Array | ArrayBuffer
+    data: Buffer | Blob | Uint8Array | ArrayBuffer,
   ): Promise<{ data: { path: string } | null; error: Error | null }> => {
     try {
       const cleanBucket = sanitizePath(bucket);
       const filePath = sanitizePath(rawFilePath);
-      const targetDir = path.join(STORAGE_DIR, cleanBucket, path.dirname(filePath));
+      const targetDir = path.join(
+        STORAGE_DIR,
+        cleanBucket,
+        path.dirname(filePath),
+      );
       fs.mkdirSync(targetDir, { recursive: true });
 
       const fullPath = path.join(STORAGE_DIR, cleanBucket, filePath);
@@ -135,7 +141,7 @@ export const serverStorage = {
 
   download: async (
     bucket: string,
-    rawFilePath: string
+    rawFilePath: string,
   ): Promise<{ data: Buffer | null; error: Error | null }> => {
     try {
       const cleanBucket = sanitizePath(bucket);
@@ -153,7 +159,7 @@ export const serverStorage = {
 
   list: async (
     bucket: string,
-    rawPrefixPath: string = ""
+    rawPrefixPath: string = "",
   ): Promise<{ data: StorageListItem[]; error: Error | null }> => {
     try {
       const cleanBucket = sanitizePath(bucket);
@@ -169,7 +175,11 @@ export const serverStorage = {
         const fullPath = path.join(targetDir, f.name);
         const stats = fs.statSync(fullPath);
         return {
-          id: f.isDirectory() ? null : prefixPath ? `${prefixPath}/${f.name}` : f.name,
+          id: f.isDirectory()
+            ? null
+            : prefixPath
+              ? `${prefixPath}/${f.name}`
+              : f.name,
           name: f.name,
           metadata: {
             size: stats.size,
@@ -188,7 +198,7 @@ export const serverStorage = {
 
   remove: async (
     bucket: string,
-    rawPaths: string[]
+    rawPaths: string[],
   ): Promise<{ data: string[]; error: Error | null }> => {
     try {
       const cleanBucket = sanitizePath(bucket);
@@ -219,7 +229,11 @@ export const serverStorage = {
     return `/api/storage/public/${cleanBucket}/${filePath}`;
   },
 
-  createSignedUrl: (bucket: string, rawFilePath: string, token?: string): string => {
+  createSignedUrl: (
+    bucket: string,
+    rawFilePath: string,
+    token?: string,
+  ): string => {
     const cleanBucket = sanitizePath(bucket);
     const filePath = sanitizePath(rawFilePath);
     const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";

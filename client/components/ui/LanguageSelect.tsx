@@ -35,9 +35,10 @@ export function LanguageSelect({
   ariaLabel = "Select language",
 }: LanguageSelectProps) {
   const context = useLanguage();
-  
+
   const activeValue = value !== undefined ? value : context.language;
-  const handleChange = onValueChange !== undefined ? onValueChange : context.setLanguage;
+  const handleChange =
+    onValueChange !== undefined ? onValueChange : context.setLanguage;
 
   const currentOption = getLanguageOption(activeValue || DEFAULT_LANGUAGE);
 

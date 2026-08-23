@@ -1,14 +1,14 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import http from 'http';
-import https from 'https';
-import { OutboundMonitor } from './outbound';
-import { OutboundConnection } from './types';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import http from "http";
+import https from "https";
+import { OutboundMonitor } from "./outbound";
+import { OutboundConnection } from "./types";
 
-describe('OutboundMonitor', () => {
+describe("OutboundMonitor", () => {
   let monitor: OutboundMonitor;
   let reported: OutboundConnection[];
   let reporter: (conn: OutboundConnection) => void;
-  const ignoreHost = 'internal.example.com';
+  const ignoreHost = "internal.example.com";
 
   const realHttpRequest = http.request;
   const realHttpGet = http.get;
@@ -35,8 +35,8 @@ describe('OutboundMonitor', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Lifecycle & Idempotency', () => {
-    it('should patch http, https, and fetch on install and restore them on uninstall', () => {
+  describe("Lifecycle & Idempotency", () => {
+    it("should patch http, https, and fetch on install and restore them on uninstall", () => {
       monitor = new OutboundMonitor(reporter, ignoreHost);
       monitor.install();
 
@@ -55,7 +55,7 @@ describe('OutboundMonitor', () => {
       expect(globalThis.fetch).toBe(realFetch);
     });
 
-    it('should be idempotent on multiple install calls', () => {
+    it("should be idempotent on multiple install calls", () => {
       monitor = new OutboundMonitor(reporter, ignoreHost);
       monitor.install();
       const patchedRequest = http.request;
@@ -67,7 +67,7 @@ describe('OutboundMonitor', () => {
       expect(http.request).toBe(realHttpRequest);
     });
 
-    it('should safely handle uninstall when not installed or when called repeatedly', () => {
+    it("should safely handle uninstall when not installed or when called repeatedly", () => {
       monitor = new OutboundMonitor(reporter, ignoreHost);
       expect(() => monitor.uninstall()).not.toThrow();
 
@@ -77,7 +77,7 @@ describe('OutboundMonitor', () => {
       expect(http.request).toBe(realHttpRequest);
     });
 
-    it('should handle environments where globalThis.fetch is undefined', () => {
+    it("should handle environments where globalThis.fetch is undefined", () => {
       const originalFetch = globalThis.fetch;
       // @ts-ignore
       delete globalThis.fetch;
@@ -93,7 +93,7 @@ describe('OutboundMonitor', () => {
     });
   });
 
-  describe('HTTP Interception', () => {
+  describe("HTTP Interception", () => {
     let mockOriginalHttpRequest: any;
     let mockOriginalHttpGet: any;
 
@@ -107,80 +107,85 @@ describe('OutboundMonitor', () => {
       monitor.install();
     });
 
-    it('should report http.request with string URL (default and custom port)', () => {
-      http.request('http://api.example.com/data');
+    it("should report http.request with string URL (default and custom port)", () => {
+      http.request("http://api.example.com/data");
       expect(reported).toEqual([
-        { host: 'api.example.com', port: 80, protocol: 'http:' },
+        { host: "api.example.com", port: 80, protocol: "http:" },
       ]);
 
-      http.request('http://custom.example.com:8080/data');
+      http.request("http://custom.example.com:8080/data");
       expect(reported[1]).toEqual({
-        host: 'custom.example.com',
+        host: "custom.example.com",
         port: 8080,
-        protocol: 'http:',
+        protocol: "http:",
       });
       expect(mockOriginalHttpRequest).toHaveBeenCalledTimes(2);
     });
 
-    it('should report http.request with URL object', () => {
-      http.request(new URL('http://url-obj.example.com:3000/path'));
+    it("should report http.request with URL object", () => {
+      http.request(new URL("http://url-obj.example.com:3000/path"));
       expect(reported).toEqual([
-        { host: 'url-obj.example.com', port: 3000, protocol: 'http:' },
+        { host: "url-obj.example.com", port: 3000, protocol: "http:" },
       ]);
     });
 
-    it('should report http.request with options object (hostname, host, port, and default)', () => {
-      http.request({ hostname: 'options-host.example.com', port: 9000 } as any);
+    it("should report http.request with options object (hostname, host, port, and default)", () => {
+      http.request({ hostname: "options-host.example.com", port: 9000 } as any);
       expect(reported[0]).toEqual({
-        host: 'options-host.example.com',
+        host: "options-host.example.com",
         port: 9000,
-        protocol: 'http:',
+        protocol: "http:",
       });
 
-      http.request({ host: 'fallback-host.example.com' } as any);
+      http.request({ host: "fallback-host.example.com" } as any);
       expect(reported[1]).toEqual({
-        host: 'fallback-host.example.com',
+        host: "fallback-host.example.com",
         port: 80,
-        protocol: 'http:',
+        protocol: "http:",
       });
 
-      http.request({ path: '/relative' } as any);
+      http.request({ path: "/relative" } as any);
       expect(reported[2]).toEqual({
-        host: 'localhost',
+        host: "localhost",
         port: 80,
-        protocol: 'http:',
+        protocol: "http:",
       });
     });
 
-    it('should report http.get and invoke original method with all arguments and context', () => {
+    it("should report http.get and invoke original method with all arguments and context", () => {
       const cb = vi.fn();
-      http.get('http://get.example.com:8000/info', cb);
+      http.get("http://get.example.com:8000/info", cb);
 
       expect(reported).toEqual([
-        { host: 'get.example.com', port: 8000, protocol: 'http:' },
+        { host: "get.example.com", port: 8000, protocol: "http:" },
       ]);
       expect(mockOriginalHttpGet).toHaveBeenCalledWith(
-        'http://get.example.com:8000/info',
-        cb
+        "http://get.example.com:8000/info",
+        cb,
       );
     });
 
-    it('should pass through multiple arguments and preserve this context', () => {
-      const customContext = { name: 'custom-http-context' };
-      const options = { path: '/test' };
+    it("should pass through multiple arguments and preserve this context", () => {
+      const customContext = { name: "custom-http-context" };
+      const options = { path: "/test" };
       const cb = vi.fn();
 
-      http.request.call(customContext, 'http://api.example.com', options as any, cb);
+      http.request.call(
+        customContext,
+        "http://api.example.com",
+        options as any,
+        cb,
+      );
 
       expect(mockOriginalHttpRequest).toHaveBeenCalledWith(
-        'http://api.example.com',
+        "http://api.example.com",
         options,
-        cb
+        cb,
       );
     });
   });
 
-  describe('HTTPS Interception', () => {
+  describe("HTTPS Interception", () => {
     let mockOriginalHttpsRequest: any;
     let mockOriginalHttpsGet: any;
 
@@ -194,53 +199,53 @@ describe('OutboundMonitor', () => {
       monitor.install();
     });
 
-    it('should report https.request with string URL (default and custom port)', () => {
-      https.request('https://secure.example.com/api');
+    it("should report https.request with string URL (default and custom port)", () => {
+      https.request("https://secure.example.com/api");
       expect(reported).toEqual([
-        { host: 'secure.example.com', port: 443, protocol: 'https:' },
+        { host: "secure.example.com", port: 443, protocol: "https:" },
       ]);
 
-      https.request('https://secure.example.com:8443/api');
+      https.request("https://secure.example.com:8443/api");
       expect(reported[1]).toEqual({
-        host: 'secure.example.com',
+        host: "secure.example.com",
         port: 8443,
-        protocol: 'https:',
+        protocol: "https:",
       });
     });
 
-    it('should report https.request with URL object and options object', () => {
-      https.request(new URL('https://secure-url.example.com:9443/v1'));
+    it("should report https.request with URL object and options object", () => {
+      https.request(new URL("https://secure-url.example.com:9443/v1"));
       expect(reported[0]).toEqual({
-        host: 'secure-url.example.com',
+        host: "secure-url.example.com",
         port: 9443,
-        protocol: 'https:',
+        protocol: "https:",
       });
 
-      https.request({ hostname: 'secure-opts.example.com', port: 443 } as any);
+      https.request({ hostname: "secure-opts.example.com", port: 443 } as any);
       expect(reported[1]).toEqual({
-        host: 'secure-opts.example.com',
+        host: "secure-opts.example.com",
         port: 443,
-        protocol: 'https:',
+        protocol: "https:",
       });
     });
 
-    it('should report https.get and invoke original method', () => {
-      https.get('https://secure-get.example.com/v1');
+    it("should report https.get and invoke original method", () => {
+      https.get("https://secure-get.example.com/v1");
       expect(reported).toEqual([
-        { host: 'secure-get.example.com', port: 443, protocol: 'https:' },
+        { host: "secure-get.example.com", port: 443, protocol: "https:" },
       ]);
       expect(mockOriginalHttpsGet).toHaveBeenCalled();
     });
   });
 
-  describe('Fetch Interception', () => {
+  describe("Fetch Interception", () => {
     let mockOriginalFetch: any;
 
     beforeEach(() => {
       mockOriginalFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        text: () => Promise.resolve('ok'),
+        text: () => Promise.resolve("ok"),
       });
       globalThis.fetch = mockOriginalFetch;
 
@@ -248,112 +253,115 @@ describe('OutboundMonitor', () => {
       monitor.install();
     });
 
-    it('should report fetch calls with string URL (http and https)', async () => {
-      const res1 = await fetch('https://api.github.com/users');
-      expect(await res1.text()).toBe('ok');
+    it("should report fetch calls with string URL (http and https)", async () => {
+      const res1 = await fetch("https://api.github.com/users");
+      expect(await res1.text()).toBe("ok");
       expect(reported[0]).toEqual({
-        host: 'api.github.com',
+        host: "api.github.com",
         port: 443,
-        protocol: 'https:',
+        protocol: "https:",
       });
 
-      await fetch('http://api.insecure.com:8080/data');
+      await fetch("http://api.insecure.com:8080/data");
       expect(reported[1]).toEqual({
-        host: 'api.insecure.com',
+        host: "api.insecure.com",
         port: 8080,
-        protocol: 'http:',
+        protocol: "http:",
       });
     });
 
-    it('should report fetch calls with URL objects', async () => {
-      await fetch(new URL('https://fetch-url.example.com:3000/path'));
+    it("should report fetch calls with URL objects", async () => {
+      await fetch(new URL("https://fetch-url.example.com:3000/path"));
       expect(reported[0]).toEqual({
-        host: 'fetch-url.example.com',
+        host: "fetch-url.example.com",
         port: 3000,
-        protocol: 'https:',
+        protocol: "https:",
       });
 
-      await fetch(new URL('http://fetch-http-url.example.com/path'));
+      await fetch(new URL("http://fetch-http-url.example.com/path"));
       expect(reported[1]).toEqual({
-        host: 'fetch-http-url.example.com',
+        host: "fetch-http-url.example.com",
         port: 80,
-        protocol: 'http:',
+        protocol: "http:",
       });
     });
 
-    it('should report fetch calls with Request objects or objects with url property', async () => {
-      const req = new Request('https://req.example.com:9443/v1');
+    it("should report fetch calls with Request objects or objects with url property", async () => {
+      const req = new Request("https://req.example.com:9443/v1");
       await fetch(req);
       expect(reported[0]).toEqual({
-        host: 'req.example.com',
+        host: "req.example.com",
         port: 9443,
-        protocol: 'https:',
+        protocol: "https:",
       });
 
-      await fetch({ url: 'https://obj.example.com:7000/test' } as any);
+      await fetch({ url: "https://obj.example.com:7000/test" } as any);
       expect(reported[1]).toEqual({
-        host: 'obj.example.com',
+        host: "obj.example.com",
         port: 7000,
-        protocol: 'https:',
+        protocol: "https:",
       });
     });
 
-    it('should ignore objects without url property in fetch', async () => {
+    it("should ignore objects without url property in fetch", async () => {
       const customObj = {
-        toString: () => 'https://tostring-url.example.com:8888/search',
+        toString: () => "https://tostring-url.example.com:8888/search",
       };
       await fetch(customObj as any);
       expect(reported).toHaveLength(0);
     });
 
-    it('should forward init options and return original fetch response', async () => {
-      const initOptions = { method: 'POST', body: JSON.stringify({ key: 'value' }) };
-      await fetch('https://post.example.com', initOptions);
+    it("should forward init options and return original fetch response", async () => {
+      const initOptions = {
+        method: "POST",
+        body: JSON.stringify({ key: "value" }),
+      };
+      await fetch("https://post.example.com", initOptions);
 
       expect(mockOriginalFetch).toHaveBeenCalledWith(
-        'https://post.example.com',
-        initOptions
+        "https://post.example.com",
+        initOptions,
       );
     });
 
-    it('should propagate fetch errors from original fetch', async () => {
-      mockOriginalFetch.mockRejectedValueOnce(new Error('Network failure'));
+    it("should propagate fetch errors from original fetch", async () => {
+      mockOriginalFetch.mockRejectedValueOnce(new Error("Network failure"));
 
-      await expect(fetch('https://failing.example.com')).rejects.toThrow(
-        'Network failure'
+      await expect(fetch("https://failing.example.com")).rejects.toThrow(
+        "Network failure",
       );
       expect(reported).toEqual([
-        { host: 'failing.example.com', port: 443, protocol: 'https:' },
+        { host: "failing.example.com", port: 443, protocol: "https:" },
       ]);
     });
   });
 
-  describe('ignoreHost Filtering', () => {
-    it('should not report connections when destination matches ignoreHost', async () => {
+  describe("ignoreHost Filtering", () => {
+    it("should not report connections when destination matches ignoreHost", async () => {
       const mockFetch = vi.fn().mockResolvedValue({ ok: true });
       globalThis.fetch = mockFetch;
       http.request = vi.fn().mockReturnValue({ end: vi.fn() });
       https.request = vi.fn().mockReturnValue({ end: vi.fn() });
 
-      monitor = new OutboundMonitor(reporter, 'ignore-me.example.com');
+      monitor = new OutboundMonitor(reporter, "ignore-me.example.com");
       monitor.install();
 
-      http.request('http://ignore-me.example.com/api');
-      https.request('https://ignore-me.example.com/api');
-      await fetch('https://ignore-me.example.com/api');
+      http.request("http://ignore-me.example.com/api");
+      https.request("https://ignore-me.example.com/api");
+      await fetch("https://ignore-me.example.com/api");
 
       expect(reported).toHaveLength(0);
 
       // Other host should still be reported
-      await fetch('https://allow-me.example.com/api');
+      await fetch("https://allow-me.example.com/api");
       expect(reported).toEqual([
-        { host: 'allow-me.example.com', port: 443, protocol: 'https:' },
+        { host: "allow-me.example.com", port: 443, protocol: "https:" },
       ]);
     });
   });
 
-  describe('Robustness and Error Handling', () => {
-    it('should handle malformed or unparseable URLs without crashing', async () => {
+  describe("Robustness and Error Handling", () => {
+    it("should handle malformed or unparseable URLs without crashing", async () => {
       const mockHttpRequest = vi.fn().mockReturnValue({ end: vi.fn() });
       http.request = mockHttpRequest;
 
@@ -364,11 +372,11 @@ describe('OutboundMonitor', () => {
       monitor.install();
 
       // Passing invalid URL string to http.request
-      expect(() => http.request('invalid-url-with-no-protocol')).not.toThrow();
+      expect(() => http.request("invalid-url-with-no-protocol")).not.toThrow();
       expect(mockHttpRequest).toHaveBeenCalled();
 
       // Passing invalid string to fetch
-      await expect(fetch('not a valid url' as any)).resolves.toBeDefined();
+      await expect(fetch("not a valid url" as any)).resolves.toBeDefined();
       expect(mockFetch).toHaveBeenCalled();
 
       // Passing null or undefined
@@ -379,9 +387,9 @@ describe('OutboundMonitor', () => {
       expect(reported).toHaveLength(0);
     });
 
-    it('should not crash or prevent request if reporter throws an exception', async () => {
+    it("should not crash or prevent request if reporter throws an exception", async () => {
       const errorReporter = vi.fn().mockImplementation(() => {
-        throw new Error('Reporter failure');
+        throw new Error("Reporter failure");
       });
 
       const mockHttpRequest = vi.fn().mockReturnValue({ end: vi.fn() });
@@ -393,10 +401,12 @@ describe('OutboundMonitor', () => {
       monitor = new OutboundMonitor(errorReporter, ignoreHost);
       monitor.install();
 
-      expect(() => http.request('http://api.example.com/data')).not.toThrow();
+      expect(() => http.request("http://api.example.com/data")).not.toThrow();
       expect(mockHttpRequest).toHaveBeenCalled();
 
-      await expect(fetch('https://api.example.com/data')).resolves.toBeDefined();
+      await expect(
+        fetch("https://api.example.com/data"),
+      ).resolves.toBeDefined();
       expect(mockFetch).toHaveBeenCalled();
     });
   });

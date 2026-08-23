@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  extractToolCallsFromContent,
-  parseJsonSafely,
-} from "./LLMAgent";
+import { extractToolCallsFromContent, parseJsonSafely } from "./LLMAgent";
 
 describe("LLMAgent tool call parser", () => {
   const mockTools = [
@@ -32,7 +29,9 @@ describe("LLMAgent tool call parser", () => {
 
     expect(result.toolCalls).toHaveLength(1);
     expect(result.toolCalls[0].name).toBe("read_file");
-    expect(JSON.parse(result.toolCalls[0].arguments)).toEqual({ path: "src/main.ts" });
+    expect(JSON.parse(result.toolCalls[0].arguments)).toEqual({
+      path: "src/main.ts",
+    });
     expect(result.cleanedContent).toBe("I am going to read the file now.");
   });
 
@@ -59,7 +58,9 @@ describe("LLMAgent tool call parser", () => {
 
     expect(result.toolCalls).toHaveLength(1);
     expect(result.toolCalls[0].name).toBe("run_command");
-    expect(JSON.parse(result.toolCalls[0].arguments)).toEqual({ command: "npm test" });
+    expect(JSON.parse(result.toolCalls[0].arguments)).toEqual({
+      command: "npm test",
+    });
     expect(result.reasoning).toBe("Need to run test suite");
     expect(result.cleanedContent).toBe("Here is the plan.");
   });
@@ -252,8 +253,13 @@ print("Hello World!")
   });
 
   it("handles JSON with trailing commas safely", () => {
-    const parsed = parseJsonSafely('{"command": "write_file", "arguments": {"path": "a.txt",},}');
-    expect(parsed).toEqual({ command: "write_file", arguments: { path: "a.txt" } });
+    const parsed = parseJsonSafely(
+      '{"command": "write_file", "arguments": {"path": "a.txt",},}',
+    );
+    expect(parsed).toEqual({
+      command: "write_file",
+      arguments: { path: "a.txt" },
+    });
   });
 
   it("handles malformed or non-string inputs safely in parseJsonSafely", () => {

@@ -52,7 +52,8 @@ function Ul({ items }: { items: React.ReactNode[] }) {
 export default function Privacy() {
   const { t } = useTranslation();
   usePageTitle(t("titles.privacy", undefined, "Privacy Policy"), {
-    description: "Privacy Policy and data protection practices for Oxygen Low's Software.",
+    description:
+      "Privacy Policy and data protection practices for Oxygen Low's Software.",
   });
 
   return (
@@ -83,9 +84,9 @@ export default function Privacy() {
         {/* Intro */}
         <Section id="introduction" title="1. Introduction" index={1}>
           <P>
-            Welcome to <strong>{OPERATOR}</strong> ("{OPERATOR}", "we", "us",
-            or "our"). We operate the web application and desktop client
-            available at{" "}
+            Welcome to <strong>{OPERATOR}</strong> ("{OPERATOR}", "we", "us", or
+            "our"). We operate the web application and desktop client available
+            at{" "}
             <a
               href={SITE_URL}
               className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
@@ -119,14 +120,16 @@ export default function Privacy() {
         </Section>
 
         {/* Data we collect */}
-        <Section id="data-collected" title="2. Information We Collect" index={2}>
+        <Section
+          id="data-collected"
+          title="2. Information We Collect"
+          index={2}
+        >
           <P>We collect the following categories of information:</P>
 
           <div className="space-y-4">
             <div>
-              <p className="font-semibold text-foreground">
-                2.1 Account Data
-              </p>
+              <p className="font-semibold text-foreground">2.1 Account Data</p>
               <P>
                 When you register or update your profile, we collect your email
                 address, username, display name, biography, and profile picture.
@@ -172,9 +175,8 @@ export default function Privacy() {
                 We use <strong>Supabase Auth</strong> to handle account
                 creation, login, and session management. Supabase stores your
                 email address and hashed password (or OAuth provider token)
-                securely. OAuth sign-in (e.g. via a third-party provider)
-                shares only the information granted by your consent with that
-                provider.
+                securely. OAuth sign-in (e.g. via a third-party provider) shares
+                only the information granted by your consent with that provider.
               </P>
             </div>
 
@@ -194,9 +196,9 @@ export default function Privacy() {
                 2.6 Cookies &amp; Session Data
               </p>
               <P>
-                We use essential session cookies to keep you logged in while
-                you use the Service. These cookies are strictly necessary and
-                cannot be disabled without breaking the Service. We do not use
+                We use essential session cookies to keep you logged in while you
+                use the Service. These cookies are strictly necessary and cannot
+                be disabled without breaking the Service. We do not use
                 advertising, tracking, or analytics cookies.
               </P>
             </div>
@@ -208,9 +210,9 @@ export default function Privacy() {
               <P>
                 Some features route network requests through our server as a
                 proxy. We do not log the content of proxied requests beyond
-                transient processing needed to deliver the response. We track 
-                your daily bandwidth usage (to enforce the 50MB daily limit) and 
-                temporarily retain IP addresses and request metadata for abuse 
+                transient processing needed to deliver the response. We track
+                your daily bandwidth usage (to enforce the 50MB daily limit) and
+                temporarily retain IP addresses and request metadata for abuse
                 prevention purposes.
               </P>
             </div>
@@ -233,9 +235,10 @@ export default function Privacy() {
                 2.9 Saved App Data
               </p>
               <P>
-                The "Data Saves" feature allows you to store arbitrary text, notes, and 
-                data keys. This content is securely stored in our database linked to 
-                your account and is not accessible to other users.
+                The "Data Saves" feature allows you to store arbitrary text,
+                notes, and data keys. This content is securely stored in our
+                database linked to your account and is not accessible to other
+                users.
               </P>
             </div>
 
@@ -244,9 +247,10 @@ export default function Privacy() {
                 2.10 Social Features &amp; Friends
               </p>
               <P>
-                If you use the Friends feature, we collect your friend requests and 
-                connections. Your profile information (display name, username, bio, 
-                and profile picture) will be visible to other users.
+                If you use the Friends feature, we collect your friend requests
+                and connections. Your profile information (display name,
+                username, bio, and profile picture) will be visible to other
+                users.
               </P>
             </div>
 
@@ -255,10 +259,10 @@ export default function Privacy() {
                 2.11 User-Created AI Characters
               </p>
               <P>
-                You can create custom AI characters and universes. If you choose to 
-                publish them, they become accessible to other users in the Public 
-                Characters directory. The details, prompts, and configurations of 
-                these characters are stored in our database.
+                You can create custom AI characters and universes. If you choose
+                to publish them, they become accessible to other users in the
+                Public Characters directory. The details, prompts, and
+                configurations of these characters are stored in our database.
               </P>
             </div>
 
@@ -267,13 +271,16 @@ export default function Privacy() {
                 2.12 Web Defender &amp; Security Services
               </p>
               <P>
-                If you use our Web Defender security service or install the @oxygenlow/webdefender package 
-                on your infrastructure, we process metadata about incoming web requests (such as 
-                IP addresses, user agents, request paths, and potential attack vectors) and outbound 
-                connection data. This information is used to provide rate limiting, threat blocking, 
-                and security analytics for your protected applications. We use third-party IP geolocation 
-                services to support country-level blocking. We also process IP addresses for commercial 
-                VPN detection and matching against known threat-actor feeds.
+                If you use our Web Defender security service or install the
+                @oxygenlow/webdefender package on your infrastructure, we
+                process metadata about incoming web requests (such as IP
+                addresses, user agents, request paths, and potential attack
+                vectors) and outbound connection data. This information is used
+                to provide rate limiting, threat blocking, and security
+                analytics for your protected applications. We use third-party IP
+                geolocation services to support country-level blocking. We also
+                process IP addresses for commercial VPN detection and matching
+                against known threat-actor feeds.
               </P>
             </div>
 
@@ -282,16 +289,22 @@ export default function Privacy() {
                 2.13 Client-Side Encrypted Data
               </p>
               <P>
-                Certain data, including characters, data saves, chatbot sessions, and third-party API 
-                keys (Integrations), are encrypted client-side using AES-256-GCM before transmission. 
-                We host the encrypted ciphertext but we cannot read, decrypt, or access the underlying data.
+                Certain data, including characters, data saves, chatbot
+                sessions, and third-party API keys (Integrations), are encrypted
+                client-side using AES-256-GCM before transmission. We host the
+                encrypted ciphertext but we cannot read, decrypt, or access the
+                underlying data.
               </P>
             </div>
           </div>
         </Section>
 
         {/* How we use data */}
-        <Section id="how-we-use" title="3. How We Use Your Information" index={3}>
+        <Section
+          id="how-we-use"
+          title="3. How We Use Your Information"
+          index={3}
+        >
           <P>We use the information we collect to:</P>
           <Ul
             items={[
@@ -311,10 +324,10 @@ export default function Privacy() {
             signed up for; (b) <strong>legitimate interests</strong> — for
             security monitoring, fraud prevention, and system stability; (c){" "}
             <strong>legal obligation</strong> — where the law requires us to
-            retain or disclose data; and (d) <strong>consent</strong> — where you
-            have explicitly given consent for optional features (such as making
-            your profile public, sharing custom characters, or authorizing OAuth
-            applications).
+            retain or disclose data; and (d) <strong>consent</strong> — where
+            you have explicitly given consent for optional features (such as
+            making your profile public, sharing custom characters, or
+            authorizing OAuth applications).
           </P>
         </Section>
 
@@ -351,11 +364,7 @@ export default function Privacy() {
                     "Database, authentication & file storage",
                     "Account data, storage files, support tickets",
                   ],
-                  [
-                    "OpenAI",
-                    "AI response generation",
-                    "AI prompts you submit",
-                  ],
+                  ["OpenAI", "AI response generation", "AI prompts you submit"],
                   [
                     "Anthropic",
                     "AI response generation",
@@ -371,11 +380,7 @@ export default function Privacy() {
                     "AI response generation",
                     "AI prompts you submit",
                   ],
-                  [
-                    "OpenRouter",
-                    "AI model routing",
-                    "AI prompts you submit",
-                  ],
+                  ["OpenRouter", "AI model routing", "AI prompts you submit"],
                   [
                     "Stable Horde",
                     "AI response generation",
@@ -417,7 +422,10 @@ export default function Privacy() {
                     "Repository access metadata",
                   ],
                 ].map(([proc, purpose, data]) => (
-                  <tr key={proc} className="hover:bg-muted/10 transition-colors">
+                  <tr
+                    key={proc}
+                    className="hover:bg-muted/10 transition-colors"
+                  >
                     <td className="p-3 font-medium text-foreground">{proc}</td>
                     <td className="p-3">{purpose}</td>
                     <td className="p-3">{data}</td>
@@ -432,15 +440,15 @@ export default function Privacy() {
             </p>
             <P>
               Because some of our third-party infrastructure and AI processors
-              (including OpenAI, Anthropic, Google, and Supabase) are based in the
-              United States or other countries outside the United Kingdom and
-              European Economic Area, your personal data may be transferred
-              internationally. We ensure that appropriate safeguards are in place
-              in accordance with UK GDPR Chapter V and EU GDPR Articles 44–49,
-              such as the UK International Data Transfer Agreement (IDTA), the UK
-              Addendum to the EU Standard Contractual Clauses (SCCs), and applicable
-              adequacy decisions (including participation in the Data Privacy
-              Framework where applicable).
+              (including OpenAI, Anthropic, Google, and Supabase) are based in
+              the United States or other countries outside the United Kingdom
+              and European Economic Area, your personal data may be transferred
+              internationally. We ensure that appropriate safeguards are in
+              place in accordance with UK GDPR Chapter V and EU GDPR Articles
+              44–49, such as the UK International Data Transfer Agreement
+              (IDTA), the UK Addendum to the EU Standard Contractual Clauses
+              (SCCs), and applicable adequacy decisions (including participation
+              in the Data Privacy Framework where applicable).
             </P>
           </div>
           <P>
@@ -483,13 +491,35 @@ export default function Privacy() {
           </P>
           <Ul
             items={[
-              <><strong>Right of access</strong> — Request a copy of the personal data we hold about you.</>,
-              <><strong>Right to rectification</strong> — Ask us to correct inaccurate or incomplete data.</>,
-              <><strong>Right to erasure</strong> — Request deletion of your data ("right to be forgotten").</>,
-              <><strong>Right to restriction</strong> — Ask us to pause processing of your data in certain circumstances.</>,
-              <><strong>Right to data portability</strong> — Receive your data in a structured, machine-readable format.</>,
-              <><strong>Right to object</strong> — Object to processing based on legitimate interests.</>,
-              <><strong>Right to withdraw consent</strong> — Where processing is based on consent, withdraw it at any time without affecting prior processing.</>,
+              <>
+                <strong>Right of access</strong> — Request a copy of the
+                personal data we hold about you.
+              </>,
+              <>
+                <strong>Right to rectification</strong> — Ask us to correct
+                inaccurate or incomplete data.
+              </>,
+              <>
+                <strong>Right to erasure</strong> — Request deletion of your
+                data ("right to be forgotten").
+              </>,
+              <>
+                <strong>Right to restriction</strong> — Ask us to pause
+                processing of your data in certain circumstances.
+              </>,
+              <>
+                <strong>Right to data portability</strong> — Receive your data
+                in a structured, machine-readable format.
+              </>,
+              <>
+                <strong>Right to object</strong> — Object to processing based on
+                legitimate interests.
+              </>,
+              <>
+                <strong>Right to withdraw consent</strong> — Where processing is
+                based on consent, withdraw it at any time without affecting
+                prior processing.
+              </>,
             ]}
           />
           <P>
@@ -528,11 +558,28 @@ export default function Privacy() {
           </P>
           <Ul
             items={[
-              <><strong>Right to know</strong> — Request disclosure of the categories and specific pieces of personal information we have collected about you.</>,
-              <><strong>Right to delete</strong> — Request deletion of personal information we hold about you, subject to certain exceptions.</>,
-              <><strong>Right to opt-out of sale or sharing</strong> — We do not sell or share your personal information for cross-context behavioural advertising. No opt-out is required.</>,
-              <><strong>Right to correct</strong> — Request correction of inaccurate personal information.</>,
-              <><strong>Right to non-discrimination</strong> — We will not discriminate against you for exercising any of your CCPA rights.</>,
+              <>
+                <strong>Right to know</strong> — Request disclosure of the
+                categories and specific pieces of personal information we have
+                collected about you.
+              </>,
+              <>
+                <strong>Right to delete</strong> — Request deletion of personal
+                information we hold about you, subject to certain exceptions.
+              </>,
+              <>
+                <strong>Right to opt-out of sale or sharing</strong> — We do not
+                sell or share your personal information for cross-context
+                behavioural advertising. No opt-out is required.
+              </>,
+              <>
+                <strong>Right to correct</strong> — Request correction of
+                inaccurate personal information.
+              </>,
+              <>
+                <strong>Right to non-discrimination</strong> — We will not
+                discriminate against you for exercising any of your CCPA rights.
+              </>,
             ]}
           />
           <P>
@@ -543,8 +590,8 @@ export default function Privacy() {
             >
               {CONTACT_EMAIL}
             </a>
-            . We will verify your identity before processing requests related
-            to personal information.
+            . We will verify your identity before processing requests related to
+            personal information.
           </P>
         </Section>
 
@@ -568,12 +615,13 @@ export default function Privacy() {
           <P>
             The Service is not directed at children under the age of 13. In the
             UK, pursuant to the Data Protection Act 2018 (Section 9) and UK GDPR
-            Article 8, the age of digital consent for information society services
-            is 13. Users in the EEA must meet their respective national age of
-            digital consent (up to 16, unless a lower age has been enacted under
-            domestic legislation). We do not knowingly collect personal data from
-            children below these applicable age limits. If you believe a child has
-            provided us with personal data, please contact us at{" "}
+            Article 8, the age of digital consent for information society
+            services is 13. Users in the EEA must meet their respective national
+            age of digital consent (up to 16, unless a lower age has been
+            enacted under domestic legislation). We do not knowingly collect
+            personal data from children below these applicable age limits. If
+            you believe a child has provided us with personal data, please
+            contact us at{" "}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
               className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
@@ -585,11 +633,7 @@ export default function Privacy() {
         </Section>
 
         {/* Changes */}
-        <Section
-          id="changes"
-          title="10. Changes to This Policy"
-          index={10}
-        >
+        <Section id="changes" title="10. Changes to This Policy" index={10}>
           <P>
             We may update this Privacy Policy from time to time. When we do, we
             will revise the "Last updated" date at the top of this page. If the

@@ -1,6 +1,14 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Scale, Shield, ScrollText, FileText, Copyright, ShieldAlert, ChevronRight } from "lucide-react";
+import {
+  Scale,
+  Shield,
+  ScrollText,
+  FileText,
+  Copyright,
+  ShieldAlert,
+  ChevronRight,
+} from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -15,7 +23,13 @@ interface LegalCardProps {
   index: number;
 }
 
-function LegalCard({ href, icon: Icon, title, description, index }: LegalCardProps) {
+function LegalCard({
+  href,
+  icon: Icon,
+  title,
+  description,
+  index,
+}: LegalCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -31,7 +45,9 @@ function LegalCard({ href, icon: Icon, title, description, index }: LegalCardPro
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-foreground text-sm">{title}</p>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            {description}
+          </p>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
       </Link>
@@ -126,7 +142,9 @@ export default function Legal() {
             <Scale className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">{t("legal.title", undefined, "Legal")}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              {t("legal.title", undefined, "Legal")}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {t(
                 "legal.subtitle",

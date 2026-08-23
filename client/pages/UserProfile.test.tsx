@@ -95,7 +95,9 @@ describe("UserProfile Component", () => {
       expect(screen.getByText("Test User")).toBeDefined();
       expect(screen.getByText("@testuser")).toBeDefined();
       expect(screen.getByText("English")).toBeDefined();
-      const flagImg = document.querySelector("img[src*='flagcdn.com/w40/gb.png']");
+      const flagImg = document.querySelector(
+        "img[src*='flagcdn.com/w40/gb.png']",
+      );
       expect(flagImg).not.toBeNull();
     });
   });
@@ -128,10 +130,18 @@ describe("UserProfile Component", () => {
       expect(screen.getByText("Japanese")).toBeDefined();
       expect(screen.getByText("Spanish")).toBeDefined();
 
-      expect(document.querySelector("img[src*='flagcdn.com/w40/gb.png']")).not.toBeNull();
-      expect(document.querySelector("img[src*='flagcdn.com/w40/kr.png']")).not.toBeNull();
-      expect(document.querySelector("img[src*='flagcdn.com/w40/jp.png']")).not.toBeNull();
-      expect(document.querySelector("img[src*='flagcdn.com/w40/es.png']")).not.toBeNull();
+      expect(
+        document.querySelector("img[src*='flagcdn.com/w40/gb.png']"),
+      ).not.toBeNull();
+      expect(
+        document.querySelector("img[src*='flagcdn.com/w40/kr.png']"),
+      ).not.toBeNull();
+      expect(
+        document.querySelector("img[src*='flagcdn.com/w40/jp.png']"),
+      ).not.toBeNull();
+      expect(
+        document.querySelector("img[src*='flagcdn.com/w40/es.png']"),
+      ).not.toBeNull();
     });
   });
 });

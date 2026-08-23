@@ -1,13 +1,20 @@
-import { DefenderConfig, AppConfig, BlockedEvent, EventType, OutboundConnection, RouteConfig } from './types.js';
-import { TorDetector } from './tor.js';
-import { VpnDetector } from './vpn.js';
-import { ThreatActorDetector } from './threatActors.js';
-import { OutboundMonitor } from './outbound.js';
-import { RateLimiter } from './rateLimiter.js';
-import { discoverRoutes } from './routeDiscovery.js';
-import { scanRequest } from './scanner/injection.js';
-import { detectBot } from './scanner/bots.js';
-import { getCountryCode } from './scanner/geo.js';
+import {
+  DefenderConfig,
+  AppConfig,
+  BlockedEvent,
+  EventType,
+  OutboundConnection,
+  RouteConfig,
+} from "./types.js";
+import { TorDetector } from "./tor.js";
+import { VpnDetector } from "./vpn.js";
+import { ThreatActorDetector } from "./threatActors.js";
+import { OutboundMonitor } from "./outbound.js";
+import { RateLimiter } from "./rateLimiter.js";
+import { discoverRoutes } from "./routeDiscovery.js";
+import { scanRequest } from "./scanner/injection.js";
+import { detectBot } from "./scanner/bots.js";
+import { getCountryCode } from "./scanner/geo.js";
 
 export interface IncomingRequest {
   ip: string;
@@ -48,12 +55,15 @@ export class DefenderClient {
 
   constructor(config: DefenderConfig) {
     this.config = config;
-    this.apiUrl = config.apiUrl || 'https://oxygenlow.com';
+    this.apiUrl = config.apiUrl || "https://oxygenlow.com";
     this.torDetector = new TorDetector();
     this.vpnDetector = new VpnDetector();
     this.threatActorDetector = new ThreatActorDetector();
     this.rateLimiter = new RateLimiter();
-    this.outboundMonitor = new OutboundMonitor((conn) => this.reportOutbound(conn), new URL(this.apiUrl).hostname);
+    this.outboundMonitor = new OutboundMonitor(
+      (conn) => this.reportOutbound(conn),
+      new URL(this.apiUrl).hostname,
+    );
   }
 
   private buildRouteCache(routes: RouteConfig[]) {
@@ -62,7 +72,7 @@ export class DefenderClient {
 
     for (let i = 0; i < routes.length; i++) {
       const route = routes[i];
-      const method = (route.method || '').toUpperCase();
+      const method = (route.method || "").toUpperCase();
 
       let exactMap = this.exactRoutes.get(method);
       if (!exactMap) {
@@ -71,7 +81,7 @@ export class DefenderClient {
       }
       exactMap.set(route.path, route);
 
-      const prefix = route.path.replace(/:\w+/g, '');
+      const prefix = route.path.replace(/:\w+/g, "");
 
       let root = this.prefixRoutes.get(method);
       if (!root) {
@@ -135,9 +145,12 @@ export class DefenderClient {
   async init(app?: any): Promise<void> {
     if (this.isInitialized) return;
 
-    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
     if (this.config.offlineMode || noApiKey) {
-      this.appConfig = this.normalizeConfig({ block_mode_enabled: true, config: {} });
+      this.appConfig = this.normalizeConfig({
+        block_mode_enabled: true,
+        config: {},
+      });
       this.isInitialized = true;
       return;
     }
@@ -145,11 +158,11 @@ export class DefenderClient {
     try {
       // 1. Validate API key
       const response = await fetch(`${this.apiUrl}/api/webdefender/verify`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
       });
 
       if (!response.ok) {
@@ -164,27 +177,30 @@ export class DefenderClient {
         if (routes.length > 0) {
           try {
             await fetch(`${this.apiUrl}/api/webdefender/register`, {
-              method: 'POST',
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.config.apiKey}`
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${this.config.apiKey}`,
               },
-              body: JSON.stringify({ routes })
+              body: JSON.stringify({ routes }),
             });
 
             // Refetch config to get the populated route IDs and rate limits
-            const verifyRes = await fetch(`${this.apiUrl}/api/webdefender/verify`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.config.apiKey}`
-              }
-            });
+            const verifyRes = await fetch(
+              `${this.apiUrl}/api/webdefender/verify`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${this.config.apiKey}`,
+                },
+              },
+            );
             if (verifyRes.ok) {
               this.appConfig = this.normalizeConfig(await verifyRes.json());
             }
           } catch (e) {
-            console.error('[Defender] Route registration failed:', e);
+            console.error("[Defender] Route registration failed:", e);
           }
         }
       }
@@ -200,13 +216,13 @@ export class DefenderClient {
       if (this.config.onError && error instanceof Error) {
         this.config.onError(error);
       }
-      console.error('[Defender] Initialization failed:', error);
+      console.error("[Defender] Initialization failed:", error);
     }
   }
 
   private startRealtimeSync(): void {
     if (this.config.realtime === false) return;
-    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
     if (this.config.offlineMode || noApiKey) return;
 
     this.stopRealtimeSync();
@@ -216,14 +232,17 @@ export class DefenderClient {
 
     (async () => {
       try {
-        const response = await fetch(`${this.apiUrl}/api/webdefender/config-stream`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.config.apiKey}`,
-            'Accept': 'text/event-stream'
+        const response = await fetch(
+          `${this.apiUrl}/api/webdefender/config-stream`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${this.config.apiKey}`,
+              Accept: "text/event-stream",
+            },
+            signal,
           },
-          signal
-        });
+        );
 
         if (!response.ok || !response.body) {
           throw new Error(`SSE stream failed: ${response.statusText}`);
@@ -231,30 +250,30 @@ export class DefenderClient {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let buffer = '';
+        let buffer = "";
 
         while (!signal.aborted) {
           const { done, value } = await reader.read();
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
-          let currentEvent = 'message';
+          let currentEvent = "message";
           for (const line of lines) {
             const trimmed = line.trim();
-            if (trimmed.startsWith('event:')) {
+            if (trimmed.startsWith("event:")) {
               currentEvent = trimmed.slice(6).trim();
-            } else if (trimmed.startsWith('data:')) {
+            } else if (trimmed.startsWith("data:")) {
               const dataStr = trimmed.slice(5).trim();
-              if (currentEvent === 'config' && dataStr) {
+              if (currentEvent === "config" && dataStr) {
                 try {
                   const rawConfig = JSON.parse(dataStr);
                   this.appConfig = this.normalizeConfig(rawConfig);
                 } catch (_) {}
               }
-              currentEvent = 'message';
+              currentEvent = "message";
             }
           }
         }
@@ -285,25 +304,31 @@ export class DefenderClient {
       clearInterval(this.configSyncIntervalId);
       this.configSyncIntervalId = undefined;
     }
-    const syncInterval = this.config.syncIntervalMs !== undefined ? this.config.syncIntervalMs : 60000;
+    const syncInterval =
+      this.config.syncIntervalMs !== undefined
+        ? this.config.syncIntervalMs
+        : 60000;
     if (syncInterval > 0) {
-      this.configSyncIntervalId = setInterval(() => this.refreshConfig(), syncInterval);
+      this.configSyncIntervalId = setInterval(
+        () => this.refreshConfig(),
+        syncInterval,
+      );
     }
   }
 
   async refreshConfig(): Promise<void> {
-    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
     if (this.config.offlineMode || noApiKey) {
       return;
     }
 
     try {
       const response = await fetch(`${this.apiUrl}/api/webdefender/verify`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
       });
 
       if (response.ok) {
@@ -317,18 +342,18 @@ export class DefenderClient {
   }
 
   private reportOutbound(conn: OutboundConnection) {
-    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
     if (this.config.offlineMode || noApiKey) {
       return;
     }
 
     fetch(`${this.apiUrl}/api/webdefender/outbound`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.config.apiKey}`,
       },
-      body: JSON.stringify(conn)
+      body: JSON.stringify(conn),
     }).catch(() => {});
   }
 
@@ -337,16 +362,16 @@ export class DefenderClient {
       this.config.onBlocked(event);
     }
 
-    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === '';
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
     if (this.config.offlineMode || noApiKey) {
       return;
     }
 
     fetch(`${this.apiUrl}/api/webdefender/event`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.config.apiKey}`,
       },
       body: JSON.stringify({
         eventType: event.type,
@@ -355,14 +380,17 @@ export class DefenderClient {
         method: event.method,
         path: event.path,
         blocked: event.blocked,
-        requestBodySnippet: req?.body ? req.body.substring(0, 500) : null
-      })
+        requestBodySnippet: req?.body ? req.body.substring(0, 500) : null,
+      }),
     }).catch(() => {});
   }
 
-  private getMatchingRoute(method: string, path: string): RouteConfig | undefined {
+  private getMatchingRoute(
+    method: string,
+    path: string,
+  ): RouteConfig | undefined {
     if (!this.appConfig || !this.appConfig.routes) return undefined;
-    
+
     method = method.toUpperCase();
 
     const exactMap = this.exactRoutes.get(method);
@@ -396,14 +424,14 @@ export class DefenderClient {
 
   async handleRequest(req: IncomingRequest): Promise<RequestResult> {
     if (!this.appConfig) {
-      return { blocked: false, eventType: 'allowed' };
+      return { blocked: false, eventType: "allowed" };
     }
 
     const { ip, method, path, query, body, headers, userAgent } = req;
-    
+
     let isBlocked = false;
-    let blockReason = '';
-    let eventType: EventType = 'allowed';
+    let blockReason = "";
+    let eventType: EventType = "allowed";
 
     const fail = (type: EventType, reason: string) => {
       eventType = type;
@@ -412,32 +440,44 @@ export class DefenderClient {
     };
 
     // 0. Individual IP Check
-    if (!isBlocked && this.appConfig.blockIps && this.appConfig.blockIps.length > 0) {
-      const cleanIp = (ip || '').trim().toLowerCase();
-      if (this.appConfig.blockIps.some(blocked => (blocked || '').trim().toLowerCase() === cleanIp)) {
-        fail('ip_block', `IP blocked: ${ip}`);
+    if (
+      !isBlocked &&
+      this.appConfig.blockIps &&
+      this.appConfig.blockIps.length > 0
+    ) {
+      const cleanIp = (ip || "").trim().toLowerCase();
+      if (
+        this.appConfig.blockIps.some(
+          (blocked) => (blocked || "").trim().toLowerCase() === cleanIp,
+        )
+      ) {
+        fail("ip_block", `IP blocked: ${ip}`);
       }
     }
 
     // 1. IP Geo Check
-    if (!isBlocked && this.appConfig.blockCountries && this.appConfig.blockCountries.length > 0) {
+    if (
+      !isBlocked &&
+      this.appConfig.blockCountries &&
+      this.appConfig.blockCountries.length > 0
+    ) {
       const countryCode = await getCountryCode(ip);
       if (countryCode && this.appConfig.blockCountries.includes(countryCode)) {
-        fail('country_block', `Country blocked: ${countryCode}`);
+        fail("country_block", `Country blocked: ${countryCode}`);
       }
     }
 
     // 2. TOR Check
     if (!isBlocked && this.appConfig.blockTor) {
       if (this.torDetector.isTorExitNode(ip)) {
-        fail('tor', 'TOR exit node detected');
+        fail("tor", "TOR exit node detected");
       }
     }
 
     // 2b. Known VPN Check
     if (!isBlocked && this.appConfig.blockVpn) {
       if (this.vpnDetector.isVpn(ip)) {
-        fail('vpn', 'VPN connection detected');
+        fail("vpn", "VPN connection detected");
       }
     }
 
@@ -446,33 +486,36 @@ export class DefenderClient {
       const threatActor = this.threatActorDetector.checkThreatActor(ip);
       if (threatActor) {
         let shouldBlock = false;
-        let eventType: EventType = 'threat_botnet';
+        let eventType: EventType = "threat_botnet";
         switch (threatActor.category) {
-          case 'bruteforce':
+          case "bruteforce":
             shouldBlock = this.appConfig.blockBruteforce;
-            eventType = 'threat_bruteforce';
+            eventType = "threat_bruteforce";
             break;
-          case 'http_dos':
+          case "http_dos":
             shouldBlock = this.appConfig.blockHttpDos;
-            eventType = 'threat_dos';
+            eventType = "threat_dos";
             break;
-          case 'http_exploit':
+          case "http_exploit":
             shouldBlock = this.appConfig.blockHttpExploit;
-            eventType = 'threat_exploit';
+            eventType = "threat_exploit";
             break;
-          case 'botnet':
+          case "botnet":
             shouldBlock = this.appConfig.blockBotnets;
-            eventType = 'threat_botnet';
+            eventType = "threat_botnet";
             break;
         }
         if (shouldBlock) {
           const categoryLabels: Record<string, string> = {
-            bruteforce: 'Bruteforce attacker',
-            http_dos: 'HTTP DoS attacker',
-            http_exploit: 'HTTP Exploit attacker',
-            botnet: 'Botnet Actor'
+            bruteforce: "Bruteforce attacker",
+            http_dos: "HTTP DoS attacker",
+            http_exploit: "HTTP Exploit attacker",
+            botnet: "Botnet Actor",
           };
-          fail(eventType, `Known threat actor detected: ${categoryLabels[threatActor.category] || threatActor.category}`);
+          fail(
+            eventType,
+            `Known threat actor detected: ${categoryLabels[threatActor.category] || threatActor.category}`,
+          );
         }
       }
     }
@@ -483,14 +526,27 @@ export class DefenderClient {
       if (botResult.isBot && botResult.category) {
         let blockBot = false;
         switch (botResult.category) {
-          case 'ad_bot': blockBot = this.appConfig.blockAdBots; break;
-          case 'ai_assistant': blockBot = this.appConfig.blockAiAssistants; break;
-          case 'ai_scraper': blockBot = this.appConfig.blockAiScrapers; break;
-          case 'ai_search_crawler': blockBot = this.appConfig.blockAiSearchCrawlers; break;
-          case 'data_harvester': blockBot = this.appConfig.blockDataHarvesters; break;
+          case "ad_bot":
+            blockBot = this.appConfig.blockAdBots;
+            break;
+          case "ai_assistant":
+            blockBot = this.appConfig.blockAiAssistants;
+            break;
+          case "ai_scraper":
+            blockBot = this.appConfig.blockAiScrapers;
+            break;
+          case "ai_search_crawler":
+            blockBot = this.appConfig.blockAiSearchCrawlers;
+            break;
+          case "data_harvester":
+            blockBot = this.appConfig.blockDataHarvesters;
+            break;
         }
         if (blockBot) {
-          fail('bot', `Blocked bot category: ${botResult.category} (${botResult.match})`);
+          fail(
+            "bot",
+            `Blocked bot category: ${botResult.category} (${botResult.match})`,
+          );
         }
       }
     }
@@ -501,24 +557,43 @@ export class DefenderClient {
       for (const threat of scanRes.threats) {
         let shouldBlock = false;
         switch (threat.type) {
-          case 'sql_injection': shouldBlock = this.appConfig.blockSqlInjection; break;
-          case 'shell_injection': shouldBlock = this.appConfig.blockShellInjection; break;
-          case 'path_traversal': shouldBlock = this.appConfig.blockPathTraversal; break;
-          case 'ssrf': shouldBlock = this.appConfig.blockSsrf; break;
+          case "sql_injection":
+            shouldBlock = this.appConfig.blockSqlInjection;
+            break;
+          case "shell_injection":
+            shouldBlock = this.appConfig.blockShellInjection;
+            break;
+          case "path_traversal":
+            shouldBlock = this.appConfig.blockPathTraversal;
+            break;
+          case "ssrf":
+            shouldBlock = this.appConfig.blockSsrf;
+            break;
         }
-        
+
         if (shouldBlock) {
-          fail(threat.type, `Threat detected: ${threat.type} (pattern: ${threat.pattern})`);
+          fail(
+            threat.type,
+            `Threat detected: ${threat.type} (pattern: ${threat.pattern})`,
+          );
           break;
         }
       }
     }
 
     // 6. Global DDoS Check
-    if (!isBlocked && this.appConfig.ddosProtection && this.appConfig.ddosThresholdRpm > 0) {
-      const { allowed } = this.rateLimiter.check(`global:${ip}`, this.appConfig.ddosThresholdRpm, 60);
+    if (
+      !isBlocked &&
+      this.appConfig.ddosProtection &&
+      this.appConfig.ddosThresholdRpm > 0
+    ) {
+      const { allowed } = this.rateLimiter.check(
+        `global:${ip}`,
+        this.appConfig.ddosThresholdRpm,
+        60,
+      );
       if (!allowed) {
-        fail('ddos', 'Global DDoS rate limit exceeded');
+        fail("ddos", "Global DDoS rate limit exceeded");
       }
     }
 
@@ -526,29 +601,37 @@ export class DefenderClient {
     if (!isBlocked) {
       const route = this.getMatchingRoute(method, path);
       if (route && route.rateLimitEnabled) {
-        const { allowed } = this.rateLimiter.check(`route:${route.id}:${ip}`, route.rateLimitRequests, route.rateLimitWindowSeconds);
+        const { allowed } = this.rateLimiter.check(
+          `route:${route.id}:${ip}`,
+          route.rateLimitRequests,
+          route.rateLimitWindowSeconds,
+        );
         if (!allowed) {
-          fail('rate_limit', `Route rate limit exceeded for ${path}`);
+          fail("rate_limit", `Route rate limit exceeded for ${path}`);
         }
       }
     }
 
     // Determine final block action
-    const actualBlock = isBlocked && this.appConfig.blockModeEnabled && !this.config.logOnly;
+    const actualBlock =
+      isBlocked && this.appConfig.blockModeEnabled && !this.config.logOnly;
 
-    this.logEvent({
-      type: eventType,
-      ip,
-      method,
-      path,
-      reason: isBlocked ? blockReason : '',
-      blocked: actualBlock
-    }, req);
+    this.logEvent(
+      {
+        type: eventType,
+        ip,
+        method,
+        path,
+        reason: isBlocked ? blockReason : "",
+        blocked: actualBlock,
+      },
+      req,
+    );
 
     return {
       blocked: actualBlock,
       reason: isBlocked ? blockReason : undefined,
-      eventType
+      eventType,
     };
   }
 

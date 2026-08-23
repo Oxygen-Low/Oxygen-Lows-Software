@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/hooks/useTheme";
-import { callDesktopBridge, isDesktopBridgeAvailable } from "@/lib/desktopBridge";
+import {
+  callDesktopBridge,
+  isDesktopBridgeAvailable,
+} from "@/lib/desktopBridge";
 
 export interface Model {
   provider: string;
@@ -22,14 +25,19 @@ async function probeDirectLocalModels(): Promise<Model[]> {
     }
   };
 
-  const probeUrls: Array<{ url: string; provider: string; parse: (data: any) => void }> = [
+  const probeUrls: Array<{
+    url: string;
+    provider: string;
+    parse: (data: any) => void;
+  }> = [
     {
       url: "http://127.0.0.1:1234/v1/models",
       provider: "local-lmstudio",
       parse: (data) => {
         if (Array.isArray(data?.data)) {
           for (const item of data.data) {
-            if (item.type !== "embeddings" && item.id) add("local-lmstudio", item.id);
+            if (item.type !== "embeddings" && item.id)
+              add("local-lmstudio", item.id);
           }
         }
       },
@@ -123,7 +131,10 @@ export const useAiModels = (
       const discoveredLocalModels: Model[] = [];
       const seenLocal = new Set<string>();
 
-      const addDiscovered = (provider: string, modelId: string | null | undefined) => {
+      const addDiscovered = (
+        provider: string,
+        modelId: string | null | undefined,
+      ) => {
         if (!modelId || typeof modelId !== "string" || !modelId.trim()) return;
         const trimmed = modelId.trim();
         const key = `${provider}:${trimmed}`;
@@ -134,24 +145,43 @@ export const useAiModels = (
       };
 
       const bridgeTask = isDesktopBridgeAvailable()
-        ? callDesktopBridge<Model[]>("fetch_local_models", {}, 6000).catch(() => [])
+        ? callDesktopBridge<Model[]>("fetch_local_models", {}, 6000).catch(
+            () => [],
+          )
         : Promise.resolve([]);
 
       const directLocalTask = probeDirectLocalModels().catch(() => []);
 
       const fetchTasks = [
-        supabase.from("user_models").select("provider, model_id").order("provider"),
-        fetch("/api/ai/local-providers").then((res) => (res.ok ? res.json() : [])).catch(() => []),
+        supabase
+          .from("user_models")
+          .select("provider, model_id")
+          .order("provider"),
+        fetch("/api/ai/local-providers")
+          .then((res) => (res.ok ? res.json() : []))
+          .catch(() => []),
         bridgeTask,
         directLocalTask,
       ];
 
       const results = await Promise.allSettled(fetchTasks);
 
-      const dbModels = results[0].status === "fulfilled" ? (results[0].value as any).data || [] : [];
-      const localModels = results[1].status === "fulfilled" ? (results[1].value as Model[]) || [] : [];
-      const bridgeModels = results[2].status === "fulfilled" ? (results[2].value as Model[]) || [] : [];
-      const directModels = results[3].status === "fulfilled" ? (results[3].value as Model[]) || [] : [];
+      const dbModels =
+        results[0].status === "fulfilled"
+          ? (results[0].value as any).data || []
+          : [];
+      const localModels =
+        results[1].status === "fulfilled"
+          ? (results[1].value as Model[]) || []
+          : [];
+      const bridgeModels =
+        results[2].status === "fulfilled"
+          ? (results[2].value as Model[]) || []
+          : [];
+      const directModels =
+        results[3].status === "fulfilled"
+          ? (results[3].value as Model[]) || []
+          : [];
 
       // Add bridge and direct models
       for (const bm of bridgeModels) {
@@ -164,7 +194,11 @@ export const useAiModels = (
           addDiscovered(dm.provider, dm.model_id);
         }
       }
-      const combined = [...(dbModels || []), ...(localModels || []), ...discoveredLocalModels];
+      const combined = [
+        ...(dbModels || []),
+        ...(localModels || []),
+        ...discoveredLocalModels,
+      ];
       const allModels: Model[] = [];
       const seenAll = new Set<string>();
 

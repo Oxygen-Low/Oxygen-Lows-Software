@@ -242,7 +242,7 @@ nav[role="navigation"] {
   .sidebar::-webkit-scrollbar {
     width: 0px;
   }
-  
+
   .sidebar {
     overflow-x: hidden;
   }

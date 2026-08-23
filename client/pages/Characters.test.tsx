@@ -1,20 +1,32 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Characters from "./Characters";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { storage } from "@/lib/storage";
-import { clearActiveMasterKey, setCategoryEncryptionEnabled } from "@/lib/crypto";
+import {
+  clearActiveMasterKey,
+  setCategoryEncryptionEnabled,
+} from "@/lib/crypto";
 
 const mockToast = vi.fn();
 
 const { mockStorage, mockStorageFrom } = vi.hoisted(() => {
   const mockStorageFrom = {
     createSignedUrl: vi.fn((path: string) =>
-      Promise.resolve({ data: { signedUrl: `https://example.com/${path}` }, error: null }),
+      Promise.resolve({
+        data: { signedUrl: `https://example.com/${path}` },
+        error: null,
+      }),
     ),
   };
   const mockStorage = {
@@ -137,7 +149,9 @@ describe("Characters Component", () => {
   it("opens modal and triggers storage selection with valid file", async () => {
     render(<Characters />);
 
-    const newCharButton = screen.getByRole("button", { name: /New Character/i });
+    const newCharButton = screen.getByRole("button", {
+      name: /New Character/i,
+    });
     fireEvent.click(newCharButton);
 
     const selectValidBtn = screen.getByTestId("select-valid-file");
@@ -151,7 +165,9 @@ describe("Characters Component", () => {
   it("blocks path traversal in storage selection and shows error toast", async () => {
     render(<Characters />);
 
-    const newCharButton = screen.getByRole("button", { name: /New Character/i });
+    const newCharButton = screen.getByRole("button", {
+      name: /New Character/i,
+    });
     fireEvent.click(newCharButton);
 
     const selectTraversalBtn = screen.getByTestId("select-traversal-file");
@@ -168,10 +184,14 @@ describe("Characters Component", () => {
   it("blocks nested path traversal attempts in storage selection", async () => {
     render(<Characters />);
 
-    const newCharButton = screen.getByRole("button", { name: /New Character/i });
+    const newCharButton = screen.getByRole("button", {
+      name: /New Character/i,
+    });
     fireEvent.click(newCharButton);
 
-    const selectNestedTraversalBtn = screen.getByTestId("select-nested-traversal-file");
+    const selectNestedTraversalBtn = screen.getByTestId(
+      "select-nested-traversal-file",
+    );
     fireEvent.click(selectNestedTraversalBtn);
 
     expect(mockToast).toHaveBeenCalledWith(
@@ -185,7 +205,9 @@ describe("Characters Component", () => {
   it("blocks null or undefined file in storage selection", async () => {
     render(<Characters />);
 
-    const newCharButton = screen.getByRole("button", { name: /New Character/i });
+    const newCharButton = screen.getByRole("button", {
+      name: /New Character/i,
+    });
     fireEvent.click(newCharButton);
 
     const selectNullBtn = screen.getByTestId("select-null-file");
@@ -206,7 +228,7 @@ describe("Characters Component", () => {
     render(
       <MemoryRouter>
         <Characters />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText("Decryption Required")).toBeDefined();

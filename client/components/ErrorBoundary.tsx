@@ -73,7 +73,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="text-sm text-muted-foreground max-w-md mb-6">
             {this.state.isChunkLoadError
               ? "A new version of the app was deployed. Please reload the page to load the latest components."
-              : this.state.error?.message || "An unexpected error occurred while loading this view."}
+              : this.state.error?.message ||
+                "An unexpected error occurred while loading this view."}
           </p>
           <Button
             onClick={this.handleReload}

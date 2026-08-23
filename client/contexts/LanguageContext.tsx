@@ -178,6 +178,20 @@ export function useLanguage(): LanguageContextType {
 }
 
 export function useTranslation() {
-  const { t, language, languageCode, currentOption, languageOption, setLanguage } = useLanguage();
-  return { t, language, languageCode, currentOption, languageOption, setLanguage };
+  const {
+    t,
+    language,
+    languageCode,
+    currentOption,
+    languageOption,
+    setLanguage,
+  } = useLanguage();
+  return {
+    t,
+    language,
+    languageCode,
+    currentOption,
+    languageOption,
+    setLanguage,
+  };
 }

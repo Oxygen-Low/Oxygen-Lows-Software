@@ -64,7 +64,9 @@ export function FriendsApp() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("friends");
   const [loading, setLoading] = useState(true);
-  const [givePointsUser, setGivePointsUser] = useState<SocialProfile | null>(null);
+  const [givePointsUser, setGivePointsUser] = useState<SocialProfile | null>(
+    null,
+  );
   const [pointsToGive, setPointsToGive] = useState("");
 
   const fetchData = async () => {
@@ -152,7 +154,9 @@ export function FriendsApp() {
       const { data: existingFriendship } = await supabase
         .from("friendships")
         .select("id, status, user_id, friend_id")
-        .or(`and(user_id.eq.${session.user.id},friend_id.eq.${targetUser.user_id}),and(user_id.eq.${targetUser.user_id},friend_id.eq.${session.user.id})`)
+        .or(
+          `and(user_id.eq.${session.user.id},friend_id.eq.${targetUser.user_id}),and(user_id.eq.${targetUser.user_id},friend_id.eq.${session.user.id})`,
+        )
         .maybeSingle();
 
       if (existingFriendship) {
@@ -252,8 +256,10 @@ export function FriendsApp() {
       });
 
       if (error) throw error;
-      
-      toast.success(`Successfully gave ${amount} points to ${givePointsUser.display_name || givePointsUser.username}`);
+
+      toast.success(
+        `Successfully gave ${amount} points to ${givePointsUser.display_name || givePointsUser.username}`,
+      );
       setGivePointsUser(null);
       setPointsToGive("");
     } catch (error: any) {
@@ -520,12 +526,19 @@ export function FriendsApp() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!givePointsUser} onOpenChange={(open) => !open && setGivePointsUser(null)}>
+      <Dialog
+        open={!!givePointsUser}
+        onOpenChange={(open) => !open && setGivePointsUser(null)}
+      >
         <DialogContent className="bg-slate-950 border-slate-800 text-white">
           <DialogHeader>
-            <DialogTitle>Give Points to {givePointsUser?.display_name || givePointsUser?.username}</DialogTitle>
+            <DialogTitle>
+              Give Points to{" "}
+              {givePointsUser?.display_name || givePointsUser?.username}
+            </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Transfer some of your daily points allowance to your friend. These points will expire at midnight UTC.
+              Transfer some of your daily points allowance to your friend. These
+              points will expire at midnight UTC.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -539,9 +552,19 @@ export function FriendsApp() {
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setGivePointsUser(null)}>Cancel</Button>
-            <Button className="bg-cyan-600 hover:bg-cyan-700 text-white" onClick={handleGivePoints} disabled={loading || !pointsToGive}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Gift className="w-4 h-4 mr-2" />}
+            <Button variant="ghost" onClick={() => setGivePointsUser(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              onClick={handleGivePoints}
+              disabled={loading || !pointsToGive}
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Gift className="w-4 h-4 mr-2" />
+              )}
               Give Points
             </Button>
           </DialogFooter>

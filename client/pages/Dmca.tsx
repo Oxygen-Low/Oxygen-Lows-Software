@@ -123,14 +123,14 @@ export default function Dmca() {
             items={[
               <>
                 <strong>Identification of the copyrighted work</strong> — A
-                description of the copyrighted work you claim has been infringed,
-                or, if multiple works are covered, a representative list of such
-                works.
+                description of the copyrighted work you claim has been
+                infringed, or, if multiple works are covered, a representative
+                list of such works.
               </>,
               <>
                 <strong>Identification of the infringing material</strong> — A
-                description of the material that you claim is infringing and that
-                you request be removed, with sufficient information (e.g. a
+                description of the material that you claim is infringing and
+                that you request be removed, with sufficient information (e.g. a
                 specific URL) to allow us to locate it.
               </>,
               <>
@@ -233,7 +233,11 @@ export default function Dmca() {
         </Section>
 
         {/* 5. Repeat infringers */}
-        <Section id="repeat-infringers" title="5. Repeat Infringer Policy" index={5}>
+        <Section
+          id="repeat-infringers"
+          title="5. Repeat Infringer Policy"
+          index={5}
+        >
           <P>
             In accordance with the DMCA and applicable law, it is our policy to
             terminate, in appropriate circumstances, the accounts of users who
@@ -267,8 +271,8 @@ export default function Dmca() {
         {/* 7. User uploads */}
         <Section id="user-uploads" title="7. User-Uploaded Content" index={7}>
           <P>
-            You represent and warrant that any content you upload to our
-            cloud storage or otherwise submit through the Service:
+            You represent and warrant that any content you upload to our cloud
+            storage or otherwise submit through the Service:
           </P>
           <Ul
             items={[
@@ -285,11 +289,7 @@ export default function Dmca() {
         </Section>
 
         {/* 8. Changes */}
-        <Section
-          id="changes"
-          title="8. Changes to This Policy"
-          index={8}
-        >
+        <Section id="changes" title="8. Changes to This Policy" index={8}>
           <P>
             We may update this DMCA & Copyright Policy from time to time. When
             we do, we will revise the "Last updated" date at the top of this

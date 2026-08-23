@@ -82,7 +82,11 @@ export default function Eula() {
         </motion.div>
 
         {/* 1. Acceptance */}
-        <Section id="acceptance" title="1. Acceptance of This Agreement" index={1}>
+        <Section
+          id="acceptance"
+          title="1. Acceptance of This Agreement"
+          index={1}
+        >
           <P>
             This End User Licence Agreement ("EULA") is a legally binding
             contract between you ("User", "you", or "your") and{" "}
@@ -136,20 +140,22 @@ export default function Eula() {
             ]}
           />
           <P>
-            This licence governs the compiled application binaries, desktop installer,
-            and hosted platform. The underlying source code of the project and published
-            packages (including @oxygenlow/webdefender) are licensed under the MIT License.
-            All proprietary rights in trademarks, branding, and hosted infrastructure not
-            expressly granted herein remain with the Licensor.
+            This licence governs the compiled application binaries, desktop
+            installer, and hosted platform. The underlying source code of the
+            project and published packages (including @oxygenlow/webdefender)
+            are licensed under the MIT License. All proprietary rights in
+            trademarks, branding, and hosted infrastructure not expressly
+            granted herein remain with the Licensor.
           </P>
         </Section>
 
         {/* 3. Restrictions */}
         <Section id="restrictions" title="3. Licence Restrictions" index={3}>
           <P>
-            Except as expressly permitted by applicable open-source licences (such as the
-            MIT License governing the source code) or mandatory applicable law, you
-            must not, and must not permit any third party to:
+            Except as expressly permitted by applicable open-source licences
+            (such as the MIT License governing the source code) or mandatory
+            applicable law, you must not, and must not permit any third party
+            to:
           </P>
           <Ul
             items={[
@@ -163,23 +169,31 @@ export default function Eula() {
         </Section>
 
         {/* 4. Ownership */}
-        <Section id="ownership" title="4. Ownership & Intellectual Property" index={4}>
+        <Section
+          id="ownership"
+          title="4. Ownership & Intellectual Property"
+          index={4}
+        >
           <P>
-            The Software application, desktop binaries, branding, trademarks, and
-            hosted services are licensed, not sold. The Licensor retains all
+            The Software application, desktop binaries, branding, trademarks,
+            and hosted services are licensed, not sold. The Licensor retains all
             intellectual property rights in and to these proprietary elements.
           </P>
           <P>
             Where portions of the Software are made available as open-source
-            software in the project repository under the MIT License,
-            your rights in the source code form are governed by the MIT License. This EULA
-            governs the compiled desktop binaries, official installers, and connection to our
-            cloud infrastructure.
+            software in the project repository under the MIT License, your
+            rights in the source code form are governed by the MIT License. This
+            EULA governs the compiled desktop binaries, official installers, and
+            connection to our cloud infrastructure.
           </P>
         </Section>
 
         {/* 5. User Content */}
-        <Section id="user-content" title="5. User-Generated Content &amp; Data" index={5}>
+        <Section
+          id="user-content"
+          title="5. User-Generated Content &amp; Data"
+          index={5}
+        >
           <P>
             You retain ownership of any content you create, upload, or submit
             through the Software ("User Content"). By submitting User Content,
@@ -189,16 +203,18 @@ export default function Eula() {
           </P>
           <P>
             You represent and warrant that you have all rights necessary to
-            grant this licence and that your User Content does not infringe
-            any third-party intellectual property rights, violate any applicable
+            grant this licence and that your User Content does not infringe any
+            third-party intellectual property rights, violate any applicable
             law, or breach any obligation of confidentiality.
           </P>
           <P>
-            <strong>Zero-Knowledge Encryption:</strong> The Software uses Zero-Knowledge Client-Side 
-            Encryption for sensitive User Content (such as character data, saves, and integrations). 
-            You acknowledge that the Licensor does not hold your decryption keys and cannot decrypt your data. 
-            The Licensor is not liable for any data loss arising from a forgotten password, lost <code>.key</code> file, 
-            or compromised local device.
+            <strong>Zero-Knowledge Encryption:</strong> The Software uses
+            Zero-Knowledge Client-Side Encryption for sensitive User Content
+            (such as character data, saves, and integrations). You acknowledge
+            that the Licensor does not hold your decryption keys and cannot
+            decrypt your data. The Licensor is not liable for any data loss
+            arising from a forgotten password, lost <code>.key</code> file, or
+            compromised local device.
           </P>
         </Section>
 
@@ -226,11 +242,11 @@ export default function Eula() {
         >
           <P>
             The Software may incorporate or interface with third-party software
-            libraries, APIs, and services (including Supabase, OpenAI, Anthropic,
-            Google, Cloudflare, and others). Your use of such third-party
-            components is subject to their respective licence terms and privacy
-            policies. The Licensor is not responsible for the availability,
-            accuracy, or conduct of any third-party service.
+            libraries, APIs, and services (including Supabase, OpenAI,
+            Anthropic, Google, Cloudflare, and others). Your use of such
+            third-party components is subject to their respective licence terms
+            and privacy policies. The Licensor is not responsible for the
+            availability, accuracy, or conduct of any third-party service.
           </P>
         </Section>
 
@@ -253,31 +269,28 @@ export default function Eula() {
         {/* 9. Disclaimer */}
         <Section id="disclaimer" title="9. Disclaimer of Warranties" index={9}>
           <P>
-            THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT
-            WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT
+            THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY
+            OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT
             LIMITATION, ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
             PARTICULAR PURPOSE, TITLE, OR NON-INFRINGEMENT. THE LICENSOR DOES
             NOT WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, TIMELY, SECURE,
             OR ERROR-FREE, OR THAT DEFECTS WILL BE CORRECTED.
           </P>
           <P>
-            The Software is currently in Beta. Features, data, and
-            availability may change without prior notice.
+            The Software is currently in Beta. Features, data, and availability
+            may change without prior notice.
           </P>
         </Section>
 
         {/* 10. Limitation of Liability */}
-        <Section
-          id="liability"
-          title="10. Limitation of Liability"
-          index={10}
-        >
+        <Section id="liability" title="10. Limitation of Liability" index={10}>
           <P>
-            Nothing in this EULA shall limit or exclude the Licensor's liability for
-            death or personal injury caused by negligence, for fraud or fraudulent
-            misrepresentation, or for any other liability that cannot lawfully be
-            excluded or limited under applicable law, including non-excludable statutory
-            rights under the UK Consumer Rights Act 2015.
+            Nothing in this EULA shall limit or exclude the Licensor's liability
+            for death or personal injury caused by negligence, for fraud or
+            fraudulent misrepresentation, or for any other liability that cannot
+            lawfully be excluded or limited under applicable law, including
+            non-excludable statutory rights under the UK Consumer Rights Act
+            2015.
           </P>
           <P>
             TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW,{" "}
@@ -301,18 +314,14 @@ export default function Eula() {
             You agree to indemnify, defend, and hold harmless the Licensor and
             its officers, directors, employees, and agents from and against any
             claims, liabilities, damages, judgments, awards, losses, costs,
-            expenses, or fees (including reasonable legal fees) arising out of or
-            relating to your violation of this EULA or your use of the Software,
-            including your User Content.
+            expenses, or fees (including reasonable legal fees) arising out of
+            or relating to your violation of this EULA or your use of the
+            Software, including your User Content.
           </P>
         </Section>
 
         {/* 12. Term & Termination */}
-        <Section
-          id="termination"
-          title="12. Term & Termination"
-          index={12}
-        >
+        <Section id="termination" title="12. Term & Termination" index={12}>
           <P>
             This EULA is effective from the date you first access or use the
             Software and continues until terminated. The Licensor may terminate
@@ -326,8 +335,8 @@ export default function Eula() {
             cease and you must stop using the Software.
           </P>
           <P>
-            Sections 4, 5, 9, 10, 11, 13, and 14 survive any termination of
-            this EULA.
+            Sections 4, 5, 9, 10, 11, 13, and 14 survive any termination of this
+            EULA.
           </P>
         </Section>
 

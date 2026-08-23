@@ -18,21 +18,23 @@ export class TorDetector {
     this.isRefreshing = true;
 
     try {
-      const response = await fetch('https://check.torproject.org/exit-addresses');
+      const response = await fetch(
+        "https://check.torproject.org/exit-addresses",
+      );
       if (response.ok) {
         const text = await response.text();
         const newNodes = new Set<string>();
-        
-        const lines = text.split('\n');
+
+        const lines = text.split("\n");
         for (const line of lines) {
-          if (line.startsWith('ExitAddress ')) {
-            const parts = line.split(' ');
+          if (line.startsWith("ExitAddress ")) {
+            const parts = line.split(" ");
             if (parts.length >= 2) {
               newNodes.add(parts[1]);
             }
           }
         }
-        
+
         if (newNodes.size > 0) {
           this.exitNodes = newNodes;
         }

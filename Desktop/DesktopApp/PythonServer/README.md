@@ -35,5 +35,6 @@ def action_process_data(params):
 ```
 
 The server automatically discovers your app and provides:
+
 - Discovery: `GET /api/apps`
 - Execution: `POST /api/apps/my_feature/process_data`

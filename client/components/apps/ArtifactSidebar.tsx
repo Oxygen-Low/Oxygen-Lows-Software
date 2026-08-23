@@ -37,9 +37,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
 
       const filePath = `${user.id}/${Date.now()}_${artifact.filename}`;
       if (filePath.includes("..")) throw new Error("Invalid file path");
-      const { error } = await storage
-        .from("Storage")
-        .upload(filePath, file);
+      const { error } = await storage.from("Storage").upload(filePath, file);
 
       if (error) throw error;
       toast.success("Artifact saved to cloud storage");

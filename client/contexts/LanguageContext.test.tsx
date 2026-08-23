@@ -1,7 +1,17 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import { LanguageProvider, useLanguage, useTranslation } from "./LanguageContext";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
+import {
+  LanguageProvider,
+  useLanguage,
+  useTranslation,
+} from "./LanguageContext";
 import { registerLocale } from "../locales";
 import * as React from "react";
 
@@ -15,9 +25,11 @@ vi.mock("@/lib/supabase", () => ({
         eq: vi.fn(() => ({
           single: vi.fn().mockImplementation(() =>
             Promise.resolve({
-              data: mockProfileLanguage ? { language: mockProfileLanguage } : null,
+              data: mockProfileLanguage
+                ? { language: mockProfileLanguage }
+                : null,
               error: mockProfileLanguage ? null : { message: "Not found" },
-            })
+            }),
           ),
         })),
       })),
@@ -83,7 +95,7 @@ describe("LanguageContext & Provider", () => {
     render(
       <LanguageProvider>
         <TestConsumer />
-      </LanguageProvider>
+      </LanguageProvider>,
     );
 
     expect(screen.getByTestId("current-language").textContent).toBe("English");
@@ -96,14 +108,16 @@ describe("LanguageContext & Provider", () => {
     render(
       <LanguageProvider>
         <TestConsumer />
-      </LanguageProvider>
+      </LanguageProvider>,
     );
 
     const spanishBtn = screen.getByText("Switch to Spanish");
     fireEvent.click(spanishBtn);
 
     await waitFor(() => {
-      expect(screen.getByTestId("current-language").textContent).toBe("Spanish");
+      expect(screen.getByTestId("current-language").textContent).toBe(
+        "Spanish",
+      );
       expect(screen.getByTestId("current-code").textContent).toBe("es");
       expect(screen.getByTestId("translated-text").textContent).toBe("Guardar");
       expect(screen.getByTestId("nav-apps").textContent).toBe("Aplicaciones");
@@ -117,7 +131,7 @@ describe("LanguageContext & Provider", () => {
     render(
       <LanguageProvider>
         <TestConsumer />
-      </LanguageProvider>
+      </LanguageProvider>,
     );
 
     expect(screen.getByTestId("current-language").textContent).toBe("Spanish");

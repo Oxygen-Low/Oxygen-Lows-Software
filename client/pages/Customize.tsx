@@ -7,12 +7,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Button } from "@/components/ui/button";
-import {
-  Music,
-  Trash2,
-  Play,
-  Type,
-} from "lucide-react";
+import { Music, Trash2, Play, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlaylistTrack {
@@ -185,7 +180,11 @@ export default function Customize() {
                 {t("customize.gradientTitle", undefined, "Use gradient")}
               </label>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                {t("customize.gradientDesc", undefined, "Apply a dynamic gradient across backgrounds and headers")}
+                {t(
+                  "customize.gradientDesc",
+                  undefined,
+                  "Apply a dynamic gradient across backgrounds and headers",
+                )}
               </p>
             </div>
             <button
@@ -197,7 +196,9 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {useGradient ? t("common.yes", undefined, "On") : t("common.no", undefined, "Off")}
+              {useGradient
+                ? t("common.yes", undefined, "On")
+                : t("common.no", undefined, "Off")}
             </button>
           </div>
 
@@ -346,7 +347,9 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {shuffle ? t("common.yes", undefined, "On") : t("common.no", undefined, "Off")}
+              {shuffle
+                ? t("common.yes", undefined, "On")
+                : t("common.no", undefined, "Off")}
             </button>
           </div>
 
@@ -369,7 +372,9 @@ export default function Customize() {
                   : "border-border bg-card text-foreground hover:border-primary/50"
               }`}
             >
-              {loop ? t("common.yes", undefined, "On") : t("common.no", undefined, "Off")}
+              {loop
+                ? t("common.yes", undefined, "On")
+                : t("common.no", undefined, "Off")}
             </button>
           </div>
 
@@ -380,7 +385,11 @@ export default function Customize() {
             </h3>
             {playlist.length === 0 ? (
               <p className="text-muted-foreground">
-                {t("customize.noTracks", undefined, "Your playlist is empty right now. Add some of your favorite tracks below to get started!")}
+                {t(
+                  "customize.noTracks",
+                  undefined,
+                  "Your playlist is empty right now. Add some of your favorite tracks below to get started!",
+                )}
               </p>
             ) : (
               <div className="space-y-2">

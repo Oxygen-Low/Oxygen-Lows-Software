@@ -25,7 +25,9 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         navigate("/apps", { replace: true });
       }
@@ -38,7 +40,7 @@ export default function AuthCallback() {
         if (event === "SIGNED_IN" && session) {
           navigate("/apps", { replace: true });
         }
-      }
+      },
     );
 
     // Timeout if it takes too long
@@ -76,7 +78,9 @@ export default function AuthCallback() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="w-8 h-8 text-cyan-500 animate-spin mx-auto mb-4" />
-        <p className="text-slate-400">{t("auth.signingIn", undefined, "Completing sign in...")}</p>
+        <p className="text-slate-400">
+          {t("auth.signingIn", undefined, "Completing sign in...")}
+        </p>
       </div>
     </div>
   );

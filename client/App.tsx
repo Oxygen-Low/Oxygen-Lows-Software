@@ -24,7 +24,9 @@ if (typeof window !== "undefined") {
   });
 }
 
-const lazyWithRetry = (componentImport: () => Promise<{ default: ComponentType<any> }>) =>
+const lazyWithRetry = (
+  componentImport: () => Promise<{ default: ComponentType<any> }>,
+) =>
   lazy(async () => {
     try {
       return await componentImport();
@@ -60,7 +62,9 @@ const Support = lazyWithRetry(() => import("./pages/Support"));
 const SupportTicket = lazyWithRetry(() => import("./pages/SupportTicket"));
 const AdminSupport = lazyWithRetry(() => import("./pages/AdminSupport"));
 const AdminTicket = lazyWithRetry(() => import("./pages/AdminTicket"));
-const AdminVerification = lazyWithRetry(() => import("./pages/AdminVerification"));
+const AdminVerification = lazyWithRetry(
+  () => import("./pages/AdminVerification"),
+);
 const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
 const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
@@ -87,8 +91,8 @@ function AutoLockWatcher() {
         t(
           "security.autoLockedToast",
           undefined,
-          "Masterkey locked due to 30 minutes of inactivity."
-        )
+          "Masterkey locked due to 30 minutes of inactivity.",
+        ),
       );
     });
     return () => {
@@ -113,28 +117,19 @@ const App = () => (
               <Toaster />
               <Sonner />
               <ErrorBoundary>
-                <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
+                <Suspense
+                  fallback={
+                    <div className="flex h-screen items-center justify-center">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                    </div>
+                  }
+                >
                   <Routes>
-                    <Route
-                      path="/"
-                      element={<Apps />}
-                    />
-                    <Route
-                      path="/apps"
-                      element={<Apps />}
-                    />
-                    <Route
-                      path="/apps/:appId"
-                      element={<Apps />}
-                    />
-                    <Route
-                      path="/games"
-                      element={<Games />}
-                    />
-                    <Route
-                      path="/games/:appId"
-                      element={<Games />}
-                    />
+                    <Route path="/" element={<Apps />} />
+                    <Route path="/apps" element={<Apps />} />
+                    <Route path="/apps/:appId" element={<Apps />} />
+                    <Route path="/games" element={<Games />} />
+                    <Route path="/games/:appId" element={<Games />} />
                     <Route
                       path="/storage"
                       element={
@@ -266,9 +261,18 @@ const App = () => (
                       }
                     />
                     <Route path="/download" element={<Download />} />
-                    <Route path="/webdefender" element={<Navigate to="/apps/webdefender" replace />} />
-                    <Route path="/defender" element={<Navigate to="/apps/webdefender" replace />} />
-                    <Route path="/apps/defender" element={<Navigate to="/apps/webdefender" replace />} />
+                    <Route
+                      path="/webdefender"
+                      element={<Navigate to="/apps/webdefender" replace />}
+                    />
+                    <Route
+                      path="/defender"
+                      element={<Navigate to="/apps/webdefender" replace />}
+                    />
+                    <Route
+                      path="/apps/defender"
+                      element={<Navigate to="/apps/webdefender" replace />}
+                    />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

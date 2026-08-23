@@ -24,9 +24,9 @@ describe("DefenderClient Realtime Sync", () => {
         block_sql_injection: true,
         block_tor: true,
         block_countries: ["RU"],
-        block_ips: ["1.2.3.4"]
+        block_ips: ["1.2.3.4"],
       },
-      routes: []
+      routes: [],
     })}\n\n`;
 
     let readCalled = false;
@@ -36,11 +36,11 @@ describe("DefenderClient Realtime Sync", () => {
           readCalled = true;
           return Promise.resolve({
             done: false,
-            value: new TextEncoder().encode(streamPayload)
+            value: new TextEncoder().encode(streamPayload),
           });
         }
         return new Promise(() => {}); // keep open
-      })
+      }),
     };
 
     const fetchMock = vi.fn().mockImplementation((url: string) => {
@@ -52,16 +52,16 @@ describe("DefenderClient Realtime Sync", () => {
               id: "app-realtime-1",
               block_mode_enabled: false,
               config: {},
-              routes: []
-            })
+              routes: [],
+            }),
         });
       }
       if (url.includes("/api/webdefender/config-stream")) {
         return Promise.resolve({
           ok: true,
           body: {
-            getReader: () => mockReader
-          }
+            getReader: () => mockReader,
+          },
         });
       }
       return Promise.resolve({ ok: true });
@@ -72,7 +72,7 @@ describe("DefenderClient Realtime Sync", () => {
     client = new DefenderClient({
       apiKey: "test-api-key",
       apiUrl: "https://oxygenlow.com",
-      realtime: true
+      realtime: true,
     });
 
     await client.init();
@@ -80,16 +80,16 @@ describe("DefenderClient Realtime Sync", () => {
     // Verify both verify and config-stream endpoints were called
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/webdefender/verify"),
-      expect.any(Object)
+      expect.any(Object),
     );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/webdefender/config-stream"),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer test-api-key",
-          Accept: "text/event-stream"
-        })
-      })
+          Accept: "text/event-stream",
+        }),
+      }),
     );
 
     // Allow SSE reader microtasks to resolve
@@ -103,7 +103,7 @@ describe("DefenderClient Realtime Sync", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla"
+      userAgent: "Mozilla",
     });
 
     expect(result.blocked).toBe(true);
@@ -120,8 +120,8 @@ describe("DefenderClient Realtime Sync", () => {
               id: "app-realtime-2",
               block_mode_enabled: true,
               config: {},
-              routes: []
-            })
+              routes: [],
+            }),
         });
       }
       return Promise.resolve({ ok: true });
@@ -132,18 +132,18 @@ describe("DefenderClient Realtime Sync", () => {
     client = new DefenderClient({
       apiKey: "test-api-key",
       apiUrl: "https://oxygenlow.com",
-      realtime: false
+      realtime: false,
     });
 
     await client.init();
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/webdefender/verify"),
-      expect.any(Object)
+      expect.any(Object),
     );
     expect(fetchMock).not.toHaveBeenCalledWith(
       expect.stringContaining("/api/webdefender/config-stream"),
-      expect.any(Object)
+      expect.any(Object),
     );
   });
 });

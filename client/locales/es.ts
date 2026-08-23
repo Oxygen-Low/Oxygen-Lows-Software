@@ -32,7 +32,8 @@ export const es = {
     reload: "Recargar",
     refresh: "Actualizar",
     somethingWentWrong: "Algo salió mal",
-    chunkLoadError: "Es posible que haya una nueva versión de la aplicación disponible. Por favor, actualice la página.",
+    chunkLoadError:
+      "Es posible que haya una nueva versión de la aplicación disponible. Por favor, actualice la página.",
   },
   nav: {
     home: "Inicio",
@@ -82,7 +83,8 @@ export const es = {
     bioPlaceholder: "Biografía",
     saveChanges: "Guardar cambios",
     languageSectionTitle: "Idioma",
-    languageSectionDesc: "Elige tu idioma preferido para tu cuenta y perfil público",
+    languageSectionDesc:
+      "Elige tu idioma preferido para tu cuenta y perfil público",
     displayLanguage: "Idioma a mostrar",
     emailSettingsTitle: "Configuración de correo electrónico",
     emailSettingsDesc: "Elige cómo ven otros tu correo electrónico",
@@ -139,29 +141,38 @@ export const es = {
     categorySecurity: "Seguridad",
     categorySecurityDesc: "Protección para software y dispositivos.",
     noAppsFound: "No se encontraron aplicaciones en esta categoría.",
-    noDesktopApps: "Todavía no hay aplicaciones solo de escritorio disponibles.",
+    noDesktopApps:
+      "Todavía no hay aplicaciones solo de escritorio disponibles.",
     signInToUse: "Inicia sesión para usar {name}",
     signInToContinue: "Inicia sesión para continuar",
     backToApps: "Volver a la lista de aplicaciones",
-    adminRequired: "Se requieren permisos de administrador para usar esta aplicación.",
+    adminRequired:
+      "Se requieren permisos de administrador para usar esta aplicación.",
     base64Title: "Codificador/Decodificador Base64",
     base64Desc: "Codifica o decodifica fácilmente texto y datos usando Base64.",
     jsonFormatterTitle: "Formateador JSON",
     jsonFormatterDesc: "Da formato, embellece y valida cadenas JSON.",
     chatbotTitle: "Chatbot",
-    chatbotDesc: "Chatea e intercambia ideas con asistentes de IA inteligentes.",
+    chatbotDesc:
+      "Chatea e intercambia ideas con asistentes de IA inteligentes.",
     fileCompressorTitle: "Compresor de Archivos",
-    fileCompressorDesc: "Comprime fácilmente tus archivos para liberar espacio de almacenamiento.",
+    fileCompressorDesc:
+      "Comprime fácilmente tus archivos para liberar espacio de almacenamiento.",
     publicCharactersTitle: "Personajes Públicos",
-    publicCharactersDesc: "Descubre, descarga y comparte personajes y universos con la comunidad.",
+    publicCharactersDesc:
+      "Descubre, descarga y comparte personajes y universos con la comunidad.",
     publicAssetsTitle: "Recursos Públicos",
-    publicAssetsDesc: "Descubre, descarga y comparte recursos, personajes y universos con la comunidad.",
+    publicAssetsDesc:
+      "Descubre, descarga y comparte recursos, personajes y universos con la comunidad.",
     dataSaveTitle: "Guardado de Datos",
-    dataSaveDesc: "Almacena y gestiona de forma segura tus datos y fragmentos de texto personalizados.",
+    dataSaveDesc:
+      "Almacena y gestiona de forma segura tus datos y fragmentos de texto personalizados.",
     qrcodeGeneratorTitle: "Generador de Códigos QR",
-    qrcodeGeneratorDesc: "Convierte enlaces o texto en códigos QR personalizados.",
+    qrcodeGeneratorDesc:
+      "Convierte enlaces o texto en códigos QR personalizados.",
     llmAgentTitle: "Agente LLM",
-    llmAgentDesc: "Un agente de codificación de IA autónomo que lee, edita y construye tus proyectos.",
+    llmAgentDesc:
+      "Un agente de codificación de IA autónomo que lee, edita y construye tus proyectos.",
     chatbotWebSearch: "Búsqueda Web",
     chatbotWebSearchDesc: "Investigación web profunda antes de responder",
     chatbotSearchedTheWeb: "Búsqueda en la Web Realizada",
@@ -170,7 +181,8 @@ export const es = {
     chatbotReasoningDesc: "Alternar el proceso de pensamiento de IA",
     chatbotReasoningProcess: "Proceso de Razonamiento",
     agentSearchTitle: "Búsqueda Agente",
-    agentSearchDesc: "Búsqueda agéntica impulsada por IA que investiga la web y sintetiza respuestas.",
+    agentSearchDesc:
+      "Búsqueda agéntica impulsada por IA que investiga la web y sintetiza respuestas.",
     agentSearchPlaceholder: "¿Qué te gustaría investigar?",
     agentSearchFormat: "Formato de Respuesta",
     agentSearchConclusion: "Conclusión",
@@ -189,15 +201,18 @@ export const es = {
     vpnDesc: "Gestiona tus configuraciones VPN.",
     vpnSavedConfigs: "Configuraciones guardadas",
     vpnDirectConnect: "Conexión directa",
-    vpnDirectConnectDesc: "Ingresa una configuración VPN para conectarte directamente sin guardar.",
-    vpnGuestNotice: "Conéctate directamente sin guardar, o inicia sesión para guardar perfiles entre dispositivos.",
+    vpnDirectConnectDesc:
+      "Ingresa una configuración VPN para conectarte directamente sin guardar.",
+    vpnGuestNotice:
+      "Conéctate directamente sin guardar, o inicia sesión para guardar perfiles entre dispositivos.",
     vpnConfigName: "Nombre de la configuración",
     vpnConfigNamePlaceholder: "ej. Conexión temporal",
     vpnType: "Tipo de VPN",
     vpnConfigContent: "Contenido de la configuración",
     vpnConfigPlaceholder: "Pega tu configuración WireGuard o OpenVPN aquí...",
     vpnKillSwitch: "Kill Switch (Bloquear tráfico no tunelizado)",
-    vpnKillSwitchNote: "Nota: En Windows, OpenVPN admite de forma nativa solo protección contra fugas de DNS a través de la CLI.",
+    vpnKillSwitchNote:
+      "Nota: En Windows, OpenVPN admite de forma nativa solo protección contra fugas de DNS a través de la CLI.",
     vpnConnect: "Conectar VPN",
     vpnDisconnect: "Desconectar VPN",
     vpnFreeConfigBtn: "Obtener configuración gratuita de VPNBook",
@@ -205,7 +220,8 @@ export const es = {
     vpnManageProfilesDesc: "Administra y monitorea tus perfiles VPN.",
     vpnYourConfigurations: "Tus configuraciones",
     vpnNoConfigsFound: "No se encontraron configuraciones.",
-    vpnNoConfigsFoundDesc: "Haz clic en \"Crear nueva configuración\" arriba para comenzar, o cambia a Conexión directa.",
+    vpnNoConfigsFoundDesc:
+      'Haz clic en "Crear nueva configuración" arriba para comenzar, o cambia a Conexión directa.',
     vpnSignInPrompt: "Iniciar sesión",
     vpnServerDetected: "Servidor detectado",
     vpnNoServerDetected: "No se detectó ningún servidor en la configuración",
@@ -213,20 +229,23 @@ export const es = {
     vpnOffline: "Fuera de línea",
     vpnPinging: "Haciendo ping...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Protege tu sitio web o API de DDoS, ataques de inyección, bots, VPNs y tráfico malicioso.",
+    webDefenderDesc:
+      "Protege tu sitio web o API de DDoS, ataques de inyección, bots, VPNs y tráfico malicioso.",
     webDefenderRealTime: "En tiempo real",
     webDefenderConnecting: "Conectando...",
   },
   games: {
     title: "Juegos",
-    subtitle: "¡Juega juegos interactivos y retro directamente desde el navegador!",
+    subtitle:
+      "¡Juega juegos interactivos y retro directamente desde el navegador!",
     allGames: "Todos los juegos",
     backToGames: "Volver a la lista de juegos",
     noGamesFound: "No se encontraron juegos en esta categoría.",
     chessTitle: "Ajedrez",
     chessDesc: "Juega una partida de ajedrez contra un oponente de IA.",
     minesweeperTitle: "Buscaminas",
-    minesweeperDesc: "El clásico juego del Buscaminas. ¡Despeja el tablero sin detonar ninguna mina!",
+    minesweeperDesc:
+      "El clásico juego del Buscaminas. ¡Despeja el tablero sin detonar ninguna mina!",
     solitaireTitle: "Solitario",
     solitaireDesc: "Juega al clásico juego de cartas del Solitario Klondike.",
     pokerTitle: "Texas Hold'em",
@@ -247,38 +266,47 @@ export const es = {
     board: "Tablero",
     casual: "Casual",
     clearFilters: "Borrar filtros",
-    noFilteredGames: "No se encontraron juegos que coincidan con los filtros seleccionados.",
+    noFilteredGames:
+      "No se encontraron juegos que coincidan con los filtros seleccionados.",
     noDesktopGames: "Aún no hay juegos exclusivos para escritorio disponibles.",
   },
   storage: {
     title: "Almacenamiento",
-    subtitle: "Sube, gestiona y comparte tus archivos de forma segura en la nube.",
+    subtitle:
+      "Sube, gestiona y comparte tus archivos de forma segura en la nube.",
     storageUsed: "Almacenamiento utilizado",
     uploadFile: "Subir archivo",
     deleteConfirmTitle: "¿Estás seguro de que deseas eliminar este archivo?",
-    deleteConfirmDesc: "Esta acción no se puede deshacer. Esto eliminará permanentemente tu archivo del almacenamiento en la nube.",
+    deleteConfirmDesc:
+      "Esta acción no se puede deshacer. Esto eliminará permanentemente tu archivo del almacenamiento en la nube.",
     fileUploaded: "Archivo subido con éxito",
     fileDeleted: "Archivo eliminado con éxito",
     filesTab: "Archivos",
     submissionsTab: "Solicitudes de Verificación",
     verifyForMultiplayer: "Verificar",
     verifiedBadge: "Verificado",
-    reverificationRequired: "Archivo modificado. La verificación anterior se ha restablecido y requiere una nueva verificación.",
-    noSubmissions: "Aún no hay solicitudes de verificación para archivos de almacenamiento.",
+    reverificationRequired:
+      "Archivo modificado. La verificación anterior se ha restablecido y requiere una nueva verificación.",
+    noSubmissions:
+      "Aún no hay solicitudes de verificación para archivos de almacenamiento.",
   },
   customize: {
     title: "Personalizar",
     themesTitle: "Apariencia",
-    themesDesc: "Elige un tema de acento y una paleta de colores para la aplicación",
+    themesDesc:
+      "Elige un tema de acento y una paleta de colores para la aplicación",
     fontsTitle: "Tipografía",
-    fontsDesc: "Elige la fuente de visualización utilizada en los encabezados y la navegación",
+    fontsDesc:
+      "Elige la fuente de visualización utilizada en los encabezados y la navegación",
     musicSectionTitle: "Música de fondo",
     musicSectionDesc: "Escucha música mientras usas tus aplicaciones",
     gradientTitle: "Fondo degradado",
-    gradientDesc: "Habilita degradados de color radiantes en las secciones principales y las barras laterales",
+    gradientDesc:
+      "Habilita degradados de color radiantes en las secciones principales y las barras laterales",
     shuffle: "Aleatorio",
     loop: "Bucle",
-    noTracks: "Aún no se han añadido pistas. ¡Selecciona pistas de tu almacenamiento para reproducirlas!",
+    noTracks:
+      "Aún no se han añadido pistas. ¡Selecciona pistas de tu almacenamiento para reproducirlas!",
   },
   characters: {
     title: "Personajes",
@@ -293,22 +321,27 @@ export const es = {
     personality: "Personalidad",
     backstory: "Historia",
     hiddenDescription: "Notas privadas",
-    noCharacters: '¡Aún no hay personajes aquí! Haz clic en "Nuevo Personaje" para empezar y añadir algunos a tu colección.',
-    noUniverses: '¡Aún no hay universos aquí! Haz clic en "Nuevo Universo" para empezar a construir tu propio mundo.',
+    noCharacters:
+      '¡Aún no hay personajes aquí! Haz clic en "Nuevo Personaje" para empezar y añadir algunos a tu colección.',
+    noUniverses:
+      '¡Aún no hay universos aquí! Haz clic en "Nuevo Universo" para empezar a construir tu propio mundo.',
     characterSaved: "Personaje guardado con éxito",
     characterDeleted: "Personaje eliminado con éxito",
     verifyForMultiplayer: "Verificar",
     verifiedBadge: "Verificado",
-    reverificationRequired: "Personaje modificado. El estado de verificación se ha restablecido y requiere una nueva verificación para multijugador.",
+    reverificationRequired:
+      "Personaje modificado. El estado de verificación se ha restablecido y requiere una nueva verificación para multijugador.",
   },
   changelogs: {
     title: "Registros de cambios",
-    subtitle: "Actualizaciones recientes, funciones y correcciones en la plataforma",
+    subtitle:
+      "Actualizaciones recientes, funciones y correcciones en la plataforma",
     errorLoading: "Error al cargar los registros de cambios",
   },
   support: {
     title: "Tickets de soporte",
-    subtitle: "¿Necesitas ayuda? Crea un ticket de soporte y nuestro equipo se pondrá en contacto contigo.",
+    subtitle:
+      "¿Necesitas ayuda? Crea un ticket de soporte y nuestro equipo se pondrá en contacto contigo.",
     createTicket: "Crear ticket",
     myTickets: "Mis tickets",
     subject: "Asunto",
@@ -339,12 +372,15 @@ export const es = {
   },
   admin: {
     title: "Panel de control de administración",
-    subtitle: "Selecciona una aplicación para gestionar los recursos del sistema.",
+    subtitle:
+      "Selecciona una aplicación para gestionar los recursos del sistema.",
     supportTitle: "Soporte",
-    supportDesc: "Gestiona y responde a los tickets de soporte de los usuarios.",
+    supportDesc:
+      "Gestiona y responde a los tickets de soporte de los usuarios.",
     allTickets: "Todos los tickets de soporte",
     verificationTitle: "Verificación de Recursos",
-    verificationDesc: "Revisa, aprueba o deniega solicitudes de verificación de recursos públicos y multijugador.",
+    verificationDesc:
+      "Revisa, aprueba o deniega solicitudes de verificación de recursos públicos y multijugador.",
     reviewQueue: "Cola de Verificación de Recursos",
     allSubmissions: "Todas las Solicitudes",
     pendingTab: "Pendiente",
@@ -353,9 +389,12 @@ export const es = {
     approve: "Aprobar",
     deny: "Denegar",
     denyTitle: "Denegar Solicitud de Verificación",
-    denyDesc: "Por favor, proporciona un motivo específico para denegar este recurso. Este motivo se mostrará al usuario.",
-    reasonPlaceholder: "Explica por qué fue rechazada esta solicitud (obligatorio)...",
-    reasonRequiredError: "Se requiere un motivo de denegación para rechazar una solicitud.",
+    denyDesc:
+      "Por favor, proporciona un motivo específico para denegar este recurso. Este motivo se mostrará al usuario.",
+    reasonPlaceholder:
+      "Explica por qué fue rechazada esta solicitud (obligatorio)...",
+    reasonRequiredError:
+      "Se requiere un motivo de denegación para rechazar una solicitud.",
     approveSuccess: "Recurso aprobado con éxito.",
     rejectSuccess: "Recurso denegado con motivo.",
     filterType: "Tipo de Recurso",
@@ -382,7 +421,8 @@ export const es = {
     mostDownloaded: "Más descargados",
     publishAsset: "Publicar Recurso",
     publishTitle: "Publicar en Recursos Públicos",
-    publishDesc: "Selecciona un personaje, universo o archivo de almacenamiento existente para enviarlo a verificación.",
+    publishDesc:
+      "Selecciona un personaje, universo o archivo de almacenamiento existente para enviarlo a verificación.",
     assetType: "Tipo de Recurso",
     selectCharacter: "Seleccionar Personaje",
     selectUniverse: "Seleccionar Universo",
@@ -391,13 +431,15 @@ export const es = {
     assetDescription: "Descripción",
     assetCategory: "Categoría",
     submitForVerification: "Enviar a Revisión",
-    verificationNotice: "Las solicitudes deben ser verificadas por un administrador antes de hacerse públicas.",
+    verificationNotice:
+      "Las solicitudes deben ser verificadas por un administrador antes de hacerse públicas.",
     noAssetsFound: "No se encontraron recursos públicos.",
     noSubmissions: "Aún no has enviado ninguna solicitud de verificación.",
     downloadToCollection: "Añadir a la Colección",
     saveToStorage: "Guardar en Almacenamiento",
     makePrivate: "Hacer Privado / Despublicar",
-    makePrivateConfirm: "¿Estás seguro de que deseas despublicar este recurso? Se eliminará de la vista pública y volverá a ser privado.",
+    makePrivateConfirm:
+      "¿Estás seguro de que deseas despublicar este recurso? Se eliminará de la vista pública y volverá a ser privado.",
     unpublishSuccess: "Recurso despublicado con éxito.",
     statusPending: "Revisión Pendiente",
     statusApproved: "Aprobado y Público",
@@ -409,13 +451,15 @@ export const es = {
     downloads: "Descargas",
     size: "Tamaño",
     uploader: "Subido por",
-    unauthorizedEncrypted: "No se puede subir un personaje cifrado. Desbloquéalo primero.",
+    unauthorizedEncrypted:
+      "No se puede subir un personaje cifrado. Desbloquéalo primero.",
   },
   verification: {
     verifyForPublicUsage: "Verificar para Uso Público",
     verifyForMultiplayer: "Verificar",
     verifyForMultiplayerTitle: "Verificar Recurso",
-    verifyForMultiplayerDesc: "Envía este recurso privado a verificación para usarlo en juegos multijugador sin publicarlo abiertamente.",
+    verifyForMultiplayerDesc:
+      "Envía este recurso privado a verificación para usarlo en juegos multijugador sin publicarlo abiertamente.",
     publishToPublicAssets: "Publicar en Recursos Públicos",
     verifiedForPublicUsageBadge: "Verificado para Uso Público",
     verifiedForMultiplayerBadge: "Verificado",
@@ -423,14 +467,18 @@ export const es = {
     pendingReviewBadge: "Revisión Pendiente",
     rejectedBadge: "Verificación Denegada",
     viewDenialReason: "Ver Motivo de Denegación",
-    publicUsageDescription: "Envía este recurso a verificación para usarlo en juegos multijugador públicos y entornos compartidos.",
+    publicUsageDescription:
+      "Envía este recurso a verificación para usarlo en juegos multijugador públicos y entornos compartidos.",
     requestSubmitted: "¡Solicitud de verificación enviada con éxito!",
-    versionNotice: "Editar este recurso localmente no afecta la versión pública. Para actualizar el recurso público, envía una nueva solicitud de verificación.",
+    versionNotice:
+      "Editar este recurso localmente no afecta la versión pública. Para actualizar el recurso público, envía una nueva solicitud de verificación.",
     updatePublicVersion: "Actualizar Versión Pública",
     rejectionReasonDialogTitle: "Motivo de Denegación de Verificación",
-    rejectionReasonDialogDesc: "Tu solicitud fue revisada y denegada con el siguiente motivo:",
+    rejectionReasonDialogDesc:
+      "Tu solicitud fue revisada y denegada con el siguiente motivo:",
     deleteSubmission: "Eliminar Solicitud",
-    deleteSubmissionConfirm: "¿Estás seguro de que deseas eliminar esta solicitud de verificación?",
+    deleteSubmissionConfirm:
+      "¿Estás seguro de que deseas eliminar esta solicitud de verificación?",
     submissionDeleted: "Solicitud de verificación eliminada con éxito",
     deleteTooltip: "Eliminar verificación",
   },
@@ -440,11 +488,14 @@ export const es = {
     termsOfService: "Términos de uso",
     privacyPolicy: "Política de privacidad",
     eulaTitle: "Acuerdo de licencia de usuario final",
-    eulaDesc: "La licencia que se te otorga para usar el Software y las restricciones y obligaciones que se aplican.",
+    eulaDesc:
+      "La licencia que se te otorga para usar el Software y las restricciones y obligaciones que se aplican.",
     dmcaTitle: "Política de DMCA y derechos de autor",
-    dmcaDesc: "Cómo reportar infracciones de derechos de autor, enviar una contra-notificación y nuestra política de infractores reincidentes.",
+    dmcaDesc:
+      "Cómo reportar infracciones de derechos de autor, enviar una contra-notificación y nuestra política de infractores reincidentes.",
     aupTitle: "Política de uso aceptable",
-    aupDesc: "Los estándares de conducta para el uso del Servicio, incluidas las actividades prohibidas y las acciones de aplicación.",
+    aupDesc:
+      "Los estándares de conducta para el uso del Servicio, incluidas las actividades prohibidas y las acciones de aplicación.",
     licenseTitle: "Licencia",
     licenseDesc: "La Licencia MIT se aplica a este proyecto.",
   },
@@ -472,7 +523,8 @@ export const es = {
     subtitle: "quiere acceder a tu cuenta de Oxygen Low's Software",
     permissions: "Permisos solicitados",
     authorizeApp: "Autorizar {app}",
-    wantsAccess: "Esta aplicación quiere conectarse a tu cuenta de Oxygen Low's Software.",
+    wantsAccess:
+      "Esta aplicación quiere conectarse a tu cuenta de Oxygen Low's Software.",
     requestedPermissions: "Permisos solicitados:",
     warning: "Solo autoriza aplicaciones en las que confíes.",
     approve: "Aprobar",
@@ -485,9 +537,11 @@ export const es = {
   },
   security: {
     title: "Seguridad y Cifrado de Datos",
-    subtitle: "Gestiona tu clave maestra AES de 256 bits y activa el cifrado de Conocimiento Cero para tus datos privados.",
+    subtitle:
+      "Gestiona tu clave maestra AES de 256 bits y activa el cifrado de Conocimiento Cero para tus datos privados.",
     masterKeyTitle: "Clave Maestra AES-256",
-    masterKeyDesc: "Tu clave maestra cifra tus datos privados directamente en tu dispositivo antes de guardarlos en la nube. Nadie más puede leer tus datos sin esta clave.",
+    masterKeyDesc:
+      "Tu clave maestra cifra tus datos privados directamente en tu dispositivo antes de guardarlos en la nube. Nadie más puede leer tus datos sin esta clave.",
     keyActiveBadge: "Clave Maestra Activa",
     keyNotSetBadge: "Sin Clave Definida",
     generateButton: "Generar Clave Maestra",
@@ -501,10 +555,12 @@ export const es = {
     clearKey: "Bloquear / Borrar Clave",
     keyClearedToast: "Clave maestra eliminada de la sesión",
     importKeyTitle: "Usar Clave Maestra Existente",
-    importKeyPlaceholder: "Pega la clave Hex de 64 caracteres o Base64 de 256 bits...",
+    importKeyPlaceholder:
+      "Pega la clave Hex de 64 caracteres o Base64 de 256 bits...",
     activateKeyButton: "Desbloquear / Activar Clave",
     keyActivatedToast: "Clave maestra activada exitosamente",
-    invalidKeyError: "Formato inválido. Debe ser una clave de 256 bits (64 caracteres Hex o Base64).",
+    invalidKeyError:
+      "Formato inválido. Debe ser una clave de 256 bits (64 caracteres Hex o Base64).",
     keyFormat: "Formato de Clave",
     showKeyFormat: "Formato de Clave",
     hideKeyFormat: "Ocultar Formato de Clave",
@@ -512,21 +568,27 @@ export const es = {
     formatBase64: "Base64 (44 car.)",
     formatBase58: "Base58",
     formatWords: "Palabras de Paso",
-    clientSideNotice: "Conocimiento Cero: Tu clave maestra se almacena únicamente en la sesión de tu navegador y nunca se envía a ningún servidor.",
+    clientSideNotice:
+      "Conocimiento Cero: Tu clave maestra se almacena únicamente en la sesión de tu navegador y nunca se envía a ningún servidor.",
     encryptionSettingsTitle: "Categorías de Datos Protegidas",
-    encryptionSettingsDesc: "Activa el cifrado AES-256 en el cliente para cada categoría. Cuando está habilitado, los datos se cifran con tu clave antes de guardarse.",
+    encryptionSettingsDesc:
+      "Activa el cifrado AES-256 en el cliente para cada categoría. Cuando está habilitado, los datos se cifran con tu clave antes de guardarse.",
     charactersUniverses: "Personajes y Universos",
-    charactersUniversesDesc: "Cifra biografías de personajes, apariencias, personalidades, notas privadas y trasfondo del universo.",
+    charactersUniversesDesc:
+      "Cifra biografías de personajes, apariencias, personalidades, notas privadas y trasfondo del universo.",
     dataSave: "Entradas de Guardado de Datos",
-    dataSaveDesc: "Cifra fragmentos clave-valor personalizados, fragmentos de código, notas y registros almacenados.",
+    dataSaveDesc:
+      "Cifra fragmentos clave-valor personalizados, fragmentos de código, notas y registros almacenados.",
     chatbotChats: "Conversaciones de Chatbot",
-    chatbotChatsDesc: "Cifra conversaciones de IA, historial de mensajes e instrucciones del sistema.",
+    chatbotChatsDesc:
+      "Cifra conversaciones de IA, historial de mensajes e instrucciones del sistema.",
     encryptionEnabled: "Cifrado",
     encryptionDisabled: "Sin Cifrar",
     keyRequiredBadge: "Clave Requerida",
     settingsSavedToast: "Configuración de cifrado actualizada",
     encryptionPromptTitle: "Descifrado Requerido",
-    encryptionPromptDesc: "Esta sección está cifrada con tu clave maestra AES-256. Desbloquea tu clave para descifrar y acceder a tus datos.",
+    encryptionPromptDesc:
+      "Esta sección está cifrada con tu clave maestra AES-256. Desbloquea tu clave para descifrar y acceder a tus datos.",
     goToSecurityButton: "Ir a Seguridad para Desbloquear",
     quickUnlockTitle: "Desbloqueo rápido en esta página",
     quickUnlockPlaceholder: "Pega la clave Hex de 64 car. o Base64...",
@@ -535,31 +597,44 @@ export const es = {
     returnToButton: "Volver a la Página",
     uploadKeyFile: "Subir archivo .key",
     dropKeyHere: "Arrastra el archivo .key aquí o haz clic para buscar",
-    uploadKeyDesc: "Sube tu archivo de respaldo .key para activar y desbloquear automáticamente tu clave maestra.",
+    uploadKeyDesc:
+      "Sube tu archivo de respaldo .key para activar y desbloquear automáticamente tu clave maestra.",
     keyFileUploadedToast: "Clave maestra cargada y activada desde el archivo",
-    invalidKeyFileError: "No se encontró una clave maestra de 256 bits válida en el archivo subido.",
+    invalidKeyFileError:
+      "No se encontró una clave maestra de 256 bits válida en el archivo subido.",
     readKeyFileError: "Error al leer el archivo .key.",
-    autoLockedToast: "Clave maestra bloqueada debido a 30 minutos de inactividad.",
+    autoLockedToast:
+      "Clave maestra bloqueada debido a 30 minutos de inactividad.",
     integrations: "Claves API e Integraciones",
-    integrationsDesc: "Cifra las claves API almacenadas, credenciales de LLM y tokens de acceso de MCP.",
-    cannotDisableIntegrationsWithKeys: "No se puede deshabilitar el cifrado mientras haya claves API/integraciones almacenadas. Por favor, elimina primero todas las integraciones almacenadas.",
-    masterKeyRequiredToChange: "Se requiere una clave maestra activa para habilitar o deshabilitar categorías de datos protegidas.",
-    masterKeyRequiredNotice: "Se requiere una clave maestra activa para cambiar la configuración de las categorías de datos protegidas. Genera o desbloquea una clave maestra arriba para modificar estos ajustes.",
-    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
-    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    integrationsDesc:
+      "Cifra las claves API almacenadas, credenciales de LLM y tokens de acceso de MCP.",
+    cannotDisableIntegrationsWithKeys:
+      "No se puede deshabilitar el cifrado mientras haya claves API/integraciones almacenadas. Por favor, elimina primero todas las integraciones almacenadas.",
+    masterKeyRequiredToChange:
+      "Se requiere una clave maestra activa para habilitar o deshabilitar categorías de datos protegidas.",
+    masterKeyRequiredNotice:
+      "Se requiere una clave maestra activa para cambiar la configuración de las categorías de datos protegidas. Genera o desbloquea una clave maestra arriba para modificar estos ajustes.",
+    rotateKeyConfirm:
+      "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast:
+      "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
     rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "Integraciones y Claves API",
-    subtitle: "Gestiona de forma segura las claves API y credenciales para modelos LLM, integraciones y servidores MCP.",
+    subtitle:
+      "Gestiona de forma segura las claves API y credenciales para modelos LLM, integraciones y servidores MCP.",
     aesEncryptedBadge: "Cifrado AES-256",
     encryptionDisabledBadge: "Cifrado Requerido",
     encryptionRequiredTitle: "Se Requiere Cifrado de Conocimiento Cero",
-    encryptionRequiredDesc: "Para proteger tus claves API y tokens privados contra accesos no autorizados, Oxygen Low's Software requiere cifrado de clave maestra AES-256 en el lado del cliente para todas las integraciones almacenadas. Los datos se cifran directamente en tu navegador antes de guardarse.",
-    encryptionNoticeDetail: "Tu clave maestra se mantiene solo en tu sesión local y nunca se sube ni es accesible para el servidor.",
+    encryptionRequiredDesc:
+      "Para proteger tus claves API y tokens privados contra accesos no autorizados, Oxygen Low's Software requiere cifrado de clave maestra AES-256 en el lado del cliente para todas las integraciones almacenadas. Los datos se cifran directamente en tu navegador antes de guardarse.",
+    encryptionNoticeDetail:
+      "Tu clave maestra se mantiene solo en tu sesión local y nunca se sube ni es accesible para el servidor.",
     enableEncryptionButton: "Habilitar Cifrado de Integraciones",
-    encryptionEnabledToast: "Cifrado habilitado para claves API e integraciones",
+    encryptionEnabledToast:
+      "Cifrado habilitado para claves API e integraciones",
     totalAvailable: "Total Soportados",
     configuredCount: "Configurados",
     securityStatus: "Protección",
@@ -568,14 +643,17 @@ export const es = {
     categoryIntegrations: "Integraciones LLM",
     categoryMcps: "MCPs LLM",
     searchPlaceholder: "Buscar integraciones...",
-    noIntegrationsFound: "No se encontraron integraciones que coincidan con tu búsqueda.",
+    noIntegrationsFound:
+      "No se encontraron integraciones que coincidan con tu búsqueda.",
     configuredBadge: "Configurado",
     notConfiguredBadge: "No Configurado",
     apiKeyLabel: "Clave API / Token",
     baseUrlLabel: "Endpoint / URL Base (Opcional)",
-    baseUrlHelp: "Deja el valor predeterminado o personalízalo si te conectas a través de un proxy, puerta de enlace personalizada o relé local.",
+    baseUrlHelp:
+      "Deja el valor predeterminado o personalízalo si te conectas a través de un proxy, puerta de enlace personalizada o relé local.",
     defaultEndpointLabel: "Endpoint predeterminado",
-    fixedBaseUrlHelp: "Esta integración siempre utiliza el endpoint oficial estándar.",
+    fixedBaseUrlHelp:
+      "Esta integración siempre utiliza el endpoint oficial estándar.",
     copyKey: "Copiar Clave",
     copiedToast: "Clave API copiada al portapapeles",
     noKeyStored: "Aún no se ha configurado ninguna clave API",
@@ -584,9 +662,11 @@ export const es = {
     configureButton: "Configurar",
     configureModalTitle: "Configurar {name}",
     configureModalDefaultTitle: "Configurar Integración",
-    dialogEncryptionNotice: "Las credenciales se cifrarán con tu clave maestra AES de 256 bits antes de su transmisión.",
+    dialogEncryptionNotice:
+      "Las credenciales se cifrarán con tu clave maestra AES de 256 bits antes de su transmisión.",
     keyRequiredError: "Se requiere la clave API / token",
-    masterKeyMissingError: "Se requiere la clave maestra para cifrar la integración",
+    masterKeyMissingError:
+      "Se requiere la clave maestra para cifrar la integración",
     savedToast: "Credenciales de {name} guardadas de forma segura.",
     saveError: "Error al guardar la integración",
     deletedToast: "Integración de {name} eliminada.",
@@ -594,15 +674,22 @@ export const es = {
     fetchError: "Error al cargar las integraciones",
     deleteConfirmTitle: "¿Eliminar integración de {name}?",
     deleteConfirmDefaultTitle: "¿Eliminar integración?",
-    deleteConfirmDesc: "Esto eliminará permanentemente la clave API y credenciales almacenadas de tu almacenamiento en la nube cifrado.",
-    openaiDesc: "Clave API para modelos de OpenAI incluyendo GPT-4o, o1 y o3-mini.",
+    deleteConfirmDesc:
+      "Esto eliminará permanentemente la clave API y credenciales almacenadas de tu almacenamiento en la nube cifrado.",
+    openaiDesc:
+      "Clave API para modelos de OpenAI incluyendo GPT-4o, o1 y o3-mini.",
     geminiDesc: "Clave API para modelos Google Gemini Flash, Pro y embeddings.",
-    openrouterDesc: "Clave API universal que proporciona acceso a cientos de modelos de IA.",
+    openrouterDesc:
+      "Clave API universal que proporciona acceso a cientos de modelos de IA.",
     xaiDesc: "Clave API para modelos frontier y de visión xAI Grok.",
-    anthropicDesc: "Clave API para Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku y Opus.",
-    googleJulesDesc: "Token de acceso y credenciales de integración para los flujos de trabajo de código de Google Jules.",
-    googleStitchMcpDesc: "Token de servidor Model Context Protocol (MCP) y endpoint para Google Stitch.",
-    githubMcpDesc: "GitHub Personal Access Token (PAT) para herramientas de repositorio GitHub MCP.",
+    anthropicDesc:
+      "Clave API para Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku y Opus.",
+    googleJulesDesc:
+      "Token de acceso y credenciales de integración para los flujos de trabajo de código de Google Jules.",
+    googleStitchMcpDesc:
+      "Token de servidor Model Context Protocol (MCP) y endpoint para Google Stitch.",
+    githubMcpDesc:
+      "GitHub Personal Access Token (PAT) para herramientas de repositorio GitHub MCP.",
   },
   titles: {
     apps: "Aplicaciones",

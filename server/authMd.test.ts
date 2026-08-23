@@ -21,62 +21,80 @@ describe("Auth.md & Agent Registration Discovery", () => {
     const res = await app.fetch(
       new Request("https://oxygenlow.com/auth.md", {
         headers: { Accept: "text/markdown" },
-      })
+      }),
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/markdown");
 
     const text = await res.text();
     expect(text).toMatch(/^#\s+.*auth\.md/im);
-    expect(text).not.toBe("# Oxygen Low's Software\n\nOxygen Low's Software - Beta. A platform for apps, storage, and customization.");
+    expect(text).not.toBe(
+      "# Oxygen Low's Software\n\nOxygen Low's Software - Beta. A platform for apps, storage, and customization.",
+    );
   });
 
   it("GET /.well-known/oauth-protected-resource returns valid PRM document", async () => {
     const res = await app.fetch(
-      new Request("https://oxygenlow.com/.well-known/oauth-protected-resource")
+      new Request("https://oxygenlow.com/.well-known/oauth-protected-resource"),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.resource).toBe("https://oxygenlow.com");
     expect(body.authorization_servers).toContain("https://oxygenlow.com");
-    expect(body.scopes_supported).toEqual(expect.arrayContaining(["read", "write"]));
+    expect(body.scopes_supported).toEqual(
+      expect.arrayContaining(["read", "write"]),
+    );
     expect(body.bearer_methods_supported).toContain("header");
   });
 
   it("GET /.well-known/oauth-authorization-server returns valid AS metadata with agent_auth", async () => {
     const res = await app.fetch(
-      new Request("https://oxygenlow.com/.well-known/oauth-authorization-server")
+      new Request(
+        "https://oxygenlow.com/.well-known/oauth-authorization-server",
+      ),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.issuer).toBe("https://oxygenlow.com");
     expect(body.agent_auth).toBeDefined();
     expect(body.agent_auth.skill).toBe("agent-registration");
-    expect(body.agent_auth.register_uri).toBe("https://oxygenlow.com/agent/auth");
+    expect(body.agent_auth.register_uri).toBe(
+      "https://oxygenlow.com/agent/auth",
+    );
 
     const methods = body.agent_auth.methods;
     expect(Array.isArray(methods)).toBe(true);
 
     // ID-JAG method
     const idJag = methods.find((m: any) =>
-      m.identity_assertion?.assertion_types_supported?.includes("urn:ietf:params:oauth:token-type:id-jag")
+      m.identity_assertion?.assertion_types_supported?.includes(
+        "urn:ietf:params:oauth:token-type:id-jag",
+      ),
     );
     expect(idJag).toBeDefined();
     expect(idJag.credential_types_supported).toContain("bearer");
-    expect(idJag.revocation_uri).toBe("https://oxygenlow.com/agent/auth/revoke");
-    expect(idJag.events_supported).toContain("urn:ietf:params:oauth:event-type:token-revoked");
+    expect(idJag.revocation_uri).toBe(
+      "https://oxygenlow.com/agent/auth/revoke",
+    );
+    expect(idJag.events_supported).toContain(
+      "urn:ietf:params:oauth:event-type:token-revoked",
+    );
 
     // Verified email method
     const verifiedEmail = methods.find((m: any) =>
-      m.identity_assertion?.assertion_types_supported?.includes("verified_email")
+      m.identity_assertion?.assertion_types_supported?.includes(
+        "verified_email",
+      ),
     );
     expect(verifiedEmail).toBeDefined();
     expect(verifiedEmail.credential_types_supported).toContain("bearer");
-    expect(verifiedEmail.claim_uri).toBe("https://oxygenlow.com/agent/auth/claim");
+    expect(verifiedEmail.claim_uri).toBe(
+      "https://oxygenlow.com/agent/auth/claim",
+    );
 
     // Anonymous method
     const anon = methods.find((m: any) =>
-      m.identity_types_supported?.includes("anonymous")
+      m.identity_types_supported?.includes("anonymous"),
     );
     expect(anon).toBeDefined();
     expect(anon.claim_uri).toBe("https://oxygenlow.com/agent/auth/claim");
@@ -87,7 +105,7 @@ describe("Auth.md & Agent Registration Discovery", () => {
     const linkHeader = res.headers.get("Link");
     expect(linkHeader).toBeDefined();
     expect(linkHeader).toContain('rel="describedby"');
-    expect(linkHeader).toContain('/auth.md');
+    expect(linkHeader).toContain("/auth.md");
     expect(linkHeader).toContain('rel="oauth-protected-resource"');
     expect(linkHeader).toContain('rel="oauth-authorization-server"');
     expect(linkHeader).toContain('rel="api-catalog"');
@@ -97,7 +115,7 @@ describe("Auth.md & Agent Registration Discovery", () => {
     const res = await app.fetch(
       new Request("https://oxygenlow.com/", {
         headers: { Accept: "text/markdown" },
-      })
+      }),
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/markdown");
@@ -107,17 +125,19 @@ describe("Auth.md & Agent Registration Discovery", () => {
 
   it("Agent registration, revocation, and claim endpoints respond correctly", async () => {
     const authRes = await app.fetch(
-      new Request("https://oxygenlow.com/agent/auth", { method: "POST" })
+      new Request("https://oxygenlow.com/agent/auth", { method: "POST" }),
     );
     expect(authRes.status).toBe(200);
 
     const revokeRes = await app.fetch(
-      new Request("https://oxygenlow.com/agent/auth/revoke", { method: "POST" })
+      new Request("https://oxygenlow.com/agent/auth/revoke", {
+        method: "POST",
+      }),
     );
     expect(revokeRes.status).toBe(200);
 
     const claimRes = await app.fetch(
-      new Request("https://oxygenlow.com/agent/auth/claim", { method: "GET" })
+      new Request("https://oxygenlow.com/agent/auth/claim", { method: "GET" }),
     );
     expect(claimRes.status).toBe(200);
   });

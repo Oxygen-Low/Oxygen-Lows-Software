@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { EncryptionRequiredPrompt } from "./EncryptionRequiredPrompt";
 import {
@@ -38,7 +44,7 @@ describe("EncryptionRequiredPrompt Component", () => {
           returnTo="/characters"
           categoryLabel="My Characters"
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText("Decryption Required")).toBeDefined();
@@ -55,13 +61,15 @@ describe("EncryptionRequiredPrompt Component", () => {
           category="data_save"
           returnTo="/apps?app=datasave"
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const btn = screen.getByText("Go to Security to Unlock");
     fireEvent.click(btn);
 
-    expect(mockedNavigate).toHaveBeenCalledWith("/security?returnTo=%2Fapps%3Fapp%3Ddatasave");
+    expect(mockedNavigate).toHaveBeenCalledWith(
+      "/security?returnTo=%2Fapps%3Fapp%3Ddatasave",
+    );
   });
 
   it("supports inline quick unlock and invokes onUnlocked callback", async () => {
@@ -76,14 +84,16 @@ describe("EncryptionRequiredPrompt Component", () => {
           returnTo="/apps?app=chatbot"
           onUnlocked={onUnlockedMock}
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Click toggle for quick unlock
     const quickUnlockToggle = screen.getByText("Quick Unlock on this Page");
     fireEvent.click(quickUnlockToggle);
 
-    const input = screen.getByPlaceholderText("Paste 64-char Hex or Base64 masterkey...") as HTMLInputElement;
+    const input = screen.getByPlaceholderText(
+      "Paste 64-char Hex or Base64 masterkey...",
+    ) as HTMLInputElement;
     fireEvent.change(input, { target: { value: testKeyHex } });
 
     const unlockBtn = screen.getByText("Unlock & Decrypt");
@@ -109,10 +119,12 @@ describe("EncryptionRequiredPrompt Component", () => {
           returnTo="/characters"
           onUnlocked={onUnlockedMock}
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    const fileInput = document.getElementById("prompt-upload-key-input") as HTMLInputElement;
+    const fileInput = document.getElementById(
+      "prompt-upload-key-input",
+    ) as HTMLInputElement;
     expect(fileInput).toBeDefined();
 
     fireEvent.change(fileInput, { target: { files: [file] } });
@@ -127,7 +139,9 @@ describe("EncryptionRequiredPrompt Component", () => {
     const onUnlockedMock = vi.fn();
     const testKey = generateAes256Key();
     const testKeyHex = bytesToHex(testKey);
-    const file = new File([testKeyHex], "masterkey.key", { type: "text/plain" });
+    const file = new File([testKeyHex], "masterkey.key", {
+      type: "text/plain",
+    });
 
     render(
       <MemoryRouter>
@@ -136,7 +150,7 @@ describe("EncryptionRequiredPrompt Component", () => {
           returnTo="/apps?app=datasave"
           onUnlocked={onUnlockedMock}
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const promptContainer = screen.getByTestId("encryption-required-prompt");

@@ -19,21 +19,24 @@ export function SudokuApp() {
   const [status, setStatus] = useState<"idle" | "playing" | "won">("idle");
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
 
-  const initGame = useCallback((diff: Difficulty = difficulty) => {
-    const { puzzle: newPuzzle, solution: newSolution } = getSudoku(diff);
-    setPuzzle(newPuzzle);
-    setSolution(newSolution);
-    
-    const initialBoard = newPuzzle.split("").map((char) => ({
-      value: char === "-" ? "" : char,
-      isInitial: char !== "-",
-      isError: false,
-    }));
-    
-    setBoard(initialBoard);
-    setStatus("playing");
-    setSelectedCell(null);
-  }, [difficulty]);
+  const initGame = useCallback(
+    (diff: Difficulty = difficulty) => {
+      const { puzzle: newPuzzle, solution: newSolution } = getSudoku(diff);
+      setPuzzle(newPuzzle);
+      setSolution(newSolution);
+
+      const initialBoard = newPuzzle.split("").map((char) => ({
+        value: char === "-" ? "" : char,
+        isInitial: char !== "-",
+        isError: false,
+      }));
+
+      setBoard(initialBoard);
+      setStatus("playing");
+      setSelectedCell(null);
+    },
+    [difficulty],
+  );
 
   useEffect(() => {
     initGame(difficulty);
@@ -89,15 +92,18 @@ export function SudokuApp() {
   const getCellClasses = (index: number) => {
     const row = Math.floor(index / 9);
     const col = index % 9;
-    
+
     const isSelected = selectedCell === index;
-    const isRelated = selectedCell !== null && 
-      (Math.floor(selectedCell / 9) === row || 
-       selectedCell % 9 === col || 
-       (Math.floor(Math.floor(selectedCell / 9) / 3) === Math.floor(row / 3) && Math.floor((selectedCell % 9) / 3) === Math.floor(col / 3)));
-    
-    const isSameValue = selectedCell !== null && 
-      board[index].value !== "" && 
+    const isRelated =
+      selectedCell !== null &&
+      (Math.floor(selectedCell / 9) === row ||
+        selectedCell % 9 === col ||
+        (Math.floor(Math.floor(selectedCell / 9) / 3) === Math.floor(row / 3) &&
+          Math.floor((selectedCell % 9) / 3) === Math.floor(col / 3)));
+
+    const isSameValue =
+      selectedCell !== null &&
+      board[index].value !== "" &&
       board[selectedCell].value === board[index].value;
 
     const cell = board[index];
@@ -109,14 +115,14 @@ export function SudokuApp() {
       row % 3 === 2 && row !== 8 && "border-b-2 border-b-slate-400",
       col === 8 && "border-r-transparent",
       row === 8 && "border-b-transparent",
-      
+
       // Default cell styling
       "border-slate-700 bg-slate-900 text-slate-200",
-      
+
       // Initial vs Input
       cell.isInitial && "text-slate-300 bg-slate-800/50",
       !cell.isInitial && "text-cyan-400",
-      
+
       // Error
       cell.isError && "text-red-400 bg-red-950/30",
 
@@ -130,7 +136,6 @@ export function SudokuApp() {
   return (
     <div className="flex flex-col items-center h-full w-full py-4 sm:py-8 text-slate-200">
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-6 shadow-2xl flex flex-col max-w-[98%] sm:max-w-[95%] items-center w-full">
-        
         {/* Header Controls */}
         <div className="flex w-full items-center justify-between mb-4 sm:mb-8 pb-4 sm:pb-6 border-b border-slate-800 gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -149,7 +154,7 @@ export function SudokuApp() {
               <option value="hard">Hard</option>
               <option value="expert">Expert</option>
             </select>
-            
+
             <button
               onClick={() => initGame()}
               className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -183,7 +188,7 @@ export function SudokuApp() {
             ))}
           </div>
         </div>
-        
+
         {/* On-Screen Number Keypad for Touch Devices */}
         <div className="mt-6 sm:mt-8 w-full max-w-[340px]">
           <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
@@ -230,7 +235,6 @@ export function SudokuApp() {
             </button>
           </div>
         </div>
-        
       </div>
     </div>
   );

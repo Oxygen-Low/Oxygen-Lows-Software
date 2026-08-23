@@ -6,7 +6,7 @@ import {
   Copy,
   CheckCircle2,
   AlertCircle,
-  FileText
+  FileText,
 } from "lucide-react";
 import {
   Card,

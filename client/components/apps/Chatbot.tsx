@@ -289,7 +289,10 @@ const ChatMessage = React.memo(
           <div className="flex flex-col gap-2 max-w-[80%] items-end">
             <p className="text-slate-400 text-xs font-display mr-1">User</p>
             <div className="glass-panel px-5 py-4 rounded-xl rounded-tr-sm text-[15px] leading-[1.6]">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={memoizedMarkdownComponents}
+              >
                 {displayContent}
               </ReactMarkdown>
             </div>
@@ -314,7 +317,10 @@ const ChatMessage = React.memo(
             </p>
             <div className="w-full">
               <div className="text-[13px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900/50 border border-slate-800 text-slate-300 font-mono overflow-auto max-h-[300px]">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={memoizedMarkdownComponents}
+                >
                   {displayContent}
                 </ReactMarkdown>
               </div>
@@ -341,8 +347,16 @@ const ChatMessage = React.memo(
                 <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>
                   {m.web_search_status === "searching"
-                    ? t("apps.chatbotSearchingTheWeb", undefined, "Searching the web...")
-                    : t("apps.chatbotSearchedTheWeb", undefined, "Searched The Web")}
+                    ? t(
+                        "apps.chatbotSearchingTheWeb",
+                        undefined,
+                        "Searching the web...",
+                      )
+                    : t(
+                        "apps.chatbotSearchedTheWeb",
+                        undefined,
+                        "Searched The Web",
+                      )}
                 </span>
               </div>
             )}
@@ -359,7 +373,11 @@ const ChatMessage = React.memo(
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                    {t("apps.chatbotReasoningProcess", undefined, "Reasoning Process")}
+                    {t(
+                      "apps.chatbotReasoningProcess",
+                      undefined,
+                      "Reasoning Process",
+                    )}
                   </span>
                   <span
                     className={cn(
@@ -372,7 +390,10 @@ const ChatMessage = React.memo(
                 </button>
                 {reasoningExpanded && (
                   <div className="reasoning-content px-4 py-3 border-t border-white/10 text-sm text-slate-300 font-mono leading-relaxed bg-[#0F0F13]">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={memoizedMarkdownComponents}
+                    >
                       {m.reasoning}
                     </ReactMarkdown>
                   </div>
@@ -381,7 +402,10 @@ const ChatMessage = React.memo(
             )}
             <div className="text-[15px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900 border border-slate-800 text-slate-200">
               {displayContent ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={memoizedMarkdownComponents}
+                >
                   {displayContent}
                 </ReactMarkdown>
               ) : (
@@ -485,7 +509,9 @@ export function ChatbotApp() {
   const [activeChildren, setActiveChildren] = useState<Record<string, string>>(
     {},
   );
-  const [encryptionLocked, setEncryptionLocked] = useState(() => isCategoryLocked("chatbot"));
+  const [encryptionLocked, setEncryptionLocked] = useState(() =>
+    isCategoryLocked("chatbot"),
+  );
 
   useEffect(() => {
     setEncryptionLocked(isCategoryLocked("chatbot"));
@@ -514,55 +540,57 @@ export function ChatbotApp() {
     return path;
   }, [allMessages, activeChildren]);
 
-  const setMessages = useCallback((
-    updater: Message[] | ((prev: Message[]) => Message[]),
-  ) => {
-    // This is a shim for setMessages that is used by streaming updates
-    if (typeof updater === "function") {
-      setAllMessages((prevAll) => {
-        const rootMessages = prevAll.filter((m) => !m.parent_id);
-        let currentId =
-          activeChildrenRef.current["root"] || rootMessages[rootMessages.length - 1]?.id;
-        const path: Message[] = [];
-        const visited = new Set<string>();
-        while (currentId && !visited.has(currentId) && visited.size < 5000) {
-          visited.add(currentId);
-          const msg = prevAll.find((m) => m.id === currentId);
-          if (!msg) break;
-          path.push(msg);
-          currentId = activeChildrenRef.current[currentId];
-        }
-        const newPath = updater(path);
-        const newAll = [...prevAll];
-        const lastMsg = newPath[newPath.length - 1];
-        if (lastMsg && !lastMsg.id) {
-          // Temporary streaming message
-          const existingTempIndex = newAll.findIndex(
-            (m) => m.id === "temp-streaming",
-          );
-          if (existingTempIndex >= 0) {
-            newAll[existingTempIndex] = { ...lastMsg, id: "temp-streaming" };
-          } else {
-            newAll.push({ ...lastMsg, id: "temp-streaming" });
+  const setMessages = useCallback(
+    (updater: Message[] | ((prev: Message[]) => Message[])) => {
+      // This is a shim for setMessages that is used by streaming updates
+      if (typeof updater === "function") {
+        setAllMessages((prevAll) => {
+          const rootMessages = prevAll.filter((m) => !m.parent_id);
+          let currentId =
+            activeChildrenRef.current["root"] ||
+            rootMessages[rootMessages.length - 1]?.id;
+          const path: Message[] = [];
+          const visited = new Set<string>();
+          while (currentId && !visited.has(currentId) && visited.size < 5000) {
+            visited.add(currentId);
+            const msg = prevAll.find((m) => m.id === currentId);
+            if (!msg) break;
+            path.push(msg);
+            currentId = activeChildrenRef.current[currentId];
           }
-        } else if (lastMsg && lastMsg.id) {
-          const existingIndex = newAll.findIndex((m) => m.id === lastMsg.id);
-          if (existingIndex >= 0) {
-            newAll[existingIndex] = lastMsg;
-          } else {
-            newAll.push(lastMsg);
+          const newPath = updater(path);
+          const newAll = [...prevAll];
+          const lastMsg = newPath[newPath.length - 1];
+          if (lastMsg && !lastMsg.id) {
+            // Temporary streaming message
+            const existingTempIndex = newAll.findIndex(
+              (m) => m.id === "temp-streaming",
+            );
+            if (existingTempIndex >= 0) {
+              newAll[existingTempIndex] = { ...lastMsg, id: "temp-streaming" };
+            } else {
+              newAll.push({ ...lastMsg, id: "temp-streaming" });
+            }
+          } else if (lastMsg && lastMsg.id) {
+            const existingIndex = newAll.findIndex((m) => m.id === lastMsg.id);
+            if (existingIndex >= 0) {
+              newAll[existingIndex] = lastMsg;
+            } else {
+              newAll.push(lastMsg);
+            }
           }
+          return newAll;
+        });
+      } else {
+        // Direct set (e.g. setMessages([]))
+        if (updater.length === 0) {
+          setAllMessages([]);
+          setActiveChildren({});
         }
-        return newAll;
-      });
-    } else {
-      // Direct set (e.g. setMessages([]))
-      if (updater.length === 0) {
-        setAllMessages([]);
-        setActiveChildren({});
       }
-    }
-  }, []);
+    },
+    [],
+  );
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const isTypingRef = useRef(false);
@@ -629,7 +657,10 @@ export function ChatbotApp() {
       const changedTouch = e.changedTouches[0];
       if (changedTouch) {
         const dx = Math.abs(touchStartX.current - changedTouch.clientX);
-        const dy = touchStartY.current !== null ? Math.abs(changedTouch.clientY - touchStartY.current) : 0;
+        const dy =
+          touchStartY.current !== null
+            ? Math.abs(changedTouch.clientY - touchStartY.current)
+            : 0;
         if (touchDuration < 500 && dx < 20 && dy < 20) {
           setSidebarOpen(true);
         }
@@ -673,7 +704,13 @@ export function ChatbotApp() {
    * Replaced multiple separate O(N) Array.filter() calls with a single O(N) pass.
    * Memoized the result to prevent recalculation on every render.
    */
-  const { hordeModels, localModels, cloudflareModels, customModels, otherModels } = useMemo(() => {
+  const {
+    hordeModels,
+    localModels,
+    cloudflareModels,
+    customModels,
+    otherModels,
+  } = useMemo(() => {
     const horde: Model[] = [];
     const local: Model[] = [];
     const cloudflare: Model[] = [];
@@ -692,7 +729,9 @@ export function ChatbotApp() {
         custom.push(m);
       } else if (m.provider === "openrouter") {
         hasOpenRouter = true;
-        if (!(m.provider === "openrouter" && m.model_id === "openrouter/free")) {
+        if (!(
+          m.provider === "openrouter" && m.model_id === "openrouter/free"
+        )) {
           other.push(m);
         }
       } else {
@@ -778,7 +817,7 @@ export function ChatbotApp() {
     const key = getActiveMasterKey();
     if (chars) {
       const decryptedChars = await Promise.all(
-        chars.map((c: any) => decryptCharacterData(c, key))
+        chars.map((c: any) => decryptCharacterData(c, key)),
       );
       setAvailableCharacters(decryptedChars);
     }
@@ -791,7 +830,7 @@ export function ChatbotApp() {
 
     if (chatsData) {
       const decryptedChats = await Promise.all(
-        chatsData.map((c: any) => decryptChatData(c, key))
+        chatsData.map((c: any) => decryptChatData(c, key)),
       );
       setChats(decryptedChats);
     }
@@ -825,7 +864,7 @@ export function ChatbotApp() {
       if (data) {
         const key = getActiveMasterKey();
         const decryptedMessages = await Promise.all(
-          data.map((m: any) => decryptChatMessageData(m, key))
+          data.map((m: any) => decryptChatMessageData(m, key)),
         );
         const processed = decryptedMessages.map((m) => {
           return {
@@ -980,10 +1019,13 @@ export function ChatbotApp() {
     };
 
     if (provider.startsWith("local-")) {
-      if (provider === "local-ollama") url = "http://127.0.0.1:11434/v1/chat/completions";
-      else if (provider === "local-lmstudio") url = "http://127.0.0.1:1234/v1/chat/completions";
-      else if (provider === "local-kobold") url = "http://127.0.0.1:5001/v1/chat/completions";
-      
+      if (provider === "local-ollama")
+        url = "http://127.0.0.1:11434/v1/chat/completions";
+      else if (provider === "local-lmstudio")
+        url = "http://127.0.0.1:1234/v1/chat/completions";
+      else if (provider === "local-kobold")
+        url = "http://127.0.0.1:5001/v1/chat/completions";
+
       fetchOptions = {
         method: "POST",
         headers: {
@@ -1020,14 +1062,14 @@ export function ChatbotApp() {
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     let fullContent = "";
-    
+
     const toolSearch = response.headers.get("X-Tool-Search");
     if (toolSearch) {
       const query = decodeURIComponent(toolSearch);
       fullContent += `<tool_call>{"name":"Web Search", "args":{"query":"${query}"}}</tool_call>\n\n`;
       streamCallback(fullContent);
     }
-    
+
     let streamBuffer = "";
     const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
 
@@ -1063,7 +1105,7 @@ export function ChatbotApp() {
                 data.type === "content_block_delta" &&
                 data.delta?.type === "input_json_delta"
               ) {
-                const idx = data.index ?? (openAnthropicToolBlocks.size - 1);
+                const idx = data.index ?? openAnthropicToolBlocks.size - 1;
                 if (openAnthropicToolBlocks.has(idx)) {
                   openAnthropicToolBlocks.get(idx)!.hasArgs = true;
                 }
@@ -1074,7 +1116,7 @@ export function ChatbotApp() {
               ) {
                 delta += data.delta.text || "";
               } else if (data.type === "content_block_stop") {
-                const idx = data.index ?? (openAnthropicToolBlocks.size - 1);
+                const idx = data.index ?? openAnthropicToolBlocks.size - 1;
                 if (openAnthropicToolBlocks.has(idx)) {
                   const block = openAnthropicToolBlocks.get(idx)!;
                   if (!block.hasArgs) {
@@ -1108,7 +1150,8 @@ export function ChatbotApp() {
                 "kobold",
                 "horde",
                 "cloudflare",
-              ].includes(provider) || provider.startsWith("local-")
+              ].includes(provider) ||
+              provider.startsWith("local-")
             ) {
               delta = data.choices?.[0]?.delta?.content || data.response || "";
               const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
@@ -1169,7 +1212,8 @@ export function ChatbotApp() {
   };
 
   const getInjectedSystemPrompt = (): string => {
-    let injected = "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
+    let injected =
+      "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
     if (selectedLlmCharacter) {
       const char = availableCharacters.find(
         (c) => c.id === selectedLlmCharacter,
@@ -1178,12 +1222,9 @@ export function ChatbotApp() {
         injected += `You are playing the role of: ${char.display_name || char.name}.\n`;
         if (char.short_description)
           injected += `Description: ${char.short_description}\n`;
-        if (char.appearance)
-          injected += `Appearance: ${char.appearance}\n`;
-        if (char.personality)
-          injected += `Personality: ${char.personality}\n`;
-        if (char.backstory)
-          injected += `Backstory: ${char.backstory}\n`;
+        if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
+        if (char.personality) injected += `Personality: ${char.personality}\n`;
+        if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
       }
     }
     if (selectedUserCharacter) {
@@ -1194,12 +1235,9 @@ export function ChatbotApp() {
         injected += `\nThe user is playing the role of: ${char.display_name || char.name}.\n`;
         if (char.short_description)
           injected += `Description: ${char.short_description}\n`;
-        if (char.appearance)
-          injected += `Appearance: ${char.appearance}\n`;
-        if (char.personality)
-          injected += `Personality: ${char.personality}\n`;
-        if (char.backstory)
-          injected += `Backstory: ${char.backstory}\n`;
+        if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
+        if (char.personality) injected += `Personality: ${char.personality}\n`;
+        if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
       }
     }
     if (selectedUniverse) {
@@ -1208,12 +1246,10 @@ export function ChatbotApp() {
         injected += `\nThis interaction takes place in the universe of: ${uni.display_name || uni.name}.\n`;
         if (uni.short_description)
           injected += `Description: ${uni.short_description}\n`;
-        if (uni.appearance)
-          injected += `Setting details: ${uni.appearance}\n`;
+        if (uni.appearance) injected += `Setting details: ${uni.appearance}\n`;
         if (uni.personality)
           injected += `Tone/Atmosphere: ${uni.personality}\n`;
-        if (uni.backstory)
-          injected += `Lore/History: ${uni.backstory}\n`;
+        if (uni.backstory) injected += `Lore/History: ${uni.backstory}\n`;
       }
     }
     return injected;
@@ -1559,7 +1595,7 @@ export function ChatbotApp() {
 
   const handleSendMessage = async () => {
     if (!input.trim() || isTyping) return;
-    
+
     const isGuest = !session?.user?.id;
     let activeChatId = currentChatId;
 
@@ -1596,7 +1632,19 @@ export function ChatbotApp() {
         setChats((prev) => [{ ...data, title }, ...prev]);
       } else {
         activeChatId = "guest-chat-" + Math.random().toString(36).substring(2);
-        setChats((prev) => [{ id: activeChatId, title, llm_character_id: null, user_character_id: null, universe_id: null }, ...prev] as any);
+        setChats(
+          (prev) =>
+            [
+              {
+                id: activeChatId,
+                title,
+                llm_character_id: null,
+                user_character_id: null,
+                universe_id: null,
+              },
+              ...prev,
+            ] as any,
+        );
       }
       skipNextFetchRef.current = activeChatId;
       setCurrentChatId(activeChatId);
@@ -1653,7 +1701,9 @@ export function ChatbotApp() {
       }
 
       // 2. Save User Message
-      let userMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
+      let userMsgData = {
+        id: "msg-" + Math.random().toString(36).substring(2),
+      };
       if (!isGuest) {
         let userInsertPayload: any = {
           parent_id: lastMessageId,
@@ -1665,7 +1715,10 @@ export function ChatbotApp() {
         if (isCategoryEncryptionEnabled("chatbot")) {
           const key = getActiveMasterKey();
           if (key) {
-            userInsertPayload = await encryptChatMessageData(userInsertPayload, key);
+            userInsertPayload = await encryptChatMessageData(
+              userInsertPayload,
+              key,
+            );
           }
         }
 
@@ -1683,7 +1736,8 @@ export function ChatbotApp() {
       setAllMessages((prev) =>
         prev.map((m) => {
           if (m.id === "temp-user") return { ...m, id: userMsgData.id };
-          if (m.parent_id === "temp-user") return { ...m, parent_id: userMsgData.id };
+          if (m.parent_id === "temp-user")
+            return { ...m, parent_id: userMsgData.id };
           return m;
         }),
       );
@@ -1702,10 +1756,8 @@ export function ChatbotApp() {
         iterations++;
         shouldContinue = false;
 
-        const { finalContent, reasoningContent, isWebSearch } = await executeAiGeneration(
-          currentMessages,
-          controller.signal,
-        );
+        const { finalContent, reasoningContent, isWebSearch } =
+          await executeAiGeneration(currentMessages, controller.signal);
 
         let insertData: any = {
           parent_id: userMsgData.id,
@@ -1716,22 +1768,26 @@ export function ChatbotApp() {
           is_web_search: isWebSearch || false,
         };
 
-        let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
+        let assistantMsgData = {
+          id: "msg-" + Math.random().toString(36).substring(2),
+        };
         if (!isGuest) {
           let assistantInsertPayload: any = { ...insertData };
           if (isCategoryEncryptionEnabled("chatbot")) {
             const key = getActiveMasterKey();
             if (key) {
-              assistantInsertPayload = await encryptChatMessageData(assistantInsertPayload, key);
+              assistantInsertPayload = await encryptChatMessageData(
+                assistantInsertPayload,
+                key,
+              );
             }
           }
 
-          const { data, error: assistantInsertError } =
-            await supabase
-              .from("chat_messages")
-              .insert(assistantInsertPayload)
-              .select()
-              .single();
+          const { data, error: assistantInsertError } = await supabase
+            .from("chat_messages")
+            .insert(assistantInsertPayload)
+            .select()
+            .single();
 
           if (assistantInsertError) {
             let retryPayload = { ...assistantInsertPayload };
@@ -1810,8 +1866,7 @@ export function ChatbotApp() {
   };
 
   const handleRegenerate = useCallback(async () => {
-    if (isTyping || !currentChatId || messages.length < 2)
-      return;
+    if (isTyping || !currentChatId || messages.length < 2) return;
     const isGuest = !session?.user?.id;
 
     // Get the last user message to regenerate from
@@ -1850,14 +1905,13 @@ export function ChatbotApp() {
     setQueueStatus(null);
 
     try {
-
-      const lastUserMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id);
+      const lastUserMessageIndex = messages.findIndex(
+        (m) => m.id === lastUserMessage.id,
+      );
       let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
-      const { finalContent, reasoningContent, isWebSearch } = await executeAiGeneration(
-        currentMessages,
-        controller.signal,
-      );
+      const { finalContent, reasoningContent, isWebSearch } =
+        await executeAiGeneration(currentMessages, controller.signal);
 
       let insertData: any = {
         chat_id: currentChatId,
@@ -1868,23 +1922,27 @@ export function ChatbotApp() {
         is_web_search: isWebSearch || false,
       };
 
-      let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
-      
+      let assistantMsgData = {
+        id: "msg-" + Math.random().toString(36).substring(2),
+      };
+
       if (!isGuest) {
         let assistantInsertPayload: any = { ...insertData };
         if (isCategoryEncryptionEnabled("chatbot")) {
           const key = getActiveMasterKey();
           if (key) {
-            assistantInsertPayload = await encryptChatMessageData(assistantInsertPayload, key);
+            assistantInsertPayload = await encryptChatMessageData(
+              assistantInsertPayload,
+              key,
+            );
           }
         }
 
-        const { data, error: assistantInsertError } =
-          await supabase
-            .from("chat_messages")
-            .insert(assistantInsertPayload)
-            .select()
-            .single();
+        const { data, error: assistantInsertError } = await supabase
+          .from("chat_messages")
+          .insert(assistantInsertPayload)
+          .select()
+          .single();
 
         if (assistantInsertError) {
           let retryPayload = { ...assistantInsertPayload };
@@ -2133,9 +2191,9 @@ export function ChatbotApp() {
       </div>
 
       {/* Click / hover trigger zone along right edge */}
-      <div 
-        className="fixed top-0 right-0 w-[18px] md:w-[18px] h-[100vh] z-[49] cursor-pointer" 
-        onMouseEnter={openSidebar} 
+      <div
+        className="fixed top-0 right-0 w-[18px] md:w-[18px] h-[100vh] z-[49] cursor-pointer"
+        onMouseEnter={openSidebar}
         onMouseLeave={scheduleSidebarClose}
         onClick={openSidebar}
         role="button"
@@ -2150,7 +2208,9 @@ export function ChatbotApp() {
       <div
         className={cn(
           "fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-[50]",
-          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          sidebarOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none",
         )}
         onClick={() => setSidebarOpen(false)}
       />
@@ -2159,70 +2219,69 @@ export function ChatbotApp() {
       <aside
         className={cn(
           "fixed top-0 right-0 h-[100vh] w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between shadow-2xl z-[51]",
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
+          sidebarOpen ? "translate-x-0" : "translate-x-full",
         )}
         onMouseEnter={openSidebar}
         onMouseLeave={scheduleSidebarClose}
       >
         <div className="flex flex-col gap-6 h-full overflow-hidden">
-            <div className="flex flex-col gap-4 h-full">
-              <button
-                onClick={handleNewChatClick}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors w-full"
-              >
-                <Plus className="w-4 h-4 text-white" />
-                <span className="text-white text-sm font-medium leading-normal font-display">
-                  New Chat
-                </span>
-              </button>
-              <ScrollArea className="flex-1 -mx-2 px-2">
-                <div className="flex flex-col gap-1 mt-2">
-                  <p className="text-slate-400 text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
-                    Chats
-                  </p>
-                  {chats.map((c) => (
-                    <div
-                      key={c.id}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors",
-                        currentChatId === c.id
-                          ? "bg-white/10 text-white"
-                          : "hover:bg-white/5 text-slate-400 hover:text-white",
-                      )}
-                      onClick={() => {
-                        setCurrentChatId(c.id);
-                        setSidebarOpen(false);
+          <div className="flex flex-col gap-4 h-full">
+            <button
+              onClick={handleNewChatClick}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors w-full"
+            >
+              <Plus className="w-4 h-4 text-white" />
+              <span className="text-white text-sm font-medium leading-normal font-display">
+                New Chat
+              </span>
+            </button>
+            <ScrollArea className="flex-1 -mx-2 px-2">
+              <div className="flex flex-col gap-1 mt-2">
+                <p className="text-slate-400 text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
+                  Chats
+                </p>
+                {chats.map((c) => (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors",
+                      currentChatId === c.id
+                        ? "bg-white/10 text-white"
+                        : "hover:bg-white/5 text-slate-400 hover:text-white",
+                    )}
+                    onClick={() => {
+                      setCurrentChatId(c.id);
+                      setSidebarOpen(false);
+                    }}
+                  >
+                    <Bot className="w-5 h-5 opacity-70" />
+                    <span className="text-sm font-medium truncate flex-1 font-body">
+                      {c.title}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        supabase
+                          .from("chats")
+                          .delete()
+                          .eq("id", c.id)
+                          .then(() => {
+                            setChats(chats.filter((x) => x.id !== c.id));
+                            if (currentChatId === c.id) setCurrentChatId(null);
+                          });
                       }}
+                      className="md:opacity-0 md:group-hover/chat:opacity-100 opacity-100 hover:text-red-400 p-1 transition-opacity"
+                      aria-label="Delete chat"
+                      title="Delete chat"
                     >
-                      <Bot className="w-5 h-5 opacity-70" />
-                      <span className="text-sm font-medium truncate flex-1 font-body">
-                        {c.title}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          supabase
-                            .from("chats")
-                            .delete()
-                            .eq("id", c.id)
-                            .then(() => {
-                              setChats(chats.filter((x) => x.id !== c.id));
-                              if (currentChatId === c.id)
-                                setCurrentChatId(null);
-                            });
-                        }}
-                        className="md:opacity-0 md:group-hover/chat:opacity-100 opacity-100 hover:text-red-400 p-1 transition-opacity"
-                        aria-label="Delete chat"
-                        title="Delete chat"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
+        </div>
       </aside>
 
       {/* Main Area */}
@@ -2275,7 +2334,7 @@ export function ChatbotApp() {
         </header>
 
         {/* Subtle edge hint when sidebar is closed */}
-        <div 
+        <div
           role="button"
           tabIndex={0}
           aria-label="Open sidebar"
@@ -2286,8 +2345,10 @@ export function ChatbotApp() {
           }}
           className={cn(
             "fixed top-1/2 right-0 -translate-y-1/2 w-1.5 h-12 rounded-l-md bg-primary/35 hover:bg-primary/75 active:bg-primary/90 z-[48] transition-all duration-300 cursor-pointer",
-            sidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
-          )} 
+            sidebarOpen
+              ? "opacity-0 pointer-events-none"
+              : "opacity-100 pointer-events-auto",
+          )}
         />
 
         {/* Chat Scrolling Area */}
@@ -2304,7 +2365,13 @@ export function ChatbotApp() {
             {messages.map((m, i) => {
               const isLastAssistant =
                 i === messages.length - 1 && m.role === "assistant";
-              if (isLastAssistant && isTyping && !m.content && !m.reasoning && !m.is_web_search) {
+              if (
+                isLastAssistant &&
+                isTyping &&
+                !m.content &&
+                !m.reasoning &&
+                !m.is_web_search
+              ) {
                 return (
                   <div
                     key={i}
@@ -2444,10 +2511,18 @@ export function ChatbotApp() {
                           <div className="flex flex-col">
                             <span className="text-sm text-white/90 font-medium font-display flex items-center gap-1.5">
                               <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                              {t("apps.chatbotWebSearch", undefined, "Web Search")}
+                              {t(
+                                "apps.chatbotWebSearch",
+                                undefined,
+                                "Web Search",
+                              )}
                             </span>
                             <span className="text-[11px] text-slate-400 font-body">
-                              {t("apps.chatbotWebSearchDesc", undefined, "Deep agentic web research before answering")}
+                              {t(
+                                "apps.chatbotWebSearchDesc",
+                                undefined,
+                                "Deep agentic web research before answering",
+                              )}
                             </span>
                           </div>
                           {isWebSearchEnabled && (
@@ -2467,10 +2542,18 @@ export function ChatbotApp() {
                           <div className="flex flex-col">
                             <span className="text-sm text-white/90 font-medium font-display flex items-center gap-1.5">
                               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                              {t("apps.chatbotReasoning", undefined, "Reasoning Process")}
+                              {t(
+                                "apps.chatbotReasoning",
+                                undefined,
+                                "Reasoning Process",
+                              )}
                             </span>
                             <span className="text-[11px] text-slate-400 font-body">
-                              {t("apps.chatbotReasoningDesc", undefined, "Toggle AI thought process")}
+                              {t(
+                                "apps.chatbotReasoningDesc",
+                                undefined,
+                                "Toggle AI thought process",
+                              )}
                             </span>
                           </div>
                           {isReasoningEnabled && (
@@ -2737,7 +2820,9 @@ export function ChatbotApp() {
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
                                   if (!session?.user?.id) {
-                                    toast.error("Sign In to access better models.");
+                                    toast.error(
+                                      "Sign In to access better models.",
+                                    );
                                     return;
                                   }
                                   setSelection(m.model_id, m.provider);

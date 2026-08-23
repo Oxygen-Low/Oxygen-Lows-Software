@@ -41,12 +41,7 @@ import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
 
 type Category =
-  | "All"
-  | "Utility"
-  | "LLM/AI"
-  | "Development"
-  | "Social"
-  | "Security";
+  "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
 
 type Availability = "web-and-desktop" | "desktop-only";
 
@@ -173,7 +168,8 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.publicAssetsTitle",
     defaultName: "Public Assets",
     descKey: "apps.publicAssetsDesc",
-    defaultDesc: "Discover, download, and share assets, characters, and universes with the community.",
+    defaultDesc:
+      "Discover, download, and share assets, characters, and universes with the community.",
     categories: ["All", "Social", "Utility"],
     availability: "web-and-desktop",
     icon: <Users className="w-8 h-8 text-cyan-500" />,
@@ -185,7 +181,8 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.dataSaveTitle",
     defaultName: "Data Save",
     descKey: "apps.dataSaveDesc",
-    defaultDesc: "Securely store and manage your custom data and text snippets.",
+    defaultDesc:
+      "Securely store and manage your custom data and text snippets.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Server className="w-8 h-8 text-cyan-500" />,
@@ -208,7 +205,8 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.llmAgentTitle",
     defaultName: "LLM Agent",
     descKey: "apps.llmAgentDesc",
-    defaultDesc: "An autonomous AI coding agent that reads, edits, and builds your projects.",
+    defaultDesc:
+      "An autonomous AI coding agent that reads, edits, and builds your projects.",
     categories: ["All", "LLM/AI", "Development"],
     availability: "desktop-only",
     icon: <Sparkles className="w-8 h-8 text-cyan-500" />,
@@ -233,13 +231,14 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.webDefenderTitle",
     defaultName: "Web Defender",
     descKey: "apps.webDefenderDesc",
-    defaultDesc: "Protect your website or API from DDoS, injection attacks, bots, VPNs, and malicious traffic.",
+    defaultDesc:
+      "Protect your website or API from DDoS, injection attacks, bots, VPNs, and malicious traffic.",
     categories: ["All", "Security", "Development"],
     availability: "web-and-desktop",
     icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
     component: DefenderApp,
     authRequired: true,
-  }
+  },
 ];
 
 export default function Apps() {
@@ -253,7 +252,7 @@ export default function Apps() {
   const [isDesktopMode, setIsDesktopMode] = useState(() => {
     return hasDesktopParam || sessionStorage.getItem("desktopMode") === "1";
   });
-  
+
   const [isAndroidMode, setIsAndroidMode] = useState(() => {
     return hasAndroidParam || sessionStorage.getItem("androidMode") === "1";
   });
@@ -272,7 +271,7 @@ export default function Apps() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
-  
+
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
 
@@ -301,8 +300,14 @@ export default function Apps() {
   const availableApps = useMemo(
     () =>
       localizedApps.filter((app) => {
-        if (!isDesktopMode && !isAndroidMode) return app.availability === "web-and-desktop";
-        if (isAndroidMode && app.availability === "desktop-only" && !app.androidSupported) return false;
+        if (!isDesktopMode && !isAndroidMode)
+          return app.availability === "web-and-desktop";
+        if (
+          isAndroidMode &&
+          app.availability === "desktop-only" &&
+          !app.androidSupported
+        )
+          return false;
         if (selectedAvailability === "web-and-desktop") return true;
         return app.availability === "desktop-only";
       }),
@@ -343,25 +348,41 @@ export default function Apps() {
     [t],
   );
 
-  const handleAppClick = (app: typeof localizedApps[0]) => {
+  const handleAppClick = (app: (typeof localizedApps)[0]) => {
     if (app.requiresAdmin && isDesktopMode && (window as any).chrome?.webview) {
       const id = Date.now().toString();
       const listener = (event: any) => {
         try {
-          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          const data =
+            typeof event.data === "string"
+              ? JSON.parse(event.data)
+              : event.data;
           if (data.id === id) {
-            (window as any).chrome.webview.removeEventListener("message", listener);
+            (window as any).chrome.webview.removeEventListener(
+              "message",
+              listener,
+            );
             if (data.success) {
               navigate(`/apps/${app.id}`);
             } else {
-              import("sonner").then((m) => m.toast.error(t("apps.adminRequired", undefined, "Administrator permissions are required to use this app.")));
+              import("sonner").then((m) =>
+                m.toast.error(
+                  t(
+                    "apps.adminRequired",
+                    undefined,
+                    "Administrator permissions are required to use this app.",
+                  ),
+                ),
+              );
             }
           }
         } catch {}
       };
       (window as any).chrome.webview.addEventListener("message", listener);
-      (window as any).chrome.webview.postMessage(JSON.stringify({ command: "require_admin", id }));
-      
+      (window as any).chrome.webview.postMessage(
+        JSON.stringify({ command: "require_admin", id }),
+      );
+
       // Fallback timeout in case no response
       setTimeout(() => {
         (window as any).chrome.webview.removeEventListener("message", listener);
@@ -373,25 +394,40 @@ export default function Apps() {
 
   if (activeApp) {
     const AppComponent = activeApp.component;
-    const isFullWidthApp = activeApp.id === "chatbot" || activeApp.id === "llm-agent" || activeApp.id === "vpn";
+    const isFullWidthApp =
+      activeApp.id === "chatbot" ||
+      activeApp.id === "llm-agent" ||
+      activeApp.id === "vpn";
 
     return (
       <Layout fullWidth={isFullWidthApp}>
-        <div className={isFullWidthApp ? "h-full w-full flex flex-col" : "space-y-6 h-full flex flex-col"}>
+        <div
+          className={
+            isFullWidthApp
+              ? "h-full w-full flex flex-col"
+              : "space-y-6 h-full flex flex-col"
+          }
+        >
           {!isFullWidthApp && (
             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8 shrink-0">
               <button
                 onClick={() => navigate("/apps")}
-                aria-label={t("apps.backToApps", undefined, "Back to apps list")}
+                aria-label={t(
+                  "apps.backToApps",
+                  undefined,
+                  "Back to apps list",
+                )}
                 title={t("apps.backToApps", undefined, "Back to apps list")}
                 className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none shrink-0"
               >
                 <AppWindow className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <h2 className="text-xl sm:text-2xl font-bold text-white truncate">{activeApp.name}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-white truncate">
+                {activeApp.name}
+              </h2>
             </div>
           )}
-          
+
           <div className="relative flex-1 w-full h-full min-h-[500px]">
             {!session && activeApp.authRequired && (
               <div className="absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl border border-slate-800 p-4 sm:p-6 text-center">
@@ -399,18 +435,31 @@ export default function Apps() {
                   {activeApp.icon}
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">
-                  {t("apps.signInToUse", { name: activeApp.name }, `Sign in to use ${activeApp.name}`)}
+                  {t(
+                    "apps.signInToUse",
+                    { name: activeApp.name },
+                    `Sign in to use ${activeApp.name}`,
+                  )}
                 </h3>
-                <p className="text-slate-400 mb-6 sm:mb-8 max-w-md text-xs sm:text-sm">{activeApp.description}</p>
-                <button 
-                  onClick={() => navigate("/auth")} 
+                <p className="text-slate-400 mb-6 sm:mb-8 max-w-md text-xs sm:text-sm">
+                  {activeApp.description}
+                </p>
+                <button
+                  onClick={() => navigate("/auth")}
                   className="px-6 py-2.5 sm:px-8 sm:py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors text-sm"
                 >
                   {t("apps.signInToContinue", undefined, "Sign In to Continue")}
                 </button>
               </div>
             )}
-            <div className={cn("h-full w-full", !session && activeApp.authRequired && "pointer-events-none select-none opacity-20 blur-sm transition-all")}>
+            <div
+              className={cn(
+                "h-full w-full",
+                !session &&
+                  activeApp.authRequired &&
+                  "pointer-events-none select-none opacity-20 blur-sm transition-all",
+              )}
+            >
               <AppComponent />
             </div>
           </div>
@@ -427,11 +476,18 @@ export default function Apps() {
             {t("apps.title", undefined, "Apps")}
           </h2>
           <p className="text-sm sm:text-base text-slate-400">
-            {t("apps.subtitle", undefined, "Explore and try out our collection of awesome tools!")}
+            {t(
+              "apps.subtitle",
+              undefined,
+              "Explore and try out our collection of awesome tools!",
+            )}
           </p>
         </div>
         {isDesktopMode && (
-          <section aria-label={t("apps.availability", undefined, "Availability")} className="space-y-3">
+          <section
+            aria-label={t("apps.availability", undefined, "Availability")}
+            className="space-y-3"
+          >
             <h3 className="text-lg sm:text-xl font-semibold text-white">
               {t("apps.availability", undefined, "Availability")}
             </h3>
@@ -448,7 +504,9 @@ export default function Apps() {
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10",
                 )}
               >
-                {isAndroidMode ? t("apps.webAndAndroid", undefined, "Web + Android") : t("apps.webAndDesktop", undefined, "Web + desktop")}
+                {isAndroidMode
+                  ? t("apps.webAndAndroid", undefined, "Web + Android")
+                  : t("apps.webAndDesktop", undefined, "Web + desktop")}
               </button>
               <button
                 type="button"
@@ -550,8 +608,16 @@ export default function Apps() {
             <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
               <p className="text-slate-500">
                 {isDesktopMode && selectedAvailability === "desktop-only"
-                  ? t("apps.noDesktopApps", undefined, "No desktop-only apps are available yet.")
-                  : t("apps.noAppsFound", undefined, "No apps found in this category.")}
+                  ? t(
+                      "apps.noDesktopApps",
+                      undefined,
+                      "No desktop-only apps are available yet.",
+                    )
+                  : t(
+                      "apps.noAppsFound",
+                      undefined,
+                      "No apps found in this category.",
+                    )}
               </p>
             </div>
           )}

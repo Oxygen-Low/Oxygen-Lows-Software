@@ -6,8 +6,10 @@ export const formatModelLabel = (provider: string, modelId: string) => {
     };
     return labels[modelId] || "AI Horde - " + modelId;
   }
-  if (provider === "local-ollama" || provider === "ollama") return "Ollama/" + modelId;
-  if (provider === "local-lmstudio" || provider === "lmstudio") return "LMStudio/" + modelId;
+  if (provider === "local-ollama" || provider === "ollama")
+    return "Ollama/" + modelId;
+  if (provider === "local-lmstudio" || provider === "lmstudio")
+    return "LMStudio/" + modelId;
   if (
     provider === "local-kobold" ||
     provider === "koboldcpp" ||

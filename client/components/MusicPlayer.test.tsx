@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import React from "react";
 import { MusicPlayer } from "./MusicPlayer";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -18,7 +24,7 @@ const mockCreateSignedUrl = vi.fn().mockResolvedValue({
 });
 
 const mockSupabase = {
-  from: vi.fn((_table?: string) => ({} as any)),
+  from: vi.fn((_table?: string) => ({}) as any),
 };
 
 vi.mock("@/lib/supabase", () => ({
@@ -257,14 +263,19 @@ describe("MusicContext 10-second auto-resume after exit/refresh", () => {
   });
 
   const AutoResumeConsumer = () => {
-    const { isPlaying, currentPosition, currentTrack, pause, play } = useMusicContext();
+    const { isPlaying, currentPosition, currentTrack, pause, play } =
+      useMusicContext();
     return (
       <div>
         <span data-testid="is-playing">{isPlaying ? "playing" : "paused"}</span>
         <span data-testid="current-pos">{currentPosition}</span>
         <span data-testid="track-name">{currentTrack?.name || "none"}</span>
-        <button data-testid="pause-btn" onClick={pause}>Pause</button>
-        <button data-testid="play-btn" onClick={play}>Play</button>
+        <button data-testid="pause-btn" onClick={pause}>
+          Pause
+        </button>
+        <button data-testid="play-btn" onClick={play}>
+          Play
+        </button>
       </div>
     );
   };
@@ -376,7 +387,9 @@ describe("MusicContext 10-second auto-resume after exit/refresh", () => {
     // Fire beforeunload
     fireEvent(window, new Event("beforeunload"));
 
-    const stored = JSON.parse(localStorage.getItem("oxygen_music_exit_state") || "{}");
+    const stored = JSON.parse(
+      localStorage.getItem("oxygen_music_exit_state") || "{}",
+    );
     expect(stored.isPlaying).toBe(true);
     expect(stored.trackFileName).toBe("song1.mp3");
     expect(typeof stored.timestamp).toBe("number");
@@ -410,7 +423,9 @@ describe("MusicContext 10-second auto-resume after exit/refresh", () => {
       expect(screen.getByTestId("is-playing").textContent).toBe("paused");
     });
 
-    const stored = JSON.parse(localStorage.getItem("oxygen_music_exit_state") || "{}");
+    const stored = JSON.parse(
+      localStorage.getItem("oxygen_music_exit_state") || "{}",
+    );
     expect(stored.isPlaying).toBe(false);
   });
 });
@@ -444,7 +459,10 @@ describe("MusicContext storage path sanitization", () => {
     render(
       <MusicProvider>
         <PathTestConsumer
-          track={{ name: "Traversed Track", fileName: "....//....//nested/song.mp3" }}
+          track={{
+            name: "Traversed Track",
+            fileName: "....//....//nested/song.mp3",
+          }}
         />
       </MusicProvider>,
     );
@@ -459,5 +477,3 @@ describe("MusicContext storage path sanitization", () => {
     });
   });
 });
-
-

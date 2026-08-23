@@ -5,7 +5,9 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import Games from "./Games";
 
 vi.mock("@/components/Layout", () => ({
-  Layout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Layout: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 afterEach(() => {
@@ -24,7 +26,9 @@ describe("Games Page", () => {
     // Page headers
     expect(screen.getByRole("heading", { name: "Games" })).toBeDefined();
     expect(
-      screen.getByText("Play interactive and retro games built right into the browser!"),
+      screen.getByText(
+        "Play interactive and retro games built right into the browser!",
+      ),
     ).toBeDefined();
 
     // Row 1: Player Modes
@@ -61,7 +65,9 @@ describe("Games Page", () => {
     // Click Multiplayer (0 games)
     fireEvent.click(screen.getByLabelText(/Multiplayer \(\d+ games\)/));
 
-    expect(screen.getByText("No games found matching the selected filters.")).toBeDefined();
+    expect(
+      screen.getByText("No games found matching the selected filters."),
+    ).toBeDefined();
     expect(screen.queryByText("Chess")).toBeNull();
     expect(screen.queryByText("Texas Hold'em")).toBeNull();
 
@@ -111,7 +117,9 @@ describe("Games Page", () => {
 
     // Select Multiplayer while Strategy is active (0 results)
     fireEvent.click(screen.getByLabelText(/Multiplayer \(\d+ games\)/));
-    expect(screen.getByText("No games found matching the selected filters.")).toBeDefined();
+    expect(
+      screen.getByText("No games found matching the selected filters."),
+    ).toBeDefined();
 
     // Clear filters button in empty state
     const clearBtns = screen.getAllByRole("button", { name: /Clear Filters/i });
@@ -136,7 +144,9 @@ describe("Games Page", () => {
     expect(screen.getByRole("button", { name: "Desktop only" })).toBeDefined();
 
     fireEvent.click(screen.getByRole("button", { name: "Desktop only" }));
-    expect(screen.getByText("No desktop-only games are available yet.")).toBeDefined();
+    expect(
+      screen.getByText("No desktop-only games are available yet."),
+    ).toBeDefined();
   });
 
   it("navigates into a game when clicking a game card", () => {
@@ -150,6 +160,8 @@ describe("Games Page", () => {
     );
 
     fireEvent.click(screen.getByText("Minesweeper"));
-    expect(screen.getByRole("button", { name: "Back to games list" })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: "Back to games list" }),
+    ).toBeDefined();
   });
 });

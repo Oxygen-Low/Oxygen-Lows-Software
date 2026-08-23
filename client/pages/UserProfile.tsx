@@ -41,7 +41,11 @@ export default function UserProfile() {
     {
       description:
         profile?.bio ||
-        t("userProfile.subtitle", undefined, "User profile on Oxygen Low's Software"),
+        t(
+          "userProfile.subtitle",
+          undefined,
+          "User profile on Oxygen Low's Software",
+        ),
     },
   );
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
@@ -69,7 +73,9 @@ export default function UserProfile() {
       // Fetch basic profile info
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, bio, show_email, email, language, additional_languages")
+        .select(
+          "user_id, display_name, username, bio, show_email, email, language, additional_languages",
+        )
         .eq("username", username)
         .single();
 
@@ -319,11 +325,16 @@ export default function UserProfile() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
             <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
-            <p className="text-slate-400">{t("common.loading", undefined, "Loading...")}</p>
+            <p className="text-slate-400">
+              {t("common.loading", undefined, "Loading...")}
+            </p>
           </div>
         ) : error || !profile ? (
           <div className="text-center py-12">
-            <p className="text-red-400 text-lg">{error ?? t("userProfile.userNotFound", undefined, "User not found")}</p>
+            <p className="text-red-400 text-lg">
+              {error ??
+                t("userProfile.userNotFound", undefined, "User not found")}
+            </p>
             <Button
               variant="link"
               onClick={() => navigate(-1)}
@@ -369,7 +380,9 @@ export default function UserProfile() {
                         title={`${t("userProfile.primary", undefined, "Primary")}: ${getLanguageOption(profile.language).name}`}
                       >
                         <CountryFlag
-                          countryCode={getLanguageOption(profile.language).countryCode}
+                          countryCode={
+                            getLanguageOption(profile.language).countryCode
+                          }
                           className="w-4 h-3 rounded-[2px]"
                           alt={`${getLanguageOption(profile.language).name} flag`}
                         />
@@ -380,7 +393,9 @@ export default function UserProfile() {
 
                       {Array.isArray(profile.additional_languages) &&
                         profile.additional_languages
-                          .filter((lang: string) => lang && lang !== profile.language)
+                          .filter(
+                            (lang: string) => lang && lang !== profile.language,
+                          )
                           .map((lang: string) => {
                             const opt = getLanguageOption(lang);
                             return (
@@ -445,18 +460,30 @@ export default function UserProfile() {
                         ) : !friendship ? (
                           <>
                             <UserPlus className="w-4 h-4 mr-2" />
-                            {t("userProfile.addFriend", undefined, "Add Friend")}
+                            {t(
+                              "userProfile.addFriend",
+                              undefined,
+                              "Add Friend",
+                            )}
                           </>
                         ) : friendship.status === "pending" ? (
                           friendship.user_id === currentUser.id ? (
                             <>
                               <UserX className="w-4 h-4 mr-2" />
-                              {t("userProfile.cancelRequest", undefined, "Cancel Request")}
+                              {t(
+                                "userProfile.cancelRequest",
+                                undefined,
+                                "Cancel Request",
+                              )}
                             </>
                           ) : (
                             <>
                               <UserCheck className="w-4 h-4 mr-2" />
-                              {t("userProfile.acceptRequest", undefined, "Accept Request")}
+                              {t(
+                                "userProfile.acceptRequest",
+                                undefined,
+                                "Accept Request",
+                              )}
                             </>
                           )
                         ) : (
@@ -478,7 +505,9 @@ export default function UserProfile() {
                             : "text-slate-300",
                         )}
                       >
-                        {isFollowing ? t("userProfile.following", undefined, "Following") : t("userProfile.follow", undefined, "Follow")}
+                        {isFollowing
+                          ? t("userProfile.following", undefined, "Following")
+                          : t("userProfile.follow", undefined, "Follow")}
                       </Button>
 
                       <Button
@@ -492,7 +521,11 @@ export default function UserProfile() {
                             ? "text-red-500 bg-red-500/10"
                             : "text-slate-500 hover:text-red-400 hover:bg-red-400/10",
                         )}
-                        title={isBlocked ? t("userProfile.unblock", undefined, "Unblock") : t("userProfile.block", undefined, "Block")}
+                        title={
+                          isBlocked
+                            ? t("userProfile.unblock", undefined, "Unblock")
+                            : t("userProfile.block", undefined, "Block")
+                        }
                       >
                         {isBlocked ? (
                           <ShieldCheck className="w-5 h-5" />
@@ -511,7 +544,12 @@ export default function UserProfile() {
                 </h3>
                 <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800/50">
                   <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {profile.bio || t("userProfile.noBio", undefined, "This user hasn't written a bio yet.")}
+                    {profile.bio ||
+                      t(
+                        "userProfile.noBio",
+                        undefined,
+                        "This user hasn't written a bio yet.",
+                      )}
                   </p>
                 </div>
               </div>

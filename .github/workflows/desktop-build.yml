@@ -5,11 +5,11 @@ on:
     branches:
       - main
     paths:
-      - 'Desktop/**'
-      - 'Android/**'
-      - '.github/workflows/desktop-build.yml'
-      - '.github/workflows/android-build.yml'
-      - '.github/workflows/create-release.yml'
+      - "Desktop/**"
+      - "Android/**"
+      - ".github/workflows/desktop-build.yml"
+      - ".github/workflows/android-build.yml"
+      - ".github/workflows/create-release.yml"
   workflow_dispatch:
 
 jobs:

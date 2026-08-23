@@ -32,7 +32,8 @@ export const ko = {
     reload: "다시 로드",
     refresh: "새로고침",
     somethingWentWrong: "문제가 발생했습니다",
-    chunkLoadError: "새로운 버전의 앱이 출시되었을 수 있습니다. 페이지를 새로고침해 주세요.",
+    chunkLoadError:
+      "새로운 버전의 앱이 출시되었을 수 있습니다. 페이지를 새로고침해 주세요.",
   },
   nav: {
     home: "홈",
@@ -82,7 +83,8 @@ export const ko = {
     bioPlaceholder: "소개",
     saveChanges: "변경사항 저장",
     languageSectionTitle: "언어",
-    languageSectionDesc: "계정 및 공개 프로필에 표시될 선호하는 언어를 선택하세요",
+    languageSectionDesc:
+      "계정 및 공개 프로필에 표시될 선호하는 언어를 선택하세요",
     displayLanguage: "표시 언어",
     emailSettingsTitle: "이메일 설정",
     emailSettingsDesc: "다른 사람에게 내 이메일이 어떻게 보일지 선택하세요",
@@ -145,23 +147,29 @@ export const ko = {
     backToApps: "앱 목록으로 돌아가기",
     adminRequired: "이 앱을 사용하려면 관리자 권한이 필요합니다.",
     base64Title: "Base64 인코더/디코더",
-    base64Desc: "Base64를 사용하여 텍스트와 데이터를 쉽게 인코딩 또는 디코딩합니다.",
+    base64Desc:
+      "Base64를 사용하여 텍스트와 데이터를 쉽게 인코딩 또는 디코딩합니다.",
     jsonFormatterTitle: "JSON 포매터",
     jsonFormatterDesc: "JSON 문자열을 포맷, 아름답게 표시 및 검증합니다.",
     chatbotTitle: "챗봇",
-    chatbotDesc: "지능형 AI 어시스턴트와 채팅하고 아이디어를 브레인스토밍하세요.",
+    chatbotDesc:
+      "지능형 AI 어시스턴트와 채팅하고 아이디어를 브레인스토밍하세요.",
     fileCompressorTitle: "파일 압축기",
     fileCompressorDesc: "저장 공간을 확보하기 위해 파일을 쉽게 압축합니다.",
     publicCharactersTitle: "공개 캐릭터",
-    publicCharactersDesc: "커뮤니티와 캐릭터 및 유니버스를 발견, 다운로드, 공유하세요.",
+    publicCharactersDesc:
+      "커뮤니티와 캐릭터 및 유니버스를 발견, 다운로드, 공유하세요.",
     publicAssetsTitle: "공개 에셋",
-    publicAssetsDesc: "커뮤니티와 에셋, 캐릭터 및 유니버스를 발견, 다운로드, 공유하세요.",
+    publicAssetsDesc:
+      "커뮤니티와 에셋, 캐릭터 및 유니버스를 발견, 다운로드, 공유하세요.",
     dataSaveTitle: "데이터 저장",
-    dataSaveDesc: "사용자 지정 데이터와 텍스트 스니펫을 안전하게 저장하고 관리합니다.",
+    dataSaveDesc:
+      "사용자 지정 데이터와 텍스트 스니펫을 안전하게 저장하고 관리합니다.",
     qrcodeGeneratorTitle: "QR 코드 생성기",
     qrcodeGeneratorDesc: "링크나 텍스트를 커스텀 QR 코드로 변환합니다.",
     llmAgentTitle: "LLM 에이전트",
-    llmAgentDesc: "프로젝트를 읽고, 편집하고, 빌드하는 자율적인 AI 코딩 에이전트.",
+    llmAgentDesc:
+      "프로젝트를 읽고, 편집하고, 빌드하는 자율적인 AI 코딩 에이전트.",
     chatbotWebSearch: "웹 검색",
     chatbotWebSearchDesc: "답변 전 심층 에이전트 웹 조사",
     chatbotSearchedTheWeb: "웹 검색 완료",
@@ -189,15 +197,19 @@ export const ko = {
     vpnDesc: "VPN 구성을 관리합니다.",
     vpnSavedConfigs: "저장된 구성",
     vpnDirectConnect: "직접 연결",
-    vpnDirectConnectDesc: "저장하지 않고 바로 연결하려면 VPN 구성을 입력하세요.",
-    vpnGuestNotice: "저장하지 않고 바로 연결하거나 로그인하여 여러 기기에서 프로필을 저장하세요.",
+    vpnDirectConnectDesc:
+      "저장하지 않고 바로 연결하려면 VPN 구성을 입력하세요.",
+    vpnGuestNotice:
+      "저장하지 않고 바로 연결하거나 로그인하여 여러 기기에서 프로필을 저장하세요.",
     vpnConfigName: "구성 이름",
     vpnConfigNamePlaceholder: "예: 임시 연결",
     vpnType: "VPN 유형",
     vpnConfigContent: "구성 내용",
-    vpnConfigPlaceholder: "여기에 WireGuard 또는 OpenVPN 구성을 붙여넣으세요...",
+    vpnConfigPlaceholder:
+      "여기에 WireGuard 또는 OpenVPN 구성을 붙여넣으세요...",
     vpnKillSwitch: "킬 스위치 (터널링되지 않은 트래픽 차단)",
-    vpnKillSwitchNote: "참고: Windows에서 OpenVPN은 CLI를 통한 DNS 누출 방지만 기본 지원합니다.",
+    vpnKillSwitchNote:
+      "참고: Windows에서 OpenVPN은 CLI를 통한 DNS 누출 방지만 기본 지원합니다.",
     vpnConnect: "VPN 연결",
     vpnDisconnect: "VPN 연결 해제",
     vpnFreeConfigBtn: "VPNBook에서 무료 구성 가져오기",
@@ -205,7 +217,8 @@ export const ko = {
     vpnManageProfilesDesc: "VPN 프로필을 관리하고 모니터링합니다.",
     vpnYourConfigurations: "내 구성",
     vpnNoConfigsFound: "구성을 찾을 수 없습니다.",
-    vpnNoConfigsFoundDesc: "시작하려면 위의 \"새 구성 만들기\"를 클릭하거나 직접 연결로 전환하세요.",
+    vpnNoConfigsFoundDesc:
+      '시작하려면 위의 "새 구성 만들기"를 클릭하거나 직접 연결로 전환하세요.',
     vpnSignInPrompt: "로그인",
     vpnServerDetected: "서버 감지됨",
     vpnNoServerDetected: "구성에서 서버가 감지되지 않음",
@@ -213,7 +226,8 @@ export const ko = {
     vpnOffline: "오프라인",
     vpnPinging: "핑 측정 중...",
     webDefenderTitle: "웹 디펜더",
-    webDefenderDesc: "DDoS, 인젝션 공격, 봇, VPN 및 악성 트래픽으로부터 웹사이트나 API를 보호합니다.",
+    webDefenderDesc:
+      "DDoS, 인젝션 공격, 봇, VPN 및 악성 트래픽으로부터 웹사이트나 API를 보호합니다.",
     webDefenderRealTime: "실시간",
     webDefenderConnecting: "연결 중...",
   },
@@ -226,7 +240,8 @@ export const ko = {
     chessTitle: "체스",
     chessDesc: "AI 상대와 체스 게임을 즐기세요.",
     minesweeperTitle: "지뢰찾기",
-    minesweeperDesc: "클래식 지뢰찾기 게임. 지뢰를 터뜨리지 않고 보드를 클리어하세요!",
+    minesweeperDesc:
+      "클래식 지뢰찾기 게임. 지뢰를 터뜨리지 않고 보드를 클리어하세요!",
     solitaireTitle: "솔리테어",
     solitaireDesc: "클래식 클론다이크 솔리테어 카드 게임을 즐기세요.",
     pokerTitle: "텍사스 홀덤",
@@ -256,14 +271,16 @@ export const ko = {
     storageUsed: "사용된 저장소",
     uploadFile: "파일 업로드",
     deleteConfirmTitle: "이 파일을 삭제하시겠습니까?",
-    deleteConfirmDesc: "이 작업은 되돌릴 수 없습니다. 파일이 클라우드 저장소에서 영구적으로 삭제됩니다.",
+    deleteConfirmDesc:
+      "이 작업은 되돌릴 수 없습니다. 파일이 클라우드 저장소에서 영구적으로 삭제됩니다.",
     fileUploaded: "파일이 성공적으로 업로드되었습니다",
     fileDeleted: "파일이 성공적으로 삭제되었습니다",
     filesTab: "파일",
     submissionsTab: "검증 신청",
     verifyForMultiplayer: "검증",
     verifiedBadge: "검증 완료",
-    reverificationRequired: "파일이 수정되었습니다. 이전 검증이 초기화되었으며 재검증이 필요합니다.",
+    reverificationRequired:
+      "파일이 수정되었습니다. 이전 검증이 초기화되었으며 재검증이 필요합니다.",
     noSubmissions: "저장소 파일에 대한 검증 신청이 아직 없습니다.",
   },
   customize: {
@@ -275,10 +292,12 @@ export const ko = {
     musicSectionTitle: "배경 음악",
     musicSectionDesc: "애플리케이션을 사용하는 동안 음악을 들으세요",
     gradientTitle: "그라데이션 배경",
-    gradientDesc: "히어로 섹션 및 사이드바에서 다채로운 색상의 그라데이션을 활성화합니다",
+    gradientDesc:
+      "히어로 섹션 및 사이드바에서 다채로운 색상의 그라데이션을 활성화합니다",
     shuffle: "셔플",
     loop: "반복",
-    noTracks: "아직 추가된 트랙이 없습니다. 저장소에서 트랙을 선택하여 재생하세요!",
+    noTracks:
+      "아직 추가된 트랙이 없습니다. 저장소에서 트랙을 선택하여 재생하세요!",
   },
   characters: {
     title: "캐릭터",
@@ -293,13 +312,16 @@ export const ko = {
     personality: "성격",
     backstory: "배경 이야기",
     hiddenDescription: "비공개 노트",
-    noCharacters: '아직 캐릭터가 없습니다! "새 캐릭터"를 클릭하여 시작하고 컬렉션에 추가해 보세요.',
-    noUniverses: '아직 유니버스가 없습니다! "새 유니버스"를 클릭하여 나만의 세계 구축을 시작하세요.',
+    noCharacters:
+      '아직 캐릭터가 없습니다! "새 캐릭터"를 클릭하여 시작하고 컬렉션에 추가해 보세요.',
+    noUniverses:
+      '아직 유니버스가 없습니다! "새 유니버스"를 클릭하여 나만의 세계 구축을 시작하세요.',
     characterSaved: "캐릭터가 성공적으로 저장되었습니다",
     characterDeleted: "캐릭터가 성공적으로 삭제되었습니다",
     verifyForMultiplayer: "검증",
     verifiedBadge: "검증 완료",
-    reverificationRequired: "캐릭터가 수정되었습니다. 검증 상태가 초기화되었으며 멀티플레이어용 재검증이 필요합니다.",
+    reverificationRequired:
+      "캐릭터가 수정되었습니다. 검증 상태가 초기화되었으며 멀티플레이어용 재검증이 필요합니다.",
   },
   changelogs: {
     title: "변경 로그",
@@ -308,7 +330,8 @@ export const ko = {
   },
   support: {
     title: "지원 티켓",
-    subtitle: "도움이 필요하신가요? 지원 티켓을 생성하시면 저희 팀이 답변해 드리겠습니다.",
+    subtitle:
+      "도움이 필요하신가요? 지원 티켓을 생성하시면 저희 팀이 답변해 드리겠습니다.",
     createTicket: "티켓 생성",
     myTickets: "내 티켓",
     subject: "제목",
@@ -344,7 +367,8 @@ export const ko = {
     supportDesc: "사용자 지원 티켓을 관리하고 응답합니다.",
     allTickets: "모든 지원 티켓",
     verificationTitle: "에셋 검증",
-    verificationDesc: "공개 에셋 및 멀티플레이어 검증 요청을 검토, 승인 또는 거부합니다.",
+    verificationDesc:
+      "공개 에셋 및 멀티플레이어 검증 요청을 검토, 승인 또는 거부합니다.",
     reviewQueue: "에셋 검증 대기열",
     allSubmissions: "모든 제출물",
     pendingTab: "대기 중",
@@ -353,7 +377,8 @@ export const ko = {
     approve: "승인",
     deny: "거부",
     denyTitle: "검증 요청 거부",
-    denyDesc: "이 에셋을 거부하는 구체적인 이유를 입력하세요. 이 이유는 사용자에게 표시됩니다.",
+    denyDesc:
+      "이 에셋을 거부하는 구체적인 이유를 입력하세요. 이 이유는 사용자에게 표시됩니다.",
     reasonPlaceholder: "거부된 이유를 설명하세요 (필수)...",
     reasonRequiredError: "신청을 거부하려면 거부 사유가 필요합니다.",
     approveSuccess: "에셋이 성공적으로 승인되었습니다.",
@@ -382,7 +407,8 @@ export const ko = {
     mostDownloaded: "다운로드순",
     publishAsset: "에셋 게시",
     publishTitle: "공개 에셋에 게시",
-    publishDesc: "기존 캐릭터, 유니버스 또는 저장소 파일을 선택하여 검증을 위해 제출하세요.",
+    publishDesc:
+      "기존 캐릭터, 유니버스 또는 저장소 파일을 선택하여 검증을 위해 제출하세요.",
     assetType: "에셋 유형",
     selectCharacter: "캐릭터 선택",
     selectUniverse: "유니버스 선택",
@@ -397,7 +423,8 @@ export const ko = {
     downloadToCollection: "컬렉션에 추가",
     saveToStorage: "저장소에 저장",
     makePrivate: "비공개로 전환 / 게시 취소",
-    makePrivateConfirm: "이 에셋의 게시를 취소하시겠습니까? 공개 허브에서 제거되고 다시 비공개로 전환됩니다.",
+    makePrivateConfirm:
+      "이 에셋의 게시를 취소하시겠습니까? 공개 허브에서 제거되고 다시 비공개로 전환됩니다.",
     unpublishSuccess: "에셋이 공개 허브에서 제거되었습니다.",
     statusPending: "검토 대기 중",
     statusApproved: "승인됨 및 공개됨",
@@ -409,13 +436,15 @@ export const ko = {
     downloads: "다운로드",
     size: "크기",
     uploader: "게시자",
-    unauthorizedEncrypted: "암호화된 캐릭터는 업로드할 수 없습니다. 먼저 잠금을 해제하세요.",
+    unauthorizedEncrypted:
+      "암호화된 캐릭터는 업로드할 수 없습니다. 먼저 잠금을 해제하세요.",
   },
   verification: {
     verifyForPublicUsage: "공개 사용 검증 신청",
     verifyForMultiplayer: "검증",
     verifyForMultiplayerTitle: "에셋 검증",
-    verifyForMultiplayerDesc: "공개하지 않고 멀티플레이어 게임 등에서 사용할 수 있도록 이 비공개 에셋의 검증을 요청합니다.",
+    verifyForMultiplayerDesc:
+      "공개하지 않고 멀티플레이어 게임 등에서 사용할 수 있도록 이 비공개 에셋의 검증을 요청합니다.",
     publishToPublicAssets: "공개 에셋에 게시",
     verifiedForPublicUsageBadge: "공개 사용 검증 완료",
     verifiedForMultiplayerBadge: "검증 완료",
@@ -423,12 +452,15 @@ export const ko = {
     pendingReviewBadge: "검토 대기 중",
     rejectedBadge: "검증 거부됨",
     viewDenialReason: "거부 사유 보기",
-    publicUsageDescription: "공개 멀티플레이어 게임 및 공유 환경에서 사용하기 위해 이 에셋을 검증에 제출합니다.",
+    publicUsageDescription:
+      "공개 멀티플레이어 게임 및 공유 환경에서 사용하기 위해 이 에셋을 검증에 제출합니다.",
     requestSubmitted: "검증 요청이 성공적으로 제출되었습니다!",
-    versionNotice: "이 에셋을 로컬에서 수정해도 공개 버전에는 영향을 주지 않습니다. 공개 에셋을 업데이트하려면 새 검증 요청을 제출하세요.",
+    versionNotice:
+      "이 에셋을 로컬에서 수정해도 공개 버전에는 영향을 주지 않습니다. 공개 에셋을 업데이트하려면 새 검증 요청을 제출하세요.",
     updatePublicVersion: "공개 버전 업데이트",
     rejectionReasonDialogTitle: "검증 거부 사유",
-    rejectionReasonDialogDesc: "귀하의 제출물은 관리자에 의해 검토되었으며 다음 사유로 거부되었습니다:",
+    rejectionReasonDialogDesc:
+      "귀하의 제출물은 관리자에 의해 검토되었으며 다음 사유로 거부되었습니다:",
     deleteSubmission: "신청 삭제",
     deleteSubmissionConfirm: "이 검증 신청을 삭제하시겠습니까?",
     submissionDeleted: "검증 신청이 성공적으로 삭제되었습니다",
@@ -440,11 +472,13 @@ export const ko = {
     termsOfService: "이용 약관",
     privacyPolicy: "개인정보처리방침",
     eulaTitle: "최종 사용자 라이선스 계약 (EULA)",
-    eulaDesc: "소프트웨어 사용을 위해 부여된 라이선스, 적용되는 제한 사항 및 의무.",
+    eulaDesc:
+      "소프트웨어 사용을 위해 부여된 라이선스, 적용되는 제한 사항 및 의무.",
     dmcaTitle: "DMCA 및 저작권 정책",
     dmcaDesc: "저작권 침해 신고, 이의 제기 방법 및 반복 침해자에 대한 정책.",
     aupTitle: "허용 가능한 사용 정책 (AUP)",
-    aupDesc: "금지된 활동 및 강제 조치를 포함하여 서비스 사용에 대한 행동 표준.",
+    aupDesc:
+      "금지된 활동 및 강제 조치를 포함하여 서비스 사용에 대한 행동 표준.",
     licenseTitle: "라이선스",
     licenseDesc: "이 프로젝트에 적용되는 MIT 라이선스.",
   },
@@ -472,7 +506,8 @@ export const ko = {
     subtitle: "귀하의 Oxygen Low's Software 계정에 대한 액세스를 요청합니다",
     permissions: "요청된 권한",
     authorizeApp: "{app} 승인",
-    wantsAccess: "이 애플리케이션이 귀하의 Oxygen Low's Software 계정에 연결하려고 합니다.",
+    wantsAccess:
+      "이 애플리케이션이 귀하의 Oxygen Low's Software 계정에 연결하려고 합니다.",
     requestedPermissions: "요청된 권한:",
     warning: "신뢰하는 애플리케이션만 승인하세요.",
     approve: "승인",
@@ -485,9 +520,11 @@ export const ko = {
   },
   security: {
     title: "보안 및 데이터 암호화",
-    subtitle: "256비트 AES 마스터 키를 관리하고 개인 데이터에 대한 영지식 암호화를 활성화합니다.",
+    subtitle:
+      "256비트 AES 마스터 키를 관리하고 개인 데이터에 대한 영지식 암호화를 활성화합니다.",
     masterKeyTitle: "AES-256 마스터 키",
-    masterKeyDesc: "마스터 키는 클라우드에 저장되기 전에 기기에서 직접 개인 데이터를 암호화합니다. 이 키 없이는 누구도 데이터를 읽을 수 없습니다.",
+    masterKeyDesc:
+      "마스터 키는 클라우드에 저장되기 전에 기기에서 직접 개인 데이터를 암호화합니다. 이 키 없이는 누구도 데이터를 읽을 수 없습니다.",
     keyActiveBadge: "마스터 키 활성화됨",
     keyNotSetBadge: "마스터 키 미설정",
     generateButton: "마스터 키 생성",
@@ -501,10 +538,12 @@ export const ko = {
     clearKey: "키 잠금 / 삭제",
     keyClearedToast: "세션에서 마스터 키가 삭제되었습니다",
     importKeyTitle: "기존 마스터 키 사용",
-    importKeyPlaceholder: "64자 16진수 또는 256비트 Base64 마스터 키 붙여넣기...",
+    importKeyPlaceholder:
+      "64자 16진수 또는 256비트 Base64 마스터 키 붙여넣기...",
     activateKeyButton: "키 잠금 해제 / 활성화",
     keyActivatedToast: "마스터 키가 성공적으로 활성화되었습니다",
-    invalidKeyError: "잘못된 마스터 키 형식입니다. 256비트 키(64자 16진수 또는 Base64)여야 합니다.",
+    invalidKeyError:
+      "잘못된 마스터 키 형식입니다. 256비트 키(64자 16진수 또는 Base64)여야 합니다.",
     keyFormat: "키 형식",
     showKeyFormat: "키 형식",
     hideKeyFormat: "키 형식 숨기기",
@@ -512,13 +551,17 @@ export const ko = {
     formatBase64: "Base64 (44자)",
     formatBase58: "Base58",
     formatWords: "암호문구 단어",
-    clientSideNotice: "영지식(Zero-Knowledge): 마스터 키는 브라우저 세션에만 유지되며 서버로 전송되지 않습니다.",
+    clientSideNotice:
+      "영지식(Zero-Knowledge): 마스터 키는 브라우저 세션에만 유지되며 서버로 전송되지 않습니다.",
     encryptionSettingsTitle: "보호 대상 데이터 범주",
-    encryptionSettingsDesc: "각 데이터 범주에 대해 클라이언트 측 AES-256 암호화를 토글합니다. 활성화하면 저장 전에 마스터 키로 암호화됩니다.",
+    encryptionSettingsDesc:
+      "각 데이터 범주에 대해 클라이언트 측 AES-256 암호화를 토글합니다. 활성화하면 저장 전에 마스터 키로 암호화됩니다.",
     charactersUniverses: "캐릭터 및 유니버스",
-    charactersUniversesDesc: "캐릭터 소개, 외모, 성격, 비공개 메모 및 유니버스 설정을 암호화합니다.",
+    charactersUniversesDesc:
+      "캐릭터 소개, 외모, 성격, 비공개 메모 및 유니버스 설정을 암호화합니다.",
     dataSave: "데이터 저장 항목",
-    dataSaveDesc: "사용자 지정 키-값 조각, 코드 스니펫, 메모 및 저장된 데이터 레코드를 암호화합니다.",
+    dataSaveDesc:
+      "사용자 지정 키-값 조각, 코드 스니펫, 메모 및 저장된 데이터 레코드를 암호화합니다.",
     chatbotChats: "챗봇 대화",
     chatbotChatsDesc: "AI 대화, 메시지 기록 및 시스템 프롬프트를 암호화합니다.",
     encryptionEnabled: "암호화됨",
@@ -526,38 +569,51 @@ export const ko = {
     keyRequiredBadge: "키 필요",
     settingsSavedToast: "암호화 설정이 업데이트되었습니다",
     encryptionPromptTitle: "복호화 필요",
-    encryptionPromptDesc: "이 섹션은 256비트 AES 마스터 키로 암호화되어 있습니다. 데이터에 접근하려면 마스터 키를 입력하여 잠금을 해제하세요.",
+    encryptionPromptDesc:
+      "이 섹션은 256비트 AES 마스터 키로 암호화되어 있습니다. 데이터에 접근하려면 마스터 키를 입력하여 잠금을 해제하세요.",
     goToSecurityButton: "보안 페이지로 이동하여 잠금 해제",
     quickUnlockTitle: "이 페이지에서 빠른 잠금 해제",
     quickUnlockPlaceholder: "64자 16진수 또는 Base64 마스터 키 붙여넣기...",
     quickUnlockButton: "잠금 해제 및 복호화",
-    returnToPrompt: "마스터 키가 활성화되었습니다. 이전 페이지로 돌아갈 수 있습니다:",
+    returnToPrompt:
+      "마스터 키가 활성화되었습니다. 이전 페이지로 돌아갈 수 있습니다:",
     returnToButton: "페이지로 돌아가기",
     uploadKeyFile: ".key 파일 업로드",
     dropKeyHere: "여기에 .key 파일을 놓거나 클릭하여 찾아보기",
-    uploadKeyDesc: "저장된 .key 백업 파일을 업로드하여 마스터 키를 자동으로 활성화하고 잠금을 해제하세요.",
+    uploadKeyDesc:
+      "저장된 .key 백업 파일을 업로드하여 마스터 키를 자동으로 활성화하고 잠금을 해제하세요.",
     keyFileUploadedToast: "파일에서 마스터 키를 불러와 활성화했습니다",
-    invalidKeyFileError: "업로드된 파일에서 유효한 256비트 마스터 키를 찾을 수 없습니다.",
+    invalidKeyFileError:
+      "업로드된 파일에서 유효한 256비트 마스터 키를 찾을 수 없습니다.",
     readKeyFileError: ".key 파일을 읽지 못했습니다.",
     autoLockedToast: "30분 동안 활동이 없어 마스터 키가 잠겼습니다.",
     integrations: "API 키 및 통합",
-    integrationsDesc: "저장된 API 키, LLM 자격 증명 및 MCP 액세스 토큰을 암호화합니다.",
-    cannotDisableIntegrationsWithKeys: "API 키/통합이 저장되어 있는 동안에는 암호화를 비활성화할 수 없습니다. 먼저 저장된 모든 통합을 제거하십시오.",
-    masterKeyRequiredToChange: "보호 대상 데이터 범주를 활성화하거나 비활성화하려면 활성 마스터 키가 필요합니다.",
-    masterKeyRequiredNotice: "보호 대상 데이터 범주 암호화 설정을 변경하려면 활성 마스터 키가 필요합니다. 설정을 변경하려면 위에서 마스터 키를 생성하거나 잠금을 해제하세요.",
-    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
-    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    integrationsDesc:
+      "저장된 API 키, LLM 자격 증명 및 MCP 액세스 토큰을 암호화합니다.",
+    cannotDisableIntegrationsWithKeys:
+      "API 키/통합이 저장되어 있는 동안에는 암호화를 비활성화할 수 없습니다. 먼저 저장된 모든 통합을 제거하십시오.",
+    masterKeyRequiredToChange:
+      "보호 대상 데이터 범주를 활성화하거나 비활성화하려면 활성 마스터 키가 필요합니다.",
+    masterKeyRequiredNotice:
+      "보호 대상 데이터 범주 암호화 설정을 변경하려면 활성 마스터 키가 필요합니다. 설정을 변경하려면 위에서 마스터 키를 생성하거나 잠금을 해제하세요.",
+    rotateKeyConfirm:
+      "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast:
+      "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
     rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "통합 및 API 키",
-    subtitle: "LLM 모델, 통합 및 MCP 서버에 대한 API 키와 자격 증명을 안전하게 관리합니다.",
+    subtitle:
+      "LLM 모델, 통합 및 MCP 서버에 대한 API 키와 자격 증명을 안전하게 관리합니다.",
     aesEncryptedBadge: "AES-256 암호화됨",
     encryptionDisabledBadge: "암호화 필요",
     encryptionRequiredTitle: "영지식 암호화 필요",
-    encryptionRequiredDesc: "개인 API 키와 토큰을 무단 접근으로부터 보호하기 위해, Oxygen Low's Software는 저장된 모든 통합에 클라이언트 측 AES-256 마스터 키 암호화를 요구합니다. 데이터는 저장되기 전에 브라우저에서 직접 암호화됩니다.",
-    encryptionNoticeDetail: "마스터 키는 로컬 세션에만 유지되며 서버에 업로드되거나 액세스될 수 없습니다.",
+    encryptionRequiredDesc:
+      "개인 API 키와 토큰을 무단 접근으로부터 보호하기 위해, Oxygen Low's Software는 저장된 모든 통합에 클라이언트 측 AES-256 마스터 키 암호화를 요구합니다. 데이터는 저장되기 전에 브라우저에서 직접 암호화됩니다.",
+    encryptionNoticeDetail:
+      "마스터 키는 로컬 세션에만 유지되며 서버에 업로드되거나 액세스될 수 없습니다.",
     enableEncryptionButton: "통합 암호화 활성화",
     encryptionEnabledToast: "API 키 및 통합 암호화가 활성화되었습니다",
     totalAvailable: "지원되는 총계",
@@ -573,7 +629,8 @@ export const ko = {
     notConfiguredBadge: "미설정",
     apiKeyLabel: "API 키 / 토큰",
     baseUrlLabel: "엔드포인트 / 기본 URL (선택 사항)",
-    baseUrlHelp: "기본값을 유지하거나 프록시, 사용자 지정 게이트웨이 또는 로컬 릴레이를 통해 연결하는 경우 사용자 지정하세요.",
+    baseUrlHelp:
+      "기본값을 유지하거나 프록시, 사용자 지정 게이트웨이 또는 로컬 릴레이를 통해 연결하는 경우 사용자 지정하세요.",
     defaultEndpointLabel: "기본 엔드포인트",
     fixedBaseUrlHelp: "이 통합은 항상 표준 공식 엔드포인트를 사용합니다.",
     copyKey: "키 복사",
@@ -584,7 +641,8 @@ export const ko = {
     configureButton: "구성",
     configureModalTitle: "{name} 구성",
     configureModalDefaultTitle: "통합 구성",
-    dialogEncryptionNotice: "자격 증명은 전송되기 전에 256비트 AES 마스터 키로 암호화됩니다.",
+    dialogEncryptionNotice:
+      "자격 증명은 전송되기 전에 256비트 AES 마스터 키로 암호화됩니다.",
     keyRequiredError: "API 키 / 토큰이 필요합니다",
     masterKeyMissingError: "통합을 암호화하려면 마스터 키가 필요합니다",
     savedToast: "{name} 자격 증명이 안전하게 저장되었습니다.",
@@ -594,14 +652,18 @@ export const ko = {
     fetchError: "통합을 불러오지 못했습니다",
     deleteConfirmTitle: "{name} 통합을 삭제하시겠습니까?",
     deleteConfirmDefaultTitle: "통합을 삭제하시겠습니까?",
-    deleteConfirmDesc: "이렇게 하면 암호화된 클라우드 저장소에서 저장된 API 키와 자격 증명이 영구적으로 제거됩니다.",
+    deleteConfirmDesc:
+      "이렇게 하면 암호화된 클라우드 저장소에서 저장된 API 키와 자격 증명이 영구적으로 제거됩니다.",
     openaiDesc: "GPT-4o, o1 및 o3-mini를 포함한 OpenAI 모델용 API 키.",
     geminiDesc: "Google Gemini Flash, Pro 및 임베딩 모델용 API 키.",
     openrouterDesc: "수백 개의 AI 모델에 대한 액세스를 제공하는 범용 API 키.",
     xaiDesc: "xAI Grok 프론티어 및 비전 모델용 API 키.",
-    anthropicDesc: "Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku 및 Opus용 API 키.",
-    googleJulesDesc: "Google Jules 코딩 워크플로를 위한 액세스 토큰 및 통합 자격 증명.",
-    googleStitchMcpDesc: "Google Stitch용 모델 컨텍스트 프로토콜(MCP) 서버 토큰 및 엔드포인트.",
+    anthropicDesc:
+      "Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku 및 Opus용 API 키.",
+    googleJulesDesc:
+      "Google Jules 코딩 워크플로를 위한 액세스 토큰 및 통합 자격 증명.",
+    googleStitchMcpDesc:
+      "Google Stitch용 모델 컨텍스트 프로토콜(MCP) 서버 토큰 및 엔드포인트.",
     githubMcpDesc: "GitHub MCP 저장소 도구용 GitHub 개인 액세스 토큰(PAT).",
   },
   titles: {

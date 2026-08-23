@@ -32,22 +32,25 @@ npm install @oxygenlow/webdefender
 ### Express
 
 ```javascript
-import express from 'express';
-import { createDefender } from '@oxygenlow/webdefender';
+import express from "express";
+import { createDefender } from "@oxygenlow/webdefender";
 
 const app = express();
 app.use(express.json());
 
 async function start() {
-  const { middleware } = await createDefender({
-    apiKey: 'your_api_key_here',
-  }, app); // Passing 'app' enables auto-route discovery
+  const { middleware } = await createDefender(
+    {
+      apiKey: "your_api_key_here",
+    },
+    app,
+  ); // Passing 'app' enables auto-route discovery
 
   app.use(middleware());
 
-  app.get('/', (req, res) => res.send('Hello Secure World!'));
-  
-  app.listen(3000, () => console.log('Server running securely on port 3000'));
+  app.get("/", (req, res) => res.send("Hello Secure World!"));
+
+  app.listen(3000, () => console.log("Server running securely on port 3000"));
 }
 
 start();
@@ -56,19 +59,19 @@ start();
 ### Hono
 
 ```javascript
-import { Hono } from 'hono';
-import { createDefender } from '@oxygenlow/webdefender/hono';
+import { Hono } from "hono";
+import { createDefender } from "@oxygenlow/webdefender/hono";
 
 const app = new Hono();
 
-app.use('*', async (c, next) => {
+app.use("*", async (c, next) => {
   const middleware = await createDefender({
-    apiKey: 'your_api_key_here',
+    apiKey: "your_api_key_here",
   });
   return middleware(c, next);
 });
 
-app.get('/', (c) => c.text('Hello Secure Hono!'));
+app.get("/", (c) => c.text("Hello Secure Hono!"));
 
 export default app;
 ```
@@ -77,11 +80,11 @@ export default app;
 
 ```javascript
 // middleware.ts
-import { NextResponse } from 'next/server';
-import { createNextDefender } from '@oxygenlow/webdefender/next';
+import { NextResponse } from "next/server";
+import { createNextDefender } from "@oxygenlow/webdefender/next";
 
 const defender = createNextDefender({
-  apiKey: 'your_api_key_here'
+  apiKey: "your_api_key_here",
 });
 
 export async function middleware(request) {
@@ -91,19 +94,20 @@ export async function middleware(request) {
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `apiKey` | `string` | **Required** | Your Oxygen Low's Software project API key. |
-| `logOnly` | `boolean` | `false` | If true, overrides the server config to only log threats, never block. |
-| `syncIntervalMs` | `number` | `60000` | Interval in ms to automatically sync security configuration from the dashboard. Set to 0 to disable. |
-| `onBlocked` | `function` | `undefined` | Callback fired when a request is blocked locally. |
-| `onError` | `function` | `undefined` | Callback fired when an internal defender error occurs. |
+| Option           | Type       | Default      | Description                                                                                          |
+| ---------------- | ---------- | ------------ | ---------------------------------------------------------------------------------------------------- |
+| `apiKey`         | `string`   | **Required** | Your Oxygen Low's Software project API key.                                                          |
+| `logOnly`        | `boolean`  | `false`      | If true, overrides the server config to only log threats, never block.                               |
+| `syncIntervalMs` | `number`   | `60000`      | Interval in ms to automatically sync security configuration from the dashboard. Set to 0 to disable. |
+| `onBlocked`      | `function` | `undefined`  | Callback fired when a request is blocked locally.                                                    |
+| `onError`        | `function` | `undefined`  | Callback fired when an internal defender error occurs.                                               |
 
 ## How it works
 
-When initialized, the middleware fetches its configuration from the central API based on your `apiKey`. It routinely refreshes known TOR exit nodes and caching IP country codes. 
+When initialized, the middleware fetches its configuration from the central API based on your `apiKey`. It routinely refreshes known TOR exit nodes and caching IP country codes.
 
 On every incoming request, it executes the following pipeline:
+
 1. **Individual IP Check**: Verifies if the request IP is in your blocked IP list.
 2. **IP Geo Check**: Verifies if the request originates from a blocked country.
 3. **TOR Check**: Checks if the IP is a known TOR exit node.

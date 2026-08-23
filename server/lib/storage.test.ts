@@ -34,8 +34,12 @@ describe("Server Storage Library", () => {
 
     it("throws on path traversal sequences", () => {
       expect(() => sanitizePath("../secret.txt")).toThrow("Invalid path");
-      expect(() => sanitizePath("folder/../../secret.txt")).toThrow("Invalid path");
-      expect(() => sanitizePath("folder/..\0/file.txt")).toThrow("Invalid path");
+      expect(() => sanitizePath("folder/../../secret.txt")).toThrow(
+        "Invalid path",
+      );
+      expect(() => sanitizePath("folder/..\0/file.txt")).toThrow(
+        "Invalid path",
+      );
     });
   });
 
@@ -54,11 +58,18 @@ describe("Server Storage Library", () => {
   describe("File operations (upload, download, list, remove)", () => {
     it("uploads and downloads files successfully", async () => {
       const content = Buffer.from("Hello custom storage!");
-      const uploadRes = await serverStorage.upload(testBucket, "test-user/hello.txt", content);
+      const uploadRes = await serverStorage.upload(
+        testBucket,
+        "test-user/hello.txt",
+        content,
+      );
       expect(uploadRes.error).toBeNull();
       expect(uploadRes.data?.path).toBe("test-user/hello.txt");
 
-      const downloadRes = await serverStorage.download(testBucket, "test-user/hello.txt");
+      const downloadRes = await serverStorage.download(
+        testBucket,
+        "test-user/hello.txt",
+      );
       expect(downloadRes.error).toBeNull();
       expect(downloadRes.data?.toString()).toBe("Hello custom storage!");
     });
@@ -84,14 +95,22 @@ describe("Server Storage Library", () => {
       await serverStorage.upload(testBucket, "u1/file1.txt", Buffer.from("1"));
       await serverStorage.upload(testBucket, "u1/file2.txt", Buffer.from("2"));
 
-      const removeRes = await serverStorage.remove(testBucket, ["u1/file1.txt"]);
+      const removeRes = await serverStorage.remove(testBucket, [
+        "u1/file1.txt",
+      ]);
       expect(removeRes.error).toBeNull();
       expect(removeRes.data).toContain("u1/file1.txt");
 
-      const downloadRes = await serverStorage.download(testBucket, "u1/file1.txt");
+      const downloadRes = await serverStorage.download(
+        testBucket,
+        "u1/file1.txt",
+      );
       expect(downloadRes.error).not.toBeNull();
 
-      const download2 = await serverStorage.download(testBucket, "u1/file2.txt");
+      const download2 = await serverStorage.download(
+        testBucket,
+        "u1/file2.txt",
+      );
       expect(download2.data?.toString()).toBe("2");
     });
 
@@ -99,8 +118,14 @@ describe("Server Storage Library", () => {
       const pubUrl = serverStorage.getPublicUrl("public-assets", "banner.png");
       expect(pubUrl).toBe("/api/storage/public/public-assets/banner.png");
 
-      const signedUrl = serverStorage.createSignedUrl("Storage", "u1/secret.png", "my-jwt-token");
-      expect(signedUrl).toBe("/api/storage/download/Storage/u1/secret.png?token=my-jwt-token");
+      const signedUrl = serverStorage.createSignedUrl(
+        "Storage",
+        "u1/secret.png",
+        "my-jwt-token",
+      );
+      expect(signedUrl).toBe(
+        "/api/storage/download/Storage/u1/secret.png?token=my-jwt-token",
+      );
     });
   });
 

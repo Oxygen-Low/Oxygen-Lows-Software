@@ -4,12 +4,60 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- A05: CSP meta tag – defence-in-depth fallback (server header takes precedence) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data: https://vqmukrmpgvavscsyefqd.supabase.co https:; connect-src 'self' blob: data: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:11434 http://127.0.0.1:1234 http://127.0.0.1:5001 http://127.0.0.1:5000 http://localhost:11434 http://localhost:1234 http://localhost:5001 http://localhost:5000 https://vqmukrmpgvavscsyefqd.supabase.co wss://vqmukrmpgvavscsyefqd.supabase.co https://unpkg.com https://cdn.jsdelivr.net https://oai.stablehorde.net https://stablehorde.net https://api.cloudflare.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.x.ai; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';" />
-    <meta name="description" content="Oxygen Low's Software - Beta. A platform for apps, storage, and customization." />
-    <title>Oxygen Low's Software</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data: https://vqmukrmpgvavscsyefqd.supabase.co https:; connect-src 'self' blob: data: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:11434 http://127.0.0.1:1234 http://127.0.0.1:5001 http://127.0.0.1:5000 http://localhost:11434 http://localhost:1234 http://localhost:5001 http://localhost:5000 https://vqmukrmpgvavscsyefqd.supabase.co wss://vqmukrmpgvavscsyefqd.supabase.co https://unpkg.com https://cdn.jsdelivr.net https://oai.stablehorde.net https://stablehorde.net https://api.cloudflare.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.x.ai; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
+    />
+    <meta
+      name="description"
+      content="Oxygen Low's Software is a modern suite of web tools, AI utilities, privacy-focused applications, and encrypted cloud storage solutions."
+    />
+    <title>Oxygen Low's Software - Modern Apps, Tools & Cloud Storage</title>
+    <link rel="canonical" href="https://oxygenlow.com/" />
+    <meta property="og:site_name" content="Oxygen Low's Software" />
+    <meta
+      property="og:title"
+      content="Oxygen Low's Software - Modern Apps, Tools & Cloud Storage"
+    />
+    <meta
+      property="og:description"
+      content="Oxygen Low's Software is a modern suite of web tools, AI utilities, privacy-focused applications, and encrypted cloud storage solutions."
+    />
+    <meta property="og:url" content="https://oxygenlow.com/" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:image"
+      content="https://oxygenlow.com/icons/icon-512x512.png"
+    />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Oxygen Low's Software - Modern Apps, Tools & Cloud Storage"
+    />
+    <meta
+      name="twitter:description"
+      content="Oxygen Low's Software is a modern suite of web tools, AI utilities, privacy-focused applications, and encrypted cloud storage solutions."
+    />
+    <meta
+      name="twitter:image"
+      content="https://oxygenlow.com/icons/icon-512x512.png"
+    />
+    <meta
+      name="keywords"
+      content="software, web apps, ai tools, cloud storage, privacy, file compressor, chatbot, web defender"
+    />
     <!-- RFC 8288 / RFC 9727 Discovery Links -->
-    <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json" />
-    <link rel="service-desc" href="/api/openapi.json" type="application/vnd.oai.openapi+json;version=3.0" />
+    <link
+      rel="api-catalog"
+      href="/.well-known/api-catalog"
+      type="application/linkset+json"
+    />
+    <link
+      rel="service-desc"
+      href="/api/openapi.json"
+      type="application/vnd.oai.openapi+json;version=3.0"
+    />
     <link rel="service-doc" href="/api/docs" type="text/html" />
     <link rel="describedby" href="/llms.txt" type="text/plain" />
     <link rel="describedby" href="/auth.md" type="text/markdown" />
@@ -29,13 +77,13 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500&amp;family=JetBrains+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
       rel="stylesheet"
       media="print"
-      onload="this.media='all'"
+      onload="this.media = 'all'"
     />
     <link
       href="https://fonts.googleapis.com/css2?family=Indie+Flower&amp;family=Zilla+Slab:wght@400;700&amp;family=VT323&amp;family=Cabin+Sketch:wght@400;700&amp;family=Londrina+Sketch&amp;display=swap"
       rel="stylesheet"
       media="print"
-      onload="this.media='all'"
+      onload="this.media = 'all'"
     />
     <noscript>
       <link
@@ -71,6 +119,17 @@
           transform: rotate(360deg);
         }
       }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
     </style>
   </head>
 
@@ -79,8 +138,87 @@
       <div class="initial-loader">
         <div class="initial-spinner"></div>
       </div>
-      <h1 class="sr-only" style="display: none;">Oxygen Low's Software</h1>
+      <header class="sr-only">
+        <h1>Oxygen Low's Software</h1>
+        <p>
+          Oxygen Low's Software is a modern suite of web tools, AI utilities,
+          privacy-focused applications, and encrypted cloud storage solutions.
+        </p>
+      </header>
+      <nav aria-label="Site Navigation" class="sr-only">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/apps">Apps</a></li>
+          <li><a href="/apps/chatbot">Chatbot</a></li>
+          <li><a href="/apps/file-compressor">File Compressor</a></li>
+          <li><a href="/apps/public-characters">Public Characters</a></li>
+          <li><a href="/apps/data-save">Data Save</a></li>
+          <li><a href="/apps/qrcode-generator">QR Code Generator</a></li>
+          <li><a href="/apps/llm-agent">LLM Agent</a></li>
+          <li><a href="/apps/agent-search">Agent Search</a></li>
+          <li><a href="/apps/webdefender">Web Defender</a></li>
+          <li><a href="/games">Games</a></li>
+          <li><a href="/download">Download</a></li>
+          <li><a href="/changelogs">Changelogs</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/terms">Terms of Use</a></li>
+          <li><a href="/eula">EULA</a></li>
+          <li><a href="/dmca">DMCA Policy</a></li>
+          <li><a href="/acceptable-use">Acceptable Use Policy</a></li>
+          <li><a href="/legal">Legal</a></li>
+          <li><a href="/license">License</a></li>
+          <li><a href="/support">Support</a></li>
+        </ul>
+      </nav>
     </div>
+
+    <noscript>
+      <div
+        style="
+          padding: 2rem;
+          color: #f3f4f6;
+          background-color: #0b0f19;
+          font-family: sans-serif;
+          text-align: center;
+        "
+      >
+        <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem">
+          Oxygen Low's Software
+        </h1>
+        <p style="color: #9ca3af; margin-bottom: 1.5rem">
+          JavaScript is required to run the interactive web application. Please
+          enable JavaScript or browse our platform sections below:
+        </p>
+        <nav
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+          "
+        >
+          <a href="/apps" style="color: #38bdf8; text-decoration: none">Apps</a>
+          <a href="/games" style="color: #38bdf8; text-decoration: none"
+            >Games</a
+          >
+          <a href="/download" style="color: #38bdf8; text-decoration: none"
+            >Download</a
+          >
+          <a href="/changelogs" style="color: #38bdf8; text-decoration: none"
+            >Changelogs</a
+          >
+          <a href="/privacy" style="color: #38bdf8; text-decoration: none"
+            >Privacy Policy</a
+          >
+          <a href="/terms" style="color: #38bdf8; text-decoration: none"
+            >Terms of Use</a
+          >
+          <a href="/legal" style="color: #38bdf8; text-decoration: none"
+            >Legal</a
+          >
+        </nav>
+      </div>
+    </noscript>
 
     <script type="module" src="/client/App.tsx"></script>
   </body>

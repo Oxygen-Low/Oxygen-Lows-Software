@@ -61,7 +61,9 @@ describe("languages utility", () => {
 
   it("generates correct FlagCDN URLs", () => {
     expect(getCountryFlagUrl("kr")).toBe("https://flagcdn.com/w40/kr.png");
-    expect(getCountryFlagUrl("GB", "w80")).toBe("https://flagcdn.com/w80/gb.png");
+    expect(getCountryFlagUrl("GB", "w80")).toBe(
+      "https://flagcdn.com/w80/gb.png",
+    );
     expect(getCountryFlagUrl("")).toBe("");
   });
 

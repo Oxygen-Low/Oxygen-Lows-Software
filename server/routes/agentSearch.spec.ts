@@ -14,14 +14,14 @@ describe("Agent Search Route", () => {
     const res = await app.request("/api/ai/agent-search", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query: "test",
-        responseFormat: "summary"
-      })
+        responseFormat: "summary",
+      }),
     });
-    
+
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toBe("Missing or invalid authorization token");
@@ -31,12 +31,12 @@ describe("Agent Search Route", () => {
     const res = await app.request("/api/ai/agent-search", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer fake_token",
-        "Content-Type": "application/json"
+        Authorization: "Bearer fake_token",
+        "Content-Type": "application/json",
       },
-      body: "invalid json"
+      body: "invalid json",
     });
-    
+
     // Auth fails first with fake_token since Supabase auth is not mocked
     expect(res.status).toBe(401);
   });
@@ -45,13 +45,13 @@ describe("Agent Search Route", () => {
     const res = await app.request("/api/ai/agent-search", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        responseFormat: "summary"
-      })
+        responseFormat: "summary",
+      }),
     });
-    
+
     expect(res.status).toBe(401);
   });
 });

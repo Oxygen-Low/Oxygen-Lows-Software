@@ -197,7 +197,8 @@ export const zhCN = {
     vpnConfigContent: "配置内容",
     vpnConfigPlaceholder: "在此粘贴您的 WireGuard 或 OpenVPN 配置...",
     vpnKillSwitch: "Kill Switch 终止开关（阻止非隧道流量）",
-    vpnKillSwitchNote: "注意：在 Windows 上，OpenVPN 原生仅支持通过 CLI 进行 DNS 泄漏保护。",
+    vpnKillSwitchNote:
+      "注意：在 Windows 上，OpenVPN 原生仅支持通过 CLI 进行 DNS 泄漏保护。",
     vpnConnect: "连接 VPN",
     vpnDisconnect: "断开 VPN",
     vpnFreeConfigBtn: "从 VPNBook 获取免费配置",
@@ -205,7 +206,8 @@ export const zhCN = {
     vpnManageProfilesDesc: "管理并监控您的 VPN 配置文件。",
     vpnYourConfigurations: "您的配置",
     vpnNoConfigsFound: "未找到任何配置。",
-    vpnNoConfigsFoundDesc: "点击上方的“创建新配置”开始使用，或切换至“直接连接”。",
+    vpnNoConfigsFoundDesc:
+      "点击上方的“创建新配置”开始使用，或切换至“直接连接”。",
     vpnSignInPrompt: "登录",
     vpnServerDetected: "已检测到服务器",
     vpnNoServerDetected: "配置中未检测到服务器",
@@ -213,7 +215,8 @@ export const zhCN = {
     vpnOffline: "离线",
     vpnPinging: "正在 Ping...",
     webDefenderTitle: "网页防御者",
-    webDefenderDesc: "保护您的网站或 API 免受 DDoS、注入攻击、机器人、VPN 和恶意流量的侵害。",
+    webDefenderDesc:
+      "保护您的网站或 API 免受 DDoS、注入攻击、机器人、VPN 和恶意流量的侵害。",
     webDefenderRealTime: "实时",
     webDefenderConnecting: "连接中...",
   },
@@ -293,13 +296,14 @@ export const zhCN = {
     personality: "性格",
     backstory: "背景故事",
     hiddenDescription: "私人笔记",
-    noCharacters: '这里还没有角色！点击“新建角色”开始将一些角色加入您的收藏。',
-    noUniverses: '这里还没有宇宙！点击“新建宇宙”开始构建您自己的世界。',
+    noCharacters: "这里还没有角色！点击“新建角色”开始将一些角色加入您的收藏。",
+    noUniverses: "这里还没有宇宙！点击“新建宇宙”开始构建您自己的世界。",
     characterSaved: "角色保存成功",
     characterDeleted: "角色删除成功",
     verifyForMultiplayer: "验证",
     verifiedBadge: "已验证",
-    reverificationRequired: "角色已被修改。验证状态已重置，在多人游戏中使用需要重新验证。",
+    reverificationRequired:
+      "角色已被修改。验证状态已重置，在多人游戏中使用需要重新验证。",
   },
   changelogs: {
     title: "更新日志",
@@ -397,7 +401,8 @@ export const zhCN = {
     downloadToCollection: "添加到收藏",
     saveToStorage: "保存到存储",
     makePrivate: "设为私有 / 取消发布",
-    makePrivateConfirm: "您确定要取消发布此资产吗？它将从公开中心移除并恢复为私有状态。",
+    makePrivateConfirm:
+      "您确定要取消发布此资产吗？它将从公开中心移除并恢复为私有状态。",
     unpublishSuccess: "资产已成功取消发布。",
     statusPending: "等待审核",
     statusApproved: "已批准并公开",
@@ -415,7 +420,8 @@ export const zhCN = {
     verifyForPublicUsage: "申请公开使用验证",
     verifyForMultiplayer: "验证",
     verifyForMultiplayerTitle: "资产验证",
-    verifyForMultiplayerDesc: "提交此私有资产进行验证，以便在多人游戏等场景中使用，无需公开发布。",
+    verifyForMultiplayerDesc:
+      "提交此私有资产进行验证，以便在多人游戏等场景中使用，无需公开发布。",
     publishToPublicAssets: "发布到公开资产",
     verifiedForPublicUsageBadge: "已验证公开使用",
     verifiedForMultiplayerBadge: "已验证",
@@ -423,9 +429,11 @@ export const zhCN = {
     pendingReviewBadge: "等待审核",
     rejectedBadge: "验证已拒绝",
     viewDenialReason: "查看拒绝原因",
-    publicUsageDescription: "提交此资产进行验证，以便在公开多人游戏和共享环境中使用。",
+    publicUsageDescription:
+      "提交此资产进行验证，以便在公开多人游戏和共享环境中使用。",
     requestSubmitted: "验证请求提交成功！",
-    versionNotice: "在本地编辑此资产不会影响已发布的公开版本。要更新公开资产，请提交新的更新验证请求。",
+    versionNotice:
+      "在本地编辑此资产不会影响已发布的公开版本。要更新公开资产，请提交新的更新验证请求。",
     updatePublicVersion: "更新公开版本",
     rejectionReasonDialogTitle: "验证拒绝原因",
     rejectionReasonDialogDesc: "您的提交已由管理员审核并被拒绝，原因如下：",
@@ -487,7 +495,8 @@ export const zhCN = {
     title: "安全与数据加密",
     subtitle: "管理您的256位AES主密钥，并为您的私密数据启用零知识端到端加密。",
     masterKeyTitle: "AES-256 主密钥",
-    masterKeyDesc: "主密钥在数据保存到云端之前直接在您的设备上进行加密。没有此密钥，任何人均无法读取您的数据。",
+    masterKeyDesc:
+      "主密钥在数据保存到云端之前直接在您的设备上进行加密。没有此密钥，任何人均无法读取您的数据。",
     keyActiveBadge: "主密钥已激活",
     keyNotSetBadge: "未设置主密钥",
     generateButton: "生成主密钥",
@@ -504,7 +513,8 @@ export const zhCN = {
     importKeyPlaceholder: "粘贴 64 位十六进制或 256 位 Base64 主密钥...",
     activateKeyButton: "解锁 / 激活密钥",
     keyActivatedToast: "主密钥已成功激活",
-    invalidKeyError: "主密钥格式无效。必须为256位密钥（64位十六进制或Base64）。",
+    invalidKeyError:
+      "主密钥格式无效。必须为256位密钥（64位十六进制或Base64）。",
     keyFormat: "密钥格式",
     showKeyFormat: "密钥格式",
     hideKeyFormat: "隐藏密钥格式",
@@ -512,9 +522,11 @@ export const zhCN = {
     formatBase64: "Base64 (44字符)",
     formatBase58: "Base58",
     formatWords: "助记密语单词",
-    clientSideNotice: "零知识保护：您的主密钥仅保存在浏览器当前会话中，绝不会发送至任何服务器。",
+    clientSideNotice:
+      "零知识保护：您的主密钥仅保存在浏览器当前会话中，绝不会发送至任何服务器。",
     encryptionSettingsTitle: "受保护数据分类",
-    encryptionSettingsDesc: "切换各数据类别的客户端 AES-256 加密。启用后，数据在保存前将使用主密钥加密。",
+    encryptionSettingsDesc:
+      "切换各数据类别的客户端 AES-256 加密。启用后，数据在保存前将使用主密钥加密。",
     charactersUniverses: "角色与宇宙",
     charactersUniversesDesc: "加密角色传记、外貌、性格、私密笔记和宇宙设定。",
     dataSave: "数据保存条目",
@@ -526,7 +538,8 @@ export const zhCN = {
     keyRequiredBadge: "需要密钥",
     settingsSavedToast: "加密设置已更新",
     encryptionPromptTitle: "需要解密",
-    encryptionPromptDesc: "此部分已使用 256 位 AES 主密钥加密。请输入或解锁您的主密钥以解密并访问数据。",
+    encryptionPromptDesc:
+      "此部分已使用 256 位 AES 主密钥加密。请输入或解锁您的主密钥以解密并访问数据。",
     goToSecurityButton: "前往安全页面解锁",
     quickUnlockTitle: "在此页面快速解锁",
     quickUnlockPlaceholder: "粘贴 64 位十六进制或 Base64 主密钥...",
@@ -542,11 +555,15 @@ export const zhCN = {
     autoLockedToast: "由于 30 分钟无操作，主密钥已锁定。",
     integrations: "API 密钥与集成",
     integrationsDesc: "加密存储的 API 密钥、LLM 凭据和 MCP 访问令牌。",
-    cannotDisableIntegrationsWithKeys: "存在已存储的 API 密钥/集成时无法禁用加密。请先删除所有存储的集成。",
+    cannotDisableIntegrationsWithKeys:
+      "存在已存储的 API 密钥/集成时无法禁用加密。请先删除所有存储的集成。",
     masterKeyRequiredToChange: "启用或禁用受保护数据分类需要激活的主密钥。",
-    masterKeyRequiredNotice: "更改受保护数据分类的加密设置需要激活的主密钥。请在上方生成或解锁主密钥以修改这些设置。",
-    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
-    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    masterKeyRequiredNotice:
+      "更改受保护数据分类的加密设置需要激活的主密钥。请在上方生成或解锁主密钥以修改这些设置。",
+    rotateKeyConfirm:
+      "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast:
+      "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
     rotateKeyButton: "Rotate Masterkey",
   },
@@ -556,8 +573,10 @@ export const zhCN = {
     aesEncryptedBadge: "AES-256 已加密",
     encryptionDisabledBadge: "需要加密",
     encryptionRequiredTitle: "需要零知识加密",
-    encryptionRequiredDesc: "为了保护您的私有 API 密钥和令牌免受未经授权的访问，Oxygen Low's Software 要求所有存储的集成必须进行客户端 AES-256 主密钥加密。数据在保存前直接在您的浏览器中加密。",
-    encryptionNoticeDetail: "您的主密钥仅保存在本地会话中，永远不会上传或被服务器访问。",
+    encryptionRequiredDesc:
+      "为了保护您的私有 API 密钥和令牌免受未经授权的访问，Oxygen Low's Software 要求所有存储的集成必须进行客户端 AES-256 主密钥加密。数据在保存前直接在您的浏览器中加密。",
+    encryptionNoticeDetail:
+      "您的主密钥仅保存在本地会话中，永远不会上传或被服务器访问。",
     enableEncryptionButton: "启用集成加密",
     encryptionEnabledToast: "已启用 API 密钥和集成的加密",
     totalAvailable: "支持总数",
@@ -573,7 +592,8 @@ export const zhCN = {
     notConfiguredBadge: "未设置",
     apiKeyLabel: "API 密钥 / 令牌",
     baseUrlLabel: "端点 / 基础 URL (选填)",
-    baseUrlHelp: "保留默认值，或在通过代理、自定义网关或本地中继连接时进行自定义。",
+    baseUrlHelp:
+      "保留默认值，或在通过代理、自定义网关或本地中继连接时进行自定义。",
     defaultEndpointLabel: "默认端点",
     fixedBaseUrlHelp: "此集成始终使用标准官方端点。",
     copyKey: "复制密钥",
@@ -584,7 +604,8 @@ export const zhCN = {
     configureButton: "配置",
     configureModalTitle: "配置 {name}",
     configureModalDefaultTitle: "配置集成",
-    dialogEncryptionNotice: "凭据在传输前将使用您的 256 位 AES 主密钥进行加密。",
+    dialogEncryptionNotice:
+      "凭据在传输前将使用您的 256 位 AES 主密钥进行加密。",
     keyRequiredError: "需要 API 密钥 / 令牌",
     masterKeyMissingError: "需要主密钥来加密集成",
     savedToast: "{name} 凭据已安全保存。",
@@ -599,9 +620,11 @@ export const zhCN = {
     geminiDesc: "用于 Google Gemini Flash、Pro 和嵌入模型的 API 密钥。",
     openrouterDesc: "提供数百种 AI 模型访问权限的通用 API 密钥。",
     xaiDesc: "用于 xAI Grok 前沿和视觉模型的 API 密钥。",
-    anthropicDesc: "用于 Claude 3.5 Sonnet、Claude 3.7 Sonnet、Haiku 和 Opus 的 API 密钥。",
+    anthropicDesc:
+      "用于 Claude 3.5 Sonnet、Claude 3.7 Sonnet、Haiku 和 Opus 的 API 密钥。",
     googleJulesDesc: "用于 Google Jules 编码工作流的访问令牌和集成凭据。",
-    googleStitchMcpDesc: "用于 Google Stitch 的模型上下文协议 (MCP) 服务器令牌和端点。",
+    googleStitchMcpDesc:
+      "用于 Google Stitch 的模型上下文协议 (MCP) 服务器令牌和端点。",
     githubMcpDesc: "用于 GitHub MCP 存储库工具的 GitHub 个人访问令牌 (PAT)。",
   },
   titles: {

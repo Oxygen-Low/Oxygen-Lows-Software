@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Storage from "./Storage";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +21,14 @@ vi.mock("@/components/Layout", () => ({
 const mockStorage = {
   list: vi.fn(() =>
     Promise.resolve({
-      data: [{ id: "f1", name: "test-audio.mp3", metadata: { size: 1024, mimetype: "audio/mp3" }, created_at: new Date().toISOString() }],
+      data: [
+        {
+          id: "f1",
+          name: "test-audio.mp3",
+          metadata: { size: 1024, mimetype: "audio/mp3" },
+          created_at: new Date().toISOString(),
+        },
+      ],
       error: null,
     }),
   ),
@@ -35,7 +48,9 @@ vi.mock("@/lib/storage", () => ({
       if (bucket === "public-assets") {
         return {
           list: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          createSignedUrls: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          createSignedUrls: vi.fn(() =>
+            Promise.resolve({ data: [], error: null }),
+          ),
           upload: vi.fn(() => Promise.resolve({ error: null })),
           remove: vi.fn(() => Promise.resolve({ error: null })),
         };
@@ -48,7 +63,9 @@ vi.mock("@/lib/storage", () => ({
       if (bucket === "public-assets") {
         return {
           list: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          createSignedUrls: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          createSignedUrls: vi.fn(() =>
+            Promise.resolve({ data: [], error: null }),
+          ),
           upload: vi.fn(() => Promise.resolve({ error: null })),
           remove: vi.fn(() => Promise.resolve({ error: null })),
         };
@@ -97,7 +114,9 @@ describe("Storage Page", () => {
 
     expect(screen.getByText("Storage")).toBeDefined();
     expect(screen.getByRole("tab", { name: /Files/i })).toBeDefined();
-    expect(screen.getByRole("tab", { name: /Verification Submissions/i })).toBeDefined();
+    expect(
+      screen.getByRole("tab", { name: /Verification Submissions/i }),
+    ).toBeDefined();
   });
 
   it("switches to Verification Submissions tab", async () => {
@@ -107,12 +126,16 @@ describe("Storage Page", () => {
       </MemoryRouter>,
     );
 
-    const submissionsTab = screen.getByRole("tab", { name: /Verification Submissions/i });
+    const submissionsTab = screen.getByRole("tab", {
+      name: /Verification Submissions/i,
+    });
     fireEvent.keyDown(submissionsTab, { key: "Enter" });
     fireEvent.click(submissionsTab);
 
     await waitFor(() => {
-      expect(screen.getByText(/No verification submissions for storage files yet/i)).toBeDefined();
+      expect(
+        screen.getByText(/No verification submissions for storage files yet/i),
+      ).toBeDefined();
     });
   });
 
@@ -148,7 +171,9 @@ describe("Storage Page", () => {
       </MemoryRouter>,
     );
 
-    const submissionsTab = screen.getByRole("tab", { name: /Verification Submissions/i });
+    const submissionsTab = screen.getByRole("tab", {
+      name: /Verification Submissions/i,
+    });
     fireEvent.click(submissionsTab);
   });
 });

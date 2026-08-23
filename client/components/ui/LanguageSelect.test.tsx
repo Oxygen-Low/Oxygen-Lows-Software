@@ -10,7 +10,9 @@ describe("LanguageSelect Component", () => {
     const img = container.querySelector("img");
     expect(img).toBeDefined();
     expect(img?.getAttribute("src")).toBe("https://flagcdn.com/w40/gb.png");
-    expect(img?.getAttribute("srcset")).toBe("https://flagcdn.com/w80/gb.png 2x");
+    expect(img?.getAttribute("srcset")).toBe(
+      "https://flagcdn.com/w80/gb.png 2x",
+    );
   });
 
   it("renders Korean language selection with South Korea FlagCDN flag", () => {

@@ -168,7 +168,8 @@ const AGENT_TOOLS = [
         properties: {
           command: {
             type: "string",
-            description: "The command to run, e.g. 'npm install' or 'git status'",
+            description:
+              "The command to run, e.g. 'npm install' or 'git status'",
           },
         },
         required: ["command"],
@@ -564,14 +565,14 @@ export function extractToolCallsFromContent(
     const list = Array.isArray(obj)
       ? obj
       : Array.isArray(obj.commands)
-      ? obj.commands
-      : Array.isArray(obj.tool_calls)
-      ? obj.tool_calls
-      : Array.isArray(obj.tools)
-      ? obj.tools
-      : Array.isArray(obj.actions)
-      ? obj.actions
-      : null;
+        ? obj.commands
+        : Array.isArray(obj.tool_calls)
+          ? obj.tool_calls
+          : Array.isArray(obj.tools)
+            ? obj.tools
+            : Array.isArray(obj.actions)
+              ? obj.actions
+              : null;
 
     if (list) {
       for (const item of list) {
@@ -586,14 +587,14 @@ export function extractToolCallsFromContent(
           item.arguments !== undefined
             ? item.arguments
             : item.args !== undefined
-            ? item.args
-            : item.parameters !== undefined
-            ? item.parameters
-            : item.params !== undefined
-            ? item.params
-            : item.function?.arguments !== undefined
-            ? item.function.arguments
-            : item;
+              ? item.args
+              : item.parameters !== undefined
+                ? item.parameters
+                : item.params !== undefined
+                  ? item.params
+                  : item.function?.arguments !== undefined
+                    ? item.function.arguments
+                    : item;
         if (toolName) {
           addCall(toolName, toolArgs);
           found = true;
@@ -604,11 +605,7 @@ export function extractToolCallsFromContent(
 
     // 2. Single command / tool call object
     const singleName =
-      obj.name ||
-      obj.command ||
-      obj.tool ||
-      obj.action ||
-      obj.function?.name;
+      obj.name || obj.command || obj.tool || obj.action || obj.function?.name;
     const isKnown =
       singleName && knownTools.some((t) => t.function.name === singleName);
 
@@ -625,14 +622,14 @@ export function extractToolCallsFromContent(
         obj.arguments !== undefined
           ? obj.arguments
           : obj.args !== undefined
-          ? obj.args
-          : obj.parameters !== undefined
-          ? obj.parameters
-          : obj.params !== undefined
-          ? obj.params
-          : obj.function?.arguments !== undefined
-          ? obj.function.arguments
-          : obj;
+            ? obj.args
+            : obj.parameters !== undefined
+              ? obj.parameters
+              : obj.params !== undefined
+                ? obj.params
+                : obj.function?.arguments !== undefined
+                  ? obj.function.arguments
+                  : obj;
       addCall(singleName, singleArgs);
       return true;
     }
@@ -783,8 +780,7 @@ export function extractToolCallsFromContent(
 
   // Step 4: Check for standalone raw JSON with "commands" or known tools
   if (toolCalls.length === 0) {
-    const rawJsonRegex =
-      /({[\s\S]*?"commands"\s*:\s*\[[\s\S]*?\][\s\S]*?})/i;
+    const rawJsonRegex = /({[\s\S]*?"commands"\s*:\s*\[[\s\S]*?\][\s\S]*?})/i;
     const rawMatch = rawJsonRegex.exec(content);
     if (rawMatch) {
       const parsed = parseJsonSafely(rawMatch[1]);
@@ -862,7 +858,8 @@ async function executeToolCall(
       if (typeof cmdResult === "string") return cmdResult;
       let output = "";
       if (cmdResult.stdout) output += cmdResult.stdout;
-      if (cmdResult.stderr) output += (output ? "\n" : "") + "STDERR:\n" + cmdResult.stderr;
+      if (cmdResult.stderr)
+        output += (output ? "\n" : "") + "STDERR:\n" + cmdResult.stderr;
       return output || "(no output)";
     }
 
@@ -999,11 +996,11 @@ function highlightCode(code: string): string {
   const tp = "#e06c75";
 
   s = s
-    .replace(/(--.*|\/\/.*|&lt;!--.*?--&gt;|#.*)/g, `<span style="color:${cmt}">$1</span>`)
     .replace(
-      /(".*?"|'.*?')/g,
-      `<span style="color:${str}">$1</span>`,
+      /(--.*|\/\/.*|&lt;!--.*?--&gt;|#.*)/g,
+      `<span style="color:${cmt}">$1</span>`,
     )
+    .replace(/(".*?"|'.*?')/g, `<span style="color:${str}">$1</span>`)
     .replace(
       /\b(function|return|if|else|for|while|class|public|private|void|int|string|bool|local|end|then|do|using|namespace|include|async|await|var|readonly|import|from|def|self|match|let|mut|break|const|super)\b/g,
       `<span style="color:${kw}">$1</span>`,
@@ -1012,10 +1009,7 @@ function highlightCode(code: string): string {
       /\b([A-Z][a-zA-Z0-9_]*|float)\b/g,
       `<span style="color:${tp}">$1</span>`,
     )
-    .replace(
-      /\b([a-zA-Z_]\w*)(?=\()/g,
-      `<span style="color:${fn_}">$1</span>`,
-    );
+    .replace(/\b([a-zA-Z_]\w*)(?=\()/g, `<span style="color:${fn_}">$1</span>`);
 
   return s;
 }
@@ -1141,28 +1135,34 @@ function AnimatedBackground() {
         if (Math.random() > 0.5) div.classList.add("agent-color-alt");
 
         let charIndex = 0;
-        const typeInterval = setInterval(() => {
-          const current = text.substring(0, charIndex);
-          const cursor =
-            charIndex < text.length
-              ? '<span class="agent-cursor">_</span>'
-              : "";
-          div.innerHTML = highlightCode(current) + cursor;
-          charIndex++;
-          if (charIndex > text.length) clearInterval(typeInterval);
-        }, 10 + Math.random() * 20);
+        const typeInterval = setInterval(
+          () => {
+            const current = text.substring(0, charIndex);
+            const cursor =
+              charIndex < text.length
+                ? '<span class="agent-cursor">_</span>'
+                : "";
+            div.innerHTML = highlightCode(current) + cursor;
+            charIndex++;
+            if (charIndex > text.length) clearInterval(typeInterval);
+          },
+          10 + Math.random() * 20,
+        );
 
         col.appendChild(div);
         intervals.push(typeInterval);
       }
 
       addSnippet();
-      const colInterval = setInterval(() => {
-        if (col.children.length > 3 && col.firstChild) {
-          col.removeChild(col.firstChild);
-        }
-        addSnippet();
-      }, 6000 + Math.random() * 4000);
+      const colInterval = setInterval(
+        () => {
+          if (col.children.length > 3 && col.firstChild) {
+            col.removeChild(col.firstChild);
+          }
+          addSnippet();
+        },
+        6000 + Math.random() * 4000,
+      );
       intervals.push(colInterval);
     }
 
@@ -1178,10 +1178,7 @@ function AnimatedBackground() {
         ref={parallaxRef}
         className="absolute inset-[-40px] w-[calc(100%+80px)] h-[calc(100%+80px)] transition-transform duration-100 ease-out"
       >
-        <div
-          ref={codeContainerRef}
-          className="absolute inset-0 z-0"
-        />
+        <div ref={codeContainerRef} className="absolute inset-0 z-0" />
         <canvas
           ref={canvasRef}
           className="absolute inset-0 z-10 w-full h-full pointer-events-none"
@@ -1243,7 +1240,10 @@ function ModelSelector({
   const localModels = models.filter((m) => m.provider.startsWith("local-"));
   const cloudflareModels = models.filter((m) => m.provider === "cloudflare");
   const otherModels = models.filter(
-    (m) => m.provider !== "horde" && m.provider !== "cloudflare" && !m.provider.startsWith("local-"),
+    (m) =>
+      m.provider !== "horde" &&
+      m.provider !== "cloudflare" &&
+      !m.provider.startsWith("local-"),
   );
 
   return (
@@ -1256,18 +1256,22 @@ function ModelSelector({
             : "px-3 py-2 bg-slate-900/50 text-slate-300"
         }`}
         title={
-          selectedProvider === "cloudflare" && pointsStatus !== null && pointsStatus !== undefined
+          selectedProvider === "cloudflare" &&
+          pointsStatus !== null &&
+          pointsStatus !== undefined
             ? `Points: ${pointsStatus.available}/${pointsStatus.given}`
             : undefined
         }
       >
         <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
         <span className="max-w-[160px] truncate text-xs">{label}</span>
-        {selectedProvider === "cloudflare" && pointsStatus !== null && pointsStatus !== undefined && (
-          <span className="text-[10px] font-mono text-cyan-400 font-medium bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
-            {pointsStatus.available}/{pointsStatus.given}
-          </span>
-        )}
+        {selectedProvider === "cloudflare" &&
+          pointsStatus !== null &&
+          pointsStatus !== undefined && (
+            <span className="text-[10px] font-mono text-cyan-400 font-medium bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
+              {pointsStatus.available}/{pointsStatus.given}
+            </span>
+          )}
         <ChevronDown className="w-3 h-3 text-slate-500" />
       </button>
 
@@ -1324,7 +1328,9 @@ function ModelSelector({
                         setOpen(false);
                       }}
                     >
-                      <span className="capitalize">{m.model_id} ({m.provider.replace("local-", "")})</span>
+                      <span className="capitalize">
+                        {m.model_id} ({m.provider.replace("local-", "")})
+                      </span>
                       {m.model_id === selectedModel &&
                         m.provider === selectedProvider && (
                           <Check className="w-3 h-3" />
@@ -1509,49 +1515,49 @@ function AgentMarkdown({ content }: { content: string }) {
     <div className="prose prose-invert prose-sm max-w-none text-sm leading-relaxed text-slate-300">
       <ReactMarkdown
         components={{
-        code({ className, children, ...props }) {
-          const match = /language-(\w+)/.exec(className || "");
-          const inline = !match;
-          if (inline) {
+          code({ className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || "");
+            const inline = !match;
+            if (inline) {
+              return (
+                <code
+                  className="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-300 text-xs font-mono"
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
+            }
             return (
-              <code
-                className="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-300 text-xs font-mono"
-                {...props}
+              <SyntaxHighlighter
+                style={vscDarkPlus}
+                language={match[1]}
+                customStyle={{
+                  margin: "0.5rem 0",
+                  borderRadius: "0.5rem",
+                  fontSize: "12px",
+                  lineHeight: "1.5",
+                  border: "1px solid rgba(51,65,85,0.5)",
+                }}
               >
-                {children}
-              </code>
+                {String(children).replace(/\n$/, "")}
+              </SyntaxHighlighter>
             );
-          }
-          return (
-            <SyntaxHighlighter
-              style={vscDarkPlus}
-              language={match[1]}
-              customStyle={{
-                margin: "0.5rem 0",
-                borderRadius: "0.5rem",
-                fontSize: "12px",
-                lineHeight: "1.5",
-                border: "1px solid rgba(51,65,85,0.5)",
-              }}
-            >
-              {String(children).replace(/\n$/, "")}
-            </SyntaxHighlighter>
-          );
-        },
-        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-        ul: ({ children }) => (
-          <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-semibold text-slate-200">{children}</strong>
-        ),
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+          },
+          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          ul: ({ children }) => (
+            <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-slate-200">{children}</strong>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
@@ -1648,21 +1654,18 @@ export function LLMAgentApp() {
   }, []);
 
   // Save sessions to localStorage
-  const saveSessions = useCallback(
-    (updated: AgentSession[]) => {
-      setSessions(updated);
-      try {
-        // Keep only last 50 sessions
-        const toStore = updated
-          .sort((a, b) => b.updatedAt - a.updatedAt)
-          .slice(0, 50);
-        localStorage.setItem("agent_sessions", JSON.stringify(toStore));
-      } catch {
-        // ignore quota errors
-      }
-    },
-    [],
-  );
+  const saveSessions = useCallback((updated: AgentSession[]) => {
+    setSessions(updated);
+    try {
+      // Keep only last 50 sessions
+      const toStore = updated
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, 50);
+      localStorage.setItem("agent_sessions", JSON.stringify(toStore));
+    } catch {
+      // ignore quota errors
+    }
+  }, []);
 
   // Auto scroll
   useEffect(() => {
@@ -1728,7 +1731,13 @@ export function LLMAgentApp() {
           }
           let content = m.content;
           if (m.role === "system" && !supportsNativeTools) {
-            content += "\n\nTo use tools, you MUST output a JSON block with a \"commands\" array. Example:\n```json\n{\n  \"commands\": [\n    {\"command\": \"run_command\", \"arguments\": {\"command\": \"ls\"}}\n  ]\n}\n```\n\nAvailable tools:\n" + JSON.stringify(AGENT_TOOLS.map(t => t.function), null, 2);
+            content +=
+              '\n\nTo use tools, you MUST output a JSON block with a "commands" array. Example:\n```json\n{\n  "commands": [\n    {"command": "run_command", "arguments": {"command": "ls"}}\n  ]\n}\n```\n\nAvailable tools:\n' +
+              JSON.stringify(
+                AGENT_TOOLS.map((t) => t.function),
+                null,
+                2,
+              );
           }
           return {
             role: m.role as "user" | "assistant" | "system",
@@ -1766,10 +1775,13 @@ export function LLMAgentApp() {
       };
 
       if (selectedProvider.startsWith("local-")) {
-        if (selectedProvider === "local-ollama") url = "http://127.0.0.1:11434/v1/chat/completions";
-        else if (selectedProvider === "local-lmstudio") url = "http://127.0.0.1:1234/v1/chat/completions";
-        else if (selectedProvider === "local-kobold") url = "http://127.0.0.1:5001/v1/chat/completions";
-        
+        if (selectedProvider === "local-ollama")
+          url = "http://127.0.0.1:11434/v1/chat/completions";
+        else if (selectedProvider === "local-lmstudio")
+          url = "http://127.0.0.1:1234/v1/chat/completions";
+        else if (selectedProvider === "local-kobold")
+          url = "http://127.0.0.1:5001/v1/chat/completions";
+
         fetchOptions = {
           method: "POST",
           headers: {
@@ -1842,7 +1854,8 @@ export function LLMAgentApp() {
                   data.type === "content_block_start" &&
                   data.content_block?.type === "tool_use"
                 ) {
-                  const idx = data.index ?? Object.keys(accumulatedToolCalls).length;
+                  const idx =
+                    data.index ?? Object.keys(accumulatedToolCalls).length;
                   accumulatedToolCalls[idx] = {
                     id: data.content_block.id || `call_${idx}`,
                     name: data.content_block.name,
@@ -1852,7 +1865,8 @@ export function LLMAgentApp() {
                   data.type === "content_block_delta" &&
                   data.delta?.type === "input_json_delta"
                 ) {
-                  const idx = data.index ?? Object.keys(accumulatedToolCalls).length - 1;
+                  const idx =
+                    data.index ?? Object.keys(accumulatedToolCalls).length - 1;
                   if (accumulatedToolCalls[idx]) {
                     accumulatedToolCalls[idx].arguments +=
                       data.delta.partial_json || "";
@@ -1907,10 +1921,16 @@ export function LLMAgentApp() {
                         arguments: "",
                       };
                     }
-                    if (call.function?.name && !accumulatedToolCalls[idx].name) {
+                    if (
+                      call.function?.name &&
+                      !accumulatedToolCalls[idx].name
+                    ) {
                       accumulatedToolCalls[idx].name = call.function.name;
                     }
-                    if (call.id && !accumulatedToolCalls[idx].id.startsWith("call")) {
+                    if (
+                      call.id &&
+                      !accumulatedToolCalls[idx].id.startsWith("call")
+                    ) {
                       accumulatedToolCalls[idx].id = call.id;
                     }
                     if (call.function?.arguments) {
@@ -1940,8 +1960,6 @@ export function LLMAgentApp() {
           }
         }
       }
-
-
 
       // If no native tool calls were received, or if content contains text-based tool calls or reasoning tags,
       // extract tool calls and reasoning from fullContent
@@ -1992,61 +2010,65 @@ export function LLMAgentApp() {
         }),
       );
 
-      return { content: fullContent, reasoning: fullReasoning, toolCalls, finishReason };
+      return {
+        content: fullContent,
+        reasoning: fullReasoning,
+        toolCalls,
+        finishReason,
+      };
     },
     [selectedModel, selectedProvider, session?.access_token],
   );
 
   // ─── Create Tool Log Entry ───────────────────────────────────────────
 
-  const createToolLogEntry = useCallback(
-    (toolCall: ToolCall): ToolLogEntry => {
-      const entry: ToolLogEntry = {
-        id: toolCall.id,
-        type: "read",
-        label: toolCall.name,
-        status: "running",
-        timestamp: Date.now(),
-      };
+  const createToolLogEntry = useCallback((toolCall: ToolCall): ToolLogEntry => {
+    const entry: ToolLogEntry = {
+      id: toolCall.id,
+      type: "read",
+      label: toolCall.name,
+      status: "running",
+      timestamp: Date.now(),
+    };
 
-      switch (toolCall.name) {
-        case "read_file":
-          entry.type = "read";
-          entry.filename = toolCall.arguments.path;
-          break;
-        case "write_file":
-          entry.type = "write";
-          entry.filename = toolCall.arguments.path;
-          entry.additions = toolCall.arguments.content?.split("\n").length || 0;
-          entry.deletions = 0;
-          break;
-        case "edit_file":
-          entry.type = "edit";
-          entry.filename = toolCall.arguments.path;
-          entry.additions = toolCall.arguments.new_content?.split("\n").length || 0;
-          entry.deletions = toolCall.arguments.old_content?.split("\n").length || 0;
-          break;
-        case "run_command":
-          entry.type = "command";
-          entry.label = toolCall.arguments.command;
-          entry.filename = toolCall.arguments.command?.split(" ")[0];
-          entry.input = `$ ${toolCall.arguments.command}`;
-          break;
-        case "list_directory":
-          entry.type = "list";
-          entry.filename = toolCall.arguments.path || ".";
-          break;
-        case "search_files":
-          entry.type = "search";
-          entry.label = `"${toolCall.arguments.query}"`;
-          entry.filename = toolCall.arguments.query;
-          break;
-      }
+    switch (toolCall.name) {
+      case "read_file":
+        entry.type = "read";
+        entry.filename = toolCall.arguments.path;
+        break;
+      case "write_file":
+        entry.type = "write";
+        entry.filename = toolCall.arguments.path;
+        entry.additions = toolCall.arguments.content?.split("\n").length || 0;
+        entry.deletions = 0;
+        break;
+      case "edit_file":
+        entry.type = "edit";
+        entry.filename = toolCall.arguments.path;
+        entry.additions =
+          toolCall.arguments.new_content?.split("\n").length || 0;
+        entry.deletions =
+          toolCall.arguments.old_content?.split("\n").length || 0;
+        break;
+      case "run_command":
+        entry.type = "command";
+        entry.label = toolCall.arguments.command;
+        entry.filename = toolCall.arguments.command?.split(" ")[0];
+        entry.input = `$ ${toolCall.arguments.command}`;
+        break;
+      case "list_directory":
+        entry.type = "list";
+        entry.filename = toolCall.arguments.path || ".";
+        break;
+      case "search_files":
+        entry.type = "search";
+        entry.label = `"${toolCall.arguments.query}"`;
+        entry.filename = toolCall.arguments.query;
+        break;
+    }
 
-      return entry;
-    },
-    [],
-  );
+    return entry;
+  }, []);
 
   // ─── Main Agentic Loop ───────────────────────────────────────────────
 
@@ -2192,8 +2214,9 @@ export function LLMAgentApp() {
         // Save session
         const sessionId = currentSessionId || crypto.randomUUID();
         const title =
-          currentMessages.find((m) => m.role === "user")?.content.slice(0, 80) ||
-          "Agent Session";
+          currentMessages
+            .find((m) => m.role === "user")
+            ?.content.slice(0, 80) || "Agent Session";
         const updatedSession: AgentSession = {
           id: sessionId,
           title,
@@ -2208,10 +2231,10 @@ export function LLMAgentApp() {
         if (!currentSessionId) setCurrentSessionId(sessionId);
 
         saveSessions(
-          [
-            updatedSession,
-            ...sessions.filter((s) => s.id !== sessionId),
-          ].slice(0, 50),
+          [updatedSession, ...sessions.filter((s) => s.id !== sessionId)].slice(
+            0,
+            50,
+          ),
         );
 
         fetchPoints();
@@ -2247,9 +2270,11 @@ export function LLMAgentApp() {
     const systemMessage: AgentMessage = {
       id: "system-prompt",
       role: "system",
-      content: SYSTEM_PROMPT + (workingDirectory
-        ? `\n\nYou are working in directory: ${workingDirectory}`
-        : "\n\nNo working directory has been selected yet. You can still help with planning and discussion."),
+      content:
+        SYSTEM_PROMPT +
+        (workingDirectory
+          ? `\n\nYou are working in directory: ${workingDirectory}`
+          : "\n\nNo working directory has been selected yet. You can still help with planning and discussion."),
       timestamp: Date.now(),
     };
 
@@ -2396,7 +2421,7 @@ export function LLMAgentApp() {
                     pointsStatus={pointsStatus}
                     onOpen={handleModelSelectorOpen}
                     onSelect={(m, p) => {
-                      if (p === 'cloudflare' && !session?.access_token) {
+                      if (p === "cloudflare" && !session?.access_token) {
                         toast.error("Sign In to access better models.");
                         return;
                       }
@@ -2420,8 +2445,9 @@ export function LLMAgentApp() {
             {/* Desktop Warning */}
             {!desktopAvailable && (
               <p className="text-xs text-amber-400/80 text-center max-w-md">
-                ⚠ Running in browser mode — file operations and command execution require the desktop app.
-                The agent can still plan and discuss code.
+                ⚠ Running in browser mode — file operations and command
+                execution require the desktop app. The agent can still plan and
+                discuss code.
               </p>
             )}
 
@@ -2500,7 +2526,9 @@ export function LLMAgentApp() {
                       {msg.toolCalls && msg.toolCalls.length > 0 && (
                         <div className="space-y-0.5 pl-4 border-l border-slate-800/30 ml-1.5">
                           {msg.toolCalls.map((tc) => {
-                            const logEntry = toolLog.find((e) => e.id === tc.id);
+                            const logEntry = toolLog.find(
+                              (e) => e.id === tc.id,
+                            );
                             if (logEntry) {
                               return (
                                 <ToolLogItem key={tc.id} entry={logEntry} />
@@ -2597,7 +2625,7 @@ export function LLMAgentApp() {
                     onOpen={handleModelSelectorOpen}
                     compact
                     onSelect={(m, p) => {
-                      if (p === 'cloudflare' && !session?.access_token) {
+                      if (p === "cloudflare" && !session?.access_token) {
                         toast.error("Sign In to access better models.");
                         return;
                       }

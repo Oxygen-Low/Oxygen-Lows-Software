@@ -61,11 +61,9 @@ export function StorageFileSelector({
     setLoading(true);
     const basePath = userId ? `${userId}` : "";
     const fullPath = path ? `${basePath}/${path}` : basePath;
-    const { data, error } = await storage
-      .from("Storage")
-      .list(fullPath, {
-        sortBy: { column: "name", order: "asc" },
-      });
+    const { data, error } = await storage.from("Storage").list(fullPath, {
+      sortBy: { column: "name", order: "asc" },
+    });
 
     if (error) {
       console.error("Error fetching storage files:", error);

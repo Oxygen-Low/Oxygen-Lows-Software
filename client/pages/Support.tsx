@@ -103,7 +103,11 @@ export default function Support() {
       if (error) throw error;
 
       toast({
-        title: t("support.ticketCreated", undefined, "Ticket created successfully"),
+        title: t(
+          "support.ticketCreated",
+          undefined,
+          "Ticket created successfully",
+        ),
       });
       setIsDialogOpen(false);
       setTitle("");
@@ -125,137 +129,183 @@ export default function Support() {
   return (
     <Layout>
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">{t("support.title", undefined, "Support Tickets")}</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>{t("support.createTicket", undefined, "Create Ticket")}</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{t("support.createTicket", undefined, "Create a Support Ticket")}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateTicket} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("support.subject", undefined, "Title")} *</label>
-                <Input
-                  required
-                  placeholder="e.g., File Compressor error"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("support.description", undefined, "Description")}</label>
-                <Textarea
-                  placeholder="Details of your issue..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("support.priority", undefined, "Priority")} *</label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Highest">Highest (Security)</SelectItem>
-                    <SelectItem value="High">{t("support.priorityHigh", undefined, "High")}</SelectItem>
-                    <SelectItem value="Medium">{t("support.priorityMedium", undefined, "Medium")}</SelectItem>
-                    <SelectItem value="Low">{t("support.priorityLow", undefined, "Low")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("support.type", undefined, "Type")} *</label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Suggestion">{t("support.typeSuggestion", undefined, "Suggestion")}</SelectItem>
-                    <SelectItem value="Bug Report">{t("support.typeBug", undefined, "Bug Report")}</SelectItem>
-                    <SelectItem value="Security Vulnerability Report">
-                      Security Vulnerability
-                    </SelectItem>
-                    <SelectItem value="User Report">User Report</SelectItem>
-                    <SelectItem value="Request">Request</SelectItem>
-                    <SelectItem value="Account Deletion Request">
-                      Account Deletion Request
-                    </SelectItem>
-                    <SelectItem value="Other">{t("support.typeOther", undefined, "Other")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? t("common.submitting", undefined, "Submitting...") : t("support.createTicket", undefined, "Submit Ticket")}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t("support.title", undefined, "Support Tickets")}
+          </h1>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                {t("support.createTicket", undefined, "Create Ticket")}
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("support.myTickets", undefined, "Your Tickets")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-muted-foreground">{t("common.loading", undefined, "Loading tickets...")}</p>
-          ) : tickets.length === 0 ? (
-            <p className="text-muted-foreground">{t("support.noTickets", undefined, "No tickets found.")}</p>
-          ) : (
-            <div className="space-y-4">
-              {tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  onClick={() => navigate(`/support/${ticket.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate(`/support/${ticket.id}`);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {t(
+                    "support.createTicket",
+                    undefined,
+                    "Create a Support Ticket",
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreateTicket} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t("support.subject", undefined, "Title")} *
+                  </label>
+                  <Input
+                    required
+                    placeholder="e.g., File Compressor error"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t("support.description", undefined, "Description")}
+                  </label>
+                  <Textarea
+                    placeholder="Details of your issue..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t("support.priority", undefined, "Priority")} *
+                  </label>
+                  <Select value={priority} onValueChange={setPriority}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Highest">
+                        Highest (Security)
+                      </SelectItem>
+                      <SelectItem value="High">
+                        {t("support.priorityHigh", undefined, "High")}
+                      </SelectItem>
+                      <SelectItem value="Medium">
+                        {t("support.priorityMedium", undefined, "Medium")}
+                      </SelectItem>
+                      <SelectItem value="Low">
+                        {t("support.priorityLow", undefined, "Low")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t("support.type", undefined, "Type")} *
+                  </label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Suggestion">
+                        {t("support.typeSuggestion", undefined, "Suggestion")}
+                      </SelectItem>
+                      <SelectItem value="Bug Report">
+                        {t("support.typeBug", undefined, "Bug Report")}
+                      </SelectItem>
+                      <SelectItem value="Security Vulnerability Report">
+                        Security Vulnerability
+                      </SelectItem>
+                      <SelectItem value="User Report">User Report</SelectItem>
+                      <SelectItem value="Request">Request</SelectItem>
+                      <SelectItem value="Account Deletion Request">
+                        Account Deletion Request
+                      </SelectItem>
+                      <SelectItem value="Other">
+                        {t("support.typeOther", undefined, "Other")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
                 >
-                  <div className="space-y-1 mb-2 sm:mb-0">
-                    <p className="font-medium">{ticket.title}</p>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <span>
-                        {new Date(ticket.created_at).toLocaleDateString()}
-                      </span>
-                      <span>•</span>
-                      <span>{ticket.type}</span>
+                  {isSubmitting
+                    ? t("common.submitting", undefined, "Submitting...")
+                    : t("support.createTicket", undefined, "Submit Ticket")}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {t("support.myTickets", undefined, "Your Tickets")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-muted-foreground">
+                {t("common.loading", undefined, "Loading tickets...")}
+              </p>
+            ) : tickets.length === 0 ? (
+              <p className="text-muted-foreground">
+                {t("support.noTickets", undefined, "No tickets found.")}
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {tickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    onClick={() => navigate(`/support/${ticket.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(`/support/${ticket.id}`);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <div className="space-y-1 mb-2 sm:mb-0">
+                      <p className="font-medium">{ticket.title}</p>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <span>
+                          {new Date(ticket.created_at).toLocaleDateString()}
+                        </span>
+                        <span>•</span>
+                        <span>{ticket.type}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge
+                        variant={
+                          ticket.priority === "Highest"
+                            ? "destructive"
+                            : ticket.priority === "High"
+                              ? "default"
+                              : "secondary"
+                        }
+                      >
+                        {ticket.priority}
+                      </Badge>
+                      <Badge
+                        variant={
+                          ticket.status === "Open" ? "default" : "outline"
+                        }
+                      >
+                        {ticket.status}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge
-                      variant={
-                        ticket.priority === "Highest"
-                          ? "destructive"
-                          : ticket.priority === "High"
-                            ? "default"
-                            : "secondary"
-                      }
-                    >
-                      {ticket.priority}
-                    </Badge>
-                    <Badge
-                      variant={ticket.status === "Open" ? "default" : "outline"}
-                    >
-                      {ticket.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </Layout>
   );
 }

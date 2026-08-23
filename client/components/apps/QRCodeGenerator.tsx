@@ -6,7 +6,7 @@ import {
   Settings2,
   CheckCircle2,
   Palette,
-  LayoutTemplate
+  LayoutTemplate,
 } from "lucide-react";
 import {
   Card,
@@ -29,31 +29,31 @@ export function QRCodeGeneratorApp() {
   const [fgColor, setFgColor] = useState("#ffffff");
   const [bgColor, setBgColor] = useState("transparent");
   const [marginSize, setMarginSize] = useState(4);
-  
+
   const qrRef = useRef<SVGSVGElement>(null);
 
   const handleDownload = () => {
     if (!qrRef.current) return;
-    
+
     try {
       const svgData = new XMLSerializer().serializeToString(qrRef.current);
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       const img = new Image();
-      
+
       img.onload = () => {
         // Adjust canvas size based on selected size plus some padding for margin if background is not transparent
         const padding = bgColor !== "transparent" ? marginSize * 10 : 0;
         canvas.width = size + padding * 2;
         canvas.height = size + padding * 2;
-        
+
         if (ctx) {
           if (bgColor !== "transparent") {
             ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
           }
           ctx.drawImage(img, padding, padding, size, size);
-          
+
           const pngFile = canvas.toDataURL("image/png");
           const downloadLink = document.createElement("a");
           downloadLink.download = "qrcode.png";
@@ -62,8 +62,10 @@ export function QRCodeGeneratorApp() {
           toast.success("QR Code downloaded successfully");
         }
       };
-      
-      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+
+      img.src =
+        "data:image/svg+xml;base64," +
+        btoa(unescape(encodeURIComponent(svgData)));
     } catch (error) {
       console.error("Error generating download:", error);
       toast.error("Failed to download QR code");
@@ -111,8 +113,8 @@ export function QRCodeGeneratorApp() {
                   placeholder="https://example.com"
                   className="bg-slate-950 border-slate-800 text-white flex-1"
                 />
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="icon"
                   onClick={handleCopyLink}
                   className="bg-slate-950 border-slate-800 text-slate-400 hover:text-white shrink-0"
@@ -164,7 +166,7 @@ export function QRCodeGeneratorApp() {
                     className={cn(
                       "bg-slate-950 border-slate-800 text-slate-400 hover:text-white",
                       size === s &&
-                        "bg-cyan-500/10 text-cyan-400 border-cyan-500/50"
+                        "bg-cyan-500/10 text-cyan-400 border-cyan-500/50",
                     )}
                   >
                     {s}px
@@ -206,18 +208,25 @@ export function QRCodeGeneratorApp() {
                       type="checkbox"
                       id="transparent-bg"
                       checked={bgColor === "transparent"}
-                      onChange={(e) => setBgColor(e.target.checked ? "transparent" : "#ffffff")}
+                      onChange={(e) =>
+                        setBgColor(e.target.checked ? "transparent" : "#ffffff")
+                      }
                       className="rounded border-slate-800 bg-slate-950 text-cyan-500 focus:ring-cyan-500/50"
                     />
-                    <Label htmlFor="transparent-bg" className="text-xs text-slate-400 cursor-pointer">
+                    <Label
+                      htmlFor="transparent-bg"
+                      className="text-xs text-slate-400 cursor-pointer"
+                    >
                       Transparent
                     </Label>
                   </div>
                 </div>
               </div>
-              
+
               <div className="pt-2">
-                <Label className="text-xs text-slate-400 mb-2 block">Presets</Label>
+                <Label className="text-xs text-slate-400 mb-2 block">
+                  Presets
+                </Label>
                 <div className="flex flex-wrap gap-2">
                   {presetColors.map((preset, i) => (
                     <button
@@ -230,19 +239,25 @@ export function QRCodeGeneratorApp() {
                         "w-8 h-8 rounded-full border-2 shadow-sm transition-transform hover:scale-110",
                         fgColor === preset.fg && bgColor === preset.bg
                           ? "border-cyan-500 ring-2 ring-cyan-500/20"
-                          : "border-slate-700"
+                          : "border-slate-700",
                       )}
                       style={{
-                        background: preset.bg === "transparent" 
-                          ? `linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b), linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b)`
-                          : preset.bg,
-                        backgroundPosition: preset.bg === "transparent" ? "0 0, 4px 4px" : "initial",
-                        backgroundSize: preset.bg === "transparent" ? "8px 8px" : "initial",
-                        backgroundColor: preset.bg === "transparent" ? "#0f172a" : "initial"
+                        background:
+                          preset.bg === "transparent"
+                            ? `linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b), linear-gradient(45deg, #1e293b 25%, transparent 25%, transparent 75%, #1e293b 75%, #1e293b)`
+                            : preset.bg,
+                        backgroundPosition:
+                          preset.bg === "transparent"
+                            ? "0 0, 4px 4px"
+                            : "initial",
+                        backgroundSize:
+                          preset.bg === "transparent" ? "8px 8px" : "initial",
+                        backgroundColor:
+                          preset.bg === "transparent" ? "#0f172a" : "initial",
                       }}
                       title="Apply preset"
                     >
-                      <div 
+                      <div
                         className="w-4 h-4 mx-auto rounded-sm"
                         style={{ backgroundColor: preset.fg }}
                       />
@@ -276,15 +291,16 @@ export function QRCodeGeneratorApp() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col items-center justify-center p-8">
-            <div 
+            <div
               className={cn(
                 "relative p-8 rounded-2xl transition-all duration-300 flex items-center justify-center",
-                bgColor === "transparent" 
-                  ? "bg-slate-950 border border-slate-800 shadow-xl" 
-                  : "shadow-2xl"
+                bgColor === "transparent"
+                  ? "bg-slate-950 border border-slate-800 shadow-xl"
+                  : "shadow-2xl",
               )}
               style={{
-                backgroundColor: bgColor === "transparent" ? undefined : bgColor,
+                backgroundColor:
+                  bgColor === "transparent" ? undefined : bgColor,
               }}
             >
               {value ? (
@@ -299,9 +315,12 @@ export function QRCodeGeneratorApp() {
                   className="transition-all duration-300"
                 />
               ) : (
-                <div 
+                <div
                   className="flex items-center justify-center border-2 border-dashed border-slate-800 rounded-xl"
-                  style={{ width: size > 256 ? 256 : size, height: size > 256 ? 256 : size }}
+                  style={{
+                    width: size > 256 ? 256 : size,
+                    height: size > 256 ? 256 : size,
+                  }}
                 >
                   <span className="text-slate-500 text-sm text-center px-4">
                     Enter text to generate QR code
@@ -309,7 +328,7 @@ export function QRCodeGeneratorApp() {
                 </div>
               )}
             </div>
-            
+
             {value && size > 256 && (
               <p className="mt-6 text-sm text-slate-500">
                 Preview scaled for display. Export will be {size}x{size}px.

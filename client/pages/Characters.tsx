@@ -97,18 +97,28 @@ export default function Characters() {
   );
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>({});
-  const [encryptionLocked, setEncryptionLocked] = useState(() => isCategoryLocked("characters"));
+  const [currentCharacter, setCurrentCharacter] = useState<Partial<Character>>(
+    {},
+  );
+  const [encryptionLocked, setEncryptionLocked] = useState(() =>
+    isCategoryLocked("characters"),
+  );
 
   // Public characters and verifications map
   const [publicCharsMap, setPublicCharsMap] = useState<Record<string, any>>({});
-  const [verificationsMap, setVerificationsMap] = useState<Record<string, CharVerificationInfo[]>>({});
+  const [verificationsMap, setVerificationsMap] = useState<
+    Record<string, CharVerificationInfo[]>
+  >({});
 
   // Denial Reason Dialog State
-  const [selectedDenialReason, setSelectedDenialReason] = useState<string | null>(null);
+  const [selectedDenialReason, setSelectedDenialReason] = useState<
+    string | null
+  >(null);
 
   // Submitting verification state
-  const [submittingVerifId, setSubmittingVerifId] = useState<string | null>(null);
+  const [submittingVerifId, setSubmittingVerifId] = useState<string | null>(
+    null,
+  );
   const [deletingVerifId, setDeletingVerifId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -164,7 +174,7 @@ export default function Characters() {
       let processedData = data || [];
       const key = getActiveMasterKey();
       const decryptedList = await Promise.all(
-        processedData.map((c: any) => decryptCharacterData(c, key))
+        processedData.map((c: any) => decryptCharacterData(c, key)),
       );
       const charsWithUrls = await attachSignedImageUrls(decryptedList);
       setCharacters(charsWithUrls);
@@ -272,7 +282,9 @@ export default function Characters() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              asset_type: currentCharacter.is_universe ? "universe" : "character",
+              asset_type: currentCharacter.is_universe
+                ? "universe"
+                : "character",
               original_id: currentCharacter.id,
             }),
           }).catch(() => {});
@@ -321,8 +333,16 @@ export default function Characters() {
       toast({
         title: t("common.success", undefined, "Success"),
         description: submitForReverification
-          ? t("verification.requestSubmitted", undefined, "Saved and submitted for verification!")
-          : t("characters.characterSaved", undefined, "Character saved successfully"),
+          ? t(
+              "verification.requestSubmitted",
+              undefined,
+              "Saved and submitted for verification!",
+            )
+          : t(
+              "characters.characterSaved",
+              undefined,
+              "Character saved successfully",
+            ),
       });
 
       setIsEditing(false);
@@ -339,15 +359,16 @@ export default function Characters() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("characters")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("characters").delete().eq("id", id);
       if (error) throw error;
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("characters.characterDeleted", undefined, "Character deleted successfully"),
+        description: t(
+          "characters.characterDeleted",
+          undefined,
+          "Character deleted successfully",
+        ),
       });
       fetchCharacters();
     } catch (err: any) {
@@ -381,7 +402,11 @@ export default function Characters() {
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("publicAssets.unpublishSuccess", undefined, "Asset unpublished successfully."),
+        description: t(
+          "publicAssets.unpublishSuccess",
+          undefined,
+          "Asset unpublished successfully.",
+        ),
       });
       fetchCharacters();
     } catch (err: any) {
@@ -402,7 +427,11 @@ export default function Characters() {
     if (char.name === "[Encrypted]") {
       toast({
         title: t("common.error", undefined, "Error"),
-        description: t("publicAssets.unauthorizedEncrypted", undefined, "Cannot upload an encrypted character. Please unlock first."),
+        description: t(
+          "publicAssets.unauthorizedEncrypted",
+          undefined,
+          "Cannot upload an encrypted character. Please unlock first.",
+        ),
         variant: "destructive",
       });
       return;
@@ -446,7 +475,11 @@ export default function Characters() {
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("verification.requestSubmitted", undefined, "Verification request submitted successfully!"),
+        description: t(
+          "verification.requestSubmitted",
+          undefined,
+          "Verification request submitted successfully!",
+        ),
       });
       fetchCharacters();
     } catch (err: any) {
@@ -510,7 +543,11 @@ export default function Characters() {
     if (!file?.name || file.name.includes("..")) {
       toast({
         title: t("common.error", undefined, "Error"),
-        description: t("account.invalidFileName", undefined, "Invalid file name"),
+        description: t(
+          "account.invalidFileName",
+          undefined,
+          "Invalid file name",
+        ),
         variant: "destructive",
       });
       return;
@@ -559,12 +596,18 @@ export default function Characters() {
             }}
           >
             <DialogTrigger asChild>
-              <Button 
+              <Button
                 className="bg-cyan-600 hover:bg-cyan-700"
-                onClick={() => setCurrentCharacter({ is_universe: activeTab === "universes" })}
+                onClick={() =>
+                  setCurrentCharacter({
+                    is_universe: activeTab === "universes",
+                  })
+                }
               >
                 <Plus className="w-4 h-4 mr-2" />
-                {activeTab === "characters" ? t("characters.createCharacter", undefined, "New Character") : t("characters.createUniverse", undefined, "New Universe")}
+                {activeTab === "characters"
+                  ? t("characters.createCharacter", undefined, "New Character")
+                  : t("characters.createUniverse", undefined, "New Universe")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
@@ -632,7 +675,11 @@ export default function Characters() {
                           name: e.target.value,
                         }))
                       }
-                      placeholder={currentCharacter.is_universe ? "Universe name" : "Character name"}
+                      placeholder={
+                        currentCharacter.is_universe
+                          ? "Universe name"
+                          : "Character name"
+                      }
                       className="bg-slate-800 border-slate-700"
                     />
                   </div>
@@ -646,7 +693,11 @@ export default function Characters() {
                           htmlFor="char-short-desc"
                           className="text-sm font-medium"
                         >
-                          {t("characters.shortDescription", undefined, "Short Description")}
+                          {t(
+                            "characters.shortDescription",
+                            undefined,
+                            "Short Description",
+                          )}
                         </label>
                         <Input
                           id="char-short-desc"
@@ -666,7 +717,11 @@ export default function Characters() {
                           htmlFor="char-display-name"
                           className="text-sm font-medium"
                         >
-                          {t("characters.displayName", undefined, "Display Name")}
+                          {t(
+                            "characters.displayName",
+                            undefined,
+                            "Display Name",
+                          )}
                         </label>
                         <Input
                           id="char-display-name"
@@ -796,7 +851,11 @@ export default function Characters() {
                     htmlFor="char-hidden-desc"
                     className="text-sm font-medium"
                   >
-                    {t("characters.hiddenDescription", undefined, "Private Notes")}
+                    {t(
+                      "characters.hiddenDescription",
+                      undefined,
+                      "Private Notes",
+                    )}
                   </label>
                   <Textarea
                     id="char-hidden-desc"
@@ -827,7 +886,11 @@ export default function Characters() {
                     className="bg-cyan-700 hover:bg-cyan-800 text-white"
                   >
                     <Send className="w-4 h-4 mr-1.5" />
-                    {t("verification.updatePublicVersion", undefined, "Update & Re-verify")}
+                    {t(
+                      "verification.updatePublicVersion",
+                      undefined,
+                      "Update & Re-verify",
+                    )}
                   </Button>
                 )}
 
@@ -835,7 +898,8 @@ export default function Characters() {
                   onClick={() => handleSave(false)}
                   className="bg-cyan-600 hover:bg-cyan-700 text-white"
                 >
-                  {t("common.save", undefined, "Save")} {currentCharacter.is_universe ? "Universe" : "Character"}
+                  {t("common.save", undefined, "Save")}{" "}
+                  {currentCharacter.is_universe ? "Universe" : "Character"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -847,7 +911,11 @@ export default function Characters() {
             category="characters"
             returnTo="/characters"
             onUnlocked={handleUnlocked}
-            categoryLabel={activeTab === "characters" ? t("characters.charactersTab", undefined, "My Characters") : t("characters.universesTab", undefined, "My Universes")}
+            categoryLabel={
+              activeTab === "characters"
+                ? t("characters.charactersTab", undefined, "My Characters")
+                : t("characters.universesTab", undefined, "My Universes")
+            }
           />
         ) : loading ? (
           <div className="flex justify-center py-20">
@@ -860,11 +928,25 @@ export default function Characters() {
                 activeTab === "characters" ? !c.is_universe : c.is_universe,
               )
               .map((char) => {
-                const pubChar = publicCharsMap[char.id] || publicCharsMap[char.name];
-                const charVerifs = verificationsMap[char.id] || verificationsMap[char.name] || [];
-                const pendingVerif = charVerifs.find((v) => v.status === "pending");
-                const rejectedVerif = charVerifs.find((v) => v.status === "rejected");
-                const usageApproved = char.is_verified_public || charVerifs.some((v) => v.target_type === "public_usage" && v.status === "approved");
+                const pubChar =
+                  publicCharsMap[char.id] || publicCharsMap[char.name];
+                const charVerifs =
+                  verificationsMap[char.id] ||
+                  verificationsMap[char.name] ||
+                  [];
+                const pendingVerif = charVerifs.find(
+                  (v) => v.status === "pending",
+                );
+                const rejectedVerif = charVerifs.find(
+                  (v) => v.status === "rejected",
+                );
+                const usageApproved =
+                  char.is_verified_public ||
+                  charVerifs.some(
+                    (v) =>
+                      v.target_type === "public_usage" &&
+                      v.status === "approved",
+                  );
 
                 return (
                   <Card
@@ -895,30 +977,51 @@ export default function Characters() {
                           {pubChar && (
                             <Badge className="bg-emerald-500/80 text-white text-[10px] backdrop-blur-sm">
                               <Globe className="w-3 h-3 mr-1" />
-                              {t("verification.publicBadge", undefined, "Public Asset")}
+                              {t(
+                                "verification.publicBadge",
+                                undefined,
+                                "Public Asset",
+                              )}
                             </Badge>
                           )}
                           {usageApproved && !pubChar && (
                             <Badge className="bg-cyan-500/90 text-white text-[10px] backdrop-blur-sm border border-cyan-400/40">
                               <ShieldCheck className="w-3 h-3 mr-1" />
-                              {t("characters.verifiedBadge", undefined, "Verified")}
+                              {t(
+                                "characters.verifiedBadge",
+                                undefined,
+                                "Verified",
+                              )}
                             </Badge>
                           )}
                           {pendingVerif && (
                             <Badge className="bg-amber-500/80 text-white text-[10px] backdrop-blur-sm">
                               <Clock className="w-3 h-3 mr-1" />
-                              {t("verification.pendingReviewBadge", undefined, "Pending Review")}
+                              {t(
+                                "verification.pendingReviewBadge",
+                                undefined,
+                                "Pending Review",
+                              )}
                             </Badge>
                           )}
                           {rejectedVerif && (
                             <button
                               type="button"
-                              onClick={() => setSelectedDenialReason(rejectedVerif.rejection_reason || "No reason provided.")}
+                              onClick={() =>
+                                setSelectedDenialReason(
+                                  rejectedVerif.rejection_reason ||
+                                    "No reason provided.",
+                                )
+                              }
                               className="text-left"
                             >
                               <Badge className="bg-rose-500/80 hover:bg-rose-600 text-white text-[10px] backdrop-blur-sm cursor-pointer">
                                 <XCircle className="w-3 h-3 mr-1" />
-                                {t("verification.rejectedBadge", undefined, "Verification Denied")}
+                                {t(
+                                  "verification.rejectedBadge",
+                                  undefined,
+                                  "Verification Denied",
+                                )}
                               </Badge>
                             </button>
                           )}
@@ -967,16 +1070,28 @@ export default function Characters() {
                                   className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-rose-400"
                                 >
                                   <Lock className="w-3 h-3 mr-1" />
-                                  {t("publicAssets.makePrivate", undefined, "Make Private / Unpublish")}
+                                  {t(
+                                    "publicAssets.makePrivate",
+                                    undefined,
+                                    "Make Private / Unpublish",
+                                  )}
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>
-                                    {t("publicAssets.makePrivate", undefined, "Unpublish Asset?")}
+                                    {t(
+                                      "publicAssets.makePrivate",
+                                      undefined,
+                                      "Unpublish Asset?",
+                                    )}
                                   </AlertDialogTitle>
                                   <AlertDialogDescription className="text-slate-400">
-                                    {t("publicAssets.makePrivateConfirm", undefined, "Are you sure you want to unpublish this asset? It will be removed from the public hub and reverted to private.")}
+                                    {t(
+                                      "publicAssets.makePrivateConfirm",
+                                      undefined,
+                                      "Are you sure you want to unpublish this asset? It will be removed from the public hub and reverted to private.",
+                                    )}
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -998,7 +1113,9 @@ export default function Characters() {
                                 variant="outline"
                                 size="sm"
                                 disabled={submittingVerifId === char.id}
-                                onClick={() => handleSubmitVerification(char, "public_asset")}
+                                onClick={() =>
+                                  handleSubmitVerification(char, "public_asset")
+                                }
                                 className="flex-1 text-[11px] h-7 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
                               >
                                 {submittingVerifId === char.id ? (
@@ -1006,7 +1123,11 @@ export default function Characters() {
                                 ) : (
                                   <Globe className="w-3 h-3 mr-1 text-cyan-400" />
                                 )}
-                                {t("verification.publishToPublicAssets", undefined, "Publish")}
+                                {t(
+                                  "verification.publishToPublicAssets",
+                                  undefined,
+                                  "Publish",
+                                )}
                               </Button>
 
                               {!usageApproved && (
@@ -1014,7 +1135,12 @@ export default function Characters() {
                                   variant="outline"
                                   size="sm"
                                   disabled={submittingVerifId === char.id}
-                                  onClick={() => handleSubmitVerification(char, "public_usage")}
+                                  onClick={() =>
+                                    handleSubmitVerification(
+                                      char,
+                                      "public_usage",
+                                    )
+                                  }
                                   className="flex-1 text-[11px] h-7 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
                                 >
                                   {submittingVerifId === char.id ? (
@@ -1022,7 +1148,11 @@ export default function Characters() {
                                   ) : (
                                     <ShieldCheck className="w-3 h-3 mr-1 text-emerald-400" />
                                   )}
-                                  {t("characters.verifyForMultiplayer", undefined, "Verify")}
+                                  {t(
+                                    "characters.verifyForMultiplayer",
+                                    undefined,
+                                    "Verify",
+                                  )}
                                 </Button>
                               )}
 
@@ -1030,10 +1160,18 @@ export default function Characters() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  disabled={deletingVerifId === charVerifs[0].id}
-                                  onClick={() => handleDeleteVerification(charVerifs[0].id)}
+                                  disabled={
+                                    deletingVerifId === charVerifs[0].id
+                                  }
+                                  onClick={() =>
+                                    handleDeleteVerification(charVerifs[0].id)
+                                  }
                                   className="text-[11px] h-7 px-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 border border-slate-800"
-                                  title={t("verification.deleteTooltip", undefined, "Delete verification")}
+                                  title={t(
+                                    "verification.deleteTooltip",
+                                    undefined,
+                                    "Delete verification",
+                                  )}
                                 >
                                   {deletingVerifId === charVerifs[0].id ? (
                                     <Loader2 className="w-3 h-3 animate-spin text-slate-400" />
@@ -1056,8 +1194,16 @@ export default function Characters() {
               <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
                 <p className="text-slate-500">
                   {activeTab === "characters"
-                    ? t("characters.noCharacters", undefined, 'No characters here yet! Click "New Character" to get started and add some to your collection.')
-                    : t("characters.noUniverses", undefined, 'No universes here yet! Click "New Universe" to start building your own world.')}
+                    ? t(
+                        "characters.noCharacters",
+                        undefined,
+                        'No characters here yet! Click "New Character" to get started and add some to your collection.',
+                      )
+                    : t(
+                        "characters.noUniverses",
+                        undefined,
+                        'No universes here yet! Click "New Universe" to start building your own world.',
+                      )}
                 </p>
               </div>
             )}
@@ -1076,7 +1222,11 @@ export default function Characters() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-400">
               <AlertTriangle className="w-5 h-5" />
-              {t("verification.rejectionReasonDialogTitle", undefined, "Verification Denial Reason")}
+              {t(
+                "verification.rejectionReasonDialogTitle",
+                undefined,
+                "Verification Denial Reason",
+              )}
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               {t(

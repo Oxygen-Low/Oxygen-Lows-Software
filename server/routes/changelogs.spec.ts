@@ -62,7 +62,8 @@ describe("Changelogs Route & Atom Parser", () => {
         html_url:
           "https://github.com/Oxygen-Low/Oxygen-Lows-Software/commit/abc1234567890abcdef1234567890abcdef12345",
         commit: {
-          message: "Feat: Add new cool feature\n\n- Added submodule\n- Fixed edge cases",
+          message:
+            "Feat: Add new cool feature\n\n- Added submodule\n- Fixed edge cases",
           author: {
             name: "Oxygen-Low",
             date: "2026-08-19T12:00:00Z",
@@ -150,9 +151,9 @@ describe("Changelogs Route & Atom Parser", () => {
 
     it("should use cache on subsequent requests within TTL", async () => {
       const mockXml = `<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>tag:github.com,2008:Grit::Commit/9999999</id><updated>2026-08-19T00:00:00Z</updated><author><name>Dev</name></author><title>Cached</title></entry></feed>`;
-      const fetchMock = vi.fn().mockResolvedValue(
-        new Response(mockXml, { status: 200 }),
-      );
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(new Response(mockXml, { status: 200 }));
       vi.stubGlobal("fetch", fetchMock);
 
       const app = new Hono();
@@ -173,9 +174,11 @@ describe("Changelogs Route & Atom Parser", () => {
     });
 
     it("should handle upstream error from GitHub gracefully", async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        new Response("Internal Server Error", { status: 502 }),
-      );
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          new Response("Internal Server Error", { status: 502 }),
+        );
       vi.stubGlobal("fetch", fetchMock);
 
       const app = new Hono();
@@ -188,7 +191,9 @@ describe("Changelogs Route & Atom Parser", () => {
     });
 
     it("should handle network failure gracefully with 500", async () => {
-      const fetchMock = vi.fn().mockRejectedValue(new Error("Network disconnect"));
+      const fetchMock = vi
+        .fn()
+        .mockRejectedValue(new Error("Network disconnect"));
       vi.stubGlobal("fetch", fetchMock);
 
       const app = new Hono();

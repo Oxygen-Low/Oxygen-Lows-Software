@@ -4,7 +4,13 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
 
-const ProblemChild = ({ shouldThrow, message }: { shouldThrow: boolean; message: string }) => {
+const ProblemChild = ({
+  shouldThrow,
+  message,
+}: {
+  shouldThrow: boolean;
+  message: string;
+}) => {
   if (shouldThrow) {
     throw new Error(message);
   }

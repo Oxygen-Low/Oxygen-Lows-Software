@@ -150,28 +150,38 @@ export function PublicAssetsApp() {
   const [loading, setLoading] = useState(true);
   const [characters, setCharacters] = useState<PublicCharacter[]>([]);
   const [fileAssets, setFileAssets] = useState<PublicFileAsset[]>([]);
-  const [mySubmissions, setMySubmissions] = useState<VerificationSubmission[]>([]);
+  const [mySubmissions, setMySubmissions] = useState<VerificationSubmission[]>(
+    [],
+  );
 
   const [localCharacters, setLocalCharacters] = useState<LocalCharacter[]>([]);
   const [storageFiles, setStorageFiles] = useState<any[]>([]);
 
   // Publish / Submission Dialog State
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [publishAssetType, setPublishAssetType] = useState<"character" | "universe" | "file">("character");
+  const [publishAssetType, setPublishAssetType] = useState<
+    "character" | "universe" | "file"
+  >("character");
   const [selectedCharId, setSelectedCharId] = useState<string>("");
-  const [selectedStorageFileName, setSelectedStorageFileName] = useState<string>("");
+  const [selectedStorageFileName, setSelectedStorageFileName] =
+    useState<string>("");
   const [publishTitle, setPublishTitle] = useState("");
   const [publishDescription, setPublishDescription] = useState("");
   const [publishCategory, setPublishCategory] = useState("other");
   const [submitting, setSubmitting] = useState(false);
 
   // Details Dialog State
-  const [selectedChar, setSelectedChar] = useState<PublicCharacter | null>(null);
-  const [selectedFile, setSelectedFile] = useState<PublicFileAsset | null>(null);
+  const [selectedChar, setSelectedChar] = useState<PublicCharacter | null>(
+    null,
+  );
+  const [selectedFile, setSelectedFile] = useState<PublicFileAsset | null>(
+    null,
+  );
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   // Selected rejection reason modal
-  const [viewReasonSub, setViewReasonSub] = useState<VerificationSubmission | null>(null);
+  const [viewReasonSub, setViewReasonSub] =
+    useState<VerificationSubmission | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -219,42 +229,54 @@ export function PublicAssetsApp() {
       }
 
       // Process characters
-      const processedChars: PublicCharacter[] = (pubCharsData || []).map((item: any) => {
-        const likes = (charLikesData || []).filter((l: any) => l.public_character_id === item.id);
-        const isLiked = likes.some((l: any) => l.user_id === session.user.id);
-        const profile = profilesData.find((p: any) => p.user_id === item.uploader_id);
-        return {
-          ...item,
-          author_username: profile?.username || "Unknown",
-          likes_count: likes.length,
-          is_liked_by_user: isLiked,
-          item_type: item.is_universe ? "universe" : "character",
-        };
-      });
+      const processedChars: PublicCharacter[] = (pubCharsData || []).map(
+        (item: any) => {
+          const likes = (charLikesData || []).filter(
+            (l: any) => l.public_character_id === item.id,
+          );
+          const isLiked = likes.some((l: any) => l.user_id === session.user.id);
+          const profile = profilesData.find(
+            (p: any) => p.user_id === item.uploader_id,
+          );
+          return {
+            ...item,
+            author_username: profile?.username || "Unknown",
+            likes_count: likes.length,
+            is_liked_by_user: isLiked,
+            item_type: item.is_universe ? "universe" : "character",
+          };
+        },
+      );
 
       const charsWithUrls = await attachSignedImageUrls(processedChars);
       setCharacters(charsWithUrls);
 
       // Process files
-      const processedFiles: PublicFileAsset[] = (pubFilesData || []).map((item: any) => {
-        const likes = (fileLikesData || []).filter((l: any) => l.public_asset_id === item.id);
-        const isLiked = likes.some((l: any) => l.user_id === session.user.id);
-        const profile = profilesData.find((p: any) => p.user_id === item.uploader_id);
+      const processedFiles: PublicFileAsset[] = (pubFilesData || []).map(
+        (item: any) => {
+          const likes = (fileLikesData || []).filter(
+            (l: any) => l.public_asset_id === item.id,
+          );
+          const isLiked = likes.some((l: any) => l.user_id === session.user.id);
+          const profile = profilesData.find(
+            (p: any) => p.user_id === item.uploader_id,
+          );
 
-        const cleanPath = (item.file_path || "").replace(/^\/+/, "");
-        const { data: pubUrlData } = storage
-          .from("public-assets")
-          .getPublicUrl(cleanPath);
+          const cleanPath = (item.file_path || "").replace(/^\/+/, "");
+          const { data: pubUrlData } = storage
+            .from("public-assets")
+            .getPublicUrl(cleanPath);
 
-        return {
-          ...item,
-          author_username: profile?.username || "Unknown",
-          likes_count: likes.length,
-          is_liked_by_user: isLiked,
-          public_url: pubUrlData?.publicUrl || "",
-          item_type: "file",
-        };
-      });
+          return {
+            ...item,
+            author_username: profile?.username || "Unknown",
+            likes_count: likes.length,
+            is_liked_by_user: isLiked,
+            public_url: pubUrlData?.publicUrl || "",
+            item_type: "file",
+          };
+        },
+      );
       setFileAssets(processedFiles);
 
       // Fetch user's verifications & local resources
@@ -330,7 +352,8 @@ export function PublicAssetsApp() {
             .from("Storage")
             .createSignedUrl(char.image_path, 3600)
             .catch(() => ({ data: null }));
-          if (urlData?.signedUrl) return { ...char, image_url: urlData.signedUrl };
+          if (urlData?.signedUrl)
+            return { ...char, image_url: urlData.signedUrl };
           return { ...char, image_url: "" };
         }
         return char;
@@ -338,7 +361,10 @@ export function PublicAssetsApp() {
     );
   };
 
-  const handleLikeCharacter = async (item: PublicCharacter, e: React.MouseEvent) => {
+  const handleLikeCharacter = async (
+    item: PublicCharacter,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
     if (!session?.user?.id) return;
 
@@ -440,7 +466,11 @@ export function PublicAssetsApp() {
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("publicAssets.downloadToCollection", undefined, "Added to your collection!"),
+        description: t(
+          "publicAssets.downloadToCollection",
+          undefined,
+          "Added to your collection!",
+        ),
       });
       setDetailsDialogOpen(false);
       fetchData();
@@ -457,7 +487,8 @@ export function PublicAssetsApp() {
     if (!session?.user?.id) return;
     try {
       const response = await fetch(item.public_url || "");
-      if (!response.ok) throw new Error("Failed to download file from public hub");
+      if (!response.ok)
+        throw new Error("Failed to download file from public hub");
       const blob = await response.blob();
 
       const fileName = item.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -475,7 +506,11 @@ export function PublicAssetsApp() {
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("publicAssets.saveToStorage", undefined, "Saved to your Storage!"),
+        description: t(
+          "publicAssets.saveToStorage",
+          undefined,
+          "Saved to your Storage!",
+        ),
       });
       setDetailsDialogOpen(false);
       fetchData();
@@ -507,7 +542,11 @@ export function PublicAssetsApp() {
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("publicAssets.unpublishSuccess", undefined, "Asset unpublished successfully."),
+        description: t(
+          "publicAssets.unpublishSuccess",
+          undefined,
+          "Asset unpublished successfully.",
+        ),
       });
       setDetailsDialogOpen(false);
       fetchData();
@@ -525,29 +564,33 @@ export function PublicAssetsApp() {
 
     if (publishAssetType === "character" || publishAssetType === "universe") {
       let char, metadata;
-      
+
       char = localCharacters.find((c) => c.id === selectedCharId);
       if (!char) return;
 
-          if (char.name === "[Encrypted]") {
-            toast({
-              title: t("common.error", undefined, "Error"),
-              description: t("publicAssets.unauthorizedEncrypted", undefined, "Cannot upload an encrypted character. Please unlock first."),
-              variant: "destructive",
-            });
-            return;
-          }
-          metadata = {
-              name: char.name,
-              display_name: char.display_name,
-              short_description: char.short_description,
-              appearance: char.appearance,
-              personality: char.personality,
-              backstory: char.backstory,
-              hidden_description: char.hidden_description,
-              image_path: char.image_path,
-              is_universe: publishAssetType === "universe",
-          };
+      if (char.name === "[Encrypted]") {
+        toast({
+          title: t("common.error", undefined, "Error"),
+          description: t(
+            "publicAssets.unauthorizedEncrypted",
+            undefined,
+            "Cannot upload an encrypted character. Please unlock first.",
+          ),
+          variant: "destructive",
+        });
+        return;
+      }
+      metadata = {
+        name: char.name,
+        display_name: char.display_name,
+        short_description: char.short_description,
+        appearance: char.appearance,
+        personality: char.personality,
+        backstory: char.backstory,
+        hidden_description: char.hidden_description,
+        image_path: char.image_path,
+        is_universe: publishAssetType === "universe",
+      };
 
       setSubmitting(true);
       try {
@@ -574,7 +617,11 @@ export function PublicAssetsApp() {
 
         toast({
           title: t("common.success", undefined, "Success"),
-          description: t("verification.requestSubmitted", undefined, "Verification request submitted successfully!"),
+          description: t(
+            "verification.requestSubmitted",
+            undefined,
+            "Verification request submitted successfully!",
+          ),
         });
         setPublishDialogOpen(false);
         fetchUserSubmissions();
@@ -624,7 +671,11 @@ export function PublicAssetsApp() {
 
         toast({
           title: t("common.success", undefined, "Success"),
-          description: t("verification.requestSubmitted", undefined, "Verification request submitted successfully!"),
+          description: t(
+            "verification.requestSubmitted",
+            undefined,
+            "Verification request submitted successfully!",
+          ),
         });
         setPublishDialogOpen(false);
         fetchUserSubmissions();
@@ -648,7 +699,8 @@ export function PublicAssetsApp() {
       const matchesSearch =
         item.name.toLowerCase().includes(q) ||
         (item.display_name && item.display_name.toLowerCase().includes(q)) ||
-        (item.author_username && item.author_username.toLowerCase().includes(q));
+        (item.author_username &&
+          item.author_username.toLowerCase().includes(q));
       return matchesTab && matchesSearch;
     });
 
@@ -764,7 +816,11 @@ export function PublicAssetsApp() {
               <div className="relative flex-1 md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
-                  placeholder={t("publicAssets.searchPlaceholder", undefined, "Search public assets...")}
+                  placeholder={t(
+                    "publicAssets.searchPlaceholder",
+                    undefined,
+                    "Search public assets...",
+                  )}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 bg-slate-900 border-slate-800 text-white"
@@ -789,7 +845,11 @@ export function PublicAssetsApp() {
                     {t("publicAssets.mostLiked", undefined, "Most Liked")}
                   </SelectItem>
                   <SelectItem value="most_downloaded">
-                    {t("publicAssets.mostDownloaded", undefined, "Most Downloaded")}
+                    {t(
+                      "publicAssets.mostDownloaded",
+                      undefined,
+                      "Most Downloaded",
+                    )}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -807,10 +867,18 @@ export function PublicAssetsApp() {
             <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-lg">
               <DialogHeader>
                 <DialogTitle>
-                  {t("publicAssets.publishTitle", undefined, "Publish to Public Assets")}
+                  {t(
+                    "publicAssets.publishTitle",
+                    undefined,
+                    "Publish to Public Assets",
+                  )}
                 </DialogTitle>
                 <DialogDescription className="text-slate-400">
-                  {t("publicAssets.publishDesc", undefined, "Select an existing character, universe, or storage file to submit for verification.")}
+                  {t(
+                    "publicAssets.publishDesc",
+                    undefined,
+                    "Select an existing character, universe, or storage file to submit for verification.",
+                  )}
                 </DialogDescription>
               </DialogHeader>
 
@@ -844,7 +912,11 @@ export function PublicAssetsApp() {
                 {publishAssetType === "character" && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">
-                      {t("publicAssets.selectCharacter", undefined, "Select Character")}
+                      {t(
+                        "publicAssets.selectCharacter",
+                        undefined,
+                        "Select Character",
+                      )}
                     </label>
                     <Select
                       value={selectedCharId}
@@ -869,7 +941,11 @@ export function PublicAssetsApp() {
                 {publishAssetType === "universe" && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">
-                      {t("publicAssets.selectUniverse", undefined, "Select Universe")}
+                      {t(
+                        "publicAssets.selectUniverse",
+                        undefined,
+                        "Select Universe",
+                      )}
                     </label>
                     <Select
                       value={selectedCharId}
@@ -890,14 +966,16 @@ export function PublicAssetsApp() {
                     </Select>
                   </div>
                 )}
-                
-
 
                 {publishAssetType === "file" && (
                   <>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-300">
-                        {t("publicAssets.selectFile", undefined, "Select Storage File")}
+                        {t(
+                          "publicAssets.selectFile",
+                          undefined,
+                          "Select Storage File",
+                        )}
                       </label>
                       <Select
                         value={selectedStorageFileName}
@@ -921,7 +999,11 @@ export function PublicAssetsApp() {
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-300">
-                        {t("publicAssets.assetName", undefined, "Asset Name / Title")}
+                        {t(
+                          "publicAssets.assetName",
+                          undefined,
+                          "Asset Name / Title",
+                        )}
                       </label>
                       <Input
                         value={publishTitle}
@@ -945,7 +1027,9 @@ export function PublicAssetsApp() {
                         <SelectContent className="bg-slate-800 border-slate-700 text-white">
                           <SelectItem value="image">Image</SelectItem>
                           <SelectItem value="audio">Audio / Sound</SelectItem>
-                          <SelectItem value="model">3D Model / Asset</SelectItem>
+                          <SelectItem value="model">
+                            3D Model / Asset
+                          </SelectItem>
                           <SelectItem value="data">Data / JSON</SelectItem>
                           <SelectItem value="text">Text / Document</SelectItem>
                           <SelectItem value="other">Other</SelectItem>
@@ -955,7 +1039,11 @@ export function PublicAssetsApp() {
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-300">
-                        {t("publicAssets.assetDescription", undefined, "Description")}
+                        {t(
+                          "publicAssets.assetDescription",
+                          undefined,
+                          "Description",
+                        )}
                       </label>
                       <Textarea
                         value={publishDescription}
@@ -999,7 +1087,11 @@ export function PublicAssetsApp() {
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : null}
-                  {t("publicAssets.submitForVerification", undefined, "Submit for Review")}
+                  {t(
+                    "publicAssets.submitForVerification",
+                    undefined,
+                    "Submit for Review",
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1027,7 +1119,11 @@ export function PublicAssetsApp() {
           {mySubmissions.length === 0 ? (
             <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl bg-slate-950/30">
               <p className="text-slate-500">
-                {t("publicAssets.noSubmissions", undefined, "You have not submitted any verification requests yet.")}
+                {t(
+                  "publicAssets.noSubmissions",
+                  undefined,
+                  "You have not submitted any verification requests yet.",
+                )}
               </p>
             </div>
           ) : (
@@ -1044,13 +1140,27 @@ export function PublicAssetsApp() {
                           {sub.title}
                         </h4>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs capitalize border-slate-700 bg-slate-800 text-slate-300">
+                          <Badge
+                            variant="outline"
+                            className="text-xs capitalize border-slate-700 bg-slate-800 text-slate-300"
+                          >
                             {sub.asset_type}
                           </Badge>
-                          <Badge variant="outline" className="text-xs border-slate-700 bg-slate-800 text-cyan-300">
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-slate-700 bg-slate-800 text-cyan-300"
+                          >
                             {sub.target_type === "public_usage"
-                              ? t("verification.verifiedForPublicUsageBadge", undefined, "Public Usage")
-                              : t("verification.publicBadge", undefined, "Public Asset")}
+                              ? t(
+                                  "verification.verifiedForPublicUsageBadge",
+                                  undefined,
+                                  "Public Usage",
+                                )
+                              : t(
+                                  "verification.publicBadge",
+                                  undefined,
+                                  "Public Asset",
+                                )}
                           </Badge>
                         </div>
                       </div>
@@ -1059,19 +1169,31 @@ export function PublicAssetsApp() {
                       {sub.status === "pending" && (
                         <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {t("publicAssets.statusPending", undefined, "Pending Review")}
+                          {t(
+                            "publicAssets.statusPending",
+                            undefined,
+                            "Pending Review",
+                          )}
                         </Badge>
                       )}
                       {sub.status === "approved" && (
                         <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" />
-                          {t("publicAssets.statusApproved", undefined, "Approved & Public")}
+                          {t(
+                            "publicAssets.statusApproved",
+                            undefined,
+                            "Approved & Public",
+                          )}
                         </Badge>
                       )}
                       {sub.status === "rejected" && (
                         <Badge className="bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
                           <XCircle className="w-3 h-3" />
-                          {t("publicAssets.statusRejected", undefined, "Denied")}
+                          {t(
+                            "publicAssets.statusRejected",
+                            undefined,
+                            "Denied",
+                          )}
                         </Badge>
                       )}
                     </div>
@@ -1087,7 +1209,11 @@ export function PublicAssetsApp() {
                       <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-lg text-xs space-y-1">
                         <div className="font-semibold text-rose-300 flex items-center gap-1">
                           <AlertTriangle className="w-3.5 h-3.5" />
-                          {t("publicAssets.rejectionReason", undefined, "Denial Reason:")}
+                          {t(
+                            "publicAssets.rejectionReason",
+                            undefined,
+                            "Denial Reason:",
+                          )}
                         </div>
                         <p className="text-rose-200">{sub.rejection_reason}</p>
                       </div>
@@ -1125,14 +1251,26 @@ export function PublicAssetsApp() {
             >
               <div>
                 <div className="aspect-video bg-slate-950 relative flex items-center justify-center overflow-hidden border-b border-slate-800">
-                  {((file.category === "image" || file.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(file.name || file.file_path)) && file.public_url) ? (
+                  {(file.category === "image" ||
+                    file.mime_type?.startsWith("image/") ||
+                    /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(
+                      file.name || file.file_path,
+                    )) &&
+                  file.public_url ? (
                     <img
                       src={file.public_url}
                       alt={file.name}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
-                  ) : (file.category === "audio" || file.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(file.name || file.file_path)) ? (
-                    <div className="flex flex-col items-center justify-center gap-1.5 p-3 w-full bg-slate-950/40" onClick={(e) => e.stopPropagation()}>
+                  ) : file.category === "audio" ||
+                    file.mime_type?.startsWith("audio/") ||
+                    /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(
+                      file.name || file.file_path,
+                    ) ? (
+                    <div
+                      className="flex flex-col items-center justify-center gap-1.5 p-3 w-full bg-slate-950/40"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Music className="w-8 h-8 text-cyan-400 shrink-0 mb-1" />
                       <AudioPlayerPreview
                         src={file.public_url}
@@ -1164,7 +1302,10 @@ export function PublicAssetsApp() {
                     <h3 className="text-base font-bold text-white truncate">
                       {file.display_name || file.name}
                     </h3>
-                    <Badge variant="outline" className="text-[10px] uppercase border-slate-700 bg-slate-800 text-slate-300">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] uppercase border-slate-700 bg-slate-800 text-slate-300"
+                    >
                       {file.category}
                     </Badge>
                   </div>
@@ -1194,7 +1335,11 @@ export function PublicAssetsApp() {
           {filteredFiles.length === 0 && (
             <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
               <p className="text-slate-500">
-                {t("publicAssets.noAssetsFound", undefined, "No public assets found.")}
+                {t(
+                  "publicAssets.noAssetsFound",
+                  undefined,
+                  "No public assets found.",
+                )}
               </p>
             </div>
           )}
@@ -1269,7 +1414,11 @@ export function PublicAssetsApp() {
           {filteredCharacters.length === 0 && (
             <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
               <p className="text-slate-500">
-                {t("publicAssets.noAssetsFound", undefined, "No public assets found.")}
+                {t(
+                  "publicAssets.noAssetsFound",
+                  undefined,
+                  "No public assets found.",
+                )}
               </p>
             </div>
           )}
@@ -1365,10 +1514,12 @@ export function PublicAssetsApp() {
               <div className="p-4 border-t border-slate-800 flex justify-between items-center bg-slate-900 shrink-0">
                 <div className="flex gap-4 text-sm text-slate-400">
                   <span className="flex items-center gap-1">
-                    <Download className="w-4 h-4" /> {selectedChar.downloads} Downloads
+                    <Download className="w-4 h-4" /> {selectedChar.downloads}{" "}
+                    Downloads
                   </span>
                   <span className="flex items-center gap-1">
-                    <Heart className="w-4 h-4" /> {selectedChar.likes_count} Likes
+                    <Heart className="w-4 h-4" /> {selectedChar.likes_count}{" "}
+                    Likes
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -1377,13 +1528,21 @@ export function PublicAssetsApp() {
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm">
                           <Trash2 className="w-4 h-4 mr-1.5" />
-                          {t("publicAssets.makePrivate", undefined, "Make Private")}
+                          {t(
+                            "publicAssets.makePrivate",
+                            undefined,
+                            "Make Private",
+                          )}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            {t("publicAssets.makePrivate", undefined, "Unpublish Asset?")}
+                            {t(
+                              "publicAssets.makePrivate",
+                              undefined,
+                              "Unpublish Asset?",
+                            )}
                           </AlertDialogTitle>
                           <AlertDialogDescription className="text-slate-400">
                             {t(
@@ -1398,7 +1557,9 @@ export function PublicAssetsApp() {
                             {t("common.cancel", undefined, "Cancel")}
                           </AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleUnpublish("character", selectedChar.id)}
+                            onClick={() =>
+                              handleUnpublish("character", selectedChar.id)
+                            }
                             className="bg-destructive text-destructive-foreground"
                           >
                             {t("common.delete", undefined, "Unpublish")}
@@ -1420,7 +1581,11 @@ export function PublicAssetsApp() {
                     className="bg-cyan-600 hover:bg-cyan-700 text-white"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    {t("publicAssets.downloadToCollection", undefined, "Add to Collection")}
+                    {t(
+                      "publicAssets.downloadToCollection",
+                      undefined,
+                      "Add to Collection",
+                    )}
                   </Button>
                 </div>
               </div>
@@ -1430,13 +1595,22 @@ export function PublicAssetsApp() {
           {selectedFile && (
             <>
               <div className="h-48 relative bg-slate-950 shrink-0 flex items-center justify-center border-b border-slate-800">
-                {((selectedFile.category === "image" || selectedFile.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(selectedFile.name || selectedFile.file_path)) && selectedFile.public_url) ? (
+                {(selectedFile.category === "image" ||
+                  selectedFile.mime_type?.startsWith("image/") ||
+                  /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(
+                    selectedFile.name || selectedFile.file_path,
+                  )) &&
+                selectedFile.public_url ? (
                   <img
                     src={selectedFile.public_url}
                     alt={selectedFile.name}
                     className="w-full h-full object-cover"
                   />
-                ) : (selectedFile.category === "audio" || selectedFile.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(selectedFile.name || selectedFile.file_path)) ? (
+                ) : selectedFile.category === "audio" ||
+                  selectedFile.mime_type?.startsWith("audio/") ||
+                  /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(
+                    selectedFile.name || selectedFile.file_path,
+                  ) ? (
                   <div className="flex flex-col items-center gap-2 p-4 w-full">
                     <Music className="w-10 h-10 text-cyan-400" />
                     <AudioPlayerPreview
@@ -1448,14 +1622,18 @@ export function PublicAssetsApp() {
                     />
                   </div>
                 ) : (
-                  getFileCategoryIcon(selectedFile.category, selectedFile.mime_type)
+                  getFileCategoryIcon(
+                    selectedFile.category,
+                    selectedFile.mime_type,
+                  )
                 )}
                 <div className="absolute bottom-4 left-6 right-6">
                   <h2 className="text-2xl font-bold">
                     {selectedFile.display_name || selectedFile.name}
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Uploaded by @{selectedFile.author_username} • {formatSize(selectedFile.file_size)}
+                    Uploaded by @{selectedFile.author_username} •{" "}
+                    {formatSize(selectedFile.file_size)}
                   </p>
                 </div>
               </div>
@@ -1474,11 +1652,15 @@ export function PublicAssetsApp() {
                   <div className="grid grid-cols-2 gap-4 p-4 bg-slate-950/60 rounded-lg border border-slate-800 text-xs">
                     <div>
                       <span className="text-slate-500">File Type:</span>
-                      <p className="text-slate-300 font-mono">{selectedFile.mime_type || "N/A"}</p>
+                      <p className="text-slate-300 font-mono">
+                        {selectedFile.mime_type || "N/A"}
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Category:</span>
-                      <p className="text-slate-300 capitalize">{selectedFile.category}</p>
+                      <p className="text-slate-300 capitalize">
+                        {selectedFile.category}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1487,10 +1669,12 @@ export function PublicAssetsApp() {
               <div className="p-4 border-t border-slate-800 flex justify-between items-center bg-slate-900 shrink-0">
                 <div className="flex gap-4 text-sm text-slate-400">
                   <span className="flex items-center gap-1">
-                    <Download className="w-4 h-4" /> {selectedFile.downloads} Downloads
+                    <Download className="w-4 h-4" /> {selectedFile.downloads}{" "}
+                    Downloads
                   </span>
                   <span className="flex items-center gap-1">
-                    <Heart className="w-4 h-4" /> {selectedFile.likes_count} Likes
+                    <Heart className="w-4 h-4" /> {selectedFile.likes_count}{" "}
+                    Likes
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -1499,13 +1683,21 @@ export function PublicAssetsApp() {
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm">
                           <Trash2 className="w-4 h-4 mr-1.5" />
-                          {t("publicAssets.makePrivate", undefined, "Make Private")}
+                          {t(
+                            "publicAssets.makePrivate",
+                            undefined,
+                            "Make Private",
+                          )}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            {t("publicAssets.makePrivate", undefined, "Unpublish Asset?")}
+                            {t(
+                              "publicAssets.makePrivate",
+                              undefined,
+                              "Unpublish Asset?",
+                            )}
                           </AlertDialogTitle>
                           <AlertDialogDescription className="text-slate-400">
                             {t(
@@ -1520,7 +1712,9 @@ export function PublicAssetsApp() {
                             {t("common.cancel", undefined, "Cancel")}
                           </AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleUnpublish("file", selectedFile.id)}
+                            onClick={() =>
+                              handleUnpublish("file", selectedFile.id)
+                            }
                             className="bg-destructive text-destructive-foreground"
                           >
                             {t("common.delete", undefined, "Unpublish")}
@@ -1542,7 +1736,11 @@ export function PublicAssetsApp() {
                     className="bg-cyan-600 hover:bg-cyan-700 text-white"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    {t("publicAssets.saveToStorage", undefined, "Save to Storage")}
+                    {t(
+                      "publicAssets.saveToStorage",
+                      undefined,
+                      "Save to Storage",
+                    )}
                   </Button>
                 </div>
               </div>

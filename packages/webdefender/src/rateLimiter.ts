@@ -8,12 +8,16 @@ export class RateLimiter {
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
   }
 
-  check(key: string, maxRequests: number, windowSeconds: number): { allowed: boolean; remaining: number; resetAt: number } {
+  check(
+    key: string,
+    maxRequests: number,
+    windowSeconds: number,
+  ): { allowed: boolean; remaining: number; resetAt: number } {
     const now = Date.now();
     const windowMs = windowSeconds * 1000;
-    
+
     let bucket = this.buckets.get(key);
-    
+
     if (!bucket) {
       bucket = { tokens: maxRequests, lastRefill: now };
       this.buckets.set(key, bucket);
@@ -36,15 +40,15 @@ export class RateLimiter {
     return {
       allowed,
       remaining: bucket.tokens,
-      resetAt: bucket.lastRefill + windowMs
+      resetAt: bucket.lastRefill + windowMs,
     };
   }
 
   private cleanup() {
     const now = Date.now();
     // Assume longest window is 1 hour for cleanup purposes
-    const maxAge = 3600000; 
-    
+    const maxAge = 3600000;
+
     for (const [key, bucket] of this.buckets.entries()) {
       if (now - bucket.lastRefill > maxAge) {
         this.buckets.delete(key);

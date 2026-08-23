@@ -32,7 +32,8 @@ export const en = {
     reload: "Reload",
     refresh: "Refresh",
     somethingWentWrong: "Something went wrong",
-    chunkLoadError: "A new version of the app may be available. Please refresh the page.",
+    chunkLoadError:
+      "A new version of the app may be available. Please refresh the page.",
   },
   nav: {
     home: "Home",
@@ -82,7 +83,8 @@ export const en = {
     bioPlaceholder: "Bio",
     saveChanges: "Save Changes",
     languageSectionTitle: "Language",
-    languageSectionDesc: "Choose your preferred language for your account and public profile",
+    languageSectionDesc:
+      "Choose your preferred language for your account and public profile",
     displayLanguage: "Display Language",
     emailSettingsTitle: "Email Settings",
     emailSettingsDesc: "Choose how others see your email",
@@ -98,8 +100,10 @@ export const en = {
     invalidFileName: "Invalid file name",
     changePassword: "Change Password",
     additionalLanguages: "Additional Languages",
-    additionalLanguagesDesc: "Cosmetic languages displayed on your public profile for others to see",
-    displayLanguageDesc: "Controls the interface language across the application",
+    additionalLanguagesDesc:
+      "Cosmetic languages displayed on your public profile for others to see",
+    displayLanguageDesc:
+      "Controls the interface language across the application",
     addLanguage: "Add Language",
     selectLanguageToAdd: "Select a language to add",
     noAdditionalLanguages: "No additional languages added.",
@@ -163,15 +167,19 @@ export const en = {
     fileCompressorTitle: "File Compressor",
     fileCompressorDesc: "Easily compress your files to free up storage space.",
     publicCharactersTitle: "Public Characters",
-    publicCharactersDesc: "Discover, download, and share characters and universes with the community.",
+    publicCharactersDesc:
+      "Discover, download, and share characters and universes with the community.",
     publicAssetsTitle: "Public Assets",
-    publicAssetsDesc: "Discover, download, and share assets, characters, and universes with the community.",
+    publicAssetsDesc:
+      "Discover, download, and share assets, characters, and universes with the community.",
     dataSaveTitle: "Data Save",
-    dataSaveDesc: "Securely store and manage your custom data and text snippets.",
+    dataSaveDesc:
+      "Securely store and manage your custom data and text snippets.",
     qrcodeGeneratorTitle: "QR Code Generator",
     qrcodeGeneratorDesc: "Convert links or text into custom QR codes.",
     llmAgentTitle: "LLM Agent",
-    llmAgentDesc: "An autonomous AI coding agent that reads, edits, and builds your projects.",
+    llmAgentDesc:
+      "An autonomous AI coding agent that reads, edits, and builds your projects.",
     chatbotWebSearch: "Web Search",
     chatbotWebSearchDesc: "Deep agentic web research before answering",
     chatbotSearchedTheWeb: "Searched The Web",
@@ -180,7 +188,8 @@ export const en = {
     chatbotReasoningDesc: "Toggle AI thought process",
     chatbotReasoningProcess: "Reasoning Process",
     agentSearchTitle: "Agent Search",
-    agentSearchDesc: "AI-powered agentic search that researches the web and synthesizes answers.",
+    agentSearchDesc:
+      "AI-powered agentic search that researches the web and synthesizes answers.",
     agentSearchPlaceholder: "What would you like to research?",
     agentSearchFormat: "Response Format",
     agentSearchConclusion: "Conclusion",
@@ -199,15 +208,19 @@ export const en = {
     vpnDesc: "Manage your VPN configurations.",
     vpnSavedConfigs: "Saved Configurations",
     vpnDirectConnect: "Direct Connect",
-    vpnDirectConnectDesc: "Enter a VPN config to connect directly without saving.",
-    vpnGuestNotice: "Connect directly without saving, or sign in to save profiles across devices.",
+    vpnDirectConnectDesc:
+      "Enter a VPN config to connect directly without saving.",
+    vpnGuestNotice:
+      "Connect directly without saving, or sign in to save profiles across devices.",
     vpnConfigName: "Config Name",
     vpnConfigNamePlaceholder: "e.g. Temporary Connection",
     vpnType: "VPN Type",
     vpnConfigContent: "Configuration Content",
-    vpnConfigPlaceholder: "Paste your WireGuard or OpenVPN configuration here...",
+    vpnConfigPlaceholder:
+      "Paste your WireGuard or OpenVPN configuration here...",
     vpnKillSwitch: "Kill Switch (Block untunneled traffic)",
-    vpnKillSwitchNote: "Note: On Windows, OpenVPN natively supports only DNS leak protection via the CLI.",
+    vpnKillSwitchNote:
+      "Note: On Windows, OpenVPN natively supports only DNS leak protection via the CLI.",
     vpnConnect: "Connect VPN",
     vpnDisconnect: "Disconnect VPN",
     vpnFreeConfigBtn: "Get Free Config from VPNBook",
@@ -215,7 +228,8 @@ export const en = {
     vpnManageProfilesDesc: "Manage and monitor your VPN profiles.",
     vpnYourConfigurations: "Your Configurations",
     vpnNoConfigsFound: "No configurations found.",
-    vpnNoConfigsFoundDesc: "Click \"Create New Config\" above to get started, or switch to Direct Connect.",
+    vpnNoConfigsFoundDesc:
+      'Click "Create New Config" above to get started, or switch to Direct Connect.',
     vpnSignInPrompt: "Sign In",
     vpnServerDetected: "Server detected",
     vpnNoServerDetected: "No server detected in config",
@@ -223,7 +237,8 @@ export const en = {
     vpnOffline: "Offline",
     vpnPinging: "Pinging...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Protect your website or API from DDoS, injection attacks, bots, VPNs, and malicious traffic.",
+    webDefenderDesc:
+      "Protect your website or API from DDoS, injection attacks, bots, VPNs, and malicious traffic.",
     webDefenderRealTime: "Real-Time",
     webDefenderConnecting: "Connecting...",
   },
@@ -236,7 +251,8 @@ export const en = {
     chessTitle: "Chess",
     chessDesc: "Play a game of chess against an AI opponent.",
     minesweeperTitle: "Minesweeper",
-    minesweeperDesc: "The classic game of Minesweeper. Clear the board without detonating any mines!",
+    minesweeperDesc:
+      "The classic game of Minesweeper. Clear the board without detonating any mines!",
     solitaireTitle: "Solitaire",
     solitaireDesc: "Play the classic Klondike Solitaire card game.",
     pokerTitle: "Texas Hold'em",
@@ -267,14 +283,16 @@ export const en = {
     storageUsed: "Storage Used",
     uploadFile: "Upload File",
     deleteConfirmTitle: "Are you sure you want to delete this file?",
-    deleteConfirmDesc: "This action cannot be undone. This will permanently delete your file from cloud storage.",
+    deleteConfirmDesc:
+      "This action cannot be undone. This will permanently delete your file from cloud storage.",
     fileUploaded: "File uploaded successfully",
     fileDeleted: "File deleted successfully",
     filesTab: "Files",
     submissionsTab: "Verification Submissions",
     verifyForMultiplayer: "Verify",
     verifiedBadge: "Verified",
-    reverificationRequired: "File modified. Previous verification has been reset and requires re-verification.",
+    reverificationRequired:
+      "File modified. Previous verification has been reset and requires re-verification.",
     noSubmissions: "No verification submissions for storage files yet.",
   },
   customize: {
@@ -286,7 +304,8 @@ export const en = {
     musicSectionTitle: "Background Music",
     musicSectionDesc: "Listen to music while using your applications",
     gradientTitle: "Gradient Background",
-    gradientDesc: "Enable radiant color gradients on hero sections and sidebars",
+    gradientDesc:
+      "Enable radiant color gradients on hero sections and sidebars",
     shuffle: "Shuffle",
     loop: "Loop",
     noTracks: "No tracks added yet. Select tracks from your storage to play!",
@@ -304,13 +323,16 @@ export const en = {
     personality: "Personality",
     backstory: "Backstory",
     hiddenDescription: "Private Notes",
-    noCharacters: 'No characters here yet! Click "New Character" to get started and add some to your collection.',
-    noUniverses: 'No universes here yet! Click "New Universe" to start building your own world.',
+    noCharacters:
+      'No characters here yet! Click "New Character" to get started and add some to your collection.',
+    noUniverses:
+      'No universes here yet! Click "New Universe" to start building your own world.',
     characterSaved: "Character saved successfully",
     characterDeleted: "Character deleted successfully",
     verifyForMultiplayer: "Verify",
     verifiedBadge: "Verified",
-    reverificationRequired: "Character modified. Verification status has been reset and requires re-verification for multiplayer usage.",
+    reverificationRequired:
+      "Character modified. Verification status has been reset and requires re-verification for multiplayer usage.",
   },
   changelogs: {
     title: "Changelogs",
@@ -319,7 +341,8 @@ export const en = {
   },
   support: {
     title: "Support Tickets",
-    subtitle: "Need help? Create a support ticket and our team will get back to you.",
+    subtitle:
+      "Need help? Create a support ticket and our team will get back to you.",
     createTicket: "Create Ticket",
     myTickets: "My Tickets",
     subject: "Subject",
@@ -355,7 +378,8 @@ export const en = {
     supportDesc: "Manage and respond to user support tickets.",
     allTickets: "All Support Tickets",
     verificationTitle: "Asset Verification",
-    verificationDesc: "Review, approve, or deny public assets and multiplayer verification requests.",
+    verificationDesc:
+      "Review, approve, or deny public assets and multiplayer verification requests.",
     reviewQueue: "Asset Verification Queue",
     allSubmissions: "All Submissions",
     pendingTab: "Pending",
@@ -364,7 +388,8 @@ export const en = {
     approve: "Approve",
     deny: "Deny",
     denyTitle: "Deny Verification Request",
-    denyDesc: "Please provide a specific reason for denying this asset. This reason will be displayed to the user.",
+    denyDesc:
+      "Please provide a specific reason for denying this asset. This reason will be displayed to the user.",
     reasonPlaceholder: "Explain why this submission was rejected (required)...",
     reasonRequiredError: "A denial reason is required to reject a submission.",
     approveSuccess: "Asset approved successfully.",
@@ -393,7 +418,8 @@ export const en = {
     mostDownloaded: "Most Downloaded",
     publishAsset: "Publish Asset",
     publishTitle: "Publish to Public Assets",
-    publishDesc: "Select an existing character, universe, or storage file to submit for verification.",
+    publishDesc:
+      "Select an existing character, universe, or storage file to submit for verification.",
     assetType: "Asset Type",
     selectCharacter: "Select Character",
     selectUniverse: "Select Universe",
@@ -402,13 +428,15 @@ export const en = {
     assetDescription: "Description",
     assetCategory: "Category",
     submitForVerification: "Submit for Review",
-    verificationNotice: "Submissions must be verified by an administrator before appearing publicly.",
+    verificationNotice:
+      "Submissions must be verified by an administrator before appearing publicly.",
     noAssetsFound: "No public assets found.",
     noSubmissions: "You have not submitted any verification requests yet.",
     downloadToCollection: "Add to Collection",
     saveToStorage: "Save to Storage",
     makePrivate: "Make Private / Unpublish",
-    makePrivateConfirm: "Are you sure you want to unpublish this asset? It will be removed from public view and reverted to private.",
+    makePrivateConfirm:
+      "Are you sure you want to unpublish this asset? It will be removed from public view and reverted to private.",
     unpublishSuccess: "Asset unpublished successfully.",
     statusPending: "Pending Review",
     statusApproved: "Approved & Public",
@@ -420,13 +448,15 @@ export const en = {
     downloads: "Downloads",
     size: "Size",
     uploader: "Uploaded by",
-    unauthorizedEncrypted: "Cannot upload an encrypted character. Please unlock first.",
+    unauthorizedEncrypted:
+      "Cannot upload an encrypted character. Please unlock first.",
   },
   verification: {
     verifyForPublicUsage: "Verify for Public Usage",
     verifyForMultiplayer: "Verify",
     verifyForMultiplayerTitle: "Verify Asset",
-    verifyForMultiplayerDesc: "Submit this private asset for verification to use in multiplayer games and other settings without publishing it publicly.",
+    verifyForMultiplayerDesc:
+      "Submit this private asset for verification to use in multiplayer games and other settings without publishing it publicly.",
     publishToPublicAssets: "Publish to Public Assets",
     verifiedForPublicUsageBadge: "Verified for Public Usage",
     verifiedForMultiplayerBadge: "Verified",
@@ -434,14 +464,18 @@ export const en = {
     pendingReviewBadge: "Pending Review",
     rejectedBadge: "Verification Denied",
     viewDenialReason: "View Denial Reason",
-    publicUsageDescription: "Submit this asset for verification to use in public multiplayer games and shared environments.",
+    publicUsageDescription:
+      "Submit this asset for verification to use in public multiplayer games and shared environments.",
     requestSubmitted: "Verification request submitted successfully!",
-    versionNotice: "Editing this asset locally does not affect the published version. To update the public asset, submit a new update verification request.",
+    versionNotice:
+      "Editing this asset locally does not affect the published version. To update the public asset, submit a new update verification request.",
     updatePublicVersion: "Update Public Version",
     rejectionReasonDialogTitle: "Verification Denial Reason",
-    rejectionReasonDialogDesc: "Your submission was reviewed and denied with the following reason:",
+    rejectionReasonDialogDesc:
+      "Your submission was reviewed and denied with the following reason:",
     deleteSubmission: "Delete Submission",
-    deleteSubmissionConfirm: "Are you sure you want to delete this verification request?",
+    deleteSubmissionConfirm:
+      "Are you sure you want to delete this verification request?",
     submissionDeleted: "Verification request deleted successfully",
     deleteTooltip: "Delete verification",
   },
@@ -451,11 +485,14 @@ export const en = {
     termsOfService: "Terms of Use",
     privacyPolicy: "Privacy Policy",
     eulaTitle: "End User Licence Agreement",
-    eulaDesc: "The licence granted to you to use the Software, and the restrictions and obligations that apply.",
+    eulaDesc:
+      "The licence granted to you to use the Software, and the restrictions and obligations that apply.",
     dmcaTitle: "DMCA & Copyright Policy",
-    dmcaDesc: "How to report copyright infringement, submit a counter-notice, and our repeat-infringer policy.",
+    dmcaDesc:
+      "How to report copyright infringement, submit a counter-notice, and our repeat-infringer policy.",
     aupTitle: "Acceptable Use Policy",
-    aupDesc: "The conduct standards for using the Service, including prohibited activities and enforcement actions.",
+    aupDesc:
+      "The conduct standards for using the Service, including prohibited activities and enforcement actions.",
     licenseTitle: "License",
     licenseDesc: "The MIT License applies to this project.",
   },
@@ -483,7 +520,8 @@ export const en = {
     subtitle: "wants to access your Oxygen Low's Software account",
     permissions: "Requested Permissions",
     authorizeApp: "Authorize {app}",
-    wantsAccess: "This application wants to connect to your Oxygen Low's Software account.",
+    wantsAccess:
+      "This application wants to connect to your Oxygen Low's Software account.",
     requestedPermissions: "Requested Permissions:",
     warning: "Only authorize applications you trust.",
     approve: "Approve",
@@ -496,9 +534,11 @@ export const en = {
   },
   security: {
     title: "Security & Data Encryption",
-    subtitle: "Manage your 256-bit AES masterkey and enable zero-knowledge encryption for your private data.",
+    subtitle:
+      "Manage your 256-bit AES masterkey and enable zero-knowledge encryption for your private data.",
     masterKeyTitle: "AES-256 Masterkey",
-    masterKeyDesc: "Your masterkey encrypts your private data on your device before it is stored in the cloud. Nobody else can read your data without this key.",
+    masterKeyDesc:
+      "Your masterkey encrypts your private data on your device before it is stored in the cloud. Nobody else can read your data without this key.",
     keyActiveBadge: "Masterkey Active",
     keyNotSetBadge: "No Masterkey Set",
     generateButton: "Generate Masterkey",
@@ -515,7 +555,8 @@ export const en = {
     importKeyPlaceholder: "Paste 64-char Hex or 256-bit Base64 masterkey...",
     activateKeyButton: "Unlock / Activate Key",
     keyActivatedToast: "Masterkey activated successfully",
-    invalidKeyError: "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
+    invalidKeyError:
+      "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
     keyFormat: "Key Format",
     showKeyFormat: "Key Format",
     hideKeyFormat: "Hide Key Format",
@@ -523,52 +564,70 @@ export const en = {
     formatBase64: "Base64 (44 chars)",
     formatBase58: "Base58",
     formatWords: "Passphrase Words",
-    clientSideNotice: "Zero-Knowledge: Your masterkey is held only in your browser session and is never sent to any server.",
+    clientSideNotice:
+      "Zero-Knowledge: Your masterkey is held only in your browser session and is never sent to any server.",
     encryptionSettingsTitle: "Protected Data Categories",
-    encryptionSettingsDesc: "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your masterkey before storage.",
+    encryptionSettingsDesc:
+      "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your masterkey before storage.",
     charactersUniverses: "Characters and Universes",
-    charactersUniversesDesc: "Encrypt character bios, appearances, personalities, private notes, and universe lore.",
+    charactersUniversesDesc:
+      "Encrypt character bios, appearances, personalities, private notes, and universe lore.",
     dataSave: "Data Save Entries",
-    dataSaveDesc: "Encrypt custom key-value snippets, code snippets, notes, and stored data records.",
+    dataSaveDesc:
+      "Encrypt custom key-value snippets, code snippets, notes, and stored data records.",
     chatbotChats: "Chatbot Chats",
-    chatbotChatsDesc: "Encrypt AI conversations, message history, and system prompts.",
+    chatbotChatsDesc:
+      "Encrypt AI conversations, message history, and system prompts.",
     integrations: "API Keys & Integrations",
-    integrationsDesc: "Encrypt stored API keys, LLM credentials, and MCP access tokens.",
-    cannotDisableIntegrationsWithKeys: "Cannot disable encryption while API keys/integrations are stored. Please remove all stored integrations first.",
+    integrationsDesc:
+      "Encrypt stored API keys, LLM credentials, and MCP access tokens.",
+    cannotDisableIntegrationsWithKeys:
+      "Cannot disable encryption while API keys/integrations are stored. Please remove all stored integrations first.",
     encryptionEnabled: "Encrypted",
     encryptionDisabled: "Unencrypted",
     keyRequiredBadge: "Key Required",
     settingsSavedToast: "Encryption settings updated",
     encryptionPromptTitle: "Decryption Required",
-    encryptionPromptDesc: "This section is encrypted with your 256-bit AES masterkey. Please enter or unlock your key to decrypt and access your data.",
+    encryptionPromptDesc:
+      "This section is encrypted with your 256-bit AES masterkey. Please enter or unlock your key to decrypt and access your data.",
     goToSecurityButton: "Go to Security to Unlock",
     quickUnlockTitle: "Quick Unlock on this Page",
     quickUnlockPlaceholder: "Paste 64-char Hex or Base64 masterkey...",
     quickUnlockButton: "Unlock & Decrypt",
-    returnToPrompt: "Masterkey active. You can now return to your previous page:",
+    returnToPrompt:
+      "Masterkey active. You can now return to your previous page:",
     returnToButton: "Return to Page",
     uploadKeyFile: "Upload .key File",
     dropKeyHere: "Drop .key file here or click to browse",
-    uploadKeyDesc: "Upload your saved .key backup file to automatically activate and unlock your masterkey.",
+    uploadKeyDesc:
+      "Upload your saved .key backup file to automatically activate and unlock your masterkey.",
     keyFileUploadedToast: "Masterkey loaded and activated from file",
-    invalidKeyFileError: "No valid 256-bit masterkey found in the uploaded file.",
+    invalidKeyFileError:
+      "No valid 256-bit masterkey found in the uploaded file.",
     readKeyFileError: "Failed to read .key file.",
     autoLockedToast: "Masterkey locked due to 30 minutes of inactivity.",
-    masterKeyRequiredToChange: "An active masterkey is required to enable or disable protected data categories.",
-    masterKeyRequiredNotice: "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
-    rotateKeyConfirm: "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
-    keyRotatedToast: "Masterkey rotated successfully! {{count}} records re-encrypted.",
+    masterKeyRequiredToChange:
+      "An active masterkey is required to enable or disable protected data categories.",
+    masterKeyRequiredNotice:
+      "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
+    rotateKeyConfirm:
+      "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+    keyRotatedToast:
+      "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
     rotateKeyButton: "Rotate Masterkey",
   },
   integrations: {
     title: "Integrations & API Keys",
-    subtitle: "Securely manage API keys and credentials for LLM models, integrations, and MCP servers.",
+    subtitle:
+      "Securely manage API keys and credentials for LLM models, integrations, and MCP servers.",
     aesEncryptedBadge: "AES-256 Encrypted",
     encryptionDisabledBadge: "Encryption Required",
     encryptionRequiredTitle: "Zero-Knowledge Encryption Required",
-    encryptionRequiredDesc: "To protect your private API keys and tokens from unauthorized access, Oxygen Low's Software requires client-side AES-256 masterkey encryption for all stored integrations. Data is encrypted directly in your browser before saving.",
-    encryptionNoticeDetail: "Your masterkey is held only in your local session and is never uploaded or accessible to the server.",
+    encryptionRequiredDesc:
+      "To protect your private API keys and tokens from unauthorized access, Oxygen Low's Software requires client-side AES-256 masterkey encryption for all stored integrations. Data is encrypted directly in your browser before saving.",
+    encryptionNoticeDetail:
+      "Your masterkey is held only in your local session and is never uploaded or accessible to the server.",
     enableEncryptionButton: "Enable Integration Encryption",
     encryptionEnabledToast: "Encryption enabled for API keys & integrations",
     totalAvailable: "Total Supported",
@@ -584,9 +643,11 @@ export const en = {
     notConfiguredBadge: "Not Set",
     apiKeyLabel: "API Key / Token",
     baseUrlLabel: "Endpoint / Base URL (Optional)",
-    baseUrlHelp: "Leave default or customize if connecting via a proxy, custom gateway, or local relay.",
+    baseUrlHelp:
+      "Leave default or customize if connecting via a proxy, custom gateway, or local relay.",
     defaultEndpointLabel: "Default Endpoint",
-    fixedBaseUrlHelp: "This integration always uses the standard official endpoint.",
+    fixedBaseUrlHelp:
+      "This integration always uses the standard official endpoint.",
     copyKey: "Copy Key",
     copiedToast: "API key copied to clipboard",
     noKeyStored: "No API key configured yet",
@@ -595,7 +656,8 @@ export const en = {
     configureButton: "Configure",
     configureModalTitle: "Configure {name}",
     configureModalDefaultTitle: "Configure Integration",
-    dialogEncryptionNotice: "Credentials will be encrypted with your 256-bit AES masterkey before transmission.",
+    dialogEncryptionNotice:
+      "Credentials will be encrypted with your 256-bit AES masterkey before transmission.",
     keyRequiredError: "API key / token is required",
     masterKeyMissingError: "Masterkey required to encrypt integration",
     savedToast: "{name} credentials saved securely.",
@@ -605,15 +667,21 @@ export const en = {
     fetchError: "Failed to load integrations",
     deleteConfirmTitle: "Delete {name} integration?",
     deleteConfirmDefaultTitle: "Delete integration?",
-    deleteConfirmDesc: "This will permanently remove the stored API key and credentials from your encrypted cloud storage.",
+    deleteConfirmDesc:
+      "This will permanently remove the stored API key and credentials from your encrypted cloud storage.",
     openaiDesc: "API key for OpenAI models including GPT-4o, o1, and o3-mini.",
     geminiDesc: "API key for Google Gemini Flash, Pro, and embedding models.",
-    openrouterDesc: "Universal API key providing access to hundreds of AI models.",
+    openrouterDesc:
+      "Universal API key providing access to hundreds of AI models.",
     xaiDesc: "API key for xAI Grok frontier and vision models.",
-    anthropicDesc: "API key for Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku, and Opus.",
-    googleJulesDesc: "Access token and integration credentials for Google Jules coding workflows.",
-    googleStitchMcpDesc: "Model Context Protocol (MCP) server token and endpoint for Google Stitch.",
-    githubMcpDesc: "GitHub Personal Access Token (PAT) for GitHub MCP repository tools.",
+    anthropicDesc:
+      "API key for Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku, and Opus.",
+    googleJulesDesc:
+      "Access token and integration credentials for Google Jules coding workflows.",
+    googleStitchMcpDesc:
+      "Model Context Protocol (MCP) server token and endpoint for Google Stitch.",
+    githubMcpDesc:
+      "GitHub Personal Access Token (PAT) for GitHub MCP repository tools.",
   },
   titles: {
     apps: "Apps",

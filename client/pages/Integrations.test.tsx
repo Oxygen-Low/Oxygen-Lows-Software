@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Integrations, { INTEGRATION_DEFINITIONS } from "./Integrations";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,16 +36,20 @@ vi.mock("@/lib/supabase", () => {
           base_url: "https://api.openai.com/v1",
         },
         error: null,
-      })
+      }),
     ),
     delete: vi.fn().mockReturnThis(),
-    then: vi.fn((resolve: any) => resolve({ data: mockSupabaseData, error: null })),
+    then: vi.fn((resolve: any) =>
+      resolve({ data: mockSupabaseData, error: null }),
+    ),
   };
 
   return {
     supabase: {
       auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }),
+        getUser: vi
+          .fn()
+          .mockResolvedValue({ data: { user: { id: "user-123" } } }),
         getSession: vi.fn().mockResolvedValue({
           data: { session: { user: { id: "user-123" } } },
           error: null,
@@ -94,7 +104,7 @@ const renderWithRouter = (initialEntries = ["/integrations"]) =>
   render(
     <MemoryRouter initialEntries={initialEntries}>
       <Integrations />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 
 describe("Integrations Page Component", () => {
@@ -122,20 +132,26 @@ describe("Integrations Page Component", () => {
     setCategoryEncryptionEnabled("integrations", false);
     renderWithRouter();
 
-    expect(screen.getByText("Zero-Knowledge Encryption Required")).toBeDefined();
+    expect(
+      screen.getByText("Zero-Knowledge Encryption Required"),
+    ).toBeDefined();
     expect(
       screen.getByText(
-        "To protect your private API keys and tokens from unauthorized access, Oxygen Low's Software requires client-side AES-256 masterkey encryption for all stored integrations. Data is encrypted directly in your browser before saving."
-      )
+        "To protect your private API keys and tokens from unauthorized access, Oxygen Low's Software requires client-side AES-256 masterkey encryption for all stored integrations. Data is encrypted directly in your browser before saving.",
+      ),
     ).toBeDefined();
-    expect(document.getElementById("enable-integration-encryption-btn")).toBeDefined();
+    expect(
+      document.getElementById("enable-integration-encryption-btn"),
+    ).toBeDefined();
   });
 
   it("enables integration encryption on button click", async () => {
     setCategoryEncryptionEnabled("integrations", false);
     renderWithRouter();
 
-    const enableBtn = document.getElementById("enable-integration-encryption-btn") as HTMLButtonElement;
+    const enableBtn = document.getElementById(
+      "enable-integration-encryption-btn",
+    ) as HTMLButtonElement;
     expect(enableBtn).toBeDefined();
 
     fireEvent.click(enableBtn);
@@ -163,7 +179,9 @@ describe("Integrations Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Integrations & API Keys")).toBeDefined();
       expect(
-        screen.getByText("Securely manage API keys and credentials for LLM models, integrations, and MCP servers.")
+        screen.getByText(
+          "Securely manage API keys and credentials for LLM models, integrations, and MCP servers.",
+        ),
       ).toBeDefined();
       expect(screen.getByText("LLM Models")).toBeDefined();
       expect(screen.getByText("LLM Integrations")).toBeDefined();
@@ -231,7 +249,9 @@ describe("Integrations Page Component", () => {
       expect(screen.getByText("OpenAI / ChatGPT")).toBeDefined();
     });
 
-    const searchInput = screen.getByPlaceholderText("Search integrations...") as HTMLInputElement;
+    const searchInput = screen.getByPlaceholderText(
+      "Search integrations...",
+    ) as HTMLInputElement;
     fireEvent.change(searchInput, { target: { value: "Jules" } });
 
     await waitFor(() => {
@@ -253,17 +273,23 @@ describe("Integrations Page Component", () => {
     });
 
     const openaiCard = screen.getByTestId("integration-card-openai");
-    const configureBtn = openaiCard.querySelector("button:last-child") as HTMLButtonElement;
+    const configureBtn = openaiCard.querySelector(
+      "button:last-child",
+    ) as HTMLButtonElement;
     fireEvent.click(configureBtn);
 
     await waitFor(() => {
       expect(screen.getByText("Configure OpenAI / ChatGPT")).toBeDefined();
     });
 
-    const keyInput = document.getElementById("input-api-key") as HTMLInputElement;
+    const keyInput = document.getElementById(
+      "input-api-key",
+    ) as HTMLInputElement;
     fireEvent.change(keyInput, { target: { value: "sk-proj-test1234567890" } });
 
-    const saveBtn = document.getElementById("save-integration-submit-btn") as HTMLButtonElement;
+    const saveBtn = document.getElementById(
+      "save-integration-submit-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -272,17 +298,25 @@ describe("Integrations Page Component", () => {
   });
 
   it("verifies Stitch MCP, Jules, and GitHub MCP definitions have correct default endpoints and docs URLs", () => {
-    const stitchDef = INTEGRATION_DEFINITIONS.find((d) => d.provider === "google_stitch_mcp");
+    const stitchDef = INTEGRATION_DEFINITIONS.find(
+      (d) => d.provider === "google_stitch_mcp",
+    );
     expect(stitchDef).toBeDefined();
     expect(stitchDef?.defaultBaseUrl).toBe("https://stitch.googleapis.com/mcp");
     expect(stitchDef?.docsUrl).toBe("https://stitch.withgoogle.com");
 
-    const julesDef = INTEGRATION_DEFINITIONS.find((d) => d.provider === "google_jules");
+    const julesDef = INTEGRATION_DEFINITIONS.find(
+      (d) => d.provider === "google_jules",
+    );
     expect(julesDef).toBeDefined();
-    expect(julesDef?.defaultBaseUrl).toBe("https://jules.googleapis.com/v1alpha");
+    expect(julesDef?.defaultBaseUrl).toBe(
+      "https://jules.googleapis.com/v1alpha",
+    );
     expect(julesDef?.docsUrl).toBe("https://developers.google.com/jules/api");
 
-    const githubDef = INTEGRATION_DEFINITIONS.find((d) => d.provider === "github_mcp");
+    const githubDef = INTEGRATION_DEFINITIONS.find(
+      (d) => d.provider === "github_mcp",
+    );
     expect(githubDef).toBeDefined();
     expect(githubDef?.defaultBaseUrl).toBe("https://api.github.com");
     expect(githubDef?.docsUrl).toBe("https://github.com/settings/tokens");
@@ -300,12 +334,16 @@ describe("Integrations Page Component", () => {
     });
 
     const stitchCard = screen.getByTestId("integration-card-google_stitch_mcp");
-    const configureBtn = stitchCard.querySelector("button:last-child") as HTMLButtonElement;
+    const configureBtn = stitchCard.querySelector(
+      "button:last-child",
+    ) as HTMLButtonElement;
     fireEvent.click(configureBtn);
 
     await waitFor(() => {
       expect(screen.getByText("Configure Google Stitch MCP")).toBeDefined();
-      expect(screen.getByText("https://stitch.googleapis.com/mcp")).toBeDefined();
+      expect(
+        screen.getByText("https://stitch.googleapis.com/mcp"),
+      ).toBeDefined();
       expect(screen.getByText(/Default Endpoint/i)).toBeDefined();
       expect(document.getElementById("input-base-url")).toBeNull();
     });

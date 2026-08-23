@@ -13,7 +13,7 @@ describe("Download Page", () => {
     render(
       <MemoryRouter>
         <Download />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText("Windows")).toBeDefined();
@@ -21,20 +21,20 @@ describe("Download Page", () => {
 
     const links = screen.getAllByRole("link");
     const windowsLink = links.find((link) =>
-      link.getAttribute("href")?.includes("OxygenLowsSoftware_Installer.exe")
+      link.getAttribute("href")?.includes("OxygenLowsSoftware_Installer.exe"),
     );
     const androidLink = links.find((link) =>
-      link.getAttribute("href")?.includes("OxygenLowsSoftware.apk")
+      link.getAttribute("href")?.includes("OxygenLowsSoftware.apk"),
     );
 
     expect(windowsLink).toBeDefined();
     expect(windowsLink?.getAttribute("href")).toBe(
-      "https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware_Installer.exe"
+      "https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware_Installer.exe",
     );
 
     expect(androidLink).toBeDefined();
     expect(androidLink?.getAttribute("href")).toBe(
-      "https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware.apk"
+      "https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware.apk",
     );
   });
 });

@@ -1,4 +1,9 @@
-import { en, TranslationSchema, DeepPartial, getLocaleDictionary } from "@/locales";
+import {
+  en,
+  TranslationSchema,
+  DeepPartial,
+  getLocaleDictionary,
+} from "@/locales";
 import { DEFAULT_LANGUAGE } from "./languages";
 
 export type { TranslationSchema, DeepPartial };
@@ -52,16 +57,22 @@ export function interpolate(
  * 4. Applies variable interpolation (e.g. `{name}`).
  */
 export function getTranslation(
-  languageOrDict: string | DeepPartial<TranslationSchema> | TranslationSchema | undefined | null,
+  languageOrDict:
+    | string
+    | DeepPartial<TranslationSchema>
+    | TranslationSchema
+    | undefined
+    | null,
   key: TranslationKey,
   params?: Record<string, string | number>,
   defaultVal?: string,
   fallbackDict: DeepPartial<TranslationSchema> | TranslationSchema = en,
 ): string {
   // If languageOrDict is an object, resolve directly; otherwise lookup via getLocaleDictionary
-  const activeDict = typeof languageOrDict === "object" && languageOrDict !== null
-    ? languageOrDict
-    : getLocaleDictionary(languageOrDict);
+  const activeDict =
+    typeof languageOrDict === "object" && languageOrDict !== null
+      ? languageOrDict
+      : getLocaleDictionary(languageOrDict);
 
   let rawString = resolvePath(activeDict, key);
 
@@ -81,7 +92,10 @@ export function getTranslation(
  * Factory to create a bound translation function `t` for a given language or dictionary.
  */
 export function createTranslator(
-  languageOrDict: string | DeepPartial<TranslationSchema> | TranslationSchema = DEFAULT_LANGUAGE,
+  languageOrDict:
+    | string
+    | DeepPartial<TranslationSchema>
+    | TranslationSchema = DEFAULT_LANGUAGE,
   fallbackDict: DeepPartial<TranslationSchema> | TranslationSchema = en,
 ) {
   return function t(
@@ -89,7 +103,13 @@ export function createTranslator(
     params?: Record<string, string | number>,
     defaultVal?: string,
   ): string {
-    return getTranslation(languageOrDict, key, params, defaultVal, fallbackDict);
+    return getTranslation(
+      languageOrDict,
+      key,
+      params,
+      defaultVal,
+      fallbackDict,
+    );
   };
 }
 

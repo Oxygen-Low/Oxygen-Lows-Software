@@ -9,7 +9,9 @@ describe("CountryFlag Component", () => {
     const img = container.querySelector("img");
     expect(img).toBeDefined();
     expect(img?.getAttribute("src")).toBe("https://flagcdn.com/w40/kr.png");
-    expect(img?.getAttribute("srcset")).toBe("https://flagcdn.com/w80/kr.png 2x");
+    expect(img?.getAttribute("srcset")).toBe(
+      "https://flagcdn.com/w80/kr.png 2x",
+    );
   });
 
   it("handles uppercase country codes correctly", () => {

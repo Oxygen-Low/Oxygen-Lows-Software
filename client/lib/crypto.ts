@@ -9,44 +9,296 @@ import { supabase } from "@/lib/supabase";
 export const AES_KEY_BYTES = 32;
 export const AES_GCM_IV_BYTES = 12; // 96-bit standard nonce for AES-GCM
 
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
 // Simple standard BIP-39 subset wordlist for 24-word passphrase representation
 const WORDLIST = [
-  "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse",
-  "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act",
-  "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit",
-  "adult", "advance", "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent",
-  "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert",
-  "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter",
-  "always", "amateur", "amazing", "among", "amount", "amused", "analyst", "anchor", "ancient", "anger",
-  "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique",
-  "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic",
-  "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest",
-  "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset",
-  "assist", "assume", "asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction",
-  "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado", "avoid", "awake",
-  "aware", "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon", "badge",
-  "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely", "bargain",
-  "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become",
-  "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit",
-  "best", "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology",
-  "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless",
-  "blind", "blood", "blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body",
-  "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss",
-  "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread",
-  "breeze", "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze",
-  "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb",
-  "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy",
-  "butter", "buyer", "buzz", "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call",
-  "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas"
+  "abandon",
+  "ability",
+  "able",
+  "about",
+  "above",
+  "absent",
+  "absorb",
+  "abstract",
+  "absurd",
+  "abuse",
+  "access",
+  "accident",
+  "account",
+  "accuse",
+  "achieve",
+  "acid",
+  "acoustic",
+  "acquire",
+  "across",
+  "act",
+  "action",
+  "actor",
+  "actress",
+  "actual",
+  "adapt",
+  "add",
+  "addict",
+  "address",
+  "adjust",
+  "admit",
+  "adult",
+  "advance",
+  "advice",
+  "aerobic",
+  "affair",
+  "afford",
+  "afraid",
+  "again",
+  "age",
+  "agent",
+  "agree",
+  "ahead",
+  "aim",
+  "air",
+  "airport",
+  "aisle",
+  "alarm",
+  "album",
+  "alcohol",
+  "alert",
+  "alien",
+  "all",
+  "alley",
+  "allow",
+  "almost",
+  "alone",
+  "alpha",
+  "already",
+  "also",
+  "alter",
+  "always",
+  "amateur",
+  "amazing",
+  "among",
+  "amount",
+  "amused",
+  "analyst",
+  "anchor",
+  "ancient",
+  "anger",
+  "angle",
+  "angry",
+  "animal",
+  "ankle",
+  "announce",
+  "annual",
+  "another",
+  "answer",
+  "antenna",
+  "antique",
+  "anxiety",
+  "any",
+  "apart",
+  "apology",
+  "appear",
+  "apple",
+  "approve",
+  "april",
+  "arch",
+  "arctic",
+  "area",
+  "arena",
+  "argue",
+  "arm",
+  "armed",
+  "armor",
+  "army",
+  "around",
+  "arrange",
+  "arrest",
+  "arrive",
+  "arrow",
+  "art",
+  "artefact",
+  "artist",
+  "artwork",
+  "ask",
+  "aspect",
+  "assault",
+  "asset",
+  "assist",
+  "assume",
+  "asthma",
+  "athlete",
+  "atom",
+  "attack",
+  "attend",
+  "attitude",
+  "attract",
+  "auction",
+  "audit",
+  "august",
+  "aunt",
+  "author",
+  "auto",
+  "autumn",
+  "average",
+  "avocado",
+  "avoid",
+  "awake",
+  "aware",
+  "away",
+  "awesome",
+  "awful",
+  "awkward",
+  "axis",
+  "baby",
+  "bachelor",
+  "bacon",
+  "badge",
+  "bag",
+  "balance",
+  "balcony",
+  "ball",
+  "bamboo",
+  "banana",
+  "banner",
+  "bar",
+  "barely",
+  "bargain",
+  "barrel",
+  "base",
+  "basic",
+  "basket",
+  "battle",
+  "beach",
+  "bean",
+  "beauty",
+  "because",
+  "become",
+  "beef",
+  "before",
+  "begin",
+  "behave",
+  "behind",
+  "believe",
+  "below",
+  "belt",
+  "bench",
+  "benefit",
+  "best",
+  "betray",
+  "better",
+  "between",
+  "beyond",
+  "bicycle",
+  "bid",
+  "bike",
+  "bind",
+  "biology",
+  "bird",
+  "birth",
+  "bitter",
+  "black",
+  "blade",
+  "blame",
+  "blanket",
+  "blast",
+  "bleak",
+  "bless",
+  "blind",
+  "blood",
+  "blossom",
+  "blouse",
+  "blue",
+  "blur",
+  "blush",
+  "board",
+  "boat",
+  "body",
+  "boil",
+  "bomb",
+  "bone",
+  "bonus",
+  "book",
+  "boost",
+  "border",
+  "boring",
+  "borrow",
+  "boss",
+  "bottom",
+  "bounce",
+  "box",
+  "boy",
+  "bracket",
+  "brain",
+  "brand",
+  "brass",
+  "brave",
+  "bread",
+  "breeze",
+  "brick",
+  "bridge",
+  "brief",
+  "bright",
+  "bring",
+  "brisk",
+  "broccoli",
+  "broken",
+  "bronze",
+  "broom",
+  "brother",
+  "brown",
+  "brush",
+  "bubble",
+  "buddy",
+  "budget",
+  "buffalo",
+  "build",
+  "bulb",
+  "bulk",
+  "bullet",
+  "bundle",
+  "bunker",
+  "burden",
+  "burger",
+  "burst",
+  "bus",
+  "business",
+  "busy",
+  "butter",
+  "buyer",
+  "buzz",
+  "cabbage",
+  "cabin",
+  "cable",
+  "cactus",
+  "cage",
+  "cake",
+  "call",
+  "calm",
+  "camera",
+  "camp",
+  "can",
+  "canal",
+  "cancel",
+  "candy",
+  "cannon",
+  "canoe",
+  "canvas",
 ];
 
 function getCrypto(): Crypto {
-  if (typeof window !== "undefined" && window.crypto && typeof window.crypto.getRandomValues === "function") {
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    typeof window.crypto.getRandomValues === "function"
+  ) {
     return window.crypto;
   }
-  if (typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.getRandomValues === "function") {
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.getRandomValues === "function"
+  ) {
     return globalThis.crypto;
   }
   throw new Error("Web Cryptography API is not available in this environment");
@@ -132,7 +384,8 @@ export function bytesToBase58(bytes: Uint8Array): string {
   }
   let str = "";
   for (let i = 0; i < bytes.length && bytes[i] === 0; i++) str += "1";
-  for (let i = digits.length - 1; i >= 0; i--) str += BASE58_ALPHABET[digits[i]];
+  for (let i = digits.length - 1; i >= 0; i--)
+    str += BASE58_ALPHABET[digits[i]];
   return str;
 }
 
@@ -192,7 +445,9 @@ export function parseMasterKeyString(keyStr: string): Uint8Array {
       return bytes;
     }
   } catch {}
-  throw new Error("Invalid master key: Must be a 64-character Hex string or 256-bit Base64 string.");
+  throw new Error(
+    "Invalid master key: Must be a 64-character Hex string or 256-bit Base64 string.",
+  );
 }
 
 /**
@@ -214,13 +469,17 @@ export function parseKeyFileContent(content: string): Uint8Array {
   }
 
   // 2. Check for explicit Hexadecimal masterkey section from backup format
-  const hexSectionMatch = normalized.match(/\[HEXADECIMAL MASTERKEY[^\]]*\]\s*([0-9a-fA-F]{64})/i);
+  const hexSectionMatch = normalized.match(
+    /\[HEXADECIMAL MASTERKEY[^\]]*\]\s*([0-9a-fA-F]{64})/i,
+  );
   if (hexSectionMatch && hexSectionMatch[1]) {
     return hexToBytes(hexSectionMatch[1]);
   }
 
   // 3. Check for explicit Base64 masterkey section from backup format
-  const base64SectionMatch = normalized.match(/\[BASE64 MASTERKEY[^\]]*\]\s*([A-Za-z0-9+/]{43}=)/i);
+  const base64SectionMatch = normalized.match(
+    /\[BASE64 MASTERKEY[^\]]*\]\s*([A-Za-z0-9+/]{43}=)/i,
+  );
   if (base64SectionMatch && base64SectionMatch[1]) {
     try {
       const bytes = base64ToBytes(base64SectionMatch[1]);
@@ -231,7 +490,10 @@ export function parseKeyFileContent(content: string): Uint8Array {
   }
 
   // 4. Scan line by line for an exact 64-character hex string or 44-character base64 string
-  const lines = normalized.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = normalized
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   for (const line of lines) {
     if (/^[0-9a-fA-F]{64}$/.test(line)) {
       return hexToBytes(line);
@@ -263,7 +525,9 @@ export function parseKeyFileContent(content: string): Uint8Array {
     } catch {}
   }
 
-  throw new Error("No valid 256-bit AES masterkey found in the provided .key file.");
+  throw new Error(
+    "No valid 256-bit AES masterkey found in the provided .key file.",
+  );
 }
 
 let inMemoryMasterKeyHex: string | null = null;
@@ -285,7 +549,10 @@ export function recordUserActivity(): void {
   inMemoryLastActivity = Date.now();
   try {
     if (typeof sessionStorage !== "undefined") {
-      sessionStorage.setItem(AUTO_LOCK_LAST_ACTIVITY_KEY, String(inMemoryLastActivity));
+      sessionStorage.setItem(
+        AUTO_LOCK_LAST_ACTIVITY_KEY,
+        String(inMemoryLastActivity),
+      );
     }
   } catch {}
 }
@@ -330,7 +597,8 @@ export function checkAutoLockExpiry(): boolean {
   const hasKey =
     inMemoryKeyBytes !== null ||
     inMemoryMasterKeyHex !== null ||
-    (typeof sessionStorage !== "undefined" && sessionStorage.getItem(ACTIVE_MASTER_KEY_STORAGE_KEY) !== null);
+    (typeof sessionStorage !== "undefined" &&
+      sessionStorage.getItem(ACTIVE_MASTER_KEY_STORAGE_KEY) !== null);
 
   if (!hasKey) return false;
 
@@ -346,7 +614,10 @@ export function checkAutoLockExpiry(): boolean {
         console.error("Error in autoLock listener callback:", err);
       }
     });
-    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.dispatchEvent === "function"
+    ) {
       try {
         window.dispatchEvent(new CustomEvent(AUTO_LOCK_EVENT));
       } catch {}
@@ -363,14 +634,21 @@ export function onAutoLock(callback: () => void): () => void {
   autoLockListeners.add(callback);
 
   let domHandler: (() => void) | null = null;
-  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.addEventListener === "function"
+  ) {
     domHandler = () => callback();
     window.addEventListener(AUTO_LOCK_EVENT, domHandler);
   }
 
   return () => {
     autoLockListeners.delete(callback);
-    if (domHandler && typeof window !== "undefined" && typeof window.removeEventListener === "function") {
+    if (
+      domHandler &&
+      typeof window !== "undefined" &&
+      typeof window.removeEventListener === "function"
+    ) {
       window.removeEventListener(AUTO_LOCK_EVENT, domHandler);
     }
   };
@@ -436,7 +714,7 @@ export function zeroizeBytes(bytes: Uint8Array | null | undefined): void {
  */
 export async function importAes256GcmCryptoKey(
   keyBytes: Uint8Array,
-  extractable = false
+  extractable = false,
 ): Promise<CryptoKey> {
   const cryptoObj = getCrypto();
   return await cryptoObj.subtle.importKey(
@@ -444,7 +722,7 @@ export async function importAes256GcmCryptoKey(
     keyBytes as BufferSource,
     { name: "AES-GCM" },
     extractable,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -549,9 +827,13 @@ export function clearActiveMasterKey(): void {
   } catch {}
 }
 
-export type EncryptionCategory = "characters" | "data_save" | "chatbot" | "integrations";
+export type EncryptionCategory =
+  "characters" | "data_save" | "chatbot" | "integrations";
 
-export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<EncryptionCategory, string> = {
+export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
+  EncryptionCategory,
+  string
+> = {
   characters: "oxygen_encrypt_characters",
   data_save: "oxygen_encrypt_data_save",
   chatbot: "oxygen_encrypt_chatbot",
@@ -561,7 +843,9 @@ export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<EncryptionCategory, string
 /**
  * Check if encryption is enabled for a given data category.
  */
-export function isCategoryEncryptionEnabled(category: EncryptionCategory): boolean {
+export function isCategoryEncryptionEnabled(
+  category: EncryptionCategory,
+): boolean {
   const key = CATEGORY_ENCRYPTION_STORAGE_KEYS[category];
   try {
     if (typeof localStorage !== "undefined") {
@@ -575,7 +859,10 @@ export function isCategoryEncryptionEnabled(category: EncryptionCategory): boole
 /**
  * Set encryption enabled state for a category.
  */
-export function setCategoryEncryptionEnabled(category: EncryptionCategory, enabled: boolean): void {
+export function setCategoryEncryptionEnabled(
+  category: EncryptionCategory,
+  enabled: boolean,
+): void {
   const key = CATEGORY_ENCRYPTION_STORAGE_KEYS[category];
   inMemoryLocalStorage[key] = String(enabled);
   try {
@@ -601,14 +888,16 @@ export function isCategoryLocked(category: EncryptionCategory): boolean {
  */
 export async function encryptAes256Gcm(
   plaintext: string,
-  keyOrBytes: Uint8Array | CryptoKey
+  keyOrBytes: Uint8Array | CryptoKey,
 ): Promise<string> {
   const cryptoObj = getCrypto();
   let cryptoKey: CryptoKey;
 
   if (keyOrBytes instanceof Uint8Array) {
     if (keyOrBytes.length !== AES_KEY_BYTES) {
-      throw new Error(`Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyOrBytes.length}`);
+      throw new Error(
+        `Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyOrBytes.length}`,
+      );
     }
     const hex = bytesToHex(keyOrBytes);
     if (cachedCryptoKey && cachedCryptoKeyHex === hex) {
@@ -636,7 +925,7 @@ export async function encryptAes256Gcm(
       iv: iv,
     },
     cryptoKey,
-    encodedPlaintext
+    encodedPlaintext,
   );
 
   const encryptedBytes = new Uint8Array(encryptedBuffer);
@@ -653,14 +942,16 @@ export async function encryptAes256Gcm(
  */
 export async function decryptAes256Gcm(
   ciphertextBase64: string,
-  keyOrBytes: Uint8Array | CryptoKey
+  keyOrBytes: Uint8Array | CryptoKey,
 ): Promise<string> {
   const cryptoObj = getCrypto();
   let cryptoKey: CryptoKey;
 
   if (keyOrBytes instanceof Uint8Array) {
     if (keyOrBytes.length !== AES_KEY_BYTES) {
-      throw new Error(`Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyOrBytes.length}`);
+      throw new Error(
+        `Invalid key length: expected ${AES_KEY_BYTES} bytes (256 bits), got ${keyOrBytes.length}`,
+      );
     }
     const hex = bytesToHex(keyOrBytes);
     if (cachedCryptoKey && cachedCryptoKeyHex === hex) {
@@ -691,7 +982,7 @@ export async function decryptAes256Gcm(
       iv: iv,
     },
     cryptoKey,
-    encryptedData
+    encryptedData,
   );
 
   const decoder = new TextDecoder();
@@ -713,7 +1004,7 @@ export function isEncrypted(value: unknown): boolean {
  */
 export async function encryptField(
   value: string | null | undefined,
-  keyBytes: Uint8Array | null | undefined
+  keyBytes: Uint8Array | null | undefined,
 ): Promise<string | null | undefined> {
   if (value === null || value === undefined || value === "") {
     return value;
@@ -734,7 +1025,7 @@ export async function encryptField(
  */
 export async function decryptField(
   value: string | null | undefined,
-  keyBytes: Uint8Array | null | undefined
+  keyBytes: Uint8Array | null | undefined,
 ): Promise<string | null | undefined> {
   if (value === null || value === undefined || value === "") {
     return value;
@@ -772,31 +1063,57 @@ export interface CharacterData {
 
 export async function encryptCharacterData<T extends CharacterData>(
   char: T,
-  keyBytes: Uint8Array
+  keyBytes: Uint8Array,
 ): Promise<T> {
   const result: any = { ...char };
-  if (char.name !== undefined) result.name = (await encryptField(char.name, keyBytes)) ?? char.name;
-  if (char.short_description !== undefined) result.short_description = await encryptField(char.short_description, keyBytes);
-  if (char.display_name !== undefined) result.display_name = await encryptField(char.display_name, keyBytes);
-  if (char.appearance !== undefined) result.appearance = await encryptField(char.appearance, keyBytes);
-  if (char.personality !== undefined) result.personality = await encryptField(char.personality, keyBytes);
-  if (char.backstory !== undefined) result.backstory = await encryptField(char.backstory, keyBytes);
-  if (char.hidden_description !== undefined) result.hidden_description = await encryptField(char.hidden_description, keyBytes);
+  if (char.name !== undefined)
+    result.name = (await encryptField(char.name, keyBytes)) ?? char.name;
+  if (char.short_description !== undefined)
+    result.short_description = await encryptField(
+      char.short_description,
+      keyBytes,
+    );
+  if (char.display_name !== undefined)
+    result.display_name = await encryptField(char.display_name, keyBytes);
+  if (char.appearance !== undefined)
+    result.appearance = await encryptField(char.appearance, keyBytes);
+  if (char.personality !== undefined)
+    result.personality = await encryptField(char.personality, keyBytes);
+  if (char.backstory !== undefined)
+    result.backstory = await encryptField(char.backstory, keyBytes);
+  if (char.hidden_description !== undefined)
+    result.hidden_description = await encryptField(
+      char.hidden_description,
+      keyBytes,
+    );
   return result;
 }
 
 export async function decryptCharacterData<T extends CharacterData>(
   char: T,
-  keyBytes: Uint8Array | null
+  keyBytes: Uint8Array | null,
 ): Promise<T> {
   const result: any = { ...char };
-  if (char.name !== undefined) result.name = (await decryptField(char.name, keyBytes)) ?? char.name;
-  if (char.short_description !== undefined) result.short_description = await decryptField(char.short_description, keyBytes);
-  if (char.display_name !== undefined) result.display_name = await decryptField(char.display_name, keyBytes);
-  if (char.appearance !== undefined) result.appearance = await decryptField(char.appearance, keyBytes);
-  if (char.personality !== undefined) result.personality = await decryptField(char.personality, keyBytes);
-  if (char.backstory !== undefined) result.backstory = await decryptField(char.backstory, keyBytes);
-  if (char.hidden_description !== undefined) result.hidden_description = await decryptField(char.hidden_description, keyBytes);
+  if (char.name !== undefined)
+    result.name = (await decryptField(char.name, keyBytes)) ?? char.name;
+  if (char.short_description !== undefined)
+    result.short_description = await decryptField(
+      char.short_description,
+      keyBytes,
+    );
+  if (char.display_name !== undefined)
+    result.display_name = await decryptField(char.display_name, keyBytes);
+  if (char.appearance !== undefined)
+    result.appearance = await decryptField(char.appearance, keyBytes);
+  if (char.personality !== undefined)
+    result.personality = await decryptField(char.personality, keyBytes);
+  if (char.backstory !== undefined)
+    result.backstory = await decryptField(char.backstory, keyBytes);
+  if (char.hidden_description !== undefined)
+    result.hidden_description = await decryptField(
+      char.hidden_description,
+      keyBytes,
+    );
   return result;
 }
 
@@ -811,21 +1128,29 @@ export interface DataSaveData {
 
 export async function encryptDataSaveData<T extends DataSaveData>(
   item: T,
-  keyBytes: Uint8Array
+  keyBytes: Uint8Array,
 ): Promise<T> {
   const result: any = { ...item };
-  if (item.key_name !== undefined) result.key_name = (await encryptField(item.key_name, keyBytes)) ?? item.key_name;
-  if (item.content !== undefined) result.content = (await encryptField(item.content, keyBytes)) ?? item.content;
+  if (item.key_name !== undefined)
+    result.key_name =
+      (await encryptField(item.key_name, keyBytes)) ?? item.key_name;
+  if (item.content !== undefined)
+    result.content =
+      (await encryptField(item.content, keyBytes)) ?? item.content;
   return result;
 }
 
 export async function decryptDataSaveData<T extends DataSaveData>(
   item: T,
-  keyBytes: Uint8Array | null
+  keyBytes: Uint8Array | null,
 ): Promise<T> {
   const result: any = { ...item };
-  if (item.key_name !== undefined) result.key_name = (await decryptField(item.key_name, keyBytes)) ?? item.key_name;
-  if (item.content !== undefined) result.content = (await decryptField(item.content, keyBytes)) ?? item.content;
+  if (item.key_name !== undefined)
+    result.key_name =
+      (await decryptField(item.key_name, keyBytes)) ?? item.key_name;
+  if (item.content !== undefined)
+    result.content =
+      (await decryptField(item.content, keyBytes)) ?? item.content;
   return result;
 }
 
@@ -836,21 +1161,21 @@ export interface DataSaveCategoryData {
   [key: string]: any;
 }
 
-export async function encryptDataSaveCategoryData<T extends DataSaveCategoryData>(
-  cat: T,
-  keyBytes: Uint8Array
-): Promise<T> {
+export async function encryptDataSaveCategoryData<
+  T extends DataSaveCategoryData,
+>(cat: T, keyBytes: Uint8Array): Promise<T> {
   const result: any = { ...cat };
-  if (cat.name !== undefined) result.name = (await encryptField(cat.name, keyBytes)) ?? cat.name;
+  if (cat.name !== undefined)
+    result.name = (await encryptField(cat.name, keyBytes)) ?? cat.name;
   return result;
 }
 
-export async function decryptDataSaveCategoryData<T extends DataSaveCategoryData>(
-  cat: T,
-  keyBytes: Uint8Array | null
-): Promise<T> {
+export async function decryptDataSaveCategoryData<
+  T extends DataSaveCategoryData,
+>(cat: T, keyBytes: Uint8Array | null): Promise<T> {
   const result: any = { ...cat };
-  if (cat.name !== undefined) result.name = (await decryptField(cat.name, keyBytes)) ?? cat.name;
+  if (cat.name !== undefined)
+    result.name = (await decryptField(cat.name, keyBytes)) ?? cat.name;
   return result;
 }
 
@@ -864,21 +1189,25 @@ export interface ChatData {
 
 export async function encryptChatData<T extends ChatData>(
   chat: T,
-  keyBytes: Uint8Array
+  keyBytes: Uint8Array,
 ): Promise<T> {
   const result: any = { ...chat };
-  if (chat.title !== undefined) result.title = (await encryptField(chat.title, keyBytes)) ?? chat.title;
-  if (chat.system_prompt !== undefined) result.system_prompt = await encryptField(chat.system_prompt, keyBytes);
+  if (chat.title !== undefined)
+    result.title = (await encryptField(chat.title, keyBytes)) ?? chat.title;
+  if (chat.system_prompt !== undefined)
+    result.system_prompt = await encryptField(chat.system_prompt, keyBytes);
   return result;
 }
 
 export async function decryptChatData<T extends ChatData>(
   chat: T,
-  keyBytes: Uint8Array | null
+  keyBytes: Uint8Array | null,
 ): Promise<T> {
   const result: any = { ...chat };
-  if (chat.title !== undefined) result.title = (await decryptField(chat.title, keyBytes)) ?? chat.title;
-  if (chat.system_prompt !== undefined) result.system_prompt = await decryptField(chat.system_prompt, keyBytes);
+  if (chat.title !== undefined)
+    result.title = (await decryptField(chat.title, keyBytes)) ?? chat.title;
+  if (chat.system_prompt !== undefined)
+    result.system_prompt = await decryptField(chat.system_prompt, keyBytes);
   return result;
 }
 
@@ -894,21 +1223,25 @@ export interface ChatMessageData {
 
 export async function encryptChatMessageData<T extends ChatMessageData>(
   msg: T,
-  keyBytes: Uint8Array
+  keyBytes: Uint8Array,
 ): Promise<T> {
   const result: any = { ...msg };
-  if (msg.content !== undefined) result.content = (await encryptField(msg.content, keyBytes)) ?? msg.content;
-  if (msg.reasoning !== undefined) result.reasoning = await encryptField(msg.reasoning, keyBytes);
+  if (msg.content !== undefined)
+    result.content = (await encryptField(msg.content, keyBytes)) ?? msg.content;
+  if (msg.reasoning !== undefined)
+    result.reasoning = await encryptField(msg.reasoning, keyBytes);
   return result;
 }
 
 export async function decryptChatMessageData<T extends ChatMessageData>(
   msg: T,
-  keyBytes: Uint8Array | null
+  keyBytes: Uint8Array | null,
 ): Promise<T> {
   const result: any = { ...msg };
-  if (msg.content !== undefined) result.content = (await decryptField(msg.content, keyBytes)) ?? msg.content;
-  if (msg.reasoning !== undefined) result.reasoning = await decryptField(msg.reasoning, keyBytes);
+  if (msg.content !== undefined)
+    result.content = (await decryptField(msg.content, keyBytes)) ?? msg.content;
+  if (msg.reasoning !== undefined)
+    result.reasoning = await decryptField(msg.reasoning, keyBytes);
   return result;
 }
 
@@ -926,21 +1259,25 @@ export interface IntegrationData {
 
 export async function encryptIntegrationData<T extends IntegrationData>(
   data: T,
-  keyBytes: Uint8Array
+  keyBytes: Uint8Array,
 ): Promise<T> {
   const result: any = { ...data };
-  if (data.api_key !== undefined) result.api_key = await encryptField(data.api_key, keyBytes);
-  if (data.base_url !== undefined) result.base_url = await encryptField(data.base_url, keyBytes);
+  if (data.api_key !== undefined)
+    result.api_key = await encryptField(data.api_key, keyBytes);
+  if (data.base_url !== undefined)
+    result.base_url = await encryptField(data.base_url, keyBytes);
   return result;
 }
 
 export async function decryptIntegrationData<T extends IntegrationData>(
   data: T,
-  keyBytes: Uint8Array | null
+  keyBytes: Uint8Array | null,
 ): Promise<T> {
   const result: any = { ...data };
-  if (data.api_key !== undefined) result.api_key = await decryptField(data.api_key, keyBytes);
-  if (data.base_url !== undefined) result.base_url = await decryptField(data.base_url, keyBytes);
+  if (data.api_key !== undefined)
+    result.api_key = await decryptField(data.api_key, keyBytes);
+  if (data.base_url !== undefined)
+    result.base_url = await decryptField(data.base_url, keyBytes);
   return result;
 }
 
@@ -1198,7 +1535,12 @@ export async function rotateMasterKey({
   const db = client || supabase;
   let updatedCount = 0;
 
-  const categories: EncryptionCategory[] = ["characters", "data_save", "chatbot", "integrations"];
+  const categories: EncryptionCategory[] = [
+    "characters",
+    "data_save",
+    "chatbot",
+    "integrations",
+  ];
 
   for (const category of categories) {
     if (!isCategoryEncryptionEnabled(category)) continue;
@@ -1340,4 +1682,3 @@ export async function rotateMasterKey({
 
   return { updatedCount };
 }
-

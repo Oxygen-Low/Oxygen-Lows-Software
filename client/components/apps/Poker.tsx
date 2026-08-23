@@ -28,7 +28,13 @@ function shuffle(array: string[]) {
   return newArray;
 }
 
-const PlayingCard = ({ card, hidden = false }: { card: string; hidden?: boolean }) => {
+const PlayingCard = ({
+  card,
+  hidden = false,
+}: {
+  card: string;
+  hidden?: boolean;
+}) => {
   if (hidden) {
     return (
       <div className="w-16 h-24 sm:w-20 sm:h-28 rounded-lg bg-blue-800 border-2 border-white flex items-center justify-center shadow-lg">
@@ -43,13 +49,28 @@ const PlayingCard = ({ card, hidden = false }: { card: string; hidden?: boolean 
 
   return (
     <div className="w-16 h-24 sm:w-20 sm:h-28 rounded-lg bg-white border border-slate-300 flex flex-col items-center justify-between p-1 shadow-lg shrink-0">
-      <div className={cn("text-base sm:text-xl font-bold w-full leading-none text-left", isRed ? "text-red-600" : "text-black")}>
+      <div
+        className={cn(
+          "text-base sm:text-xl font-bold w-full leading-none text-left",
+          isRed ? "text-red-600" : "text-black",
+        )}
+      >
         {rank}
       </div>
-      <div className={cn("text-2xl sm:text-4xl leading-none", isRed ? "text-red-600" : "text-black")}>
+      <div
+        className={cn(
+          "text-2xl sm:text-4xl leading-none",
+          isRed ? "text-red-600" : "text-black",
+        )}
+      >
         {suitSymbol}
       </div>
-      <div className={cn("text-base sm:text-xl font-bold w-full leading-none text-right rotate-180", isRed ? "text-red-600" : "text-black")}>
+      <div
+        className={cn(
+          "text-base sm:text-xl font-bold w-full leading-none text-right rotate-180",
+          isRed ? "text-red-600" : "text-black",
+        )}
+      >
         {rank}
       </div>
     </div>
@@ -93,12 +114,12 @@ export function PokerApp() {
     setPlayerHand(newPlayerHand);
     setAiHand(newAiHand);
     setCommunityCards([]);
-    
+
     // Reset bets
     setPlayerBet(BLIND);
     setAiBet(BLIND);
-    setPlayerChips(prev => prev - BLIND);
-    setAiChips(prev => prev - BLIND);
+    setPlayerChips((prev) => prev - BLIND);
+    setAiChips((prev) => prev - BLIND);
     setPot(BLIND * 2);
     setPhase("pre-flop");
     setTurn("player"); // Player acts first for simplicity
@@ -121,12 +142,12 @@ export function PokerApp() {
       setTurn("player");
       setMessage("Flop: Your turn.");
     } else if (phase === "flop") {
-      setCommunityCards(prev => [...prev, deck.pop()!]);
+      setCommunityCards((prev) => [...prev, deck.pop()!]);
       setPhase("turn");
       setTurn("player");
       setMessage("Turn: Your turn.");
     } else if (phase === "turn") {
-      setCommunityCards(prev => [...prev, deck.pop()!]);
+      setCommunityCards((prev) => [...prev, deck.pop()!]);
       setPhase("river");
       setTurn("player");
       setMessage("River: Your turn.");
@@ -146,14 +167,14 @@ export function PokerApp() {
       if (winner.length === 2) {
         // Tie
         setMessage(`Split Pot! Both have ${pHand.name}`);
-        setPlayerChips(prev => prev + pot / 2);
-        setAiChips(prev => prev + pot / 2);
+        setPlayerChips((prev) => prev + pot / 2);
+        setAiChips((prev) => prev + pot / 2);
       } else if (winner[0] === pHand) {
         setMessage(`You Win! ${pHand.name} beats ${aHand.name}`);
-        setPlayerChips(prev => prev + pot);
+        setPlayerChips((prev) => prev + pot);
       } else {
         setMessage(`AI Wins! ${aHand.name} beats ${pHand.name}`);
-        setAiChips(prev => prev + pot);
+        setAiChips((prev) => prev + pot);
       }
     } catch (e) {
       console.error(e);
@@ -164,11 +185,12 @@ export function PokerApp() {
   };
 
   const handlePlayerAction = (action: Action) => {
-    if (turn !== "player" || phase === "showdown" || phase === "game-over") return;
+    if (turn !== "player" || phase === "showdown" || phase === "game-over")
+      return;
 
     if (action === "fold") {
       setMessage("You folded. AI wins the pot.");
-      setAiChips(prev => prev + pot);
+      setAiChips((prev) => prev + pot);
       setPot(0);
       setPhase("showdown"); // skip to end
       return;
@@ -178,9 +200,9 @@ export function PokerApp() {
     if (action === "check" || action === "call") {
       if (toCall > 0) {
         toCall = Math.min(toCall, playerChips); // all in case
-        setPlayerChips(prev => prev - toCall);
-        setPlayerBet(prev => prev + toCall);
-        setPot(prev => prev + toCall);
+        setPlayerChips((prev) => prev - toCall);
+        setPlayerBet((prev) => prev + toCall);
+        setPot((prev) => prev + toCall);
         setMessage("You called.");
       } else {
         setMessage("You checked.");
@@ -189,9 +211,9 @@ export function PokerApp() {
     } else if (action === "raise") {
       const raiseAmt = toCall + BLIND * 2;
       const actualRaise = Math.min(raiseAmt, playerChips);
-      setPlayerChips(prev => prev - actualRaise);
-      setPlayerBet(prev => prev + actualRaise);
-      setPot(prev => prev + actualRaise);
+      setPlayerChips((prev) => prev - actualRaise);
+      setPlayerBet((prev) => prev + actualRaise);
+      setPot((prev) => prev + actualRaise);
       setMessage(`You raised ${actualRaise}.`);
       setTurn("ai");
     }
@@ -202,31 +224,32 @@ export function PokerApp() {
     if (turn === "ai" && phase !== "showdown" && phase !== "game-over") {
       const timer = setTimeout(() => {
         let toCall = Math.max(0, playerBet - aiBet);
-        
+
         // Very basic AI decision
         const random = Math.random();
-        
+
         if (toCall > aiChips / 2 && random < 0.3) {
           // Fold if bet is too big and bad luck
           setMessage("AI folded. You win the pot!");
-          setPlayerChips(prev => prev + pot);
+          setPlayerChips((prev) => prev + pot);
           setPot(0);
           setPhase("showdown");
         } else if (toCall > 0) {
           // Just call
           toCall = Math.min(toCall, aiChips);
-          setAiChips(prev => prev - toCall);
-          setAiBet(prev => prev + toCall);
-          setPot(prev => prev + toCall);
+          setAiChips((prev) => prev - toCall);
+          setAiBet((prev) => prev + toCall);
+          setPot((prev) => prev + toCall);
           setMessage("AI called.");
           advancePhase();
         } else {
           // Check or random small bet
-          if (random < 0.2 && aiChips > BLIND) { // 20% bluff/bet
+          if (random < 0.2 && aiChips > BLIND) {
+            // 20% bluff/bet
             const betAmt = Math.min(BLIND * 2, aiChips);
-            setAiChips(prev => prev - betAmt);
-            setAiBet(prev => prev + betAmt);
-            setPot(prev => prev + betAmt);
+            setAiChips((prev) => prev - betAmt);
+            setAiBet((prev) => prev + betAmt);
+            setPot((prev) => prev + betAmt);
             setMessage(`AI bets ${betAmt}.`);
             setTurn("player");
           } else {
@@ -245,11 +268,12 @@ export function PokerApp() {
   return (
     <div className="flex flex-col items-center h-full w-full py-6 text-slate-200">
       <div className="bg-emerald-950 border-4 border-emerald-900 rounded-3xl p-6 shadow-2xl flex flex-col w-full max-w-4xl relative overflow-hidden">
-        
         {/* Pot and Messages */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-0 pointer-events-none w-full px-4 text-center">
           <div className="bg-black/40 px-6 py-2 rounded-full mb-4 border border-emerald-700/50 backdrop-blur-sm">
-            <span className="text-emerald-400 font-bold tracking-widest uppercase text-sm">Pot</span>
+            <span className="text-emerald-400 font-bold tracking-widest uppercase text-sm">
+              Pot
+            </span>
             <span className="text-white ml-3 text-xl font-mono">${pot}</span>
           </div>
           <div className="text-white/90 text-lg font-medium drop-shadow-md bg-black/30 px-4 py-1 rounded-xl">
@@ -265,7 +289,9 @@ export function PokerApp() {
                 <span className="text-xs font-bold">AI</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs text-slate-400 uppercase font-bold">AI Opponent</span>
+                <span className="text-xs text-slate-400 uppercase font-bold">
+                  AI Opponent
+                </span>
                 <span className="text-lg font-mono text-white flex items-center gap-1">
                   <Coins className="w-4 h-4 text-yellow-500" />
                   {aiChips}
@@ -278,7 +304,7 @@ export function PokerApp() {
               </div>
             )}
           </div>
-          
+
           <div className="flex gap-2">
             {aiHand.map((card, i) => (
               <PlayingCard key={i} card={card} hidden={phase !== "showdown"} />
@@ -309,7 +335,9 @@ export function PokerApp() {
             )}
             <div className="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700">
               <div className="flex flex-col items-end">
-                <span className="text-xs text-slate-400 uppercase font-bold">You</span>
+                <span className="text-xs text-slate-400 uppercase font-bold">
+                  You
+                </span>
                 <span className="text-lg font-mono text-white flex items-center gap-1">
                   {playerChips}
                   <Coins className="w-4 h-4 text-yellow-500" />
@@ -358,7 +386,6 @@ export function PokerApp() {
             </>
           )}
         </div>
-
       </div>
     </div>
   );

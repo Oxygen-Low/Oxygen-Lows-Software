@@ -23,7 +23,13 @@ import {
   Loader2,
   Filter,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,7 +95,11 @@ export default function AdminVerification() {
   const { session } = useAuth();
   const { t } = useTranslation();
   usePageTitle(t("titles.adminVerification", undefined, "Admin Verification"), {
-    description: t("admin.verificationDesc", undefined, "Review, approve, or deny public assets and multiplayer verification requests."),
+    description: t(
+      "admin.verificationDesc",
+      undefined,
+      "Review, approve, or deny public assets and multiplayer verification requests.",
+    ),
   });
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -124,16 +134,20 @@ export default function AdminVerification() {
       if (typeFilter) params.append("asset_type", typeFilter);
       if (targetFilter) params.append("target_type", targetFilter);
 
-      const response = await fetch(`/api/admin/verifications?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
+      const response = await fetch(
+        `/api/admin/verifications?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(
-          errData.error || `Failed to fetch verifications (Status ${response.status})`,
+          errData.error ||
+            `Failed to fetch verifications (Status ${response.status})`,
         );
       }
 
@@ -171,12 +185,15 @@ export default function AdminVerification() {
   const handleApprove = async (item: VerificationItem) => {
     setApprovingId(item.id);
     try {
-      const response = await fetch(`/api/admin/verifications/${item.id}/approve`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
+      const response = await fetch(
+        `/api/admin/verifications/${item.id}/approve`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -185,7 +202,11 @@ export default function AdminVerification() {
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("admin.approveSuccess", undefined, "Asset approved successfully."),
+        description: t(
+          "admin.approveSuccess",
+          undefined,
+          "Asset approved successfully.",
+        ),
       });
       fetchVerifications();
     } catch (error: any) {
@@ -204,7 +225,11 @@ export default function AdminVerification() {
     if (!rejectReason.trim()) {
       toast({
         title: t("common.error", undefined, "Error"),
-        description: t("admin.reasonRequiredError", undefined, "A denial reason is required to reject a submission."),
+        description: t(
+          "admin.reasonRequiredError",
+          undefined,
+          "A denial reason is required to reject a submission.",
+        ),
         variant: "destructive",
       });
       return;
@@ -212,14 +237,17 @@ export default function AdminVerification() {
 
     setRejecting(true);
     try {
-      const response = await fetch(`/api/admin/verifications/${rejectItem.id}/reject`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `/api/admin/verifications/${rejectItem.id}/reject`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reason: rejectReason.trim() }),
         },
-        body: JSON.stringify({ reason: rejectReason.trim() }),
-      });
+      );
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -228,7 +256,11 @@ export default function AdminVerification() {
 
       toast({
         title: t("common.success", undefined, "Success"),
-        description: t("admin.rejectSuccess", undefined, "Asset rejected with reason."),
+        description: t(
+          "admin.rejectSuccess",
+          undefined,
+          "Asset rejected with reason.",
+        ),
       });
       setRejectItem(null);
       setRejectReason("");
@@ -322,16 +354,28 @@ export default function AdminVerification() {
             className="w-auto"
           >
             <TabsList className="bg-slate-800 border border-slate-700">
-              <TabsTrigger value="pending" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+              <TabsTrigger
+                value="pending"
+                className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
                 {t("admin.pendingTab", undefined, "Pending")}
               </TabsTrigger>
-              <TabsTrigger value="approved" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+              <TabsTrigger
+                value="approved"
+                className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
                 {t("admin.approvedTab", undefined, "Approved")}
               </TabsTrigger>
-              <TabsTrigger value="rejected" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+              <TabsTrigger
+                value="rejected"
+                className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
                 {t("admin.rejectedTab", undefined, "Rejected")}
               </TabsTrigger>
-              <TabsTrigger value="all" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+              <TabsTrigger
+                value="all"
+                className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
                 {t("admin.allSubmissions", undefined, "All")}
               </TabsTrigger>
             </TabsList>
@@ -345,10 +389,18 @@ export default function AdminVerification() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-700 text-white text-xs">
-                  <SelectItem value="all">{t("admin.allTypes", undefined, "All Types")}</SelectItem>
-                  <SelectItem value="file">{t("admin.typeFile", undefined, "Storage File")}</SelectItem>
-                  <SelectItem value="character">{t("admin.typeCharacter", undefined, "Character")}</SelectItem>
-                  <SelectItem value="universe">{t("admin.typeUniverse", undefined, "Universe")}</SelectItem>
+                  <SelectItem value="all">
+                    {t("admin.allTypes", undefined, "All Types")}
+                  </SelectItem>
+                  <SelectItem value="file">
+                    {t("admin.typeFile", undefined, "Storage File")}
+                  </SelectItem>
+                  <SelectItem value="character">
+                    {t("admin.typeCharacter", undefined, "Character")}
+                  </SelectItem>
+                  <SelectItem value="universe">
+                    {t("admin.typeUniverse", undefined, "Universe")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -360,9 +412,19 @@ export default function AdminVerification() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-700 text-white text-xs">
-                  <SelectItem value="all">{t("admin.allTargets", undefined, "All Targets")}</SelectItem>
-                  <SelectItem value="public_asset">{t("admin.targetPublicAsset", undefined, "Public Hub")}</SelectItem>
-                  <SelectItem value="public_usage">{t("admin.targetPublicUsage", undefined, "Public / Multiplayer")}</SelectItem>
+                  <SelectItem value="all">
+                    {t("admin.allTargets", undefined, "All Targets")}
+                  </SelectItem>
+                  <SelectItem value="public_asset">
+                    {t("admin.targetPublicAsset", undefined, "Public Hub")}
+                  </SelectItem>
+                  <SelectItem value="public_usage">
+                    {t(
+                      "admin.targetPublicUsage",
+                      undefined,
+                      "Public / Multiplayer",
+                    )}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -379,7 +441,11 @@ export default function AdminVerification() {
             <CardContent>
               <ShieldCheck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
               <h3 className="text-lg font-medium text-white">
-                {t("admin.noPendingVerifications", undefined, "No submissions found.")}
+                {t(
+                  "admin.noPendingVerifications",
+                  undefined,
+                  "No submissions found.",
+                )}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
                 Queue is clear for the selected filters.
@@ -417,18 +483,25 @@ export default function AdminVerification() {
                             <h3 className="text-lg font-bold text-white">
                               {item.title}
                             </h3>
-                            <Badge variant="outline" className="text-xs uppercase border-slate-700 bg-slate-800 text-slate-300">
+                            <Badge
+                              variant="outline"
+                              className="text-xs uppercase border-slate-700 bg-slate-800 text-slate-300"
+                            >
                               {item.asset_type}
                             </Badge>
-                            <Badge variant="outline" className="text-xs border-cyan-800 bg-cyan-950/60 text-cyan-300">
+                            <Badge
+                              variant="outline"
+                              className="text-xs border-cyan-800 bg-cyan-950/60 text-cyan-300"
+                            >
                               {item.target_type === "public_usage"
                                 ? "Public / Multiplayer"
                                 : "Public Hub"}
                             </Badge>
                           </div>
                           <p className="text-xs text-slate-400 mt-0.5">
-                            By @{item.profiles?.username || "Unknown"} ({item.profiles?.email || item.user_id}) •{" "}
-                            Submitted {new Date(item.created_at).toLocaleString()}
+                            By @{item.profiles?.username || "Unknown"} (
+                            {item.profiles?.email || item.user_id}) • Submitted{" "}
+                            {new Date(item.created_at).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -462,39 +535,62 @@ export default function AdminVerification() {
                           Details & Description
                         </span>
                         <p className="text-slate-200 text-sm">
-                          {item.description || meta.short_description || "No description provided."}
+                          {item.description ||
+                            meta.short_description ||
+                            "No description provided."}
                         </p>
 
                         {item.asset_type === "file" && (
                           <div className="space-y-2 pt-2 border-t border-slate-800/80">
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <span className="text-slate-500">File Path:</span>
-                                <p className="font-mono text-slate-300 truncate">{item.original_file_path || "N/A"}</p>
+                                <span className="text-slate-500">
+                                  File Path:
+                                </span>
+                                <p className="font-mono text-slate-300 truncate">
+                                  {item.original_file_path || "N/A"}
+                                </p>
                               </div>
                               <div>
-                                <span className="text-slate-500">File Size:</span>
-                                <p className="text-slate-300">{formatSize(item.file_size)}</p>
+                                <span className="text-slate-500">
+                                  File Size:
+                                </span>
+                                <p className="text-slate-300">
+                                  {formatSize(item.file_size)}
+                                </p>
                               </div>
                             </div>
 
                             <div className="pt-2">
-                              {(item.mime_type?.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(item.original_file_path || item.title)) ? (
+                              {item.mime_type?.startsWith("audio/") ||
+                              /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus|wma)$/i.test(
+                                item.original_file_path || item.title,
+                              ) ? (
                                 <div className="p-3 bg-slate-900 rounded border border-slate-800 space-y-2">
                                   <div className="flex items-center gap-2 text-cyan-400 font-semibold text-[11px]">
                                     <Music className="w-4 h-4" /> Audio Preview
                                   </div>
                                   <AudioPlayerPreview
                                     src={previewUrls[item.id]}
-                                    filePath={item.original_file_path || undefined}
+                                    filePath={
+                                      item.original_file_path || undefined
+                                    }
                                     fileName={item.title}
                                     bucket="Storage"
                                     className="w-full"
                                   />
                                 </div>
-                              ) : (item.mime_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(item.original_file_path || item.title)) && previewUrls[item.id] ? (
+                              ) : (item.mime_type?.startsWith("image/") ||
+                                  /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(
+                                    item.original_file_path || item.title,
+                                  )) &&
+                                previewUrls[item.id] ? (
                                 <div className="p-2 bg-slate-900 rounded border border-slate-800">
-                                  <img src={previewUrls[item.id]} alt={item.title} className="max-h-48 rounded object-contain mx-auto" />
+                                  <img
+                                    src={previewUrls[item.id]}
+                                    alt={item.title}
+                                    className="max-h-48 rounded object-contain mx-auto"
+                                  />
                                 </div>
                               ) : null}
                             </div>
@@ -503,27 +599,38 @@ export default function AdminVerification() {
                       </div>
 
                       {/* Character/Lore or Extra Snapshot */}
-                      {(item.asset_type === "character" || item.asset_type === "universe") && (
+                      {(item.asset_type === "character" ||
+                        item.asset_type === "universe") && (
                         <div className="space-y-2 bg-slate-950/60 p-4 rounded-lg border border-slate-800 max-h-48 overflow-y-auto">
                           <span className="font-semibold text-slate-400 uppercase tracking-wider">
                             Character Lore & Attributes
                           </span>
                           {meta.appearance && (
                             <div>
-                              <span className="text-slate-500">Appearance:</span>
-                              <p className="text-slate-300 whitespace-pre-wrap">{meta.appearance}</p>
+                              <span className="text-slate-500">
+                                Appearance:
+                              </span>
+                              <p className="text-slate-300 whitespace-pre-wrap">
+                                {meta.appearance}
+                              </p>
                             </div>
                           )}
                           {meta.personality && (
                             <div>
-                              <span className="text-slate-500">Personality:</span>
-                              <p className="text-slate-300 whitespace-pre-wrap">{meta.personality}</p>
+                              <span className="text-slate-500">
+                                Personality:
+                              </span>
+                              <p className="text-slate-300 whitespace-pre-wrap">
+                                {meta.personality}
+                              </p>
                             </div>
                           )}
                           {meta.backstory && (
                             <div>
                               <span className="text-slate-500">Backstory:</span>
-                              <p className="text-slate-300 whitespace-pre-wrap">{meta.backstory}</p>
+                              <p className="text-slate-300 whitespace-pre-wrap">
+                                {meta.backstory}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -545,14 +652,20 @@ export default function AdminVerification() {
                     <div className="flex justify-between items-center pt-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-slate-500 hover:text-rose-400">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-slate-500 hover:text-rose-400"
+                          >
                             <Trash2 className="w-4 h-4 mr-1" />
                             Delete Log
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete verification entry?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              Delete verification entry?
+                            </AlertDialogTitle>
                             <AlertDialogDescription className="text-slate-400">
                               This will remove the verification log record.
                             </AlertDialogDescription>
@@ -638,13 +751,16 @@ export default function AdminVerification() {
 
           <div className="space-y-4 py-2">
             <div className="p-3 bg-slate-950 rounded border border-slate-800 text-xs">
-              <span className="text-slate-400 font-semibold">Submitting Asset:</span>{" "}
+              <span className="text-slate-400 font-semibold">
+                Submitting Asset:
+              </span>{" "}
               <span className="text-white font-bold">{rejectItem?.title}</span>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-300">
-                {t("publicAssets.rejectionReason", undefined, "Denial Reason")} <span className="text-rose-400">*</span>
+                {t("publicAssets.rejectionReason", undefined, "Denial Reason")}{" "}
+                <span className="text-rose-400">*</span>
               </label>
               <Textarea
                 value={rejectReason}

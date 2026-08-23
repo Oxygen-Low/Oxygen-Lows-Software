@@ -73,7 +73,9 @@ adminVerificationRouter.get("/", async (c) => {
     if (error) throw error;
 
     const userIds = [
-      ...new Set((verifications || []).map((v: any) => v.user_id).filter(Boolean)),
+      ...new Set(
+        (verifications || []).map((v: any) => v.user_id).filter(Boolean),
+      ),
     ];
 
     let profiles: any[] = [];
@@ -122,7 +124,10 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
         // Copy file from private Storage bucket to public-assets bucket if filePath present
         if (verification.original_file_path) {
           const { data: fileData, error: downloadErr } =
-            await serverStorage.download("Storage", verification.original_file_path);
+            await serverStorage.download(
+              "Storage",
+              verification.original_file_path,
+            );
 
           if (!downloadErr && fileData) {
             await serverStorage.upload(
@@ -139,7 +144,8 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
             .from("public_assets")
             .update({
               name: verification.title,
-              display_name: verification.metadata?.display_name || verification.title,
+              display_name:
+                verification.metadata?.display_name || verification.title,
               category: verification.metadata?.category || "other",
               description: verification.description || "",
               file_path: verification.original_file_path || "",
@@ -158,7 +164,8 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
             .insert({
               uploader_id: verification.user_id,
               name: verification.title,
-              display_name: verification.metadata?.display_name || verification.title,
+              display_name:
+                verification.metadata?.display_name || verification.title,
               category: verification.metadata?.category || "other",
               description: verification.description || "",
               file_path: verification.original_file_path || "",
@@ -172,16 +179,21 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
             publicAssetId = newAsset.id;
           }
         }
-      } else if (verification.asset_type === "character" || verification.asset_type === "universe") {
+      } else if (
+        verification.asset_type === "character" ||
+        verification.asset_type === "universe"
+      ) {
         // Publish/Update Character Snapshot in public_characters
         const meta = verification.metadata || {};
-        const isUniverse = verification.asset_type === "universe" || Boolean(meta.is_universe);
+        const isUniverse =
+          verification.asset_type === "universe" || Boolean(meta.is_universe);
         const payload: any = {
           uploader_id: verification.user_id,
           original_character_id: verification.original_id || null,
           name: meta.name || verification.title,
           display_name: meta.display_name || null,
-          short_description: meta.short_description || verification.description || null,
+          short_description:
+            meta.short_description || verification.description || null,
           appearance: meta.appearance || null,
           personality: meta.personality || null,
           backstory: meta.backstory || null,
@@ -215,7 +227,8 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
       }
     } else if (verification.target_type === "public_usage") {
       if (
-        (verification.asset_type === "character" || verification.asset_type === "universe") &&
+        (verification.asset_type === "character" ||
+          verification.asset_type === "universe") &&
         verification.original_id
       ) {
         await supabase

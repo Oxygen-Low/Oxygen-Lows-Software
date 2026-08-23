@@ -1,5 +1,5 @@
-import { DefenderClient } from './webdefender.js';
-import { DefenderConfig } from './types.js';
+import { DefenderClient } from "./webdefender.js";
+import { DefenderConfig } from "./types.js";
 
 export function createNextDefender(config: DefenderConfig) {
   const client = new DefenderClient(config);
@@ -8,11 +8,12 @@ export function createNextDefender(config: DefenderConfig) {
 
   return async (request: any, NextResponse: any) => {
     try {
-      const ip = request.headers.get('x-forwarded-for') || request.ip || 'unknown';
-      const normalizedIp = ip.split(',')[0].trim();
-      
-      let bodyStr = '';
-      if (request.method !== 'GET' && request.method !== 'HEAD') {
+      const ip =
+        request.headers.get("x-forwarded-for") || request.ip || "unknown";
+      const normalizedIp = ip.split(",")[0].trim();
+
+      let bodyStr = "";
+      if (request.method !== "GET" && request.method !== "HEAD") {
         try {
           bodyStr = await request.clone().text();
         } catch (e) {}
@@ -36,21 +37,24 @@ export function createNextDefender(config: DefenderConfig) {
         query: queryParams,
         body: bodyStr,
         headers: headersObj,
-        userAgent: request.headers.get('user-agent') || ''
+        userAgent: request.headers.get("user-agent") || "",
       };
 
       const result = await client.handleRequest(reqInfo);
 
       if (result.blocked) {
-        return NextResponse.json({
-          blocked: true,
-          reason: result.reason || 'Request blocked by Defender'
-        }, { status: 403 });
+        return NextResponse.json(
+          {
+            blocked: true,
+            reason: result.reason || "Request blocked by Defender",
+          },
+          { status: 403 },
+        );
       }
 
       return NextResponse.next();
     } catch (error) {
-      console.error('[Defender] Next.js middleware error:', error);
+      console.error("[Defender] Next.js middleware error:", error);
       return NextResponse.next();
     }
   };

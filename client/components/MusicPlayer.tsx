@@ -1,5 +1,12 @@
 import { useCallback } from "react";
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat } from "lucide-react";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+} from "lucide-react";
 import { useMusic } from "@/hooks/useMusic";
 import { Button } from "@/components/ui/button";
 

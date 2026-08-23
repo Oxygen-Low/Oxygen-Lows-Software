@@ -83,7 +83,10 @@ assetsRouter.post("/verifications/submit", async (c) => {
       public_character_id = null,
     } = body;
 
-    if (!asset_type || !["file", "character", "universe"].includes(asset_type)) {
+    if (
+      !asset_type ||
+      !["file", "character", "universe"].includes(asset_type)
+    ) {
       return c.json({ error: "Invalid asset type" }, 400);
     }
     if (!title || typeof title !== "string" || !title.trim()) {
@@ -166,7 +169,10 @@ assetsRouter.delete("/verifications/:id", async (c) => {
     }
 
     if (verif.user_id !== user.id && !isAdmin) {
-      return c.json({ error: "Forbidden: You do not own this verification request" }, 403);
+      return c.json(
+        { error: "Forbidden: You do not own this verification request" },
+        403,
+      );
     }
 
     // If it was an approved public_usage verification on a character, reset is_verified_public
@@ -192,12 +198,27 @@ assetsRouter.delete("/verifications/:id", async (c) => {
           if (asset.file_path) {
             await serverStorage.remove("public-assets", [asset.file_path]);
           }
-          await supabase.from("public_asset_likes").delete().eq("public_asset_id", verif.public_asset_id);
-          await supabase.from("public_assets").delete().eq("id", verif.public_asset_id);
+          await supabase
+            .from("public_asset_likes")
+            .delete()
+            .eq("public_asset_id", verif.public_asset_id);
+          await supabase
+            .from("public_assets")
+            .delete()
+            .eq("id", verif.public_asset_id);
         }
-      } else if ((verif.asset_type === "character" || verif.asset_type === "universe") && verif.public_character_id) {
-        await supabase.from("public_character_likes").delete().eq("public_character_id", verif.public_character_id);
-        await supabase.from("public_characters").delete().eq("id", verif.public_character_id);
+      } else if (
+        (verif.asset_type === "character" || verif.asset_type === "universe") &&
+        verif.public_character_id
+      ) {
+        await supabase
+          .from("public_character_likes")
+          .delete()
+          .eq("public_character_id", verif.public_character_id);
+        await supabase
+          .from("public_characters")
+          .delete()
+          .eq("id", verif.public_character_id);
       }
     }
 
@@ -293,7 +314,10 @@ assetsRouter.post("/unpublish", async (c) => {
       }
 
       // Delete likes and public asset record
-      await supabase.from("public_asset_likes").delete().eq("public_asset_id", id);
+      await supabase
+        .from("public_asset_likes")
+        .delete()
+        .eq("public_asset_id", id);
       await supabase.from("public_assets").delete().eq("id", id);
     } else {
       // character or universe

@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX, Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Loader2,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
 import { storage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
@@ -100,12 +108,17 @@ export function AudioPlayerPreview({
 
       throw new Error("Unable to load audio file");
     } catch (err) {
-      console.warn("AudioPreview resolution failed, attempting blob fallback:", err);
+      console.warn(
+        "AudioPreview resolution failed, attempting blob fallback:",
+        err,
+      );
       // Try blob download fallback directly
       if (filePath || fileName) {
         try {
           const cleanPath = (filePath || fileName || "").replace(/^\/+/, "");
-          const { data: blobData } = await storage.from(bucket).download(cleanPath);
+          const { data: blobData } = await storage
+            .from(bucket)
+            .download(cleanPath);
           if (blobData) {
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
             const blobUrl = URL.createObjectURL(blobData);
@@ -186,12 +199,15 @@ export function AudioPlayerPreview({
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch((err) => {
-        console.warn("Audio play failed:", err);
-        handleAudioError();
-      });
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((err) => {
+          console.warn("Audio play failed:", err);
+          handleAudioError();
+        });
     }
   };
 

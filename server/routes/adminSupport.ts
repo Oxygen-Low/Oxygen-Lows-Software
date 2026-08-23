@@ -28,7 +28,10 @@ adminSupportRouter.use("*", async (c, next) => {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -127,7 +130,9 @@ adminSupportRouter.get("/tickets/:id/messages", async (c) => {
       .select("user_id, username, avatar_url")
       .in("user_id", senderIds);
 
-    const profilesMap = new Map(profiles?.map((p: any) => [p.user_id, p]) || []);
+    const profilesMap = new Map(
+      profiles?.map((p: any) => [p.user_id, p]) || [],
+    );
 
     const messagesWithProfiles = messages.map((m: any) => ({
       ...m,
@@ -151,7 +156,7 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
     const token = authHeader?.toLowerCase().startsWith("bearer ")
       ? authHeader.slice(7)
       : undefined;
-    
+
     // We still need the authenticated client here to get the current user's ID
     const authSupabase = getAuthenticatedClient(token);
     const supabase = getAdminClient(getServiceRoleKey(c));

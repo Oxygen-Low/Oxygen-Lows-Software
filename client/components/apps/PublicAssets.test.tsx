@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { PublicAssetsApp } from "./PublicAssets";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,11 +17,21 @@ const mockToast = vi.fn();
 
 vi.mock("@/lib/supabase", () => {
   const mockStorageFrom = {
-    list: vi.fn(() => Promise.resolve({ data: [{ id: "f1", name: "audio.mp3", metadata: { size: 1024 } }], error: null })),
-    createSignedUrl: vi.fn((path: string) =>
-      Promise.resolve({ data: { signedUrl: `https://example.com/${path}` }, error: null }),
+    list: vi.fn(() =>
+      Promise.resolve({
+        data: [{ id: "f1", name: "audio.mp3", metadata: { size: 1024 } }],
+        error: null,
+      }),
     ),
-    getPublicUrl: vi.fn((path: string) => ({ data: { publicUrl: `https://public.example.com/${path}` } })),
+    createSignedUrl: vi.fn((path: string) =>
+      Promise.resolve({
+        data: { signedUrl: `https://example.com/${path}` },
+        error: null,
+      }),
+    ),
+    getPublicUrl: vi.fn((path: string) => ({
+      data: { publicUrl: `https://public.example.com/${path}` },
+    })),
   };
 
   const builder: any = {
@@ -50,7 +66,10 @@ describe("PublicAssetsApp Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
-      session: { user: { id: "u123", email: "user@example.com" }, access_token: "mock-token" },
+      session: {
+        user: { id: "u123", email: "user@example.com" },
+        access_token: "mock-token",
+      },
     });
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -73,7 +92,9 @@ describe("PublicAssetsApp Component", () => {
     expect(screen.getByRole("tab", { name: "Universes" })).toBeDefined();
     expect(screen.getByRole("tab", { name: "Files" })).toBeDefined();
     expect(screen.getByRole("tab", { name: "My Submissions" })).toBeDefined();
-    expect(screen.getByRole("button", { name: /Publish Asset/i })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /Publish Asset/i }),
+    ).toBeDefined();
   });
 
   it("switches to Files tab and Submissions tab smoothly", async () => {

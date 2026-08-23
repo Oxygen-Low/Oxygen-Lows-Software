@@ -71,12 +71,17 @@ export class CustomStorageClient {
       if (res.status >= 400 || json.error) {
         return {
           data: null,
-          error: new Error(json.error || `Upload failed with status ${res.status}`),
+          error: new Error(
+            json.error || `Upload failed with status ${res.status}`,
+          ),
         };
       }
       return { data: json.data || { path: cleanPath }, error: null };
     } catch (e: any) {
-      return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
     }
   }
 
@@ -101,12 +106,17 @@ export class CustomStorageClient {
       if (res.status >= 400 || json.error) {
         return {
           data: null,
-          error: new Error(json.error || `List failed with status ${res.status}`),
+          error: new Error(
+            json.error || `List failed with status ${res.status}`,
+          ),
         };
       }
       return { data: json.data || [], error: null };
     } catch (e: any) {
-      return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
     }
   }
 
@@ -131,12 +141,17 @@ export class CustomStorageClient {
       if (res.status >= 400 || json.error) {
         return {
           data: null,
-          error: new Error(json.error || `Remove failed with status ${res.status}`),
+          error: new Error(
+            json.error || `Remove failed with status ${res.status}`,
+          ),
         };
       }
       return { data: json.data || cleanPaths, error: null };
     } catch (e: any) {
-      return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
     }
   }
 
@@ -148,21 +163,29 @@ export class CustomStorageClient {
       const token = await getAuthToken();
       const fetchFn = getFetch();
       const cleanPath = path.replace(/^\/+/, "");
-      const res = await fetchFn(`/api/storage/download/${bucket}/${cleanPath}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const res = await fetchFn(
+        `/api/storage/download/${bucket}/${cleanPath}`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
 
       if (!res.ok) {
         const errorText = await res.text().catch(() => "Download failed");
         return {
           data: null,
-          error: new Error(errorText || `Download failed with status ${res.status}`),
+          error: new Error(
+            errorText || `Download failed with status ${res.status}`,
+          ),
         };
       }
       const blob = await res.blob();
       return { data: blob, error: null };
     } catch (e: any) {
-      return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
     }
   }
 
@@ -171,7 +194,11 @@ export class CustomStorageClient {
     paths: string[],
     expiresIn: number = 3600,
   ): Promise<{
-    data: Array<{ signedUrl: string; error: string | null; path?: string }> | null;
+    data: Array<{
+      signedUrl: string;
+      error: string | null;
+      path?: string;
+    }> | null;
     error: Error | null;
   }> {
     try {
@@ -191,12 +218,17 @@ export class CustomStorageClient {
       if (res.status >= 400 || json.error) {
         return {
           data: null,
-          error: new Error(json.error || `Signed URLs failed with status ${res.status}`),
+          error: new Error(
+            json.error || `Signed URLs failed with status ${res.status}`,
+          ),
         };
       }
       return { data: json.data || [], error: null };
     } catch (e: any) {
-      return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
     }
   }
 
@@ -213,13 +245,18 @@ export class CustomStorageClient {
       }
       return { data: null, error: new Error("Failed to create signed URL") };
     } catch (e: any) {
-      return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
     }
   }
 
   getPublicUrl(bucket: string, path: string): { data: { publicUrl: string } } {
     const cleanPath = path.replace(/^\/+/, "");
-    return { data: { publicUrl: `/api/storage/public/${bucket}/${cleanPath}` } };
+    return {
+      data: { publicUrl: `/api/storage/public/${bucket}/${cleanPath}` },
+    };
   }
 
   from(bucket: string) {

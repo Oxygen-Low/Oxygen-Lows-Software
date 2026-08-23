@@ -18,16 +18,33 @@ export interface BlockedEvent {
   blocked: boolean;
 }
 
-export type EventType = 
-  | 'sql_injection' | 'shell_injection' | 'path_traversal' | 'ssrf'
-  | 'tor' | 'vpn' | 'country_block' | 'ip_block' | 'bot' | 'ddos' | 'rate_limit' | 'allowed'
-  | 'threat_bruteforce' | 'threat_dos' | 'threat_exploit' | 'threat_botnet';
+export type EventType =
+  | "sql_injection"
+  | "shell_injection"
+  | "path_traversal"
+  | "ssrf"
+  | "tor"
+  | "vpn"
+  | "country_block"
+  | "ip_block"
+  | "bot"
+  | "ddos"
+  | "rate_limit"
+  | "allowed"
+  | "threat_bruteforce"
+  | "threat_dos"
+  | "threat_exploit"
+  | "threat_botnet";
 
-export type BotCategory = 
-  | 'ad_bot' | 'ai_assistant' | 'ai_scraper' | 'ai_search_crawler' | 'data_harvester';
+export type BotCategory =
+  | "ad_bot"
+  | "ai_assistant"
+  | "ai_scraper"
+  | "ai_search_crawler"
+  | "data_harvester";
 
 export type ThreatActorCategory =
-  | 'bruteforce' | 'http_dos' | 'http_exploit' | 'botnet';
+  "bruteforce" | "http_dos" | "http_exploit" | "botnet";
 
 export interface AppConfig {
   appId: string;

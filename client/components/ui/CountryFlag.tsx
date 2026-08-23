@@ -16,7 +16,9 @@ export function CountryFlag({
   const [hasError, setHasError] = useState(false);
 
   if (!countryCode || countryCode.length !== 2) {
-    return <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0 inline-block" />;
+    return (
+      <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0 inline-block" />
+    );
   }
 
   const code = countryCode.toLowerCase();

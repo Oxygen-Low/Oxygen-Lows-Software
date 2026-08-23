@@ -14,29 +14,34 @@ import { defenderRouter } from "./routes/webdefender.ts";
 import { storageRouter } from "./routes/storage.ts";
 import { agentSearchRouter } from "./routes/agentSearch.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
+import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
 
 const app = new Hono();
 
 let defenderPromise: Promise<any> | null = null;
 
-app.use('*', async (c, next) => {
-  if (c.req.path.startsWith('/api/webdefender') || c.req.path.startsWith('/api/defender') || c.req.path.startsWith('/api/storage')) {
+app.use("*", async (c, next) => {
+  if (
+    c.req.path.startsWith("/api/webdefender") ||
+    c.req.path.startsWith("/api/defender") ||
+    c.req.path.startsWith("/api/storage")
+  ) {
     return next();
   }
   if (!defenderPromise) {
-    defenderPromise = createDefender({
-      apiKey: process.env.DEFENDER_API_KEY || '',
-      apiUrl: process.env.DEFENDER_API_URL || 'https://oxygenlow.com',
-    }, app);
+    defenderPromise = createDefender(
+      {
+        apiKey: process.env.DEFENDER_API_KEY || "",
+        apiUrl: process.env.DEFENDER_API_URL || "https://oxygenlow.com",
+      },
+      app,
+    );
   }
   const middleware = await defenderPromise;
   return middleware(c, next);
 });
 
-const ALLOWED_ORIGINS = [
-  "https://oxygenlow.com",
-  "https://www.oxygenlow.com",
-];
+const ALLOWED_ORIGINS = ["https://oxygenlow.com", "https://www.oxygenlow.com"];
 
 function isAllowedOrigin(origin: string | undefined): string | undefined {
   if (!origin) return undefined;
@@ -65,7 +70,13 @@ app.use(
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
-      mediaSrc: ["'self'", "blob:", "data:", "https://vqmukrmpgvavscsyefqd.supabase.co", "https:"],
+      mediaSrc: [
+        "'self'",
+        "blob:",
+        "data:",
+        "https://vqmukrmpgvavscsyefqd.supabase.co",
+        "https:",
+      ],
       connectSrc: [
         "'self'",
         "blob:",
@@ -120,9 +131,7 @@ app.use(
 
 // A09: X-Request-Id for log correlation
 app.use("*", async (c, next) => {
-  const requestId =
-    c.req.header("x-request-id") ||
-    crypto.randomUUID();
+  const requestId = c.req.header("x-request-id") || crypto.randomUUID();
   c.set("requestId" as any, requestId);
   await next();
   c.header("X-Request-Id", requestId);
@@ -137,79 +146,133 @@ export function getLinkHeaders(): string {
     '</auth.md>; rel="describedby"; type="text/markdown"',
     '</.well-known/oauth-protected-resource>; rel="oauth-protected-resource"',
     '</.well-known/oauth-authorization-server>; rel="oauth-authorization-server"',
-  ].join(', ');
+  ].join(", ");
 }
 
-app.use('*', async (c, next) => {
+app.use("*", async (c, next) => {
   const path = c.req.path;
-  const accept = c.req.header('Accept') || '';
+  const accept = c.req.header("Accept") || "";
   if (
-    accept.includes('text/markdown') &&
-    !path.startsWith('/api/') &&
-    !path.startsWith('/.well-known/') &&
-    path !== '/auth.md' &&
-    path !== '/llms.txt' &&
-    path !== '/robots.txt' &&
-    path !== '/sitemap.xml'
+    accept.includes("text/markdown") &&
+    !path.startsWith("/api/") &&
+    !path.startsWith("/.well-known/") &&
+    path !== "/auth.md" &&
+    path !== "/llms.txt" &&
+    path !== "/robots.txt" &&
+    path !== "/sitemap.xml"
   ) {
-    const md = `# Oxygen Low's Software\n\nOxygen Low's Software - Beta. A platform for apps, storage, and customization.`;
+    const seo = getSeoMetadata(path);
+    const links = (seo.internalLinks || ALL_INTERNAL_NAV_LINKS)
+      .map(
+        (l) =>
+          `- [${l.label}](${l.href})${l.description ? `: ${l.description}` : ""}`,
+      )
+      .join("\n");
+
+    const h2Sections =
+      seo.h2 && seo.h2.length > 0
+        ? `\n\n## Key Topics\n${seo.h2.map((h) => `- ${h}`).join("\n")}`
+        : "";
+
+    const md = `# ${seo.title}\n\n${seo.description}${h2Sections}\n\n## Related Links\n${links}`;
     const tokens = md.split(/\s+/).length.toString();
     return c.text(md, 200, {
-      'Content-Type': 'text/markdown; charset=utf-8',
-      'x-markdown-tokens': tokens,
-      'Link': getLinkHeaders(),
+      "Content-Type": "text/markdown; charset=utf-8",
+      "x-markdown-tokens": tokens,
+      Link: getLinkHeaders(),
     });
   }
   await next();
 });
 
 // RFC 8288 / RFC 9727 Link headers for agent discovery on homepage and frontend routes
-app.use('*', async (c, next) => {
+app.use("*", async (c, next) => {
   const path = c.req.path;
   const isAsset =
-    path.startsWith('/api/') ||
-    path.startsWith('/.well-known/') ||
-    /\.(js|css|png|ico|svg|woff2?|ttf|eot|map|json|xml|txt|jpg|jpeg|gif|webp)$/i.test(path);
+    path.startsWith("/api/") ||
+    path.startsWith("/.well-known/") ||
+    /\.(js|css|png|ico|svg|woff2?|ttf|eot|map|json|xml|txt|jpg|jpeg|gif|webp)$/i.test(
+      path,
+    );
 
   if (!isAsset) {
-    c.header('Link', getLinkHeaders());
+    c.header("Link", getLinkHeaders());
   }
 
   await next();
 
   if (!isAsset) {
-    c.header('Link', getLinkHeaders());
+    c.header("Link", getLinkHeaders());
   }
 });
-
 
 app.get("/health", (c) => c.text("OK"));
 app.get("/api/ping", (c) => c.json({ message: "ping" }));
 
 app.get("/sitemap.xml", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
-  // The validator tool might be using a specific host and we should ensure it matches
-  // However, often times the scanner directly visits the domain.
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
   const urls = [
     { loc: `${baseUrl}/`, changefreq: "daily", priority: "1.0" },
     { loc: `${baseUrl}/apps`, changefreq: "daily", priority: "0.9" },
     { loc: `${baseUrl}/apps/chatbot`, changefreq: "weekly", priority: "0.8" },
-    { loc: `${baseUrl}/apps/file-compressor`, changefreq: "weekly", priority: "0.8" },
-    { loc: `${baseUrl}/apps/public-characters`, changefreq: "weekly", priority: "0.8" },
+    {
+      loc: `${baseUrl}/apps/file-compressor`,
+      changefreq: "weekly",
+      priority: "0.8",
+    },
+    {
+      loc: `${baseUrl}/apps/public-characters`,
+      changefreq: "weekly",
+      priority: "0.8",
+    },
     { loc: `${baseUrl}/apps/data-save`, changefreq: "weekly", priority: "0.8" },
-    { loc: `${baseUrl}/apps/qrcode-generator`, changefreq: "weekly", priority: "0.8" },
+    {
+      loc: `${baseUrl}/apps/qrcode-generator`,
+      changefreq: "weekly",
+      priority: "0.8",
+    },
     { loc: `${baseUrl}/apps/llm-agent`, changefreq: "weekly", priority: "0.8" },
-    { loc: `${baseUrl}/apps/agent-search`, changefreq: "weekly", priority: "0.8" },
-    { loc: `${baseUrl}/apps/webdefender`, changefreq: "weekly", priority: "0.8" },
+    {
+      loc: `${baseUrl}/apps/agent-search`,
+      changefreq: "weekly",
+      priority: "0.8",
+    },
+    {
+      loc: `${baseUrl}/apps/webdefender`,
+      changefreq: "weekly",
+      priority: "0.8",
+    },
+    {
+      loc: `${baseUrl}/apps/base64-encoder`,
+      changefreq: "weekly",
+      priority: "0.7",
+    },
+    {
+      loc: `${baseUrl}/apps/json-formatter`,
+      changefreq: "weekly",
+      priority: "0.7",
+    },
+    { loc: `${baseUrl}/apps/vpn`, changefreq: "weekly", priority: "0.7" },
+    { loc: `${baseUrl}/games`, changefreq: "weekly", priority: "0.8" },
+    { loc: `${baseUrl}/download`, changefreq: "weekly", priority: "0.7" },
+    { loc: `${baseUrl}/changelogs`, changefreq: "weekly", priority: "0.7" },
     { loc: `${baseUrl}/privacy`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/terms`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/eula`, changefreq: "monthly", priority: "0.5" },
     { loc: `${baseUrl}/dmca`, changefreq: "monthly", priority: "0.5" },
-    { loc: `${baseUrl}/acceptable-use`, changefreq: "monthly", priority: "0.5" },
+    {
+      loc: `${baseUrl}/acceptable-use`,
+      changefreq: "monthly",
+      priority: "0.5",
+    },
     { loc: `${baseUrl}/legal`, changefreq: "monthly", priority: "0.6" },
+    { loc: `${baseUrl}/license`, changefreq: "monthly", priority: "0.5" },
+    { loc: `${baseUrl}/support`, changefreq: "monthly", priority: "0.6" },
   ];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -220,7 +283,7 @@ ${urls
     <loc>${u.loc}</loc>
     <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
-  </url>`
+  </url>`,
   )
   .join("\n")}
 </urlset>`;
@@ -233,10 +296,12 @@ ${urls
 
 app.get("/auth.md", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
-    const content = `# auth.md
+  const content = `# auth.md
 
 This document describes how AI agents and automated clients can authenticate with **Oxygen Low's Software** (\`${baseUrl}\`).
 
@@ -304,67 +369,81 @@ Tokens provide access to API resources scoped under the permissions granted at r
 
 app.get("/.well-known/oauth-protected-resource", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
   return c.json({
     resource: baseUrl,
     authorization_servers: [baseUrl],
     scopes_supported: ["read", "write"],
-    bearer_methods_supported: ["header"]
+    bearer_methods_supported: ["header"],
   });
 });
 
 app.get("/.well-known/oauth-authorization-server", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
-  return c.json({
-    issuer: baseUrl,
-    authorization_endpoint: `${baseUrl}/oauth/authorize`,
-    token_endpoint: `${baseUrl}/oauth/token`,
-    scopes_supported: ["read", "write"],
-    response_types_supported: ["code"],
-    grant_types_supported: ["authorization_code", "client_credentials"],
-    agent_auth: {
-      skill: "agent-registration",
-      register_uri: `${baseUrl}/agent/auth`,
-      methods: [
-        {
-          identity_types_supported: ["identity_assertion"],
-          identity_assertion: {
-            assertion_types_supported: ["urn:ietf:params:oauth:token-type:id-jag"]
+  return c.json(
+    {
+      issuer: baseUrl,
+      authorization_endpoint: `${baseUrl}/oauth/authorize`,
+      token_endpoint: `${baseUrl}/oauth/token`,
+      scopes_supported: ["read", "write"],
+      response_types_supported: ["code"],
+      grant_types_supported: ["authorization_code", "client_credentials"],
+      agent_auth: {
+        skill: "agent-registration",
+        register_uri: `${baseUrl}/agent/auth`,
+        methods: [
+          {
+            identity_types_supported: ["identity_assertion"],
+            identity_assertion: {
+              assertion_types_supported: [
+                "urn:ietf:params:oauth:token-type:id-jag",
+              ],
+            },
+            credential_types_supported: ["bearer"],
+            revocation_uri: `${baseUrl}/agent/auth/revoke`,
+            events_supported: [
+              "urn:ietf:params:oauth:event-type:token-revoked",
+            ],
           },
-          credential_types_supported: ["bearer"],
-          revocation_uri: `${baseUrl}/agent/auth/revoke`,
-          events_supported: ["urn:ietf:params:oauth:event-type:token-revoked"]
-        },
-        {
-          identity_types_supported: ["identity_assertion"],
-          identity_assertion: {
-            assertion_types_supported: ["verified_email"]
+          {
+            identity_types_supported: ["identity_assertion"],
+            identity_assertion: {
+              assertion_types_supported: ["verified_email"],
+            },
+            credential_types_supported: ["bearer"],
+            claim_uri: `${baseUrl}/agent/auth/claim`,
           },
-          credential_types_supported: ["bearer"],
-          claim_uri: `${baseUrl}/agent/auth/claim`
-        },
-        {
-          identity_types_supported: ["anonymous"],
-          anonymous: {
-            credential_types_supported: ["bearer"]
+          {
+            identity_types_supported: ["anonymous"],
+            anonymous: {
+              credential_types_supported: ["bearer"],
+            },
+            claim_uri: `${baseUrl}/agent/auth/claim`,
           },
-          claim_uri: `${baseUrl}/agent/auth/claim`
-        }
-      ]
-    }
-  }, 200, {
-    "Cache-Control": "public, max-age=3600"
-  });
+        ],
+      },
+    },
+    200,
+    {
+      "Cache-Control": "public, max-age=3600",
+    },
+  );
 });
 
 app.get("/.well-known/api-catalog", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
   const catalog = {
@@ -374,58 +453,58 @@ app.get("/.well-known/api-catalog", (c) => {
         "service-desc": [
           {
             href: `${baseUrl}/api/openapi.json`,
-            type: "application/vnd.oai.openapi+json;version=3.0"
-          }
+            type: "application/vnd.oai.openapi+json;version=3.0",
+          },
         ],
         "service-doc": [
           {
             href: `${baseUrl}/api/docs`,
-            type: "text/html"
-          }
+            type: "text/html",
+          },
         ],
         status: [
           {
             href: `${baseUrl}/health`,
-            type: "application/json"
-          }
-        ]
+            type: "application/json",
+          },
+        ],
       },
       {
         anchor: `${baseUrl}/api/ai`,
         "service-desc": [
           {
             href: `${baseUrl}/api/openapi.json#/paths/~1api~1ai`,
-            type: "application/vnd.oai.openapi+json;version=3.0"
-          }
+            type: "application/vnd.oai.openapi+json;version=3.0",
+          },
         ],
         "service-doc": [
           {
             href: `${baseUrl}/api/docs#ai`,
-            type: "text/html"
-          }
-        ]
+            type: "text/html",
+          },
+        ],
       },
       {
         anchor: `${baseUrl}/api/changelogs`,
         "service-desc": [
           {
             href: `${baseUrl}/api/openapi.json#/paths/~1api~1changelogs`,
-            type: "application/vnd.oai.openapi+json;version=3.0"
-          }
+            type: "application/vnd.oai.openapi+json;version=3.0",
+          },
         ],
         "service-doc": [
           {
             href: `${baseUrl}/api/docs#changelogs`,
-            type: "text/html"
-          }
-        ]
-      }
-    ]
+            type: "text/html",
+          },
+        ],
+      },
+    ],
   };
 
   return c.json(catalog, 200, {
     "Content-Type": "application/linkset+json",
-    "Cache-Control": "public, max-age=3600"
+    "Cache-Control": "public, max-age=3600",
   });
 });
 
@@ -433,14 +512,14 @@ app.post("/agent/auth", async (c) => {
   return c.json({
     status: "ok",
     message: "Agent authentication endpoint",
-    token_type: "bearer"
+    token_type: "bearer",
   });
 });
 
 app.post("/agent/auth/revoke", async (c) => {
   return c.json({
     status: "ok",
-    message: "Agent token revocation endpoint"
+    message: "Agent token revocation endpoint",
   });
 });
 
@@ -448,13 +527,15 @@ app.all("/agent/auth/claim", async (c) => {
   return c.json({
     status: "ok",
     message: "Agent token claim endpoint",
-    token_type: "bearer"
+    token_type: "bearer",
   });
 });
 
 app.get("/api/openapi.json", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
   const openapiSpec = {
@@ -462,17 +543,18 @@ app.get("/api/openapi.json", (c) => {
     info: {
       title: "Oxygen Low's Software API",
       version: "1.0.0",
-      description: "API services for Oxygen Low's Software platform, including AI agents, changelogs, VPN, support, and authentication metadata.",
+      description:
+        "API services for Oxygen Low's Software platform, including AI agents, changelogs, VPN, support, and authentication metadata.",
       contact: {
         name: "Oxygen Low's Software Support",
-        url: `${baseUrl}/legal`
-      }
+        url: `${baseUrl}/legal`,
+      },
     },
     servers: [
       {
         url: baseUrl,
-        description: "Current environment"
-      }
+        description: "Current environment",
+      },
     ],
     paths: {
       "/health": {
@@ -482,10 +564,12 @@ app.get("/api/openapi.json", (c) => {
           responses: {
             "200": {
               description: "Server is healthy",
-              content: { "text/plain": { schema: { type: "string", example: "OK" } } }
-            }
-          }
-        }
+              content: {
+                "text/plain": { schema: { type: "string", example: "OK" } },
+              },
+            },
+          },
+        },
       },
       "/api/ping": {
         get: {
@@ -498,13 +582,15 @@ app.get("/api/openapi.json", (c) => {
                 "application/json": {
                   schema: {
                     type: "object",
-                    properties: { message: { type: "string", example: "ping" } }
-                  }
-                }
-              }
-            }
-          }
-        }
+                    properties: {
+                      message: { type: "string", example: "ping" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       "/api/demo": {
         get: {
@@ -517,13 +603,13 @@ app.get("/api/openapi.json", (c) => {
                 "application/json": {
                   schema: {
                     type: "object",
-                    properties: { message: { type: "string" } }
-                  }
-                }
-              }
-            }
-          }
-        }
+                    properties: { message: { type: "string" } },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       "/api/ai": {
         post: {
@@ -531,10 +617,10 @@ app.get("/api/openapi.json", (c) => {
           description: "Process prompts with AI models.",
           responses: {
             "200": {
-              description: "AI response"
-            }
-          }
-        }
+              description: "AI response",
+            },
+          },
+        },
       },
       "/api/changelogs": {
         get: {
@@ -542,10 +628,10 @@ app.get("/api/openapi.json", (c) => {
           description: "Retrieve public changelog updates.",
           responses: {
             "200": {
-              description: "List of changelog entries"
-            }
-          }
-        }
+              description: "List of changelog entries",
+            },
+          },
+        },
       },
       "/api/vpn": {
         get: {
@@ -553,10 +639,10 @@ app.get("/api/openapi.json", (c) => {
           description: "Retrieve VPN configuration and connection status.",
           responses: {
             "200": {
-              description: "VPN status response"
-            }
-          }
-        }
+              description: "VPN status response",
+            },
+          },
+        },
       },
       "/api/webdefender": {
         get: {
@@ -564,10 +650,10 @@ app.get("/api/openapi.json", (c) => {
           description: "Retrieve Web Defender protection status.",
           responses: {
             "200": {
-              description: "Web Defender status"
-            }
-          }
-        }
+              description: "Web Defender status",
+            },
+          },
+        },
       },
       "/api/defender": {
         get: {
@@ -575,10 +661,10 @@ app.get("/api/openapi.json", (c) => {
           description: "Retrieve Web Defender protection status.",
           responses: {
             "200": {
-              description: "Defender status"
-            }
-          }
-        }
+              description: "Defender status",
+            },
+          },
+        },
       },
       "/.well-known/api-catalog": {
         get: {
@@ -587,10 +673,10 @@ app.get("/api/openapi.json", (c) => {
           responses: {
             "200": {
               description: "API catalog linkset",
-              content: { "application/linkset+json": {} }
-            }
-          }
-        }
+              content: { "application/linkset+json": {} },
+            },
+          },
+        },
       },
       "/.well-known/oauth-authorization-server": {
         get: {
@@ -599,10 +685,10 @@ app.get("/api/openapi.json", (c) => {
           responses: {
             "200": {
               description: "OAuth authorization metadata",
-              content: { "application/json": {} }
-            }
-          }
-        }
+              content: { "application/json": {} },
+            },
+          },
+        },
       },
       "/.well-known/oauth-protected-resource": {
         get: {
@@ -611,48 +697,52 @@ app.get("/api/openapi.json", (c) => {
           responses: {
             "200": {
               description: "OAuth protected resource metadata",
-              content: { "application/json": {} }
-            }
-          }
-        }
+              content: { "application/json": {} },
+            },
+          },
+        },
       },
       "/auth.md": {
         get: {
           summary: "Agent Authentication Guide",
-          description: "Markdown documentation for agent registration and authentication.",
+          description:
+            "Markdown documentation for agent registration and authentication.",
           responses: {
             "200": {
               description: "Authentication guide markdown",
-              content: { "text/markdown": {} }
-            }
-          }
-        }
+              content: { "text/markdown": {} },
+            },
+          },
+        },
       },
       "/llms.txt": {
         get: {
           summary: "LLMs Discovery File",
-          description: "Standard llms.txt file detailing site purpose and links for AI agents.",
+          description:
+            "Standard llms.txt file detailing site purpose and links for AI agents.",
           responses: {
             "200": {
               description: "llms.txt content",
-              content: { "text/plain": {} }
-            }
-          }
-        }
-      }
-    }
+              content: { "text/plain": {} },
+            },
+          },
+        },
+      },
+    },
   };
 
   return c.json(openapiSpec, 200, {
     "Content-Type": "application/vnd.oai.openapi+json;version=3.0",
     "Cache-Control": "public, max-age=3600",
-    "Link": getLinkHeaders(),
+    Link: getLinkHeaders(),
   });
 });
 
 app.get("/api/docs", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
   const html = `<!DOCTYPE html>
@@ -810,7 +900,7 @@ app.get("/api/docs", (c) => {
 
   return c.html(html, 200, {
     "Cache-Control": "public, max-age=3600",
-    "Link": getLinkHeaders(),
+    Link: getLinkHeaders(),
   });
 });
 
@@ -819,23 +909,23 @@ app.get("/llms.txt", (c) => {
   return c.text(content, 200, {
     "Content-Type": "text/plain; charset=utf-8",
     "Cache-Control": "public, max-age=3600",
-    "Link": getLinkHeaders(),
+    Link: getLinkHeaders(),
   });
 });
 
 app.get("/robots.txt", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https").split(",")[0].trim();
+  const protocol = (c.req.header("x-forwarded-proto") || "https")
+    .split(",")[0]
+    .trim();
   const baseUrl = `${protocol}://${host}`;
 
   const content = `User-agent: *\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml\nContent-Signal: ai-train=yes, search=yes, ai-input=yes\n`;
   return c.text(content, 200, {
     "Content-Type": "text/plain; charset=utf-8",
-    "Cache-Control": "public, max-age=3600"
+    "Cache-Control": "public, max-age=3600",
   });
 });
-
-
 
 app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);

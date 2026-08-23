@@ -164,8 +164,12 @@ describe("FileCompressorApp", () => {
     );
 
     // Select a file
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['dummy content'], 'test.jpg', { type: 'image/jpeg' });
+    const fileInput = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const file = new File(["dummy content"], "test.jpg", {
+      type: "image/jpeg",
+    });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     // Check if file name appears
@@ -192,8 +196,10 @@ describe("FileCompressorApp", () => {
       </ThemeProvider>,
     );
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['audio content'], 'song.mp3', { type: 'audio/mp3' });
+    const fileInput = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const file = new File(["audio content"], "song.mp3", { type: "audio/mp3" });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
@@ -224,8 +230,10 @@ describe("FileCompressorApp", () => {
       </ThemeProvider>,
     );
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['video content'], 'clip.mp4', { type: 'video/mp4' });
+    const fileInput = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const file = new File(["video content"], "clip.mp4", { type: "video/mp4" });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {

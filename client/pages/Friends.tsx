@@ -6,7 +6,11 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 export default function Friends() {
   const { t } = useTranslation();
   usePageTitle(t("titles.friends", undefined, "Friends"), {
-    description: t("friends.subtitle", undefined, "Connect with your friends here!"),
+    description: t(
+      "friends.subtitle",
+      undefined,
+      "Connect with your friends here!",
+    ),
   });
 
   return (
@@ -16,7 +20,13 @@ export default function Friends() {
           <h2 className="text-3xl font-bold tracking-tight text-white">
             {t("friends.title", undefined, "Friends")}
           </h2>
-          <p className="text-slate-400">{t("friends.subtitle", undefined, "Connect with your friends here!")}</p>
+          <p className="text-slate-400">
+            {t(
+              "friends.subtitle",
+              undefined,
+              "Connect with your friends here!",
+            )}
+          </p>
         </div>
         <FriendsApp />
       </div>

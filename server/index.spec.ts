@@ -53,7 +53,7 @@ describe("Server", () => {
 
     it("GET / with Accept: text/markdown should return 200 markdown and Link headers", async () => {
       const response = await app.request("/", {
-        headers: { Accept: "text/markdown" }
+        headers: { Accept: "text/markdown" },
       });
       expect(response.status).toBe(200);
       expect(response.headers.get("Content-Type")).toContain("text/markdown");
@@ -68,7 +68,9 @@ describe("Server", () => {
     it("GET /.well-known/api-catalog should return RFC 9727 linkset JSON", async () => {
       const response = await app.request("/.well-known/api-catalog");
       expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toBe("application/linkset+json");
+      expect(response.headers.get("Content-Type")).toBe(
+        "application/linkset+json",
+      );
       const body = await response.json();
       expect(body).toHaveProperty("linkset");
       expect(Array.isArray(body.linkset)).toBe(true);
@@ -77,7 +79,9 @@ describe("Server", () => {
     it("GET /api/openapi.json should return OpenAPI 3.0 specification", async () => {
       const response = await app.request("/api/openapi.json");
       expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toContain("application/vnd.oai.openapi+json");
+      expect(response.headers.get("Content-Type")).toContain(
+        "application/vnd.oai.openapi+json",
+      );
       const body = await response.json();
       expect(body).toHaveProperty("openapi", "3.0.3");
       expect(body).toHaveProperty("info");

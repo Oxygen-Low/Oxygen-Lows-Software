@@ -7,7 +7,11 @@ describe("DefenderClient Individual IP blocking", () => {
     await client.init();
 
     // Set custom blockIps in appConfig
-    (client as any).appConfig.blockIps = ["198.51.100.42", "203.0.113.99", "2001:db8::1"];
+    (client as any).appConfig.blockIps = [
+      "198.51.100.42",
+      "203.0.113.99",
+      "2001:db8::1",
+    ];
 
     // Test blocked IPv4 #1
     const req1 = await client.handleRequest({
@@ -17,7 +21,7 @@ describe("DefenderClient Individual IP blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req1.blocked).toBe(true);
     expect(req1.eventType).toBe("ip_block");
@@ -31,7 +35,7 @@ describe("DefenderClient Individual IP blocking", () => {
       query: {},
       body: "user=admin",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req2.blocked).toBe(true);
     expect(req2.eventType).toBe("ip_block");
@@ -45,7 +49,7 @@ describe("DefenderClient Individual IP blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req3.blocked).toBe(true);
     expect(req3.eventType).toBe("ip_block");
@@ -67,7 +71,7 @@ describe("DefenderClient Individual IP blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req.blocked).toBe(false);
     expect(req.eventType).toBe("allowed");
@@ -88,7 +92,7 @@ describe("DefenderClient Individual IP blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req.blocked).toBe(false);
     expect(req.eventType).toBe("allowed");

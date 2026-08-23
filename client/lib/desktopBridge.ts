@@ -43,7 +43,9 @@ export function callDesktopBridge<T = any>(
   return new Promise((resolve, reject) => {
     const webview = (window as any).chrome?.webview;
     if (!webview) {
-      reject(new Error("Desktop bridge not available. Run in the desktop app."));
+      reject(
+        new Error("Desktop bridge not available. Run in the desktop app."),
+      );
       return;
     }
 
@@ -67,11 +69,14 @@ export async function toggleFullscreen(): Promise<{ isFullscreen: boolean }> {
   return callDesktopBridge<{ isFullscreen: boolean }>("toggle_fullscreen");
 }
 
-export async function setFullscreen(fullscreen: boolean): Promise<{ isFullscreen: boolean }> {
-  return callDesktopBridge<{ isFullscreen: boolean }>("set_fullscreen", { fullscreen });
+export async function setFullscreen(
+  fullscreen: boolean,
+): Promise<{ isFullscreen: boolean }> {
+  return callDesktopBridge<{ isFullscreen: boolean }>("set_fullscreen", {
+    fullscreen,
+  });
 }
 
 export async function isFullscreen(): Promise<{ isFullscreen: boolean }> {
   return callDesktopBridge<{ isFullscreen: boolean }>("is_fullscreen");
 }
-

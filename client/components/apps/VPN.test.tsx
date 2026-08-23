@@ -9,7 +9,9 @@ import L from "leaflet";
 
 // Mock leaflet since Leaflet requires window/canvas/DOM features not present in jsdom
 vi.mock("react-leaflet", () => ({
-  MapContainer: ({ children }: any) => <div data-testid="map-container">{children}</div>,
+  MapContainer: ({ children }: any) => (
+    <div data-testid="map-container">{children}</div>
+  ),
   TileLayer: () => <div data-testid="tile-layer" />,
   Marker: ({ children }: any) => <div data-testid="marker">{children}</div>,
   Popup: ({ children }: any) => <div data-testid="popup">{children}</div>,
@@ -52,14 +54,20 @@ describe("VPNApp Unauthenticated Direct Connection", () => {
         <MemoryRouter>
           <VPNApp />
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     // Should show Direct Connect headings and guest notice
-    expect(screen.getByRole("heading", { name: /Direct Connect/i })).toBeDefined();
-    expect(screen.getAllByText(/connect directly without saving/i).length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByRole("heading", { name: /Direct Connect/i }),
+    ).toBeDefined();
+    expect(
+      screen.getAllByText(/connect directly without saving/i).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: /Sign In/i })).toBeDefined();
-    expect(screen.getByPlaceholderText(/e\.g\. Temporary Connection/i)).toBeDefined();
+    expect(
+      screen.getByPlaceholderText(/e\.g\. Temporary Connection/i),
+    ).toBeDefined();
     expect(screen.getByText(/Kill Switch/i)).toBeDefined();
     expect(screen.getByRole("button", { name: /Connect VPN/i })).toBeDefined();
   });
@@ -70,10 +78,12 @@ describe("VPNApp Unauthenticated Direct Connection", () => {
         <MemoryRouter>
           <VPNApp />
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
-    const textarea = screen.getByRole("textbox", { name: /Configuration Content/i });
+    const textarea = screen.getByRole("textbox", {
+      name: /Configuration Content/i,
+    });
     expect(textarea).toBeDefined();
 
     const sampleWireGuard = `[Interface]
@@ -95,14 +105,16 @@ AllowedIPs = 0.0.0.0/0`;
         <MemoryRouter>
           <VPNApp />
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     const switches = screen.getAllByRole("switch");
     expect(switches.length).toBeGreaterThanOrEqual(1);
     fireEvent.click(switches[0]);
 
-    const textarea = screen.getByRole("textbox", { name: /Configuration Content/i });
+    const textarea = screen.getByRole("textbox", {
+      name: /Configuration Content/i,
+    });
     const sampleOpenVPN = `client
 dev tun
 proto udp
@@ -117,11 +129,17 @@ resolv-retry infinite`;
 describe("Leaflet Vite Icon Configuration", () => {
   it("properly configures default icon assets and removes dynamic _getIconUrl", () => {
     // _getIconUrl on Icon.Default.prototype should be deleted so it delegates to L.Icon.prototype._getIconUrl
-    expect(Object.prototype.hasOwnProperty.call(L.Icon.Default.prototype, "_getIconUrl")).toBe(false);
-    expect((L.Icon.Default.prototype as any)._getIconUrl).toBe((L.Icon.prototype as any)._getIconUrl);
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        L.Icon.Default.prototype,
+        "_getIconUrl",
+      ),
+    ).toBe(false);
+    expect((L.Icon.Default.prototype as any)._getIconUrl).toBe(
+      (L.Icon.prototype as any)._getIconUrl,
+    );
     expect(L.Icon.Default.prototype.options.iconUrl).toBeDefined();
     expect(L.Icon.Default.prototype.options.iconRetinaUrl).toBeDefined();
     expect(L.Icon.Default.prototype.options.shadowUrl).toBeDefined();
   });
 });
-

@@ -28,7 +28,8 @@ describe("Client Storage Library", () => {
     it("sends multipart form data to upload endpoint with auth token", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         status: 200,
-        json: () => Promise.resolve({ data: { path: "u1/test.txt" }, error: null }),
+        json: () =>
+          Promise.resolve({ data: { path: "u1/test.txt" }, error: null }),
       });
       global.fetch = mockFetch;
 
@@ -51,7 +52,13 @@ describe("Client Storage Library", () => {
   describe("list", () => {
     it("posts to list endpoint and returns items", async () => {
       const mockItems = [
-        { id: "1", name: "test.mp3", metadata: { size: 1024, mimetype: "audio/mp3" }, created_at: "", updated_at: "" },
+        {
+          id: "1",
+          name: "test.mp3",
+          metadata: { size: 1024, mimetype: "audio/mp3" },
+          created_at: "",
+          updated_at: "",
+        },
       ];
       const mockFetch = vi.fn().mockResolvedValue({
         status: 200,
@@ -105,7 +112,9 @@ describe("Client Storage Library", () => {
     it("constructs public URL correctly", () => {
       const client = new CustomStorageClient();
       const res = client.from("public-assets").getPublicUrl("image.png");
-      expect(res.data.publicUrl).toBe("/api/storage/public/public-assets/image.png");
+      expect(res.data.publicUrl).toBe(
+        "/api/storage/public/public-assets/image.png",
+      );
     });
 
     it("creates signed URL by requesting signed-urls endpoint", async () => {
@@ -113,17 +122,26 @@ describe("Client Storage Library", () => {
         status: 200,
         json: () =>
           Promise.resolve({
-            data: [{ signedUrl: "/api/storage/download/Storage/u1/file.txt?token=test-token" }],
+            data: [
+              {
+                signedUrl:
+                  "/api/storage/download/Storage/u1/file.txt?token=test-token",
+              },
+            ],
             error: null,
           }),
       });
       global.fetch = mockFetch;
 
       const client = new CustomStorageClient();
-      const res = await client.from("Storage").createSignedUrl("u1/file.txt", 3600);
+      const res = await client
+        .from("Storage")
+        .createSignedUrl("u1/file.txt", 3600);
 
       expect(res.error).toBeNull();
-      expect(res.data?.signedUrl).toBe("/api/storage/download/Storage/u1/file.txt?token=test-token");
+      expect(res.data?.signedUrl).toBe(
+        "/api/storage/download/Storage/u1/file.txt?token=test-token",
+      );
     });
   });
 });

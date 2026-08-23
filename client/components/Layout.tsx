@@ -1,4 +1,11 @@
-import { ReactNode, useState, useCallback, useRef, useEffect, useMemo } from "react";
+import {
+  ReactNode,
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+} from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -39,25 +46,98 @@ interface NavItemDef {
 }
 
 const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
-  { key: "apps", labelKey: "nav.apps", defaultLabel: "Apps", href: "/apps", icon: Package },
-  { key: "games", labelKey: "nav.games", defaultLabel: "Games", href: "/games", icon: Gamepad2 },
-  { key: "storage", labelKey: "nav.storage", defaultLabel: "Storage", href: "/storage", icon: HardDrive },
-  { key: "account", labelKey: "nav.account", defaultLabel: "Account", href: "/account", icon: User },
-  { key: "security", labelKey: "nav.security", defaultLabel: "Security", href: "/security", icon: ShieldCheck },
-  { key: "integrations", labelKey: "nav.integrations", defaultLabel: "Integrations", href: "/integrations", icon: KeyRound },
-  { key: "friends", labelKey: "nav.friends", defaultLabel: "Friends", href: "/friends", icon: Users },
-  { key: "customize", labelKey: "nav.customize", defaultLabel: "Customize", href: "/customize", icon: Palette },
-  { key: "characters", labelKey: "nav.characters", defaultLabel: "Characters", href: "/characters", icon: Contact },
-  { key: "changelogs", labelKey: "nav.changelogs", defaultLabel: "Changelogs", href: "/changelogs", icon: GitCommit },
-  { key: "support", labelKey: "nav.support", defaultLabel: "Support", href: "/support", icon: LifeBuoy },
-  { key: "legal", labelKey: "nav.legal", defaultLabel: "Legal", href: "/legal", icon: Scale },
+  {
+    key: "apps",
+    labelKey: "nav.apps",
+    defaultLabel: "Apps",
+    href: "/apps",
+    icon: Package,
+  },
+  {
+    key: "games",
+    labelKey: "nav.games",
+    defaultLabel: "Games",
+    href: "/games",
+    icon: Gamepad2,
+  },
+  {
+    key: "storage",
+    labelKey: "nav.storage",
+    defaultLabel: "Storage",
+    href: "/storage",
+    icon: HardDrive,
+  },
+  {
+    key: "account",
+    labelKey: "nav.account",
+    defaultLabel: "Account",
+    href: "/account",
+    icon: User,
+  },
+  {
+    key: "security",
+    labelKey: "nav.security",
+    defaultLabel: "Security",
+    href: "/security",
+    icon: ShieldCheck,
+  },
+  {
+    key: "integrations",
+    labelKey: "nav.integrations",
+    defaultLabel: "Integrations",
+    href: "/integrations",
+    icon: KeyRound,
+  },
+  {
+    key: "friends",
+    labelKey: "nav.friends",
+    defaultLabel: "Friends",
+    href: "/friends",
+    icon: Users,
+  },
+  {
+    key: "customize",
+    labelKey: "nav.customize",
+    defaultLabel: "Customize",
+    href: "/customize",
+    icon: Palette,
+  },
+  {
+    key: "characters",
+    labelKey: "nav.characters",
+    defaultLabel: "Characters",
+    href: "/characters",
+    icon: Contact,
+  },
+  {
+    key: "changelogs",
+    labelKey: "nav.changelogs",
+    defaultLabel: "Changelogs",
+    href: "/changelogs",
+    icon: GitCommit,
+  },
+  {
+    key: "support",
+    labelKey: "nav.support",
+    defaultLabel: "Support",
+    href: "/support",
+    icon: LifeBuoy,
+  },
+  {
+    key: "legal",
+    labelKey: "nav.legal",
+    defaultLabel: "Legal",
+    href: "/legal",
+    icon: Scale,
+  },
 ];
 
 /** Minimum horizontal swipe distance (px) to open sidebar on mobile */
 const TOUCH_EDGE_ZONE = 30;
 const SWIPE_THRESHOLD = 40;
 
-const MOBILE_MENU_BUTTON_CLASSES = "p-2 -ml-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary md:hidden flex items-center justify-center shrink-0";
+const MOBILE_MENU_BUTTON_CLASSES =
+  "p-2 -ml-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary md:hidden flex items-center justify-center shrink-0";
 
 export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
@@ -96,7 +176,10 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       const changedTouch = e.changedTouches[0];
       if (changedTouch) {
         const dx = Math.abs(changedTouch.clientX - touchStartX.current);
-        const dy = touchStartY.current !== null ? Math.abs(changedTouch.clientY - touchStartY.current) : 0;
+        const dy =
+          touchStartY.current !== null
+            ? Math.abs(changedTouch.clientY - touchStartY.current)
+            : 0;
         // Tap on the edge opens sidebar
         if (touchDuration < 500 && dx < 20 && dy < 20) {
           setSidebarOpen(true);
@@ -167,15 +250,25 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             <button
               type="button"
               onClick={() => setSidebarOpen((prev) => !prev)}
-              aria-label={sidebarOpen ? t("nav.closeMenu", undefined, "Close menu") : t("nav.openMenu", undefined, "Open menu")}
+              aria-label={
+                sidebarOpen
+                  ? t("nav.closeMenu", undefined, "Close menu")
+                  : t("nav.openMenu", undefined, "Open menu")
+              }
               aria-expanded={sidebarOpen}
               className={MOBILE_MENU_BUTTON_CLASSES}
             >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {sidebarOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
 
             <Link to="/apps" className="flex items-center gap-2 min-w-0">
-              <h1 className={`${styles["logo"]} text-base sm:text-xl md:text-2xl font-bold truncate tracking-tight`}>
+              <h1
+                className={`${styles["logo"]} text-base sm:text-xl md:text-2xl font-bold truncate tracking-tight`}
+              >
                 Oxygen Low's Software
               </h1>
             </Link>
@@ -204,7 +297,12 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white shrink-0"
               title={t("nav.discord", undefined, "Join our Discord")}
             >
-              <svg width="18" height="18" viewBox="0 0 127.14 96.36" fill="currentColor">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 127.14 96.36"
+                fill="currentColor"
+              >
                 <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" />
               </svg>
             </a>
@@ -213,7 +311,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {session ? (
               <>
-                <span className={`${styles["user-email"]} text-xs sm:text-sm hidden md:inline truncate max-w-[180px]`}>
+                <span
+                  className={`${styles["user-email"]} text-xs sm:text-sm hidden md:inline truncate max-w-[180px]`}
+                >
                   {session.user.email}
                 </span>
                 <button
@@ -222,7 +322,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                   title={t("nav.signOut", undefined, "Sign Out")}
                 >
                   <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">{t("nav.signOut", undefined, "Sign Out")}</span>
+                  <span className="hidden sm:inline">
+                    {t("nav.signOut", undefined, "Sign Out")}
+                  </span>
                 </button>
               </>
             ) : (
@@ -239,9 +341,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       </header>
 
       {/* Click / hover trigger zone along left edge */}
-      <div 
-        className={styles["sidebar-trigger"]} 
-        onMouseEnter={openSidebar} 
+      <div
+        className={styles["sidebar-trigger"]}
+        onMouseEnter={openSidebar}
         onMouseLeave={scheduleSidebarClose}
         onClick={openSidebar}
         role="button"
@@ -265,7 +367,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
         />
 
         {/* Sidebar panel */}
-        <aside 
+        <aside
           className={styles["sidebar"]}
           onMouseEnter={openSidebar}
           onMouseLeave={scheduleSidebarClose}
@@ -286,7 +388,8 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                   onClick={handleSignOut}
                   className="flex items-center justify-center gap-2 w-full py-1.5 px-3 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium border border-red-500/20 transition-colors"
                 >
-                  <LogOut className="w-3.5 h-3.5" /> {t("nav.signOut", undefined, "Sign Out")}
+                  <LogOut className="w-3.5 h-3.5" />{" "}
+                  {t("nav.signOut", undefined, "Sign Out")}
                 </button>
               </div>
             ) : (
@@ -297,7 +400,8 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 }}
                 className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition-colors"
               >
-                <User className="w-3.5 h-3.5" /> {t("nav.signInRegister", undefined, "Sign In / Register")}
+                <User className="w-3.5 h-3.5" />{" "}
+                {t("nav.signInRegister", undefined, "Sign In / Register")}
               </button>
             )}
           </div>
@@ -353,7 +457,12 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 onClick={() => setSidebarOpen(false)}
                 className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-[#7983f5] hover:bg-slate-800 transition-colors"
               >
-                <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="currentColor">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 127.14 96.36"
+                  fill="currentColor"
+                >
                   <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" />
                 </svg>
                 {t("nav.discord", undefined, "Join Discord Community")}
@@ -376,7 +485,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       </div>
 
       {/* Subtle edge hint when sidebar is closed */}
-      <div 
+      <div
         className={styles["sidebar-edge-hint"]}
         onClick={openSidebar}
         role="button"
@@ -391,7 +500,13 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       />
 
       {/* Content Area */}
-      <main className={fullWidth ? "w-full h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)]" : "mx-auto w-full max-w-5xl px-3 sm:px-6 lg:px-8 py-6 sm:py-12"}>
+      <main
+        className={
+          fullWidth
+            ? "w-full h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)]"
+            : "mx-auto w-full max-w-5xl px-3 sm:px-6 lg:px-8 py-6 sm:py-12"
+        }
+      >
         {children}
       </main>
     </div>

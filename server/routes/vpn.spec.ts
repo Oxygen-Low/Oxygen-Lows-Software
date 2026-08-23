@@ -27,7 +27,9 @@ describe("VPN Router Endpoints", () => {
   });
 
   it("rejects invalid characters in host/IP", async () => {
-    const req = new Request("http://localhost/geocode?ip=invalid%20host;rm%20-rf");
+    const req = new Request(
+      "http://localhost/geocode?ip=invalid%20host;rm%20-rf",
+    );
     const res = await vpnRouter.fetch(req);
     expect(res.status).toBe(400);
   });

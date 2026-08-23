@@ -3,12 +3,7 @@ import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import {
-  Upload,
-  Maximize,
-  Plus,
-  X,
-} from "lucide-react";
+import { Upload, Maximize, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { storage } from "@/lib/storage";
@@ -33,10 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  SUPPORTED_LANGUAGES,
-  getLanguageOption,
-} from "@/lib/languages";
+import { SUPPORTED_LANGUAGES, getLanguageOption } from "@/lib/languages";
 import { CountryFlag } from "@/components/ui/CountryFlag";
 
 interface UserProfile {
@@ -122,7 +114,11 @@ export default function Account() {
     if (file.name.includes("..")) {
       toast({
         title: t("common.error", undefined, "Error"),
-        description: t("account.invalidFileName", undefined, "Invalid file name"),
+        description: t(
+          "account.invalidFileName",
+          undefined,
+          "Invalid file name",
+        ),
         variant: "destructive",
       });
       return;
@@ -175,7 +171,11 @@ export default function Account() {
       setSelectedStoragePath(null);
       toast({ title: t("common.success", undefined, "Success") });
     } catch (e: any) {
-      toast({ title: t("common.error", undefined, "Error"), description: e.message, variant: "destructive" });
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: e.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -197,16 +197,22 @@ export default function Account() {
     return SUPPORTED_LANGUAGES.filter(
       (l) =>
         l.name !== currentLangOpt.name &&
-        !additionalLanguages.some((al) => getLanguageOption(al).name === l.name)
+        !additionalLanguages.some(
+          (al) => getLanguageOption(al).name === l.name,
+        ),
     );
   }, [language, additionalLanguages]);
 
   const handleLanguageChange = async (newLang: string) => {
     await setLanguage(newLang);
     const newOpt = getLanguageOption(newLang);
-    if (additionalLanguages.some((al) => getLanguageOption(al).name === newOpt.name)) {
+    if (
+      additionalLanguages.some(
+        (al) => getLanguageOption(al).name === newOpt.name,
+      )
+    ) {
       const updated = additionalLanguages.filter(
-        (al) => getLanguageOption(al).name !== newOpt.name
+        (al) => getLanguageOption(al).name !== newOpt.name,
       );
       setAdditionalLanguages(updated);
       if (session?.user?.id) {
@@ -216,14 +222,18 @@ export default function Account() {
         });
       }
     }
-    toast({ title: t("account.languageUpdated", undefined, "Language updated") });
+    toast({
+      title: t("account.languageUpdated", undefined, "Language updated"),
+    });
   };
 
   const handleAddAdditionalLanguage = async () => {
     if (!selectedAddLanguage) return;
     const opt = getLanguageOption(selectedAddLanguage);
     if (
-      additionalLanguages.some((al) => getLanguageOption(al).name === opt.name) ||
+      additionalLanguages.some(
+        (al) => getLanguageOption(al).name === opt.name,
+      ) ||
       getLanguageOption(language).name === opt.name
     ) {
       return;
@@ -239,7 +249,11 @@ export default function Account() {
           additional_languages: updated,
         });
         toast({
-          title: t("account.additionalLanguagesUpdated", undefined, "Additional languages updated"),
+          title: t(
+            "account.additionalLanguagesUpdated",
+            undefined,
+            "Additional languages updated",
+          ),
         });
       } catch (err: any) {
         console.error("Failed to update additional languages:", err);
@@ -249,7 +263,7 @@ export default function Account() {
 
   const handleRemoveAdditionalLanguage = async (langName: string) => {
     const updated = additionalLanguages.filter(
-      (al) => getLanguageOption(al).name !== getLanguageOption(langName).name
+      (al) => getLanguageOption(al).name !== getLanguageOption(langName).name,
     );
     setAdditionalLanguages(updated);
 
@@ -260,7 +274,11 @@ export default function Account() {
           additional_languages: updated,
         });
         toast({
-          title: t("account.additionalLanguagesUpdated", undefined, "Additional languages updated"),
+          title: t(
+            "account.additionalLanguagesUpdated",
+            undefined,
+            "Additional languages updated",
+          ),
         });
       } catch (err: any) {
         console.error("Failed to update additional languages:", err);
@@ -281,7 +299,11 @@ export default function Account() {
       if (error) throw error;
       toast({ title: t("common.success", undefined, "Success") });
     } catch (e: any) {
-      toast({ title: t("common.error", undefined, "Error"), description: e.message, variant: "destructive" });
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: e.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -312,8 +334,16 @@ export default function Account() {
               trigger={
                 <button
                   type="button"
-                  aria-label={t("account.uploadProfilePicture", undefined, "Upload profile picture")}
-                  title={t("account.uploadProfilePicture", undefined, "Upload profile picture")}
+                  aria-label={t(
+                    "account.uploadProfilePicture",
+                    undefined,
+                    "Upload profile picture",
+                  )}
+                  title={t(
+                    "account.uploadProfilePicture",
+                    undefined,
+                    "Upload profile picture",
+                  )}
                   className="absolute bottom-1 right-1 p-2 bg-cyan-600 rounded-full text-white shadow-lg hover:bg-cyan-500 transition-colors"
                 >
                   <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -324,7 +354,9 @@ export default function Account() {
 
           <div className="flex-1 space-y-2 sm:space-y-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">
-              {profile?.display_name || profile?.username || t("account.title", undefined, "Your Account")}
+              {profile?.display_name ||
+                profile?.username ||
+                t("account.title", undefined, "Your Account")}
             </h1>
             {profile?.username && profile?.display_name && (
               <p className="text-sm text-slate-400">@{profile.username}</p>
@@ -334,7 +366,9 @@ export default function Account() {
 
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="bg-slate-900 border-slate-800">
-            <TabsTrigger value="profile">{t("account.profile", undefined, "Profile")}</TabsTrigger>
+            <TabsTrigger value="profile">
+              {t("account.profile", undefined, "Profile")}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -367,7 +401,11 @@ export default function Account() {
                       id="display-name-input"
                       value={displayNameInput}
                       onChange={(e) => setDisplayNameInput(e.target.value)}
-                      placeholder={t("account.displayName", undefined, "Display Name")}
+                      placeholder={t(
+                        "account.displayName",
+                        undefined,
+                        "Display Name",
+                      )}
                       className="bg-slate-950"
                     />
                   </div>
@@ -399,7 +437,11 @@ export default function Account() {
                   {t("account.languageSectionTitle", undefined, "Language")}
                 </CardTitle>
                 <CardDescription>
-                  {t("account.languageSectionDesc", undefined, "Choose your preferred language for your account and public profile")}
+                  {t(
+                    "account.languageSectionDesc",
+                    undefined,
+                    "Choose your preferred language for your account and public profile",
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -408,7 +450,11 @@ export default function Account() {
                     htmlFor="account-language-select"
                     className="text-sm font-medium text-slate-300"
                   >
-                    {t("account.displayLanguage", undefined, "Display Language")}
+                    {t(
+                      "account.displayLanguage",
+                      undefined,
+                      "Display Language",
+                    )}
                   </Label>
                   <LanguageSelect
                     id="account-language-select"
@@ -416,17 +462,29 @@ export default function Account() {
                     onValueChange={handleLanguageChange}
                   />
                   <p className="text-xs text-slate-500">
-                    {t("account.displayLanguageDesc", undefined, "Controls the interface language across the application")}
+                    {t(
+                      "account.displayLanguageDesc",
+                      undefined,
+                      "Controls the interface language across the application",
+                    )}
                   </p>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-slate-800/60">
                   <div>
                     <h4 className="text-sm font-medium text-white">
-                      {t("account.additionalLanguages", undefined, "Additional Languages")}
+                      {t(
+                        "account.additionalLanguages",
+                        undefined,
+                        "Additional Languages",
+                      )}
                     </h4>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {t("account.additionalLanguagesDesc", undefined, "Cosmetic languages displayed on your public profile for others to see")}
+                      {t(
+                        "account.additionalLanguagesDesc",
+                        undefined,
+                        "Cosmetic languages displayed on your public profile for others to see",
+                      )}
                     </p>
                   </div>
 
@@ -439,10 +497,20 @@ export default function Account() {
                       >
                         <SelectTrigger
                           id="additional-language-select"
-                          aria-label={t("account.selectLanguageToAdd", undefined, "Select a language to add")}
+                          aria-label={t(
+                            "account.selectLanguageToAdd",
+                            undefined,
+                            "Select a language to add",
+                          )}
                           className="bg-slate-950 border-slate-800 text-white focus:ring-cyan-500"
                         >
-                          <SelectValue placeholder={t("account.selectLanguageToAdd", undefined, "Select a language to add")} />
+                          <SelectValue
+                            placeholder={t(
+                              "account.selectLanguageToAdd",
+                              undefined,
+                              "Select a language to add",
+                            )}
+                          />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[250px]">
                           {availableAdditionalLanguages.map((lang) => (
@@ -458,9 +526,12 @@ export default function Account() {
                                   alt={`${lang.name} flag`}
                                 />
                                 <span>{lang.name}</span>
-                                {lang.nativeName && lang.nativeName !== lang.name && (
-                                  <span className="text-xs text-slate-400">({lang.nativeName})</span>
-                                )}
+                                {lang.nativeName &&
+                                  lang.nativeName !== lang.name && (
+                                    <span className="text-xs text-slate-400">
+                                      ({lang.nativeName})
+                                    </span>
+                                  )}
                               </div>
                             </SelectItem>
                           ))}
@@ -481,7 +552,11 @@ export default function Account() {
                   <div className="flex flex-wrap gap-2 pt-1">
                     {additionalLanguages.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">
-                        {t("account.noAdditionalLanguages", undefined, "No additional languages added.")}
+                        {t(
+                          "account.noAdditionalLanguages",
+                          undefined,
+                          "No additional languages added.",
+                        )}
                       </p>
                     ) : (
                       additionalLanguages.map((lang) => {
@@ -499,7 +574,9 @@ export default function Account() {
                             <span className="font-medium">{opt.name}</span>
                             <button
                               type="button"
-                              onClick={() => handleRemoveAdditionalLanguage(lang)}
+                              onClick={() =>
+                                handleRemoveAdditionalLanguage(lang)
+                              }
                               aria-label={`${t("account.removeLanguage", undefined, "Remove language")} ${opt.name}`}
                               title={`${t("account.removeLanguage", undefined, "Remove language")} ${opt.name}`}
                               className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded-full"
@@ -521,7 +598,11 @@ export default function Account() {
                   {t("account.emailSettingsTitle", undefined, "Email Settings")}
                 </CardTitle>
                 <CardDescription>
-                  {t("account.emailSettingsDesc", undefined, "Choose how others see your email")}
+                  {t(
+                    "account.emailSettingsDesc",
+                    undefined,
+                    "Choose how others see your email",
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -531,7 +612,11 @@ export default function Account() {
                       {t("account.publicEmail", undefined, "Public Email")}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {t("account.publicEmailDesc", undefined, "Show your email on your public profile")}
+                      {t(
+                        "account.publicEmailDesc",
+                        undefined,
+                        "Show your email on your public profile",
+                      )}
                     </p>
                   </div>
                   <Button
@@ -539,7 +624,9 @@ export default function Account() {
                     onClick={() => handleToggleEmail(!profile?.show_email)}
                     aria-pressed={!!profile?.show_email}
                   >
-                    {profile?.show_email ? t("common.yes", undefined, "Visible") : t("common.no", undefined, "Hidden")}
+                    {profile?.show_email
+                      ? t("common.yes", undefined, "Visible")
+                      : t("common.no", undefined, "Hidden")}
                   </Button>
                 </div>
               </CardContent>
@@ -551,7 +638,13 @@ export default function Account() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <Card className="w-full max-w-2xl bg-slate-900 border-slate-800">
             <CardHeader>
-              <CardTitle className="text-white">{t("account.cropProfilePicture", undefined, "Crop Profile Picture")}</CardTitle>
+              <CardTitle className="text-white">
+                {t(
+                  "account.cropProfilePicture",
+                  undefined,
+                  "Crop Profile Picture",
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="relative h-96 w-full bg-black">
@@ -580,7 +673,9 @@ export default function Account() {
                     className="gap-2"
                   >
                     <Maximize className="w-4 h-4" />
-                    {fitImage ? t("account.fillArea", undefined, "Fill Area") : t("account.fitImage", undefined, "Fit Entire Image")}
+                    {fitImage
+                      ? t("account.fillArea", undefined, "Fill Area")
+                      : t("account.fitImage", undefined, "Fit Entire Image")}
                   </Button>
                 </div>
                 <div className="flex items-center gap-4">

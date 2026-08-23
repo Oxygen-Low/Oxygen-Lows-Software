@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Security from "./Security";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,7 +32,11 @@ vi.mock("@/lib/supabase", () => {
           data: { session: { user: { id: "u" } } },
           error: null,
         }),
-        onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+        onAuthStateChange: vi
+          .fn()
+          .mockReturnValue({
+            data: { subscription: { unsubscribe: vi.fn() } },
+          }),
       },
       from: vi.fn().mockReturnValue(queryBuilder),
     },
@@ -43,7 +53,7 @@ const renderWithRouter = (initialEntries = ["/security"]) =>
   render(
     <MemoryRouter initialEntries={initialEntries}>
       <Security />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 
 describe("Security Page Component", () => {
@@ -90,14 +100,22 @@ describe("Security Page Component", () => {
     renderWithRouter();
     expect(
       screen.getByText(
-        "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings."
-      )
+        "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
+      ),
     ).toBeDefined();
 
-    const charactersToggle = document.getElementById("toggle-characters") as HTMLButtonElement;
-    const dataSaveToggle = document.getElementById("toggle-datasave") as HTMLButtonElement;
-    const chatbotToggle = document.getElementById("toggle-chatbot") as HTMLButtonElement;
-    const integrationsToggle = document.getElementById("toggle-integrations") as HTMLButtonElement;
+    const charactersToggle = document.getElementById(
+      "toggle-characters",
+    ) as HTMLButtonElement;
+    const dataSaveToggle = document.getElementById(
+      "toggle-datasave",
+    ) as HTMLButtonElement;
+    const chatbotToggle = document.getElementById(
+      "toggle-chatbot",
+    ) as HTMLButtonElement;
+    const integrationsToggle = document.getElementById(
+      "toggle-integrations",
+    ) as HTMLButtonElement;
 
     expect(charactersToggle.disabled).toBe(true);
     expect(dataSaveToggle.disabled).toBe(true);
@@ -110,10 +128,14 @@ describe("Security Page Component", () => {
 
   it("allows toggling encryption and saves to localStorage", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
-    const charactersToggle = document.getElementById("toggle-characters") as HTMLButtonElement;
+    const charactersToggle = document.getElementById(
+      "toggle-characters",
+    ) as HTMLButtonElement;
     expect(charactersToggle).toBeDefined();
 
     fireEvent.click(charactersToggle);
@@ -129,12 +151,20 @@ describe("Security Page Component", () => {
 
   it("allows toggling encryption for Data Save, Chatbot, and Integrations", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
-    const dataSaveToggle = document.getElementById("toggle-datasave") as HTMLButtonElement;
-    const chatbotToggle = document.getElementById("toggle-chatbot") as HTMLButtonElement;
-    const integrationsToggle = document.getElementById("toggle-integrations") as HTMLButtonElement;
+    const dataSaveToggle = document.getElementById(
+      "toggle-datasave",
+    ) as HTMLButtonElement;
+    const chatbotToggle = document.getElementById(
+      "toggle-chatbot",
+    ) as HTMLButtonElement;
+    const integrationsToggle = document.getElementById(
+      "toggle-integrations",
+    ) as HTMLButtonElement;
 
     fireEvent.click(dataSaveToggle);
     await waitFor(() => {
@@ -154,7 +184,9 @@ describe("Security Page Component", () => {
 
   it("generates a 256-bit key when clicking Generate Masterkey and displays actions without QR code", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
     await waitFor(() => {
@@ -169,7 +201,9 @@ describe("Security Page Component", () => {
 
   it("copies generated master key to clipboard", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
     await waitFor(() => {
@@ -184,7 +218,9 @@ describe("Security Page Component", () => {
 
   it("has key format hidden by default and allows toggling to switch format between Hex, Base64, Base58 and Words", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
     await waitFor(() => {
@@ -219,8 +255,11 @@ describe("Security Page Component", () => {
 
   it("allows unlocking / activating an existing master key", async () => {
     renderWithRouter();
-    const testKeyHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    const input = screen.getByPlaceholderText("Paste 64-char Hex or 256-bit Base64 masterkey...") as HTMLInputElement;
+    const testKeyHex =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const input = screen.getByPlaceholderText(
+      "Paste 64-char Hex or 256-bit Base64 masterkey...",
+    ) as HTMLInputElement;
     fireEvent.change(input, { target: { value: testKeyHex } });
 
     const unlockBtn = screen.getByText("Unlock / Activate Key");
@@ -228,26 +267,36 @@ describe("Security Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Masterkey Active")).toBeDefined();
-      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(testKeyHex);
+      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(
+        testKeyHex,
+      );
     });
   });
 
   it("shows error for invalid key during manual activation", async () => {
     renderWithRouter();
-    const input = screen.getByPlaceholderText("Paste 64-char Hex or 256-bit Base64 masterkey...") as HTMLInputElement;
+    const input = screen.getByPlaceholderText(
+      "Paste 64-char Hex or 256-bit Base64 masterkey...",
+    ) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "invalid-key" } });
 
     const unlockBtn = screen.getByText("Unlock / Activate Key");
     fireEvent.click(unlockBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).")).toBeDefined();
+      expect(
+        screen.getByText(
+          "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
+        ),
+      ).toBeDefined();
     });
   });
 
   it("clears / locks active master key on Lock / Clear Key click", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
     await waitFor(() => {
@@ -264,11 +313,17 @@ describe("Security Page Component", () => {
 
   it("shows returnTo banner when redirected with returnTo query param and masterkey active", async () => {
     renderWithRouter(["/security?returnTo=%2Fcharacters"]);
-    const generateBtn = document.getElementById("generate-masterkey-btn") as HTMLButtonElement;
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
     fireEvent.click(generateBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Masterkey active. You can now return to your previous page:")).toBeDefined();
+      expect(
+        screen.getByText(
+          "Masterkey active. You can now return to your previous page:",
+        ),
+      ).toBeDefined();
       expect(screen.getByText("/characters")).toBeDefined();
       expect(screen.getByText("Return to Page")).toBeDefined();
     });
@@ -276,26 +331,36 @@ describe("Security Page Component", () => {
 
   it("allows activating masterkey by uploading a .key file", async () => {
     renderWithRouter();
-    const testKeyHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const testKeyHex =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     const fileContent = `===========================================================\n Oxygen Low's Software - AES-256 Masterkey Backup\n===========================================================\n\n[HEXADECIMAL MASTERKEY - 64 CHARACTERS]\n${testKeyHex}\n`;
-    
-    const file = new File([fileContent], "oxygen-masterkey.key", { type: "text/plain" });
-    const fileInput = document.getElementById("key-file-upload-input") as HTMLInputElement;
+
+    const file = new File([fileContent], "oxygen-masterkey.key", {
+      type: "text/plain",
+    });
+    const fileInput = document.getElementById(
+      "key-file-upload-input",
+    ) as HTMLInputElement;
     expect(fileInput).toBeDefined();
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
       expect(screen.getByText("Masterkey Active")).toBeDefined();
-      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(testKeyHex);
+      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(
+        testKeyHex,
+      );
     });
   });
 
   it("allows activating masterkey by dropping a .key file", async () => {
     renderWithRouter();
-    const testKeyHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    const file = new File([testKeyHex], "masterkey.key", { type: "text/plain" });
-    
+    const testKeyHex =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const file = new File([testKeyHex], "masterkey.key", {
+      type: "text/plain",
+    });
+
     const dropContainer = screen.getByTestId("key-drop-zone");
 
     fireEvent.dragOver(dropContainer);
@@ -307,25 +372,37 @@ describe("Security Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Masterkey Active")).toBeDefined();
-      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(testKeyHex);
+      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(
+        testKeyHex,
+      );
     });
   });
 
   it("shows error when uploading an invalid file", async () => {
     renderWithRouter();
-    const file = new File(["not a valid masterkey"], "invalid.key", { type: "text/plain" });
-    const fileInput = document.getElementById("key-file-upload-input") as HTMLInputElement;
+    const file = new File(["not a valid masterkey"], "invalid.key", {
+      type: "text/plain",
+    });
+    const fileInput = document.getElementById(
+      "key-file-upload-input",
+    ) as HTMLInputElement;
 
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByText("No valid 256-bit AES masterkey found in the provided .key file.")).toBeDefined();
+      expect(
+        screen.getByText(
+          "No valid 256-bit AES masterkey found in the provided .key file.",
+        ),
+      ).toBeDefined();
     });
   });
 
   it("does not render removed architecture section", () => {
     renderWithRouter();
-    expect(screen.queryByText("Zero-Knowledge & Privacy Architecture")).toBeNull();
+    expect(
+      screen.queryByText("Zero-Knowledge & Privacy Architecture"),
+    ).toBeNull();
     expect(screen.queryByText("Custom AI Provider API Keys")).toBeNull();
   });
 });

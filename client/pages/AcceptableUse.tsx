@@ -133,7 +133,9 @@ export default function AcceptableUse() {
 
           <div className="space-y-4">
             <div>
-              <p className="font-semibold text-foreground">2.1 Illegal Activities</p>
+              <p className="font-semibold text-foreground">
+                2.1 Illegal Activities
+              </p>
               <Ul
                 items={[
                   "Engaging in, facilitating, or promoting any activity that is unlawful under applicable local, national, or international law.",
@@ -305,8 +307,8 @@ export default function AcceptableUse() {
             Violating this AUP may result in the immediate suspension or
             permanent termination of your account and access to the Service,
             without refund or notice where permitted by applicable law. You
-            remain liable for any damages, losses, or legal costs incurred by
-            us or third parties as a result of your violation.
+            remain liable for any damages, losses, or legal costs incurred by us
+            or third parties as a result of your violation.
           </P>
         </Section>
 

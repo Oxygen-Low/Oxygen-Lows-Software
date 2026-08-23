@@ -8,13 +8,36 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Plus, Shield, Loader2, Server, Clock, Map as MapIcon, Activity, ExternalLink } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  Shield,
+  Loader2,
+  Server,
+  Clock,
+  Map as MapIcon,
+  Activity,
+  ExternalLink,
+} from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Leaflet
@@ -34,7 +57,10 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-const createPulsingIcon = (ping: number | "error" | "loading", isDirect = false) => {
+const createPulsingIcon = (
+  ping: number | "error" | "loading",
+  isDirect = false,
+) => {
   let colorClass = "slate";
   if (typeof ping === "number") {
     if (ping <= 50) colorClass = "green";
@@ -45,26 +71,34 @@ const createPulsingIcon = (ping: number | "error" | "loading", isDirect = false)
     colorClass = "red";
   }
 
-  const directBadge = isDirect ? `<div class="pulse-direct-indicator"></div>` : "";
+  const directBadge = isDirect
+    ? `<div class="pulse-direct-indicator"></div>`
+    : "";
 
   return L.divIcon({
-    className: 'custom-pulsing-icon',
+    className: "custom-pulsing-icon",
     html: `<div class="pulse-icon"><div class="pulse-ring pulse-ring-${colorClass}"></div><div class="pulse-dot pulse-dot-${colorClass}"></div>${directBadge}</div>`,
     iconSize: [24, 24],
-    iconAnchor: [12, 12]
+    iconAnchor: [12, 12],
   });
 };
 
 const agentIcon = L.divIcon({
-  className: 'agent-icon',
+  className: "agent-icon",
   html: `<div class="agent-wrapper"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`,
   iconSize: [32, 32],
-  iconAnchor: [16, 16]
+  iconAnchor: [16, 16],
 });
 
-function MapController({ center, locked }: { center: [number, number] | null; locked: boolean }) {
+function MapController({
+  center,
+  locked,
+}: {
+  center: [number, number] | null;
+  locked: boolean;
+}) {
   const map = useMap();
-  
+
   useEffect(() => {
     if (center) {
       map.flyTo(center, 5, { duration: 1.5 });
@@ -86,7 +120,7 @@ function MapController({ center, locked }: { center: [number, number] | null; lo
       map.keyboard.enable();
     }
   }, [locked, map]);
-  
+
   return null;
 }
 
@@ -105,9 +139,11 @@ export function VPNApp() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
+
   // Active Tab: saved or direct
-  const [activeTab, setActiveTab] = useState<string>(() => isAuthenticated ? "saved" : "direct");
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    isAuthenticated ? "saved" : "direct",
+  );
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -134,16 +170,26 @@ export function VPNApp() {
   const directMarkerRef = useRef<any>(null);
 
   // Map & Stats State
-  const [serverStats, setServerStats] = useState<Record<string, ServerStat>>({});
+  const [serverStats, setServerStats] = useState<Record<string, ServerStat>>(
+    {},
+  );
   const statsRef = useRef<Record<string, ServerStat>>({});
-  const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<
+    [number, number] | null
+  >(null);
   const markerRefs = useRef<Record<string, any>>({});
-  
+
   // Connection State
-  const [connectedConfigId, setConnectedConfigId] = useState<string | null>(null);
+  const [connectedConfigId, setConnectedConfigId] = useState<string | null>(
+    null,
+  );
   const [isConnecting, setIsConnecting] = useState(false);
-  const [homeLocation, setHomeLocation] = useState<[number, number] | null>(null);
-  const [agentLocation, setAgentLocation] = useState<[number, number] | null>(null);
+  const [homeLocation, setHomeLocation] = useState<[number, number] | null>(
+    null,
+  );
+  const [agentLocation, setAgentLocation] = useState<[number, number] | null>(
+    null,
+  );
 
   useEffect(() => {
     runIPCCommand("get_location")
@@ -156,7 +202,7 @@ export function VPNApp() {
           setAgentLocation([20, 0]);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Home geocode error via IPC", err);
         setHomeLocation([20, 0]);
         setAgentLocation([20, 0]);
@@ -167,12 +213,16 @@ export function VPNApp() {
   const runIPCCommand = async (commandLine: string) => {
     return new Promise<any>((resolve, reject) => {
       const webview = (window as any).chrome?.webview;
-      if (!webview) return reject(new Error("Not running in desktop app context"));
-      
+      if (!webview)
+        return reject(new Error("Not running in desktop app context"));
+
       const id = Date.now().toString() + Math.random().toString();
       const listener = (event: any) => {
         try {
-          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          const data =
+            typeof event.data === "string"
+              ? JSON.parse(event.data)
+              : event.data;
           if (data.id === id) {
             webview.removeEventListener("message", listener);
             if (data.success) resolve(data.data);
@@ -181,23 +231,38 @@ export function VPNApp() {
         } catch {}
       };
       webview.addEventListener("message", listener);
-      webview.postMessage(JSON.stringify({ 
-        command: (commandLine === "get_location" || commandLine === "require_admin" || commandLine === "is_admin") ? commandLine : "run_command", 
-        commandLine, 
-        id 
-      }));
+      webview.postMessage(
+        JSON.stringify({
+          command:
+            commandLine === "get_location" ||
+            commandLine === "require_admin" ||
+            commandLine === "is_admin"
+              ? commandLine
+              : "run_command",
+          commandLine,
+          id,
+        }),
+      );
     });
   };
 
-  const runAndroidVPNCommand = async (type: string, configContent: string, name: string) => {
+  const runAndroidVPNCommand = async (
+    type: string,
+    configContent: string,
+    name: string,
+  ) => {
     return new Promise<any>((resolve, reject) => {
       const webview = (window as any).chrome?.webview;
-      if (!webview) return reject(new Error("Not running in desktop app context"));
-      
+      if (!webview)
+        return reject(new Error("Not running in desktop app context"));
+
       const id = Date.now().toString() + Math.random().toString();
       const listener = (event: any) => {
         try {
-          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          const data =
+            typeof event.data === "string"
+              ? JSON.parse(event.data)
+              : event.data;
           if (data.id === id) {
             webview.removeEventListener("message", listener);
             if (data.success) resolve(data.data);
@@ -206,25 +271,31 @@ export function VPNApp() {
         } catch {}
       };
       webview.addEventListener("message", listener);
-      webview.postMessage(JSON.stringify({ 
-        command: "android_vpn_connect", 
-        type, 
-        config: configContent,
-        name, 
-        id 
-      }));
+      webview.postMessage(
+        JSON.stringify({
+          command: "android_vpn_connect",
+          type,
+          config: configContent,
+          name,
+          id,
+        }),
+      );
     });
   };
 
   const writeIPCFile = async (path: string, content: string) => {
     return new Promise<void>((resolve, reject) => {
       const webview = (window as any).chrome?.webview;
-      if (!webview) return reject(new Error("Not running in desktop app context"));
-      
+      if (!webview)
+        return reject(new Error("Not running in desktop app context"));
+
       const id = Date.now().toString() + Math.random().toString();
       const listener = (event: any) => {
         try {
-          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          const data =
+            typeof event.data === "string"
+              ? JSON.parse(event.data)
+              : event.data;
           if (data.id === id) {
             webview.removeEventListener("message", listener);
             if (data.success) resolve();
@@ -233,7 +304,9 @@ export function VPNApp() {
         } catch {}
       };
       webview.addEventListener("message", listener);
-      webview.postMessage(JSON.stringify({ command: "write_file", path, content, id }));
+      webview.postMessage(
+        JSON.stringify({ command: "write_file", path, content, id }),
+      );
     });
   };
 
@@ -244,7 +317,7 @@ export function VPNApp() {
         .from("vpn_configs")
         .select("*")
         .order("created_at", { ascending: false });
-      
+
       if (error) throw error;
 
       const now = new Date();
@@ -258,9 +331,14 @@ export function VPNApp() {
       });
 
       if (expiredIds.length > 0) {
-        supabase.from("vpn_configs").delete().in("id", expiredIds).then(({ error }) => {
-          if (error) console.error("Failed to delete expired configs:", error);
-        });
+        supabase
+          .from("vpn_configs")
+          .delete()
+          .in("id", expiredIds)
+          .then(({ error }) => {
+            if (error)
+              console.error("Failed to delete expired configs:", error);
+          });
       }
 
       return validConfigs;
@@ -271,7 +349,9 @@ export function VPNApp() {
   const extractIP = (content: string, type: string) => {
     if (!content) return null;
     if (type === "WireGuard") {
-      const match = content.match(/Endpoint\s*=\s*(?:\[([a-fA-F0-9:]+)\]|([^:\s]+))/i);
+      const match = content.match(
+        /Endpoint\s*=\s*(?:\[([a-fA-F0-9:]+)\]|([^:\s]+))/i,
+      );
       return match ? (match[1] || match[2]).trim() : null;
     } else {
       const match = content.match(/remote\s+(?:\[([a-fA-F0-9:]+)\]|([^\s]+))/i);
@@ -290,17 +370,30 @@ export function VPNApp() {
       if (!ip) continue;
 
       if (!newStats[config.id]) {
-        newStats[config.id] = { ip, lat: null, lon: null, city: "", country: "", ping: "loading" };
+        newStats[config.id] = {
+          ip,
+          lat: null,
+          lon: null,
+          city: "",
+          country: "",
+          ping: "loading",
+        };
         hasChanges = true;
       }
-      
+
       // Geocode if missing
       if (newStats[config.id].lat === null) {
         try {
-          const geoRes = await fetch(`/api/vpn/geocode?ip=${encodeURIComponent(ip)}`);
+          const geoRes = await fetch(
+            `/api/vpn/geocode?ip=${encodeURIComponent(ip)}`,
+          );
           if (geoRes.ok) {
             const geoData = await geoRes.json();
-            if (geoData.status === "success" && typeof geoData.lat === "number" && typeof geoData.lon === "number") {
+            if (
+              geoData.status === "success" &&
+              typeof geoData.lat === "number" &&
+              typeof geoData.lon === "number"
+            ) {
               newStats[config.id].lat = geoData.lat;
               newStats[config.id].lon = geoData.lon;
               newStats[config.id].city = geoData.city || "";
@@ -315,7 +408,9 @@ export function VPNApp() {
 
       // Ping
       try {
-        const pingRes = await fetch(`/api/vpn/ping?host=${encodeURIComponent(ip)}`);
+        const pingRes = await fetch(
+          `/api/vpn/ping?host=${encodeURIComponent(ip)}`,
+        );
         if (pingRes.ok) {
           const pingData = await pingRes.json();
           if (pingData.alive && pingData.time !== "unknown") {
@@ -356,26 +451,37 @@ export function VPNApp() {
 
     let isMounted = true;
     const currentDirect = directStatRef.current;
-    
+
     // If IP changed or new, reset stat and fetch geocode
     if (!currentDirect || currentDirect.ip !== ip) {
-      const initial: ServerStat = { ip, lat: null, lon: null, city: "", country: "", ping: "loading" };
+      const initial: ServerStat = {
+        ip,
+        lat: null,
+        lon: null,
+        city: "",
+        country: "",
+        ping: "loading",
+      };
       setDirectStat(initial);
       directStatRef.current = initial;
 
       fetch(`/api/vpn/geocode?ip=${encodeURIComponent(ip)}`)
-        .then(res => res.json())
-        .then(geoData => {
+        .then((res) => res.json())
+        .then((geoData) => {
           if (!isMounted) return;
-          if (geoData.status === "success" && typeof geoData.lat === "number" && typeof geoData.lon === "number") {
-            setDirectStat(prev => {
+          if (
+            geoData.status === "success" &&
+            typeof geoData.lat === "number" &&
+            typeof geoData.lon === "number"
+          ) {
+            setDirectStat((prev) => {
               if (!prev || prev.ip !== ip) return prev;
-              const updated: ServerStat = { 
-                ...prev, 
-                lat: geoData.lat, 
-                lon: geoData.lon, 
-                city: geoData.city || "", 
-                country: geoData.country || "" 
+              const updated: ServerStat = {
+                ...prev,
+                lat: geoData.lat,
+                lon: geoData.lon,
+                city: geoData.city || "",
+                country: geoData.country || "",
               };
               directStatRef.current = updated;
               return updated;
@@ -383,18 +489,23 @@ export function VPNApp() {
             setSelectedLocation([geoData.lat, geoData.lon]);
           }
         })
-        .catch(err => console.error("Geocoding error for direct config:", err));
+        .catch((err) =>
+          console.error("Geocoding error for direct config:", err),
+        );
     }
 
     // Ping check
     const performPing = () => {
       fetch(`/api/vpn/ping?host=${encodeURIComponent(ip)}`)
-        .then(res => res.json())
-        .then(pingData => {
+        .then((res) => res.json())
+        .then((pingData) => {
           if (!isMounted) return;
-          setDirectStat(prev => {
+          setDirectStat((prev) => {
             if (!prev || prev.ip !== ip) return prev;
-            const pingVal = pingData.alive && pingData.time !== "unknown" ? Math.round(Number(pingData.time)) : "error";
+            const pingVal =
+              pingData.alive && pingData.time !== "unknown"
+                ? Math.round(Number(pingData.time))
+                : "error";
             const updated: ServerStat = { ...prev, ping: pingVal };
             directStatRef.current = updated;
             return updated;
@@ -402,7 +513,7 @@ export function VPNApp() {
         })
         .catch(() => {
           if (!isMounted) return;
-          setDirectStat(prev => {
+          setDirectStat((prev) => {
             if (!prev || prev.ip !== ip) return prev;
             const updated: ServerStat = { ...prev, ping: "error" };
             directStatRef.current = updated;
@@ -421,7 +532,13 @@ export function VPNApp() {
   }, [directConfig, directType]);
 
   const saveMutation = useMutation({
-    mutationFn: async (newConfig: { name: string; config_content: string; type: string; expires_at: string | null; killswitch: boolean }) => {
+    mutationFn: async (newConfig: {
+      name: string;
+      config_content: string;
+      type: string;
+      expires_at: string | null;
+      killswitch: boolean;
+    }) => {
       const { data, error } = await supabase
         .from("vpn_configs")
         .insert([
@@ -431,8 +548,8 @@ export function VPNApp() {
             config_content: newConfig.config_content,
             type: newConfig.type,
             expires_at: newConfig.expires_at,
-            killswitch: newConfig.killswitch
-          }
+            killswitch: newConfig.killswitch,
+          },
         ])
         .select();
 
@@ -461,7 +578,7 @@ export function VPNApp() {
         .from("vpn_configs")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -478,14 +595,24 @@ export function VPNApp() {
     if (value === "custom") {
       return custom ? new Date(custom).toISOString() : null;
     }
-    
+
     const date = new Date();
     switch (value) {
-      case "1 day": date.setDate(date.getDate() + 1); break;
-      case "3 days": date.setDate(date.getDate() + 3); break;
-      case "1 week": date.setDate(date.getDate() + 7); break;
-      case "1 month": date.setMonth(date.getMonth() + 1); break;
-      case "1 year": date.setFullYear(date.getFullYear() + 1); break;
+      case "1 day":
+        date.setDate(date.getDate() + 1);
+        break;
+      case "3 days":
+        date.setDate(date.getDate() + 3);
+        break;
+      case "1 week":
+        date.setDate(date.getDate() + 7);
+        break;
+      case "1 month":
+        date.setMonth(date.getMonth() + 1);
+        break;
+      case "1 year":
+        date.setFullYear(date.getFullYear() + 1);
+        break;
     }
     return date.toISOString();
   };
@@ -503,12 +630,12 @@ export function VPNApp() {
 
     const expires_at = getExpirationDate(expiration, customDate);
 
-    saveMutation.mutate({ 
-      name, 
-      config_content: configContent, 
+    saveMutation.mutate({
+      name,
+      config_content: configContent,
       type: vpnType,
       expires_at,
-      killswitch
+      killswitch,
     });
   };
 
@@ -541,19 +668,26 @@ export function VPNApp() {
     }
   };
 
-  const animateAgentTo = async (start: [number, number], end: [number, number], durationMs: number) => {
+  const animateAgentTo = async (
+    start: [number, number],
+    end: [number, number],
+    durationMs: number,
+  ) => {
     return new Promise<void>((resolve) => {
       const startTime = performance.now();
       const step = (currentTime: number) => {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / durationMs, 1);
-        const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-        
+        const ease =
+          progress < 0.5
+            ? 2 * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
         const lat = start[0] + (end[0] - start[0]) * ease;
         const lon = start[1] + (end[1] - start[1]) * ease;
-        
+
         setAgentLocation([lat, lon]);
-        
+
         if (progress < 1) requestAnimationFrame(step);
         else resolve();
       };
@@ -562,19 +696,25 @@ export function VPNApp() {
   };
 
   const setAgentDiving = (diving: boolean) => {
-    const els = document.querySelectorAll('.agent-icon');
-    els.forEach(el => {
+    const els = document.querySelectorAll(".agent-icon");
+    els.forEach((el) => {
       if (diving) {
-        el.classList.add('diving');
-        el.classList.remove('emerging');
+        el.classList.add("diving");
+        el.classList.remove("emerging");
       } else {
-        el.classList.remove('diving');
-        el.classList.add('emerging');
+        el.classList.remove("diving");
+        el.classList.add("emerging");
       }
     });
   };
 
-  const handleConnect = async (config: { id: string; name: string; type: string; config_content: string; killswitch?: boolean }) => {
+  const handleConnect = async (config: {
+    id: string;
+    name: string;
+    type: string;
+    config_content: string;
+    killswitch?: boolean;
+  }) => {
     setIsConnecting(true);
     try {
       try {
@@ -587,37 +727,58 @@ export function VPNApp() {
         throw new Error("Admin privileges are required to connect to VPN.");
       }
 
-      const serverStat = config.id === "direct" ? directStat : serverStats[config.id];
+      const serverStat =
+        config.id === "direct" ? directStat : serverStats[config.id];
       if (serverStat && serverStat.lat && serverStat.lon && agentLocation) {
         // Dive
         setAgentDiving(true);
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise((r) => setTimeout(r, 600));
 
         // Move across globe
-        await animateAgentTo(agentLocation, [serverStat.lat, serverStat.lon], 1500);
+        await animateAgentTo(
+          agentLocation,
+          [serverStat.lat, serverStat.lon],
+          1500,
+        );
 
         // Emerge
         setAgentDiving(false);
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise((r) => setTimeout(r, 600));
       }
 
       const isAndroid = sessionStorage.getItem("androidMode") === "1";
 
       if (isAndroid) {
-        await runAndroidVPNCommand(config.type, config.config_content, config.name);
+        await runAndroidVPNCommand(
+          config.type,
+          config.config_content,
+          config.name,
+        );
       } else {
         if (config.type === "WireGuard") {
           let finalConfig = config.config_content;
           if (config.killswitch === false) {
             // Bypass strict Windows kill switch by replacing 0.0.0.0/0 with 0.0.0.0/1, 128.0.0.0/1
-            finalConfig = finalConfig.replace(/0\.0\.0\.0\/0/g, "0.0.0.0/1, 128.0.0.0/1");
+            finalConfig = finalConfig.replace(
+              /0\.0\.0\.0\/0/g,
+              "0.0.0.0/1, 128.0.0.0/1",
+            );
             finalConfig = finalConfig.replace(/::\/0/g, "::/1, 8000::/1");
           }
           await writeIPCFile(`vpn_temp.conf`, finalConfig);
-          await writeIPCFile(`vpn_temp_install.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`);
+          await writeIPCFile(
+            `vpn_temp_install.bat`,
+            `"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "%TEMP%\\vpn_temp.conf"`,
+          );
           const res = await runIPCCommand(`vpn_temp_install.bat`);
-          if ((res.stderr || res.stdout) && (res.stderr.toLowerCase().includes("is not recognized") || res.stdout.toLowerCase().includes("is not recognized"))) {
-              throw new Error("WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard");
+          if (
+            (res.stderr || res.stdout) &&
+            (res.stderr.toLowerCase().includes("is not recognized") ||
+              res.stdout.toLowerCase().includes("is not recognized"))
+          ) {
+            throw new Error(
+              "WireGuard is not installed. Please install it to C:\\Program Files\\WireGuard",
+            );
           }
         } else {
           let finalConfig = config.config_content;
@@ -628,10 +789,18 @@ export function VPNApp() {
           }
           await writeIPCFile(`vpn_temp.ovpn`, finalConfig);
           const checkRes = await runIPCCommand("openvpn --version");
-          if ((checkRes.stderr || checkRes.stdout) && (checkRes.stderr.toLowerCase().includes("is not recognized") || checkRes.stdout.toLowerCase().includes("is not recognized"))) {
-              throw new Error("OpenVPN is not installed. Please install it and ensure it's in your PATH.");
+          if (
+            (checkRes.stderr || checkRes.stdout) &&
+            (checkRes.stderr.toLowerCase().includes("is not recognized") ||
+              checkRes.stdout.toLowerCase().includes("is not recognized"))
+          ) {
+            throw new Error(
+              "OpenVPN is not installed. Please install it and ensure it's in your PATH.",
+            );
           }
-          await runIPCCommand(`start /b "" openvpn --config "%TEMP%\\vpn_temp.ovpn" > NUL 2>&1`); 
+          await runIPCCommand(
+            `start /b "" openvpn --config "%TEMP%\\vpn_temp.ovpn" > NUL 2>&1`,
+          );
         }
       }
       setConnectedConfigId(config.id);
@@ -643,7 +812,11 @@ export function VPNApp() {
     }
   };
 
-  const handleDisconnect = async (config: { id: string; name: string; type: string }) => {
+  const handleDisconnect = async (config: {
+    id: string;
+    name: string;
+    type: string;
+  }) => {
     setIsConnecting(true);
     try {
       const isAndroid = sessionStorage.getItem("androidMode") === "1";
@@ -652,23 +825,26 @@ export function VPNApp() {
         toast.info("Please disconnect directly in the VPN app on Android.");
       } else {
         if (config.type === "WireGuard") {
-          await writeIPCFile(`vpn_temp_uninstall.bat`, `"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`);
+          await writeIPCFile(
+            `vpn_temp_uninstall.bat`,
+            `"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice vpn_temp`,
+          );
           await runIPCCommand(`vpn_temp_uninstall.bat`);
         } else {
           await runIPCCommand(`taskkill /F /IM openvpn.exe`);
         }
       }
       setConnectedConfigId(null);
-      
+
       // Reverse animation
       if (homeLocation && agentLocation) {
         setAgentDiving(true);
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise((r) => setTimeout(r, 600));
 
         await animateAgentTo(agentLocation, homeLocation, 1500);
 
         setAgentDiving(false);
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise((r) => setTimeout(r, 600));
       }
 
       toast.success(`Disconnected from ${config.name}`);
@@ -681,7 +857,9 @@ export function VPNApp() {
 
   const directConfigObj = {
     id: "direct",
-    name: directName.trim() || t("apps.vpnDirectConnection", undefined, "Direct Connection"),
+    name:
+      directName.trim() ||
+      t("apps.vpnDirectConnection", undefined, "Direct Connection"),
     type: directType,
     config_content: directConfig,
     killswitch: directKillswitch,
@@ -785,35 +963,40 @@ export function VPNApp() {
           filter: brightness(0.2);
         }
       `}</style>
-      
+
       {/* Map Section - Left/Center */}
       <div className="flex-1 relative bg-slate-950">
-        <MapContainer 
-          center={[20, 0]} 
-          zoom={3} 
-          scrollWheelZoom={true} 
+        <MapContainer
+          center={[20, 0]}
+          zoom={3}
+          scrollWheelZoom={true}
           className="h-full w-full z-0"
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
-          <MapController center={selectedLocation} locked={connectedConfigId !== null} />
-          
+          <MapController
+            center={selectedLocation}
+            locked={connectedConfigId !== null}
+          />
+
           {/* Saved Config Markers (for authenticated users) */}
-          {configs?.map(config => {
+          {configs?.map((config) => {
             const stat = serverStats[config.id];
             if (stat && stat.lat && stat.lon) {
               return (
-                <Marker 
-                  key={config.id} 
-                  position={[stat.lat, stat.lon]} 
+                <Marker
+                  key={config.id}
+                  position={[stat.lat, stat.lon]}
                   icon={createPulsingIcon(stat.ping, false)}
-                  ref={(r) => { if (r) markerRefs.current[config.id] = r; }}
+                  ref={(r) => {
+                    if (r) markerRefs.current[config.id] = r;
+                  }}
                 >
-                  <Popup 
-                    closeOnClick={connectedConfigId !== config.id} 
-                    autoClose={connectedConfigId !== config.id} 
+                  <Popup
+                    closeOnClick={connectedConfigId !== config.id}
+                    autoClose={connectedConfigId !== config.id}
                     closeButton={false}
                   >
                     <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl flex flex-col gap-4">
@@ -823,41 +1006,68 @@ export function VPNApp() {
                             {config.name}
                           </h4>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700">
-                              {config.type || 'WireGuard'}
+                            <Badge
+                              variant="secondary"
+                              className="bg-slate-800 text-cyan-400 hover:bg-slate-700"
+                            >
+                              {config.type || "WireGuard"}
                             </Badge>
-                            {stat.ping !== 'error' && stat.ping !== 'loading' && (
-                              <Badge variant="secondary" className="bg-slate-800 text-emerald-400 hover:bg-slate-700">
-                                {stat.ping}ms
-                              </Badge>
-                            )}
+                            {stat.ping !== "error" &&
+                              stat.ping !== "loading" && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-slate-800 text-emerald-400 hover:bg-slate-700"
+                                >
+                                  {stat.ping}ms
+                                </Badge>
+                              )}
                           </div>
                         </div>
                       </div>
-                      
+
                       {stat.city && (
                         <div className="text-sm text-slate-400 flex items-center gap-2">
                           <MapIcon className="w-4 h-4 opacity-50" />
                           {stat.city}, {stat.country}
                         </div>
                       )}
-                      
+
                       <div className="mt-2">
                         {connectedConfigId === config.id ? (
-                          <Button 
-                            onClick={(e) => { e.stopPropagation(); handleDisconnect(config); }}
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDisconnect(config);
+                            }}
                             disabled={isConnecting}
                             className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20"
                           >
-                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
+                            {isConnecting ? (
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                              t(
+                                "apps.vpnDisconnect",
+                                undefined,
+                                "Disconnect VPN",
+                              )
+                            )}
                           </Button>
                         ) : (
-                          <Button 
-                            onClick={(e) => { e.stopPropagation(); handleConnect(config); }}
-                            disabled={isConnecting || (connectedConfigId !== null)}
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConnect(config);
+                            }}
+                            disabled={
+                              isConnecting || connectedConfigId !== null
+                            }
                             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20"
                           >
-                            {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
+                            {isConnecting ? (
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                              t("apps.vpnConnect", undefined, "Connect VPN")
+                            )}
                           </Button>
                         )}
                       </div>
@@ -875,7 +1085,9 @@ export function VPNApp() {
               key="direct-marker"
               position={[directStat.lat, directStat.lon]}
               icon={createPulsingIcon(directStat.ping, true)}
-              ref={(r) => { if (r) directMarkerRef.current = r; }}
+              ref={(r) => {
+                if (r) directMarkerRef.current = r;
+              }}
             >
               <Popup
                 closeOnClick={connectedConfigId !== "direct"}
@@ -892,14 +1104,21 @@ export function VPNApp() {
                         </Badge>
                       </h4>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700">
+                        <Badge
+                          variant="secondary"
+                          className="bg-slate-800 text-cyan-400 hover:bg-slate-700"
+                        >
                           {directType}
                         </Badge>
-                        {directStat.ping !== 'error' && directStat.ping !== 'loading' && (
-                          <Badge variant="secondary" className="bg-slate-800 text-emerald-400 hover:bg-slate-700">
-                            {directStat.ping}ms
-                          </Badge>
-                        )}
+                        {directStat.ping !== "error" &&
+                          directStat.ping !== "loading" && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-slate-800 text-emerald-400 hover:bg-slate-700"
+                            >
+                              {directStat.ping}ms
+                            </Badge>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -913,20 +1132,38 @@ export function VPNApp() {
 
                   <div className="mt-2">
                     {connectedConfigId === "direct" ? (
-                      <Button 
-                        onClick={(e) => { e.stopPropagation(); handleDisconnect(directConfigObj); }}
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDisconnect(directConfigObj);
+                        }}
                         disabled={isConnecting}
                         className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20"
                       >
-                        {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
+                        {isConnecting ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          t("apps.vpnDisconnect", undefined, "Disconnect VPN")
+                        )}
                       </Button>
                     ) : (
-                      <Button 
-                        onClick={(e) => { e.stopPropagation(); handleConnect(directConfigObj); }}
-                        disabled={isConnecting || (connectedConfigId !== null) || !directConfig.trim()}
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConnect(directConfigObj);
+                        }}
+                        disabled={
+                          isConnecting ||
+                          connectedConfigId !== null ||
+                          !directConfig.trim()
+                        }
                         className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20"
                       >
-                        {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
+                        {isConnecting ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          t("apps.vpnConnect", undefined, "Connect VPN")
+                        )}
                       </Button>
                     )}
                   </div>
@@ -936,10 +1173,7 @@ export function VPNApp() {
           )}
 
           {agentLocation && (
-            <Marker 
-              position={agentLocation} 
-              icon={agentIcon} 
-            />
+            <Marker position={agentLocation} icon={agentIcon} />
           )}
         </MapContainer>
       </div>
@@ -947,7 +1181,11 @@ export function VPNApp() {
       {/* Configurations Sidebar - Right */}
       <div className="w-full max-w-[420px] border-l border-slate-800 bg-slate-900/95 backdrop-blur-sm flex flex-col z-10 shadow-2xl relative">
         {isAuthenticated ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex flex-col h-full"
+          >
             <div className="p-6 border-b border-slate-800 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -956,16 +1194,26 @@ export function VPNApp() {
                     {t("apps.vpnTitle", undefined, "VPN")}
                   </h3>
                   <p className="text-slate-400 text-xs mt-1">
-                    {t("apps.vpnManageProfilesDesc", undefined, "Manage and monitor your VPN profiles.")}
+                    {t(
+                      "apps.vpnManageProfilesDesc",
+                      undefined,
+                      "Manage and monitor your VPN profiles.",
+                    )}
                   </p>
                 </div>
               </div>
 
               <TabsList className="grid grid-cols-2 bg-slate-950/80 border border-slate-800/80 p-1">
-                <TabsTrigger value="saved" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                <TabsTrigger
+                  value="saved"
+                  className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
+                >
                   {t("apps.vpnSavedConfigs", undefined, "Saved Configs")}
                 </TabsTrigger>
-                <TabsTrigger value="direct" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                <TabsTrigger
+                  value="direct"
+                  className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
+                >
                   {t("apps.vpnDirectConnect", undefined, "Direct Connect")}
                 </TabsTrigger>
               </TabsList>
@@ -975,48 +1223,85 @@ export function VPNApp() {
                   <DialogTrigger asChild>
                     <Button className="w-full bg-cyan-600 hover:bg-cyan-500 text-white">
                       <Plus className="w-4 h-4 mr-2" />
-                      {t("apps.vpnCreateNewConfig", undefined, "Create New Config")}
+                      {t(
+                        "apps.vpnCreateNewConfig",
+                        undefined,
+                        "Create New Config",
+                      )}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-[600px]">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <Shield className="w-5 h-5 text-cyan-500" />
-                        {t("apps.vpnCreateNewConfig", undefined, "Add New VPN Config")}
+                        {t(
+                          "apps.vpnCreateNewConfig",
+                          undefined,
+                          "Add New VPN Config",
+                        )}
                       </DialogTitle>
                       <DialogDescription className="text-slate-400">
                         <div className="flex flex-col gap-2 items-start mt-2">
-                          <p>{t("apps.vpnConfigPlaceholder", undefined, "Paste your VPN configuration file contents here.")}</p>
-                          <Button variant="outline" size="sm" className="bg-slate-950 border-slate-700 text-slate-300 hover:text-white" asChild>
-                            <a href="https://www.vpnbook.com" target="_blank" rel="noreferrer">
+                          <p>
+                            {t(
+                              "apps.vpnConfigPlaceholder",
+                              undefined,
+                              "Paste your VPN configuration file contents here.",
+                            )}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-slate-950 border-slate-700 text-slate-300 hover:text-white"
+                            asChild
+                          >
+                            <a
+                              href="https://www.vpnbook.com"
+                              target="_blank"
+                              rel="noreferrer"
+                            >
                               <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                              {t("apps.vpnFreeConfigBtn", undefined, "Get Free Config from VPNBook")}
+                              {t(
+                                "apps.vpnFreeConfigBtn",
+                                undefined,
+                                "Get Free Config from VPNBook",
+                              )}
                             </a>
                           </Button>
                         </div>
                       </DialogDescription>
                     </DialogHeader>
-                    
+
                     <form onSubmit={handleSave} className="space-y-4 mt-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="name" className="text-slate-300">{t("apps.vpnConfigName", undefined, "Config Name")}</Label>
+                          <Label htmlFor="name" className="text-slate-300">
+                            {t("apps.vpnConfigName", undefined, "Config Name")}
+                          </Label>
                           <Input
                             id="name"
-                            placeholder={t("apps.vpnConfigNamePlaceholder", undefined, "e.g. My Home VPN")}
+                            placeholder={t(
+                              "apps.vpnConfigNamePlaceholder",
+                              undefined,
+                              "e.g. My Home VPN",
+                            )}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="bg-slate-950 border-slate-800 text-white"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="vpnType" className="text-slate-300">{t("apps.vpnType", undefined, "VPN Type")}</Label>
+                          <Label htmlFor="vpnType" className="text-slate-300">
+                            {t("apps.vpnType", undefined, "VPN Type")}
+                          </Label>
                           <Select value={vpnType} onValueChange={setVpnType}>
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-left">
                               <SelectValue placeholder="Select VPN Type" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="WireGuard">WireGuard (Recommended)</SelectItem>
+                              <SelectItem value="WireGuard">
+                                WireGuard (Recommended)
+                              </SelectItem>
                               <SelectItem value="OpenVPN">OpenVPN</SelectItem>
                             </SelectContent>
                           </Select>
@@ -1024,10 +1309,20 @@ export function VPNApp() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="config" className="text-slate-300">{t("apps.vpnConfigContent", undefined, "Configuration Content")}</Label>
+                        <Label htmlFor="config" className="text-slate-300">
+                          {t(
+                            "apps.vpnConfigContent",
+                            undefined,
+                            "Configuration Content",
+                          )}
+                        </Label>
                         <Textarea
                           id="config"
-                          placeholder={vpnType === "WireGuard" ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0" : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."}
+                          placeholder={
+                            vpnType === "WireGuard"
+                              ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0"
+                              : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."
+                          }
                           value={configContent}
                           onChange={(e) => setConfigContent(e.target.value)}
                           className="font-mono bg-slate-950 border-slate-800 text-white min-h-[180px] text-sm"
@@ -1035,23 +1330,32 @@ export function VPNApp() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="expiration" className="text-slate-300">Auto Delete / Expiration</Label>
+                        <Label htmlFor="expiration" className="text-slate-300">
+                          Auto Delete / Expiration
+                        </Label>
                         <div className="flex gap-4">
-                          <Select value={expiration} onValueChange={setExpiration}>
+                          <Select
+                            value={expiration}
+                            onValueChange={setExpiration}
+                          >
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-white flex-1 text-left">
                               <SelectValue placeholder="Select Expiration" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="never">Never (Keep Forever)</SelectItem>
+                              <SelectItem value="never">
+                                Never (Keep Forever)
+                              </SelectItem>
                               <SelectItem value="1 day">1 Day</SelectItem>
                               <SelectItem value="3 days">3 Days</SelectItem>
                               <SelectItem value="1 week">1 Week</SelectItem>
                               <SelectItem value="1 month">1 Month</SelectItem>
                               <SelectItem value="1 year">1 Year</SelectItem>
-                              <SelectItem value="custom">Custom Date</SelectItem>
+                              <SelectItem value="custom">
+                                Custom Date
+                              </SelectItem>
                             </SelectContent>
                           </Select>
-                          
+
                           {expiration === "custom" && (
                             <Input
                               type="datetime-local"
@@ -1066,25 +1370,42 @@ export function VPNApp() {
                       <div className="space-y-2">
                         <div className="flex flex-col gap-1 mt-4 border border-slate-800 rounded-lg p-4 bg-slate-900/50">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="killswitch" className="text-slate-300 font-medium">{t("apps.vpnKillSwitch", undefined, "Kill Switch (Block untunneled traffic)")}</Label>
-                            <Switch 
-                              id="killswitch" 
-                              checked={killswitch} 
-                              onCheckedChange={setKillswitch} 
+                            <Label
+                              htmlFor="killswitch"
+                              className="text-slate-300 font-medium"
+                            >
+                              {t(
+                                "apps.vpnKillSwitch",
+                                undefined,
+                                "Kill Switch (Block untunneled traffic)",
+                              )}
+                            </Label>
+                            <Switch
+                              id="killswitch"
+                              checked={killswitch}
+                              onCheckedChange={setKillswitch}
                             />
                           </div>
                           {vpnType === "OpenVPN" && (
                             <p className="text-xs text-slate-500 mt-1">
-                              {t("apps.vpnKillSwitchNote", undefined, "Note: On Windows, OpenVPN natively supports only DNS leak protection via the CLI.")}
+                              {t(
+                                "apps.vpnKillSwitchNote",
+                                undefined,
+                                "Note: On Windows, OpenVPN natively supports only DNS leak protection via the CLI.",
+                              )}
                             </p>
                           )}
                         </div>
                       </div>
 
                       <div className="pt-2">
-                        <Button 
-                          type="submit" 
-                          disabled={saveMutation.isPending || !name.trim() || !configContent.trim()}
+                        <Button
+                          type="submit"
+                          disabled={
+                            saveMutation.isPending ||
+                            !name.trim() ||
+                            !configContent.trim()
+                          }
                           className="w-full bg-cyan-600 hover:bg-cyan-500 text-white"
                         >
                           {saveMutation.isPending ? (
@@ -1106,7 +1427,10 @@ export function VPNApp() {
               </TabsContent>
             </div>
 
-            <TabsContent value="saved" className="flex-1 overflow-hidden m-0 relative">
+            <TabsContent
+              value="saved"
+              className="flex-1 overflow-hidden m-0 relative"
+            >
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 absolute inset-0">
                   <Loader2 className="w-8 h-8 animate-spin mb-4 text-cyan-500" />
@@ -1115,8 +1439,20 @@ export function VPNApp() {
               ) : !configs || configs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 text-center absolute inset-0">
                   <Server className="w-12 h-12 opacity-20 mb-4" />
-                  <p>{t("apps.vpnNoConfigsFound", undefined, "No configurations found.")}</p>
-                  <p className="text-sm opacity-70 mt-2">{t("apps.vpnNoConfigsFoundDesc", undefined, "Click 'Create New Config' above to get started, or switch to Direct Connect.")}</p>
+                  <p>
+                    {t(
+                      "apps.vpnNoConfigsFound",
+                      undefined,
+                      "No configurations found.",
+                    )}
+                  </p>
+                  <p className="text-sm opacity-70 mt-2">
+                    {t(
+                      "apps.vpnNoConfigsFoundDesc",
+                      undefined,
+                      "Click 'Create New Config' above to get started, or switch to Direct Connect.",
+                    )}
+                  </p>
                 </div>
               ) : (
                 <ScrollArea className="h-full">
@@ -1135,24 +1471,45 @@ export function VPNApp() {
                                 {config.name}
                               </h4>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="secondary" className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0">
-                                  {config.type || 'WireGuard'}
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-slate-800 text-cyan-400 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0"
+                                >
+                                  {config.type || "WireGuard"}
                                 </Badge>
-                                
+
                                 {stat && (
-                                  <Badge 
-                                    variant="secondary" 
-                                    className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1 ${stat.ping === 'error' ? 'text-red-400' : stat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
+                                  <Badge
+                                    variant="secondary"
+                                    className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1 ${stat.ping === "error" ? "text-red-400" : stat.ping === "loading" ? "text-slate-400" : "text-emerald-400"}`}
                                   >
                                     <Activity className="w-2.5 h-2.5" />
-                                    {stat.ping === 'loading' ? t("apps.vpnPinging", undefined, "Pinging...") : stat.ping === 'error' ? t("apps.vpnOffline", undefined, "Offline") : `${stat.ping}ms`}
+                                    {stat.ping === "loading"
+                                      ? t(
+                                          "apps.vpnPinging",
+                                          undefined,
+                                          "Pinging...",
+                                        )
+                                      : stat.ping === "error"
+                                        ? t(
+                                            "apps.vpnOffline",
+                                            undefined,
+                                            "Offline",
+                                          )
+                                        : `${stat.ping}ms`}
                                   </Badge>
                                 )}
 
                                 {config.expires_at && (
-                                  <Badge variant="secondary" className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1">
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-slate-800/80 text-orange-400/90 hover:bg-slate-700/80 text-[10px] font-normal px-1.5 py-0 flex items-center gap-1"
+                                  >
                                     <Clock className="w-2.5 h-2.5" />
-                                    Expires: {new Date(config.expires_at).toLocaleDateString()}
+                                    Expires:{" "}
+                                    {new Date(
+                                      config.expires_at,
+                                    ).toLocaleDateString()}
                                   </Badge>
                                 )}
                               </div>
@@ -1170,7 +1527,7 @@ export function VPNApp() {
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
-                          
+
                           {stat && stat.city && (
                             <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
                               <MapIcon className="w-3 h-3 opacity-50" />
@@ -1191,24 +1548,44 @@ export function VPNApp() {
               )}
             </TabsContent>
 
-            <TabsContent value="direct" className="flex-1 overflow-hidden m-0 flex flex-col">
+            <TabsContent
+              value="direct"
+              className="flex-1 overflow-hidden m-0 flex flex-col"
+            >
               <ScrollArea className="h-full">
                 <div className="p-6 space-y-4">
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="directName" className="text-xs text-slate-300">{t("apps.vpnConfigName", undefined, "Config Name")}</Label>
+                        <Label
+                          htmlFor="directName"
+                          className="text-xs text-slate-300"
+                        >
+                          {t("apps.vpnConfigName", undefined, "Config Name")}
+                        </Label>
                         <Input
                           id="directName"
-                          placeholder={t("apps.vpnConfigNamePlaceholder", undefined, "e.g. Temporary Connection")}
+                          placeholder={t(
+                            "apps.vpnConfigNamePlaceholder",
+                            undefined,
+                            "e.g. Temporary Connection",
+                          )}
                           value={directName}
                           onChange={(e) => setDirectName(e.target.value)}
                           className="bg-slate-950 border-slate-800 text-white text-xs h-9"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="directType" className="text-xs text-slate-300">{t("apps.vpnType", undefined, "VPN Type")}</Label>
-                        <Select value={directType} onValueChange={setDirectType}>
+                        <Label
+                          htmlFor="directType"
+                          className="text-xs text-slate-300"
+                        >
+                          {t("apps.vpnType", undefined, "VPN Type")}
+                        </Label>
+                        <Select
+                          value={directType}
+                          onValueChange={setDirectType}
+                        >
                           <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-xs h-9 text-left">
                             <SelectValue placeholder="Select VPN Type" />
                           </SelectTrigger>
@@ -1222,7 +1599,16 @@ export function VPNApp() {
 
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="directConfig" className="text-xs text-slate-300">{t("apps.vpnConfigContent", undefined, "Configuration Content")}</Label>
+                        <Label
+                          htmlFor="directConfig"
+                          className="text-xs text-slate-300"
+                        >
+                          {t(
+                            "apps.vpnConfigContent",
+                            undefined,
+                            "Configuration Content",
+                          )}
+                        </Label>
                         <a
                           href="https://www.vpnbook.com"
                           target="_blank"
@@ -1235,7 +1621,11 @@ export function VPNApp() {
                       </div>
                       <Textarea
                         id="directConfig"
-                        placeholder={directType === "WireGuard" ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0" : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."}
+                        placeholder={
+                          directType === "WireGuard"
+                            ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0"
+                            : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."
+                        }
                         value={directConfig}
                         onChange={(e) => setDirectConfig(e.target.value)}
                         className="font-mono bg-slate-950 border-slate-800 text-white min-h-[160px] text-xs"
@@ -1243,19 +1633,26 @@ export function VPNApp() {
                     </div>
 
                     <div className="flex items-center justify-between border border-slate-800 rounded-lg p-3 bg-slate-950/60">
-                      <Label htmlFor="directKillswitch" className="text-xs text-slate-300 font-medium">
-                        {t("apps.vpnKillSwitch", undefined, "Kill Switch (Block untunneled traffic)")}
+                      <Label
+                        htmlFor="directKillswitch"
+                        className="text-xs text-slate-300 font-medium"
+                      >
+                        {t(
+                          "apps.vpnKillSwitch",
+                          undefined,
+                          "Kill Switch (Block untunneled traffic)",
+                        )}
                       </Label>
-                      <Switch 
-                        id="directKillswitch" 
-                        checked={directKillswitch} 
-                        onCheckedChange={setDirectKillswitch} 
+                      <Switch
+                        id="directKillswitch"
+                        checked={directKillswitch}
+                        onCheckedChange={setDirectKillswitch}
                       />
                     </div>
 
                     {/* Detected Server Status Card */}
                     {directStat && directStat.ip ? (
-                      <div 
+                      <div
                         onClick={handleDirectMarkerClick}
                         className="p-3.5 bg-slate-950/90 rounded-xl border border-cyan-500/30 hover:border-cyan-500/60 cursor-pointer transition-colors space-y-2 shadow-lg"
                       >
@@ -1266,12 +1663,16 @@ export function VPNApp() {
                               {directStat.ip}
                             </span>
                           </div>
-                          <Badge 
-                            variant="secondary" 
-                            className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-2 py-0.5 flex items-center gap-1 ${directStat.ping === 'error' ? 'text-red-400' : directStat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
+                          <Badge
+                            variant="secondary"
+                            className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-2 py-0.5 flex items-center gap-1 ${directStat.ping === "error" ? "text-red-400" : directStat.ping === "loading" ? "text-slate-400" : "text-emerald-400"}`}
                           >
                             <Activity className="w-2.5 h-2.5" />
-                            {directStat.ping === 'loading' ? t("apps.vpnPinging", undefined, "Pinging...") : directStat.ping === 'error' ? t("apps.vpnOffline", undefined, "Offline") : `${directStat.ping}ms`}
+                            {directStat.ping === "loading"
+                              ? t("apps.vpnPinging", undefined, "Pinging...")
+                              : directStat.ping === "error"
+                                ? t("apps.vpnOffline", undefined, "Offline")
+                                : `${directStat.ping}ms`}
                           </Badge>
                         </div>
                         {directStat.city && (
@@ -1283,26 +1684,42 @@ export function VPNApp() {
                       </div>
                     ) : (
                       <div className="p-3.5 bg-slate-950/40 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-500">
-                        {t("apps.vpnNoServerDetected", undefined, "Paste a configuration to detect server location and live ping.")}
+                        {t(
+                          "apps.vpnNoServerDetected",
+                          undefined,
+                          "Paste a configuration to detect server location and live ping.",
+                        )}
                       </div>
                     )}
 
                     <div className="pt-2">
                       {connectedConfigId === "direct" ? (
-                        <Button 
+                        <Button
                           onClick={() => handleDisconnect(directConfigObj)}
                           disabled={isConnecting}
                           className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 h-11"
                         >
-                          {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
+                          {isConnecting ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          ) : (
+                            t("apps.vpnDisconnect", undefined, "Disconnect VPN")
+                          )}
                         </Button>
                       ) : (
-                        <Button 
+                        <Button
                           onClick={() => handleConnect(directConfigObj)}
-                          disabled={isConnecting || (connectedConfigId !== null) || !directConfig.trim()}
+                          disabled={
+                            isConnecting ||
+                            connectedConfigId !== null ||
+                            !directConfig.trim()
+                          }
                           className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 h-11"
                         >
-                          {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
+                          {isConnecting ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          ) : (
+                            t("apps.vpnConnect", undefined, "Connect VPN")
+                          )}
                         </Button>
                       )}
                     </div>
@@ -1321,7 +1738,11 @@ export function VPNApp() {
                   {t("apps.vpnDirectConnect", undefined, "Direct Connect")}
                 </h3>
                 <p className="text-slate-400 text-xs mt-1">
-                  {t("apps.vpnDirectConnectDesc", undefined, "Enter a VPN config to connect directly without saving.")}
+                  {t(
+                    "apps.vpnDirectConnectDesc",
+                    undefined,
+                    "Enter a VPN config to connect directly without saving.",
+                  )}
                 </p>
               </div>
 
@@ -1329,10 +1750,16 @@ export function VPNApp() {
               <div className="bg-slate-950/90 border border-slate-800 rounded-lg p-3 text-xs text-slate-400 flex items-start gap-2.5">
                 <Shield className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p>{t("apps.vpnGuestNotice", undefined, "Connect directly without saving, or sign in to save profiles across devices.")}</p>
-                  <Button 
-                    variant="link" 
-                    size="sm" 
+                  <p>
+                    {t(
+                      "apps.vpnGuestNotice",
+                      undefined,
+                      "Connect directly without saving, or sign in to save profiles across devices.",
+                    )}
+                  </p>
+                  <Button
+                    variant="link"
+                    size="sm"
                     onClick={() => navigate("/auth")}
                     className="text-cyan-400 hover:text-cyan-300 p-0 h-auto font-semibold mt-1 text-xs"
                   >
@@ -1346,17 +1773,31 @@ export function VPNApp() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="guestName" className="text-xs text-slate-300">{t("apps.vpnConfigName", undefined, "Config Name")}</Label>
+                    <Label
+                      htmlFor="guestName"
+                      className="text-xs text-slate-300"
+                    >
+                      {t("apps.vpnConfigName", undefined, "Config Name")}
+                    </Label>
                     <Input
                       id="guestName"
-                      placeholder={t("apps.vpnConfigNamePlaceholder", undefined, "e.g. Temporary Connection")}
+                      placeholder={t(
+                        "apps.vpnConfigNamePlaceholder",
+                        undefined,
+                        "e.g. Temporary Connection",
+                      )}
                       value={directName}
                       onChange={(e) => setDirectName(e.target.value)}
                       className="bg-slate-950 border-slate-800 text-white text-xs h-9"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="guestType" className="text-xs text-slate-300">{t("apps.vpnType", undefined, "VPN Type")}</Label>
+                    <Label
+                      htmlFor="guestType"
+                      className="text-xs text-slate-300"
+                    >
+                      {t("apps.vpnType", undefined, "VPN Type")}
+                    </Label>
                     <Select value={directType} onValueChange={setDirectType}>
                       <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-xs h-9 text-left">
                         <SelectValue placeholder="Select VPN Type" />
@@ -1371,7 +1812,16 @@ export function VPNApp() {
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="guestConfig" className="text-xs text-slate-300">{t("apps.vpnConfigContent", undefined, "Configuration Content")}</Label>
+                    <Label
+                      htmlFor="guestConfig"
+                      className="text-xs text-slate-300"
+                    >
+                      {t(
+                        "apps.vpnConfigContent",
+                        undefined,
+                        "Configuration Content",
+                      )}
+                    </Label>
                     <a
                       href="https://www.vpnbook.com"
                       target="_blank"
@@ -1384,7 +1834,11 @@ export function VPNApp() {
                   </div>
                   <Textarea
                     id="guestConfig"
-                    placeholder={directType === "WireGuard" ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0" : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."}
+                    placeholder={
+                      directType === "WireGuard"
+                        ? "[Interface]\nPrivateKey = ...\nAddress = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = 198.51.100.1:51820\nAllowedIPs = 0.0.0.0/0"
+                        : "client\ndev tun\nproto udp\nremote 198.51.100.1 1194\n..."
+                    }
                     value={directConfig}
                     onChange={(e) => setDirectConfig(e.target.value)}
                     className="font-mono bg-slate-950 border-slate-800 text-white min-h-[160px] text-xs"
@@ -1392,19 +1846,26 @@ export function VPNApp() {
                 </div>
 
                 <div className="flex items-center justify-between border border-slate-800 rounded-lg p-3 bg-slate-950/60">
-                  <Label htmlFor="guestKillswitch" className="text-xs text-slate-300 font-medium">
-                    {t("apps.vpnKillSwitch", undefined, "Kill Switch (Block untunneled traffic)")}
+                  <Label
+                    htmlFor="guestKillswitch"
+                    className="text-xs text-slate-300 font-medium"
+                  >
+                    {t(
+                      "apps.vpnKillSwitch",
+                      undefined,
+                      "Kill Switch (Block untunneled traffic)",
+                    )}
                   </Label>
-                  <Switch 
-                    id="guestKillswitch" 
-                    checked={directKillswitch} 
-                    onCheckedChange={setDirectKillswitch} 
+                  <Switch
+                    id="guestKillswitch"
+                    checked={directKillswitch}
+                    onCheckedChange={setDirectKillswitch}
                   />
                 </div>
 
                 {/* Detected Server Status Card */}
                 {directStat && directStat.ip ? (
-                  <div 
+                  <div
                     onClick={handleDirectMarkerClick}
                     className="p-3.5 bg-slate-950/90 rounded-xl border border-cyan-500/30 hover:border-cyan-500/60 cursor-pointer transition-colors space-y-2 shadow-lg"
                   >
@@ -1415,12 +1876,16 @@ export function VPNApp() {
                           {directStat.ip}
                         </span>
                       </div>
-                      <Badge 
-                        variant="secondary" 
-                        className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-2 py-0.5 flex items-center gap-1 ${directStat.ping === 'error' ? 'text-red-400' : directStat.ping === 'loading' ? 'text-slate-400' : 'text-emerald-400'}`}
+                      <Badge
+                        variant="secondary"
+                        className={`bg-slate-800 hover:bg-slate-700 text-[10px] font-normal px-2 py-0.5 flex items-center gap-1 ${directStat.ping === "error" ? "text-red-400" : directStat.ping === "loading" ? "text-slate-400" : "text-emerald-400"}`}
                       >
                         <Activity className="w-2.5 h-2.5" />
-                        {directStat.ping === 'loading' ? t("apps.vpnPinging", undefined, "Pinging...") : directStat.ping === 'error' ? t("apps.vpnOffline", undefined, "Offline") : `${directStat.ping}ms`}
+                        {directStat.ping === "loading"
+                          ? t("apps.vpnPinging", undefined, "Pinging...")
+                          : directStat.ping === "error"
+                            ? t("apps.vpnOffline", undefined, "Offline")
+                            : `${directStat.ping}ms`}
                       </Badge>
                     </div>
                     {directStat.city && (
@@ -1432,26 +1897,42 @@ export function VPNApp() {
                   </div>
                 ) : (
                   <div className="p-3.5 bg-slate-950/40 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-500">
-                    {t("apps.vpnNoServerDetected", undefined, "Paste a configuration to detect server location and live ping.")}
+                    {t(
+                      "apps.vpnNoServerDetected",
+                      undefined,
+                      "Paste a configuration to detect server location and live ping.",
+                    )}
                   </div>
                 )}
 
                 <div className="pt-2">
                   {connectedConfigId === "direct" ? (
-                    <Button 
+                    <Button
                       onClick={() => handleDisconnect(directConfigObj)}
                       disabled={isConnecting}
                       className="w-full bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 h-11"
                     >
-                      {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnDisconnect", undefined, "Disconnect VPN")}
+                      {isConnecting ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        t("apps.vpnDisconnect", undefined, "Disconnect VPN")
+                      )}
                     </Button>
                   ) : (
-                    <Button 
+                    <Button
                       onClick={() => handleConnect(directConfigObj)}
-                      disabled={isConnecting || (connectedConfigId !== null) || !directConfig.trim()}
+                      disabled={
+                        isConnecting ||
+                        connectedConfigId !== null ||
+                        !directConfig.trim()
+                      }
                       className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 h-11"
                     >
-                      {isConnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("apps.vpnConnect", undefined, "Connect VPN")}
+                      {isConnecting ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        t("apps.vpnConnect", undefined, "Connect VPN")
+                      )}
                     </Button>
                   )}
                 </div>

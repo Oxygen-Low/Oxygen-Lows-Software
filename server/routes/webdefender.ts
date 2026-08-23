@@ -55,7 +55,7 @@ export async function broadcastConfigUpdate(appId: string) {
       name: app.name,
       block_mode_enabled: app.block_mode_enabled,
       config,
-      routes: app.defender_routes || []
+      routes: app.defender_routes || [],
     };
 
     for (const listener of listeners) {
@@ -85,7 +85,7 @@ async function requireApiKey(c: Context, next: Next) {
   if (!rawKey) {
     return c.json({ error: "Missing or invalid Authorization header" }, 401);
   }
-  
+
   const hash = hashApiKey(rawKey);
 
   const supabase = getAdminClient();
@@ -114,7 +114,7 @@ async function requireJwt(c: Context, next: Next) {
     return c.json({ error: "Missing or invalid Authorization header" }, 401);
   }
   const supabase = getAuthenticatedClient(token);
-  
+
   c.set("supabase", supabase);
   await next();
 }
@@ -131,7 +131,7 @@ const eventLimiter = rateLimiter(200, 60000, "def_evt");
 defenderRouter.post("/verify", packageLimiter, requireApiKey, async (c) => {
   const app = c.get("defenderApp");
   const supabase = getAdminClient();
-  
+
   if (!app.first_request_at) {
     await supabase
       .from("defender_apps")
@@ -140,15 +140,15 @@ defenderRouter.post("/verify", packageLimiter, requireApiKey, async (c) => {
   }
 
   const config = Array.isArray(app.defender_config)
-    ? (app.defender_config[0] || {})
-    : (app.defender_config || {});
+    ? app.defender_config[0] || {}
+    : app.defender_config || {};
 
   return c.json({
     id: app.id,
     name: app.name,
     block_mode_enabled: app.block_mode_enabled,
     config: config,
-    routes: app.defender_routes || []
+    routes: app.defender_routes || [],
   });
 });
 
@@ -165,25 +165,26 @@ defenderRouter.get("/config-stream", requireApiKey, async (c) => {
       .single();
 
     const config = Array.isArray(freshApp?.defender_config)
-      ? (freshApp.defender_config[0] || {})
-      : (freshApp?.defender_config || {});
+      ? freshApp.defender_config[0] || {}
+      : freshApp?.defender_config || {};
 
     await stream.writeSSE({
       event: "config",
       data: JSON.stringify({
         id: freshApp?.id || app.id,
         name: freshApp?.name || app.name,
-        block_mode_enabled: freshApp?.block_mode_enabled ?? app.block_mode_enabled,
+        block_mode_enabled:
+          freshApp?.block_mode_enabled ?? app.block_mode_enabled,
         config: config,
-        routes: freshApp?.defender_routes || app.defender_routes || []
-      })
+        routes: freshApp?.defender_routes || app.defender_routes || [],
+      }),
     });
 
     const listener = async (payload: any) => {
       try {
         await stream.writeSSE({
           event: "config",
-          data: JSON.stringify(payload)
+          data: JSON.stringify(payload),
         });
       } catch (_) {
         // stream closed
@@ -214,22 +215,25 @@ defenderRouter.post("/register", packageLimiter, requireApiKey, async (c) => {
   const app = c.get("defenderApp");
   const body = await c.req.json();
   const routes = body.routes || [];
-  
+
   if (!Array.isArray(routes) || routes.length === 0) {
     return c.json({ registered: 0 });
   }
 
   const supabase = getAdminClient();
-  
-  const insertData = routes.map(r => ({
+
+  const insertData = routes.map((r) => ({
     app_id: app.id,
     method: r.method,
-    path: r.path
+    path: r.path,
   }));
 
   const { data, error } = await supabase
     .from("defender_routes")
-    .upsert(insertData, { onConflict: "app_id, method, path", ignoreDuplicates: true })
+    .upsert(insertData, {
+      onConflict: "app_id, method, path",
+      ignoreDuplicates: true,
+    })
     .select("id");
 
   if (error) {
@@ -249,22 +253,20 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
 
   // Try to match route_id
   const matchingRoute = (app.defender_routes || []).find(
-    (r: any) => r.method === body.method && r.path === body.path
+    (r: any) => r.method === body.method && r.path === body.path,
   );
 
-  const { error } = await supabase
-    .from("defender_events")
-    .insert({
-      app_id: app.id,
-      route_id: matchingRoute?.id || null,
-      event_type: body.eventType,
-      ip: body.ip,
-      country_code: body.countryCode,
-      method: body.method,
-      path: body.path,
-      blocked: body.blocked,
-      request_body_snippet: body.requestBodySnippet
-    });
+  const { error } = await supabase.from("defender_events").insert({
+    app_id: app.id,
+    route_id: matchingRoute?.id || null,
+    event_type: body.eventType,
+    ip: body.ip,
+    country_code: body.countryCode,
+    method: body.method,
+    path: body.path,
+    blocked: body.blocked,
+    request_body_snippet: body.requestBodySnippet,
+  });
 
   if (error) {
     return c.json({ error: error.message }, 500);
@@ -273,8 +275,8 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
   // Ensure total events do not exceed configured events_limit (default 50, range 1-1000)
   try {
     const config = Array.isArray(app.defender_config)
-      ? (app.defender_config[0] || {})
-      : (app.defender_config || {});
+      ? app.defender_config[0] || {}
+      : app.defender_config || {};
     const maxEvents = Math.min(1000, Math.max(1, config.events_limit || 50));
     const { data: excess } = await supabase
       .from("defender_events")
@@ -287,7 +289,10 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
       await supabase
         .from("defender_events")
         .delete()
-        .in("id", excess.map((e: any) => e.id));
+        .in(
+          "id",
+          excess.map((e: any) => e.id),
+        );
     }
   } catch (_) {
     // Non-blocking prune fallback
@@ -311,28 +316,26 @@ defenderRouter.post("/outbound", eventLimiter, requireApiKey, async (c) => {
     .eq("port", body.port || 80)
     .eq("protocol", body.protocol || "tcp")
     .single();
-    
+
   if (existing) {
     await supabase
       .from("defender_outbound")
       .update({
         last_seen: new Date().toISOString(),
         request_count: (existing.request_count || 1) + 1,
-        ip: body.ip || existing.ip
+        ip: body.ip || existing.ip,
       })
       .eq("id", existing.id);
   } else {
-    await supabase
-      .from("defender_outbound")
-      .insert({
-        app_id: app.id,
-        host: body.host,
-        ip: body.ip,
-        port: body.port || 80,
-        protocol: body.protocol || "tcp",
-        request_count: 1,
-        last_seen: new Date().toISOString()
-      });
+    await supabase.from("defender_outbound").insert({
+      app_id: app.id,
+      host: body.host,
+      ip: body.ip,
+      port: body.port || 80,
+      protocol: body.protocol || "tcp",
+      request_count: 1,
+      last_seen: new Date().toISOString(),
+    });
   }
 
   return c.json({}, 200);
@@ -360,14 +363,16 @@ defenderRouter.get("/apps", uiLimiter, requireJwt, async (c) => {
 defenderRouter.post("/apps", uiLimiter, requireJwt, async (c) => {
   const supabase = c.get("supabase");
   const { name } = await c.req.json();
-  
+
   if (!name) return c.json({ error: "Name is required" }, 400);
 
   const rawKey = "def_" + randomBytes(16).toString("hex");
   const apiKeyHash = hashApiKey(rawKey);
   const apiKeyPrefix = rawKey.substring(0, 8);
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return c.json({ error: "Unauthorized" }, 401);
 
   const { data, error } = await supabase
@@ -376,17 +381,20 @@ defenderRouter.post("/apps", uiLimiter, requireJwt, async (c) => {
       user_id: user.id,
       name,
       api_key_hash: apiKeyHash,
-      api_key_prefix: apiKeyPrefix
+      api_key_prefix: apiKeyPrefix,
     })
     .select("*")
     .single();
 
   if (error) return c.json({ error: error.message }, 500);
 
-  return c.json({
-    ...data,
-    apiKey: rawKey
-  }, 201);
+  return c.json(
+    {
+      ...data,
+      apiKey: rawKey,
+    },
+    201,
+  );
 });
 
 // 7. DELETE /apps/:id - Delete app
@@ -394,10 +402,7 @@ defenderRouter.delete("/apps/:id", uiLimiter, requireJwt, async (c) => {
   const supabase = c.get("supabase");
   const id = c.req.param("id");
 
-  const { error } = await supabase
-    .from("defender_apps")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("defender_apps").delete().eq("id", id);
 
   if (error) return c.json({ error: error.message }, 500);
   return c.body(null, 204);
@@ -431,7 +436,7 @@ defenderRouter.put("/apps/:id/block-mode", uiLimiter, requireJwt, async (c) => {
     .single();
 
   const updateData: any = { block_mode_enabled: enabled };
-  
+
   if (enabled && app && !app.block_mode_enabled_at) {
     updateData.block_mode_enabled_at = new Date().toISOString();
   }
@@ -474,14 +479,17 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
     "block_botnets",
     "ddos_protection",
     "ddos_threshold_rpm",
-    "events_limit"
+    "events_limit",
   ];
 
   const updatePayload: Record<string, any> = { app_id: id };
   for (const key of allowedKeys) {
     if (key in body) {
       if (key === "events_limit") {
-        updatePayload[key] = Math.min(1000, Math.max(1, parseInt(body[key]) || 50));
+        updatePayload[key] = Math.min(
+          1000,
+          Math.max(1, parseInt(body[key]) || 50),
+        );
       } else {
         updatePayload[key] = body[key];
       }
@@ -510,7 +518,10 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireJwt, async (c) => {
         await supabase
           .from("defender_events")
           .delete()
-          .in("id", excessEvents.map((e: any) => e.id));
+          .in(
+            "id",
+            excessEvents.map((e: any) => e.id),
+          );
       }
     } catch (_) {
       // Non-blocking prune
@@ -548,7 +559,8 @@ defenderRouter.put("/routes/:routeId", uiLimiter, requireJwt, async (c) => {
     .update({
       rate_limit_enabled: body.rateLimitEnabled ?? body.rate_limit_enabled,
       rate_limit_requests: body.rateLimitRequests ?? body.rate_limit_requests,
-      rate_limit_window_seconds: body.rateLimitWindowSeconds ?? body.rate_limit_window_seconds
+      rate_limit_window_seconds:
+        body.rateLimitWindowSeconds ?? body.rate_limit_window_seconds,
     })
     .eq("id", routeId)
     .select("*")
@@ -565,9 +577,12 @@ defenderRouter.put("/routes/:routeId", uiLimiter, requireJwt, async (c) => {
 defenderRouter.get("/apps/:id/events", uiLimiter, requireJwt, async (c) => {
   const supabase = c.get("supabase");
   const id = c.req.param("id");
-  
+
   const page = parseInt(c.req.query("page") || "1");
-  const limit = Math.min(Math.max(1, parseInt(c.req.query("limit") || "1000")), 1000);
+  const limit = Math.min(
+    Math.max(1, parseInt(c.req.query("limit") || "1000")),
+    1000,
+  );
   const eventType = c.req.query("eventType");
   const blockedStr = c.req.query("blocked");
   const startDate = c.req.query("startDate");
@@ -596,7 +611,7 @@ defenderRouter.get("/apps/:id/events", uiLimiter, requireJwt, async (c) => {
     events: data,
     total: count,
     page,
-    limit
+    limit,
   });
 });
 
@@ -647,28 +662,33 @@ defenderRouter.delete("/outbound/:id", uiLimiter, requireJwt, async (c) => {
 });
 
 // 17. POST /apps/:id/rotate-key - Rotate API key
-defenderRouter.post("/apps/:id/rotate-key", uiLimiter, requireJwt, async (c) => {
-  const supabase = c.get("supabase");
-  const id = c.req.param("id");
+defenderRouter.post(
+  "/apps/:id/rotate-key",
+  uiLimiter,
+  requireJwt,
+  async (c) => {
+    const supabase = c.get("supabase");
+    const id = c.req.param("id");
 
-  const rawKey = "def_" + randomBytes(16).toString("hex");
-  const apiKeyHash = hashApiKey(rawKey);
-  const apiKeyPrefix = rawKey.substring(0, 8);
+    const rawKey = "def_" + randomBytes(16).toString("hex");
+    const apiKeyHash = hashApiKey(rawKey);
+    const apiKeyPrefix = rawKey.substring(0, 8);
 
-  const { error } = await supabase
-    .from("defender_apps")
-    .update({
-      api_key_hash: apiKeyHash,
-      api_key_prefix: apiKeyPrefix
-    })
-    .eq("id", id);
+    const { error } = await supabase
+      .from("defender_apps")
+      .update({
+        api_key_hash: apiKeyHash,
+        api_key_prefix: apiKeyPrefix,
+      })
+      .eq("id", id);
 
-  if (error) return c.json({ error: error.message }, 500);
+    if (error) return c.json({ error: error.message }, 500);
 
-  broadcastConfigUpdate(id).catch(() => {});
+    broadcastConfigUpdate(id).catch(() => {});
 
-  return c.json({
-    apiKey: rawKey,
-    apiKeyPrefix
-  });
-});
+    return c.json({
+      apiKey: rawKey,
+      apiKeyPrefix,
+    });
+  },
+);

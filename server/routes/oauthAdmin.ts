@@ -5,7 +5,11 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 interface SupabaseOAuthAdmin {
   listClients(): Promise<{ data: any; error: any }>;
   listAuthorizedApps(): Promise<{ data: any; error: any }>;
-  createClient(params: { name: string; type: string; redirect_uris: string[] }): Promise<{ data: any; error: any }>;
+  createClient(params: {
+    name: string;
+    type: string;
+    redirect_uris: string[];
+  }): Promise<{ data: any; error: any }>;
   deleteClient(id: string): Promise<{ error: any }>;
   revokeAuthorization(id: string): Promise<{ error: any }>;
 }

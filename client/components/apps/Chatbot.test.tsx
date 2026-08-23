@@ -158,8 +158,7 @@ vi.mock("@/lib/supabase", () => ({
     },
     from: vi.fn((table) => {
       if (table === "chats") return createChatsChain();
-      if (table === "user_models")
-        return mockSupabaseChain(mockUserModels);
+      if (table === "user_models") return mockSupabaseChain(mockUserModels);
       if (table === "chat_messages") {
         const builder: any = {
           insert: vi.fn(() => builder),
@@ -168,8 +167,18 @@ vi.mock("@/lib/supabase", () => ({
           select: vi.fn(() => builder),
           eq: vi.fn(() => builder),
           order: vi.fn(() => builder),
-          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: "mock-msg-id-" + (++msgIdCounter) }, error: null })),
-          single: vi.fn(() => Promise.resolve({ data: { id: "mock-msg-id-" + (++msgIdCounter) }, error: null })),
+          maybeSingle: vi.fn(() =>
+            Promise.resolve({
+              data: { id: "mock-msg-id-" + ++msgIdCounter },
+              error: null,
+            }),
+          ),
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: { id: "mock-msg-id-" + ++msgIdCounter },
+              error: null,
+            }),
+          ),
           then: vi.fn((onFulfilled) => {
             return Promise.resolve({ data: [], error: null }).then(onFulfilled);
           }),
@@ -417,7 +426,7 @@ describe("ChatbotApp", () => {
                 'data: {"type":"content_block_stop","index":0}\n',
                 'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}\n',
                 'data: {"type":"message_stop"}\n',
-                'data: [DONE]\n',
+                "data: [DONE]\n",
               ];
               for (const ev of events) {
                 controller.enqueue(new TextEncoder().encode(ev));
@@ -451,7 +460,11 @@ describe("ChatbotApp", () => {
       const sendButton = screen.getByLabelText("Send message");
       fireEvent.click(sendButton);
 
-      await screen.findByText(/Using Tool: get_weather/, {}, { timeout: 10000 });
+      await screen.findByText(
+        /Using Tool: get_weather/,
+        {},
+        { timeout: 10000 },
+      );
       await screen.findByText(/San Francisco/, {}, { timeout: 10000 });
     } finally {
       global.fetch = originalFetch;
@@ -496,7 +509,7 @@ describe("ChatbotApp", () => {
                 'data: {"type":"content_block_stop","index":1}\n',
                 'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}\n',
                 'data: {"type":"message_stop"}\n',
-                'data: [DONE]\n',
+                "data: [DONE]\n",
               ];
               for (const ev of events) {
                 controller.enqueue(new TextEncoder().encode(ev));
@@ -531,7 +544,11 @@ describe("ChatbotApp", () => {
       fireEvent.click(sendButton);
 
       await screen.findByText(/Using Tool: tool_first/, {}, { timeout: 10000 });
-      await screen.findByText(/Using Tool: tool_second/, {}, { timeout: 10000 });
+      await screen.findByText(
+        /Using Tool: tool_second/,
+        {},
+        { timeout: 10000 },
+      );
     } finally {
       global.fetch = originalFetch;
     }
@@ -571,7 +588,7 @@ describe("ChatbotApp", () => {
                 'data: {"type":"content_block_stop","index":0}\n',
                 'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}\n',
                 'data: {"type":"message_stop"}\n',
-                'data: [DONE]\n',
+                "data: [DONE]\n",
               ];
               for (const ev of events) {
                 controller.enqueue(new TextEncoder().encode(ev));
@@ -694,7 +711,11 @@ describe("ChatbotApp", () => {
                 controller.close();
               },
             });
-            return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+            return Promise.resolve({
+              ok: true,
+              body: stream,
+              headers: { get: () => null },
+            });
           }
 
           if (bodyStr.includes("Based on the web search findings above")) {
@@ -711,10 +732,16 @@ describe("ChatbotApp", () => {
                 controller.close();
               },
             });
-            return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+            return Promise.resolve({
+              ok: true,
+              body: stream,
+              headers: { get: () => null },
+            });
           }
 
-          if (bodyStr.includes("based on your web search findings and reasoning")) {
+          if (
+            bodyStr.includes("based on your web search findings and reasoning")
+          ) {
             callOrder.push("final_synthesis");
             const stream = new ReadableStream({
               start(controller) {
@@ -727,7 +754,11 @@ describe("ChatbotApp", () => {
                 controller.close();
               },
             });
-            return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+            return Promise.resolve({
+              ok: true,
+              body: stream,
+              headers: { get: () => null },
+            });
           }
 
           const stream = new ReadableStream({
@@ -741,7 +772,11 @@ describe("ChatbotApp", () => {
               controller.close();
             },
           });
-          return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+          return Promise.resolve({
+            ok: true,
+            body: stream,
+            headers: { get: () => null },
+          });
         }
 
         if (url === "/api/ai/agent-search") {
@@ -757,7 +792,11 @@ describe("ChatbotApp", () => {
               controller.close();
             },
           });
-          return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+          return Promise.resolve({
+            ok: true,
+            body: stream,
+            headers: { get: () => null },
+          });
         }
 
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -795,10 +834,17 @@ describe("ChatbotApp", () => {
 
       // Verify UI elements
       await screen.findByText("Searched The Web", {}, { timeout: 15000 });
-      await waitFor(() => {
-        expect(document.querySelector(".reasoning-block")).not.toBeNull();
-      }, { timeout: 15000 });
-      await screen.findByText("Final response synthesized from search.", {}, { timeout: 15000 });
+      await waitFor(
+        () => {
+          expect(document.querySelector(".reasoning-block")).not.toBeNull();
+        },
+        { timeout: 15000 },
+      );
+      await screen.findByText(
+        "Final response synthesized from search.",
+        {},
+        { timeout: 15000 },
+      );
 
       // Verify execution call order: search planning -> agent search -> reasoning with findings -> final synthesis
       expect(callOrder).toEqual([
@@ -878,6 +924,3 @@ describe("ChatbotApp", () => {
     }
   });
 });
-
-
-

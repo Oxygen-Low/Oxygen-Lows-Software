@@ -19,10 +19,22 @@ describe("ThreatActorDetector", () => {
     detector.addThreatIp("http_exploit", "198.51.100.3");
     detector.addThreatIp("botnet", "198.51.100.4");
 
-    expect(detector.checkThreatActor("198.51.100.1")).toEqual({ category: "bruteforce", feed: "bruteforce" });
-    expect(detector.checkThreatActor("198.51.100.2")).toEqual({ category: "http_dos", feed: "http_dos" });
-    expect(detector.checkThreatActor("198.51.100.3")).toEqual({ category: "http_exploit", feed: "http_exploit" });
-    expect(detector.checkThreatActor("198.51.100.4")).toEqual({ category: "botnet", feed: "botnet" });
+    expect(detector.checkThreatActor("198.51.100.1")).toEqual({
+      category: "bruteforce",
+      feed: "bruteforce",
+    });
+    expect(detector.checkThreatActor("198.51.100.2")).toEqual({
+      category: "http_dos",
+      feed: "http_dos",
+    });
+    expect(detector.checkThreatActor("198.51.100.3")).toEqual({
+      category: "http_exploit",
+      feed: "http_exploit",
+    });
+    expect(detector.checkThreatActor("198.51.100.4")).toEqual({
+      category: "botnet",
+      feed: "botnet",
+    });
     expect(detector.checkThreatActor("8.8.8.8")).toBeNull();
   });
 
@@ -51,7 +63,7 @@ describe("DefenderClient Threat Actor blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req1.blocked).toBe(true);
     expect(req1.eventType).toBe("threat_bruteforce");
@@ -64,7 +76,7 @@ describe("DefenderClient Threat Actor blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req2.blocked).toBe(true);
     expect(req2.eventType).toBe("threat_dos");
@@ -77,7 +89,7 @@ describe("DefenderClient Threat Actor blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req3.blocked).toBe(true);
     expect(req3.eventType).toBe("threat_exploit");
@@ -90,7 +102,7 @@ describe("DefenderClient Threat Actor blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req4.blocked).toBe(true);
     expect(req4.eventType).toBe("threat_botnet");
@@ -116,7 +128,7 @@ describe("DefenderClient Threat Actor blocking", () => {
       query: {},
       body: "",
       headers: {},
-      userAgent: "Mozilla/5.0"
+      userAgent: "Mozilla/5.0",
     });
     expect(req.blocked).toBe(false);
 

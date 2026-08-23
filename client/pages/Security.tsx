@@ -85,7 +85,9 @@ export default function Security() {
   const returnTo = searchParams.get("returnTo");
 
   // Active key in memory & session
-  const [keyBytes, setKeyBytes] = useState<Uint8Array | null>(() => getActiveMasterKey());
+  const [keyBytes, setKeyBytes] = useState<Uint8Array | null>(() =>
+    getActiveMasterKey(),
+  );
   const [inputMasterKey, setInputMasterKey] = useState<string>("");
   const [keyFormat, setKeyFormat] = useState<KeyFormat>("hex");
   const [showKeyFormat, setShowKeyFormat] = useState<boolean>(false);
@@ -117,15 +119,20 @@ export default function Security() {
     }
   });
 
-  const [encryptIntegrations, setEncryptIntegrations] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEYS.ENCRYPT_INTEGRATIONS) === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [encryptIntegrations, setEncryptIntegrations] = useState<boolean>(
+    () => {
+      try {
+        return (
+          localStorage.getItem(STORAGE_KEYS.ENCRYPT_INTEGRATIONS) === "true"
+        );
+      } catch {
+        return false;
+      }
+    },
+  );
 
-  const [migratingCategory, setMigratingCategory] = useState<EncryptionCategory | null>(null);
+  const [migratingCategory, setMigratingCategory] =
+    useState<EncryptionCategory | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,14 +141,22 @@ export default function Security() {
   const handleRotateKey = async () => {
     if (!keyBytes) return;
 
-    if (!confirm(t("security.rotateKeyConfirm", undefined, "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished."))) {
+    if (
+      !confirm(
+        t(
+          "security.rotateKeyConfirm",
+          undefined,
+          "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
+        ),
+      )
+    ) {
       return;
     }
 
     try {
       setIsRotatingKey(true);
       const newKey = generateAes256Key();
-      
+
       const result = await rotateMasterKey({
         oldKeyBytes: keyBytes,
         newKeyBytes: newKey,
@@ -151,8 +166,14 @@ export default function Security() {
       setKeyBytes(newKey);
       setImportError(null);
       setInputMasterKey("");
-      
-      toast.success(t("security.keyRotatedToast", { count: result.updatedCount }, `Masterkey rotated successfully! ${result.updatedCount} records re-encrypted.`));
+
+      toast.success(
+        t(
+          "security.keyRotatedToast",
+          { count: result.updatedCount },
+          `Masterkey rotated successfully! ${result.updatedCount} records re-encrypted.`,
+        ),
+      );
 
       // Auto-download the new key for safety
       const hex = bytesToHex(newKey);
@@ -189,7 +210,9 @@ export default function Security() {
         "===========================================================",
       ].join("\n");
 
-      const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+      const blob = new Blob([fileContent], {
+        type: "text/plain;charset=utf-8",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -198,10 +221,19 @@ export default function Security() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success(t("security.keyDownloadedToast", undefined, "Masterkey saved to file"));
+      toast.success(
+        t("security.keyDownloadedToast", undefined, "Masterkey saved to file"),
+      );
     } catch (err: any) {
       console.error("Failed to rotate key:", err);
-      toast.error(err.message || t("security.keyRotateFailed", undefined, "Failed to rotate masterkey."));
+      toast.error(
+        err.message ||
+          t(
+            "security.keyRotateFailed",
+            undefined,
+            "Failed to rotate masterkey.",
+          ),
+      );
     } finally {
       setIsRotatingKey(false);
     }
@@ -222,8 +254,8 @@ export default function Security() {
           t(
             "security.keyFileUploadedToast",
             undefined,
-            "Masterkey loaded and activated from file"
-          )
+            "Masterkey loaded and activated from file",
+          ),
         );
       } catch (err: any) {
         console.error("Failed to parse key file:", err);
@@ -232,13 +264,13 @@ export default function Security() {
           t(
             "security.invalidKeyFileError",
             undefined,
-            "No valid 256-bit masterkey found in the uploaded file."
+            "No valid 256-bit masterkey found in the uploaded file.",
           );
         setImportError(errMsg);
         toast.error(errMsg);
       }
     },
-    [t]
+    [t],
   );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,7 +327,13 @@ export default function Security() {
       setKeyBytes(newKey);
       setImportError(null);
       setInputMasterKey("");
-      toast.success(t("security.keyCopiedToast", undefined, "New 256-bit AES masterkey generated"));
+      toast.success(
+        t(
+          "security.keyCopiedToast",
+          undefined,
+          "New 256-bit AES masterkey generated",
+        ),
+      );
     } catch (err) {
       console.error("Failed to generate masterkey:", err);
       toast.error(t("common.error", undefined, "Failed to generate masterkey"));
@@ -307,7 +345,11 @@ export default function Security() {
     const trimmed = inputMasterKey.trim();
     if (!trimmed) return;
     if (!isValidMasterKeyString(trimmed)) {
-      const errMsg = t("security.invalidKeyError", undefined, "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).");
+      const errMsg = t(
+        "security.invalidKeyError",
+        undefined,
+        "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
+      );
       setImportError(errMsg);
       toast.error(errMsg);
       return;
@@ -318,7 +360,13 @@ export default function Security() {
       setActiveMasterKey(parsedBytes);
       setInputMasterKey("");
       setImportError(null);
-      toast.success(t("security.keyActivatedToast", undefined, "Masterkey activated successfully"));
+      toast.success(
+        t(
+          "security.keyActivatedToast",
+          undefined,
+          "Masterkey activated successfully",
+        ),
+      );
     } catch (err: any) {
       const errMsg = err?.message || "Invalid masterkey";
       setImportError(errMsg);
@@ -349,11 +397,19 @@ export default function Security() {
     try {
       await navigator.clipboard.writeText(formattedKeyString);
       setHasCopied(true);
-      toast.success(t("security.keyCopiedToast", undefined, "Masterkey copied to clipboard"));
+      toast.success(
+        t(
+          "security.keyCopiedToast",
+          undefined,
+          "Masterkey copied to clipboard",
+        ),
+      );
       setTimeout(() => setHasCopied(false), 2500);
     } catch (err) {
       console.error("Failed to copy key:", err);
-      toast.error(t("common.error", undefined, "Failed to copy key to clipboard"));
+      toast.error(
+        t("common.error", undefined, "Failed to copy key to clipboard"),
+      );
     }
   }, [formattedKeyString, t]);
 
@@ -403,7 +459,9 @@ export default function Security() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(t("security.keyDownloadedToast", undefined, "Masterkey saved to file"));
+    toast.success(
+      t("security.keyDownloadedToast", undefined, "Masterkey saved to file"),
+    );
   }, [keyBytes, formattedKeyString, t]);
 
   // Lock / Clear active key from session
@@ -413,18 +471,27 @@ export default function Security() {
     }
     setKeyBytes(null);
     clearActiveMasterKey();
-    toast.info(t("security.keyClearedToast", undefined, "Masterkey cleared and zeroized from session"));
+    toast.info(
+      t(
+        "security.keyClearedToast",
+        undefined,
+        "Masterkey cleared and zeroized from session",
+      ),
+    );
   }, [keyBytes, t]);
 
   // Update encryption toggles and immediately migrate data in Supabase
-  const handleToggleCategory = async (category: EncryptionCategory, checked: boolean) => {
+  const handleToggleCategory = async (
+    category: EncryptionCategory,
+    checked: boolean,
+  ) => {
     if (!keyBytes) {
       toast.error(
         t(
           "security.masterKeyRequiredToChange",
           undefined,
-          "An active masterkey is required to enable or disable protected data categories."
-        )
+          "An active masterkey is required to enable or disable protected data categories.",
+        ),
       );
       return;
     }
@@ -432,7 +499,9 @@ export default function Security() {
     if (category === "integrations" && !checked) {
       // Cannot disable while api keys/integrations are stored
       try {
-        let query = supabase.from("user_integrations").select("id", { count: "exact", head: true });
+        let query = supabase
+          .from("user_integrations")
+          .select("id", { count: "exact", head: true });
         if (session?.user?.id) {
           query = query.eq("user_id", session.user.id);
         }
@@ -442,8 +511,8 @@ export default function Security() {
             t(
               "security.cannotDisableIntegrationsWithKeys",
               undefined,
-              "Cannot disable encryption while API keys/integrations are stored. Please remove all stored integrations first."
-            )
+              "Cannot disable encryption while API keys/integrations are stored. Please remove all stored integrations first.",
+            ),
           );
           return;
         }
@@ -479,19 +548,23 @@ export default function Security() {
         ? t(
             "security.migrationEncryptedToast",
             { count: result.updatedCount },
-            `Encryption enabled. ${result.updatedCount} records encrypted and updated in cloud.`
+            `Encryption enabled. ${result.updatedCount} records encrypted and updated in cloud.`,
           )
         : t(
             "security.migrationDecryptedToast",
             { count: result.updatedCount },
-            `Encryption disabled. ${result.updatedCount} records decrypted and restored in cloud.`
+            `Encryption disabled. ${result.updatedCount} records decrypted and restored in cloud.`,
           );
       toast.success(msg);
     } catch (err: any) {
       console.error("Encryption migration failed:", err);
       toast.error(
         err.message ||
-          t("security.migrationFailed", undefined, "Failed to update encryption on existing cloud records.")
+          t(
+            "security.migrationFailed",
+            undefined,
+            "Failed to update encryption on existing cloud records.",
+          ),
       );
     } finally {
       setMigratingCategory(null);
@@ -505,10 +578,16 @@ export default function Security() {
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
             <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
-            <span>{t("security.title", undefined, "Security & Data Encryption")}</span>
+            <span>
+              {t("security.title", undefined, "Security & Data Encryption")}
+            </span>
           </h2>
           <p className="text-sm sm:text-base text-slate-400">
-            {t("security.subtitle", undefined, "Manage your 256-bit AES masterkey and enable zero-knowledge encryption for your private data.")}
+            {t(
+              "security.subtitle",
+              undefined,
+              "Manage your 256-bit AES masterkey and enable zero-knowledge encryption for your private data.",
+            )}
           </p>
         </div>
 
@@ -519,7 +598,11 @@ export default function Security() {
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-white">
-                  {t("security.returnToPrompt", undefined, "Masterkey active. You can now return to your previous page:")}
+                  {t(
+                    "security.returnToPrompt",
+                    undefined,
+                    "Masterkey active. You can now return to your previous page:",
+                  )}
                 </p>
                 <p className="text-xs font-mono text-slate-400">{returnTo}</p>
               </div>
@@ -530,7 +613,9 @@ export default function Security() {
               className="gap-1.5 shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>{t("security.returnToButton", undefined, "Return to Page")}</span>
+              <span>
+                {t("security.returnToButton", undefined, "Return to Page")}
+              </span>
             </Button>
           </div>
         )}
@@ -545,20 +630,38 @@ export default function Security() {
                   {t("security.masterKeyTitle", undefined, "AES-256 Masterkey")}
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm text-slate-400">
-                  {t("security.masterKeyDesc", undefined, "Your masterkey encrypts your private data on your device before it is stored in the cloud. Nobody else can read your data without this key.")}
+                  {t(
+                    "security.masterKeyDesc",
+                    undefined,
+                    "Your masterkey encrypts your private data on your device before it is stored in the cloud. Nobody else can read your data without this key.",
+                  )}
                 </CardDescription>
               </div>
 
               <div className="shrink-0">
                 {keyBytes ? (
-                  <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 gap-1.5 py-0.5 px-2.5 font-medium">
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 gap-1.5 py-0.5 px-2.5 font-medium"
+                  >
                     <Lock className="w-3 h-3" />
-                    {t("security.keyActiveBadge", undefined, "Masterkey Active")}
+                    {t(
+                      "security.keyActiveBadge",
+                      undefined,
+                      "Masterkey Active",
+                    )}
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-400 gap-1.5 py-0.5 px-2.5 font-medium">
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/40 bg-amber-500/10 text-amber-400 gap-1.5 py-0.5 px-2.5 font-medium"
+                  >
                     <Unlock className="w-3 h-3" />
-                    {t("security.keyNotSetBadge", undefined, "No Masterkey Set")}
+                    {t(
+                      "security.keyNotSetBadge",
+                      undefined,
+                      "No Masterkey Set",
+                    )}
                   </Badge>
                 )}
               </div>
@@ -578,12 +681,20 @@ export default function Security() {
                     {hasCopied ? (
                       <>
                         <Check className="w-4 h-4" />
-                        <span>{t("security.copied", undefined, "Copied!")}</span>
+                        <span>
+                          {t("security.copied", undefined, "Copied!")}
+                        </span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-4 h-4" />
-                        <span>{t("security.copyKey", undefined, "Copy to Clipboard")}</span>
+                        <span>
+                          {t(
+                            "security.copyKey",
+                            undefined,
+                            "Copy to Clipboard",
+                          )}
+                        </span>
                       </>
                     )}
                   </Button>
@@ -594,7 +705,9 @@ export default function Security() {
                     className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
                   >
                     <Download className="w-4 h-4" />
-                    <span>{t("security.downloadKey", undefined, "Download key")}</span>
+                    <span>
+                      {t("security.downloadKey", undefined, "Download key")}
+                    </span>
                   </Button>
 
                   <Button
@@ -605,13 +718,17 @@ export default function Security() {
                       "gap-2 border-slate-800 transition-all",
                       showKeyFormat
                         ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
-                        : "bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
+                        : "bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white",
                     )}
                   >
                     <SlidersHorizontal className="w-4 h-4" />
                     <span>
                       {showKeyFormat
-                        ? t("security.hideKeyFormat", undefined, "Hide Key Format")
+                        ? t(
+                            "security.hideKeyFormat",
+                            undefined,
+                            "Hide Key Format",
+                          )
                         : t("security.showKeyFormat", undefined, "Key Format")}
                     </span>
                   </Button>
@@ -621,9 +738,17 @@ export default function Security() {
                     variant="ghost"
                     size="icon"
                     className="text-slate-400 hover:text-white hover:bg-slate-800"
-                    title={isMasked ? t("security.revealKey", undefined, "Reveal key") : t("security.maskKey", undefined, "Hide key")}
+                    title={
+                      isMasked
+                        ? t("security.revealKey", undefined, "Reveal key")
+                        : t("security.maskKey", undefined, "Hide key")
+                    }
                   >
-                    {isMasked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {isMasked ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </Button>
 
                   <Button
@@ -632,8 +757,18 @@ export default function Security() {
                     variant="outline"
                     className="gap-2 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300"
                   >
-                    {isRotatingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                    <span>{t("security.rotateKeyButton", undefined, "Rotate Masterkey")}</span>
+                    {isRotatingKey ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <KeyRound className="w-4 h-4" />
+                    )}
+                    <span>
+                      {t(
+                        "security.rotateKeyButton",
+                        undefined,
+                        "Rotate Masterkey",
+                      )}
+                    </span>
                   </Button>
 
                   <Button
@@ -642,7 +777,9 @@ export default function Security() {
                     className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 ml-auto text-xs gap-1.5"
                   >
                     <Lock className="w-3.5 h-3.5" />
-                    <span>{t("security.clearKey", undefined, "Lock / Clear Key")}</span>
+                    <span>
+                      {t("security.clearKey", undefined, "Lock / Clear Key")}
+                    </span>
                   </Button>
                 </div>
 
@@ -654,24 +791,42 @@ export default function Security() {
                     </span>
 
                     <div className="flex flex-wrap gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                      {(["hex", "base64", "base58", "words"] as const).map((fmt) => (
-                        <button
-                          key={fmt}
-                          type="button"
-                          onClick={() => setKeyFormat(fmt)}
-                          className={cn(
-                            "px-3 py-1 text-xs font-medium rounded-lg transition-all",
-                            keyFormat === fmt
-                              ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
-                              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
-                          )}
-                        >
-                          {fmt === "hex" && t("security.formatHex", undefined, "Hex (64 chars)")}
-                          {fmt === "base64" && t("security.formatBase64", undefined, "Base64 (44 chars)")}
-                          {fmt === "base58" && t("security.formatBase58", undefined, "Base58")}
-                          {fmt === "words" && t("security.formatWords", undefined, "Passphrase Words")}
-                        </button>
-                      ))}
+                      {(["hex", "base64", "base58", "words"] as const).map(
+                        (fmt) => (
+                          <button
+                            key={fmt}
+                            type="button"
+                            onClick={() => setKeyFormat(fmt)}
+                            className={cn(
+                              "px-3 py-1 text-xs font-medium rounded-lg transition-all",
+                              keyFormat === fmt
+                                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent",
+                            )}
+                          >
+                            {fmt === "hex" &&
+                              t(
+                                "security.formatHex",
+                                undefined,
+                                "Hex (64 chars)",
+                              )}
+                            {fmt === "base64" &&
+                              t(
+                                "security.formatBase64",
+                                undefined,
+                                "Base64 (44 chars)",
+                              )}
+                            {fmt === "base58" &&
+                              t("security.formatBase58", undefined, "Base58")}
+                            {fmt === "words" &&
+                              t(
+                                "security.formatWords",
+                                undefined,
+                                "Passphrase Words",
+                              )}
+                          </button>
+                        ),
+                      )}
                     </div>
                   </div>
                 )}
@@ -694,9 +849,17 @@ export default function Security() {
                     size="icon"
                     onClick={handleCopyKey}
                     className="absolute top-2.5 right-2.5 h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
-                    title={t("security.copyKey", undefined, "Copy to clipboard")}
+                    title={t(
+                      "security.copyKey",
+                      undefined,
+                      "Copy to clipboard",
+                    )}
                   >
-                    {hasCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    {hasCopied ? (
+                      <Check className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -709,10 +872,17 @@ export default function Security() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-white font-semibold text-base">
                         <Sparkles className="w-5 h-5 text-cyan-400" />
-                        <span>{t("security.generateButton", undefined, "Generate Masterkey")}</span>
+                        <span>
+                          {t(
+                            "security.generateButton",
+                            undefined,
+                            "Generate Masterkey",
+                          )}
+                        </span>
                       </div>
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        Create a brand new 256-bit symmetric masterkey using cryptographically secure hardware random numbers.
+                        Create a brand new 256-bit symmetric masterkey using
+                        cryptographically secure hardware random numbers.
                       </p>
                     </div>
 
@@ -722,7 +892,11 @@ export default function Security() {
                       className="w-full gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-lg shadow-cyan-950/30"
                     >
                       <KeyRound className="w-4 h-4" />
-                      {t("security.generateButton", undefined, "Generate Masterkey")}
+                      {t(
+                        "security.generateButton",
+                        undefined,
+                        "Generate Masterkey",
+                      )}
                     </Button>
                   </div>
 
@@ -736,19 +910,25 @@ export default function Security() {
                       "p-4 sm:p-5 rounded-xl border bg-slate-950/60 transition-all space-y-4 flex flex-col justify-between",
                       isDragging
                         ? "border-cyan-500 bg-cyan-950/20 ring-2 ring-cyan-500/30"
-                        : "border-slate-800 hover:border-slate-700"
+                        : "border-slate-800 hover:border-slate-700",
                     )}
                   >
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-white font-semibold text-base">
                         <FileKey className="w-5 h-5 text-cyan-400" />
-                        <span>{t("security.importKeyTitle", undefined, "Use Existing Masterkey")}</span>
+                        <span>
+                          {t(
+                            "security.importKeyTitle",
+                            undefined,
+                            "Use Existing Masterkey",
+                          )}
+                        </span>
                       </div>
                       <p className="text-xs text-slate-400 leading-relaxed">
                         {t(
                           "security.uploadKeyDesc",
                           undefined,
-                          "Upload your saved .key backup file to automatically activate and unlock your masterkey."
+                          "Upload your saved .key backup file to automatically activate and unlock your masterkey.",
                         )}
                       </p>
                     </div>
@@ -773,7 +953,13 @@ export default function Security() {
                         className="w-full border-dashed border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-white gap-2 text-xs"
                       >
                         <Upload className="w-4 h-4" />
-                        <span>{t("security.uploadKeyFile", undefined, "Upload .key File")}</span>
+                        <span>
+                          {t(
+                            "security.uploadKeyFile",
+                            undefined,
+                            "Upload .key File",
+                          )}
+                        </span>
                       </Button>
 
                       <div className="relative flex items-center justify-center">
@@ -786,7 +972,11 @@ export default function Security() {
                       <div className="space-y-2">
                         <Input
                           type="password"
-                          placeholder={t("security.importKeyPlaceholder", undefined, "Paste 64-char Hex or 256-bit Base64 masterkey...")}
+                          placeholder={t(
+                            "security.importKeyPlaceholder",
+                            undefined,
+                            "Paste 64-char Hex or 256-bit Base64 masterkey...",
+                          )}
                           value={inputMasterKey}
                           onChange={(e) => {
                             setInputMasterKey(e.target.value);
@@ -810,7 +1000,11 @@ export default function Security() {
                           className="w-full gap-2 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-white"
                         >
                           <Unlock className="w-3.5 h-3.5" />
-                          {t("security.activateKeyButton", undefined, "Unlock / Activate Key")}
+                          {t(
+                            "security.activateKeyButton",
+                            undefined,
+                            "Unlock / Activate Key",
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -823,7 +1017,11 @@ export default function Security() {
             <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400">
               <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
               <span>
-                {t("security.clientSideNotice", undefined, "Zero-Knowledge: Your masterkey is held only in your browser session and is never sent to any server.")}
+                {t(
+                  "security.clientSideNotice",
+                  undefined,
+                  "Zero-Knowledge: Your masterkey is held only in your browser session and is never sent to any server.",
+                )}
               </span>
             </div>
           </CardContent>
@@ -834,10 +1032,18 @@ export default function Security() {
           <CardHeader>
             <CardTitle className="text-lg sm:text-xl text-white flex items-center gap-2">
               <Lock className="w-5 h-5 text-cyan-400" />
-              {t("security.encryptionSettingsTitle", undefined, "Protected Data Categories")}
+              {t(
+                "security.encryptionSettingsTitle",
+                undefined,
+                "Protected Data Categories",
+              )}
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm text-slate-400">
-              {t("security.encryptionSettingsDesc", undefined, "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your masterkey before storage.")}
+              {t(
+                "security.encryptionSettingsDesc",
+                undefined,
+                "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your masterkey before storage.",
+              )}
             </CardDescription>
           </CardHeader>
 
@@ -849,7 +1055,7 @@ export default function Security() {
                   {t(
                     "security.masterKeyRequiredNotice",
                     undefined,
-                    "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings."
+                    "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
                   )}
                 </span>
               </div>
@@ -863,27 +1069,59 @@ export default function Security() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="toggle-characters" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
-                      {t("security.charactersUniverses", undefined, "Characters and Universes")}
+                    <Label
+                      htmlFor="toggle-characters"
+                      className="text-sm sm:text-base font-semibold text-white cursor-pointer"
+                    >
+                      {t(
+                        "security.charactersUniverses",
+                        undefined,
+                        "Characters and Universes",
+                      )}
                     </Label>
                     {encryptCharacters ? (
                       keyBytes ? (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-                          {t("security.encryptionEnabled", undefined, "Encrypted")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        >
+                          {t(
+                            "security.encryptionEnabled",
+                            undefined,
+                            "Encrypted",
+                          )}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30">
-                          {t("security.keyRequiredBadge", undefined, "Key Required")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        >
+                          {t(
+                            "security.keyRequiredBadge",
+                            undefined,
+                            "Key Required",
+                          )}
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
-                        {t("security.encryptionDisabled", undefined, "Unencrypted")}
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700"
+                      >
+                        {t(
+                          "security.encryptionDisabled",
+                          undefined,
+                          "Unencrypted",
+                        )}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-                    {t("security.charactersUniversesDesc", undefined, "Encrypt character bios, appearances, personalities, private notes, and universe lore.")}
+                    {t(
+                      "security.charactersUniversesDesc",
+                      undefined,
+                      "Encrypt character bios, appearances, personalities, private notes, and universe lore.",
+                    )}
                   </p>
                 </div>
               </div>
@@ -896,7 +1134,9 @@ export default function Security() {
                   id="toggle-characters"
                   checked={encryptCharacters}
                   disabled={!keyBytes || migratingCategory !== null}
-                  onCheckedChange={(checked) => handleToggleCategory("characters", checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggleCategory("characters", checked)
+                  }
                 />
               </div>
             </div>
@@ -909,27 +1149,55 @@ export default function Security() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="toggle-datasave" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
+                    <Label
+                      htmlFor="toggle-datasave"
+                      className="text-sm sm:text-base font-semibold text-white cursor-pointer"
+                    >
                       {t("security.dataSave", undefined, "Data Save Entries")}
                     </Label>
                     {encryptDataSave ? (
                       keyBytes ? (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-                          {t("security.encryptionEnabled", undefined, "Encrypted")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        >
+                          {t(
+                            "security.encryptionEnabled",
+                            undefined,
+                            "Encrypted",
+                          )}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30">
-                          {t("security.keyRequiredBadge", undefined, "Key Required")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        >
+                          {t(
+                            "security.keyRequiredBadge",
+                            undefined,
+                            "Key Required",
+                          )}
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
-                        {t("security.encryptionDisabled", undefined, "Unencrypted")}
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700"
+                      >
+                        {t(
+                          "security.encryptionDisabled",
+                          undefined,
+                          "Unencrypted",
+                        )}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-                    {t("security.dataSaveDesc", undefined, "Encrypt custom key-value snippets, code snippets, notes, and stored data records.")}
+                    {t(
+                      "security.dataSaveDesc",
+                      undefined,
+                      "Encrypt custom key-value snippets, code snippets, notes, and stored data records.",
+                    )}
                   </p>
                 </div>
               </div>
@@ -942,7 +1210,9 @@ export default function Security() {
                   id="toggle-datasave"
                   checked={encryptDataSave}
                   disabled={!keyBytes || migratingCategory !== null}
-                  onCheckedChange={(checked) => handleToggleCategory("data_save", checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggleCategory("data_save", checked)
+                  }
                 />
               </div>
             </div>
@@ -955,27 +1225,55 @@ export default function Security() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="toggle-chatbot" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
+                    <Label
+                      htmlFor="toggle-chatbot"
+                      className="text-sm sm:text-base font-semibold text-white cursor-pointer"
+                    >
                       {t("security.chatbotChats", undefined, "Chatbot Chats")}
                     </Label>
                     {encryptChatbot ? (
                       keyBytes ? (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-                          {t("security.encryptionEnabled", undefined, "Encrypted")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        >
+                          {t(
+                            "security.encryptionEnabled",
+                            undefined,
+                            "Encrypted",
+                          )}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30">
-                          {t("security.keyRequiredBadge", undefined, "Key Required")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        >
+                          {t(
+                            "security.keyRequiredBadge",
+                            undefined,
+                            "Key Required",
+                          )}
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
-                        {t("security.encryptionDisabled", undefined, "Unencrypted")}
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700"
+                      >
+                        {t(
+                          "security.encryptionDisabled",
+                          undefined,
+                          "Unencrypted",
+                        )}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-                    {t("security.chatbotChatsDesc", undefined, "Encrypt AI conversations, message history, and system prompts.")}
+                    {t(
+                      "security.chatbotChatsDesc",
+                      undefined,
+                      "Encrypt AI conversations, message history, and system prompts.",
+                    )}
                   </p>
                 </div>
               </div>
@@ -988,7 +1286,9 @@ export default function Security() {
                   id="toggle-chatbot"
                   checked={encryptChatbot}
                   disabled={!keyBytes || migratingCategory !== null}
-                  onCheckedChange={(checked) => handleToggleCategory("chatbot", checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggleCategory("chatbot", checked)
+                  }
                 />
               </div>
             </div>
@@ -1001,27 +1301,59 @@ export default function Security() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="toggle-integrations" className="text-sm sm:text-base font-semibold text-white cursor-pointer">
-                      {t("security.integrations", undefined, "API Keys & Integrations")}
+                    <Label
+                      htmlFor="toggle-integrations"
+                      className="text-sm sm:text-base font-semibold text-white cursor-pointer"
+                    >
+                      {t(
+                        "security.integrations",
+                        undefined,
+                        "API Keys & Integrations",
+                      )}
                     </Label>
                     {encryptIntegrations ? (
                       keyBytes ? (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-                          {t("security.encryptionEnabled", undefined, "Encrypted")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        >
+                          {t(
+                            "security.encryptionEnabled",
+                            undefined,
+                            "Encrypted",
+                          )}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30">
-                          {t("security.keyRequiredBadge", undefined, "Key Required")}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        >
+                          {t(
+                            "security.keyRequiredBadge",
+                            undefined,
+                            "Key Required",
+                          )}
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700">
-                        {t("security.encryptionDisabled", undefined, "Unencrypted")}
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700"
+                      >
+                        {t(
+                          "security.encryptionDisabled",
+                          undefined,
+                          "Unencrypted",
+                        )}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-                    {t("security.integrationsDesc", undefined, "Encrypt stored API keys, LLM credentials, and MCP access tokens.")}
+                    {t(
+                      "security.integrationsDesc",
+                      undefined,
+                      "Encrypt stored API keys, LLM credentials, and MCP access tokens.",
+                    )}
                   </p>
                 </div>
               </div>
@@ -1034,7 +1366,9 @@ export default function Security() {
                   id="toggle-integrations"
                   checked={encryptIntegrations}
                   disabled={!keyBytes || migratingCategory !== null}
-                  onCheckedChange={(checked) => handleToggleCategory("integrations", checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggleCategory("integrations", checked)
+                  }
                 />
               </div>
             </div>

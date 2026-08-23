@@ -42,7 +42,7 @@ describe("usePageTitle hook", () => {
 
   it("updates meta description and og/twitter tags when description is provided", () => {
     renderHook(() =>
-      usePageTitle("Apps", { description: "Explore the app store." })
+      usePageTitle("Apps", { description: "Explore the app store." }),
     );
     expect(document.title).toBe("Apps - Oxygen Low's Software");
 
@@ -50,9 +50,31 @@ describe("usePageTitle hook", () => {
     expect(descMeta?.getAttribute("content")).toBe("Explore the app store.");
 
     const ogTitle = document.querySelector('meta[property="og:title"]');
-    expect(ogTitle?.getAttribute("content")).toBe("Apps - Oxygen Low's Software");
+    expect(ogTitle?.getAttribute("content")).toBe(
+      "Apps - Oxygen Low's Software",
+    );
 
-    const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+    const twitterDesc = document.querySelector(
+      'meta[name="twitter:description"]',
+    );
     expect(twitterDesc?.getAttribute("content")).toBe("Explore the app store.");
+  });
+
+  it("sets and updates canonical link tag and og:url", () => {
+    renderHook(() =>
+      usePageTitle("Privacy Policy", {
+        canonical: "https://oxygenlow.com/privacy",
+      }),
+    );
+
+    const canonicalLink = document.querySelector('link[rel="canonical"]');
+    expect(canonicalLink?.getAttribute("href")).toBe(
+      "https://oxygenlow.com/privacy",
+    );
+
+    const ogUrl = document.querySelector('meta[property="og:url"]');
+    expect(ogUrl?.getAttribute("content")).toBe(
+      "https://oxygenlow.com/privacy",
+    );
   });
 });

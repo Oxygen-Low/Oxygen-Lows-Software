@@ -169,7 +169,8 @@ describe("Crypto Utilities (AES-256)", () => {
   });
 
   it("should format hex chunks in 8-char blocks", () => {
-    const hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const hex =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     const chunks = formatHexChunks(hex);
     expect(chunks.split(" ").length).toBe(8);
   });
@@ -292,9 +293,9 @@ describe("Crypto Utilities (AES-256)", () => {
 
     it("should throw error for invalid or empty file content", () => {
       expect(() => parseKeyFileContent("")).toThrow();
-      expect(() => parseKeyFileContent("random words without any valid 256-bit key")).toThrow(
-        "No valid 256-bit AES masterkey found"
-      );
+      expect(() =>
+        parseKeyFileContent("random words without any valid 256-bit key"),
+      ).toThrow("No valid 256-bit AES masterkey found");
     });
   });
 
@@ -384,7 +385,12 @@ describe("Crypto Utilities (AES-256)", () => {
 
     it("should handle null/undefined fields gracefully in character data", async () => {
       const key = generateAes256Key();
-      const char = { id: "char-2", name: "Bob", short_description: null, appearance: undefined };
+      const char = {
+        id: "char-2",
+        name: "Bob",
+        short_description: null,
+        appearance: undefined,
+      };
       const encrypted = await encryptCharacterData(char, key);
       expect(encrypted.name).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.short_description).toBeNull();
@@ -395,7 +401,12 @@ describe("Crypto Utilities (AES-256)", () => {
   describe("DataSave data transformers", () => {
     it("should encrypt and decrypt data save fields correctly", async () => {
       const key = generateAes256Key();
-      const save = { id: "save-1", key_name: "myKey", content: "myValue", user_id: "u1" };
+      const save = {
+        id: "save-1",
+        key_name: "myKey",
+        content: "myValue",
+        user_id: "u1",
+      };
       const encrypted = await encryptDataSaveData(save, key);
       expect(encrypted.key_name).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.content).toMatch(/^ENC:aes-256-gcm:/);
@@ -502,7 +513,9 @@ describe("Crypto Utilities (AES-256)", () => {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           update: vi.fn().mockReturnThis(),
-          then: vi.fn((resolve: any) => resolve({ data: mockItems, error: null })),
+          then: vi.fn((resolve: any) =>
+            resolve({ data: mockItems, error: null }),
+          ),
         }),
       };
 

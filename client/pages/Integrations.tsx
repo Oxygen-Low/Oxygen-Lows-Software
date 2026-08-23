@@ -72,7 +72,8 @@ import {
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
 import { cn } from "@/lib/utils";
 
-export type IntegrationCategoryKey = "all" | "llm_models" | "llm_integrations" | "llm_mcps";
+export type IntegrationCategoryKey =
+  "all" | "llm_models" | "llm_integrations" | "llm_mcps";
 
 export interface IntegrationDefinition {
   provider: string;
@@ -93,7 +94,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "OpenAI / ChatGPT",
     category: "llm_models",
     descriptionKey: "integrations.openaiDesc",
-    defaultDescription: "API key for OpenAI models including GPT-4o, o1, and o3-mini.",
+    defaultDescription:
+      "API key for OpenAI models including GPT-4o, o1, and o3-mini.",
     placeholder: "sk-proj-...",
     docsUrl: "https://platform.openai.com/api-keys",
     defaultBaseUrl: "https://api.openai.com/v1",
@@ -104,7 +106,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "Google / Gemini",
     category: "llm_models",
     descriptionKey: "integrations.geminiDesc",
-    defaultDescription: "API key for Google Gemini Flash, Pro, and embedding models.",
+    defaultDescription:
+      "API key for Google Gemini Flash, Pro, and embedding models.",
     placeholder: "AIzaSy...",
     docsUrl: "https://aistudio.google.com/app/apikey",
     defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
@@ -115,7 +118,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "OpenRouter",
     category: "llm_models",
     descriptionKey: "integrations.openrouterDesc",
-    defaultDescription: "Universal API key providing access to hundreds of AI models.",
+    defaultDescription:
+      "Universal API key providing access to hundreds of AI models.",
     placeholder: "sk-or-v1-...",
     docsUrl: "https://openrouter.ai/keys",
     defaultBaseUrl: "https://openrouter.ai/api/v1",
@@ -137,7 +141,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "Anthropic / Claude",
     category: "llm_models",
     descriptionKey: "integrations.anthropicDesc",
-    defaultDescription: "API key for Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku, and Opus.",
+    defaultDescription:
+      "API key for Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku, and Opus.",
     placeholder: "sk-ant-api03-...",
     docsUrl: "https://console.anthropic.com/settings/keys",
     defaultBaseUrl: "https://api.anthropic.com/v1",
@@ -150,7 +155,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "Google Jules",
     category: "llm_integrations",
     descriptionKey: "integrations.googleJulesDesc",
-    defaultDescription: "API key and integration credentials for Google Jules coding workflows.",
+    defaultDescription:
+      "API key and integration credentials for Google Jules coding workflows.",
     placeholder: "Enter Jules API key or access token...",
     docsUrl: "https://developers.google.com/jules/api",
     defaultBaseUrl: "https://jules.googleapis.com/v1alpha",
@@ -163,7 +169,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "Google Stitch MCP",
     category: "llm_mcps",
     descriptionKey: "integrations.googleStitchMcpDesc",
-    defaultDescription: "Model Context Protocol (MCP) server token and endpoint for Google Stitch.",
+    defaultDescription:
+      "Model Context Protocol (MCP) server token and endpoint for Google Stitch.",
     placeholder: "Enter Stitch MCP token or connection string...",
     docsUrl: "https://stitch.withgoogle.com",
     defaultBaseUrl: "https://stitch.googleapis.com/mcp",
@@ -174,7 +181,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "GitHub MCP",
     category: "llm_mcps",
     descriptionKey: "integrations.githubMcpDesc",
-    defaultDescription: "GitHub Personal Access Token (PAT) for GitHub MCP repository tools.",
+    defaultDescription:
+      "GitHub Personal Access Token (PAT) for GitHub MCP repository tools.",
     placeholder: "ghp_... or github_pat_...",
     docsUrl: "https://github.com/settings/tokens",
     defaultBaseUrl: "https://api.github.com",
@@ -197,32 +205,40 @@ export default function Integrations() {
   const [integrations, setIntegrations] = useState<IntegrationData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [activeCategory, setActiveCategory] = useState<IntegrationCategoryKey>("all");
+  const [activeCategory, setActiveCategory] =
+    useState<IntegrationCategoryKey>("all");
 
   // Encryption Check State
   const [encryptionEnabled, setEncryptionEnabled] = useState<boolean>(() =>
-    isCategoryEncryptionEnabled("integrations")
+    isCategoryEncryptionEnabled("integrations"),
   );
   const [encryptionLocked, setEncryptionLocked] = useState<boolean>(() =>
-    isCategoryLocked("integrations")
+    isCategoryLocked("integrations"),
   );
-  const [activeKey, setActiveKey] = useState<Uint8Array | null>(() => getActiveMasterKey());
+  const [activeKey, setActiveKey] = useState<Uint8Array | null>(() =>
+    getActiveMasterKey(),
+  );
 
   // Edit / Add Modal State
-  const [editingDef, setEditingDef] = useState<IntegrationDefinition | null>(null);
+  const [editingDef, setEditingDef] = useState<IntegrationDefinition | null>(
+    null,
+  );
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [inputApiKey, setInputApiKey] = useState<string>("");
   const [isMaskedInput, setIsMaskedInput] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
   // Delete Alert State
-  const [deletingIntegration, setDeletingIntegration] = useState<IntegrationData | null>(null);
+  const [deletingIntegration, setDeletingIntegration] =
+    useState<IntegrationData | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Copied state tracker by provider
   const [copiedProvider, setCopiedProvider] = useState<string | null>(null);
-  const [revealedProviders, setRevealedProviders] = useState<Record<string, boolean>>({});
+  const [revealedProviders, setRevealedProviders] = useState<
+    Record<string, boolean>
+  >({});
 
   // Sync encryption status
   const refreshEncryptionState = useCallback(() => {
@@ -256,13 +272,20 @@ export default function Integrations() {
 
       const key = getActiveMasterKey();
       const decryptedList = await Promise.all(
-        (data || []).map((item) => decryptIntegrationData(item, key))
+        (data || []).map((item) => decryptIntegrationData(item, key)),
       );
 
       setIntegrations(decryptedList);
     } catch (err: any) {
       console.error("Failed to fetch integrations:", err);
-      toast.error(err?.message || t("integrations.fetchError", undefined, "Failed to load integrations"));
+      toast.error(
+        err?.message ||
+          t(
+            "integrations.fetchError",
+            undefined,
+            "Failed to load integrations",
+          ),
+      );
     } finally {
       setLoading(false);
     }
@@ -290,7 +313,11 @@ export default function Integrations() {
       key = generateAes256Key();
       setActiveMasterKey(key);
       toast.success(
-        t("security.keyCopiedToast", undefined, "Generated and activated new AES-256 masterkey")
+        t(
+          "security.keyCopiedToast",
+          undefined,
+          "Generated and activated new AES-256 masterkey",
+        ),
       );
     }
 
@@ -299,7 +326,11 @@ export default function Integrations() {
     setEncryptionLocked(false);
     setActiveKey(key);
     toast.success(
-      t("integrations.encryptionEnabledToast", undefined, "Encryption enabled for API keys & integrations")
+      t(
+        "integrations.encryptionEnabledToast",
+        undefined,
+        "Encryption enabled for API keys & integrations",
+      ),
     );
     fetchIntegrations();
   };
@@ -319,13 +350,25 @@ export default function Integrations() {
     const trimmedKey = inputApiKey.trim();
 
     if (!trimmedKey) {
-      toast.error(t("integrations.keyRequiredError", undefined, "API key / token is required"));
+      toast.error(
+        t(
+          "integrations.keyRequiredError",
+          undefined,
+          "API key / token is required",
+        ),
+      );
       return;
     }
 
     const key = getActiveMasterKey();
     if (!key) {
-      toast.error(t("integrations.masterKeyMissingError", undefined, "Masterkey required to encrypt integration"));
+      toast.error(
+        t(
+          "integrations.masterKeyMissingError",
+          undefined,
+          "Masterkey required to encrypt integration",
+        ),
+      );
       return;
     }
 
@@ -354,7 +397,7 @@ export default function Integrations() {
             base_url: encrypted.base_url,
             updated_at: new Date().toISOString(),
           },
-          { onConflict: "user_id,provider" }
+          { onConflict: "user_id,provider" },
         )
         .select()
         .single();
@@ -377,13 +420,16 @@ export default function Integrations() {
         t(
           "integrations.savedToast",
           { name: editingDef.name },
-          `${editingDef.name} credentials saved securely.`
-        )
+          `${editingDef.name} credentials saved securely.`,
+        ),
       );
       setModalOpen(false);
     } catch (err: any) {
       console.error("Failed to save integration:", err);
-      toast.error(err?.message || t("integrations.saveError", undefined, "Failed to save integration"));
+      toast.error(
+        err?.message ||
+          t("integrations.saveError", undefined, "Failed to save integration"),
+      );
     } finally {
       setSaving(false);
     }
@@ -403,20 +449,27 @@ export default function Integrations() {
       if (error) throw error;
 
       setIntegrations((prev) =>
-        prev.filter((i) => i.provider !== deletingIntegration.provider)
+        prev.filter((i) => i.provider !== deletingIntegration.provider),
       );
       toast.success(
         t(
           "integrations.deletedToast",
           { name: deletingIntegration.name },
-          `${deletingIntegration.name} integration removed.`
-        )
+          `${deletingIntegration.name} integration removed.`,
+        ),
       );
       setDeleteConfirmOpen(false);
       setDeletingIntegration(null);
     } catch (err: any) {
       console.error("Failed to delete integration:", err);
-      toast.error(err?.message || t("integrations.deleteError", undefined, "Failed to delete integration"));
+      toast.error(
+        err?.message ||
+          t(
+            "integrations.deleteError",
+            undefined,
+            "Failed to delete integration",
+          ),
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -428,7 +481,9 @@ export default function Integrations() {
     try {
       await navigator.clipboard.writeText(rawKey);
       setCopiedProvider(provider);
-      toast.success(t("integrations.copiedToast", undefined, "API key copied to clipboard"));
+      toast.success(
+        t("integrations.copiedToast", undefined, "API key copied to clipboard"),
+      );
       setTimeout(() => setCopiedProvider(null), 2500);
     } catch (err) {
       console.error("Failed to copy:", err);
@@ -463,7 +518,9 @@ export default function Integrations() {
         const query = searchQuery.toLowerCase().trim();
         const matchesName = def.name.toLowerCase().includes(query);
         const matchesProvider = def.provider.toLowerCase().includes(query);
-        const matchesDesc = def.defaultDescription.toLowerCase().includes(query);
+        const matchesDesc = def.defaultDescription
+          .toLowerCase()
+          .includes(query);
         return matchesName || matchesProvider || matchesDesc;
       }
       return true;
@@ -472,7 +529,8 @@ export default function Integrations() {
 
   // Counts
   const configuredCount = useMemo(() => {
-    return integrations.filter((i) => i.api_key && i.api_key.trim().length > 0).length;
+    return integrations.filter((i) => i.api_key && i.api_key.trim().length > 0)
+      .length;
   }, [integrations]);
 
   return (
@@ -482,13 +540,15 @@ export default function Integrations() {
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
             <KeyRound className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
-            <span>{t("integrations.title", undefined, "Integrations & API Keys")}</span>
+            <span>
+              {t("integrations.title", undefined, "Integrations & API Keys")}
+            </span>
           </h2>
           <p className="text-sm sm:text-base text-slate-400 max-w-3xl">
             {t(
               "integrations.subtitle",
               undefined,
-              "Securely manage API keys and credentials for LLM models, integrations, and MCP servers."
+              "Securely manage API keys and credentials for LLM models, integrations, and MCP servers.",
             )}
           </p>
         </div>
@@ -500,13 +560,19 @@ export default function Integrations() {
             <CardHeader className="space-y-2">
               <div className="flex items-center gap-2.5 text-amber-400 font-semibold text-lg">
                 <Lock className="w-5 h-5" />
-                <span>{t("integrations.encryptionRequiredTitle", undefined, "Zero-Knowledge Encryption Required")}</span>
+                <span>
+                  {t(
+                    "integrations.encryptionRequiredTitle",
+                    undefined,
+                    "Zero-Knowledge Encryption Required",
+                  )}
+                </span>
               </div>
               <CardDescription className="text-sm text-slate-300 leading-relaxed max-w-3xl">
                 {t(
                   "integrations.encryptionRequiredDesc",
                   undefined,
-                  "To protect your private API keys and tokens from unauthorized access, Oxygen Low's Software requires client-side AES-256 masterkey encryption for all stored integrations. Data is encrypted directly in your browser before saving."
+                  "To protect your private API keys and tokens from unauthorized access, Oxygen Low's Software requires client-side AES-256 masterkey encryption for all stored integrations. Data is encrypted directly in your browser before saving.",
                 )}
               </CardDescription>
             </CardHeader>
@@ -517,7 +583,7 @@ export default function Integrations() {
                   {t(
                     "integrations.encryptionNoticeDetail",
                     undefined,
-                    "Your masterkey is held only in your local session and is never uploaded or accessible to the server."
+                    "Your masterkey is held only in your local session and is never uploaded or accessible to the server.",
                   )}
                 </span>
               </div>
@@ -527,7 +593,13 @@ export default function Integrations() {
                 className="gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-lg shadow-cyan-950/40"
               >
                 <Lock className="w-4 h-4" />
-                <span>{t("integrations.enableEncryptionButton", undefined, "Enable Integration Encryption")}</span>
+                <span>
+                  {t(
+                    "integrations.enableEncryptionButton",
+                    undefined,
+                    "Enable Integration Encryption",
+                  )}
+                </span>
               </Button>
             </CardContent>
           </Card>
@@ -535,7 +607,11 @@ export default function Integrations() {
           /* Case 2: Encryption is enabled, but locked in session */
           <EncryptionRequiredPrompt
             category="integrations"
-            categoryLabel={t("security.integrations", undefined, "API Keys & Integrations")}
+            categoryLabel={t(
+              "security.integrations",
+              undefined,
+              "API Keys & Integrations",
+            )}
             onUnlocked={handleUnlocked}
           />
         ) : (
@@ -546,7 +622,11 @@ export default function Integrations() {
               <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-all p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                    {t("integrations.totalAvailable", undefined, "Total Supported")}
+                    {t(
+                      "integrations.totalAvailable",
+                      undefined,
+                      "Total Supported",
+                    )}
                   </p>
                   <p className="text-2xl font-bold text-white mt-0.5">
                     {INTEGRATION_DEFINITIONS.length}
@@ -576,7 +656,9 @@ export default function Integrations() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <Tabs
                 value={activeCategory}
-                onValueChange={(val) => setActiveCategory(val as IntegrationCategoryKey)}
+                onValueChange={(val) =>
+                  setActiveCategory(val as IntegrationCategoryKey)
+                }
                 className="w-full md:w-auto"
               >
                 <TabsList className="bg-slate-900/80 p-1 border border-slate-800 rounded-xl flex flex-wrap h-auto gap-1">
@@ -584,28 +666,43 @@ export default function Integrations() {
                     value="all"
                     className="text-xs sm:text-sm rounded-lg px-3 py-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
                   >
-                    {t("common.all", undefined, "All")} ({INTEGRATION_DEFINITIONS.length})
+                    {t("common.all", undefined, "All")} (
+                    {INTEGRATION_DEFINITIONS.length})
                   </TabsTrigger>
                   <TabsTrigger
                     value="llm_models"
                     className="text-xs sm:text-sm rounded-lg px-3 py-1.5 gap-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
                   >
                     <Cpu className="w-3.5 h-3.5" />
-                    <span>{t("integrations.categoryModels", undefined, "LLM Models")}</span>
+                    <span>
+                      {t(
+                        "integrations.categoryModels",
+                        undefined,
+                        "LLM Models",
+                      )}
+                    </span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="llm_integrations"
                     className="text-xs sm:text-sm rounded-lg px-3 py-1.5 gap-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
                   >
                     <Bot className="w-3.5 h-3.5" />
-                    <span>{t("integrations.categoryIntegrations", undefined, "LLM Integrations")}</span>
+                    <span>
+                      {t(
+                        "integrations.categoryIntegrations",
+                        undefined,
+                        "LLM Integrations",
+                      )}
+                    </span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="llm_mcps"
                     className="text-xs sm:text-sm rounded-lg px-3 py-1.5 gap-1.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/40 text-slate-400 hover:text-slate-200 transition-all"
                   >
                     <Server className="w-3.5 h-3.5" />
-                    <span>{t("integrations.categoryMcps", undefined, "LLM Mcps")}</span>
+                    <span>
+                      {t("integrations.categoryMcps", undefined, "LLM Mcps")}
+                    </span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -613,7 +710,11 @@ export default function Integrations() {
               <div className="relative w-full md:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <Input
-                  placeholder={t("integrations.searchPlaceholder", undefined, "Search integrations...")}
+                  placeholder={t(
+                    "integrations.searchPlaceholder",
+                    undefined,
+                    "Search integrations...",
+                  )}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 text-xs sm:text-sm bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:ring-cyan-500"
@@ -633,19 +734,29 @@ export default function Integrations() {
             {loading ? (
               <div className="flex items-center justify-center py-20 text-slate-400 gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
-                <span>{t("common.loading", undefined, "Loading integrations...")}</span>
+                <span>
+                  {t("common.loading", undefined, "Loading integrations...")}
+                </span>
               </div>
             ) : filteredDefinitions.length === 0 ? (
               <Card className="bg-slate-900/50 border-slate-800 p-12 text-center">
                 <p className="text-sm text-slate-400">
-                  {t("integrations.noIntegrationsFound", undefined, "No integrations found matching your search.")}
+                  {t(
+                    "integrations.noIntegrationsFound",
+                    undefined,
+                    "No integrations found matching your search.",
+                  )}
                 </p>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredDefinitions.map((def) => {
-                  const stored = integrations.find((i) => i.provider === def.provider);
-                  const isConfigured = Boolean(stored?.api_key && stored.api_key.trim().length > 0);
+                  const stored = integrations.find(
+                    (i) => i.provider === def.provider,
+                  );
+                  const isConfigured = Boolean(
+                    stored?.api_key && stored.api_key.trim().length > 0,
+                  );
                   const isRevealed = Boolean(revealedProviders[def.provider]);
 
                   return (
@@ -654,7 +765,9 @@ export default function Integrations() {
                       data-testid={`integration-card-${def.provider}`}
                       className={cn(
                         "bg-slate-900/50 border-slate-800 transition-all duration-200 flex flex-col justify-between hover:bg-slate-900 hover:border-cyan-500/40 overflow-hidden",
-                        isConfigured ? "border-slate-800/90 shadow-sm" : "border-slate-800/60"
+                        isConfigured
+                          ? "border-slate-800/90 shadow-sm"
+                          : "border-slate-800/60",
                       )}
                     >
                       <CardHeader className="pb-3 p-4 sm:p-5">
@@ -666,8 +779,8 @@ export default function Integrations() {
                                 def.iconType === "model"
                                   ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
                                   : def.iconType === "integration"
-                                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
-                                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                    ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
                               )}
                             >
                               {def.iconType === "model" ? (
@@ -683,7 +796,11 @@ export default function Integrations() {
                                 <span>{def.name}</span>
                               </CardTitle>
                               <CardDescription className="text-xs text-slate-400 mt-1 leading-relaxed">
-                                {t(def.descriptionKey as any, undefined, def.defaultDescription)}
+                                {t(
+                                  def.descriptionKey as any,
+                                  undefined,
+                                  def.defaultDescription,
+                                )}
                               </CardDescription>
                             </div>
                           </div>
@@ -695,14 +812,22 @@ export default function Integrations() {
                                 className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[10px] font-mono uppercase tracking-wider py-0.5 px-2 gap-1"
                               >
                                 <Check className="w-3 h-3" />
-                                {t("integrations.configuredBadge", undefined, "Configured")}
+                                {t(
+                                  "integrations.configuredBadge",
+                                  undefined,
+                                  "Configured",
+                                )}
                               </Badge>
                             ) : (
                               <Badge
                                 variant="outline"
                                 className="border-slate-800 bg-slate-950/80 text-slate-500 text-[10px] font-mono uppercase tracking-wider py-0.5 px-2"
                               >
-                                {t("integrations.notConfiguredBadge", undefined, "Not Set")}
+                                {t(
+                                  "integrations.notConfiguredBadge",
+                                  undefined,
+                                  "Not Set",
+                                )}
                               </Badge>
                             )}
                           </div>
@@ -715,7 +840,12 @@ export default function Integrations() {
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                                {t("integrations.apiKeyLabel", undefined, "API Key / Token")}:
+                                {t(
+                                  "integrations.apiKeyLabel",
+                                  undefined,
+                                  "API Key / Token",
+                                )}
+                                :
                               </span>
                               {(stored?.base_url || def.defaultBaseUrl) && (
                                 <span
@@ -729,7 +859,9 @@ export default function Integrations() {
 
                             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-xs text-slate-200">
                               <div className="flex-1 truncate select-all">
-                                {isRevealed ? stored?.api_key : formatMaskedKey(stored?.api_key)}
+                                {isRevealed
+                                  ? stored?.api_key
+                                  : formatMaskedKey(stored?.api_key)}
                               </div>
 
                               <div className="flex items-center gap-1 shrink-0">
@@ -739,9 +871,21 @@ export default function Integrations() {
                                   size="icon"
                                   className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-800"
                                   onClick={() => toggleReveal(def.provider)}
-                                  title={isRevealed ? t("security.maskKey", undefined, "Hide") : t("security.revealKey", undefined, "Reveal")}
+                                  title={
+                                    isRevealed
+                                      ? t("security.maskKey", undefined, "Hide")
+                                      : t(
+                                          "security.revealKey",
+                                          undefined,
+                                          "Reveal",
+                                        )
+                                  }
                                 >
-                                  {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                  {isRevealed ? (
+                                    <EyeOff className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Eye className="w-3.5 h-3.5" />
+                                  )}
                                 </Button>
 
                                 <Button
@@ -749,8 +893,14 @@ export default function Integrations() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-800"
-                                  onClick={() => handleCopyKey(def.provider, stored?.api_key)}
-                                  title={t("integrations.copyKey", undefined, "Copy Key")}
+                                  onClick={() =>
+                                    handleCopyKey(def.provider, stored?.api_key)
+                                  }
+                                  title={t(
+                                    "integrations.copyKey",
+                                    undefined,
+                                    "Copy Key",
+                                  )}
                                 >
                                   {copiedProvider === def.provider ? (
                                     <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -763,7 +913,13 @@ export default function Integrations() {
                           </div>
                         ) : (
                           <div className="p-3 rounded-lg border border-dashed border-slate-800 bg-slate-950/40 text-xs text-slate-500 flex items-center justify-between">
-                            <span>{t("integrations.noKeyStored", undefined, "No API key configured yet")}</span>
+                            <span>
+                              {t(
+                                "integrations.noKeyStored",
+                                undefined,
+                                "No API key configured yet",
+                              )}
+                            </span>
                             {def.docsUrl && (
                               <a
                                 href={def.docsUrl}
@@ -771,7 +927,13 @@ export default function Integrations() {
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline"
                               >
-                                <span>{t("integrations.getKeyLink", undefined, "Get API Key")}</span>
+                                <span>
+                                  {t(
+                                    "integrations.getKeyLink",
+                                    undefined,
+                                    "Get API Key",
+                                  )}
+                                </span>
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                             )}
@@ -787,7 +949,13 @@ export default function Integrations() {
                               rel="noopener noreferrer"
                               className="text-xs text-slate-400 hover:text-cyan-400 inline-flex items-center gap-1 transition-colors"
                             >
-                              <span>{t("integrations.documentation", undefined, "Documentation")}</span>
+                              <span>
+                                {t(
+                                  "integrations.documentation",
+                                  undefined,
+                                  "Documentation",
+                                )}
+                              </span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           ) : (
@@ -807,7 +975,9 @@ export default function Integrations() {
                                 className="h-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs gap-1.5"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                                <span>{t("common.delete", undefined, "Delete")}</span>
+                                <span>
+                                  {t("common.delete", undefined, "Delete")}
+                                </span>
                               </Button>
                             )}
 
@@ -820,18 +990,26 @@ export default function Integrations() {
                                 "h-8 text-xs gap-1.5 transition-all font-medium",
                                 isConfigured
                                   ? "border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
-                                  : "bg-cyan-600 hover:bg-cyan-500 text-white"
+                                  : "bg-cyan-600 hover:bg-cyan-500 text-white",
                               )}
                             >
                               {isConfigured ? (
                                 <>
                                   <Edit2 className="w-3.5 h-3.5" />
-                                  <span>{t("common.edit", undefined, "Edit")}</span>
+                                  <span>
+                                    {t("common.edit", undefined, "Edit")}
+                                  </span>
                                 </>
                               ) : (
                                 <>
                                   <Plus className="w-3.5 h-3.5" />
-                                  <span>{t("integrations.configureButton", undefined, "Configure")}</span>
+                                  <span>
+                                    {t(
+                                      "integrations.configureButton",
+                                      undefined,
+                                      "Configure",
+                                    )}
+                                  </span>
                                 </>
                               )}
                             </Button>
@@ -857,22 +1035,38 @@ export default function Integrations() {
                     ? t(
                         "integrations.configureModalTitle",
                         { name: editingDef.name },
-                        `Configure ${editingDef.name}`
+                        `Configure ${editingDef.name}`,
                       )
-                    : t("integrations.configureModalDefaultTitle", undefined, "Configure Integration")}
+                    : t(
+                        "integrations.configureModalDefaultTitle",
+                        undefined,
+                        "Configure Integration",
+                      )}
                 </span>
               </DialogTitle>
               <DialogDescription className="text-xs sm:text-sm text-slate-400">
                 {editingDef &&
-                  t(editingDef.descriptionKey as any, undefined, editingDef.defaultDescription)}
+                  t(
+                    editingDef.descriptionKey as any,
+                    undefined,
+                    editingDef.defaultDescription,
+                  )}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="input-api-key" className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                    {t("integrations.apiKeyLabel", undefined, "API Key / Access Token")} *
+                  <Label
+                    htmlFor="input-api-key"
+                    className="text-xs font-semibold uppercase tracking-wider text-slate-300"
+                  >
+                    {t(
+                      "integrations.apiKeyLabel",
+                      undefined,
+                      "API Key / Access Token",
+                    )}{" "}
+                    *
                   </Label>
                   {editingDef?.docsUrl && (
                     <a
@@ -881,7 +1075,9 @@ export default function Integrations() {
                       rel="noopener noreferrer"
                       className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline inline-flex items-center gap-1"
                     >
-                      <span>{t("integrations.getKeyLink", undefined, "Get API Key")}</span>
+                      <span>
+                        {t("integrations.getKeyLink", undefined, "Get API Key")}
+                      </span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
@@ -903,9 +1099,17 @@ export default function Integrations() {
                     size="icon"
                     onClick={() => setIsMaskedInput((prev) => !prev)}
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white"
-                    title={isMaskedInput ? t("security.revealKey", undefined, "Reveal") : t("security.maskKey", undefined, "Hide")}
+                    title={
+                      isMaskedInput
+                        ? t("security.revealKey", undefined, "Reveal")
+                        : t("security.maskKey", undefined, "Hide")
+                    }
                   >
-                    {isMaskedInput ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {isMaskedInput ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -913,7 +1117,12 @@ export default function Integrations() {
               {editingDef?.defaultBaseUrl && (
                 <div className="space-y-1 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs text-slate-400">
                   <span className="font-semibold text-slate-300 uppercase tracking-wider text-[10px]">
-                    {t("integrations.defaultEndpointLabel", undefined, "Default Endpoint")}:
+                    {t(
+                      "integrations.defaultEndpointLabel",
+                      undefined,
+                      "Default Endpoint",
+                    )}
+                    :
                   </span>
                   <p className="font-mono text-xs text-slate-200 break-all">
                     {editingDef.defaultBaseUrl}
@@ -922,7 +1131,7 @@ export default function Integrations() {
                     {t(
                       "integrations.fixedBaseUrlHelp",
                       undefined,
-                      "This integration always uses the standard official endpoint."
+                      "This integration always uses the standard official endpoint.",
                     )}
                   </p>
                 </div>
@@ -934,7 +1143,7 @@ export default function Integrations() {
                   {t(
                     "integrations.dialogEncryptionNotice",
                     undefined,
-                    "Credentials will be encrypted with your 256-bit AES masterkey before transmission."
+                    "Credentials will be encrypted with your 256-bit AES masterkey before transmission.",
                   )}
                 </span>
               </div>
@@ -965,7 +1174,10 @@ export default function Integrations() {
         </Dialog>
 
         {/* Delete Confirmation Alert Dialog */}
-        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+        >
           <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
@@ -973,20 +1185,27 @@ export default function Integrations() {
                   ? t(
                       "integrations.deleteConfirmTitle",
                       { name: deletingIntegration.name },
-                      `Delete ${deletingIntegration.name} integration?`
+                      `Delete ${deletingIntegration.name} integration?`,
                     )
-                  : t("integrations.deleteConfirmDefaultTitle", undefined, "Delete integration?")}
+                  : t(
+                      "integrations.deleteConfirmDefaultTitle",
+                      undefined,
+                      "Delete integration?",
+                    )}
               </AlertDialogTitle>
               <AlertDialogDescription className="text-slate-400 text-xs sm:text-sm">
                 {t(
                   "integrations.deleteConfirmDesc",
                   undefined,
-                  "This will permanently remove the stored API key and credentials from your encrypted cloud storage."
+                  "This will permanently remove the stored API key and credentials from your encrypted cloud storage.",
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+              <AlertDialogCancel
+                disabled={isDeleting}
+                className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+              >
                 {t("common.cancel", undefined, "Cancel")}
               </AlertDialogCancel>
               <AlertDialogAction
@@ -995,7 +1214,9 @@ export default function Integrations() {
                 disabled={isDeleting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {isDeleting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                {isDeleting && (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                )}
                 {t("common.delete", undefined, "Delete")}
               </AlertDialogAction>
             </AlertDialogFooter>

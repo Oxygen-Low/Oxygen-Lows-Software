@@ -56,14 +56,10 @@ describe("getAuthenticatedClient", () => {
     expect(createClient).toHaveBeenCalledTimes(2);
 
     // Assert that the client was created with the correct token
-    expect(createClient).toHaveBeenLastCalledWith(
-      url,
-      anonKey,
-      {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-        auth: { persistSession: false },
-      }
-    );
+    expect(createClient).toHaveBeenLastCalledWith(url, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false },
+    });
 
     // Call the second time with the same token
     const client2 = getAuthenticatedClient(token);

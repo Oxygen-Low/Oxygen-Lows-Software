@@ -20,7 +20,13 @@ describe("All Locales Verification", () => {
   const allLocales = [
     { code: "ko", name: "Korean", flag: "🇰🇷", countryCode: "kr", dict: ko },
     { code: "ja", name: "Japanese", flag: "🇯🇵", countryCode: "jp", dict: ja },
-    { code: "zh-CN", name: "Chinese", flag: "🇨🇳", countryCode: "cn", dict: zhCN },
+    {
+      code: "zh-CN",
+      name: "Chinese",
+      flag: "🇨🇳",
+      countryCode: "cn",
+      dict: zhCN,
+    },
     { code: "es", name: "Spanish", flag: "🇪🇸", countryCode: "es", dict: es },
     { code: "ru", name: "Russian", flag: "🇷🇺", countryCode: "ru", dict: ru },
   ];
@@ -73,7 +79,9 @@ describe("All Locales Verification", () => {
       const appTranslate = t("apps.signInToUse", { name: "Web Defender" });
       expect(appTranslate).toContain("Web Defender");
 
-      const oauthTranslate = t("oauthConsent.authorizeApp", { app: "MyTestApp" });
+      const oauthTranslate = t("oauthConsent.authorizeApp", {
+        app: "MyTestApp",
+      });
       expect(oauthTranslate).toContain("MyTestApp");
 
       // Test title keys
@@ -87,4 +95,3 @@ describe("All Locales Verification", () => {
     });
   });
 });
-

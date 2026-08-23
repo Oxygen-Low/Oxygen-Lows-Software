@@ -53,7 +53,8 @@ function Ul({ items }: { items: React.ReactNode[] }) {
 export default function Terms() {
   const { t } = useTranslation();
   usePageTitle(t("titles.terms", undefined, "Terms of Use"), {
-    description: "Terms of Use and rules governing the use of Oxygen Low's Software.",
+    description:
+      "Terms of Use and rules governing the use of Oxygen Low's Software.",
   });
 
   return (
@@ -127,8 +128,8 @@ export default function Terms() {
             confirm that you meet the applicable age requirements.
           </P>
           <P>
-            The Service is intended for personal, non-commercial use. Use of
-            the Service is void where prohibited by applicable law.
+            The Service is intended for personal, non-commercial use. Use of the
+            Service is void where prohibited by applicable law.
           </P>
         </Section>
 
@@ -146,18 +147,22 @@ export default function Terms() {
             ]}
           />
           <P>
-            <strong>Client-Side Master Key:</strong> Certain sensitive data (including character details, 
-            data saves, chat histories, and integrations) is secured using Zero-Knowledge Client-Side 
-            Encryption (AES-256-GCM). You are solely responsible for securely storing your master key or 
-            downloaded <code>.key</code> backups. <strong>We cannot recover or reset lost keys.</strong> 
-            Losing your key will result in the permanent, irreversible loss of access to your encrypted data.
+            <strong>Client-Side Master Key:</strong> Certain sensitive data
+            (including character details, data saves, chat histories, and
+            integrations) is secured using Zero-Knowledge Client-Side Encryption
+            (AES-256-GCM). You are solely responsible for securely storing your
+            master key or downloaded <code>.key</code> backups.{" "}
+            <strong>We cannot recover or reset lost keys.</strong>
+            Losing your key will result in the permanent, irreversible loss of
+            access to your encrypted data.
           </P>
           <P>
-            We reserve the right to suspend or terminate your account upon reasonable
-            notice if we believe that your account information is false, that you have
-            violated these Terms, or where necessary to prevent harm or comply with legal
-            obligations. In cases of serious or repeated violations, suspension or
-            termination may take effect immediately.
+            We reserve the right to suspend or terminate your account upon
+            reasonable notice if we believe that your account information is
+            false, that you have violated these Terms, or where necessary to
+            prevent harm or comply with legal obligations. In cases of serious
+            or repeated violations, suspension or termination may take effect
+            immediately.
           </P>
         </Section>
 
@@ -168,8 +173,8 @@ export default function Terms() {
             non-transferable, revocable licence to access and use the hosted
             Service and its online infrastructure for your own personal,
             non-commercial purposes. (Open-source source code of the project
-            remains governed by the MIT License as stated in
-            Section 9). You agree not to:
+            remains governed by the MIT License as stated in Section 9). You
+            agree not to:
           </P>
           <Ul
             items={[
@@ -188,14 +193,16 @@ export default function Terms() {
         {/* 5. User content */}
         <Section id="user-content" title="5. User Content" index={5}>
           <P>
-            The Service allows you to upload files, create AI characters,
-            submit support tickets, and store personal data ("User Content").
-            You retain all ownership rights in your User Content. By submitting
-            User Content to the Service, you grant us a limited, worldwide,
+            The Service allows you to upload files, create AI characters, submit
+            support tickets, and store personal data ("User Content"). You
+            retain all ownership rights in your User Content. By submitting User
+            Content to the Service, you grant us a limited, worldwide,
             royalty-free licence to host, store, and display your User Content
             solely as necessary to provide the Service.
           </P>
-          <P>You are solely responsible for your User Content and represent that:</P>
+          <P>
+            You are solely responsible for your User Content and represent that:
+          </P>
           <Ul
             items={[
               "You own or have the necessary rights to submit the User Content.",
@@ -242,8 +249,8 @@ export default function Terms() {
             relevant feature.
           </P>
           <P>
-            We reserve the right to delete files or data that have been
-            inactive for an extended period or that violate these Terms.
+            We reserve the right to delete files or data that have been inactive
+            for an extended period or that violate these Terms.
           </P>
         </Section>
 
@@ -254,18 +261,23 @@ export default function Terms() {
           index={8}
         >
           <P>
-            The Service employs an automated Web Application Firewall (Web Defender) which monitors 
-            traffic for malicious activity, including brute-force attempts, DDoS patterns, known threat 
-            actor IPs, and commercial VPN exit nodes. Your access may be temporarily or permanently blocked 
-            if our automated systems detect high-risk or prohibited activity originating from your IP address.
+            The Service employs an automated Web Application Firewall (Web
+            Defender) which monitors traffic for malicious activity, including
+            brute-force attempts, DDoS patterns, known threat actor IPs, and
+            commercial VPN exit nodes. Your access may be temporarily or
+            permanently blocked if our automated systems detect high-risk or
+            prohibited activity originating from your IP address.
           </P>
           <P>
-            If you use our Web Defender security service or install the @oxygenlow/webdefender package on your 
-            applications, you are responsible for configuring the service appropriately for your needs. 
-            The service is designed to mitigate common web attacks, bots, and excessive traffic, but we 
-            do not guarantee that it will prevent all security incidents or unauthorized access. You 
-            agree that we are not liable for any security breaches, data loss, or service interruptions 
-            that may occur despite your use of the Web Defender service.
+            If you use our Web Defender security service or install the
+            @oxygenlow/webdefender package on your applications, you are
+            responsible for configuring the service appropriately for your
+            needs. The service is designed to mitigate common web attacks, bots,
+            and excessive traffic, but we do not guarantee that it will prevent
+            all security incidents or unauthorized access. You agree that we are
+            not liable for any security breaches, data loss, or service
+            interruptions that may occur despite your use of the Web Defender
+            service.
           </P>
         </Section>
 
@@ -278,16 +290,16 @@ export default function Terms() {
           <P>
             All hosted content, branding, trademarks, logos, domain names, and
             proprietary hosted services forming part of the Service (excluding
-            User Content) are the exclusive property of <strong>{OPERATOR}</strong> or
-            its licensors.
+            User Content) are the exclusive property of{" "}
+            <strong>{OPERATOR}</strong> or its licensors.
           </P>
           <P>
             The underlying source code of the project is made available as
-            open-source software under the <strong>MIT License</strong>.
-            Nothing in these Terms restricts any rights granted to you under the
-            MIT License regarding the source code form of Covered Software. These Terms
-            govern your access to and use of our hosted web application, server
-            infrastructure, online accounts, and cloud services.
+            open-source software under the <strong>MIT License</strong>. Nothing
+            in these Terms restricts any rights granted to you under the MIT
+            License regarding the source code form of Covered Software. These
+            Terms govern your access to and use of our hosted web application,
+            server infrastructure, online accounts, and cloud services.
           </P>
         </Section>
 
@@ -298,21 +310,24 @@ export default function Terms() {
           index={10}
         >
           <P>
-            The Service integrates with third-party services (including Supabase,
-            OpenAI, Anthropic, Google, Cloudflare, GitHub, and others listed in our
-            Privacy Policy). Your use of those services is governed by their
-            respective terms and privacy policies. We are not responsible for
-            the availability, accuracy, or practices of any third-party service.
+            The Service integrates with third-party services (including
+            Supabase, OpenAI, Anthropic, Google, Cloudflare, GitHub, and others
+            listed in our Privacy Policy). Your use of those services is
+            governed by their respective terms and privacy policies. We are not
+            responsible for the availability, accuracy, or practices of any
+            third-party service.
           </P>
           <P>
-            <strong>Integrations &amp; API Keys:</strong> Any third-party API keys you provide to the Service 
-            are stored using Zero-Knowledge Encryption on your device before transmission. We do not have 
-            access to your raw API keys.
+            <strong>Integrations &amp; API Keys:</strong> Any third-party API
+            keys you provide to the Service are stored using Zero-Knowledge
+            Encryption on your device before transmission. We do not have access
+            to your raw API keys.
           </P>
           <P>
-            <strong>Autonomous Agents &amp; M2M Auth:</strong> Access by autonomous agents via our 
-            Machine-to-Machine (M2M) authentication endpoints (such as ID-JAG assertions) must strictly 
-            comply with our API limits and Acceptable Use Policy.
+            <strong>Autonomous Agents &amp; M2M Auth:</strong> Access by
+            autonomous agents via our Machine-to-Machine (M2M) authentication
+            endpoints (such as ID-JAG assertions) must strictly comply with our
+            API limits and Acceptable Use Policy.
           </P>
         </Section>
 
@@ -320,39 +335,35 @@ export default function Terms() {
         <Section id="disclaimers" title="11. Disclaimers" index={11}>
           <P>
             THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS
-            WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-            INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
-            FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. WE DO NOT WARRANT
-            THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE.
+            WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING
+            BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+            PARTICULAR PURPOSE, OR NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE
+            SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE.
           </P>
           <P>
-            The Service is in Beta. Features may change, be removed, or
-            become temporarily unavailable without notice. We are not liable for
-            any loss of data or interruption of service during the Beta period.
+            The Service is in Beta. Features may change, be removed, or become
+            temporarily unavailable without notice. We are not liable for any
+            loss of data or interruption of service during the Beta period.
           </P>
         </Section>
 
         {/* 12. Limitation of liability */}
-        <Section
-          id="liability"
-          title="12. Limitation of Liability"
-          index={12}
-        >
+        <Section id="liability" title="12. Limitation of Liability" index={12}>
           <P>
-            Nothing in these Terms shall limit or exclude our liability for death or
-            personal injury caused by our negligence, for fraud or fraudulent
-            misrepresentation, or for any other liability that cannot lawfully be
-            excluded or limited under applicable law, including statutory consumer
-            rights under the UK Consumer Rights Act 2015.
+            Nothing in these Terms shall limit or exclude our liability for
+            death or personal injury caused by our negligence, for fraud or
+            fraudulent misrepresentation, or for any other liability that cannot
+            lawfully be excluded or limited under applicable law, including
+            statutory consumer rights under the UK Consumer Rights Act 2015.
           </P>
           <P>
             TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW,{" "}
             <strong>{OPERATOR.toUpperCase()}</strong> SHALL NOT BE LIABLE FOR
             ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE
             DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED
-            DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR
-            OTHER INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH YOUR
-            USE OF OR INABILITY TO USE THE SERVICE.
+            DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER
+            INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH YOUR USE OF
+            OR INABILITY TO USE THE SERVICE.
           </P>
           <P>
             In jurisdictions that do not allow the exclusion of certain
@@ -378,22 +389,22 @@ export default function Terms() {
           <P>
             We may update these Terms at any time by posting the revised version
             on this page with an updated "Last updated" date. If changes are
-            material, we will make reasonable efforts to notify you (for example,
-            via an in-app notice). Your continued use of the Service after
-            changes become effective constitutes your acceptance of the revised
-            Terms.
+            material, we will make reasonable efforts to notify you (for
+            example, via an in-app notice). Your continued use of the Service
+            after changes become effective constitutes your acceptance of the
+            revised Terms.
           </P>
         </Section>
 
         {/* 15. Termination */}
         <Section id="termination" title="15. Termination" index={15}>
           <P>
-            We may suspend or terminate your access to the Service upon reasonable
-            notice if you breach these Terms, or immediately without prior notice
-            where necessary to prevent security risks, illegal activity, or severe
-            abuse. You may terminate your account at any time by submitting an
-            "Account Deletion Request" support ticket. Upon termination, your right
-            to use the Service will cease.
+            We may suspend or terminate your access to the Service upon
+            reasonable notice if you breach these Terms, or immediately without
+            prior notice where necessary to prevent security risks, illegal
+            activity, or severe abuse. You may terminate your account at any
+            time by submitting an "Account Deletion Request" support ticket.
+            Upon termination, your right to use the Service will cease.
           </P>
         </Section>
 

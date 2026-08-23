@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { getTranslation, createTranslator, resolvePath, t as globalTranslate } from "./i18n";
+import {
+  getTranslation,
+  createTranslator,
+  resolvePath,
+  t as globalTranslate,
+} from "./i18n";
 import { en } from "../locales/en";
 import { registerLocale, LOCALES, TranslationSchema } from "../locales";
 import { DeepPartial } from "./i18n";
@@ -9,8 +14,12 @@ describe("i18n Core Library", () => {
     it("should resolve top-level and deeply nested dot paths in dictionary", () => {
       expect(resolvePath(en, "common.loading")).toBe("Loading...");
       expect(resolvePath(en, "nav.apps")).toBe("Apps");
-      expect(resolvePath(en, "apps.base64Title")).toBe("Base64 Encoder/Decoder");
-      expect(resolvePath(en, "account.profileSettings")).toBe("Profile Settings");
+      expect(resolvePath(en, "apps.base64Title")).toBe(
+        "Base64 Encoder/Decoder",
+      );
+      expect(resolvePath(en, "account.profileSettings")).toBe(
+        "Profile Settings",
+      );
     });
 
     it("should return undefined for non-existent paths via resolvePath", () => {
@@ -20,7 +29,9 @@ describe("i18n Core Library", () => {
 
     it("should get translation using active dictionary", () => {
       expect(getTranslation(en, "common.loading")).toBe("Loading...");
-      expect(getTranslation(en, "account.profileSettings")).toBe("Profile Settings");
+      expect(getTranslation(en, "account.profileSettings")).toBe(
+        "Profile Settings",
+      );
     });
   });
 
@@ -34,10 +45,10 @@ describe("i18n Core Library", () => {
     it("should interpolate single {param} and double {{param}} variables", () => {
       const t = createTranslator(en, en);
       expect(t("apps.signInToUse", { name: "Web Defender" })).toBe(
-        "Sign in to use Web Defender"
+        "Sign in to use Web Defender",
       );
       expect(t("oauthConsent.authorizeApp", { app: "Test App" })).toBe(
-        "Authorize Test App"
+        "Authorize Test App",
       );
     });
 
@@ -57,7 +68,9 @@ describe("i18n Core Library", () => {
 
     it("should return fallback string or key itself if missing from both dictionaries", () => {
       const t = createTranslator({}, {});
-      expect(t("missing.key" as any, undefined, "Custom Fallback")).toBe("Custom Fallback");
+      expect(t("missing.key" as any, undefined, "Custom Fallback")).toBe(
+        "Custom Fallback",
+      );
       expect(t("missing.key" as any)).toBe("missing.key");
     });
   });
@@ -93,7 +106,7 @@ describe("i18n Core Library", () => {
       expect(tEs("common.save")).toBe("Guardar");
       expect(tEs("nav.apps")).toBe("Aplicaciones");
       expect(tEs("apps.signInToUse", { name: "Chatbot" })).toBe(
-        "Inicia sesión para usar Chatbot"
+        "Inicia sesión para usar Chatbot",
       );
       // Fallback to English for untranslated keys
       expect(tEs("account.changePassword")).toBe("Change Password");

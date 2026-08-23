@@ -7,7 +7,7 @@ import {
   AlertCircle,
   FileText,
   Minimize2,
-  Braces
+  Braces,
 } from "lucide-react";
 import {
   Card,

@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import { AudioPlayerPreview } from "./AudioPlayerPreview";
 
 vi.mock("@/lib/supabase", () => {
@@ -53,10 +59,7 @@ describe("AudioPlayerPreview Component", () => {
 
   it("resolves from filePath when src is not provided", async () => {
     render(
-      <AudioPlayerPreview
-        filePath="user-123/my-song.mp3"
-        bucket="Storage"
-      />,
+      <AudioPlayerPreview filePath="user-123/my-song.mp3" bucket="Storage" />,
     );
 
     await waitFor(() => {

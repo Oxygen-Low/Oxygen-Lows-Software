@@ -1,11 +1,20 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DataSaveApp } from "./DataSave";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { clearActiveMasterKey, setCategoryEncryptionEnabled } from "@/lib/crypto";
+import {
+  clearActiveMasterKey,
+  setCategoryEncryptionEnabled,
+} from "@/lib/crypto";
 
 global.ResizeObserver = class {
   observe() {}
@@ -37,7 +46,11 @@ const mockSaves = [
     id: "save-1",
     user_id: "test-user-123",
     key_name: "API_CONFIG",
-    content: JSON.stringify({ endpoint: "https://api.example.com", timeout: "5000" }, null, 2),
+    content: JSON.stringify(
+      { endpoint: "https://api.example.com", timeout: "5000" },
+      null,
+      2,
+    ),
     category_id: "cat-1",
     category: { id: "cat-1", name: "Work" },
     created_at: "2026-08-01T12:00:00Z",
@@ -71,10 +84,15 @@ describe("DataSaveApp", () => {
 
     insertMock = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: "new-id", name: "NewCat" }, error: null }),
+        single: vi
+          .fn()
+          .mockResolvedValue({
+            data: { id: "new-id", name: "NewCat" },
+            error: null,
+          }),
       }),
       then: vi.fn((onFulfilled) =>
-        Promise.resolve({ data: null, error: null }).then(onFulfilled)
+        Promise.resolve({ data: null, error: null }).then(onFulfilled),
       ),
     });
 
@@ -86,7 +104,9 @@ describe("DataSaveApp", () => {
       if (table === "data_saves") {
         return {
           select: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: [...mockSaves], error: null }),
+            order: vi
+              .fn()
+              .mockResolvedValue({ data: [...mockSaves], error: null }),
           }),
           update: updateMock,
           insert: insertMock,
@@ -96,7 +116,9 @@ describe("DataSaveApp", () => {
       if (table === "data_save_categories") {
         return {
           select: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: [...mockCategories], error: null }),
+            order: vi
+              .fn()
+              .mockResolvedValue({ data: [...mockCategories], error: null }),
           }),
           insert: insertMock,
         } as any;
@@ -140,7 +162,9 @@ describe("DataSaveApp", () => {
     expect(screen.queryByText("Editing Mode")).not.toBeNull();
     expect(screen.queryByText("Update Key & Values")).not.toBeNull();
 
-    const keyInput = screen.getByPlaceholderText("e.g. Server URL or Note Title") as HTMLInputElement;
+    const keyInput = screen.getByPlaceholderText(
+      "e.g. Server URL or Note Title",
+    ) as HTMLInputElement;
     expect(keyInput.value).toBe("API_CONFIG");
 
     // Modify key name
@@ -154,9 +178,11 @@ describe("DataSaveApp", () => {
       expect(updateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           key_name: "API_CONFIG_UPDATED",
-        })
+        }),
       );
-      expect(toast.success).toHaveBeenCalledWith("Data save updated successfully!");
+      expect(toast.success).toHaveBeenCalledWith(
+        "Data save updated successfully!",
+      );
     });
   });
 
@@ -206,7 +232,9 @@ describe("DataSaveApp", () => {
 
     await waitFor(() => {
       expect(updateMock).toHaveBeenCalled();
-      expect(toast.success).toHaveBeenCalledWith("Data save updated successfully!");
+      expect(toast.success).toHaveBeenCalledWith(
+        "Data save updated successfully!",
+      );
     });
   });
 
@@ -220,7 +248,9 @@ describe("DataSaveApp", () => {
     const loadButtons = screen.getAllByText("Load in form editor");
     fireEvent.click(loadButtons[0]);
 
-    const keyInput = screen.getByPlaceholderText("e.g. Server URL or Note Title") as HTMLInputElement;
+    const keyInput = screen.getByPlaceholderText(
+      "e.g. Server URL or Note Title",
+    ) as HTMLInputElement;
     // Try to rename to NOTE_PLAIN which already exists
     fireEvent.change(keyInput, { target: { value: "NOTE_PLAIN" } });
 
@@ -228,7 +258,9 @@ describe("DataSaveApp", () => {
     fireEvent.click(updateButton);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('A save with the key "NOTE_PLAIN" already exists.');
+      expect(toast.error).toHaveBeenCalledWith(
+        'A save with the key "NOTE_PLAIN" already exists.',
+      );
     });
     expect(updateMock).not.toHaveBeenCalled();
   });
@@ -241,7 +273,9 @@ describe("DataSaveApp", () => {
       expect(screen.queryByText("NOTE_PLAIN")).not.toBeNull();
     });
 
-    const searchInput = screen.getByPlaceholderText("Search keys or content...");
+    const searchInput = screen.getByPlaceholderText(
+      "Search keys or content...",
+    );
     fireEvent.change(searchInput, { target: { value: "NOTE_PLAIN" } });
 
     expect(screen.queryByText("API_CONFIG")).toBeNull();
@@ -255,7 +289,7 @@ describe("DataSaveApp", () => {
     render(
       <MemoryRouter>
         <DataSaveApp />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText("Decryption Required")).toBeDefined();

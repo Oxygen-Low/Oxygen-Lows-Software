@@ -170,7 +170,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   // Save on unload/hide
   useEffect(() => {
     const onExit = (e?: Event) => {
-      if (e?.type === "visibilitychange" && document.visibilityState !== "hidden") return;
+      if (
+        e?.type === "visibilitychange" &&
+        document.visibilityState !== "hidden"
+      )
+        return;
       saveExitState(isPlayingRef.current);
     };
     window.addEventListener("beforeunload", onExit);

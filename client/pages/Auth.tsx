@@ -58,7 +58,9 @@ export default function Auth() {
               {t("auth.title", undefined, "Oxygen Low's Software")}
             </h1>
           </div>
-          <p className="text-slate-400">{t("auth.welcomeBack", undefined, "Welcome back!")}</p>
+          <p className="text-slate-400">
+            {t("auth.welcomeBack", undefined, "Welcome back!")}
+          </p>
         </div>
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl">
           {error && (
@@ -95,11 +97,15 @@ export default function Auth() {
               {t("auth.signInGoogle", undefined, "Sign in with Google")}
             </button>
             <p className="text-center text-xs text-slate-500 mt-4">
-              {t("auth.agreeNotice", undefined, "By signing in, you agree to our")}{" "}
+              {t(
+                "auth.agreeNotice",
+                undefined,
+                "By signing in, you agree to our",
+              )}{" "}
               <Link to="/privacy" className="text-cyan-500 hover:underline">
                 {t("auth.privacyPolicy", undefined, "Privacy Policy")}
-              </Link>
-              {" "}{t("auth.and", undefined, "and")}{" "}
+              </Link>{" "}
+              {t("auth.and", undefined, "and")}{" "}
               <Link to="/terms" className="text-cyan-500 hover:underline">
                 {t("auth.termsOfUse", undefined, "Terms of Use")}
               </Link>

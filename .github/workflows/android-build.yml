@@ -5,11 +5,11 @@ on:
     branches:
       - main
     paths:
-      - 'Desktop/**'
-      - 'Android/**'
-      - '.github/workflows/desktop-build.yml'
-      - '.github/workflows/android-build.yml'
-      - '.github/workflows/create-release.yml'
+      - "Desktop/**"
+      - "Android/**"
+      - ".github/workflows/desktop-build.yml"
+      - ".github/workflows/android-build.yml"
+      - ".github/workflows/create-release.yml"
   workflow_dispatch:
 
 jobs:
@@ -70,8 +70,8 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: "temurin"
+          java-version: "21"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4

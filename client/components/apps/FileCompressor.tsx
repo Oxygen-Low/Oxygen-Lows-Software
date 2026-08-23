@@ -57,8 +57,14 @@ const loadFfmpeg = async (): Promise<FFmpeg> => {
 
     for (const baseURL of cdnBaseUrls) {
       try {
-        const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
-        const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
+        const coreURL = await toBlobURL(
+          `${baseURL}/ffmpeg-core.js`,
+          "text/javascript",
+        );
+        const wasmURL = await toBlobURL(
+          `${baseURL}/ffmpeg-core.wasm`,
+          "application/wasm",
+        );
         await instance.load({
           coreURL,
           wasmURL,
@@ -129,7 +135,9 @@ export function FileCompressorApp() {
           .download(selectedFile.name);
 
         if (downloadError) throw downloadError;
-        fileToCompress = new File([downloadData], selectedFile.name, { type: selectedFile.type });
+        fileToCompress = new File([downloadData], selectedFile.name, {
+          type: selectedFile.type,
+        });
       } else {
         fileToCompress = selectedFile.file!;
       }
@@ -170,17 +178,25 @@ export function FileCompressorApp() {
           if (isVideo) {
             // Compress video
             await ffmpeg.exec([
-              "-i", inputName,
-              "-vcodec", "libx264",
-              "-crf", (100 - quality).toString(), // lower quality = higher crf
+              "-i",
+              inputName,
+              "-vcodec",
+              "libx264",
+              "-crf",
+              (100 - quality).toString(), // lower quality = higher crf
               outputName,
             ]);
           } else {
             // Compress audio
-            const bitrate = Math.max(32, Math.min(320, Math.floor(32 + (quality / 100) * 160)));
+            const bitrate = Math.max(
+              32,
+              Math.min(320, Math.floor(32 + (quality / 100) * 160)),
+            );
             await ffmpeg.exec([
-              "-i", inputName,
-              "-b:a", `${bitrate}k`,
+              "-i",
+              inputName,
+              "-b:a",
+              `${bitrate}k`,
               outputName,
             ]);
           }
@@ -207,7 +223,7 @@ export function FileCompressorApp() {
         newSize: compressedBlob.size,
         name: selectedFile.name,
         compressedBlob,
-        source: selectedFile.source
+        source: selectedFile.source,
       });
       toast.success("Compression complete");
     } catch (error: any) {
@@ -235,10 +251,25 @@ export function FileCompressorApp() {
           <CardContent className="space-y-4">
             {!selectedFile ? (
               <Tabs defaultValue="upload" className="w-full">
-                <TabsList className={cn("grid w-full mb-4 bg-slate-950 border border-slate-800", session ? "grid-cols-2" : "grid-cols-1")}>
-                  <TabsTrigger value="upload" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white">Upload File</TabsTrigger>
+                <TabsList
+                  className={cn(
+                    "grid w-full mb-4 bg-slate-950 border border-slate-800",
+                    session ? "grid-cols-2" : "grid-cols-1",
+                  )}
+                >
+                  <TabsTrigger
+                    value="upload"
+                    className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+                  >
+                    Upload File
+                  </TabsTrigger>
                   {session && (
-                    <TabsTrigger value="storage" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white">Use Storage</TabsTrigger>
+                    <TabsTrigger
+                      value="storage"
+                      className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+                    >
+                      Use Storage
+                    </TabsTrigger>
                   )}
                 </TabsList>
                 <TabsContent value="upload">
@@ -272,12 +303,14 @@ export function FileCompressorApp() {
                 {session && (
                   <TabsContent value="storage">
                     <StorageFileSelector
-                      onSelect={(file: any) => setSelectedFile({
-                        source: "storage",
-                        name: file.name,
-                        size: file.metadata.size,
-                        type: file.metadata.mimetype,
-                      })}
+                      onSelect={(file: any) =>
+                        setSelectedFile({
+                          source: "storage",
+                          name: file.name,
+                          size: file.metadata.size,
+                          type: file.metadata.mimetype,
+                        })
+                      }
                       allowedTypes={["image", "audio", "video"]}
                       trigger={
                         <Button
@@ -303,8 +336,7 @@ export function FileCompressorApp() {
                       {selectedFile.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {formatSize(selectedFile.size)} •{" "}
-                      {selectedFile.type}
+                      {formatSize(selectedFile.size)} • {selectedFile.type}
                     </p>
                   </div>
                 </div>
@@ -472,13 +504,16 @@ export function FileCompressorApp() {
                 </div>
 
                 <div className="flex gap-4 w-full pt-4">
-                  <Button 
+                  <Button
                     className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white"
                     onClick={() => {
                       const url = URL.createObjectURL(result.compressedBlob);
                       const a = document.createElement("a");
                       a.href = url;
-                      const newPath = result.name.replace(/(\.[^.]+)$/, `_compressed$1`);
+                      const newPath = result.name.replace(
+                        /(\.[^.]+)$/,
+                        `_compressed$1`,
+                      );
                       a.download = newPath;
                       document.body.appendChild(a);
                       a.click();
@@ -494,14 +529,20 @@ export function FileCompressorApp() {
                       className="flex-1 bg-slate-800 hover:bg-slate-700 text-white"
                       onClick={async () => {
                         try {
-                          const newPath = result.source === "storage" 
-                            ? result.name 
-                            : result.name.replace(/(\.[^.]+)$/, `_compressed$1`);
-                          
+                          const newPath =
+                            result.source === "storage"
+                              ? result.name
+                              : result.name.replace(
+                                  /(\.[^.]+)$/,
+                                  `_compressed$1`,
+                                );
+
                           const { error: uploadError } = await storage
                             .from("Storage")
-                            .upload(newPath, result.compressedBlob, { upsert: true });
-                          
+                            .upload(newPath, result.compressedBlob, {
+                              upsert: true,
+                            });
+
                           if (uploadError) throw uploadError;
                           toast.success("Saved to storage successfully");
                         } catch (e: any) {

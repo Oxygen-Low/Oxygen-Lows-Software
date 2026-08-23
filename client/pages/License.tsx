@@ -9,7 +9,11 @@ import licenseText from "../../LICENSE?raw";
 export default function License() {
   const { t } = useTranslation();
   usePageTitle(t("titles.license", undefined, "License"), {
-    description: t("legal.licenseDesc", undefined, "The MIT License applies to this project."),
+    description: t(
+      "legal.licenseDesc",
+      undefined,
+      "The MIT License applies to this project.",
+    ),
   });
   return (
     <Layout>
@@ -26,9 +30,7 @@ export default function License() {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">License</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              MIT License
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">MIT License</p>
           </div>
         </motion.div>
 
