@@ -9,10 +9,13 @@ const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
 const HORDE_FAST_MODEL = "google/gemma-4-31b";
-const CLOUDFLARE_SMART_MODEL = "@cf/qwen/qwen3.8-27b";
+const CLOUDFLARE_SMART_MODEL = "@cf/nvidia/nemotron-3-120b-a12b";
 
-// Max research tool rounds with Horde to prevent exceeding edge gateway timeouts (100s)
-const MAX_RESEARCH_ROUNDS = 3;
+// Max research tool rounds with Horde (up to 100 calls)
+const MAX_RESEARCH_ROUNDS = 100;
+// Global total context token ceiling across the entire research payload combined (~4 chars per token)
+const MAX_TOTAL_CONTEXT_TOKENS = 4000;
+const MAX_TOTAL_CONTEXT_CHARS = MAX_TOTAL_CONTEXT_TOKENS * 4; // 16,000 characters total
 
 function extractBearerToken(header: string | undefined): string | null {
   if (!header) return null;
@@ -79,7 +82,7 @@ const SEARCH_TOOLS = [
     type: "function" as const,
     function: {
       name: "fetch_page",
-      description: "Fetch and read the text content of a web page URL. Returns the page text (truncated to 8KB).",
+      description: "Fetch and read the text content of a web page URL. Returns the page text (fits within the 4000 total token budget).",
       parameters: {
         type: "object",
         properties: {
@@ -110,12 +113,12 @@ async function performWebSearch(query: string) {
 
     const snippetRegex = /class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
     let match;
-    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 8) {
+    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 10) {
       snippets.push(stripHtmlTags(match[1]));
     }
 
     const urlRegex = /class="result__url"[^>]*>([\s\S]*?)<\/a>/g;
-    while ((match = urlRegex.exec(html)) !== null && urls.length < 8) {
+    while ((match = urlRegex.exec(html)) !== null && urls.length < 10) {
       urls.push(stripHtmlTags(match[1]).trim());
     }
 
@@ -125,14 +128,14 @@ async function performWebSearch(query: string) {
   }
 }
 
-async function fetchPageContent(url: string) {
+async function fetchPageContent(url: string, maxChars: number = 6000) {
   if (!isSafeUrl(url)) return "Error: Invalid or blocked URL. Cannot fetch localhost or internal IPs.";
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     const cleanText = stripHtmlTags(text);
-    return cleanText.substring(0, 8192);
+    return cleanText.substring(0, maxChars);
   } catch (err) {
     return "Error: Failed to fetch page content. The website may be down, blocking bots, or timed out.";
   }
@@ -144,6 +147,19 @@ function sseEvent(data: string): string {
 
 function sseJson(obj: any): string {
   return sseEvent(JSON.stringify(obj));
+}
+
+function getTotalResearchChars(searches: any[], pages: Array<{ url: string; content: string }>): number {
+  let total = 0;
+  for (const s of searches) {
+    if (s.snippets && Array.isArray(s.snippets)) {
+      for (const snip of s.snippets) total += snip.length;
+    }
+  }
+  for (const p of pages) {
+    total += p.content.length;
+  }
+  return total;
 }
 
 function parseHordeAction(data: any): { tool: string; args: any } | null {
@@ -303,7 +319,7 @@ agentSearchRouter.post("/", rateLimiter(10, 60_000, "agent-search"), async (c) =
     const hordeMessages: any[] = [
       {
         role: "system",
-        content: `You are a fast autonomous research agent. Your goal is to gather facts from the web to answer the user's query.
+        content: `You are a fast autonomous research agent. Your goal is to gather facts from the web to answer the user's query up to a 4000 total context token budget.
 
 Available actions (respond ONLY with a single JSON object):
 1. Search the web:
@@ -335,7 +351,6 @@ Available actions (respond ONLY with a single JSON object):
           temperature: 0.2,
           max_tokens: 200,
         }),
-        // 10 second timeout on AI Horde calls to prevent edge gateway 524 timeouts
         signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) {
@@ -370,33 +385,48 @@ Available actions (respond ONLY with a single JSON object):
       return res;
     }
 
-    // Build the synthesis messages for Cloudflare Smart
+    // Build synthesis messages strictly capped at 4000 total context tokens
     function buildSynthesisMessages() {
       let researchContext = "";
 
       if (allSearches.length > 0) {
         researchContext += "\n--- WEB SEARCH RESULTS ---\n";
-        allSearches.forEach((s, idx) => {
-          researchContext += `\n[Search #${idx + 1}: "${s.query}"]\n`;
+        for (let idx = 0; idx < allSearches.length; idx++) {
+          const s = allSearches[idx];
+          let block = `\n[Search #${idx + 1}: "${s.query}"]\n`;
           if (s.snippets && Array.isArray(s.snippets)) {
             s.snippets.forEach((snip: string, sIdx: number) => {
               const url = s.urls?.[sIdx] ? ` (Source: ${s.urls[sIdx]})` : "";
-              researchContext += `- ${snip}${url}\n`;
+              block += `- ${snip}${url}\n`;
             });
           } else if (s.error) {
-            researchContext += `- (Search error: ${s.error})\n`;
+            block += `- (Search error: ${s.error})\n`;
           }
-        });
+
+          if ((researchContext + block).length > MAX_TOTAL_CONTEXT_CHARS) {
+            const available = Math.max(0, MAX_TOTAL_CONTEXT_CHARS - researchContext.length);
+            researchContext += block.substring(0, available);
+            break;
+          }
+          researchContext += block;
+        }
       }
 
-      if (fetchedPages.length > 0) {
+      if (fetchedPages.length > 0 && researchContext.length < MAX_TOTAL_CONTEXT_CHARS) {
         researchContext += "\n--- WEBPAGES READ ---\n";
-        fetchedPages.forEach((p, idx) => {
-          researchContext += `\n[Webpage #${idx + 1}: ${p.url}]\n${p.content}\n`;
-        });
+        for (let idx = 0; idx < fetchedPages.length; idx++) {
+          const p = fetchedPages[idx];
+          const block = `\n[Webpage #${idx + 1}: ${p.url}]\n${p.content}\n`;
+          if ((researchContext + block).length > MAX_TOTAL_CONTEXT_CHARS) {
+            const available = Math.max(0, MAX_TOTAL_CONTEXT_CHARS - researchContext.length);
+            researchContext += block.substring(0, available);
+            break;
+          }
+          researchContext += block;
+        }
       }
 
-      const systemPrompt = `You are an expert research synthesizer. Using the gathered real-time web research findings below, synthesize a high-quality, comprehensive, and well-structured response in the requested format.
+      const systemPrompt = `You are an expert research synthesizer. Using the gathered real-time web research findings below (capped at 4000 total context tokens), synthesize a high-quality, comprehensive, and well-structured response in the requested format.
 
 Requested response format: ${responseFormat}
 
@@ -427,8 +457,13 @@ Guidelines:
 
     // ─── Non-streaming mode ───
     if (!stream) {
-      // 1. Fast tool calling loop with AI Horde
+      // 1. Fast tool calling loop with AI Horde (up to 100 calls or 4000 total tokens)
       for (let i = 0; i < MAX_RESEARCH_ROUNDS; i++) {
+        // If total context has reached 4000 tokens, conclude research early
+        if (getTotalResearchChars(allSearches, fetchedPages) >= MAX_TOTAL_CONTEXT_CHARS) {
+          break;
+        }
+
         let action: { tool: string; args: any } | null = null;
 
         try {
@@ -458,7 +493,9 @@ Guidelines:
           }
           toolResult = searchRes;
         } else if (action.tool === "fetch_page") {
-          const pageRes = await fetchPageContent(action.args.url);
+          const currentTotal = getTotalResearchChars(allSearches, fetchedPages);
+          const remainingBudget = Math.max(1000, MAX_TOTAL_CONTEXT_CHARS - currentTotal);
+          const pageRes = await fetchPageContent(action.args.url, remainingBudget);
           if (typeof pageRes === "string" && !pageRes.startsWith("Error:")) {
             fetchedPages.push({ url: action.args.url, content: pageRes });
           }
@@ -475,6 +512,11 @@ Guidelines:
           role: "user",
           content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nNext action? (Respond with JSON action or {"action": "done"})`,
         });
+
+        // Prune older history to stay within 4000 context token limits across 100 calls
+        if (hordeMessages.length > 16) {
+          hordeMessages.splice(2, hordeMessages.length - 16);
+        }
       }
 
       // Ensure baseline search exists
@@ -530,11 +572,19 @@ Guidelines:
 
     const streamLoop = async () => {
       try {
-        // Send immediate initial bytes to establish the stream and prevent edge timeout
         await write(sseJson({ type: "status", message: "Connecting to fast research agent..." }));
 
-        // 1. Tool execution loop using AI Horde Fast
+        // 1. Tool execution loop using AI Horde Fast (up to 100 calls or 4000 total tokens)
         for (let i = 0; i < MAX_RESEARCH_ROUNDS; i++) {
+          // If total context has reached 4000 total tokens, conclude research early
+          if (getTotalResearchChars(allSearches, fetchedPages) >= MAX_TOTAL_CONTEXT_CHARS) {
+            await write(sseJson({
+              type: "status",
+              message: "4000 total context token research limit reached. Synthesizing results..."
+            }));
+            break;
+          }
+
           await write(sseJson({
             type: "status",
             message: i === 0
@@ -550,7 +600,6 @@ Guidelines:
             action = parseHordeAction(data);
           } catch (hordeErr) {
             console.warn("AI Horde call timed out or failed, falling back to direct search", hordeErr);
-            // Fallback for first turn if Horde is busy/slow
             if (i === 0) {
               action = { tool: "web_search", args: { query } };
             } else {
@@ -590,7 +639,9 @@ Guidelines:
               type: "status",
               message: `Fetching and reading webpage: ${action.args.url}...`
             }));
-            const pageRes = await fetchPageContent(action.args.url);
+            const currentTotal = getTotalResearchChars(allSearches, fetchedPages);
+            const remainingBudget = Math.max(1000, MAX_TOTAL_CONTEXT_CHARS - currentTotal);
+            const pageRes = await fetchPageContent(action.args.url, remainingBudget);
             if (typeof pageRes === "string" && !pageRes.startsWith("Error:")) {
               fetchedPages.push({ url: action.args.url, content: pageRes });
             }
@@ -615,6 +666,11 @@ Guidelines:
             role: "user",
             content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nNext action? (Respond with JSON action or {"action": "done"})`,
           });
+
+          // Prune older history to stay within 4000 context token limits across 100 calls
+          if (hordeMessages.length > 16) {
+            hordeMessages.splice(2, hordeMessages.length - 16);
+          }
         }
 
         // If no searches occurred, execute direct web search as baseline
