@@ -505,15 +505,12 @@ Write your final response in the requested format. Be thorough, accurate, and ci
       }
     };
 
-    // Use waitUntil if available, otherwise just start the promise
-    if (c.executionCtx?.waitUntil) {
-      c.executionCtx.waitUntil(streamLoop());
-    } else {
-      streamLoop();
-    }
+    // Run the streaming loop asynchronously
+    streamLoop();
 
     return new Response(readable);
   } catch (err) {
-    return c.json({ error: "Internal server error" }, 500);
+    console.error("Agent Search 500 Error:", err);
+    return c.json({ error: "Internal server error", details: err instanceof Error ? err.message : String(err) }, 500);
   }
 });
