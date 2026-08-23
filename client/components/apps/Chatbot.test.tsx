@@ -226,6 +226,26 @@ global.fetch = vi.fn((url, options: any) => {
     });
   }
 
+  if (url === "/api/ai/agent-search") {
+    const stream = new ReadableStream({
+      async start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            'data: {"type":"delta","content":"Web search response content"}\n',
+          ),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+        controller.close();
+      },
+    });
+    return Promise.resolve({
+      ok: true,
+      body: stream,
+      headers: { get: () => null },
+    });
+  }
+
   return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
 }) as any;
 
@@ -590,5 +610,58 @@ describe("ChatbotApp", () => {
       global.fetch = originalFetch;
     }
   }, 30000);
+
+  it("renders reasoning toggle in options dropdown and reasoning process in chat message", async () => {
+    render(
+      <ThemeProvider>
+        <ChatbotApp />
+      </ThemeProvider>,
+    );
+
+    const newChatButton = await screen.findByRole("button", {
+      name: "New Chat",
+    });
+    fireEvent.click(newChatButton);
+
+    const toggleOptionsButton = await screen.findByTitle("Toggle Options");
+    fireEvent.click(toggleOptionsButton);
+
+    const reasoningToggle = await screen.findByText("Reasoning Process");
+    expect(reasoningToggle).toBeDefined();
+    expect(screen.getByText("Toggle AI thought process")).toBeDefined();
+  });
+
+  it("displays Searched The Web and does not count as reasoning when web search is enabled", async () => {
+    render(
+      <ThemeProvider>
+        <ChatbotApp />
+      </ThemeProvider>,
+    );
+
+    const newChatButton = await screen.findByRole("button", {
+      name: "New Chat",
+    });
+    fireEvent.click(newChatButton);
+
+    // Open options and enable web search
+    const toggleOptionsButton = await screen.findByTitle("Toggle Options");
+    fireEvent.click(toggleOptionsButton);
+
+    const webSearchToggle = await screen.findByText("Web Search");
+    fireEvent.click(webSearchToggle);
+
+    // Send a message with web search enabled
+    const input = await screen.findByPlaceholderText("Type a message...");
+    fireEvent.change(input, { target: { value: "Search for latest news" } });
+
+    const sendButton = screen.getByLabelText("Send message");
+    fireEvent.click(sendButton);
+
+    // Check that 'Searched The Web' is rendered with no reasoning block
+    await screen.findByText("Searched The Web", {}, { timeout: 15000 });
+    await screen.findByText("Web search response content", {}, { timeout: 15000 });
+    expect(document.querySelector(".reasoning-block")).toBeNull();
+  });
 });
+
 

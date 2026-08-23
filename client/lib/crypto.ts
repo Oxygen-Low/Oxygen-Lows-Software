@@ -888,6 +888,7 @@ export interface ChatMessageData {
   role?: string;
   content?: string;
   reasoning?: string | null;
+  is_web_search?: boolean | null;
   [key: string]: any;
 }
 

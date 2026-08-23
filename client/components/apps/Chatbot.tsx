@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   MessageSquare,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,6 +176,8 @@ interface Message {
   role: "user" | "assistant" | "system";
   content: string;
   reasoning?: string;
+  is_web_search?: boolean;
+  web_search_status?: "searching" | "searched";
   created_at?: string;
 }
 
@@ -261,6 +264,7 @@ const ChatMessage = React.memo(
     onRegenerate?: () => void;
     setActiveArtifact: (art: Artifact) => void;
   }) => {
+    const { t } = useTranslation();
     const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
     let displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
     const [reasoningExpanded, setReasoningExpanded] = useState(false);
@@ -332,6 +336,16 @@ const ChatMessage = React.memo(
             Chatbot
           </p>
           <div className="w-full">
+            {m.is_web_search && (
+              <div className="w-full max-w-full rounded-lg border border-white/10 bg-white/5 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-slate-400">
+                <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span>
+                  {m.web_search_status === "searching"
+                    ? t("apps.chatbotSearchingTheWeb", undefined, "Searching the web...")
+                    : t("apps.chatbotSearchedTheWeb", undefined, "Searched The Web")}
+                </span>
+              </div>
+            )}
             {m.reasoning && (
               <div
                 className={cn(
@@ -344,7 +358,8 @@ const ChatMessage = React.memo(
                   className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90"
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
-                    Reasoning Process
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    {t("apps.chatbotReasoningProcess", undefined, "Reasoning Process")}
                   </span>
                   <span
                     className={cn(
@@ -365,9 +380,13 @@ const ChatMessage = React.memo(
               </div>
             )}
             <div className="text-[15px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900 border border-slate-800 text-slate-200">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
-                {displayContent}
-              </ReactMarkdown>
+              {displayContent ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={memoizedMarkdownComponents}>
+                  {displayContent}
+                </ReactMarkdown>
+              ) : (
+                <span className="animate-pulse">...</span>
+              )}
             </div>
             {siblings.length > 0 && (
               <div className="flex items-center gap-2 mt-2 ml-1 text-slate-400 text-xs">
@@ -804,6 +823,7 @@ export function ChatbotApp() {
             role: m.role,
             content: m.content,
             reasoning: m.reasoning,
+            is_web_search: m.is_web_search,
             created_at: m.created_at,
           };
         });
@@ -1191,7 +1211,11 @@ export function ChatbotApp() {
   const executeAiGeneration = async (
     baseChatMessages: Message[],
     signal: AbortSignal,
-  ): Promise<{ finalContent: string; reasoningContent: string }> => {
+  ): Promise<{
+    finalContent: string;
+    reasoningContent: string;
+    isWebSearch: boolean;
+  }> => {
     let finalContent = "";
     let reasoningContent = "";
 
@@ -1235,6 +1259,18 @@ export function ChatbotApp() {
 
     // 2. Web Search / Agentic Research (if enabled)
     if (isWebSearchEnabled) {
+      setAllMessages((prevAll) =>
+        prevAll.map((m) =>
+          m.id === "temp-streaming"
+            ? {
+                ...m,
+                is_web_search: true,
+                web_search_status: "searching",
+              }
+            : m,
+        ),
+      );
+
       const planPrompt = `Formulate a targeted web search query and response format to research and answer my request.\nRespond ONLY with a valid JSON object in this exact structure:\n{\n  "query": "<search query to look up on the web>",\n  "responseFormat": "<conclusion | summary | analysis | description | comparison>"\n}`;
 
       const searchPlanMessages = [
@@ -1251,19 +1287,6 @@ export function ChatbotApp() {
       ];
 
       let searchPlanningText = "";
-      setAllMessages((prevAll) =>
-        prevAll.map((m) =>
-          m.id === "temp-streaming"
-            ? {
-                ...m,
-                reasoning: reasoningContent
-                  ? `${reasoningContent}\n\n---\n\n🧠 Formulating web research query and strategy...`
-                  : "🧠 Formulating web research query and strategy...",
-              }
-            : m,
-        ),
-      );
-
       const planOutput = await callAiStream(
         selectedProvider,
         selectedModel,
@@ -1271,18 +1294,6 @@ export function ChatbotApp() {
         signal,
         (content) => {
           searchPlanningText = content;
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming"
-                ? {
-                    ...m,
-                    reasoning: reasoningContent
-                      ? `${reasoningContent}\n\n---\n\n🧠 Formulating web research query:\n${content}`
-                      : `🧠 Formulating web research query:\n${content}`,
-                  }
-                : m,
-            ),
-          );
         },
       );
 
@@ -1311,16 +1322,6 @@ export function ChatbotApp() {
       if (!token) {
         throw new Error("Please sign in to use Web Search.");
       }
-
-      let liveLogs =
-        (reasoningContent ? `${reasoningContent}\n\n---\n\n` : "") +
-        `🧠 **Research Plan:**\n- Query: \`${parsedQuery}\`\n- Format: \`${parsedFormat}\`\n\n🔍 **Live Web Research:**\n`;
-
-      setAllMessages((prevAll) =>
-        prevAll.map((m) =>
-          m.id === "temp-streaming" ? { ...m, reasoning: liveLogs } : m,
-        ),
-      );
 
       const agentRes = await fetch("/api/ai/agent-search", {
         method: "POST",
@@ -1360,30 +1361,17 @@ export function ChatbotApp() {
 
             try {
               const data = JSON.parse(dataStr);
-              if (data.type === "status") {
-                liveLogs += `- ${data.message}\n`;
-                setAllMessages((prevAll) =>
-                  prevAll.map((m) =>
-                    m.id === "temp-streaming"
-                      ? { ...m, reasoning: liveLogs }
-                      : m,
-                  ),
-                );
-              } else if (data.type === "tool_call") {
-                liveLogs += `  - 🛠️ **${data.name}**: \`${JSON.stringify(data.args)}\`\n`;
-                setAllMessages((prevAll) =>
-                  prevAll.map((m) =>
-                    m.id === "temp-streaming"
-                      ? { ...m, reasoning: liveLogs }
-                      : m,
-                  ),
-                );
-              } else if (data.type === "delta") {
+              if (data.type === "delta") {
                 finalContent += data.content;
                 setAllMessages((prevAll) =>
                   prevAll.map((m) =>
                     m.id === "temp-streaming"
-                      ? { ...m, content: finalContent }
+                      ? {
+                          ...m,
+                          content: finalContent,
+                          is_web_search: true,
+                          web_search_status: "searched",
+                        }
                       : m,
                   ),
                 );
@@ -1402,7 +1390,12 @@ export function ChatbotApp() {
                   setAllMessages((prevAll) =>
                     prevAll.map((m) =>
                       m.id === "temp-streaming"
-                        ? { ...m, content: finalContent }
+                        ? {
+                            ...m,
+                            content: finalContent,
+                            is_web_search: true,
+                            web_search_status: "searched",
+                          }
                         : m,
                     ),
                   );
@@ -1412,7 +1405,18 @@ export function ChatbotApp() {
           }
         }
       }
-      reasoningContent = liveLogs;
+
+      setAllMessages((prevAll) =>
+        prevAll.map((m) =>
+          m.id === "temp-streaming"
+            ? {
+                ...m,
+                is_web_search: true,
+                web_search_status: "searched",
+              }
+            : m,
+        ),
+      );
     } else if (isReasoningEnabled) {
       // Reasoning only
       const finalMessages = [
@@ -1475,7 +1479,11 @@ export function ChatbotApp() {
       );
     }
 
-    return { finalContent, reasoningContent };
+    return {
+      finalContent,
+      reasoningContent,
+      isWebSearch: isWebSearchEnabled,
+    };
   };
 
   const handleSendMessage = async () => {
@@ -1545,6 +1553,8 @@ export function ChatbotApp() {
         parent_id: "temp-user",
         role: "assistant",
         content: "",
+        is_web_search: isWebSearchEnabled,
+        web_search_status: isWebSearchEnabled ? "searching" : undefined,
       },
     ]);
     activeChildrenRef.current = {
@@ -1621,7 +1631,7 @@ export function ChatbotApp() {
         iterations++;
         shouldContinue = false;
 
-        const { finalContent, reasoningContent } = await executeAiGeneration(
+        const { finalContent, reasoningContent, isWebSearch } = await executeAiGeneration(
           currentMessages,
           controller.signal,
         );
@@ -1632,6 +1642,7 @@ export function ChatbotApp() {
           role: "assistant",
           content: finalContent,
           reasoning: reasoningContent || null,
+          is_web_search: isWebSearch || false,
         };
 
         let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
@@ -1652,14 +1663,26 @@ export function ChatbotApp() {
               .single();
 
           if (assistantInsertError) {
+            let retryPayload = { ...assistantInsertPayload };
+            let hasAdjusted = false;
             if (
               assistantInsertError.message?.includes("reasoning") ||
               assistantInsertError.details?.includes("reasoning")
             ) {
-              delete assistantInsertPayload.reasoning;
+              delete retryPayload.reasoning;
+              hasAdjusted = true;
+            }
+            if (
+              assistantInsertError.message?.includes("is_web_search") ||
+              assistantInsertError.details?.includes("is_web_search")
+            ) {
+              delete retryPayload.is_web_search;
+              hasAdjusted = true;
+            }
+            if (hasAdjusted) {
               const { data: retryData, error: retryError } = await supabase
                 .from("chat_messages")
-                .insert(assistantInsertPayload)
+                .insert(retryPayload)
                 .select()
                 .single();
               if (retryError) throw retryError;
@@ -1675,7 +1698,16 @@ export function ChatbotApp() {
         // Update active state
         setAllMessages((prev) =>
           prev.map((m) =>
-            m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
+            m.id === "temp-streaming"
+              ? {
+                  ...m,
+                  id: assistantMsgData.id,
+                  content: finalContent,
+                  reasoning: reasoningContent || undefined,
+                  is_web_search: isWebSearch || false,
+                  web_search_status: undefined,
+                }
+              : m,
           ),
         );
         activeChildrenRef.current = {
@@ -1731,6 +1763,8 @@ export function ChatbotApp() {
         parent_id: lastUserMessage.id,
         role: "assistant",
         content: "",
+        is_web_search: isWebSearchEnabled,
+        web_search_status: isWebSearchEnabled ? "searching" : undefined,
       },
     ]);
     const previousActiveChild = activeChildrenRef.current[lastUserMessage.id];
@@ -1749,7 +1783,7 @@ export function ChatbotApp() {
       const lastUserMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id);
       let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
-      const { finalContent, reasoningContent } = await executeAiGeneration(
+      const { finalContent, reasoningContent, isWebSearch } = await executeAiGeneration(
         currentMessages,
         controller.signal,
       );
@@ -1760,6 +1794,7 @@ export function ChatbotApp() {
         role: "assistant",
         content: finalContent,
         reasoning: reasoningContent || null,
+        is_web_search: isWebSearch || false,
       };
 
       let assistantMsgData = { id: "msg-" + Math.random().toString(36).substring(2) };
@@ -1780,13 +1815,51 @@ export function ChatbotApp() {
             .select()
             .single();
 
-        if (assistantInsertError) throw assistantInsertError;
-        assistantMsgData = data;
+        if (assistantInsertError) {
+          let retryPayload = { ...assistantInsertPayload };
+          let hasAdjusted = false;
+          if (
+            assistantInsertError.message?.includes("reasoning") ||
+            assistantInsertError.details?.includes("reasoning")
+          ) {
+            delete retryPayload.reasoning;
+            hasAdjusted = true;
+          }
+          if (
+            assistantInsertError.message?.includes("is_web_search") ||
+            assistantInsertError.details?.includes("is_web_search")
+          ) {
+            delete retryPayload.is_web_search;
+            hasAdjusted = true;
+          }
+          if (hasAdjusted) {
+            const { data: retryData, error: retryError } = await supabase
+              .from("chat_messages")
+              .insert(retryPayload)
+              .select()
+              .single();
+            if (retryError) throw retryError;
+            assistantMsgData = retryData;
+          } else {
+            throw assistantInsertError;
+          }
+        } else {
+          assistantMsgData = data;
+        }
       }
 
       setAllMessages((prev) =>
         prev.map((m) =>
-          m.id === "temp-streaming" ? { ...m, id: assistantMsgData.id } : m,
+          m.id === "temp-streaming"
+            ? {
+                ...m,
+                id: assistantMsgData.id,
+                content: finalContent,
+                reasoning: reasoningContent || undefined,
+                is_web_search: isWebSearch || false,
+                web_search_status: undefined,
+              }
+            : m,
         ),
       );
       activeChildrenRef.current = {
@@ -2160,7 +2233,7 @@ export function ChatbotApp() {
             {messages.map((m, i) => {
               const isLastAssistant =
                 i === messages.length - 1 && m.role === "assistant";
-              if (isLastAssistant && isTyping && !m.content && !m.reasoning) {
+              if (isLastAssistant && isTyping && !m.content && !m.reasoning && !m.is_web_search) {
                 return (
                   <div
                     key={i}
@@ -2321,11 +2394,12 @@ export function ChatbotApp() {
                       >
                         <div className="flex items-center gap-3 w-full rounded-lg transition-colors group">
                           <div className="flex flex-col">
-                            <span className="text-sm text-white/90 font-medium font-display">
-                              Reasoning
+                            <span className="text-sm text-white/90 font-medium font-display flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                              {t("apps.chatbotReasoning", undefined, "Reasoning Process")}
                             </span>
                             <span className="text-[11px] text-slate-400 font-body">
-                              Toggle AI thought process
+                              {t("apps.chatbotReasoningDesc", undefined, "Toggle AI thought process")}
                             </span>
                           </div>
                           {isReasoningEnabled && (
