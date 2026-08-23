@@ -631,7 +631,7 @@ describe("ChatbotApp", () => {
     expect(screen.getByText("Toggle AI thought process")).toBeDefined();
   });
 
-  it("displays Searched The Web and does not count as reasoning when web search is enabled", async () => {
+  it("displays Searched The Web and does not count as reasoning when only web search is enabled", async () => {
     render(
       <ThemeProvider>
         <ChatbotApp />
@@ -662,6 +662,155 @@ describe("ChatbotApp", () => {
     await screen.findByText("Web search response content", {}, { timeout: 15000 });
     expect(document.querySelector(".reasoning-block")).toBeNull();
   });
+
+  it("runs reasoning after web search when both are enabled", async () => {
+    const callOrder: string[] = [];
+    const originalFetch = global.fetch;
+
+    try {
+      global.fetch = vi.fn((url: string, options: any) => {
+        if (url === "/api/ai/proxy") {
+          const bodyStr = options?.body || "";
+          if (bodyStr.includes('"stream":false')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  choices: [{ message: { content: "Mock Title" } }],
+                }),
+            });
+          }
+
+          if (bodyStr.includes("Formulate a targeted web search query")) {
+            callOrder.push("plan_search");
+            const stream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    'data: {"choices":[{"delta":{"content":"{\\"query\\":\\"latest updates\\",\\"responseFormat\\":\\"summary\\"}"}}]}\n',
+                  ),
+                );
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+                controller.close();
+              },
+            });
+            return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+          }
+
+          if (bodyStr.includes("Based on the web search findings above")) {
+            callOrder.push("reasoning_after_search");
+            expect(bodyStr).toContain("Web Search Findings");
+            const stream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    'data: {"choices":[{"delta":{"content":"Analyzed web search findings carefully."}}]}\n',
+                  ),
+                );
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+                controller.close();
+              },
+            });
+            return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+          }
+
+          if (bodyStr.includes("based on your web search findings and reasoning")) {
+            callOrder.push("final_synthesis");
+            const stream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    'data: {"choices":[{"delta":{"content":"Final response synthesized from search."}}]}\n',
+                  ),
+                );
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+                controller.close();
+              },
+            });
+            return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+          }
+
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  'data: {"choices":[{"delta":{"content":"Generic AI message"}}]}\n',
+                ),
+              );
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+              controller.close();
+            },
+          });
+          return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+        }
+
+        if (url === "/api/ai/agent-search") {
+          callOrder.push("agent_search");
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  'data: {"type":"delta","content":"Raw web search results about updates"}\n',
+                ),
+              );
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+              controller.close();
+            },
+          });
+          return Promise.resolve({ ok: true, body: stream, headers: { get: () => null } });
+        }
+
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }) as any;
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      // Open options dropdown
+      const toggleOptionsButton = await screen.findByTitle("Toggle Options");
+      fireEvent.click(toggleOptionsButton);
+
+      // Enable Web Search
+      const webSearchToggle = await screen.findByText("Web Search");
+      fireEvent.click(webSearchToggle);
+
+      // Enable Reasoning Process
+      const reasoningToggle = await screen.findByText("Reasoning Process");
+      fireEvent.click(reasoningToggle);
+
+      // Send a message
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "Tell me the news" } });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      // Verify UI elements
+      await screen.findByText("Searched The Web", {}, { timeout: 15000 });
+      await waitFor(() => {
+        expect(document.querySelector(".reasoning-block")).not.toBeNull();
+      }, { timeout: 15000 });
+      await screen.findByText("Final response synthesized from search.", {}, { timeout: 15000 });
+
+      // Verify execution call order: search planning -> agent search -> reasoning with findings -> final synthesis
+      expect(callOrder).toEqual([
+        "plan_search",
+        "agent_search",
+        "reasoning_after_search",
+        "final_synthesis",
+      ]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  }, 30000);
 });
 
 
