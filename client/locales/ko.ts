@@ -419,7 +419,7 @@ export const ko = {
     aupTitle: "허용 가능한 사용 정책 (AUP)",
     aupDesc: "금지된 활동 및 강제 조치를 포함하여 서비스 사용에 대한 행동 표준.",
     licenseTitle: "라이선스",
-    licenseDesc: "이 프로젝트에 적용된 Mozilla 공용 라이선스 버전 2.0.",
+    licenseDesc: "이 프로젝트에 적용되는 MIT 라이선스.",
   },
   download: {
     title: "다운로드",
