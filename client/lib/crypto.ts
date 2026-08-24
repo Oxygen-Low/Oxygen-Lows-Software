@@ -828,7 +828,7 @@ export function clearActiveMasterKey(): void {
 }
 
 export type EncryptionCategory =
-  "characters" | "data_save" | "chatbot" | "integrations";
+  "characters" | "data_save" | "chatbot" | "integrations" | "passwords";
 
 export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
   EncryptionCategory,
@@ -838,6 +838,7 @@ export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
   data_save: "oxygen_encrypt_data_save",
   chatbot: "oxygen_encrypt_chatbot",
   integrations: "oxygen_encrypt_integrations",
+  passwords: "oxygen_encrypt_passwords",
 };
 
 /**
@@ -1281,6 +1282,52 @@ export async function decryptIntegrationData<T extends IntegrationData>(
   return result;
 }
 
+export interface PasswordData {
+  id?: string;
+  user_id?: string;
+  title?: string | null;
+  url?: string | null;
+  password?: string;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
+
+export async function encryptPasswordData<T extends PasswordData>(
+  data: T,
+  keyBytes: Uint8Array,
+): Promise<T> {
+  const result: any = { ...data };
+  if (data.title !== undefined)
+    result.title = await encryptField(data.title, keyBytes);
+  if (data.url !== undefined)
+    result.url = await encryptField(data.url, keyBytes);
+  if (data.password !== undefined)
+    result.password =
+      (await encryptField(data.password, keyBytes)) ?? data.password;
+  if (data.notes !== undefined)
+    result.notes = await encryptField(data.notes, keyBytes);
+  return result;
+}
+
+export async function decryptPasswordData<T extends PasswordData>(
+  data: T,
+  keyBytes: Uint8Array | null,
+): Promise<T> {
+  const result: any = { ...data };
+  if (data.title !== undefined)
+    result.title = await decryptField(data.title, keyBytes);
+  if (data.url !== undefined)
+    result.url = await decryptField(data.url, keyBytes);
+  if (data.password !== undefined)
+    result.password =
+      (await decryptField(data.password, keyBytes)) ?? data.password;
+  if (data.notes !== undefined)
+    result.notes = await decryptField(data.notes, keyBytes);
+  return result;
+}
+
 export interface MigrateOptions {
   category: EncryptionCategory;
   enable: boolean;
@@ -1510,6 +1557,43 @@ export async function migrateCategoryEncryption({
         }
       }
     }
+  } else if (category === "passwords") {
+    let queryPasswords = db.from("user_passwords").select("*");
+    if (userId) queryPasswords = queryPasswords.eq("user_id", userId);
+    const { data: passwords, error: passwordsError } = await queryPasswords;
+    if (passwordsError) throw passwordsError;
+
+    if (passwords && passwords.length > 0) {
+      for (const item of passwords) {
+        if (enable) {
+          const enc = await encryptPasswordData(item, keyBytes);
+          const { error: updateError } = await db
+            .from("user_passwords")
+            .update({
+              title: enc.title,
+              url: enc.url,
+              password: enc.password,
+              notes: enc.notes,
+            })
+            .eq("id", item.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        } else {
+          const dec = await decryptPasswordData(item, keyBytes);
+          const { error: updateError } = await db
+            .from("user_passwords")
+            .update({
+              title: dec.title,
+              url: dec.url,
+              password: dec.password,
+              notes: dec.notes,
+            })
+            .eq("id", item.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    }
   }
 
   return { updatedCount };
@@ -1540,6 +1624,7 @@ export async function rotateMasterKey({
     "data_save",
     "chatbot",
     "integrations",
+    "passwords",
   ];
 
   for (const category of categories) {
@@ -1671,6 +1756,29 @@ export async function rotateMasterKey({
             .update({
               api_key: enc.api_key,
               base_url: enc.base_url,
+            })
+            .eq("id", item.id);
+          if (updateError) throw updateError;
+          updatedCount++;
+        }
+      }
+    } else if (category === "passwords") {
+      let queryPasswords = db.from("user_passwords").select("*");
+      if (userId) queryPasswords = queryPasswords.eq("user_id", userId);
+      const { data: pwList, error: passwordsError } = await queryPasswords;
+      if (passwordsError) throw passwordsError;
+
+      if (pwList && pwList.length > 0) {
+        for (const item of pwList) {
+          const dec = await decryptPasswordData(item, oldKeyBytes);
+          const enc = await encryptPasswordData(dec, newKeyBytes);
+          const { error: updateError } = await db
+            .from("user_passwords")
+            .update({
+              title: enc.title,
+              url: enc.url,
+              password: enc.password,
+              notes: enc.notes,
             })
             .eq("id", item.id);
           if (updateError) throw updateError;

@@ -273,6 +273,14 @@ const App = () => (
                       path="/apps/defender"
                       element={<Navigate to="/apps/webdefender" replace />}
                     />
+                    <Route
+                      path="/passwords"
+                      element={<Navigate to="/apps/password-manager" replace />}
+                    />
+                    <Route
+                      path="/password-manager"
+                      element={<Navigate to="/apps/password-manager" replace />}
+                    />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

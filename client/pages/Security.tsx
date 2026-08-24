@@ -68,6 +68,7 @@ const STORAGE_KEYS = {
   ENCRYPT_DATA_SAVE: "oxygen_encrypt_data_save",
   ENCRYPT_CHATBOT: "oxygen_encrypt_chatbot",
   ENCRYPT_INTEGRATIONS: "oxygen_encrypt_integrations",
+  ENCRYPT_PASSWORDS: "oxygen_encrypt_passwords",
 };
 
 export default function Security() {
@@ -130,6 +131,16 @@ export default function Security() {
       }
     },
   );
+
+  const [encryptPasswords, setEncryptPasswords] = useState<boolean>(() => {
+    try {
+      return (
+        localStorage.getItem(STORAGE_KEYS.ENCRYPT_PASSWORDS) === "true"
+      );
+    } catch {
+      return false;
+    }
+  });
 
   const [migratingCategory, setMigratingCategory] =
     useState<EncryptionCategory | null>(null);
@@ -521,6 +532,31 @@ export default function Security() {
       }
     }
 
+    if (category === "passwords" && !checked) {
+      // Cannot disable while passwords are stored
+      try {
+        let query = supabase
+          .from("user_passwords")
+          .select("id", { count: "exact", head: true });
+        if (session?.user?.id) {
+          query = query.eq("user_id", session.user.id);
+        }
+        const { count, error } = await query;
+        if (!error && count && count > 0) {
+          toast.error(
+            t(
+              "security.cannotDisablePasswordsWithRecords",
+              undefined,
+              "Cannot disable encryption while passwords are stored. Please delete all passwords first.",
+            ),
+          );
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to check stored passwords:", err);
+      }
+    }
+
     if (category === "characters") {
       setEncryptCharacters(checked);
       localStorage.setItem(STORAGE_KEYS.ENCRYPT_CHARACTERS, String(checked));
@@ -533,6 +569,9 @@ export default function Security() {
     } else if (category === "integrations") {
       setEncryptIntegrations(checked);
       localStorage.setItem(STORAGE_KEYS.ENCRYPT_INTEGRATIONS, String(checked));
+    } else if (category === "passwords") {
+      setEncryptPasswords(checked);
+      localStorage.setItem(STORAGE_KEYS.ENCRYPT_PASSWORDS, String(checked));
     }
 
     setMigratingCategory(category);
@@ -1368,6 +1407,86 @@ export default function Security() {
                   disabled={!keyBytes || migratingCategory !== null}
                   onCheckedChange={(checked) =>
                     handleToggleCategory("integrations", checked)
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Toggle 5: Password Vault */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-950/90 hover:border-slate-700/80 transition-all gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5 sm:mt-0">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="toggle-passwords"
+                      className="text-sm sm:text-base font-semibold text-white cursor-pointer"
+                    >
+                      {t(
+                        "security.passwords",
+                        undefined,
+                        "Password Vault",
+                      )}
+                    </Label>
+                    {encryptPasswords ? (
+                      keyBytes ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        >
+                          {t(
+                            "security.encryptionEnabled",
+                            undefined,
+                            "Encrypted",
+                          )}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        >
+                          {t(
+                            "security.keyRequiredBadge",
+                            undefined,
+                            "Key Required",
+                          )}
+                        </Badge>
+                      )
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700"
+                      >
+                        {t(
+                          "security.encryptionDisabled",
+                          undefined,
+                          "Unencrypted",
+                        )}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                    {t(
+                      "security.passwordsDesc",
+                      undefined,
+                      "Encrypt stored passwords, URLs, and notes in your personal password manager.",
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end sm:pl-4 gap-2">
+                {migratingCategory === "passwords" && (
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                )}
+                <Switch
+                  id="toggle-passwords"
+                  checked={encryptPasswords}
+                  disabled={!keyBytes || migratingCategory !== null}
+                  onCheckedChange={(checked) =>
+                    handleToggleCategory("passwords", checked)
                   }
                 />
               </div>

@@ -43,6 +43,8 @@ import {
   decryptChatMessageData,
   encryptIntegrationData,
   decryptIntegrationData,
+  encryptPasswordData,
+  decryptPasswordData,
   migrateCategoryEncryption,
 } from "./crypto";
 
@@ -521,6 +523,75 @@ describe("Crypto Utilities (AES-256)", () => {
 
       const result = await migrateCategoryEncryption({
         category: "integrations",
+        enable: true,
+        keyBytes: key,
+        userId: "u1",
+        client: mockDb as any,
+      });
+
+      expect(result.updatedCount).toBe(1);
+    });
+  });
+
+  describe("Password data transformers", () => {
+    it("should encrypt and decrypt password title, url, password, and notes", async () => {
+      const key = generateAes256Key();
+      const item = {
+        id: "pw-1",
+        user_id: "u1",
+        title: "GitHub Account",
+        url: "https://github.com",
+        password: "SuperSecretPassword123!",
+        notes: "2FA recovery codes in safe",
+      };
+
+      const encrypted = await encryptPasswordData(item, key);
+      expect(encrypted.title).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.url).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.password).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.notes).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.id).toBe("pw-1");
+
+      const decrypted = await decryptPasswordData(encrypted, key);
+      expect(decrypted.title).toBe("GitHub Account");
+      expect(decrypted.url).toBe("https://github.com");
+      expect(decrypted.password).toBe("SuperSecretPassword123!");
+      expect(decrypted.notes).toBe("2FA recovery codes in safe");
+      expect(decrypted.id).toBe("pw-1");
+    });
+
+    it("should support passwords category encryption toggles", () => {
+      setCategoryEncryptionEnabled("passwords", true);
+      expect(isCategoryEncryptionEnabled("passwords")).toBe(true);
+      setCategoryEncryptionEnabled("passwords", false);
+      expect(isCategoryEncryptionEnabled("passwords")).toBe(false);
+    });
+
+    it("should migrate passwords category data", async () => {
+      const key = generateAes256Key();
+      const mockItems = [
+        {
+          id: "1",
+          title: "My Site",
+          url: "https://example.com",
+          password: "my-plain-password",
+          notes: null,
+        },
+      ];
+
+      const mockDb = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          then: vi.fn((resolve: any) =>
+            resolve({ data: mockItems, error: null }),
+          ),
+        }),
+      };
+
+      const result = await migrateCategoryEncryption({
+        category: "passwords",
         enable: true,
         keyBytes: key,
         userId: "u1",

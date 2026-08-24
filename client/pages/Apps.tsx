@@ -27,6 +27,7 @@ import {
   Braces,
   ShieldCheck,
   Globe,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -39,6 +40,7 @@ import { VPNApp } from "@/components/apps/VPN";
 import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
+import { PasswordManagerApp } from "@/components/apps/PasswordManager";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -237,6 +239,18 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
     component: DefenderApp,
+    authRequired: true,
+  },
+  {
+    id: "password-manager",
+    nameKey: "apps.passwordManagerTitle",
+    defaultName: "Password Manager",
+    descKey: "apps.passwordManagerDesc",
+    defaultDesc: "Securely store and manage passwords with AES-256 zero-knowledge encryption.",
+    categories: ["All", "Security", "Utility"],
+    availability: "web-and-desktop",
+    icon: <KeyRound className="w-8 h-8 text-cyan-500" />,
+    component: PasswordManagerApp,
     authRequired: true,
   },
 ];

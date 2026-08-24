@@ -157,22 +157,26 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
   );
 };
 
+const fallbackT = (key: TranslationKey, params?: any, defaultVal?: string) =>
+  getTranslation(DEFAULT_LANGUAGE, key, params, defaultVal);
+
+const defaultLangOption = getLanguageOption(DEFAULT_LANGUAGE);
+const FALLBACK_LANGUAGE_CONTEXT: LanguageContextType = {
+  language: defaultLangOption.name,
+  languageCode: defaultLangOption.code,
+  currentOption: defaultLangOption,
+  languageOption: defaultLangOption,
+  supportedLanguages: SUPPORTED_LANGUAGES,
+  setLanguage: async () => {},
+  t: fallbackT,
+  isLoading: false,
+};
+
 export function useLanguage(): LanguageContextType {
   const context = useContext(LanguageContext);
   if (!context) {
     // Return fallback context if used outside provider (e.g. in standalone tests)
-    const currentOption = getLanguageOption(DEFAULT_LANGUAGE);
-    return {
-      language: currentOption.name,
-      languageCode: currentOption.code,
-      currentOption,
-      languageOption: currentOption,
-      supportedLanguages: SUPPORTED_LANGUAGES,
-      setLanguage: async () => {},
-      t: (key: TranslationKey, params?: any, defaultVal?: string) =>
-        getTranslation(DEFAULT_LANGUAGE, key, params, defaultVal),
-      isLoading: false,
-    };
+    return FALLBACK_LANGUAGE_CONTEXT;
   }
   return context;
 }
