@@ -116,11 +116,23 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Decode Keystore
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > Android/app/release.jks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
       - name: Build Android App
         run: |
           chmod +x Android/gradlew
           cd Android
           ./gradlew assembleRelease -PversionName="${{ needs.version.outputs.app_version }}" -PversionCode="${{ needs.version.outputs.version_code }}"
+        env:
+          KEYSTORE_PATH: release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Prepare Release Asset
         run: |
