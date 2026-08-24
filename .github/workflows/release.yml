@@ -27,7 +27,7 @@ jobs:
       - name: Calculate Version
         id: calc_version
         run: |
-          MAJOR_MINOR="1.3"
+          MAJOR_MINOR="1.4"
           PREFIX="v${MAJOR_MINOR}."
 
           TAG_AT_HEAD=$(git tag --points-at HEAD "${PREFIX}*" | head -n 1)
