@@ -387,9 +387,9 @@ export function DefenderApp() {
           <div className="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center">
             <Shield className="w-10 h-10 text-cyan-500" />
           </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">
+          <h2 className="text-4xl font-bold text-white tracking-tight">
             Web Defender
-          </h1>
+          </h2>
           <p className="text-lg text-slate-400 max-w-xl">
             Protect your websites and APIs from attacks, bots, and malicious
             traffic.

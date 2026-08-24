@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
 import { demoRouter } from "./routes/demo.ts";
 import { proxyRouter } from "./routes/proxy.ts";
@@ -17,6 +18,8 @@ import { createDefender } from "@oxygenlow/webdefender/hono";
 import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
 
 const app = new Hono();
+
+app.use(compress());
 
 let defenderPromise: Promise<any> | null = null;
 

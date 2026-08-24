@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -365,9 +365,9 @@ export default function Games() {
               >
                 <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <h2 className="text-xl sm:text-2xl font-bold text-white truncate">
+              <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
                 {activeApp.name}
-              </h2>
+              </h1>
             </div>
           )}
 
@@ -415,9 +415,9 @@ export default function Games() {
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
             {t("games.title", undefined, "Games")}
-          </h2>
+          </h1>
           <p className="text-sm sm:text-base text-slate-400">
             {t(
               "games.subtitle",
@@ -604,53 +604,55 @@ export default function Games() {
           {filteredGames.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredGames.map((app) => (
-                <Card
+                <Link
                   key={app.id}
-                  className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden flex flex-col justify-between"
-                  onClick={() => handleAppClick(app)}
+                  to={`/games/${app.id}`}
+                  className="block text-left no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-xl"
                 >
-                  <CardHeader className="p-4 sm:p-6 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between mb-3 sm:mb-4 gap-2">
-                      <div className="transition-transform group-hover:scale-110 shrink-0">
-                        {app.icon}
+                  <Card className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden flex flex-col justify-between h-full">
+                    <CardHeader className="p-4 sm:p-6 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between mb-3 sm:mb-4 gap-2">
+                        <div className="transition-transform group-hover:scale-110 shrink-0">
+                          {app.icon}
+                        </div>
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {app.modes.map((mode) => (
+                            <span
+                              key={mode}
+                              className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700/60"
+                            >
+                              {t(
+                                `games.${mode.toLowerCase()}` as any,
+                                undefined,
+                                mode,
+                              )}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1 justify-end">
-                        {app.modes.map((mode) => (
+                      <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
+                        {app.name}
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm text-slate-400 flex-1">
+                        {app.description}
+                      </CardDescription>
+                      <div className="flex flex-wrap gap-1.5 pt-3 mt-auto">
+                        {app.genres.map((genre) => (
                           <span
-                            key={mode}
-                            className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700/60"
+                            key={genre}
+                            className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-cyan-950/40 text-cyan-400/90 border border-cyan-800/30"
                           >
                             {t(
-                              `games.${mode.toLowerCase()}` as any,
+                              `games.${genre.toLowerCase()}` as any,
                               undefined,
-                              mode,
+                              genre,
                             )}
                           </span>
                         ))}
                       </div>
-                    </div>
-                    <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
-                      {app.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm text-slate-400 flex-1">
-                      {app.description}
-                    </CardDescription>
-                    <div className="flex flex-wrap gap-1.5 pt-3 mt-auto">
-                      {app.genres.map((genre) => (
-                        <span
-                          key={genre}
-                          className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-cyan-950/40 text-cyan-400/90 border border-cyan-800/30"
-                        >
-                          {t(
-                            `games.${genre.toLowerCase()}` as any,
-                            undefined,
-                            genre,
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </CardHeader>
-                </Card>
+                    </CardHeader>
+                  </Card>
+                </Link>
               ))}
             </div>
           ) : (

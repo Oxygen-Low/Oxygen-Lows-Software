@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -422,9 +422,9 @@ export default function Apps() {
               >
                 <AppWindow className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <h2 className="text-xl sm:text-2xl font-bold text-white truncate">
+              <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
                 {activeApp.name}
-              </h2>
+              </h1>
             </div>
           )}
 
@@ -472,9 +472,9 @@ export default function Apps() {
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
             {t("apps.title", undefined, "Apps")}
-          </h2>
+          </h1>
           <p className="text-sm sm:text-base text-slate-400">
             {t(
               "apps.subtitle",
@@ -585,23 +585,35 @@ export default function Apps() {
           {filteredApps.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredApps.map((app) => (
-                <Card
+                <Link
                   key={app.id}
-                  className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden"
-                  onClick={() => handleAppClick(app)}
+                  to={`/apps/${app.id}`}
+                  onClick={(e) => {
+                    if (
+                      app.requiresAdmin &&
+                      isDesktopMode &&
+                      (window as any).chrome?.webview
+                    ) {
+                      e.preventDefault();
+                      handleAppClick(app);
+                    }
+                  }}
+                  className="block text-left no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-xl"
                 >
-                  <CardHeader className="p-4 sm:p-6">
-                    <div className="mb-3 sm:mb-4 transition-transform group-hover:scale-110">
-                      {app.icon}
-                    </div>
-                    <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
-                      {app.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm text-slate-400">
-                      {app.description}
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
+                  <Card className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden h-full">
+                    <CardHeader className="p-4 sm:p-6">
+                      <div className="mb-3 sm:mb-4 transition-transform group-hover:scale-110">
+                        {app.icon}
+                      </div>
+                      <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
+                        {app.name}
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm text-slate-400">
+                        {app.description}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
               ))}
             </div>
           ) : (

@@ -1344,8 +1344,8 @@ export function injectSeoTags(
       </nav>`;
 
   modifiedHtml = modifiedHtml.replace(
-    /<div id="root">[\s\S]*?<\/div>\s*<script/i,
-    `<div id="root">\n      ${fallbackContent}\n    </div>\n\n    <script`,
+    /<div id="root">[\s\S]*?<\/div>(?=\s*(?:<noscript|<script|<\/body|$))/i,
+    `<div id="root">\n      ${fallbackContent}\n    </div>`,
   );
 
   return modifiedHtml;

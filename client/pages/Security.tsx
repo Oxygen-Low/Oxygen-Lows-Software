@@ -576,12 +576,12 @@ export default function Security() {
       <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto pb-20 animate-in fade-in duration-500">
         {/* Header */}
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
             <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
             <span>
               {t("security.title", undefined, "Security & Data Encryption")}
             </span>
-          </h2>
+          </h1>
           <p className="text-sm sm:text-base text-slate-400">
             {t(
               "security.subtitle",

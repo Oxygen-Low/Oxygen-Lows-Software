@@ -266,11 +266,11 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             </button>
 
             <Link to="/apps" className="flex items-center gap-2 min-w-0">
-              <h1
+              <span
                 className={`${styles["logo"]} text-base sm:text-xl md:text-2xl font-bold truncate tracking-tight`}
               >
                 Oxygen Low's Software
-              </h1>
+              </span>
             </Link>
 
             <a

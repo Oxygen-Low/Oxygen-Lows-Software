@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    target: "es2022",
+    cssMinify: "lightningcss",
     outDir: "dist/spa",
     rollupOptions: {
       output: {

@@ -1,7 +1,13 @@
 @import "tailwindcss";
+@source "./pages";
+@source "./components";
+@source "./contexts";
+@source "./hooks";
+@source "./lib";
+@source "./App.tsx";
+@source "../shared";
 
 @plugin "tailwindcss-animate";
-@plugin "@tailwindcss/typography";
 
 @theme {
   --font-sans:
@@ -47,17 +53,6 @@
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
-
-  --color-cyan-50: #f0f9fa;
-  --color-cyan-100: #e0f2f7;
-  --color-cyan-200: #b3dff0;
-  --color-cyan-300: #80cce8;
-  --color-cyan-400: #4db8e0;
-  --color-cyan-500: #22a4d8;
-  --color-cyan-600: #1a83b8;
-  --color-cyan-700: #126298;
-  --color-cyan-800: #0a4178;
-  --color-cyan-900: #022058;
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);

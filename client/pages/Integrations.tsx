@@ -538,12 +538,12 @@ export default function Integrations() {
       <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500">
         {/* Header Banner */}
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2 flex items-center gap-2.5">
             <KeyRound className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
             <span>
               {t("integrations.title", undefined, "Integrations & API Keys")}
             </span>
-          </h2>
+          </h1>
           <p className="text-sm sm:text-base text-slate-400 max-w-3xl">
             {t(
               "integrations.subtitle",

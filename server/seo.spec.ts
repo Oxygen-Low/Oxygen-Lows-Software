@@ -217,6 +217,35 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
     expect(md).toContain("## Related Links");
   });
 
+  it("ensures every audited URL has exactly one single H1 tag in rendered HTML", () => {
+    for (const url of AUDITED_URLS) {
+      const renderedHtml = injectSeoTags(
+        BASE_HTML_TEMPLATE,
+        url,
+        "https://oxygenlow.com",
+      );
+      const h1Matches = renderedHtml.match(/<h1[^>]*>[\s\S]*?<\/h1>/gi);
+      expect(h1Matches).toBeTruthy();
+      expect(h1Matches!.length).toBe(1);
+    }
+  });
+
+  it("verifies favicon tags are present in root index.html", async () => {
+    const fs = await import("node:fs");
+    const indexHtml = fs.readFileSync("index.html", "utf-8");
+    expect(indexHtml).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />');
+    expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="/favicon.ico" />');
+    expect(indexHtml).toContain('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />');
+  });
+
+  it("ensures orphan pages (/apps/base64-encoder, /apps/json-formatter, /apps/vpn) have inbound links in index.html and navigation", async () => {
+    const fs = await import("node:fs");
+    const indexHtml = fs.readFileSync("index.html", "utf-8");
+    expect(indexHtml).toContain('href="/apps/base64-encoder"');
+    expect(indexHtml).toContain('href="/apps/json-formatter"');
+    expect(indexHtml).toContain('href="/apps/vpn"');
+  });
+
   it("serves comprehensive sitemap.xml with all core routes and lastmod timestamps", async () => {
     const res = await app.request("https://oxygenlow.com/sitemap.xml");
     expect(res.status).toBe(200);
@@ -227,5 +256,13 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
       expect(xml).toContain(`<loc>${expectedLoc}</loc>`);
     }
     expect(xml).toContain("<lastmod>");
+  });
+
+  it("enables HTTP response compression middleware", async () => {
+    const res = await app.request("https://oxygenlow.com/api/openapi.json", {
+      headers: { "Accept-Encoding": "gzip" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-encoding")).toBe("gzip");
   });
 });

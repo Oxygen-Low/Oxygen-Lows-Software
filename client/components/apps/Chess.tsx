@@ -251,9 +251,9 @@ export function ChessApp() {
     <div className="flex flex-col items-center justify-center p-4 max-w-4xl mx-auto h-full w-full">
       <div className="flex items-center gap-3 mb-6">
         <Sparkles className="w-8 h-8 text-cyan-500" />
-        <h1 className="text-3xl font-bold text-white tracking-tight">
+        <h2 className="text-3xl font-bold text-white tracking-tight">
           Play vs AI
-        </h1>
+        </h2>
       </div>
 
       <div className="grid md:grid-cols-12 gap-8 w-full">

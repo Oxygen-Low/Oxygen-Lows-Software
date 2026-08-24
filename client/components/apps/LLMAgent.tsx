@@ -1512,7 +1512,7 @@ function ToolLogItem({ entry }: { entry: ToolLogEntry }) {
 
 function AgentMarkdown({ content }: { content: string }) {
   return (
-    <div className="prose prose-invert prose-sm max-w-none text-sm leading-relaxed text-slate-300">
+    <div className="max-w-none text-sm leading-relaxed text-slate-300 space-y-2">
       <ReactMarkdown
         components={{
           code({ className, children, ...props }) {

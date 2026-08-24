@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Monitor, Smartphone } from "lucide-react";
@@ -11,6 +12,11 @@ import {
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
+const DEFAULT_WINDOWS_DOWNLOAD_URL =
+  "https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware_Installer.exe";
+const DEFAULT_ANDROID_DOWNLOAD_URL =
+  "https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware.apk";
+
 export default function Download() {
   const { t } = useTranslation();
   usePageTitle(t("titles.download", undefined, "Download"), {
@@ -20,6 +26,70 @@ export default function Download() {
       "Get Oxygen Low's Software for your device",
     ),
   });
+
+  const [windowsUrl, setWindowsUrl] = useState(DEFAULT_WINDOWS_DOWNLOAD_URL);
+  const [androidUrl, setAndroidUrl] = useState(DEFAULT_ANDROID_DOWNLOAD_URL);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function resolveLatestValidAssets() {
+      try {
+        const response = await fetch(
+          "https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/releases",
+        );
+        if (!response.ok) return;
+
+        const releases = await response.json();
+        if (!Array.isArray(releases)) return;
+
+        let resolvedWindowsUrl: string | null = null;
+        let resolvedAndroidUrl: string | null = null;
+
+        for (const release of releases) {
+          if (release.draft) continue;
+          const assets = Array.isArray(release.assets) ? release.assets : [];
+
+          if (!resolvedWindowsUrl) {
+            const exeAsset = assets.find((asset: any) =>
+              typeof asset.name === "string" &&
+              asset.name.toLowerCase().endsWith(".exe"),
+            );
+            if (exeAsset?.browser_download_url) {
+              resolvedWindowsUrl = exeAsset.browser_download_url;
+            }
+          }
+
+          if (!resolvedAndroidUrl) {
+            const apkAsset = assets.find((asset: any) =>
+              typeof asset.name === "string" &&
+              asset.name.toLowerCase().endsWith(".apk"),
+            );
+            if (apkAsset?.browser_download_url) {
+              resolvedAndroidUrl = apkAsset.browser_download_url;
+            }
+          }
+
+          if (resolvedWindowsUrl && resolvedAndroidUrl) {
+            break;
+          }
+        }
+
+        if (isMounted) {
+          if (resolvedWindowsUrl) setWindowsUrl(resolvedWindowsUrl);
+          if (resolvedAndroidUrl) setAndroidUrl(resolvedAndroidUrl);
+        }
+      } catch {
+        // Keep default URLs on network failure or rate limit
+      }
+    }
+
+    resolveLatestValidAssets();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <Layout>
@@ -57,7 +127,7 @@ export default function Download() {
                 asChild
                 className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
               >
-                <a href="https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware_Installer.exe">
+                <a href={windowsUrl}>
                   {t(
                     "download.downloadDesktop",
                     undefined,
@@ -87,7 +157,7 @@ export default function Download() {
                 asChild
                 className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
               >
-                <a href="https://github.com/Oxygen-Low/Oxygen-Lows-Software/releases/latest/download/OxygenLowsSoftware.apk">
+                <a href={androidUrl}>
                   {t(
                     "download.downloadAndroid",
                     undefined,

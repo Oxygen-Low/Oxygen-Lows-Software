@@ -572,14 +572,19 @@ export default function Characters() {
       <div className="max-w-6xl mx-auto space-y-8 pb-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
+            <h1 className="sr-only">
+              {t("titles.characters", undefined, "Characters")}
+            </h1>
             <div className="flex gap-4 items-center">
               <button
+                type="button"
                 onClick={() => setActiveTab("characters")}
                 className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "characters" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
               >
                 {t("characters.charactersTab", undefined, "My Characters")}
               </button>
               <button
+                type="button"
                 onClick={() => setActiveTab("universes")}
                 className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "universes" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
               >

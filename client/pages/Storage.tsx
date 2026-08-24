@@ -604,9 +604,9 @@ export default function Storage() {
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               {t("storage.title", undefined, "Storage")}
-            </h2>
+            </h1>
             <p className="text-sm sm:text-base text-slate-400">
               {t(
                 "storage.subtitle",
