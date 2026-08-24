@@ -114,7 +114,7 @@ jobs:
           java-version: "21"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v7
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Build Android App
         run: |
