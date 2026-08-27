@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Globe,
   KeyRound,
+  Fingerprint,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -41,6 +42,7 @@ import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
 import { PasswordManagerApp } from "@/components/apps/PasswordManager";
+import { DigitalFootprintApp } from "@/components/apps/DigitalFootprint";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -252,6 +254,18 @@ const APPS: AppMetadata[] = [
     icon: <KeyRound className="w-8 h-8 text-cyan-500" />,
     component: PasswordManagerApp,
     authRequired: true,
+  },
+  {
+    id: "digital-footprint",
+    nameKey: "apps.digitalFootprintTitle",
+    defaultName: "Digital Footprint",
+    descKey: "apps.digitalFootprintDesc",
+    defaultDesc:
+      "Audit public exposure, scan for leaked credentials, and clean social media history locally.",
+    categories: ["All", "Security", "Utility", "Social"],
+    availability: "web-and-desktop",
+    icon: <Fingerprint className="w-8 h-8 text-cyan-500" />,
+    component: DigitalFootprintApp,
   },
 ];
 
