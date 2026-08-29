@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { supabase, rawSupabase } from "@/lib/supabase";
 import {
   getActiveMasterKey,
   setActiveMasterKey,
@@ -173,7 +174,16 @@ export function MigrationModal({ isOpen: propIsOpen, onClose }: MigrationModalPr
     setLoading(true);
 
     try {
-      const token = supabaseSession?.access_token;
+      let token = supabaseSession?.access_token;
+      if (!token) {
+        const { data } = await supabase.auth.getSession();
+        token = data?.session?.access_token;
+      }
+      if (!token) {
+        const { data: rawData } = await rawSupabase.auth.getSession();
+        token = rawData?.session?.access_token;
+      }
+
       if (!token) {
         throw new Error("No active Google / Supabase session found");
       }
