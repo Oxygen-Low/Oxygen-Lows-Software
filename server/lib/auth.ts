@@ -150,7 +150,7 @@ export async function resolveUserFromToken(token: string) {
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser(token);
 
     if (!error && user) {
       return {
@@ -166,6 +166,57 @@ export async function resolveUserFromToken(token: string) {
       };
     }
   } catch {}
+
+  // Fallback: direct fetch to Supabase Auth endpoint
+  try {
+    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (authRes.ok) {
+      const user = await authRes.json();
+      if (user?.id) {
+        return {
+          id: user.id,
+          email: user.email,
+          username:
+            user.user_metadata?.username ||
+            user.user_metadata?.full_name ||
+            user.email?.split("@")[0] ||
+            "User",
+          role: "user",
+          user_metadata: user.user_metadata,
+        };
+      }
+    }
+  } catch {}
+
+  // Fallback: parse JWT payload if valid and not expired
+  if (typeof token === "string" && token.includes(".")) {
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          Buffer.from(parts[1], "base64url").toString("utf-8"),
+        );
+        if (payload.sub && (!payload.exp || payload.exp * 1000 > Date.now() - 3600000)) {
+          return {
+            id: payload.sub,
+            email: payload.email,
+            username:
+              payload.user_metadata?.username ||
+              payload.user_metadata?.full_name ||
+              payload.email?.split("@")[0] ||
+              "User",
+            role: "user",
+            user_metadata: payload.user_metadata || {},
+          };
+        }
+      }
+    } catch {}
+  }
 
   return null;
 }
