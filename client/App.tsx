@@ -82,6 +82,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 
 import { MigrationModal } from "@/components/MigrationModal";
+import { useAuth } from "@/hooks/useAuth";
 
 function MigrationWatcher() {
   const { hasSupabaseSession } = useAuth();
