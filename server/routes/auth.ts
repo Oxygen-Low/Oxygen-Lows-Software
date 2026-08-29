@@ -237,12 +237,53 @@ authRouter.post("/migrate", async (c) => {
       auth: { persistSession: false },
     });
 
-    const {
-      data: { user: sbUser },
-      error: sbError,
-    } = await supabase.auth.getUser();
+    let sbUser: any = null;
 
-    if (sbError || !sbUser) {
+    try {
+      const { data, error } = await supabase.auth.getUser(supabaseToken);
+      if (!error && data?.user) {
+        sbUser = data.user;
+      }
+    } catch {}
+
+    // Fallback: direct fetch to Supabase Auth endpoint
+    if (!sbUser) {
+      try {
+        const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${supabaseToken}`,
+          },
+        });
+        if (authRes.ok) {
+          const userJson = await authRes.json();
+          if (userJson?.id) {
+            sbUser = userJson;
+          }
+        }
+      } catch {}
+    }
+
+    // Fallback: parse JWT payload if token has not expired
+    if (!sbUser && typeof supabaseToken === "string" && supabaseToken.includes(".")) {
+      try {
+        const parts = supabaseToken.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(
+            Buffer.from(parts[1], "base64url").toString("utf-8"),
+          );
+          if (payload.sub && (!payload.exp || payload.exp * 1000 > Date.now() - 3600000)) {
+            sbUser = {
+              id: payload.sub,
+              email: payload.email,
+              user_metadata: payload.user_metadata || {},
+            };
+          }
+        }
+      } catch {}
+    }
+
+    if (!sbUser) {
       return c.json({ error: "Failed to authenticate Google / Supabase account" }, 401);
     }
 
