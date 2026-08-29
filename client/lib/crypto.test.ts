@@ -293,6 +293,24 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(parseKeyFileContent(content)).toEqual(key);
     });
 
+    it("should parse JSON backup files containing masterKey", () => {
+      const key = generateAes256Key();
+      const hex = bytesToHex(key);
+      const jsonContent = JSON.stringify({
+        version: "1.0",
+        appName: "Oxygen Low's Software",
+        masterKey: hex,
+      });
+      expect(parseKeyFileContent(jsonContent)).toEqual(key);
+    });
+
+    it("should parse hex keys with spaces or dashes", () => {
+      const key = generateAes256Key();
+      const hex = bytesToHex(key);
+      const spacedHex = hex.match(/.{1,4}/g)?.join(" ") || hex;
+      expect(parseKeyFileContent(spacedHex)).toEqual(key);
+    });
+
     it("should throw error for invalid or empty file content", () => {
       expect(() => parseKeyFileContent("")).toThrow();
       expect(() =>

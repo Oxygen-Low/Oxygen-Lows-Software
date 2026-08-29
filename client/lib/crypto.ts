@@ -451,7 +451,7 @@ export function parseMasterKeyString(keyStr: string): Uint8Array {
 }
 
 /**
- * Parse a .key file content (or any exported key backup text / raw key string)
+ * Parse a .key file content (or any exported key backup text / raw key string / JSON)
  * and return the 32-byte master key as a Uint8Array.
  */
 export function parseKeyFileContent(content: string): Uint8Array {
@@ -468,35 +468,64 @@ export function parseKeyFileContent(content: string): Uint8Array {
     return parseMasterKeyString(trimmed);
   }
 
-  // 2. Check for explicit Hexadecimal masterkey section from backup format
-  const hexSectionMatch = normalized.match(
-    /\[HEXADECIMAL MASTERKEY[^\]]*\]\s*([0-9a-fA-F]{64})/i,
-  );
-  if (hexSectionMatch && hexSectionMatch[1]) {
-    return hexToBytes(hexSectionMatch[1]);
+  // 2. Check for JSON structure (e.g., exported settings or key backups in JSON)
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const possibleKeys = [
+        parsed.masterKey,
+        parsed.master_key,
+        parsed.key,
+        parsed.masterkey,
+        parsed.hex,
+        parsed.secret,
+        parsed.aesKey,
+        parsed.encryptionKey,
+        parsed.data?.masterKey,
+        parsed.data?.key,
+      ];
+      for (const candidate of possibleKeys) {
+        if (typeof candidate === "string" && isValidMasterKeyString(candidate.trim())) {
+          return parseMasterKeyString(candidate.trim());
+        }
+      }
+    } catch {}
   }
 
-  // 3. Check for explicit Base64 masterkey section from backup format
+  // 3. Check for explicit Hexadecimal masterkey section from backup format
+  const hexSectionMatch = normalized.match(
+    /\[HEXADECIMAL MASTERKEY[^\]]*\]\s*([0-9a-fA-F\s]{64,})/i,
+  );
+  if (hexSectionMatch && hexSectionMatch[1]) {
+    const clean = hexSectionMatch[1].replace(/\s+/g, "").substring(0, 64);
+    if (/^[0-9a-fA-F]{64}$/.test(clean)) {
+      return hexToBytes(clean);
+    }
+  }
+
+  // 4. Check for explicit Base64 masterkey section from backup format
   const base64SectionMatch = normalized.match(
-    /\[BASE64 MASTERKEY[^\]]*\]\s*([A-Za-z0-9+/]{43}=)/i,
+    /\[BASE64 MASTERKEY[^\]]*\]\s*([A-Za-z0-9+/=]{43,})/i,
   );
   if (base64SectionMatch && base64SectionMatch[1]) {
+    const clean = base64SectionMatch[1].trim();
     try {
-      const bytes = base64ToBytes(base64SectionMatch[1]);
+      const bytes = base64ToBytes(clean);
       if (bytes.length === AES_KEY_BYTES) {
         return bytes;
       }
     } catch {}
   }
 
-  // 4. Scan line by line for an exact 64-character hex string or 44-character base64 string
+  // 5. Scan line by line for an exact 64-character hex string or 44-character base64 string
   const lines = normalized
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
   for (const line of lines) {
-    if (/^[0-9a-fA-F]{64}$/.test(line)) {
-      return hexToBytes(line);
+    const stripped = line.replace(/^(?:0x|[0-9a-fA-F]{2}:)/i, "").replace(/\s+/g, "");
+    if (/^[0-9a-fA-F]{64}$/.test(stripped)) {
+      return hexToBytes(stripped);
     }
     if (/^[A-Za-z0-9+/]{43}=$/.test(line)) {
       try {
@@ -508,13 +537,19 @@ export function parseKeyFileContent(content: string): Uint8Array {
     }
   }
 
-  // 5. Scan whole text for 64-char hex word match
+  // 6. Check if stripping all formatting / non-hex characters yields a 64-hex key
+  const onlyHex = trimmed.replace(/^0x/i, "").replace(/[^0-9a-fA-F]/g, "");
+  if (onlyHex.length === 64) {
+    return hexToBytes(onlyHex);
+  }
+
+  // 7. Scan whole text for 64-char hex word match
   const anyHexMatch = normalized.match(/\b([0-9a-fA-F]{64})\b/);
   if (anyHexMatch && anyHexMatch[1]) {
     return hexToBytes(anyHexMatch[1]);
   }
 
-  // 6. Scan whole text for base64 32-byte key pattern
+  // 8. Scan whole text for base64 32-byte key pattern
   const anyB64Match = normalized.match(/\b([A-Za-z0-9+/]{43}=)\b/);
   if (anyB64Match && anyB64Match[1]) {
     try {

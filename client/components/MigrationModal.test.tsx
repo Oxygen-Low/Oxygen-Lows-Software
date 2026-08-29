@@ -84,7 +84,7 @@ describe("MigrationModal", () => {
     });
   });
 
-  it("should allow uploading a .key file to populate the master key", async () => {
+  it("should allow uploading a .key file to populate the master key (plain hex)", async () => {
     render(
       <LanguageProvider>
         <MigrationModal isOpen={true} />
@@ -95,6 +95,41 @@ describe("MigrationModal", () => {
       "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     const file = new File([keyHex], "master.key", {
       type: "application/octet-stream",
+    });
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).not.toBeNull();
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(keyHex)).toBeDefined();
+    });
+  });
+
+  it("should allow uploading a full exported .key backup file", async () => {
+    render(
+      <LanguageProvider>
+        <MigrationModal isOpen={true} />
+      </LanguageProvider>,
+    );
+
+    const keyHex =
+      "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+    const backupContent = `
+===========================================================
+ Oxygen Low's Software - AES-256 Masterkey Backup
+===========================================================
+
+[HEXADECIMAL MASTERKEY - 64 CHARACTERS]
+${keyHex}
+
+[BASE64 MASTERKEY - 44 CHARACTERS]
+/ty6mHZZMhD+3LqYdlkyEP7cuph2WTIQ/ty6mHZZMhA=
+`;
+
+    const file = new File([backupContent], "oxygen-masterkey.key", {
+      type: "text/plain",
     });
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;

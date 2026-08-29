@@ -7,6 +7,7 @@ import {
   bytesToHex,
   isValidMasterKeyString,
   parseMasterKeyString,
+  parseKeyFileContent,
 } from "@/lib/crypto";
 import {
   Loader2,
@@ -79,55 +80,42 @@ export function MigrationModal({ isOpen: propIsOpen, onClose }: MigrationModalPr
 
   if (!isOpen) return null;
 
-  const handleKeyFileUpload = (file: File) => {
+  const handleKeyFileUpload = async (file: File) => {
     setError(null);
     setKeyFileName(file.name);
-    const reader = new FileReader();
-
-    reader.onload = () => {
+    try {
+      // 1. Try reading as text and parsing with parseKeyFileContent
+      const text = await file.text();
       try {
-        const text = reader.result as string;
-        const trimmed = text.trim();
-
-        if (isValidMasterKeyString(trimmed)) {
-          setMasterKey(trimmed);
+        const bytes = parseKeyFileContent(text);
+        const hex = bytesToHex(bytes);
+        setMasterKey(hex);
+        toast.success(
+          t("migration.keyFileLoaded", undefined, "Master key file loaded successfully"),
+        );
+        return;
+      } catch (textErr) {
+        // 2. If text parsing failed, check if it's a raw 32-byte binary key
+        const buffer = await file.arrayBuffer();
+        const buf = new Uint8Array(buffer);
+        if (buf.length === 32) {
+          const hex = bytesToHex(buf);
+          setMasterKey(hex);
           toast.success(
             t("migration.keyFileLoaded", undefined, "Master key file loaded successfully"),
           );
           return;
         }
-
-        // If stored as raw binary bytes, try reading arrayBuffer
-        const bufferReader = new FileReader();
-        bufferReader.onload = () => {
-          try {
-            const buf = new Uint8Array(bufferReader.result as ArrayBuffer);
-            if (buf.length === 32) {
-              const hex = bytesToHex(buf);
-              setMasterKey(hex);
-              toast.success(
-                t("migration.keyFileLoaded", undefined, "Master key file loaded successfully"),
-              );
-            } else {
-              setError(
-                t("migration.invalidKeyFile", undefined, "Invalid key file format. Expected a 32-byte AES key."),
-              );
-            }
-          } catch {
-            setError(
-              t("migration.invalidKeyFile", undefined, "Invalid key file format."),
-            );
-          }
-        };
-        bufferReader.readAsArrayBuffer(file);
-      } catch {
-        setError(
-          t("migration.invalidKeyFile", undefined, "Failed to read key file."),
-        );
+        throw textErr;
       }
-    };
-
-    reader.readAsText(file);
+    } catch (err: any) {
+      console.error("Failed to parse key file:", err);
+      const errMsg =
+        err?.message ||
+        t("migration.invalidKeyFile", undefined, "Invalid key file format. Expected a 32-byte AES key.");
+      setError(errMsg);
+      toast.error(errMsg);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
