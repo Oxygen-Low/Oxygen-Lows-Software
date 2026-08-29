@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   KeyRound, Eye, EyeOff, Copy, Check, Trash2, Pencil, Plus,
   Loader2, Search, ExternalLink, Globe, RefreshCw, ChevronDown,
-  ChevronUp, Shuffle, ShieldAlert, Lock, X, ArrowUpDown,
+  ChevronUp, Shuffle, ShieldAlert, ShieldCheck, Clock, Lock, X, ArrowUpDown,
 } from "lucide-react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -37,6 +37,10 @@ import {
   generateAes256Key, setActiveMasterKey, setCategoryEncryptionEnabled,
   encryptPasswordData, decryptPasswordData, type PasswordData,
 } from "@/lib/crypto";
+import {
+  generateTotp, getTotpTimeRemaining, getTotpProgress,
+  formatOtpCode, validateTotpSecret,
+} from "@/lib/totp";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,6 +52,7 @@ interface PasswordRecord {
   url: string | null;
   password: string;
   notes: string | null;
+  otp_secret: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -154,6 +159,130 @@ function extractDomain(url: string | null | undefined): string {
   if (!url) return "";
   try { return new URL(url.startsWith("http") ? url : "https://" + url).hostname; }
   catch { return url; }
+}
+
+// ─── OTP Live Display Component ───────────────────────────────────────────────
+
+function OtpLiveDisplay({
+  secret,
+  onCopy,
+}: {
+  secret: string;
+  onCopy?: () => void;
+}) {
+  const { t } = useTranslation();
+  const [code, setCode] = useState<string>("");
+  const [remaining, setRemaining] = useState<number>(() =>
+    getTotpTimeRemaining(30),
+  );
+  const [progress, setProgress] = useState<number>(() =>
+    getTotpProgress(30),
+  );
+  const [copied, setCopied] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const updateCode = async () => {
+      try {
+        if (!validateTotpSecret(secret)) {
+          if (mounted) {
+            setHasError(true);
+            setCode("");
+          }
+          return;
+        }
+        const newCode = await generateTotp(secret);
+        if (mounted) {
+          setCode(newCode);
+          setHasError(false);
+        }
+      } catch {
+        if (mounted) {
+          setHasError(true);
+          setCode("");
+        }
+      }
+    };
+
+    updateCode();
+
+    const interval = setInterval(() => {
+      const rem = getTotpTimeRemaining(30);
+      const prog = getTotpProgress(30);
+      setRemaining(rem);
+      setProgress(prog);
+      if (rem === 30 || !code) {
+        updateCode();
+      }
+    }, 1000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [secret]);
+
+  const handleCopyOtp = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!code) return;
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    toast.success(
+      t(
+        "passwords.otpCopiedToast",
+        undefined,
+        "One-time password copied to clipboard",
+      ),
+    );
+    onCopy?.();
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (hasError || !secret) return null;
+
+  return (
+    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-800/50 mt-1.5 shadow-inner">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="p-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shrink-0">
+          <ShieldCheck className="w-4 h-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-sm sm:text-base font-bold text-cyan-300 tracking-widest select-all">
+              {formatOtpCode(code) || "------"}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-cyan-400/90 shrink-0 font-mono bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800/60">
+              <Clock className="w-2.5 h-2.5" />
+              <span>{remaining}s</span>
+            </div>
+          </div>
+          <div className="h-1 bg-slate-800/80 rounded-full overflow-hidden mt-1.5 max-w-[160px]">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-1000 ease-linear",
+                remaining <= 5 ? "bg-amber-400" : "bg-cyan-400",
+              )}
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleCopyOtp}
+        className="p-2 rounded-lg bg-cyan-900/30 hover:bg-cyan-900/60 text-cyan-300 hover:text-white transition shrink-0 border border-cyan-700/40"
+        title={t("passwords.copyOtp", undefined, "Copy OTP code")}
+      >
+        {copied ? (
+          <Check className="w-4 h-4 text-emerald-400" />
+        ) : (
+          <Copy className="w-4 h-4" />
+        )}
+      </button>
+    </div>
+  );
 }
 
 // ─── Generator Panel ───────────────────────────────────────────────────────────
@@ -281,6 +410,7 @@ export function PasswordManagerApp() {
   const [formUrl, setFormUrl] = useState("");
   const [formPassword, setFormPassword] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [formOtpSecret, setFormOtpSecret] = useState("");
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -296,6 +426,7 @@ export function PasswordManagerApp() {
   const [editUrl, setEditUrl] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editOtpSecret, setEditOtpSecret] = useState("");
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [showEditGenerator, setShowEditGenerator] = useState(false);
@@ -364,7 +495,7 @@ export function PasswordManagerApp() {
   }, [passwords, search, sortKey]);
 
   const resetForm = () => {
-    setFormTitle(""); setFormUrl(""); setFormPassword(""); setFormNotes("");
+    setFormTitle(""); setFormUrl(""); setFormPassword(""); setFormNotes(""); setFormOtpSecret("");
     setShowFormPassword(false); setEditingId(null); setShowGenerator(false); setGeneratorValue("");
   };
 
@@ -375,7 +506,15 @@ export function PasswordManagerApp() {
     setSaving(true);
     try {
       const key = getActiveMasterKey();
-      let payload: any = { user_id: session.user.id, title: formTitle.trim() || null, url: formUrl.trim() || null, password: formPassword, notes: formNotes.trim() || null, updated_at: new Date().toISOString() };
+      let payload: any = {
+        user_id: session.user.id,
+        title: formTitle.trim() || null,
+        url: formUrl.trim() || null,
+        password: formPassword,
+        notes: formNotes.trim() || null,
+        otp_secret: formOtpSecret.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
       if (isCategoryEncryptionEnabled("passwords") && key) payload = await encryptPasswordData(payload, key);
       if (editingId) {
         const { error } = await supabase.from("user_passwords").update(payload).eq("id", editingId);
@@ -394,6 +533,7 @@ export function PasswordManagerApp() {
   const handleEditInForm = (record: PasswordRecord) => {
     setEditingId(record.id); setFormTitle(record.title || ""); setFormUrl(record.url || "");
     setFormPassword(record.password); setFormNotes(record.notes || "");
+    setFormOtpSecret(record.otp_secret || "");
     setShowGenerator(false); setGeneratorValue(record.password);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -401,6 +541,7 @@ export function PasswordManagerApp() {
   const handleOpenEditDialog = (record: PasswordRecord) => {
     setEditRecord(record); setEditTitle(record.title || ""); setEditUrl(record.url || "");
     setEditPassword(record.password); setEditNotes(record.notes || "");
+    setEditOtpSecret(record.otp_secret || "");
     setShowEditPassword(false); setShowEditGenerator(false); setEditGeneratorValue(record.password); setEditDialogOpen(true);
   };
 
@@ -410,7 +551,14 @@ export function PasswordManagerApp() {
     setEditSaving(true);
     try {
       const key = getActiveMasterKey();
-      let payload: any = { title: editTitle.trim() || null, url: editUrl.trim() || null, password: editPassword, notes: editNotes.trim() || null, updated_at: new Date().toISOString() };
+      let payload: any = {
+        title: editTitle.trim() || null,
+        url: editUrl.trim() || null,
+        password: editPassword,
+        notes: editNotes.trim() || null,
+        otp_secret: editOtpSecret.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
       if (isCategoryEncryptionEnabled("passwords") && key) payload = await encryptPasswordData(payload, key);
       const { error } = await supabase.from("user_passwords").update(payload).eq("id", editRecord.id);
       if (error) throw error;
@@ -500,6 +648,32 @@ export function PasswordManagerApp() {
               </button>
               {showGenerator && <PasswordGeneratorPanel value={generatorValue} onChange={v => setGeneratorValue(v)} onApply={v => { setFormPassword(v); setGeneratorValue(v); }} />}
               <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">{t("passwords.otpSecretLabel", undefined, "One-Time Password (OTP) Secret / 2FA Key")} <span className="text-slate-600">({t("common.optional", undefined, "Optional")})</span></Label>
+                <Input
+                  value={formOtpSecret}
+                  onChange={e => setFormOtpSecret(e.target.value)}
+                  placeholder={t("passwords.otpSecretPlaceholder", undefined, "e.g. JBSWY3DPEHPK3PXP or otpauth://...")}
+                  className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
+                />
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  {t("passwords.otpSecretHelp", undefined, "Enter the manual secret key provided during 2FA setup. QR code scanning is not supported.")}
+                </p>
+                {formOtpSecret.trim() && (
+                  validateTotpSecret(formOtpSecret) ? (
+                    <div className="pt-1">
+                      <span className="text-[10px] uppercase font-semibold text-cyan-400 tracking-wider">
+                        {t("passwords.otpLivePreview", undefined, "Live Preview")}
+                      </span>
+                      <OtpLiveDisplay secret={formOtpSecret} />
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-rose-400">
+                      {t("passwords.invalidOtpSecret", undefined, "Invalid OTP secret key")}
+                    </p>
+                  )
+                )}
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-xs text-slate-400">{t("passwords.notes", undefined, "Notes")} <span className="text-slate-600">({t("common.optional", undefined, "Optional")})</span></Label>
                 <Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder={t("passwords.notesPlaceholder", undefined, "Additional info, security questions, etc.")} className="bg-slate-950 border-slate-800 text-slate-100 text-sm resize-none min-h-[70px]" />
               </div>
@@ -567,6 +741,11 @@ export function PasswordManagerApp() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-white truncate">{displayTitle}</span>
                           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px] font-mono shrink-0">AES-256-GCM</Badge>
+                          {record.otp_secret && (
+                            <Badge variant="outline" className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-[10px] font-mono shrink-0 flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> 2FA TOTP
+                            </Badge>
+                          )}
                         </div>
                         {record.url && <a href={record.url.startsWith("http") ? record.url : "https://" + record.url} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline truncate flex items-center gap-1 max-w-xs">{domain}<ExternalLink className="w-3 h-3 shrink-0" /></a>}
                         <div className="flex items-center gap-2">
@@ -575,6 +754,11 @@ export function PasswordManagerApp() {
                             {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                           </button>
                         </div>
+                        {record.otp_secret && (
+                          <div className="pt-0.5 max-w-md">
+                            <OtpLiveDisplay secret={record.otp_secret} />
+                          </div>
+                        )}
                         {record.notes && <p className="text-xs text-slate-500 truncate">{record.notes}</p>}
                         <p className="text-[10px] text-slate-600">{t("passwords.updated", undefined, "Updated")} {new Date(record.updated_at).toLocaleDateString()}</p>
                       </div>
@@ -615,6 +799,32 @@ export function PasswordManagerApp() {
               <Shuffle className="w-3.5 h-3.5" />{showEditGenerator ? t("passwords.hideGenerator", undefined, "Hide Generator") : t("passwords.showGenerator", undefined, "Show Generator")}{showEditGenerator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
             {showEditGenerator && <PasswordGeneratorPanel value={editGeneratorValue} onChange={v => setEditGeneratorValue(v)} onApply={v => { setEditPassword(v); setEditGeneratorValue(v); }} />}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">{t("passwords.otpSecretLabel", undefined, "One-Time Password (OTP) Secret / 2FA Key")} <span className="text-slate-600">({t("common.optional", undefined, "Optional")})</span></Label>
+              <Input
+                value={editOtpSecret}
+                onChange={e => setEditOtpSecret(e.target.value)}
+                placeholder={t("passwords.otpSecretPlaceholder", undefined, "e.g. JBSWY3DPEHPK3PXP or otpauth://...")}
+                className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
+              />
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                {t("passwords.otpSecretHelp", undefined, "Enter the manual secret key provided during 2FA setup. QR code scanning is not supported.")}
+              </p>
+              {editOtpSecret.trim() && (
+                validateTotpSecret(editOtpSecret) ? (
+                  <div className="pt-1">
+                    <span className="text-[10px] uppercase font-semibold text-cyan-400 tracking-wider">
+                      {t("passwords.otpLivePreview", undefined, "Live Preview")}
+                    </span>
+                    <OtpLiveDisplay secret={editOtpSecret} />
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-rose-400">
+                    {t("passwords.invalidOtpSecret", undefined, "Invalid OTP secret key")}
+                  </p>
+                )
+              )}
+            </div>
             <div className="space-y-1.5"><Label className="text-xs text-slate-400">{t("passwords.notes", undefined, "Notes")} <span className="text-slate-600">({t("common.optional", undefined, "Optional")})</span></Label><Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm resize-none min-h-[60px]" /></div>
           </div>
           <DialogFooter className="gap-2">

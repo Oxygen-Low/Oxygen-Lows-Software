@@ -81,6 +81,14 @@ import { initAutoLockListener, onAutoLock } from "@/lib/crypto";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 
+import { MigrationModal } from "@/components/MigrationModal";
+
+function MigrationWatcher() {
+  const { hasSupabaseSession } = useAuth();
+  if (!hasSupabaseSession) return null;
+  return <MigrationModal />;
+}
+
 function AutoLockWatcher() {
   const { t } = useTranslation();
 
@@ -111,6 +119,7 @@ const App = () => (
     <TooltipProvider>
       <LanguageProvider>
         <AutoLockWatcher />
+        <MigrationWatcher />
         <ThemeProvider>
           <BrowserRouter>
             <MusicProvider>

@@ -14,6 +14,8 @@ import { vpnRouter } from "./routes/vpn.ts";
 import { defenderRouter } from "./routes/webdefender.ts";
 import { storageRouter } from "./routes/storage.ts";
 import { agentSearchRouter } from "./routes/agentSearch.ts";
+import { authRouter } from "./routes/auth.ts";
+import { dataRouter } from "./routes/data.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
 
@@ -27,7 +29,9 @@ app.use("*", async (c, next) => {
   if (
     c.req.path.startsWith("/api/webdefender") ||
     c.req.path.startsWith("/api/defender") ||
-    c.req.path.startsWith("/api/storage")
+    c.req.path.startsWith("/api/storage") ||
+    c.req.path.startsWith("/api/auth") ||
+    c.req.path.startsWith("/api/data")
   ) {
     return next();
   }
@@ -960,6 +964,8 @@ app.route("/api/vpn", vpnRouter);
 app.route("/api/webdefender", defenderRouter);
 app.route("/api/defender", defenderRouter);
 app.route("/api/storage", storageRouter);
+app.route("/api/auth", authRouter);
+app.route("/api/data", dataRouter);
 
 export function createServer() {
   return app;

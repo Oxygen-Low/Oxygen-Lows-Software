@@ -58,6 +58,7 @@ const mockPasswords = [
     url: "https://github.com/login",
     password: "Password123!",
     notes: "Main work account",
+    otp_secret: "JBSWY3DPEHPK3PXP",
     created_at: "2026-08-01T12:00:00Z",
     updated_at: "2026-08-01T12:00:00Z",
   },
@@ -68,6 +69,7 @@ const mockPasswords = [
     url: "https://accounts.google.com",
     password: "SecretGooglePass!",
     notes: null,
+    otp_secret: null,
     created_at: "2026-08-02T12:00:00Z",
     updated_at: "2026-08-02T12:00:00Z",
   },
@@ -173,6 +175,9 @@ describe("PasswordManagerApp", () => {
 
     expect(screen.queryByPlaceholderText(/e\.g\. GitHub Account/i)).not.toBeNull();
     expect(screen.queryByPlaceholderText(/https:\/\/example\.com/i)).not.toBeNull();
+    expect(
+      screen.queryByPlaceholderText(/e\.g\. JBSWY3DPEHPK3PXP/i),
+    ).not.toBeNull();
   });
 
   it("filters passwords based on search query", async () => {
@@ -223,7 +228,7 @@ describe("PasswordManagerApp", () => {
     expect(pwInput.value.length).toBeGreaterThan(0);
   });
 
-  it("saves a new password record", async () => {
+  it("saves a new password record with an OTP secret", async () => {
     const key = generateAes256Key();
     setActiveMasterKey(key);
     setCategoryEncryptionEnabled("passwords", true);
@@ -241,10 +246,12 @@ describe("PasswordManagerApp", () => {
     const titleInput = screen.getByPlaceholderText(/e\.g\. GitHub Account/i);
     const urlInput = screen.getByPlaceholderText(/https:\/\/example\.com/i);
     const pwInput = screen.getByPlaceholderText(/Enter or generate a password/i);
+    const otpInput = screen.getByPlaceholderText(/e\.g\. JBSWY3DPEHPK3PXP/i);
 
     fireEvent.change(titleInput, { target: { value: "Twitter/X" } });
     fireEvent.change(urlInput, { target: { value: "https://x.com" } });
     fireEvent.change(pwInput, { target: { value: "MySecret123!" } });
+    fireEvent.change(otpInput, { target: { value: "JBSWY3DPEHPK3PXP" } });
 
     const saveBtn = screen.getByRole("button", { name: /Save Password/i });
     fireEvent.click(saveBtn);
@@ -256,4 +263,56 @@ describe("PasswordManagerApp", () => {
       );
     });
   });
+
+  it("renders 2FA TOTP badge and OTP live display for records with otp_secret", async () => {
+    const key = generateAes256Key();
+    setActiveMasterKey(key);
+    setCategoryEncryptionEnabled("passwords", true);
+
+    render(
+      <MemoryRouter>
+        <PasswordManagerApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("2FA TOTP")).not.toBeNull();
+    });
+
+    const copyOtpBtns = screen.getAllByTitle(/Copy OTP code/i);
+    expect(copyOtpBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(copyOtpBtns[0]);
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith(
+        expect.stringMatching(/One-time password copied to clipboard/i),
+      );
+    });
+  });
+
+  it("displays live preview in add form when typing valid OTP secret", async () => {
+    const key = generateAes256Key();
+    setActiveMasterKey(key);
+    setCategoryEncryptionEnabled("passwords", true);
+
+    render(
+      <MemoryRouter>
+        <PasswordManagerApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("GitHub Account")).not.toBeNull();
+    });
+
+    const otpInput = screen.getByPlaceholderText(/e\.g\. JBSWY3DPEHPK3PXP/i);
+    fireEvent.change(otpInput, { target: { value: "JBSWY3DPEHPK3PXP" } });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Live Preview/i)).not.toBeNull();
+    });
+  });
 });
+

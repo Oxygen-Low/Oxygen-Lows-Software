@@ -543,6 +543,7 @@ describe("Crypto Utilities (AES-256)", () => {
         url: "https://github.com",
         password: "SuperSecretPassword123!",
         notes: "2FA recovery codes in safe",
+        otp_secret: "JBSWY3DPEHPK3PXP",
       };
 
       const encrypted = await encryptPasswordData(item, key);
@@ -550,6 +551,7 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(encrypted.url).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.password).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.notes).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.otp_secret).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.id).toBe("pw-1");
 
       const decrypted = await decryptPasswordData(encrypted, key);
@@ -557,6 +559,7 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(decrypted.url).toBe("https://github.com");
       expect(decrypted.password).toBe("SuperSecretPassword123!");
       expect(decrypted.notes).toBe("2FA recovery codes in safe");
+      expect(decrypted.otp_secret).toBe("JBSWY3DPEHPK3PXP");
       expect(decrypted.id).toBe("pw-1");
     });
 

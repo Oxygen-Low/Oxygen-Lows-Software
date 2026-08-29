@@ -29,6 +29,10 @@ dist-ssr
 # Local uploads
 uploads
 
+# Local user and app data
+Data
+Data/
+
 # .NET
 [Bb]in/
 [Oo]bj/

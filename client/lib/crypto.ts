@@ -1289,6 +1289,7 @@ export interface PasswordData {
   url?: string | null;
   password?: string;
   notes?: string | null;
+  otp_secret?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: any;
@@ -1308,6 +1309,8 @@ export async function encryptPasswordData<T extends PasswordData>(
       (await encryptField(data.password, keyBytes)) ?? data.password;
   if (data.notes !== undefined)
     result.notes = await encryptField(data.notes, keyBytes);
+  if (data.otp_secret !== undefined)
+    result.otp_secret = await encryptField(data.otp_secret, keyBytes);
   return result;
 }
 
@@ -1325,6 +1328,8 @@ export async function decryptPasswordData<T extends PasswordData>(
       (await decryptField(data.password, keyBytes)) ?? data.password;
   if (data.notes !== undefined)
     result.notes = await decryptField(data.notes, keyBytes);
+  if (data.otp_secret !== undefined)
+    result.otp_secret = await decryptField(data.otp_secret, keyBytes);
   return result;
 }
 
@@ -1574,6 +1579,7 @@ export async function migrateCategoryEncryption({
               url: enc.url,
               password: enc.password,
               notes: enc.notes,
+              otp_secret: enc.otp_secret,
             })
             .eq("id", item.id);
           if (updateError) throw updateError;
@@ -1587,6 +1593,7 @@ export async function migrateCategoryEncryption({
               url: dec.url,
               password: dec.password,
               notes: dec.notes,
+              otp_secret: dec.otp_secret,
             })
             .eq("id", item.id);
           if (updateError) throw updateError;
@@ -1779,6 +1786,7 @@ export async function rotateMasterKey({
               url: enc.url,
               password: enc.password,
               notes: enc.notes,
+              otp_secret: enc.otp_secret,
             })
             .eq("id", item.id);
           if (updateError) throw updateError;

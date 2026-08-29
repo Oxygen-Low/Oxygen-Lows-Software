@@ -12,6 +12,8 @@ const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 const ADMIN_USER_IDS = new Set(["3cb76293-8c6c-49b9-b431-1ff5fce471ee"]);
 
+import { resolveUserFromToken } from "../lib/auth.ts";
+
 export const storageRouter = new Hono();
 
 const authMiddleware = async (c: any, next: any) => {
@@ -23,16 +25,8 @@ const authMiddleware = async (c: any, next: any) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const user = await resolveUserFromToken(token);
+  if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 

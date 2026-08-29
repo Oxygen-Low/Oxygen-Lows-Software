@@ -1,38 +1,123 @@
 import { useEffect, useState } from "react";
-import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { getLocalSession, setLocalSession } from "@/lib/localSession";
 
 export const useAuth = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<any>(null);
+  const [supabaseSession, setSupabaseSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+
     const getSession = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        setSession(session);
+        const local = getLocalSession();
+        if (local) {
+          if (mounted) {
+            setSession(local);
+            setSupabaseSession(null);
+          }
+        } else {
+          const { data } = await supabase.auth.getSession();
+          if (mounted) {
+            setSession(data?.session || null);
+            setSupabaseSession(data?.session || null);
+          }
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "An error occurred");
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     getSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data } = supabase.auth.onAuthStateChange((_event: any, newSession: any) => {
+      const local = getLocalSession();
+      if (local) {
+        setSession(local);
+        setSupabaseSession(null);
+      } else {
+        setSession(newSession);
+        setSupabaseSession(newSession);
+      }
     });
 
-    return () => subscription?.unsubscribe();
+    return () => {
+      mounted = false;
+      data?.subscription?.unsubscribe?.();
+    };
   }, []);
 
-  const signInWithOAuth = async (provider: "google", redirectTo?: string) => {
+  const signIn = async (login: string, password: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, password }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Login failed");
+      }
+
+      setLocalSession(json.session);
+      setSession(json.session);
+      setSupabaseSession(null);
+      return json;
+    } catch (err: any) {
+      const message = err instanceof Error ? err.message : "Sign in failed";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (username: string, email: string, password: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Sign up failed");
+      }
+
+      setLocalSession(json.session);
+      setSession(json.session);
+      setSupabaseSession(null);
+      return json;
+    } catch (err: any) {
+      const message = err instanceof Error ? err.message : "Sign up failed";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithOAuth = async (
+    provider: "google",
+    redirectTo?: string,
+  ) => {
     try {
       setError(null);
       const isWebView =
@@ -101,11 +186,53 @@ export const useAuth = () => {
     }
   };
 
+  const migrateAccount = async (params: {
+    supabaseToken: string;
+    masterKey?: string;
+    username: string;
+    email: string;
+    password: string;
+  }) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const res = await fetch("/api/auth/migrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Migration failed");
+      }
+
+      setLocalSession(json.session);
+      setSession(json.session);
+      setSupabaseSession(null);
+
+      // Sign out from Supabase once migrated
+      await supabase.auth.signOut().catch(() => {});
+
+      return json;
+    } catch (err: any) {
+      const message = err instanceof Error ? err.message : "Migration failed";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       setError(null);
+      setLocalSession(null);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      setSession(null);
+      setSupabaseSession(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sign out failed";
       setError(message);
@@ -113,12 +240,20 @@ export const useAuth = () => {
     }
   };
 
+  const hasSupabaseSession =
+    Boolean(supabaseSession?.access_token) && !getLocalSession();
+
   return {
     session,
+    supabaseSession,
+    hasSupabaseSession,
     loading,
     error,
+    signIn,
+    signUp,
     signInWithOAuth,
     linkIdentity,
+    migrateAccount,
     signOut,
   };
 };
