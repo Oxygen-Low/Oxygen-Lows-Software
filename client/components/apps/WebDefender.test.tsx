@@ -1,8 +1,14 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, afterEach } from "vitest";
-import { render, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, cleanup, fireEvent } from "@testing-library/react";
 import React from "react";
-import { getAppConfig, CountryFlag, COUNTRIES, EventsTab } from "./WebDefender";
+import {
+  getAppConfig,
+  CountryFlag,
+  COUNTRIES,
+  EventsTab,
+  SettingsTab,
+} from "./WebDefender";
 
 afterEach(() => {
   cleanup();
@@ -184,3 +190,153 @@ describe("Defender EventsTab", () => {
     expect(emptyCell?.getAttribute("colspan")).toBe("6");
   });
 });
+
+describe("Defender SettingsTab Total Events Limit", () => {
+  const mockApp = {
+    id: "app-test-123",
+    name: "My App",
+    api_key_prefix: "wd_live_test",
+    block_mode_enabled: false,
+    block_mode_enabled_at: null,
+    first_request_at: null,
+    created_at: new Date().toISOString(),
+    defender_config: {
+      events_limit: 50,
+    },
+  };
+
+  it("renders total events limit with initial value and does not save on change", () => {
+    const authFetch = vi.fn().mockResolvedValue({ ok: true });
+    const onUpdate = vi.fn();
+    const onDelete = vi.fn();
+
+    const { getByDisplayValue } = render(
+      <SettingsTab
+        app={mockApp}
+        authFetch={authFetch}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    const input = getByDisplayValue("50") as HTMLInputElement;
+    expect(input).toBeDefined();
+
+    // Type new values
+    fireEvent.change(input, { target: { value: "2" } });
+    fireEvent.change(input, { target: { value: "25" } });
+    fireEvent.change(input, { target: { value: "250" } });
+
+    // Should NOT have made any API calls on change
+    expect(authFetch).not.toHaveBeenCalled();
+    expect(input.value).toBe("250");
+  });
+
+  it("saves config on blur (clicking/pressing off) when value has changed", () => {
+    const authFetch = vi.fn().mockResolvedValue({ ok: true });
+    const onUpdate = vi.fn();
+    const onDelete = vi.fn();
+
+    const { getByDisplayValue } = render(
+      <SettingsTab
+        app={mockApp}
+        authFetch={authFetch}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    const input = getByDisplayValue("50") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "200" } });
+    expect(authFetch).not.toHaveBeenCalled();
+
+    // Blur (clicking off)
+    fireEvent.blur(input);
+
+    expect(authFetch).toHaveBeenCalledTimes(1);
+    expect(authFetch).toHaveBeenCalledWith(
+      "/api/webdefender/apps/app-test-123/config",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining('"events_limit":200'),
+      }),
+    );
+  });
+
+  it("does not call API on blur if the value was not changed", () => {
+    const authFetch = vi.fn().mockResolvedValue({ ok: true });
+    const onUpdate = vi.fn();
+    const onDelete = vi.fn();
+
+    const { getByDisplayValue } = render(
+      <SettingsTab
+        app={mockApp}
+        authFetch={authFetch}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    const input = getByDisplayValue("50") as HTMLInputElement;
+    fireEvent.blur(input);
+
+    expect(authFetch).not.toHaveBeenCalled();
+  });
+
+  it("clamps out-of-range values between 1 and 1000 on blur", () => {
+    const authFetch = vi.fn().mockResolvedValue({ ok: true });
+    const onUpdate = vi.fn();
+    const onDelete = vi.fn();
+
+    const { getByDisplayValue } = render(
+      <SettingsTab
+        app={mockApp}
+        authFetch={authFetch}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    const input = getByDisplayValue("50") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "9999" } });
+    fireEvent.blur(input);
+
+    expect(input.value).toBe("1000");
+    expect(authFetch).toHaveBeenCalledWith(
+      "/api/webdefender/apps/app-test-123/config",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining('"events_limit":1000'),
+      }),
+    );
+  });
+
+  it("triggers blur and saves when Enter key is pressed", () => {
+    const authFetch = vi.fn().mockResolvedValue({ ok: true });
+    const onUpdate = vi.fn();
+    const onDelete = vi.fn();
+
+    const { getByDisplayValue } = render(
+      <SettingsTab
+        app={mockApp}
+        authFetch={authFetch}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    const input = getByDisplayValue("50") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "350" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(authFetch).toHaveBeenCalledTimes(1);
+    expect(authFetch).toHaveBeenCalledWith(
+      "/api/webdefender/apps/app-test-123/config",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining('"events_limit":350'),
+      }),
+    );
+  });
+});
+

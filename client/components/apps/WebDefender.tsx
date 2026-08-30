@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -1855,7 +1855,7 @@ export function getAppConfig(defenderConfig: any): AppConfig {
   };
 }
 
-function SettingsTab({
+export function SettingsTab({
   app,
   authFetch,
   onUpdate,
@@ -1869,11 +1869,18 @@ function SettingsTab({
   const [config, setConfig] = useState<AppConfig>(() =>
     getAppConfig(app.defender_config),
   );
+  const [eventsLimitInput, setEventsLimitInput] = useState<string>(() =>
+    String(getAppConfig(app.defender_config).events_limit ?? 50),
+  );
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [newIpInput, setNewIpInput] = useState("");
+
+  const lastSavedLimitRef = useRef<number>(
+    getAppConfig(app.defender_config).events_limit ?? 50,
+  );
 
   const handleAddIp = () => {
     const trimmed = newIpInput.trim();
@@ -1894,7 +1901,11 @@ function SettingsTab({
   };
 
   useEffect(() => {
-    setConfig(getAppConfig(app.defender_config));
+    const updated = getAppConfig(app.defender_config);
+    setConfig(updated);
+    const limit = updated.events_limit ?? 50;
+    setEventsLimitInput(String(limit));
+    lastSavedLimitRef.current = limit;
   }, [app.defender_config]);
 
   const updateConfig = async (updates: Partial<AppConfig>) => {
@@ -1910,6 +1921,23 @@ function SettingsTab({
     } catch (err) {
       toast.error("Failed to save settings");
       setConfig(config); // revert
+      if (updates.events_limit !== undefined) {
+        const revertVal = config.events_limit ?? 50;
+        setEventsLimitInput(String(revertVal));
+        lastSavedLimitRef.current = revertVal;
+      }
+    }
+  };
+
+  const handleSaveEventsLimit = () => {
+    const val = parseInt(eventsLimitInput, 10);
+    const clamped = isNaN(val)
+      ? (config.events_limit ?? 50)
+      : Math.min(1000, Math.max(1, val));
+    setEventsLimitInput(String(clamped));
+    if (clamped !== lastSavedLimitRef.current) {
+      lastSavedLimitRef.current = clamped;
+      updateConfig({ events_limit: clamped });
     }
   };
 
@@ -2367,13 +2395,13 @@ function SettingsTab({
                   type="number"
                   min={1}
                   max={1000}
-                  value={config.events_limit ?? 50}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    if (!isNaN(val)) {
-                      updateConfig({
-                        events_limit: Math.min(1000, Math.max(1, val)),
-                      });
+                  value={eventsLimitInput}
+                  onChange={(e) => setEventsLimitInput(e.target.value)}
+                  onBlur={handleSaveEventsLimit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                      handleSaveEventsLimit();
                     }
                   }}
                   className="bg-slate-950 border-slate-700 text-right font-mono"
