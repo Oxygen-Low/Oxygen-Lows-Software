@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { getAdminClient } from "../lib/supabase.ts";
 import { createClient } from "@supabase/supabase-js";
 import { serverStorage } from "../lib/storage.ts";
+import { resolveUserFromToken } from "../lib/auth.ts";
 
 const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
@@ -25,16 +26,8 @@ assetsRouter.use("*", async (c, next) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const user = await resolveUserFromToken(token);
+  if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 

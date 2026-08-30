@@ -329,6 +329,11 @@ authRouter.post("/migrate", async (c) => {
       integrationsRes,
       publicAssetsRes,
       publicCharsRes,
+      defenderAppsRes,
+      defenderConfigRes,
+      defenderRoutesRes,
+      defenderEventsRes,
+      defenderOutboundRes,
     ] = await Promise.all([
       supabase.from("profiles").select("*").eq("user_id", sbUser.id).single(),
       supabase.from("profile_pictures").select("*").eq("user_id", sbUser.id).single(),
@@ -345,6 +350,11 @@ authRouter.post("/migrate", async (c) => {
       supabase.from("user_integrations").select("*").eq("user_id", sbUser.id),
       supabase.from("public_assets").select("*").eq("user_id", sbUser.id),
       supabase.from("public_characters").select("*").eq("user_id", sbUser.id),
+      supabase.from("defender_apps").select("*").eq("user_id", sbUser.id),
+      supabase.from("defender_config").select("*"),
+      supabase.from("defender_routes").select("*"),
+      supabase.from("defender_events").select("*"),
+      supabase.from("defender_outbound").select("*"),
     ]);
 
     // Save profile data
@@ -467,6 +477,56 @@ authRouter.post("/migrate", async (c) => {
         user_id: newUserId,
       }));
       saveTableRows("public_assets", newUserId, updatedAssets);
+    }
+
+    // Map and save defender data
+    if (defenderAppsRes.data && defenderAppsRes.data.length > 0) {
+      const appIds = new Set(defenderAppsRes.data.map((a: any) => a.id));
+      const updatedApps = defenderAppsRes.data.map((a: any) => ({
+        ...a,
+        user_id: newUserId,
+      }));
+      saveTableRows("defender_apps", newUserId, updatedApps);
+
+      if (defenderConfigRes.data && defenderConfigRes.data.length > 0) {
+        const updatedConfigs = defenderConfigRes.data
+          .filter((c: any) => appIds.has(c.app_id))
+          .map((c: any) => ({
+            ...c,
+            user_id: newUserId,
+          }));
+        saveTableRows("defender_config", newUserId, updatedConfigs);
+      }
+
+      if (defenderRoutesRes.data && defenderRoutesRes.data.length > 0) {
+        const updatedRoutes = defenderRoutesRes.data
+          .filter((r: any) => appIds.has(r.app_id))
+          .map((r: any) => ({
+            ...r,
+            user_id: newUserId,
+          }));
+        saveTableRows("defender_routes", newUserId, updatedRoutes);
+      }
+
+      if (defenderEventsRes.data && defenderEventsRes.data.length > 0) {
+        const updatedEvents = defenderEventsRes.data
+          .filter((e: any) => appIds.has(e.app_id))
+          .map((e: any) => ({
+            ...e,
+            user_id: newUserId,
+          }));
+        saveTableRows("defender_events", newUserId, updatedEvents);
+      }
+
+      if (defenderOutboundRes.data && defenderOutboundRes.data.length > 0) {
+        const updatedOutbound = defenderOutboundRes.data
+          .filter((o: any) => appIds.has(o.app_id))
+          .map((o: any) => ({
+            ...o,
+            user_id: newUserId,
+          }));
+        saveTableRows("defender_outbound", newUserId, updatedOutbound);
+      }
     }
 
     // Migrate storage files

@@ -267,6 +267,12 @@ export function getTableFilePath(table: string, userId?: string): string | null 
         return path.join(userDir, "defender", "events.json");
       case "defender_apps":
         return path.join(userDir, "defender", "apps.json");
+      case "defender_config":
+        return path.join(userDir, "defender", "config.json");
+      case "defender_routes":
+        return path.join(userDir, "defender", "routes.json");
+      case "defender_outbound":
+        return path.join(userDir, "defender", "outbound.json");
       case "defender_threat_actors":
         return path.join(userDir, "defender", "threat_actors.json");
       case "defender_ip_blocks":
