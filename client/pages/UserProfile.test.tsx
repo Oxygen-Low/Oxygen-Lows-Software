@@ -20,8 +20,8 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
+vi.mock("@/lib/db", () => {
+  const mockClient = {
     from: vi.fn((table: string) => {
       const builder: any = {
         select: vi.fn(() => builder),
@@ -51,8 +51,13 @@ vi.mock("@/lib/supabase", () => ({
         createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: "" } }),
       })),
     },
-  },
-}));
+  };
+
+  return {
+    db: mockClient,
+    supabase: mockClient,
+  };
+});
 
 vi.mock("@/components/Layout", () => ({
   __esModule: true,

@@ -17,9 +17,9 @@ import {
   setCategoryEncryptionEnabled,
 } from "@/lib/crypto";
 
-// Mock Supabase
+// Mock db
 const mockSupabaseData: any[] = [];
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/db", () => {
   const queryBuilder: any = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
@@ -44,19 +44,22 @@ vi.mock("@/lib/supabase", () => {
     ),
   };
 
-  return {
-    supabase: {
-      auth: {
-        getUser: vi
-          .fn()
-          .mockResolvedValue({ data: { user: { id: "user-123" } } }),
-        getSession: vi.fn().mockResolvedValue({
-          data: { session: { user: { id: "user-123" } } },
-          error: null,
-        }),
-      },
-      from: vi.fn().mockReturnValue(queryBuilder),
+  const mockClient = {
+    auth: {
+      getUser: vi
+        .fn()
+        .mockResolvedValue({ data: { user: { id: "user-123" } } }),
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "user-123" } } },
+        error: null,
+      }),
     },
+    from: vi.fn().mockReturnValue(queryBuilder),
+  };
+
+  return {
+    db: mockClient,
+    supabase: mockClient,
   };
 });
 

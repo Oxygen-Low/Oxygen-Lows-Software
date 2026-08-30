@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Download, Save, Loader2, FileCode } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { toast } from "sonner";
 
@@ -27,7 +27,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await db.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       // Construct file directly from content

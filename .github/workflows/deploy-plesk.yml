@@ -45,7 +45,7 @@ jobs:
           git checkout -B plesk
 
           # Remove files not needed for hosting
-          rm -rf Android Desktop supabase
+          rm -rf Android Desktop
 
           # Force add the built dist directory (since it's in .gitignore)
           git add -f dist/

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "./useAuth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 
 export type FontOption =
   "default" | "poppins" | "roboto" | "playfair-display" | "ibm-plex-mono";
@@ -27,7 +27,7 @@ export const useFont = () => {
 
     const loadFont = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("user_preferences")
           .select("font")
           .eq("user_id", session.user.id)
@@ -64,7 +64,7 @@ export const useFont = () => {
       applyFont(newFont);
 
       try {
-        const { error } = await supabase.rpc("upsert_user_preferences", {
+        const { error } = await db.rpc("upsert_user_preferences", {
           p_user_id: session.user.id,
           p_font: newFont,
         });

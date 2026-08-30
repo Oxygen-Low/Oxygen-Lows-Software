@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 import { useTheme } from "@/hooks/useTheme";
 import {
   callDesktopBridge,
@@ -153,7 +153,7 @@ export const useAiModels = (
       const directLocalTask = probeDirectLocalModels().catch(() => []);
 
       const fetchTasks = [
-        supabase
+        db
           .from("user_models")
           .select("provider, model_id")
           .order("provider"),

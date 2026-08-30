@@ -1,11 +1,8 @@
 import { Hono } from "hono";
-import { createClient } from "@supabase/supabase-js";
+import { resolveUserFromToken } from "../lib/auth.ts";
 import { validateAiUrl, isPrivateIP } from "../lib/safeAiUrl.ts";
 
 export const proxyRouter = new Hono();
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 const ALLOWED_DOMAINS = new Set([
   "api.github.com",
   "raw.githubusercontent.com",
@@ -48,21 +45,14 @@ proxyRouter.post("/fetch", async (c) => {
     const authHeader = c.req.header("Authorization");
     // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
     const token = authHeader?.toLowerCase().startsWith("bearer ")
-      ? authHeader.slice(7)
+      ? authHeader.slice(7).trim()
       : null;
     if (!token) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    const user = await resolveUserFromToken(token);
+    if (!user) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 

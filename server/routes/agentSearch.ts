@@ -1,11 +1,9 @@
 import { Hono } from "hono";
-import { createClient } from "@supabase/supabase-js";
 import { rateLimiter } from "../lib/rateLimiter.ts";
+import { resolveUserFromToken } from "../lib/auth.ts";
+import { queryTable, callRpc } from "../lib/dataStore.ts";
 
 export const agentSearchRouter = new Hono();
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
 const HORDE_FAST_MODEL = "google/gemma-4-31b";
@@ -430,15 +428,8 @@ agentSearchRouter.post(
       if (!token)
         return c.json({ error: "Missing or invalid authorization token" }, 401);
 
-      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-      });
-
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) return c.json({ error: "Unauthorized" }, 401);
+      const user = await resolveUserFromToken(token);
+      if (!user) return c.json({ error: "Unauthorized" }, 401);
 
       let body;
       try {
@@ -525,12 +516,14 @@ agentSearchRouter.post(
       // Check if user has Horde integration key
       let hordeApiKey = "0000000000";
       try {
-        const { data: hordeInt } = await supabase
-          .from("user_integrations")
-          .select("api_key")
-          .eq("provider", "horde")
-          .single();
-        if (hordeInt?.api_key) hordeApiKey = hordeInt.api_key;
+        const hordeInts = queryTable({
+          table: "user_integrations",
+          userId: user.id,
+          filters: [{ field: "provider", operator: "eq", value: "horde" }],
+        });
+        if (Array.isArray(hordeInts) && hordeInts[0]?.api_key) {
+          hordeApiKey = hordeInts[0].api_key;
+        }
       } catch {}
 
       // Prepare multimodal user images for vision
@@ -847,12 +840,9 @@ Guidelines:
         const totalTokens = synthInputTokens + synthOutputTokens;
         const p_amount = Math.max(10, Math.floor(totalTokens / 10));
 
-        const { data: success, error: rpcError } = await supabase.rpc(
-          "spend_points",
-          { p_amount },
-        );
-        if (rpcError || !success) {
-          console.error("Agent search points deduction failed", rpcError);
+        const rpcRes = callRpc("spend_points", { p_amount }, user.id);
+        if (!rpcRes || !rpcRes.success) {
+          console.error("Agent search points deduction failed", rpcRes);
         }
 
         return c.json({
@@ -1150,12 +1140,9 @@ Guidelines:
           const estimatedTokens = synthInputTokens + synthOutputTokens;
           const p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
 
-          const { data: success, error: rpcError } = await supabase.rpc(
-            "spend_points",
-            { p_amount },
-          );
-          if (rpcError || !success) {
-            console.error("Agent search points deduction failed", rpcError);
+          const rpcRes = callRpc("spend_points", { p_amount }, user.id);
+          if (!rpcRes || !rpcRes.success) {
+            console.error("Agent search points deduction failed", rpcRes);
           }
 
           await write(

@@ -10,14 +10,18 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: vi.fn(),
 }));
 
-// Mock supabase
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
+// Mock db
+vi.mock("@/lib/db", () => {
+  const mockClient = {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
     },
-  },
-}));
+  };
+  return {
+    db: mockClient,
+    supabase: mockClient,
+  };
+});
 
 describe("Auth Component", () => {
   beforeEach(() => {
@@ -29,11 +33,12 @@ describe("Auth Component", () => {
     sessionStorage.clear();
   });
 
-  it("should render the google sign in button when no session exists", async () => {
+  it("should render the login form when no session exists", async () => {
     (useAuth as any).mockReturnValue({
       session: null,
       loading: false,
-      signInWithOAuth: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
     });
 
     render(
@@ -47,15 +52,19 @@ describe("Auth Component", () => {
     const heading = screen.getByText(/Welcome back/i);
     expect(heading).toBeDefined();
 
-    const googleBtn = screen.getByText("Sign in with Google");
-    expect(googleBtn).toBeDefined();
+    const usernameLabel = screen.getByText("Username or Email");
+    expect(usernameLabel).toBeDefined();
+
+    const signInButtons = screen.getAllByRole("button", { name: /Sign In/i });
+    expect(signInButtons.length).toBeGreaterThan(0);
   });
 
   it("should redirect to /apps if session exists", async () => {
     (useAuth as any).mockReturnValue({
       session: { user: { id: "123", email: "test@example.com" } },
       loading: false,
-      signInWithOAuth: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
     });
 
     render(
@@ -77,7 +86,8 @@ describe("Auth Component", () => {
     (useAuth as any).mockReturnValue({
       session: { user: { id: "123", email: "test@example.com" } },
       loading: false,
-      signInWithOAuth: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
     });
 
     render(
@@ -98,7 +108,8 @@ describe("Auth Component", () => {
     (useAuth as any).mockReturnValue({
       session: null,
       loading: false,
-      signInWithOAuth: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
     });
 
     render(

@@ -2,16 +2,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CustomStorageClient, storage, customStorage } from "./storage";
 
-const mockGetSession = vi.fn().mockResolvedValue({
-  data: { session: { access_token: "test-token" } },
-});
-
-vi.mock("./supabase", () => ({
-  supabase: {
-    auth: {
-      getSession: () => mockGetSession(),
-    },
-  },
+vi.mock("./localSession", () => ({
+  getLocalSession: () => ({
+    access_token: "test-token",
+    token_type: "bearer",
+    user: { id: "test-user-id", email: "test@example.com", username: "testuser" },
+  }),
 }));
 
 describe("Client Storage Library", () => {

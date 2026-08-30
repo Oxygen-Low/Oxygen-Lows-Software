@@ -4,18 +4,9 @@ import { render, screen, cleanup } from "@testing-library/react";
 import Account from "./Account";
 import { useAuth } from "@/hooks/useAuth";
 
-// Full mock of Supabase
-vi.mock("@/lib/supabase", () => ({
-  getAuthenticatedClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-        })),
-      })),
-    })),
-  })),
-  supabase: {
+// Full mock of db
+vi.mock("@/lib/db", () => {
+  const mockClient = {
     auth: {
       updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
       getUser: vi
@@ -60,8 +51,22 @@ vi.mock("@/lib/supabase", () => ({
       upload: vi.fn().mockResolvedValue({ data: { path: "" } }),
       remove: vi.fn().mockResolvedValue({}),
     },
-  },
-}));
+  };
+
+  return {
+    getAuthenticatedClient: vi.fn(() => ({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+          })),
+        })),
+      })),
+    })),
+    db: mockClient,
+    supabase: mockClient,
+  };
+});
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: vi.fn() }));
 vi.mock("@/components/Layout", () => ({
@@ -110,7 +115,7 @@ describe("Account Component", () => {
   });
 
   it("renders profile picture with null crop_data without throwing error", async () => {
-    const { supabase } = await import("@/lib/supabase");
+    const { supabase } = await import("@/lib/db");
     const { storage } = await import("@/lib/storage");
 
     vi.spyOn(storage, "from").mockReturnValue({
@@ -158,7 +163,7 @@ describe("Account Component", () => {
   });
 
   it("renders profile picture with valid crop_data properly", async () => {
-    const { supabase } = await import("@/lib/supabase");
+    const { supabase } = await import("@/lib/db");
     const { storage } = await import("@/lib/storage");
 
     vi.spyOn(storage, "from").mockReturnValue({

@@ -3,94 +3,99 @@ import { adminVerificationRouter } from "./adminVerification";
 import { Hono } from "hono";
 
 const app = new Hono();
-app.use("*", async (c, next) => {
-  c.env = { SUPABASE_SECRET: "mock-secret" };
-  await next();
-});
 app.route("/", adminVerificationRouter);
 
-vi.mock("@supabase/supabase-js", () => {
-  return {
-    createClient: vi.fn((_url: string, _key: string, options?: any) => {
-      const authHeader = options?.global?.headers?.Authorization || "";
-      const token = authHeader.replace(/^Bearer /i, "");
+let mockVerifications: any[] = [];
+let mockPublicAssets: any[] = [];
+let mockProfiles: Record<string, any> = {};
+
+vi.mock("../lib/auth.ts", () => ({
+  resolveUserFromToken: vi.fn(async (token: string) => {
+    if (token === "admin-token") {
       return {
-        auth: {
-          getUser: vi.fn(async () => {
-            if (token === "admin-token") {
-              return {
-                data: {
-                  user: {
-                    id: "3cb76293-8c6c-49b9-b431-1ff5fce471ee",
-                    email: "admin@example.com",
-                  },
-                },
-                error: null,
-              };
-            }
-            if (token === "user-token") {
-              return {
-                data: { user: { id: "user-123", email: "test@example.com" } },
-                error: null,
-              };
-            }
-            return {
-              data: { user: null },
-              error: { message: "Invalid token" },
-            };
-          }),
-        },
+        id: "admin-1",
+        email: "admin@example.com",
+        username: "admin",
+        role: "admin",
       };
-    }),
-  };
-});
+    }
+    if (token === "user-token") {
+      return {
+        id: "user-123",
+        email: "test@example.com",
+        username: "user",
+        role: "user",
+      };
+    }
+    return null;
+  }),
+}));
 
-const mockSupabaseQueryMethods: any = {
-  select: vi.fn().mockReturnThis(),
-  neq: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  order: vi.fn().mockReturnThis(),
-  in: vi.fn().mockReturnThis(),
-  single: vi.fn().mockReturnThis(),
-  insert: vi.fn().mockReturnThis(),
-  update: vi.fn().mockReturnThis(),
-  delete: vi.fn().mockReturnThis(),
-  then: vi.fn(),
-};
-
-mockSupabaseQueryMethods.select.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.neq.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.eq.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.order.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.in.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.single.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.insert.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.update.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.delete.mockReturnValue(mockSupabaseQueryMethods);
-
-const mockAdminClient = {
-  from: vi.fn(() => mockSupabaseQueryMethods),
-  storage: {
-    from: vi.fn(() => ({
-      download: vi.fn(async () => ({ data: Buffer.from("test"), error: null })),
-      upload: vi.fn(async () => ({ data: {}, error: null })),
-      remove: vi.fn(async () => ({ data: {}, error: null })),
-    })),
+vi.mock("../lib/storage.ts", () => ({
+  serverStorage: {
+    download: vi.fn(async () => ({ data: Buffer.from("test"), error: null })),
+    upload: vi.fn(async () => ({ data: {}, error: null })),
+    remove: vi.fn(async () => ({ data: {}, error: null })),
   },
-};
+}));
 
-vi.mock("../lib/supabase.ts", () => {
-  return {
-    getAdminClient: vi.fn(() => mockAdminClient),
-  };
-});
+vi.mock("../lib/dataStore.ts", () => ({
+  queryTable: vi.fn((opts: any) => {
+    if (opts.table === "asset_verifications") {
+      if (opts.filters?.some((f: any) => f.field === "id")) {
+        const idFilter = opts.filters.find((f: any) => f.field === "id");
+        return mockVerifications.filter((v) => String(v.id) === String(idFilter.value));
+      }
+      return mockVerifications;
+    }
+    if (opts.table === "public_assets") {
+      if (opts.filters?.some((f: any) => f.field === "id")) {
+        const idFilter = opts.filters.find((f: any) => f.field === "id");
+        return mockPublicAssets.filter((a) => String(a.id) === String(idFilter.value));
+      }
+      return mockPublicAssets;
+    }
+    return [];
+  }),
+  getProfileByUserId: vi.fn((userId: string) => {
+    return mockProfiles[userId] || null;
+  }),
+  insertTable: vi.fn((table: string, data: any) => {
+    if (table === "public_assets") {
+      const item = { id: "pa-1", ...data };
+      mockPublicAssets.push(item);
+      return [item];
+    }
+    return [data];
+  }),
+  updateTable: vi.fn((table: string, filters: any[], data: any) => {
+    if (table === "asset_verifications") {
+      const idFilter = filters.find((f: any) => f.field === "id");
+      const v = mockVerifications.find((item) => String(item.id) === String(idFilter?.value));
+      if (v) {
+        Object.assign(v, data);
+        return [v];
+      }
+    }
+    return [];
+  }),
+  deleteTable: vi.fn((table: string, filters: any[]) => {
+    if (table === "asset_verifications") {
+      const idFilter = filters.find((f: any) => f.field === "id");
+      const idx = mockVerifications.findIndex((item) => String(item.id) === String(idFilter?.value));
+      if (idx !== -1) {
+        return mockVerifications.splice(idx, 1);
+      }
+    }
+    return [];
+  }),
+}));
 
 describe("Admin Verification Routes", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockSupabaseQueryMethods.then = vi.fn((resolve) =>
-      resolve({ data: [], error: null }),
-    );
+    mockVerifications = [];
+    mockPublicAssets = [];
+    mockProfiles = {};
   });
 
   it("rejects unauthorized requests without token", async () => {
@@ -108,7 +113,7 @@ describe("Admin Verification Routes", () => {
   });
 
   it("allows admin to fetch verifications", async () => {
-    const mockVerifications = [
+    mockVerifications = [
       {
         id: "v-1",
         user_id: "user-123",
@@ -118,9 +123,6 @@ describe("Admin Verification Routes", () => {
         target_type: "public_asset",
       },
     ];
-    mockSupabaseQueryMethods.then = vi.fn((resolve) =>
-      resolve({ data: mockVerifications, error: null }),
-    );
 
     const res = await app.request("/", {
       headers: { Authorization: "Bearer admin-token" },
@@ -145,22 +147,7 @@ describe("Admin Verification Routes", () => {
   });
 
   it("successfully rejects a submission with a reason", async () => {
-    mockSupabaseQueryMethods.single.mockReturnValueOnce(
-      Promise.resolve({
-        data: { id: "v-1", status: "pending", title: "Test Asset" },
-        error: null,
-      }),
-    );
-    mockSupabaseQueryMethods.single.mockReturnValueOnce(
-      Promise.resolve({
-        data: {
-          id: "v-1",
-          status: "rejected",
-          rejection_reason: "Violates terms",
-        },
-        error: null,
-      }),
-    );
+    mockVerifications = [{ id: "v-1", status: "pending", title: "Test Asset" }];
 
     const res = await app.request("/v-1/reject", {
       method: "POST",
@@ -173,43 +160,24 @@ describe("Admin Verification Routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(body.verification.status).toBe("rejected");
+    expect(body.verification.rejection_reason).toBe("Violates terms");
   });
 
   it("successfully approves a submission", async () => {
-    mockSupabaseQueryMethods.single.mockReturnValueOnce(
-      Promise.resolve({
-        data: {
-          id: "v-1",
-          user_id: "user-123",
-          status: "pending",
-          title: "Test File",
-          asset_type: "file",
-          target_type: "public_asset",
-          original_file_path: "user-123/test.png",
-          file_size: 1024,
-          mime_type: "image/png",
-        },
-        error: null,
-      }),
-    );
-    // new asset insert single
-    mockSupabaseQueryMethods.single.mockReturnValueOnce(
-      Promise.resolve({
-        data: { id: "pa-1", name: "Test File" },
-        error: null,
-      }),
-    );
-    // update verification single
-    mockSupabaseQueryMethods.single.mockReturnValueOnce(
-      Promise.resolve({
-        data: {
-          id: "v-1",
-          status: "approved",
-          public_asset_id: "pa-1",
-        },
-        error: null,
-      }),
-    );
+    mockVerifications = [
+      {
+        id: "v-1",
+        user_id: "user-123",
+        status: "pending",
+        title: "Test File",
+        asset_type: "file",
+        target_type: "public_asset",
+        original_file_path: "user-123/test.png",
+        file_size: 1024,
+        mime_type: "image/png",
+      },
+    ];
 
     const res = await app.request("/v-1/approve", {
       method: "POST",
@@ -218,5 +186,6 @@ describe("Admin Verification Routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(body.verification.status).toBe("approved");
   });
 });

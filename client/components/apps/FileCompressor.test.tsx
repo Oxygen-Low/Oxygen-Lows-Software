@@ -26,19 +26,10 @@ global.ResizeObserver = class {
   disconnect() {}
 };
 
-// Mock supabase
-const mockDownload = vi.fn();
-vi.mock("@/lib/supabase", () => ({
-  getAuthenticatedClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-        })),
-      })),
-    })),
-  })),
-  supabase: {
+// Mock db
+const { mockDownload } = vi.hoisted(() => ({ mockDownload: vi.fn() }));
+vi.mock("@/lib/db", () => {
+  const mockClient = {
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { id: "test-user" } },
@@ -76,8 +67,22 @@ vi.mock("@/lib/supabase", () => ({
         upload: vi.fn().mockResolvedValue({ error: null }),
       })),
     },
-  },
-}));
+  };
+
+  return {
+    getAuthenticatedClient: vi.fn(() => ({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+          })),
+        })),
+      })),
+    })),
+    db: mockClient,
+    supabase: mockClient,
+  };
+});
 
 // Mock StorageFileSelector
 vi.mock("@/components/StorageFileSelector", () => ({

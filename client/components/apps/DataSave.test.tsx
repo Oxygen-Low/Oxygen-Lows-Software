@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DataSaveApp } from "./DataSave";
-import { supabase } from "@/lib/supabase";
+import { supabase, db } from "@/lib/db";
 import { toast } from "sonner";
 import {
   clearActiveMasterKey,

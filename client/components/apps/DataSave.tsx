@@ -39,7 +39,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";

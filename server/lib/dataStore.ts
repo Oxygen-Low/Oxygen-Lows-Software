@@ -168,14 +168,18 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "chatbot", "messages.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "characters.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "universes.json"), []);
+  writeJsonFile(path.join(userDir, "chatbot", "character_likes.json"), []);
   writeJsonFile(path.join(userDir, "passwords", "passwords.json"), []);
   writeJsonFile(path.join(userDir, "vpn", "configs.json"), []);
   writeJsonFile(path.join(userDir, "integrations", "integrations.json"), []);
   writeJsonFile(path.join(userDir, "support", "tickets.json"), []);
+  writeJsonFile(path.join(userDir, "support", "messages.json"), []);
   writeJsonFile(path.join(userDir, "friends", "friends.json"), []);
   writeJsonFile(path.join(userDir, "friends", "follows.json"), []);
   writeJsonFile(path.join(userDir, "friends", "blocks.json"), []);
   writeJsonFile(path.join(userDir, "public_assets", "assets.json"), []);
+  writeJsonFile(path.join(userDir, "public_assets", "verifications.json"), []);
+  writeJsonFile(path.join(userDir, "public_assets", "likes.json"), []);
 
   return userData;
 }
@@ -257,6 +261,8 @@ export function getTableFilePath(table: string, userId?: string): string | null 
         return path.join(userDir, "integrations", "integrations.json");
       case "support_tickets":
         return path.join(userDir, "support", "tickets.json");
+      case "support_messages":
+        return path.join(userDir, "support", "messages.json");
       case "friendships":
         return path.join(userDir, "friends", "friends.json");
       case "follows":
@@ -265,6 +271,12 @@ export function getTableFilePath(table: string, userId?: string): string | null 
         return path.join(userDir, "friends", "blocks.json");
       case "public_assets":
         return path.join(userDir, "public_assets", "assets.json");
+      case "asset_verifications":
+        return path.join(userDir, "public_assets", "verifications.json");
+      case "public_asset_likes":
+        return path.join(userDir, "public_assets", "likes.json");
+      case "public_character_likes":
+        return path.join(userDir, "chatbot", "character_likes.json");
       case "defender_events":
         return path.join(userDir, "defender", "events.json");
       case "defender_apps":
@@ -650,41 +662,54 @@ export function updateTable(
   table: string,
   filters: DataFilter[] = [],
   data: any,
-  userId: string,
+  userId?: string,
   orFilters: string[] = [],
 ): any {
   const normTable = table.toLowerCase();
   const now = new Date().toISOString();
 
-  if (
-    normTable === "profiles" ||
-    normTable === "profile_pictures" ||
-    normTable === "user_preferences"
-  ) {
-    const existing = getTableRows(table, userId)[0] || {};
-    const updated = { ...existing, ...data, updated_at: now };
-    saveTableRows(table, userId, [updated]);
-    return [updated];
+  if (userId) {
+    if (
+      normTable === "profiles" ||
+      normTable === "profile_pictures" ||
+      normTable === "user_preferences"
+    ) {
+      const existing = getTableRows(table, userId)[0] || {};
+      const updated = { ...existing, ...data, updated_at: now };
+      saveTableRows(table, userId, [updated]);
+      return [updated];
+    }
+
+    const existing = getTableRows(table, userId);
+    const matched: any[] = [];
+    const updated = existing.map((row) => {
+      const matchesAnd =
+        filters.length === 0 || filters.every((f) => matchesFilter(row, f));
+      const matchesOr =
+        orFilters.length === 0 ||
+        orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
+      if (matchesAnd && matchesOr) {
+        const modified = { ...row, ...data, updated_at: now };
+        matched.push(modified);
+        return modified;
+      }
+      return row;
+    });
+
+    saveTableRows(table, userId, updated);
+    return matched;
   }
 
-  const existing = getTableRows(table, userId);
-  const matched: any[] = [];
-  const updated = existing.map((row) => {
-    const matchesAnd =
-      filters.length === 0 || filters.every((f) => matchesFilter(row, f));
-    const matchesOr =
-      orFilters.length === 0 ||
-      orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
-    if (matchesAnd && matchesOr) {
-      const modified = { ...row, ...data, updated_at: now };
-      matched.push(modified);
-      return modified;
+  // If no userId provided, update across all user directories (e.g. admin update)
+  const userIds = getAllUserIds();
+  const allMatched: any[] = [];
+  for (const id of userIds) {
+    const matched = updateTable(table, filters, data, id, orFilters);
+    if (Array.isArray(matched) && matched.length > 0) {
+      allMatched.push(...matched);
     }
-    return row;
-  });
-
-  saveTableRows(table, userId, updated);
-  return matched;
+  }
+  return allMatched;
 }
 
 /**
@@ -750,26 +775,39 @@ export function upsertTable(
 export function deleteTable(
   table: string,
   filters: DataFilter[] = [],
-  userId: string,
+  userId?: string,
   orFilters: string[] = [],
 ): any {
-  const existing = getTableRows(table, userId);
-  const matched: any[] = [];
-  const remaining = existing.filter((row) => {
-    const matchesAnd =
-      filters.length === 0 || filters.every((f) => matchesFilter(row, f));
-    const matchesOr =
-      orFilters.length === 0 ||
-      orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
-    if (matchesAnd && matchesOr) {
-      matched.push(row);
-      return false;
-    }
-    return true;
-  });
+  if (userId) {
+    const existing = getTableRows(table, userId);
+    const matched: any[] = [];
+    const remaining = existing.filter((row) => {
+      const matchesAnd =
+        filters.length === 0 || filters.every((f) => matchesFilter(row, f));
+      const matchesOr =
+        orFilters.length === 0 ||
+        orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
+      if (matchesAnd && matchesOr) {
+        matched.push(row);
+        return false;
+      }
+      return true;
+    });
 
-  saveTableRows(table, userId, remaining);
-  return matched;
+    saveTableRows(table, userId, remaining);
+    return matched;
+  }
+
+  // If no userId provided, delete across all user directories (e.g. admin delete)
+  const userIds = getAllUserIds();
+  const allMatched: any[] = [];
+  for (const id of userIds) {
+    const matched = deleteTable(table, filters, id, orFilters);
+    if (Array.isArray(matched) && matched.length > 0) {
+      allMatched.push(...matched);
+    }
+  }
+  return allMatched;
 }
 
 /**
@@ -777,6 +815,18 @@ export function deleteTable(
  */
 export function callRpc(name: string, args: any = {}, userId?: string): any {
   switch (name) {
+    case "spend_points": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const amount = Number(args?.p_amount ?? args?.amount ?? 0);
+      const pref = getTableRows("user_preferences", userId)[0] || { points: 100 };
+      const currentPoints = Number(pref.points ?? 100);
+      if (currentPoints < amount) {
+        return { success: false, error: "Insufficient points" };
+      }
+      const updated = { ...pref, points: currentPoints - amount };
+      saveTableRows("user_preferences", userId, [updated]);
+      return { success: true, points: updated.points };
+    }
     case "get_points_status": {
       if (!userId) return { points: 0, daily_claim_available: true };
       const user = getUserById(userId);

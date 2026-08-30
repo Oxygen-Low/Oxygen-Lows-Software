@@ -57,7 +57,6 @@ const Characters = lazyWithRetry(() => import("./pages/Characters"));
 const Changelogs = lazyWithRetry(() => import("./pages/Changelogs"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
-const OauthConsent = lazyWithRetry(() => import("./pages/OauthConsent"));
 const Support = lazyWithRetry(() => import("./pages/Support"));
 const SupportTicket = lazyWithRetry(() => import("./pages/SupportTicket"));
 const AdminSupport = lazyWithRetry(() => import("./pages/AdminSupport"));
@@ -66,7 +65,6 @@ const AdminVerification = lazyWithRetry(
   () => import("./pages/AdminVerification"),
 );
 const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
-const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
 const Terms = lazyWithRetry(() => import("./pages/Terms"));
 const Eula = lazyWithRetry(() => import("./pages/Eula"));
@@ -80,15 +78,6 @@ import { useEffect } from "react";
 import { initAutoLockListener, onAutoLock } from "@/lib/crypto";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
-
-import { MigrationModal } from "@/components/MigrationModal";
-import { useAuth } from "@/hooks/useAuth";
-
-function MigrationWatcher() {
-  const { hasSupabaseSession } = useAuth();
-  if (!hasSupabaseSession) return null;
-  return <MigrationModal />;
-}
 
 function AutoLockWatcher() {
   const { t } = useTranslation();
@@ -120,7 +109,6 @@ const App = () => (
     <TooltipProvider>
       <LanguageProvider>
         <AutoLockWatcher />
-        <MigrationWatcher />
         <ThemeProvider>
           <BrowserRouter>
             <MusicProvider>
@@ -212,9 +200,7 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="/oauth/consent" element={<OauthConsent />} />
                     <Route path="/auth" element={<Auth />} />
-                    <Route path="/auth/callback" element={<AuthCallback />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/eula" element={<Eula />} />

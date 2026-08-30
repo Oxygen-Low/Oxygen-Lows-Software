@@ -9,6 +9,7 @@ import {
   cleanup,
 } from "@testing-library/react";
 import { ChatbotApp } from "./Chatbot";
+import { setLocalSession } from "@/lib/localSession";
 
 // Mock i18next
 
@@ -129,18 +130,8 @@ const createChatsChain = () => {
   return builder;
 };
 
-vi.mock("@/lib/supabase", () => ({
-  getAuthenticatedClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          maybeSingle: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-        })),
-      })),
-    })),
-  })),
-  supabase: {
+vi.mock("@/lib/db", () => {
+  const mockClient = {
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { id: "test-user" } },
@@ -201,8 +192,30 @@ vi.mock("@/lib/supabase", () => ({
         download: vi.fn().mockResolvedValue({ data: null, error: null }),
       })),
     },
-  },
-}));
+  };
+
+  return {
+    getAuthenticatedClient: vi.fn(() => ({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+            single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+          })),
+        })),
+      })),
+    })),
+    db: mockClient,
+    supabase: mockClient,
+    getLocalSession: vi.fn(() => ({
+      access_token: "test-token",
+      token_type: "bearer",
+      user: { id: "test-user" },
+    })),
+    setLocalSession: vi.fn(),
+    notifyAuthListeners: vi.fn(),
+  };
+});
 
 // Mock fetch for streaming
 global.fetch = vi.fn((url, options: any) => {
@@ -261,6 +274,12 @@ global.fetch = vi.fn((url, options: any) => {
 describe("ChatbotApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setLocalSession({
+      access_token: "test-token",
+      token_type: "bearer",
+      user: { id: "test-user", email: "test@test.com", username: "testuser" },
+    });
+    msgIdCounter = 0;
     mockChats = [
       {
         id: "chat-1",

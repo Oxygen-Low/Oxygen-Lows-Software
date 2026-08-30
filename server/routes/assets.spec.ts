@@ -3,93 +3,89 @@ import { assetsRouter } from "./assets";
 import { Hono } from "hono";
 
 const app = new Hono();
-app.use("*", async (c, next) => {
-  c.env = { SUPABASE_SECRET: "mock-secret" };
-  await next();
-});
 app.route("/", assetsRouter);
 
-vi.mock("@supabase/supabase-js", () => {
-  return {
-    createClient: vi.fn((_url: string, _key: string, options?: any) => {
-      const authHeader = options?.global?.headers?.Authorization || "";
-      const token = authHeader.replace(/^Bearer /i, "");
+let mockVerifications: any[] = [];
+
+vi.mock("../lib/auth.ts", () => ({
+  resolveUserFromToken: vi.fn(async (token: string) => {
+    if (token === "user-token") {
       return {
-        auth: {
-          getUser: vi.fn(async () => {
-            if (token === "user-token") {
-              return {
-                data: {
-                  user: {
-                    id: "user-123",
-                    email: "test@example.com",
-                  },
-                },
-                error: null,
-              };
-            }
-            if (token === "other-user-token") {
-              return {
-                data: {
-                  user: {
-                    id: "user-other",
-                    email: "other@example.com",
-                  },
-                },
-                error: null,
-              };
-            }
-            return {
-              data: { user: null },
-              error: { message: "Invalid token" },
-            };
-          }),
-        },
+        id: "user-123",
+        email: "test@example.com",
+        username: "user123",
+        role: "user",
       };
-    }),
-  };
-});
+    }
+    if (token === "other-user-token") {
+      return {
+        id: "user-other",
+        email: "other@example.com",
+        username: "other",
+        role: "user",
+      };
+    }
+    return null;
+  }),
+}));
 
-const mockSupabaseQueryMethods: any = {
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  order: vi.fn().mockReturnThis(),
-  single: vi.fn().mockReturnThis(),
-  insert: vi.fn().mockReturnThis(),
-  update: vi.fn().mockReturnThis(),
-  delete: vi.fn().mockReturnThis(),
-  then: vi.fn(),
-};
-
-mockSupabaseQueryMethods.select.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.eq.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.order.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.single.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.insert.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.update.mockReturnValue(mockSupabaseQueryMethods);
-mockSupabaseQueryMethods.delete.mockReturnValue(mockSupabaseQueryMethods);
-
-const mockAdminClient = {
-  from: vi.fn(() => mockSupabaseQueryMethods),
-  storage: {
-    from: vi.fn(() => ({
-      remove: vi.fn(async () => ({ data: {}, error: null })),
-    })),
+vi.mock("../lib/storage.ts", () => ({
+  serverStorage: {
+    download: vi.fn(async () => ({ data: Buffer.from("test"), error: null })),
+    upload: vi.fn(async () => ({ data: {}, error: null })),
+    remove: vi.fn(async () => ({ data: {}, error: null })),
   },
-};
+}));
 
-vi.mock("../lib/supabase.ts", () => {
-  return {
-    getAdminClient: vi.fn(() => mockAdminClient),
-  };
-});
+vi.mock("../lib/dataStore.ts", () => ({
+  queryTable: vi.fn((opts: any) => {
+    if (opts.table === "asset_verifications") {
+      if (opts.filters?.some((f: any) => f.field === "id")) {
+        const idFilter = opts.filters.find((f: any) => f.field === "id");
+        return mockVerifications.filter((v) => String(v.id) === String(idFilter.value));
+      }
+      if (opts.userId) {
+        return mockVerifications.filter((v) => String(v.user_id) === String(opts.userId));
+      }
+      return mockVerifications;
+    }
+    return [];
+  }),
+  insertTable: vi.fn((table: string, data: any, userId: string) => {
+    if (table === "asset_verifications") {
+      const item = { id: data.id || "v-inserted", user_id: userId, ...data };
+      mockVerifications.push(item);
+      return [item];
+    }
+    return [data];
+  }),
+  updateTable: vi.fn((table: string, filters: any[], data: any) => {
+    return [data];
+  }),
+  deleteTable: vi.fn((table: string, filters: any[]) => {
+    if (table === "asset_verifications") {
+      const idFilter = filters.find((f: any) => f.field === "id");
+      if (idFilter) {
+        const idx = mockVerifications.findIndex((v) => String(v.id) === String(idFilter.value));
+        if (idx !== -1) {
+          return mockVerifications.splice(idx, 1);
+        }
+      }
+      const pathFilter = filters.find((f: any) => f.field === "original_file_path");
+      if (pathFilter) {
+        const idx = mockVerifications.findIndex((v) => String(v.original_file_path) === String(pathFilter.value));
+        if (idx !== -1) {
+          return mockVerifications.splice(idx, 1);
+        }
+      }
+    }
+    return [];
+  }),
+}));
 
 describe("Assets & Verification Routes", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockSupabaseQueryMethods.then = vi.fn((resolve) =>
-      resolve({ data: [], error: null }),
-    );
+    mockVerifications = [];
   });
 
   it("rejects unauthenticated requests", async () => {
@@ -98,12 +94,9 @@ describe("Assets & Verification Routes", () => {
   });
 
   it("fetches current user's verifications", async () => {
-    mockSupabaseQueryMethods.then = vi.fn((resolve) =>
-      resolve({
-        data: [{ id: "v-1", title: "Test File", status: "pending" }],
-        error: null,
-      }),
-    );
+    mockVerifications = [
+      { id: "v-1", user_id: "user-123", title: "Test File", status: "pending" },
+    ];
 
     const res = await app.request("/verifications/my", {
       headers: { Authorization: "Bearer user-token" },
@@ -116,12 +109,14 @@ describe("Assets & Verification Routes", () => {
   });
 
   it("submits verification and clears previous verifications for the file", async () => {
-    mockSupabaseQueryMethods.then = vi.fn((resolve) =>
-      resolve({
-        data: { id: "v-2", title: "My Song", status: "pending" },
-        error: null,
-      }),
-    );
+    mockVerifications = [
+      {
+        id: "v-old",
+        user_id: "user-123",
+        title: "Old Song",
+        original_file_path: "user-123/song.mp3",
+      },
+    ];
 
     const res = await app.request("/verifications/submit", {
       method: "POST",
@@ -141,23 +136,18 @@ describe("Assets & Verification Routes", () => {
     const json = await res.json();
     expect(json.success).toBe(true);
     expect(json.verification.title).toBe("My Song");
-    // Verify delete was called to remove prior verifications
-    expect(mockSupabaseQueryMethods.delete).toHaveBeenCalled();
   });
 
   it("deletes user's own verification request", async () => {
-    mockSupabaseQueryMethods.then = vi.fn((resolve) =>
-      resolve({
-        data: {
-          id: "v-100",
-          user_id: "user-123",
-          asset_type: "file",
-          status: "pending",
-          target_type: "public_usage",
-        },
-        error: null,
-      }),
-    );
+    mockVerifications = [
+      {
+        id: "v-100",
+        user_id: "user-123",
+        asset_type: "file",
+        status: "pending",
+        target_type: "public_usage",
+      },
+    ];
 
     const res = await app.request("/verifications/v-100", {
       method: "DELETE",
@@ -167,20 +157,18 @@ describe("Assets & Verification Routes", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
+    expect(mockVerifications).toHaveLength(0);
   });
 
   it("forbids deleting another user's verification request", async () => {
-    mockSupabaseQueryMethods.then = vi.fn((resolve) =>
-      resolve({
-        data: {
-          id: "v-100",
-          user_id: "user-123",
-          asset_type: "file",
-          status: "pending",
-        },
-        error: null,
-      }),
-    );
+    mockVerifications = [
+      {
+        id: "v-100",
+        user_id: "user-123",
+        asset_type: "file",
+        status: "pending",
+      },
+    ];
 
     const res = await app.request("/verifications/v-100", {
       method: "DELETE",

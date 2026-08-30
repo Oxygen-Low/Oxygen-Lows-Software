@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { createClient } from "@supabase/supabase-js";
 import {
   serverStorage,
   getUserTotalSize,
@@ -7,11 +6,6 @@ import {
   getMimeType,
   sanitizePath,
 } from "../lib/storage.ts";
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
-const ADMIN_USER_IDS = new Set(["3cb76293-8c6c-49b9-b431-1ff5fce471ee"]);
-
 import { resolveUserFromToken } from "../lib/auth.ts";
 
 export const storageRouter = new Hono();
@@ -52,7 +46,7 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
 
     const user = c.get("user" as any) as any;
 
-    if (!filePath.startsWith(user.id + "/") && !ADMIN_USER_IDS.has(user.id)) {
+    if (!filePath.startsWith(user.id + "/") && user.role !== "admin") {
       return c.json({ error: "Cannot upload to other user's directory" }, 400);
     }
 
@@ -116,7 +110,7 @@ storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
     const allowedPaths = paths.filter((p) => {
       try {
         const clean = sanitizePath(p);
-        return clean.startsWith(user.id + "/") || ADMIN_USER_IDS.has(user.id);
+        return clean.startsWith(user.id + "/") || user.role === "admin";
       } catch {
         return false;
       }

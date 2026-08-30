@@ -7,7 +7,7 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { supabase, getAuthenticatedClient } from "@/lib/supabase";
+import { db, getAuthenticatedClient } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 

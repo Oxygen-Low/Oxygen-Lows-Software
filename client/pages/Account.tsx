@@ -5,7 +5,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Upload, Maximize, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import Cropper, { Area } from "react-easy-crop";
 import {

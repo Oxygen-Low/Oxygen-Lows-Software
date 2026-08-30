@@ -2,10 +2,6 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR, getUserById } from "./dataStore.ts";
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 function getSecretKey(): string {
   if (process.env.AUTH_SECRET) {
@@ -123,7 +119,7 @@ export function verifyToken(token: string): TokenPayload | null {
 export async function resolveUserFromToken(token: string) {
   if (!token) return null;
 
-  // 1. Try resolving as local token
+  // Try resolving as local token
   const localPayload = verifyToken(token);
   if (localPayload) {
     const user = getUserById(localPayload.userId);
@@ -139,83 +135,6 @@ export async function resolveUserFromToken(token: string) {
         },
       };
     }
-  }
-
-  // 2. Fallback to verifying with Supabase
-  try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false },
-    });
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser(token);
-
-    if (!error && user) {
-      return {
-        id: user.id,
-        email: user.email,
-        username:
-          user.user_metadata?.username ||
-          user.user_metadata?.full_name ||
-          user.email?.split("@")[0] ||
-          "User",
-        role: "user",
-        user_metadata: user.user_metadata,
-      };
-    }
-  } catch {}
-
-  // Fallback: direct fetch to Supabase Auth endpoint
-  try {
-    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (authRes.ok) {
-      const user = await authRes.json();
-      if (user?.id) {
-        return {
-          id: user.id,
-          email: user.email,
-          username:
-            user.user_metadata?.username ||
-            user.user_metadata?.full_name ||
-            user.email?.split("@")[0] ||
-            "User",
-          role: "user",
-          user_metadata: user.user_metadata,
-        };
-      }
-    }
-  } catch {}
-
-  // Fallback: parse JWT payload if valid and not expired
-  if (typeof token === "string" && token.includes(".")) {
-    try {
-      const parts = token.split(".");
-      if (parts.length === 3) {
-        const payload = JSON.parse(
-          Buffer.from(parts[1], "base64url").toString("utf-8"),
-        );
-        if (payload.sub && (!payload.exp || payload.exp * 1000 > Date.now() - 3600000)) {
-          return {
-            id: payload.sub,
-            email: payload.email,
-            username:
-              payload.user_metadata?.username ||
-              payload.user_metadata?.full_name ||
-              payload.email?.split("@")[0] ||
-              "User",
-            role: "user",
-            user_metadata: payload.user_metadata || {},
-          };
-        }
-      }
-    } catch {}
   }
 
   return null;

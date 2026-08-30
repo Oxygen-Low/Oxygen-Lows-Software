@@ -1,43 +1,32 @@
 import { Hono } from "hono";
-import { getAdminClient } from "../lib/supabase.ts";
-import { createClient } from "@supabase/supabase-js";
+import crypto from "node:crypto";
 import { serverStorage } from "../lib/storage.ts";
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
-const ADMIN_USER_IDS = new Set(["3cb76293-8c6c-49b9-b431-1ff5fce471ee"]);
+import { resolveUserFromToken } from "../lib/auth.ts";
+import {
+  queryTable,
+  insertTable,
+  updateTable,
+  deleteTable,
+  getProfileByUserId,
+} from "../lib/dataStore.ts";
 
 export const adminVerificationRouter = new Hono();
-
-function getServiceRoleKey(c: any) {
-  const rawEnv = (c.env || {}) as any;
-  const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
-  return rawEnv.SUPABASE_SECRET || procEnv.SUPABASE_SECRET;
-}
 
 adminVerificationRouter.use("*", async (c, next) => {
   const authHeader = c.req.header("Authorization");
   const token = authHeader?.toLowerCase().startsWith("bearer ")
-    ? authHeader.slice(7)
+    ? authHeader.slice(7).trim()
     : null;
   if (!token) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const user = await resolveUserFromToken(token);
+  if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  if (!ADMIN_USER_IDS.has(user.id)) {
+  if (user.role !== "admin") {
     return c.json({ error: "Forbidden: Admin access required" }, 403);
   }
 
@@ -49,48 +38,41 @@ adminVerificationRouter.use("*", async (c, next) => {
 // GET /api/admin/verifications - List verifications with filters
 adminVerificationRouter.get("/", async (c) => {
   try {
-    const supabase = getAdminClient(getServiceRoleKey(c));
     const status = c.req.query("status");
     const assetType = c.req.query("asset_type");
     const targetType = c.req.query("target_type");
 
-    let query = supabase
-      .from("asset_verifications")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const filters: any[] = [];
     if (status && status !== "all") {
-      query = query.eq("status", status);
+      filters.push({ field: "status", operator: "eq", value: status });
     }
     if (assetType && assetType !== "all") {
-      query = query.eq("asset_type", assetType);
+      filters.push({ field: "asset_type", operator: "eq", value: assetType });
     }
     if (targetType && targetType !== "all") {
-      query = query.eq("target_type", targetType);
+      filters.push({ field: "target_type", operator: "eq", value: targetType });
     }
 
-    const { data: verifications, error } = await query;
-    if (error) throw error;
+    const verifications = queryTable({
+      table: "asset_verifications",
+      filters,
+      order: { column: "created_at", ascending: false },
+    });
 
-    const userIds = [
-      ...new Set(
-        (verifications || []).map((v: any) => v.user_id).filter(Boolean),
-      ),
-    ];
-
-    let profiles: any[] = [];
-    if (userIds.length > 0) {
-      const { data: profData } = await supabase
-        .from("profiles")
-        .select("user_id, username, email, avatar_url")
-        .in("user_id", userIds);
-      if (profData) profiles = profData;
-    }
-
-    const listWithProfiles = (verifications || []).map((v: any) => ({
-      ...v,
-      profiles: profiles.find((p: any) => p.user_id === v.user_id) || null,
-    }));
+    const listWithProfiles = (verifications || []).map((v: any) => {
+      const p = v.user_id ? getProfileByUserId(v.user_id) : null;
+      return {
+        ...v,
+        profiles: p
+          ? {
+              user_id: p.user_id || p.id,
+              username: p.username,
+              email: p.email,
+              avatar_url: p.avatar_url,
+            }
+          : null,
+      };
+    });
 
     return c.json({ verifications: listWithProfiles });
   } catch (error: any) {
@@ -104,15 +86,14 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
   try {
     const id = c.req.param("id");
     const adminUser = c.get("user" as any);
-    const supabase = getAdminClient(getServiceRoleKey(c));
 
-    const { data: verification, error: fetchErr } = await supabase
-      .from("asset_verifications")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const verifications = queryTable({
+      table: "asset_verifications",
+      filters: [{ field: "id", operator: "eq", value: id }],
+    });
+    const verification = verifications && verifications[0];
 
-    if (fetchErr || !verification) {
+    if (!verification) {
       return c.json({ error: "Verification request not found" }, 404);
     }
 
@@ -140,9 +121,10 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
 
         // Upsert into public_assets
         if (publicAssetId) {
-          const { data: updatedAsset } = await supabase
-            .from("public_assets")
-            .update({
+          const updated = updateTable(
+            "public_assets",
+            [{ field: "id", operator: "eq", value: publicAssetId }],
+            {
               name: verification.title,
               display_name:
                 verification.metadata?.display_name || verification.title,
@@ -152,32 +134,29 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
               file_size: verification.file_size || 0,
               mime_type: verification.mime_type || "",
               updated_at: new Date().toISOString(),
-            })
-            .eq("id", publicAssetId)
-            .select()
-            .single();
-
-          if (updatedAsset) publicAssetId = updatedAsset.id;
+            },
+            verification.user_id,
+          );
+          if (updated && updated[0]) publicAssetId = updated[0].id;
         } else {
-          const { data: newAsset, error: insertErr } = await supabase
-            .from("public_assets")
-            .insert({
-              uploader_id: verification.user_id,
-              name: verification.title,
-              display_name:
-                verification.metadata?.display_name || verification.title,
-              category: verification.metadata?.category || "other",
-              description: verification.description || "",
-              file_path: verification.original_file_path || "",
-              file_size: verification.file_size || 0,
-              mime_type: verification.mime_type || "",
-            })
-            .select()
-            .single();
-
-          if (!insertErr && newAsset) {
-            publicAssetId = newAsset.id;
-          }
+          const newAsset = {
+            id: crypto.randomUUID(),
+            uploader_id: verification.user_id,
+            user_id: verification.user_id,
+            name: verification.title,
+            display_name:
+              verification.metadata?.display_name || verification.title,
+            category: verification.metadata?.category || "other",
+            description: verification.description || "",
+            file_path: verification.original_file_path || "",
+            file_size: verification.file_size || 0,
+            mime_type: verification.mime_type || "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          const inserted = insertTable("public_assets", newAsset, verification.user_id);
+          const insObj = Array.isArray(inserted) ? inserted[0] : inserted;
+          if (insObj) publicAssetId = insObj.id;
         }
       } else if (
         verification.asset_type === "character" ||
@@ -189,6 +168,7 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
           verification.asset_type === "universe" || Boolean(meta.is_universe);
         const payload: any = {
           uploader_id: verification.user_id,
+          user_id: verification.user_id,
           original_character_id: verification.original_id || null,
           name: meta.name || verification.title,
           display_name: meta.display_name || null,
@@ -205,24 +185,19 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
         };
 
         if (publicCharacterId) {
-          const { data: updatedChar } = await supabase
-            .from("public_characters")
-            .update(payload)
-            .eq("id", publicCharacterId)
-            .select()
-            .single();
-
-          if (updatedChar) publicCharacterId = updatedChar.id;
+          const updated = updateTable(
+            "public_characters",
+            [{ field: "id", operator: "eq", value: publicCharacterId }],
+            payload,
+            verification.user_id,
+          );
+          if (updated && updated[0]) publicCharacterId = updated[0].id;
         } else {
-          const { data: newChar, error: insertErr } = await supabase
-            .from("public_characters")
-            .insert(payload)
-            .select()
-            .single();
-
-          if (!insertErr && newChar) {
-            publicCharacterId = newChar.id;
-          }
+          payload.id = crypto.randomUUID();
+          payload.created_at = new Date().toISOString();
+          const inserted = insertTable("public_characters", payload, verification.user_id);
+          const insObj = Array.isArray(inserted) ? inserted[0] : inserted;
+          if (insObj) publicCharacterId = insObj.id;
         }
       }
     } else if (verification.target_type === "public_usage") {
@@ -231,16 +206,19 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
           verification.asset_type === "universe") &&
         verification.original_id
       ) {
-        await supabase
-          .from("characters")
-          .update({ is_verified_public: true })
-          .eq("id", verification.original_id);
+        updateTable(
+          "characters",
+          [{ field: "id", operator: "eq", value: verification.original_id }],
+          { is_verified_public: true },
+          verification.user_id,
+        );
       }
     }
 
-    const { data: updatedVerification, error: updateErr } = await supabase
-      .from("asset_verifications")
-      .update({
+    const updated = updateTable(
+      "asset_verifications",
+      [{ field: "id", operator: "eq", value: id }],
+      {
         status: "approved",
         public_asset_id: publicAssetId || null,
         public_character_id: publicCharacterId || null,
@@ -248,14 +226,11 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
         reviewed_by: adminUser?.id || null,
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single();
+      },
+      verification.user_id,
+    );
 
-    if (updateErr) throw updateErr;
-
-    return c.json({ success: true, verification: updatedVerification });
+    return c.json({ success: true, verification: updated && updated[0] });
   } catch (error: any) {
     console.error("Error approving verification:", error);
     return c.json({ error: error.message || "Internal server error" }, 500);
@@ -277,34 +252,30 @@ adminVerificationRouter.post("/:id/reject", async (c) => {
       );
     }
 
-    const supabase = getAdminClient(getServiceRoleKey(c));
+    const verifications = queryTable({
+      table: "asset_verifications",
+      filters: [{ field: "id", operator: "eq", value: id }],
+    });
+    const verification = verifications && verifications[0];
 
-    const { data: verification, error: fetchErr } = await supabase
-      .from("asset_verifications")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (fetchErr || !verification) {
+    if (!verification) {
       return c.json({ error: "Verification request not found" }, 404);
     }
 
-    const { data: updatedVerification, error: updateErr } = await supabase
-      .from("asset_verifications")
-      .update({
+    const updated = updateTable(
+      "asset_verifications",
+      [{ field: "id", operator: "eq", value: id }],
+      {
         status: "rejected",
         rejection_reason: reason,
         reviewed_by: adminUser?.id || null,
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single();
+      },
+      verification.user_id,
+    );
 
-    if (updateErr) throw updateErr;
-
-    return c.json({ success: true, verification: updatedVerification });
+    return c.json({ success: true, verification: updated && updated[0] });
   } catch (error: any) {
     console.error("Error rejecting verification:", error);
     return c.json({ error: error.message || "Internal server error" }, 500);
@@ -315,14 +286,10 @@ adminVerificationRouter.post("/:id/reject", async (c) => {
 adminVerificationRouter.delete("/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const supabase = getAdminClient(getServiceRoleKey(c));
-
-    const { error } = await supabase
-      .from("asset_verifications")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
+    deleteTable(
+      "asset_verifications",
+      [{ field: "id", operator: "eq", value: id }],
+    );
 
     return c.json({ success: true });
   } catch (error: any) {

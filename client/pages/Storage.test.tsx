@@ -75,7 +75,7 @@ vi.mock("@/lib/storage", () => ({
   },
 }));
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/db", () => {
   const builder: any = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
@@ -83,10 +83,13 @@ vi.mock("@/lib/supabase", () => {
     then: vi.fn((resolve) => resolve({ data: [], error: null })),
   };
 
+  const mockClient = {
+    from: vi.fn(() => builder),
+  };
+
   return {
-    supabase: {
-      from: vi.fn(() => builder),
-    },
+    db: mockClient,
+    supabase: mockClient,
   };
 });
 

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 
 /**
  * Cryptographic utilities for AES-256 master key generation, format conversion,

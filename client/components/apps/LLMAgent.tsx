@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import {

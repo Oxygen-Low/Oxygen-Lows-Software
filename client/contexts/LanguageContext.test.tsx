@@ -17,9 +17,8 @@ import * as React from "react";
 
 let mockProfileLanguage: string | null = null;
 
-// Mock supabase client
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
+vi.mock("@/lib/db", () => {
+  const mockClient = {
     from: vi.fn(() => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
@@ -38,8 +37,13 @@ vi.mock("@/lib/supabase", () => ({
       })),
       upsert: vi.fn().mockResolvedValue({ error: null }),
     })),
-  },
-}));
+  };
+
+  return {
+    db: mockClient,
+    supabase: mockClient,
+  };
+});
 
 // Mock useAuth
 vi.mock("@/hooks/useAuth", () => ({

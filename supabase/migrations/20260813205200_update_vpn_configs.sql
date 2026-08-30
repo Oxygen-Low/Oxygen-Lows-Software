@@ -1,3 +1,0 @@
-ALTER TABLE public.vpn_configs
-ADD COLUMN type TEXT NOT NULL DEFAULT 'WireGuard',
-ADD COLUMN expires_at TIMESTAMPTZ;

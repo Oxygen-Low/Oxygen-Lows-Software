@@ -310,12 +310,11 @@ export default function Terms() {
           index={10}
         >
           <P>
-            The Service integrates with third-party services (including
-            Supabase, OpenAI, Anthropic, Google, Cloudflare, GitHub, and others
-            listed in our Privacy Policy). Your use of those services is
-            governed by their respective terms and privacy policies. We are not
-            responsible for the availability, accuracy, or practices of any
-            third-party service.
+            The Service integrates with third-party services (including OpenAI,
+            Anthropic, Google, Cloudflare, GitHub, and others listed in our
+            Privacy Policy). Your use of those services is governed by their
+            respective terms and privacy policies. We are not responsible for
+            the availability, accuracy, or practices of any third-party service.
           </P>
           <P>
             <strong>Integrations &amp; API Keys:</strong> Any third-party API

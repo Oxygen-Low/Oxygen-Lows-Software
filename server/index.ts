@@ -4,7 +4,6 @@ import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
 import { demoRouter } from "./routes/demo.ts";
 import { proxyRouter } from "./routes/proxy.ts";
-import { oauthAdminRouter } from "./routes/oauthAdmin.ts";
 import { adminSupportRouter } from "./routes/adminSupport.ts";
 import { adminVerificationRouter } from "./routes/adminVerification.ts";
 import { assetsRouter } from "./routes/assets.ts";
@@ -81,7 +80,6 @@ app.use(
         "'self'",
         "blob:",
         "data:",
-        "https://vqmukrmpgvavscsyefqd.supabase.co",
         "https:",
       ],
       connectSrc: [
@@ -102,8 +100,6 @@ app.use(
         "http://localhost:5000",
         "https://unpkg.com",
         "https://cdn.jsdelivr.net",
-        "https://vqmukrmpgvavscsyefqd.supabase.co",
-        "wss://vqmukrmpgvavscsyefqd.supabase.co",
         "https://oai.stablehorde.net",
         "https://stablehorde.net",
         "https://api.cloudflare.com",
@@ -953,7 +949,6 @@ app.get("/robots.txt", (c) => {
 
 app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);
-app.route("/api/oauth-admin", oauthAdminRouter);
 app.route("/api/admin/support", adminSupportRouter);
 app.route("/api/admin/verifications", adminVerificationRouter);
 app.route("/api/assets", assetsRouter);

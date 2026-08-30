@@ -3,9 +3,8 @@ import { Navigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Loader2, Lock, User, Mail, ShieldCheck, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Loader2, Lock, User, Mail, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
-import { MigrationModal } from "@/components/MigrationModal";
 
 export default function Auth() {
   const location = useLocation();
@@ -14,8 +13,6 @@ export default function Auth() {
     loading,
     signIn,
     signUp,
-    signInWithOAuth,
-    hasSupabaseSession,
   } = useAuth();
   const { t, language, setLanguage } = useTranslation();
   usePageTitle(t("titles.auth", undefined, "Sign In"), {
@@ -62,8 +59,8 @@ export default function Auth() {
     );
   }
 
-  // If already logged in locally and no pending Supabase migration
-  if (session && !hasSupabaseSession) {
+  // If already logged in locally
+  if (session) {
     return <Navigate to={returnTo} replace />;
   }
 
@@ -117,8 +114,6 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      {hasSupabaseSession && <MigrationModal />}
-
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-4 mb-2">
@@ -295,40 +290,7 @@ export default function Auth() {
             </button>
           </form>
 
-          {/* Migration Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-800"></div>
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-slate-900 text-slate-500">
-                {t("auth.orMigrate", undefined, "Or Migrate Google Account")}
-              </span>
-            </div>
-          </div>
-
-          {/* Google / Supabase Account Migration Button */}
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() =>
-                signInWithOAuth(
-                  "google",
-                  `${window.location.origin}/auth?returnTo=${encodeURIComponent(returnTo)}`,
-                )
-              }
-              className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg border border-slate-700 transition duration-200 flex items-center justify-center gap-2 text-xs"
-            >
-              <ShieldCheck className="w-4 h-4 text-cyan-400" />
-              <span>
-                {t(
-                  "auth.signInGoogle",
-                  undefined,
-                  "Sign in with Google",
-                )}
-              </span>
-            </button>
-
+          <div className="space-y-4 mt-6">
             <div className="space-y-2 pt-2 border-t border-slate-800/80">
               <label
                 htmlFor="auth-language-select"

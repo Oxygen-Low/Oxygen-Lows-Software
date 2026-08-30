@@ -1,74 +1,60 @@
 import { Hono } from "hono";
-import { getAdminClient, getAuthenticatedClient } from "../lib/supabase.ts";
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
-const ADMIN_USER_IDS = new Set(["3cb76293-8c6c-49b9-b431-1ff5fce471ee"]);
+import crypto from "node:crypto";
+import { resolveUserFromToken } from "../lib/auth.ts";
+import {
+  queryTable,
+  insertTable,
+  updateTable,
+  getProfileByUserId,
+} from "../lib/dataStore.ts";
 
 export const adminSupportRouter = new Hono();
-
-function getServiceRoleKey(c: any) {
-  const rawEnv = (c.env || {}) as any;
-  const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
-  return rawEnv.SUPABASE_SECRET || procEnv.SUPABASE_SECRET;
-}
 
 adminSupportRouter.use("*", async (c, next) => {
   const authHeader = c.req.header("Authorization");
   // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
   const token = authHeader?.toLowerCase().startsWith("bearer ")
-    ? authHeader.slice(7)
+    ? authHeader.slice(7).trim()
     : null;
   if (!token) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const user = await resolveUserFromToken(token);
+  if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  if (!ADMIN_USER_IDS.has(user.id)) {
+  if (user.role !== "admin") {
     return c.json({ error: "Forbidden: Admin access required" }, 403);
   }
 
+  c.set("user" as any, user);
   await next();
 });
 
 // Get all support tickets
 adminSupportRouter.get("/tickets", async (c) => {
   try {
-    const supabase = getAdminClient(getServiceRoleKey(c));
+    const tickets = queryTable({
+      table: "support_tickets",
+      filters: [{ field: "status", operator: "neq", value: "Closed" }],
+      order: { column: "created_at", ascending: false },
+    });
 
-    const { data: tickets, error } = await supabase
-      .from("support_tickets")
-      .select("*")
-      .neq("status", "Closed")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    const userIds = [
-      ...new Set(tickets.map((t: any) => t.user_id).filter(Boolean)),
-    ];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, username, avatar_url")
-      .in("user_id", userIds);
-
-    const ticketsWithProfiles = tickets.map((t: any) => ({
-      ...t,
-      profiles: profiles?.find((p: any) => p.user_id === t.user_id) || null,
-    }));
+    const ticketsWithProfiles = (tickets || []).map((t: any) => {
+      const profile = t.user_id ? getProfileByUserId(t.user_id) : null;
+      return {
+        ...t,
+        profiles: profile
+          ? {
+              user_id: profile.user_id || profile.id,
+              username: profile.username,
+              avatar_url: profile.avatar_url,
+            }
+          : null,
+      };
+    });
 
     return c.json({ tickets: ticketsWithProfiles });
   } catch (error: any) {
@@ -81,24 +67,25 @@ adminSupportRouter.get("/tickets", async (c) => {
 adminSupportRouter.get("/tickets/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const supabase = getAdminClient(getServiceRoleKey(c));
-
-    const { data: ticket, error } = await supabase
-      .from("support_tickets")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) throw error;
+    const tickets = queryTable({
+      table: "support_tickets",
+      filters: [{ field: "id", operator: "eq", value: id }],
+    });
+    const ticket = tickets && tickets[0];
+    if (!ticket) {
+      return c.json({ error: "Ticket not found" }, 404);
+    }
 
     let profile = null;
     if (ticket.user_id) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("username, avatar_url")
-        .eq("user_id", ticket.user_id)
-        .single();
-      profile = data;
+      const p = getProfileByUserId(ticket.user_id);
+      if (p) {
+        profile = {
+          user_id: p.user_id || p.id,
+          username: p.username,
+          avatar_url: p.avatar_url,
+        };
+      }
     }
 
     return c.json({ ticket: { ...ticket, profiles: profile } });
@@ -112,32 +99,25 @@ adminSupportRouter.get("/tickets/:id", async (c) => {
 adminSupportRouter.get("/tickets/:id/messages", async (c) => {
   try {
     const id = c.req.param("id");
-    const supabase = getAdminClient(getServiceRoleKey(c));
+    const messages = queryTable({
+      table: "support_messages",
+      filters: [{ field: "ticket_id", operator: "eq", value: id }],
+      order: { column: "created_at", ascending: true },
+    });
 
-    const { data: messages, error } = await supabase
-      .from("support_messages")
-      .select("*")
-      .eq("ticket_id", id)
-      .order("created_at", { ascending: true });
-
-    if (error) throw error;
-
-    const senderIds = [
-      ...new Set(messages.map((m: any) => m.sender_id).filter(Boolean)),
-    ];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, username, avatar_url")
-      .in("user_id", senderIds);
-
-    const profilesMap = new Map(
-      profiles?.map((p: any) => [p.user_id, p]) || [],
-    );
-
-    const messagesWithProfiles = messages.map((m: any) => ({
-      ...m,
-      profiles: profilesMap.get(m.sender_id) || null,
-    }));
+    const messagesWithProfiles = (messages || []).map((m: any) => {
+      const p = m.sender_id ? getProfileByUserId(m.sender_id) : null;
+      return {
+        ...m,
+        profiles: p
+          ? {
+              user_id: p.user_id || p.id,
+              username: p.username,
+              avatar_url: p.avatar_url,
+            }
+          : null,
+      };
+    });
 
     return c.json({ messages: messagesWithProfiles });
   } catch (error: any) {
@@ -150,41 +130,31 @@ adminSupportRouter.get("/tickets/:id/messages", async (c) => {
 adminSupportRouter.post("/tickets/:id/messages", async (c) => {
   try {
     const id = c.req.param("id");
-    const { message } = await c.req.json();
-    const authHeader = c.req.header("authorization");
-    // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
-    const token = authHeader?.toLowerCase().startsWith("bearer ")
-      ? authHeader.slice(7)
-      : undefined;
-
-    // We still need the authenticated client here to get the current user's ID
-    const authSupabase = getAuthenticatedClient(token);
-    const supabase = getAdminClient(getServiceRoleKey(c));
+    const { message } = await c.req.json().catch(() => ({}));
+    const user = c.get("user" as any) as any;
 
     if (!message) {
       return c.json({ error: "Message is required" }, 400);
     }
 
-    const {
-      data: { user },
-    } = await authSupabase.auth.getUser();
-    if (!user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const tickets = queryTable({
+      table: "support_tickets",
+      filters: [{ field: "id", operator: "eq", value: id }],
+    });
+    const ticket = tickets && tickets[0];
+    const targetUserId = ticket?.user_id || user.id;
 
-    const { data, error } = await supabase
-      .from("support_messages")
-      .insert({
-        ticket_id: id,
-        sender_id: user.id,
-        message,
-      })
-      .select()
-      .single();
+    const newMessage = {
+      id: crypto.randomUUID(),
+      ticket_id: id,
+      sender_id: user.id,
+      message,
+      created_at: new Date().toISOString(),
+    };
 
-    if (error) throw error;
+    const inserted = insertTable("support_messages", newMessage, targetUserId);
 
-    return c.json({ message: data });
+    return c.json({ message: Array.isArray(inserted) ? inserted[0] : inserted });
   } catch (error: any) {
     console.error("Error posting ticket message:", error);
     return c.json({ error: "Internal server error" }, 500);
@@ -195,23 +165,19 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
 adminSupportRouter.patch("/tickets/:id/status", async (c) => {
   try {
     const id = c.req.param("id");
-    const { status } = await c.req.json();
-    const supabase = getAdminClient(getServiceRoleKey(c));
+    const { status } = await c.req.json().catch(() => ({}));
 
     if (!status || !["Open", "Closed"].includes(status)) {
       return c.json({ error: "Invalid status" }, 400);
     }
 
-    const { data, error } = await supabase
-      .from("support_tickets")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select()
-      .single();
+    const updated = updateTable(
+      "support_tickets",
+      [{ field: "id", operator: "eq", value: id }],
+      { status, updated_at: new Date().toISOString() },
+    );
 
-    if (error) throw error;
-
-    return c.json({ ticket: data });
+    return c.json({ ticket: updated && updated[0] });
   } catch (error: any) {
     console.error("Error updating ticket status:", error);
     return c.json({ error: "Internal server error" }, 500);

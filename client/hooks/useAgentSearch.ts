@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 
 export interface AgentSearchImage {
   data: string; // base64 or https:// URL
@@ -85,7 +85,7 @@ export function useAgentSearch(): UseAgentSearchReturn {
       try {
         const {
           data: { session },
-        } = await supabase.auth.getSession();
+        } = await db.auth.getSession();
         if (!session) {
           throw new Error("Unauthorized: Please sign in");
         }

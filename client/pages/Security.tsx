@@ -40,7 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import {
   generateAes256Key,
   bytesToHex,

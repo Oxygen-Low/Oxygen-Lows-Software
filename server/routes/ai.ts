@@ -1,12 +1,9 @@
 import { Hono } from "hono";
-import { env } from "hono/adapter";
-import { createClient } from "@supabase/supabase-js";
 import { rateLimiter } from "../lib/rateLimiter.ts";
+import { resolveUserFromToken } from "../lib/auth.ts";
+import { queryTable, callRpc } from "../lib/dataStore.ts";
 
 export const aiRouter = new Hono();
-
-const SUPABASE_URL = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
 
 const DEFAULT_MODELS = [
   { provider: "horde", model_id: "Fast" },
@@ -149,16 +146,9 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
   const token = extractBearerToken(authHeader);
   let user = null;
-  let supabase: any = null;
 
   if (token && token !== "undefined" && token !== "null") {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const authRes = await supabase.auth.getUser();
-    if (!authRes.error && authRes.data?.user) {
-      user = authRes.data.user;
-    }
+    user = await resolveUserFromToken(token);
   }
 
   if (!user && provider !== "horde") {
@@ -166,13 +156,15 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   }
 
   let integration: any = null;
-  if (user && supabase) {
-    const { data } = await supabase
-      .from("user_integrations")
-      .select("api_key, base_url")
-      .eq("provider", provider)
-      .single();
-    if (data) integration = data;
+  if (user) {
+    const integrations = queryTable({
+      table: "user_integrations",
+      userId: user.id,
+      filters: [{ field: "provider", operator: "eq", value: provider }],
+    });
+    if (Array.isArray(integrations) && integrations.length > 0) {
+      integration = integrations[0];
+    }
   }
 
   if (apiKey) {
@@ -307,7 +299,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["Authorization"] =
         `Bearer ${integration?.api_key || "0000000000"}`;
     } else if (provider === "cloudflare") {
-      if (!user || !supabase)
+      if (!user)
         return c.json({ error: "Authentication required" }, 401);
 
       // Estimate token usage (input + 400 estimated output)
@@ -320,11 +312,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       const p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
 
       // Deduct points first
-      const { data: success, error: rpcError } = await supabase.rpc(
-        "spend_points",
-        { p_amount },
-      );
-      if (rpcError || !success) {
+      const rpcRes = callRpc("spend_points", { p_amount }, user.id);
+      if (!rpcRes || !rpcRes.success) {
         return c.json({ error: "Insufficient points" }, 402);
       }
 

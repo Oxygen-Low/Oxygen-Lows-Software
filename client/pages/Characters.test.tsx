@@ -11,7 +11,7 @@ import { MemoryRouter } from "react-router-dom";
 import Characters from "./Characters";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase, db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import {
   clearActiveMasterKey,
@@ -40,7 +40,7 @@ vi.mock("@/lib/storage", () => ({
   customStorage: mockStorage,
 }));
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/db", () => {
   const builder: any = {
     select: vi.fn(() => builder),
     order: vi.fn(() => Promise.resolve({ data: [], error: null })),
@@ -51,10 +51,13 @@ vi.mock("@/lib/supabase", () => {
     in: vi.fn(() => builder),
   };
 
+  const mockClient = {
+    from: vi.fn(() => builder),
+  };
+
   return {
-    supabase: {
-      from: vi.fn(() => builder),
-    },
+    db: mockClient,
+    supabase: mockClient,
   };
 });
 

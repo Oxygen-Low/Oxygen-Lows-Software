@@ -172,11 +172,11 @@ export default function Privacy() {
                 2.4 Authentication Data
               </p>
               <P>
-                We use <strong>Supabase Auth</strong> to handle account
-                creation, login, and session management. Supabase stores your
-                email address and hashed password (or OAuth provider token)
-                securely. OAuth sign-in (e.g. via a third-party provider) shares
-                only the information granted by your consent with that provider.
+                We use native, local authentication and session management to
+                handle account creation, login, and session tokens. Your account
+                stores your username, email address, and securely hashed
+                password (using PBKDF2 cryptography). All authentication and
+                session validation operate directly through our native service.
               </P>
             </div>
 
@@ -359,11 +359,6 @@ export default function Privacy() {
               </thead>
               <tbody className="divide-y divide-border/30">
                 {[
-                  [
-                    "Supabase",
-                    "Database, authentication & file storage",
-                    "Account data, storage files, support tickets",
-                  ],
                   ["OpenAI", "AI response generation", "AI prompts you submit"],
                   [
                     "Anthropic",
@@ -440,9 +435,8 @@ export default function Privacy() {
             </p>
             <P>
               Because some of our third-party infrastructure and AI processors
-              (including OpenAI, Anthropic, Google, and Supabase) are based in
-              the United States or other countries outside the United Kingdom
-              and European Economic Area, your personal data may be transferred
+              (including OpenAI, Anthropic, and Google) are based in the United
+              States or other countries outside the United Kingdom and European Economic Area, your personal data may be transferred
               internationally. We ensure that appropriate safeguards are in
               place in accordance with UK GDPR Chapter V and EU GDPR Articles
               44–49, such as the UK International Data Transfer Agreement
@@ -596,13 +590,13 @@ export default function Privacy() {
         </Section>
 
         {/* Cookies */}
-        <Section id="cookies" title="8. Cookies" index={8}>
+        <Section id="cookies" title="8. Cookies & Local Storage" index={8}>
           <P>
-            We use only <strong>strictly necessary cookies</strong> to maintain
-            your authenticated session. These cookies are set by Supabase Auth
-            and are essential for the Service to function. They are not used to
-            track you across other websites and are deleted when you sign out or
-            when your session expires.
+            We use only <strong>strictly necessary session mechanisms</strong> to
+            maintain your authenticated session. These session tokens are managed
+            locally and are essential for the Service to function. They are not
+            used to track you across other websites and are deleted when you sign
+            out or when your session expires.
           </P>
           <P>
             We do not use advertising, analytics, social media, or any other

@@ -57,7 +57,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import {
   isCategoryLocked,
   isCategoryEncryptionEnabled,

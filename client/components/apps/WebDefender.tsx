@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";

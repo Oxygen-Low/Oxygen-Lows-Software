@@ -1,30 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { proxyRouter } from "./proxy";
 
-vi.mock("@supabase/supabase-js", () => {
-  return {
-    createClient: vi.fn((_url: string, _key: string, options?: any) => {
-      const authHeader = options?.global?.headers?.Authorization || "";
-      const token = authHeader.replace(/^Bearer /i, "");
+vi.mock("../lib/auth.ts", () => ({
+  resolveUserFromToken: vi.fn(async (token: string) => {
+    if (token === "valid-token") {
       return {
-        auth: {
-          getUser: vi.fn(async () => {
-            if (token === "valid-token") {
-              return {
-                data: { user: { id: "user-123", email: "test@example.com" } },
-                error: null,
-              };
-            }
-            return {
-              data: { user: null },
-              error: { message: "Invalid token" },
-            };
-          }),
-        },
+        id: "user-123",
+        email: "test@example.com",
+        username: "test",
+        role: "user",
       };
-    }),
-  };
-});
+    }
+    return null;
+  }),
+}));
 
 describe("Proxy Route Security & Functionality", () => {
   beforeEach(() => {

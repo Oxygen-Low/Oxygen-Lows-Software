@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { AudioPlayerPreview } from "./AudioPlayerPreview";
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/db", () => {
   return {
     supabase: {
       storage: {

@@ -11,11 +11,11 @@ import { MemoryRouter } from "react-router-dom";
 import { PublicAssetsApp } from "./PublicAssets";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase, db } from "@/lib/db";
 
 const mockToast = vi.fn();
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/db", () => {
   const mockStorageFrom = {
     list: vi.fn(() =>
       Promise.resolve({
@@ -46,14 +46,17 @@ vi.mock("@/lib/supabase", () => {
 
   builder.then = vi.fn((resolve) => resolve({ data: [], error: null }));
 
-  return {
-    supabase: {
-      from: vi.fn(() => builder),
-      storage: {
-        from: vi.fn(() => mockStorageFrom),
-      },
-      rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  const mockClient = {
+    from: vi.fn(() => builder),
+    storage: {
+      from: vi.fn(() => mockStorageFrom),
     },
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  };
+
+  return {
+    db: mockClient,
+    supabase: mockClient,
   };
 });
 

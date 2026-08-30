@@ -1,17 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = "https://vqmukrmpgvavscsyefqd.supabase.co";
-const supabaseKey = "sb_publishable_t2Nj_QmKvYBkmhQZvGkPAQ_a6YFGq4Q";
-
-export const rawSupabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    flowType: "pkce",
-  },
-});
-
-const getFetch = () =>
-  typeof fetch !== "undefined" ? fetch : (globalThis as any).fetch;
-
 import {
   LocalSession,
   getLocalSession,
@@ -20,6 +6,9 @@ import {
 
 export type { LocalSession };
 export { getLocalSession };
+
+const getFetch = () =>
+  typeof fetch !== "undefined" ? fetch : (globalThis as any).fetch;
 
 const authListeners = new Set<(event: string, session: any) => void>();
 
@@ -40,7 +29,7 @@ export function notifyAuthListeners(event: string, session: any) {
   }
 }
 
-class LocalQueryBuilder implements PromiseLike<any> {
+export class LocalQueryBuilder implements PromiseLike<any> {
   private table: string;
   private token?: string;
   private action: "query" | "insert" | "update" | "upsert" | "delete" = "query";
@@ -289,115 +278,116 @@ class LocalQueryBuilder implements PromiseLike<any> {
   }
 }
 
-export const customClient = {
+export class LocalChannel {
+  private name: string;
+
+  constructor(name: string) {
+    this.name = name;
+  }
+
+  on(_event: string, _config: any, _callback?: (payload: any) => void) {
+    return this;
+  }
+
+  subscribe(callback?: (status: string) => void) {
+    if (callback) {
+      try {
+        callback("SUBSCRIBED");
+      } catch {}
+    }
+    return this;
+  }
+
+  async unsubscribe() {
+    return "ok";
+  }
+}
+
+async function executeRpc(name: string, args: any = {}, token?: string) {
+  try {
+    const fetchFn = getFetch();
+    const session = getLocalSession();
+    const activeToken = token || session?.access_token;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
+    };
+
+    const res = await fetchFn("/api/data/rpc", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ fn: name, args }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      return {
+        data: null,
+        error: new Error(json.error || `RPC ${name} failed`),
+      };
+    }
+
+    return { data: json.data, error: null };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: err instanceof Error ? err : new Error(String(err)),
+    };
+  }
+}
+
+export const db = {
   from(table: string) {
     return new LocalQueryBuilder(table);
   },
 
   async rpc(name: string, args: any = {}) {
-    try {
-      const fetchFn = getFetch();
-      const session = getLocalSession();
-      const activeToken = session?.access_token;
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
-      };
-
-      const res = await fetchFn("/api/data/rpc", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ fn: name, args }),
-      });
-
-      const json = await res.json();
-      if (!res.ok || json.error) {
-        return {
-          data: null,
-          error: new Error(json.error || `RPC ${name} failed`),
-        };
-      }
-
-      return { data: json.data, error: null };
-    } catch (err: any) {
-      return {
-        data: null,
-        error: err instanceof Error ? err : new Error(String(err)),
-      };
-    }
+    return executeRpc(name, args);
   },
 
   auth: {
     async getSession() {
       const local = getLocalSession();
-      if (local) {
-        return { data: { session: local }, error: null };
-      }
-      return rawSupabase.auth.getSession();
+      return { data: { session: local }, error: null };
     },
 
     async getUser() {
       const local = getLocalSession();
-      if (local) {
-        return { data: { user: local.user }, error: null };
-      }
-      return rawSupabase.auth.getUser();
+      return { data: { user: local?.user || null }, error: null };
     },
 
     onAuthStateChange(callback: (event: string, session: any) => void) {
       authListeners.add(callback);
-      const rawSub = rawSupabase.auth.onAuthStateChange((event, session) => {
-        const local = getLocalSession();
-        if (!local) {
-          callback(event, session);
-        }
-      });
-
       return {
         data: {
           subscription: {
             unsubscribe: () => {
               authListeners.delete(callback);
-              rawSub.data.subscription?.unsubscribe();
             },
           },
         },
       };
     },
 
-    async signInWithOAuth(options: any) {
-      return rawSupabase.auth.signInWithOAuth(options);
-    },
-
-    async linkIdentity(options: any) {
-      return rawSupabase.auth.linkIdentity(options);
-    },
-
     async signOut() {
       setLocalSession(null);
-      return rawSupabase.auth.signOut();
-    },
-
-    oauth: (rawSupabase.auth as any).oauth || {
-      getAuthorizationDetails: async (id: string) =>
-        (rawSupabase.auth as any).oauth?.getAuthorizationDetails(id),
-      approveAuthorization: async (id: string) =>
-        (rawSupabase.auth as any).oauth?.approveAuthorization(id),
-      denyAuthorization: async (id: string) =>
-        (rawSupabase.auth as any).oauth?.denyAuthorization(id),
+      return { error: null };
     },
   },
 
   channel(name: string) {
-    return rawSupabase.channel(name);
+    return new LocalChannel(name);
   },
 
-  removeChannel(channel: any) {
-    return rawSupabase.removeChannel(channel);
+  removeChannel(_channel: any) {
+    return Promise.resolve("ok");
   },
 };
 
-export const supabase = customClient;
+export const customClient = db;
+export const supabase = db;
+export const rawSupabase = db;
+export default db;
 
 export function getAuthenticatedClient(token?: string) {
   if (token) {
@@ -406,9 +396,16 @@ export function getAuthenticatedClient(token?: string) {
         return new LocalQueryBuilder(table, token);
       },
       rpc(name: string, args: any = {}) {
-        return customClient.rpc(name, args);
+        return executeRpc(name, args, token);
+      },
+      auth: db.auth,
+      channel(name: string) {
+        return db.channel(name);
+      },
+      removeChannel(channel: any) {
+        return db.removeChannel(channel);
       },
     };
   }
-  return customClient;
+  return db;
 }

@@ -1,1 +1,0 @@
-ALTER TABLE public.chats DROP COLUMN IF EXISTS style;

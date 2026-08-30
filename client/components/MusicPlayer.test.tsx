@@ -27,7 +27,10 @@ const mockSupabase = {
   from: vi.fn((_table?: string) => ({}) as any),
 };
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/lib/db", () => ({
+  db: {
+    from: (table: string) => mockSupabase.from(table),
+  },
   supabase: {
     from: (table: string) => mockSupabase.from(table),
   },

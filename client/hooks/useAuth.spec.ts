@@ -4,140 +4,110 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useAuth } from "./useAuth";
-import { supabase } from "@/lib/supabase";
-
-// Mock supabase
-vi.mock("@/lib/supabase", () => ({
-  getAuthenticatedClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-        })),
-      })),
-    })),
-  })),
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
-      onAuthStateChange: vi.fn(),
-      signOut: vi.fn(),
-      signInWithOAuth: vi.fn(),
-      linkIdentity: vi.fn(),
-    },
-  },
-}));
+import { db, getLocalSession, setLocalSession } from "@/lib/db";
 
 describe("useAuth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (supabase.auth.onAuthStateChange as any).mockReturnValue({
-      data: { subscription: { unsubscribe: vi.fn() } },
-    });
+    localStorage.clear();
   });
 
-  it("should initialize with loading state and fetch session", async () => {
-    const mockSession = { user: { id: "123" } };
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: mockSession },
-    });
+  it("should initialize with loading state and local session", async () => {
+    const mockSession = {
+      access_token: "test-jwt",
+      token_type: "bearer",
+      user: { id: "123", email: "user@example.com", username: "user" },
+    };
+    setLocalSession(mockSession);
 
     const { result } = renderHook(() => useAuth());
-
-    expect(result.current.loading).toBe(true);
-
-    // Wait for the useEffect to finish
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
 
     expect(result.current.loading).toBe(false);
     expect(result.current.session).toEqual(mockSession);
-    expect(supabase.auth.getSession).toHaveBeenCalled();
   });
 
-  it("should handle sign out", async () => {
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: { user: { id: "123" } } },
+  it("should handle signIn successfully", async () => {
+    const mockSession = {
+      access_token: "login-jwt",
+      token_type: "bearer",
+      user: { id: "u1", email: "login@test.com", username: "loginuser" },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ session: mockSession, user: mockSession.user }),
     });
-    (supabase.auth.signOut as any).mockResolvedValue({ error: null });
 
     const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      const res = await result.current.signIn("loginuser", "password123");
+      expect(res.session).toEqual(mockSession);
+    });
+
+    expect(result.current.session).toEqual(mockSession);
+    expect(getLocalSession()).toEqual(mockSession);
+  });
+
+  it("should handle signUp successfully", async () => {
+    const mockSession = {
+      access_token: "signup-jwt",
+      token_type: "bearer",
+      user: { id: "u2", email: "new@test.com", username: "newuser" },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ session: mockSession, user: mockSession.user }),
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      const res = await result.current.signUp("newuser", "new@test.com", "password123");
+      expect(res.session).toEqual(mockSession);
+    });
+
+    expect(result.current.session).toEqual(mockSession);
+    expect(getLocalSession()).toEqual(mockSession);
+  });
+
+  it("should handle signOut", async () => {
+    const mockSession = {
+      access_token: "active-jwt",
+      token_type: "bearer",
+      user: { id: "u1", email: "active@test.com", username: "activeuser" },
+    };
+    setLocalSession(mockSession);
+
+    const { result } = renderHook(() => useAuth());
+    expect(result.current.session).toEqual(mockSession);
 
     await act(async () => {
       await result.current.signOut();
     });
 
-    expect(supabase.auth.signOut).toHaveBeenCalled();
+    expect(result.current.session).toBeNull();
+    expect(getLocalSession()).toBeNull();
   });
 
-  it("should handle Google OAuth sign in", async () => {
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: null },
-    });
-    (supabase.auth.signInWithOAuth as any).mockResolvedValue({
-      data: { provider: "google", url: "http://localhost" },
-      error: null,
-    });
-
-    const { result } = renderHook(() => useAuth());
-
-    await act(async () => {
-      await result.current.signInWithOAuth("google");
-    });
-
-    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
-      provider: "google",
-      options: {
-        redirectTo: "http://localhost:3000",
-        scopes: "email profile openid",
-      },
-    });
-  });
-
-  it("should handle Google identity linking", async () => {
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: { user: { id: "123" } } },
-    });
-    (supabase.auth.linkIdentity as any).mockResolvedValue({
-      data: { provider: "google", url: "http://localhost" },
-      error: null,
-    });
-
-    const { result } = renderHook(() => useAuth());
-
-    await act(async () => {
-      await result.current.linkIdentity("google");
-    });
-
-    expect(supabase.auth.linkIdentity).toHaveBeenCalledWith({
-      provider: "google",
-      options: {
-        redirectTo: "http://localhost:3000/account",
-        scopes: "email profile openid",
-      },
-    });
-  });
-
-  it("should handle errors", async () => {
-    const errorMessage = "Sign out failed";
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: { session: { user: { id: "123" } } },
-    });
-    (supabase.auth.signOut as any).mockResolvedValue({
-      error: new Error(errorMessage),
+  it("should handle signIn error", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: "Invalid credentials" }),
     });
 
     const { result } = renderHook(() => useAuth());
 
     await act(async () => {
       try {
-        await result.current.signOut();
-      } catch (err) {
-        // Expected
+        await result.current.signIn("wronguser", "wrongpassword");
+      } catch {
+        // Expected error
       }
     });
 
-    expect(result.current.error).toBe(errorMessage);
+    expect(result.current.error).toBe("Invalid credentials");
   });
 });

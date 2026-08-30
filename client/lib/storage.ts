@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { getLocalSession } from "./localSession";
 
 export interface StorageFileItem {
   id: string | null;
@@ -17,10 +17,9 @@ export interface UploadOptions {
   [key: string]: any;
 }
 
-async function getAuthToken(): Promise<string | undefined> {
+function getAuthToken(): string | undefined {
   try {
-    const { data } = await supabase.auth.getSession();
-    return data?.session?.access_token;
+    return getLocalSession()?.access_token;
   } catch {
     return undefined;
   }

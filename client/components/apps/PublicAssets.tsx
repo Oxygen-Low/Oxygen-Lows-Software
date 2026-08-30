@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import {
   getActiveMasterKey,

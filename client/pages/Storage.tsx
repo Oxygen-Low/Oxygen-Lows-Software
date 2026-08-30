@@ -67,7 +67,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

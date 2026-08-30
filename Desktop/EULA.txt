@@ -40,7 +40,7 @@ The Licensor may, from time to time, issue updates, patches, or new versions of 
 The Licensor reserves the right to modify, suspend, or discontinue any feature or the entire Software at any time, with or without notice, without liability to you.
 
 7. Third-Party Software & Services
-The Software may incorporate or interface with third-party software libraries, APIs, and services (including Supabase, OpenAI, Anthropic, Google, Cloudflare, and others). Your use of such third-party components is subject to their respective licence terms and privacy policies. The Licensor is not responsible for the availability, accuracy, or conduct of any third-party service.
+The Software may incorporate or interface with third-party software libraries, APIs, and services (including OpenAI, Anthropic, Google, Cloudflare, and others). Your use of such third-party components is subject to their respective licence terms and privacy policies. The Licensor is not responsible for the availability, accuracy, or conduct of any third-party service.
 
 8. Privacy
 Your use of the Software is subject to our Privacy Policy, which is incorporated into this EULA by reference. By using the Software, you consent to the collection and use of your information as described in the Privacy Policy.

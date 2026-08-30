@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -140,7 +140,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       const loop_enabled =
         overrides.loop !== undefined ? overrides.loop : loopRef.current;
 
-      await supabase.from("user_preferences").upsert(
+      await db.from("user_preferences").upsert(
         {
           user_id: session.user.id,
           music_playlist,
@@ -236,7 +236,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("user_preferences")
           .select(
             "music_playlist, current_music_track, current_music_position, shuffle_enabled, loop_enabled",

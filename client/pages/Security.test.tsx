@@ -12,8 +12,8 @@ import Security from "./Security";
 import { useAuth } from "@/hooks/useAuth";
 import { clearActiveMasterKey } from "@/lib/crypto";
 
-// Mock Supabase
-vi.mock("@/lib/supabase", () => {
+// Mock db
+vi.mock("@/lib/db", () => {
   const queryBuilder: any = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
@@ -24,22 +24,24 @@ vi.mock("@/lib/supabase", () => {
     order: vi.fn().mockReturnThis(),
     then: vi.fn((resolve: any) => resolve({ data: [], error: null })),
   };
-  return {
-    supabase: {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u" } } }),
-        getSession: vi.fn().mockResolvedValue({
-          data: { session: { user: { id: "u" } } },
-          error: null,
+  const mockClient = {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u" } } }),
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "u" } } },
+        error: null,
+      }),
+      onAuthStateChange: vi
+        .fn()
+        .mockReturnValue({
+          data: { subscription: { unsubscribe: vi.fn() } },
         }),
-        onAuthStateChange: vi
-          .fn()
-          .mockReturnValue({
-            data: { subscription: { unsubscribe: vi.fn() } },
-          }),
-      },
-      from: vi.fn().mockReturnValue(queryBuilder),
     },
+    from: vi.fn().mockReturnValue(queryBuilder),
+  };
+  return {
+    db: mockClient,
+    supabase: mockClient,
   };
 });
 

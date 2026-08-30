@@ -10,7 +10,8 @@ import {
 import { FriendsApp } from "./Friends";
 import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { supabase } from "@/lib/supabase";
+import { supabase, db } from "@/lib/db";
+import { setLocalSession } from "@/lib/localSession";
 
 // Mock react-i18next
 
@@ -52,17 +53,8 @@ const mockSupabaseChain = (data: any) => {
   return builder;
 };
 
-vi.mock("@/lib/supabase", () => ({
-  getAuthenticatedClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-        })),
-      })),
-    })),
-  })),
-  supabase: {
+vi.mock("@/lib/db", () => {
+  const mockClient = {
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { id: "test-user-id" } },
@@ -86,8 +78,29 @@ vi.mock("@/lib/supabase", () => ({
       return mockSupabaseChain([]);
     }),
     rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
-  },
-}));
+  };
+
+  return {
+    getAuthenticatedClient: vi.fn(() => ({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+          })),
+        })),
+      })),
+    })),
+    db: mockClient,
+    supabase: mockClient,
+    getLocalSession: vi.fn(() => ({
+      access_token: "test-token",
+      token_type: "bearer",
+      user: { id: "test-user-id" },
+    })),
+    setLocalSession: vi.fn(),
+    notifyAuthListeners: vi.fn(),
+  };
+});
 
 // Mock sonner
 vi.mock("sonner", () => ({
@@ -100,6 +113,11 @@ vi.mock("sonner", () => ({
 describe("FriendsApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setLocalSession({
+      access_token: "test-token",
+      token_type: "bearer",
+      user: { id: "test-user-id", email: "test@test.com", username: "testuser" },
+    });
   });
 
   afterEach(() => {

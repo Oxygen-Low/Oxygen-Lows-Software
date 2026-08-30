@@ -37,7 +37,7 @@ describe("Agent Search Route", () => {
       body: "invalid json",
     });
 
-    // Auth fails first with fake_token since Supabase auth is not mocked
+    // Auth fails first with fake_token since local auth requires a valid signed token
     expect(res.status).toBe(401);
   });
 

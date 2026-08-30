@@ -15,7 +15,7 @@ import {
 } from "@/lib/languages";
 import { getTranslation, TranslationKey } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 
 export interface LanguageContextType {
   language: string;
@@ -71,7 +71,7 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
       }
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("profiles")
           .select("language")
           .eq("user_id", session.user.id)
@@ -113,7 +113,7 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
 
       if (session?.user?.id) {
         try {
-          await supabase.from("profiles").upsert({
+          await db.from("profiles").upsert({
             user_id: session.user.id,
             language: option.name,
           });
