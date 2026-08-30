@@ -84,14 +84,31 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const resolvePlaybackUrl = useCallback(
     async (fileName: string) => {
       if (!session?.user?.id) return null;
-      let path = fileName.startsWith(session.user.id + "/")
-        ? fileName
-        : `${session.user.id}/${fileName}`;
+      let path = fileName;
       let previous: string;
       do {
         previous = path;
-        path = path.replace(/\.\.\//g, "");
+        path = path
+          .replace(/\\/g, "/")
+          .replace(/\.\.\//g, "")
+          .replace(/^\/+/, "");
       } while (path !== previous);
+
+      const UUID_REGEX =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
+
+      if (path.startsWith(session.user.id + "/")) {
+        const afterUser = path.slice(session.user.id.length + 1);
+        if (UUID_REGEX.test(afterUser)) {
+          path = `${session.user.id}/${afterUser.replace(UUID_REGEX, "")}`;
+        }
+      } else if (UUID_REGEX.test(path)) {
+        const subPath = path.replace(UUID_REGEX, "");
+        path = `${session.user.id}/${subPath}`;
+      } else {
+        path = `${session.user.id}/${path}`;
+      }
+
       const { data } = await storage
         .from("Storage")
         .createSignedUrl(path, 3600);

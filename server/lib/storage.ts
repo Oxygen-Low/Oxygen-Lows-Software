@@ -146,8 +146,28 @@ export const serverStorage = {
     try {
       const cleanBucket = sanitizePath(bucket);
       const filePath = sanitizePath(rawFilePath);
-      const fullPath = path.join(STORAGE_DIR, cleanBucket, filePath);
+      let fullPath = path.join(STORAGE_DIR, cleanBucket, filePath);
+
       if (!fs.existsSync(fullPath)) {
+        // Fallback: check if filePath contains a duplicated/nested user directory
+        // e.g. "1/3cb76293-8c6c-49b9-b431-1ff5fce471ee/testsong.mp3"
+        const parts = filePath.split("/");
+        if (parts.length > 2) {
+          // Try removing middle UUID/segment: "1/uuid/file.mp3" -> "1/file.mp3"
+          const withoutMiddle = [parts[0], ...parts.slice(2)].join("/");
+          const tryPath1 = path.join(STORAGE_DIR, cleanBucket, withoutMiddle);
+          if (fs.existsSync(tryPath1)) {
+            const buffer = fs.readFileSync(tryPath1);
+            return { data: buffer, error: null };
+          }
+          // Try removing first part: "1/uuid/file.mp3" -> "uuid/file.mp3"
+          const withoutFirst = parts.slice(1).join("/");
+          const tryPath2 = path.join(STORAGE_DIR, cleanBucket, withoutFirst);
+          if (fs.existsSync(tryPath2)) {
+            const buffer = fs.readFileSync(tryPath2);
+            return { data: buffer, error: null };
+          }
+        }
         return { data: null, error: new Error("File not found") };
       }
       const buffer = fs.readFileSync(fullPath);

@@ -375,10 +375,42 @@ authRouter.post("/migrate", async (c) => {
 
     // Save preferences
     if (prefRes.data) {
+      const musicPlaylist = Array.isArray(prefRes.data.music_playlist)
+        ? prefRes.data.music_playlist.map((t: any) => ({
+            ...t,
+            fileName:
+              typeof t.fileName === "string"
+                ? t.fileName.replace(
+                    new RegExp(`^${sbUser.id}/`),
+                    `${newUserId}/`,
+                  )
+                : t.fileName,
+          }))
+        : prefRes.data.music_playlist;
+
+      const currentMusicTrack =
+        typeof prefRes.data.current_music_track === "string"
+          ? prefRes.data.current_music_track.replace(
+              new RegExp(`^${sbUser.id}/`),
+              `${newUserId}/`,
+            )
+          : prefRes.data.current_music_track;
+
+      const font =
+        typeof prefRes.data.font === "string"
+          ? prefRes.data.font.replace(
+              new RegExp(`font-custom:${sbUser.id}/`),
+              `font-custom:${newUserId}/`,
+            )
+          : prefRes.data.font;
+
       const prefs = {
         ...prefRes.data,
         id: newUserId,
         user_id: newUserId,
+        music_playlist: musicPlaylist,
+        current_music_track: currentMusicTrack,
+        font,
       };
       saveTableRows("user_preferences", newUserId, [prefs]);
     }

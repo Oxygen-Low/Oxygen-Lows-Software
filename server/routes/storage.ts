@@ -152,8 +152,31 @@ storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
     }
 
     const mimeType = getMimeType(filePath);
+    const rangeHeader = c.req.header("range");
+    const totalSize = data.length;
+
+    if (rangeHeader && rangeHeader.startsWith("bytes=")) {
+      const parts = rangeHeader.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+
+      if (!isNaN(start) && start < totalSize) {
+        const chunkEnd = Math.min(end, totalSize - 1);
+        const chunk = data.subarray(start, chunkEnd + 1);
+        return c.body(chunk as any, 206, {
+          "Content-Type": mimeType,
+          "Content-Range": `bytes ${start}-${chunkEnd}/${totalSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": String(chunk.length),
+          "Content-Disposition": `inline; filename="${encodeURIComponent(filePath.split("/").pop() || "file")}"`,
+        });
+      }
+    }
+
     return c.body(data as any, 200, {
       "Content-Type": mimeType,
+      "Accept-Ranges": "bytes",
+      "Content-Length": String(totalSize),
       "Content-Disposition": `inline; filename="${encodeURIComponent(filePath.split("/").pop() || "file")}"`,
     });
   } catch (err: any) {
@@ -180,8 +203,31 @@ storageRouter.get("/public/:bucket/*", async (c) => {
     }
 
     const mimeType = getMimeType(filePath);
+    const rangeHeader = c.req.header("range");
+    const totalSize = data.length;
+
+    if (rangeHeader && rangeHeader.startsWith("bytes=")) {
+      const parts = rangeHeader.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+
+      if (!isNaN(start) && start < totalSize) {
+        const chunkEnd = Math.min(end, totalSize - 1);
+        const chunk = data.subarray(start, chunkEnd + 1);
+        return c.body(chunk as any, 206, {
+          "Content-Type": mimeType,
+          "Content-Range": `bytes ${start}-${chunkEnd}/${totalSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": String(chunk.length),
+          "Cache-Control": "public, max-age=31536000, immutable",
+        });
+      }
+    }
+
     return c.body(data as any, 200, {
       "Content-Type": mimeType,
+      "Accept-Ranges": "bytes",
+      "Content-Length": String(totalSize),
       "Cache-Control": "public, max-age=31536000, immutable",
     });
   } catch (err: any) {

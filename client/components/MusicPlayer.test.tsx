@@ -455,6 +455,10 @@ describe("MusicContext storage path sanitization", () => {
     }));
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it("recursively sanitizes nested and spliced path traversal sequences", async () => {
     render(
       <MusicProvider>
@@ -472,6 +476,51 @@ describe("MusicContext storage path sanitization", () => {
     await waitFor(() => {
       expect(mockCreateSignedUrl).toHaveBeenCalledWith(
         "test-user-id/nested/song.mp3",
+        3600,
+      );
+    });
+  });
+
+  it("correctly resolves tracks that have a Supabase UUID prefix without duplicating user id", async () => {
+    render(
+      <MusicProvider>
+        <PathTestConsumer
+          track={{
+            name: "Test Song",
+            fileName: "3cb76293-8c6c-49b9-b431-1ff5fce471ee/testsong.mp3",
+          }}
+        />
+      </MusicProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("play-track-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateSignedUrl).toHaveBeenCalledWith(
+        "test-user-id/testsong.mp3",
+        3600,
+      );
+    });
+  });
+
+  it("strips nested UUID prefix if already prepended with current user id", async () => {
+    render(
+      <MusicProvider>
+        <PathTestConsumer
+          track={{
+            name: "Test Song",
+            fileName:
+              "test-user-id/3cb76293-8c6c-49b9-b431-1ff5fce471ee/testsong.mp3",
+          }}
+        />
+      </MusicProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("play-track-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateSignedUrl).toHaveBeenCalledWith(
+        "test-user-id/testsong.mp3",
         3600,
       );
     });

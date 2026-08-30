@@ -185,14 +185,31 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       if (newFont.startsWith("font-custom:") && sessionUserId) {
         const fileName = newFont.replace("font-custom:", "");
         try {
-          let path = fileName.startsWith(sessionUserId + "/")
-            ? fileName
-            : `${sessionUserId}/${fileName}`;
+          let path = fileName;
           let previous: string;
           do {
             previous = path;
-            path = path.replace(/\.\.\//g, "");
+            path = path
+              .replace(/\\/g, "/")
+              .replace(/\.\.\//g, "")
+              .replace(/^\/+/, "");
           } while (path !== previous);
+
+          const UUID_REGEX =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
+
+          if (path.startsWith(sessionUserId + "/")) {
+            const afterUser = path.slice(sessionUserId.length + 1);
+            if (UUID_REGEX.test(afterUser)) {
+              path = `${sessionUserId}/${afterUser.replace(UUID_REGEX, "")}`;
+            }
+          } else if (UUID_REGEX.test(path)) {
+            const subPath = path.replace(UUID_REGEX, "");
+            path = `${sessionUserId}/${subPath}`;
+          } else {
+            path = `${sessionUserId}/${path}`;
+          }
+
           const { data } = await storage
             .from("Storage")
             .createSignedUrl(path, 3600);

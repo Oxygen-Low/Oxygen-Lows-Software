@@ -114,6 +114,21 @@ describe("Server Storage Library", () => {
       expect(download2.data?.toString()).toBe("2");
     });
 
+    it("downloads file when path has nested UUID prefix fallback", async () => {
+      await serverStorage.upload(
+        testBucket,
+        "1/testsong.mp3",
+        Buffer.from("audio-data"),
+      );
+
+      const downloadRes = await serverStorage.download(
+        testBucket,
+        "1/3cb76293-8c6c-49b9-b431-1ff5fce471ee/testsong.mp3",
+      );
+      expect(downloadRes.error).toBeNull();
+      expect(downloadRes.data?.toString()).toBe("audio-data");
+    });
+
     it("generates correct public and signed URLs", () => {
       const pubUrl = serverStorage.getPublicUrl("public-assets", "banner.png");
       expect(pubUrl).toBe("/api/storage/public/public-assets/banner.png");
