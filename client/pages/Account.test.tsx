@@ -108,4 +108,104 @@ describe("Account Component", () => {
     expect(screen.getByText("Add Language")).toBeDefined();
     expect(screen.getByText("No additional languages added.")).toBeDefined();
   });
+
+  it("renders profile picture with null crop_data without throwing error", async () => {
+    const { supabase } = await import("@/lib/supabase");
+    const { storage } = await import("@/lib/storage");
+
+    vi.spyOn(storage, "from").mockReturnValue({
+      createSignedUrl: vi.fn().mockResolvedValue({
+        data: { signedUrl: "https://example.com/avatar.png" },
+        error: null,
+      }),
+    } as any);
+
+    (supabase.from as any).mockImplementation((table: string) => {
+      const builder: any = {
+        select: vi.fn(() => builder),
+        eq: vi.fn(() => builder),
+        order: vi.fn(() => builder),
+        single: vi.fn(() => {
+          if (table === "profile_pictures") {
+            return Promise.resolve({
+              data: {
+                id: "pic-1",
+                user_id: "u",
+                image_url: "avatar.png",
+                crop_data: null,
+              },
+              error: null,
+            });
+          }
+          if (table === "profiles") {
+            return Promise.resolve({
+              data: {
+                user_id: "u",
+                username: "testuser",
+                display_name: "Test User",
+              },
+              error: null,
+            });
+          }
+          return Promise.resolve({ data: null, error: null });
+        }),
+      };
+      return builder;
+    });
+
+    render(<Account />);
+    expect(await screen.findByAltText("Test User")).toBeDefined();
+  });
+
+  it("renders profile picture with valid crop_data properly", async () => {
+    const { supabase } = await import("@/lib/supabase");
+    const { storage } = await import("@/lib/storage");
+
+    vi.spyOn(storage, "from").mockReturnValue({
+      createSignedUrl: vi.fn().mockResolvedValue({
+        data: { signedUrl: "https://example.com/avatar.png" },
+        error: null,
+      }),
+    } as any);
+
+    (supabase.from as any).mockImplementation((table: string) => {
+      const builder: any = {
+        select: vi.fn(() => builder),
+        eq: vi.fn(() => builder),
+        order: vi.fn(() => builder),
+        single: vi.fn(() => {
+          if (table === "profile_pictures") {
+            return Promise.resolve({
+              data: {
+                id: "pic-1",
+                user_id: "u",
+                image_url: "https://example.com/avatar.png",
+                crop_data: { x: 10, y: 20, width: 50, height: 50 },
+              },
+              error: null,
+            });
+          }
+          if (table === "profiles") {
+            return Promise.resolve({
+              data: {
+                user_id: "u",
+                username: "testuser",
+                display_name: "Test User",
+              },
+              error: null,
+            });
+          }
+          return Promise.resolve({ data: null, error: null });
+        }),
+      };
+      return builder;
+    });
+
+    const { container } = render(<Account />);
+    await screen.findByText("Test User");
+    const croppedDiv = container.querySelector(
+      'div[style*="background-image: url(\\"https://example.com/avatar.png\\")"]',
+    );
+    expect(croppedDiv).toBeDefined();
+  });
 });

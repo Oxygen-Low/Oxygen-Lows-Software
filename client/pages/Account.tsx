@@ -45,7 +45,7 @@ interface ProfilePicture {
   id: string;
   user_id?: string;
   image_url: string;
-  crop_data: Area;
+  crop_data?: Area | null;
 }
 
 export default function Account() {
@@ -313,16 +313,30 @@ export default function Account() {
         <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-start text-center sm:text-left">
           <div className="relative group shrink-0">
             <div className="w-28 h-28 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-slate-800 bg-slate-900 flex items-center justify-center">
-              {profilePicture ? (
-                <div
-                  className="w-full h-full"
-                  style={{
-                    backgroundImage: `url(${profilePicture.image_url})`,
-                    backgroundSize: `${100 / (profilePicture.crop_data.width / 100)}%`,
-                    backgroundPosition: `${profilePicture.crop_data.x}% ${profilePicture.crop_data.y}%`,
-                    backgroundRepeat: "no-repeat",
-                  }}
-                />
+              {profilePicture?.image_url ? (
+                profilePicture.crop_data &&
+                typeof profilePicture.crop_data.width === "number" &&
+                profilePicture.crop_data.width > 0 ? (
+                  <div
+                    className="w-full h-full"
+                    style={{
+                      backgroundImage: `url(${profilePicture.image_url})`,
+                      backgroundSize: `${100 / (profilePicture.crop_data.width / 100)}%`,
+                      backgroundPosition: `${profilePicture.crop_data.x ?? 0}% ${profilePicture.crop_data.y ?? 0}%`,
+                      backgroundRepeat: "no-repeat",
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={profilePicture.image_url}
+                    alt={
+                      profile?.display_name ||
+                      profile?.username ||
+                      "Profile"
+                    }
+                    className="w-full h-full object-cover"
+                  />
+                )
               ) : (
                 <div className="text-slate-700">
                   <Upload className="w-10 h-10 sm:w-12 sm:h-12" />
