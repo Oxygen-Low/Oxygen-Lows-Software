@@ -5,9 +5,9 @@ import { queryTable, callRpc } from "../lib/dataStore.ts";
 
 export const agentSearchRouter = new Hono();
 
-const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
-const HORDE_FAST_MODEL = "google/gemma-4-31b";
-const CLOUDFLARE_SMART_MODEL = "@cf/nvidia/nemotron-3-120b-a12b";
+export const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
+export const HORDE_FAST_MODEL = "google/gemma-4-31b";
+export const CLOUDFLARE_SMART_MODEL = "@cf/nvidia/nemotron-3-120b-a12b";
 
 // Max research tool rounds with Horde (up to 100 calls)
 const MAX_RESEARCH_ROUNDS = 100;
@@ -444,6 +444,10 @@ agentSearchRouter.post(
         images,
         stream = true,
         researchOnly = false,
+        researchModel,
+        researchProvider,
+        summarizerModel,
+        summarizerProvider,
       } = body;
 
       if (typeof query !== "string" || !query.trim()) {
@@ -488,6 +492,42 @@ agentSearchRouter.post(
           }
         }
       }
+
+      // Resolve user model preferences if not explicitly provided in request body
+      let userPrefs: any = {};
+      try {
+        const prefs = queryTable({
+          table: "user_preferences",
+          userId: user.id,
+        });
+        if (Array.isArray(prefs) && prefs[0]) {
+          userPrefs = prefs[0];
+        }
+      } catch {}
+
+      const effectiveResearchModel =
+        (typeof researchModel === "string" && researchModel.trim()) ||
+        userPrefs.research_agent_default_model ||
+        userPrefs.research_agent_model_id ||
+        HORDE_FAST_MODEL;
+
+      const effectiveResearchProvider =
+        (typeof researchProvider === "string" && researchProvider.trim()) ||
+        userPrefs.research_agent_default_provider ||
+        userPrefs.research_agent_provider ||
+        "horde";
+
+      const effectiveSummarizerModel =
+        (typeof summarizerModel === "string" && summarizerModel.trim()) ||
+        userPrefs.research_summarizer_default_model ||
+        userPrefs.research_summarizer_model_id ||
+        CLOUDFLARE_SMART_MODEL;
+
+      const effectiveSummarizerProvider =
+        (typeof summarizerProvider === "string" && summarizerProvider.trim()) ||
+        userPrefs.research_summarizer_default_provider ||
+        userPrefs.research_summarizer_provider ||
+        "cloudflare";
 
       // Read Cloudflare credentials for smart summary/conclusion (only needed if synthesizing)
       const rawEnv = (c.env || {}) as any;
@@ -580,7 +620,7 @@ Available actions (respond ONLY with a single JSON object):
             Authorization: `Bearer ${hordeApiKey}`,
           },
           body: JSON.stringify({
-            model: HORDE_FAST_MODEL,
+            model: effectiveResearchModel,
             messages: msgs,
             tools: SEARCH_TOOLS,
             temperature: 0.2,
@@ -609,7 +649,7 @@ Available actions (respond ONLY with a single JSON object):
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: CLOUDFLARE_SMART_MODEL,
+            model: effectiveSummarizerModel,
             messages: synthesisMessages,
             stream: streamMode,
           }),

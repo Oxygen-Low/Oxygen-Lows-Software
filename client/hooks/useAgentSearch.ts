@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { db } from "@/lib/db";
+import { useTheme } from "@/hooks/useTheme";
 
 export interface AgentSearchImage {
   data: string; // base64 or https:// URL
@@ -17,6 +18,10 @@ export interface AgentSearchOptions {
     | string;
   images?: AgentSearchImage[];
   stream?: boolean;
+  researchModel?: string;
+  researchProvider?: string;
+  summarizerModel?: string;
+  summarizerProvider?: string;
 }
 
 export interface SearchRecord {
@@ -49,6 +54,34 @@ export interface UseAgentSearchReturn {
 }
 
 export function useAgentSearch(): UseAgentSearchReturn {
+  const {
+    researchAgentDefaultModel,
+    researchAgentDefaultProvider,
+    researchSummarizerDefaultModel,
+    researchSummarizerDefaultProvider,
+  } = useTheme();
+
+  const defaultsRef = useRef({
+    researchAgentDefaultModel,
+    researchAgentDefaultProvider,
+    researchSummarizerDefaultModel,
+    researchSummarizerDefaultProvider,
+  });
+
+  useEffect(() => {
+    defaultsRef.current = {
+      researchAgentDefaultModel,
+      researchAgentDefaultProvider,
+      researchSummarizerDefaultModel,
+      researchSummarizerDefaultProvider,
+    };
+  }, [
+    researchAgentDefaultModel,
+    researchAgentDefaultProvider,
+    researchSummarizerDefaultModel,
+    researchSummarizerDefaultProvider,
+  ]);
+
   const [isSearching, setIsSearching] = useState(false);
   const [status, setStatus] = useState("");
   const [toolCalls, setToolCalls] = useState<ToolCallRecord[]>([]);
@@ -91,13 +124,47 @@ export function useAgentSearch(): UseAgentSearchReturn {
         }
 
         const streamMode = options.stream !== false;
+        const effectiveResearchModel =
+          options.researchModel ||
+          researchAgentDefaultModel ||
+          defaultsRef.current.researchAgentDefaultModel;
+        const effectiveResearchProvider =
+          options.researchProvider ||
+          researchAgentDefaultProvider ||
+          defaultsRef.current.researchAgentDefaultProvider;
+        const effectiveSummarizerModel =
+          options.summarizerModel ||
+          researchSummarizerDefaultModel ||
+          defaultsRef.current.researchSummarizerDefaultModel;
+        const effectiveSummarizerProvider =
+          options.summarizerProvider ||
+          researchSummarizerDefaultProvider ||
+          defaultsRef.current.researchSummarizerDefaultProvider;
+
+        const bodyPayload = {
+          ...options,
+          stream: streamMode,
+          ...(effectiveResearchModel
+            ? { researchModel: effectiveResearchModel }
+            : {}),
+          ...(effectiveResearchProvider
+            ? { researchProvider: effectiveResearchProvider }
+            : {}),
+          ...(effectiveSummarizerModel
+            ? { summarizerModel: effectiveSummarizerModel }
+            : {}),
+          ...(effectiveSummarizerProvider
+            ? { summarizerProvider: effectiveSummarizerProvider }
+            : {}),
+        };
+
         const res = await fetch("/api/ai/agent-search", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ ...options, stream: streamMode }),
+          body: JSON.stringify(bodyPayload),
           signal: abortControllerRef.current.signal,
         });
 
@@ -209,7 +276,12 @@ export function useAgentSearch(): UseAgentSearchReturn {
 
       return finalResult;
     },
-    [],
+    [
+      researchAgentDefaultModel,
+      researchAgentDefaultProvider,
+      researchSummarizerDefaultModel,
+      researchSummarizerDefaultProvider,
+    ],
   );
 
   return {

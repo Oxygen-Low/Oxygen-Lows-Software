@@ -148,6 +148,66 @@ export const en = {
     noAdditionalLanguages: "No additional languages added.",
     removeLanguage: "Remove language",
     additionalLanguagesUpdated: "Additional languages updated",
+    models: "Models",
+    modelsSubtitle:
+      "Configure AI models, detect running local instances, register custom endpoints, and set feature defaults.",
+    activeModelsCount: "Active Models",
+    detectedLocalModels: "Local Models Running",
+    noLocalModelsDetected:
+      "No local models detected. Launch Ollama (11434), LM Studio (1234), or KoboldCPP (5001) to auto-detect.",
+    localStatusRunning: "Local Running",
+    localStatusOffline: "Local Offline",
+    addModel: "Add Model",
+    registerModel: "Register Model",
+    addCustomModelTitle: "Register AI Model",
+    addCustomModelDesc:
+      "Add a model from a configured provider or enter a custom model identifier.",
+    provider: "Provider",
+    selectProvider: "Select a provider",
+    modelPreset: "Model Preset",
+    selectPreset: "Select a preset",
+    customModelPreset: "Custom Model ID...",
+    modelId: "Model ID",
+    modelIdPlaceholder:
+      "e.g. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelName: "Display Name (Optional)",
+    modelNamePlaceholder: "e.g. GPT-4o (Omni)",
+    featureDefaults: "Feature Default Models",
+    featureDefaultsDesc:
+      "Configure default AI models for Chatbot, Research Agent, and Search Summarizer.",
+    chatbotDefaultTitle: "Chatbot Default",
+    chatbotDefaultDesc:
+      "Default model used when opening and creating new Chatbot conversations.",
+    researchAgentDefaultTitle: "Research Agent Default",
+    researchAgentDefaultDesc:
+      "Agentic search exploration and fact-gathering tool loop model.",
+    researchSummarizerDefaultTitle: "Search Summarizer Default",
+    researchSummarizerDefaultDesc:
+      "Model used to synthesize research findings into comprehensive final answers.",
+    registeredModels: "Active & Registered Models",
+    registeredModelsDesc:
+      "All available models grouped by provider, including detected local endpoints and custom registrations.",
+    localModelsGroup: "Local Models (Ollama / LM Studio / KoboldCPP)",
+    cloudModelsGroup: "Cloud Providers",
+    builtInModelsGroup: "Built-in Cloud Services (Cloudflare & AI Horde)",
+    configured: "Configured",
+    notConfigured: "API Key Required",
+    goToIntegrations: "Integrations",
+    deleteModelConfirmTitle: "Remove Custom Model",
+    deleteModelConfirmDesc:
+      "Are you sure you want to remove this custom model? You can re-register it at any time.",
+    modelAdded: "Model registered successfully",
+    modelRemoved: "Model removed",
+    modelDuplicate: "This model is already registered for this provider",
+    modelIdRequired: "Model ID is required",
+    defaultModelUpdated: "Default model updated",
+    noModelsAvailable: "No custom models registered for this provider.",
+    customBadge: "Custom",
+    localBadge: "Local",
+    presetBadge: "Preset",
+    builtInBadge: "Built-in",
+    providerNotConfiguredWarning:
+      "Note: This provider does not have an active API key in Integrations. You can register the model now and add the key later.",
   },
   userProfile: {
     userNotFound: "User not found",

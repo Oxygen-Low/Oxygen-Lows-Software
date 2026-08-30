@@ -22,20 +22,29 @@ const VALID_FONTS = [
   "font-londrina",
 ];
 
-interface ThemeContextType {
+export interface ThemeContextType {
   theme: Theme;
   font: string;
   useGradient: boolean;
   lastModelId: string | null;
   lastProvider: string | null;
+  chatbotDefaultModel: string | null;
+  chatbotDefaultProvider: string | null;
+  researchAgentDefaultModel: string | null;
+  researchAgentDefaultProvider: string | null;
+  researchSummarizerDefaultModel: string | null;
+  researchSummarizerDefaultProvider: string | null;
   setTheme: (theme: Theme) => Promise<void>;
   setFont: (font: string) => Promise<void>;
   setUseGradient: (useGradient: boolean) => Promise<void>;
   setModelPreference: (modelId: string, provider: string) => Promise<void>;
+  setChatbotDefault: (modelId: string, provider: string) => Promise<void>;
+  setResearchAgentDefault: (modelId: string, provider: string) => Promise<void>;
+  setResearchSummarizerDefault: (modelId: string, provider: string) => Promise<void>;
   isLoading: boolean;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -95,8 +104,62 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [theme, setThemeState] = useState<Theme>("default");
   const [font, setFontState] = useState<string>("font-zilla");
   const [useGradient, setUseGradientState] = useState<boolean>(true);
-  const [lastModelId, setLastModelId] = useState<string | null>(null);
-  const [lastProvider, setLastProvider] = useState<string | null>(null);
+  const [lastModelId, setLastModelId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("last_model_id") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [lastProvider, setLastProvider] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("last_provider") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [chatbotDefaultModel, setChatbotDefaultModelState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("chatbot_default_model") || localStorage.getItem("last_model_id") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [chatbotDefaultProvider, setChatbotDefaultProviderState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("chatbot_default_provider") || localStorage.getItem("last_provider") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [researchAgentDefaultModel, setResearchAgentDefaultModelState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("research_agent_default_model") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [researchAgentDefaultProvider, setResearchAgentDefaultProviderState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("research_agent_default_provider") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [researchSummarizerDefaultModel, setResearchSummarizerDefaultModelState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("research_summarizer_default_model") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [researchSummarizerDefaultProvider, setResearchSummarizerDefaultProviderState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("research_summarizer_default_provider") || null;
+    } catch {
+      return null;
+    }
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   const applyTheme = useCallback((newTheme: Theme, gradient: boolean) => {
@@ -249,7 +312,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   useEffect(() => {
     const loadPreferences = async () => {
       if (!session?.user?.id) {
-        // Use defaults for non-auth
+        // Use defaults for non-auth with localStorage fallback
         const initialTheme = "default";
         const initialFont = "font-zilla";
         const initialGradient = true;
@@ -257,8 +320,27 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         setThemeState(initialTheme);
         setFontState(initialFont);
         setUseGradientState(initialGradient);
-        setLastModelId(null);
-        setLastProvider(null);
+
+        try {
+          const lModel = localStorage.getItem("last_model_id") || null;
+          const lProv = localStorage.getItem("last_provider") || null;
+          const cModel = localStorage.getItem("chatbot_default_model") || lModel;
+          const cProv = localStorage.getItem("chatbot_default_provider") || lProv;
+          const rModel = localStorage.getItem("research_agent_default_model") || null;
+          const rProv = localStorage.getItem("research_agent_default_provider") || null;
+          const sModel = localStorage.getItem("research_summarizer_default_model") || null;
+          const sProv = localStorage.getItem("research_summarizer_default_provider") || null;
+
+          setLastModelId(lModel);
+          setLastProvider(lProv);
+          setChatbotDefaultModelState(cModel);
+          setChatbotDefaultProviderState(cProv);
+          setResearchAgentDefaultModelState(rModel);
+          setResearchAgentDefaultProviderState(rProv);
+          setResearchSummarizerDefaultModelState(sModel);
+          setResearchSummarizerDefaultProviderState(sProv);
+        } catch {}
+
         applyTheme(initialTheme, initialGradient);
         applyFont(initialFont);
         setIsLoading(false);
@@ -270,7 +352,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const client = getAuthenticatedClient(session.access_token);
         const { data, error } = await client
           .from("user_preferences")
-          .select("theme, font, use_gradient, last_model_id, last_provider")
+          .select("theme, font, use_gradient, last_model_id, last_provider, chatbot_default_model, chatbot_default_provider, research_agent_default_model, research_agent_default_provider, research_summarizer_default_model, research_summarizer_default_provider")
           .eq("user_id", session.user.id)
           .single();
 
@@ -281,19 +363,43 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const loadedTheme = (data?.theme as Theme) || "default";
         const loadedFont = data?.font || "font-zilla";
         const loadedGradient = data?.use_gradient ?? true;
-        const loadedModelId = data?.last_model_id || null;
-        const loadedProvider = data?.last_provider || null;
+        const loadedModelId = data?.last_model_id || data?.chatbot_default_model || null;
+        const loadedProvider = data?.last_provider || data?.chatbot_default_provider || null;
+        const loadedChatbotModel = data?.chatbot_default_model || loadedModelId;
+        const loadedChatbotProvider = data?.chatbot_default_provider || loadedProvider;
+        const loadedResearchAgentModel = data?.research_agent_default_model || null;
+        const loadedResearchAgentProvider = data?.research_agent_default_provider || null;
+        const loadedResearchSummarizerModel = data?.research_summarizer_default_model || null;
+        const loadedResearchSummarizerProvider = data?.research_summarizer_default_provider || null;
 
         setThemeState(loadedTheme);
         setFontState(loadedFont);
         setUseGradientState(loadedGradient);
         setLastModelId(loadedModelId);
         setLastProvider(loadedProvider);
+        setChatbotDefaultModelState(loadedChatbotModel);
+        setChatbotDefaultProviderState(loadedChatbotProvider);
+        setResearchAgentDefaultModelState(loadedResearchAgentModel);
+        setResearchAgentDefaultProviderState(loadedResearchAgentProvider);
+        setResearchSummarizerDefaultModelState(loadedResearchSummarizerModel);
+        setResearchSummarizerDefaultProviderState(loadedResearchSummarizerProvider);
+
+        // Mirror to localStorage
+        try {
+          if (loadedModelId) localStorage.setItem("last_model_id", loadedModelId);
+          if (loadedProvider) localStorage.setItem("last_provider", loadedProvider);
+          if (loadedChatbotModel) localStorage.setItem("chatbot_default_model", loadedChatbotModel);
+          if (loadedChatbotProvider) localStorage.setItem("chatbot_default_provider", loadedChatbotProvider);
+          if (loadedResearchAgentModel) localStorage.setItem("research_agent_default_model", loadedResearchAgentModel);
+          if (loadedResearchAgentProvider) localStorage.setItem("research_agent_default_provider", loadedResearchAgentProvider);
+          if (loadedResearchSummarizerModel) localStorage.setItem("research_summarizer_default_model", loadedResearchSummarizerModel);
+          if (loadedResearchSummarizerProvider) localStorage.setItem("research_summarizer_default_provider", loadedResearchSummarizerProvider);
+        } catch {}
+
         applyTheme(loadedTheme, loadedGradient);
         applyFont(loadedFont, session.user.id);
       } catch (error) {
         console.error("Failed to load preferences:", error);
-        // Keep defaults on error
       } finally {
         setIsLoading(false);
       }
@@ -372,6 +478,15 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     async (modelId: string, provider: string) => {
       setLastModelId(modelId);
       setLastProvider(provider);
+      setChatbotDefaultModelState(modelId);
+      setChatbotDefaultProviderState(provider);
+
+      try {
+        localStorage.setItem("last_model_id", modelId);
+        localStorage.setItem("last_provider", provider);
+        localStorage.setItem("chatbot_default_model", modelId);
+        localStorage.setItem("chatbot_default_provider", provider);
+      } catch {}
 
       if (session?.user?.id) {
         try {
@@ -380,9 +495,95 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
             p_user_id: session.user.id,
             p_last_model_id: modelId,
             p_last_provider: provider,
+            p_chatbot_default_model: modelId,
+            p_chatbot_default_provider: provider,
           });
         } catch (error) {
           console.error("Failed to save model preference:", error);
+        }
+      }
+    },
+    [session?.user?.id, session?.access_token],
+  );
+
+  const setChatbotDefault = useCallback(
+    async (modelId: string, provider: string) => {
+      setChatbotDefaultModelState(modelId);
+      setChatbotDefaultProviderState(provider);
+      setLastModelId(modelId);
+      setLastProvider(provider);
+
+      try {
+        localStorage.setItem("chatbot_default_model", modelId);
+        localStorage.setItem("chatbot_default_provider", provider);
+        localStorage.setItem("last_model_id", modelId);
+        localStorage.setItem("last_provider", provider);
+      } catch {}
+
+      if (session?.user?.id) {
+        try {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
+            p_user_id: session.user.id,
+            p_chatbot_default_model: modelId,
+            p_chatbot_default_provider: provider,
+            p_last_model_id: modelId,
+            p_last_provider: provider,
+          });
+        } catch (error) {
+          console.error("Failed to save chatbot default model:", error);
+        }
+      }
+    },
+    [session?.user?.id, session?.access_token],
+  );
+
+  const setResearchAgentDefault = useCallback(
+    async (modelId: string, provider: string) => {
+      setResearchAgentDefaultModelState(modelId);
+      setResearchAgentDefaultProviderState(provider);
+
+      try {
+        localStorage.setItem("research_agent_default_model", modelId);
+        localStorage.setItem("research_agent_default_provider", provider);
+      } catch {}
+
+      if (session?.user?.id) {
+        try {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
+            p_user_id: session.user.id,
+            p_research_agent_default_model: modelId,
+            p_research_agent_default_provider: provider,
+          });
+        } catch (error) {
+          console.error("Failed to save research agent default model:", error);
+        }
+      }
+    },
+    [session?.user?.id, session?.access_token],
+  );
+
+  const setResearchSummarizerDefault = useCallback(
+    async (modelId: string, provider: string) => {
+      setResearchSummarizerDefaultModelState(modelId);
+      setResearchSummarizerDefaultProviderState(provider);
+
+      try {
+        localStorage.setItem("research_summarizer_default_model", modelId);
+        localStorage.setItem("research_summarizer_default_provider", provider);
+      } catch {}
+
+      if (session?.user?.id) {
+        try {
+          const client = getAuthenticatedClient(session.access_token);
+          await client.rpc("upsert_user_preferences", {
+            p_user_id: session.user.id,
+            p_research_summarizer_default_model: modelId,
+            p_research_summarizer_default_provider: provider,
+          });
+        } catch (error) {
+          console.error("Failed to save research summarizer default model:", error);
         }
       }
     },
@@ -396,10 +597,19 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       useGradient,
       lastModelId,
       lastProvider,
+      chatbotDefaultModel,
+      chatbotDefaultProvider,
+      researchAgentDefaultModel,
+      researchAgentDefaultProvider,
+      researchSummarizerDefaultModel,
+      researchSummarizerDefaultProvider,
       setTheme,
       setFont,
       setUseGradient,
       setModelPreference,
+      setChatbotDefault,
+      setResearchAgentDefault,
+      setResearchSummarizerDefault,
       isLoading,
     }),
     [
@@ -408,10 +618,19 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       useGradient,
       lastModelId,
       lastProvider,
+      chatbotDefaultModel,
+      chatbotDefaultProvider,
+      researchAgentDefaultModel,
+      researchAgentDefaultProvider,
+      researchSummarizerDefaultModel,
+      researchSummarizerDefaultProvider,
       setTheme,
       setFont,
       setUseGradient,
       setModelPreference,
+      setChatbotDefault,
+      setResearchAgentDefault,
+      setResearchSummarizerDefault,
       isLoading,
     ],
   );

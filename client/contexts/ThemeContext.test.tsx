@@ -82,6 +82,9 @@ function TestThemeConsumer() {
     setFont,
     setUseGradient,
     setModelPreference,
+    setChatbotDefault,
+    setResearchAgentDefault,
+    setResearchSummarizerDefault,
     isLoading,
   } = useTheme();
 
@@ -120,6 +123,24 @@ function TestThemeConsumer() {
         onClick={() => setModelPreference("gpt-4", "openai")}
       >
         Set Model Pref
+      </button>
+      <button
+        data-testid="set-chatbot-default"
+        onClick={() => setChatbotDefault("gpt-4o", "openai")}
+      >
+        Set Chatbot Default
+      </button>
+      <button
+        data-testid="set-research-agent-default"
+        onClick={() => setResearchAgentDefault("google/gemma-4-31b", "horde")}
+      >
+        Set Research Agent Default
+      </button>
+      <button
+        data-testid="set-research-summarizer-default"
+        onClick={() => setResearchSummarizerDefault("@cf/nvidia/nemotron-3-120b-a12b", "cloudflare")}
+      >
+        Set Research Summarizer Default
       </button>
     </div>
   );
@@ -265,6 +286,74 @@ describe("ThemeContext & Provider", () => {
     expect(document.documentElement.classList.contains("theme-custom")).toBe(
       true,
     );
+  });
+
+  it("saves chatbot default model preference via setChatbotDefault", async () => {
+    render(
+      <ThemeProvider>
+        <TestThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-loading").textContent).toBe("false");
+    });
+
+    fireEvent.click(screen.getByTestId("set-chatbot-default"));
+
+    await waitFor(() => {
+      expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
+        p_user_id: "test-user-id",
+        p_chatbot_default_model: "gpt-4o",
+        p_chatbot_default_provider: "openai",
+        p_last_model_id: "gpt-4o",
+        p_last_provider: "openai",
+      });
+    });
+  });
+
+  it("saves research agent default model preference via setResearchAgentDefault", async () => {
+    render(
+      <ThemeProvider>
+        <TestThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-loading").textContent).toBe("false");
+    });
+
+    fireEvent.click(screen.getByTestId("set-research-agent-default"));
+
+    await waitFor(() => {
+      expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
+        p_user_id: "test-user-id",
+        p_research_agent_default_model: "google/gemma-4-31b",
+        p_research_agent_default_provider: "horde",
+      });
+    });
+  });
+
+  it("saves research summarizer default model preference via setResearchSummarizerDefault", async () => {
+    render(
+      <ThemeProvider>
+        <TestThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-loading").textContent).toBe("false");
+    });
+
+    fireEvent.click(screen.getByTestId("set-research-summarizer-default"));
+
+    await waitFor(() => {
+      expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
+        p_user_id: "test-user-id",
+        p_research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
+        p_research_summarizer_default_provider: "cloudflare",
+      });
+    });
   });
 
   it("throws error when useTheme is used outside of ThemeProvider", () => {

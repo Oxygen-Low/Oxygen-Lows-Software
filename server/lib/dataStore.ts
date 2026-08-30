@@ -33,6 +33,38 @@ export interface QueryOptions {
   head?: boolean;
 }
 
+export interface UserModelRecord {
+  id: string;
+  user_id: string;
+  provider: string;
+  model_id: string;
+  name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserPreferencesRecord {
+  id: string;
+  user_id: string;
+  theme?: string;
+  volume?: number;
+  font?: string;
+  use_gradient?: boolean;
+  points?: number;
+  profile_picture_path?: string;
+  chatbot_default_model?: string;
+  chatbot_default_provider?: string;
+  research_agent_default_model?: string;
+  research_agent_default_provider?: string;
+  research_summarizer_default_model?: string;
+  research_summarizer_default_provider?: string;
+  last_model_id?: string;
+  last_provider?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
+
 // Ensure Data directory exists
 function ensureDir(dirPath: string) {
   if (!fs.existsSync(dirPath)) {
@@ -115,6 +147,7 @@ export function initUserFolder(
   ensureDir(path.join(userDir, "support"));
   ensureDir(path.join(userDir, "friends"));
   ensureDir(path.join(userDir, "defender"));
+  ensureDir(path.join(userDir, "models"));
 
   // Also ensure upload directories exist
   ensureDir(path.join(process.cwd(), "uploads", "Storage", userId));
@@ -156,6 +189,14 @@ export function initUserFolder(
     theme: "dark",
     volume: 80,
     points: 100,
+    chatbot_default_model: "Fast",
+    chatbot_default_provider: "horde",
+    research_agent_default_model: "google/gemma-4-31b",
+    research_agent_default_provider: "horde",
+    research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
+    research_summarizer_default_provider: "cloudflare",
+    last_model_id: "Fast",
+    last_provider: "horde",
     created_at: now,
     updated_at: now,
   };
@@ -180,6 +221,7 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "public_assets", "assets.json"), []);
   writeJsonFile(path.join(userDir, "public_assets", "verifications.json"), []);
   writeJsonFile(path.join(userDir, "public_assets", "likes.json"), []);
+  writeJsonFile(path.join(userDir, "models", "models.json"), []);
 
   return userData;
 }
@@ -293,6 +335,8 @@ export function getTableFilePath(table: string, userId?: string): string | null 
         return path.join(userDir, "defender", "ip_blocks.json");
       case "defender_vpn":
         return path.join(userDir, "defender", "vpn.json");
+      case "user_models":
+        return path.join(userDir, "models", "models.json");
       default:
         return null;
     }
@@ -620,6 +664,36 @@ export function queryTable(options: QueryOptions): any {
 }
 
 /**
+ * Normalizes user preference keys, stripping 'p_' prefix and syncing model aliases.
+ */
+export function normalizeUserPreferences(
+  args: Record<string, any>,
+): Record<string, any> {
+  if (!args || typeof args !== "object") return {};
+  const normalized: Record<string, any> = {};
+  for (const [rawKey, val] of Object.entries(args)) {
+    if (val === undefined) continue;
+    const key = rawKey.startsWith("p_") ? rawKey.substring(2) : rawKey;
+    normalized[key] = val;
+  }
+
+  // Synchronize chatbot model and provider aliases
+  if (normalized.chatbot_default_model && !normalized.last_model_id) {
+    normalized.last_model_id = normalized.chatbot_default_model;
+  } else if (normalized.last_model_id && !normalized.chatbot_default_model) {
+    normalized.chatbot_default_model = normalized.last_model_id;
+  }
+
+  if (normalized.chatbot_default_provider && !normalized.last_provider) {
+    normalized.last_provider = normalized.chatbot_default_provider;
+  } else if (normalized.last_provider && !normalized.chatbot_default_provider) {
+    normalized.chatbot_default_provider = normalized.last_provider;
+  }
+
+  return normalized;
+}
+
+/**
  * Insert a record or records into a table.
  */
 export function insertTable(
@@ -644,8 +718,12 @@ export function insertTable(
     normTable === "profile_pictures" ||
     normTable === "user_preferences"
   ) {
-    saveTableRows(table, userId, prepared);
-    return Array.isArray(data) ? prepared : prepared[0];
+    const rowData =
+      normTable === "user_preferences"
+        ? prepared.map((r) => normalizeUserPreferences(r))
+        : prepared;
+    saveTableRows(table, userId, rowData);
+    return Array.isArray(data) ? rowData : rowData[0];
   }
 
   const existing = getTableRows(table, userId);
@@ -675,7 +753,11 @@ export function updateTable(
       normTable === "user_preferences"
     ) {
       const existing = getTableRows(table, userId)[0] || {};
-      const updated = { ...existing, ...data, updated_at: now };
+      const patchData =
+        normTable === "user_preferences"
+          ? normalizeUserPreferences(data || {})
+          : data || {};
+      const updated = { ...existing, ...patchData, updated_at: now };
       saveTableRows(table, userId, [updated]);
       return [updated];
     }
@@ -731,7 +813,11 @@ export function upsertTable(
     normTable === "user_preferences"
   ) {
     const existing = getTableRows(table, userId)[0] || {};
-    const updated = { ...existing, ...(items[0] || {}), updated_at: now };
+    const patchData =
+      normTable === "user_preferences"
+        ? normalizeUserPreferences(items[0] || {})
+        : items[0] || {};
+    const updated = { ...existing, ...patchData, updated_at: now };
     saveTableRows(table, userId, [updated]);
     return Array.isArray(data) ? [updated] : updated;
   }
@@ -839,7 +925,8 @@ export function callRpc(name: string, args: any = {}, userId?: string): any {
     }
     case "upsert_user_preferences": {
       if (!userId) throw new Error("Unauthorized");
-      return upsertTable("user_preferences", args, userId, "user_id");
+      const normalized = normalizeUserPreferences(args);
+      return upsertTable("user_preferences", normalized, userId, "user_id");
     }
     case "get_my_friendships": {
       if (!userId) return [];

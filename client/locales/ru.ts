@@ -138,6 +138,76 @@ export const ru = {
     profileSaved: "Профиль успешно сохранен",
     invalidFileName: "Недопустимое имя файла",
     changePassword: "Изменить пароль",
+    additionalLanguages: "Дополнительные языки",
+    additionalLanguagesDesc:
+      "Косметические языки, отображаемые в вашем публичном профиле",
+    displayLanguageDesc:
+      "Управляет языком интерфейса во всем приложении",
+    addLanguage: "Добавить язык",
+    selectLanguageToAdd: "Выберите язык для добавления",
+    noAdditionalLanguages: "Дополнительные языки не добавлены.",
+    removeLanguage: "Удалить язык",
+    additionalLanguagesUpdated: "Дополнительные языки обновлены",
+    models: "Модели",
+    modelsSubtitle:
+      "Настройка моделей ИИ, обнаружение запущенных локальных инстансов, регистрация пользовательских эндпоинтов и выбор моделей по умолчанию.",
+    activeModelsCount: "Активных моделей",
+    detectedLocalModels: "Запущенные локальные модели",
+    noLocalModelsDetected:
+      "Локальные модели не обнаружены. Запустите Ollama (11434), LM Studio (1234) или KoboldCPP (5001) для автоматического обнаружения.",
+    localStatusRunning: "Локально: активен",
+    localStatusOffline: "Локально: офлайн",
+    addModel: "Добавить модель",
+    registerModel: "Зарегистрировать модель",
+    addCustomModelTitle: "Регистрация модели ИИ",
+    addCustomModelDesc:
+      "Добавьте модель от настроенного провайдера или введите идентификатор пользовательской модели.",
+    provider: "Провайдер",
+    selectProvider: "Выберите провайдера",
+    modelPreset: "Пресет модели",
+    selectPreset: "Выберите пресет",
+    customModelPreset: "Свой ID модели...",
+    modelId: "ID модели",
+    modelIdPlaceholder:
+      "напр. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelName: "Отображаемое имя (необязательно)",
+    modelNamePlaceholder: "напр. GPT-4o (Omni)",
+    featureDefaults: "Модели по умолчанию для функций",
+    featureDefaultsDesc:
+      "Настройте стандартные модели ИИ для Чат-бота, Исследовательского агента и Суммаризатора поиска.",
+    chatbotDefaultTitle: "По умолчанию для Чат-бота",
+    chatbotDefaultDesc:
+      "Модель по умолчанию, используемая при открытии и создании новых диалогов в Чат-боте.",
+    researchAgentDefaultTitle: "По умолчанию для Исследователя",
+    researchAgentDefaultDesc:
+      "Модель для глубокого агентного веб-поиска и сбора фактов.",
+    researchSummarizerDefaultTitle: "По умолчанию для Суммаризатора",
+    researchSummarizerDefaultDesc:
+      "Модель для синтеза результатов исследования в итоговый ответ.",
+    registeredModels: "Активные и зарегистрированные модели",
+    registeredModelsDesc:
+      "Все доступные модели, сгруппированные по провайдерам, включая локальные и пользовательские.",
+    localModelsGroup: "Локальные модели (Ollama / LM Studio / KoboldCPP)",
+    cloudModelsGroup: "Облачные провайдеры",
+    builtInModelsGroup: "Встроенные облачные сервисы (Cloudflare и AI Horde)",
+    configured: "Настроен",
+    notConfigured: "Требуется API-ключ",
+    goToIntegrations: "Интеграции",
+    deleteModelConfirmTitle: "Удалить пользовательскую модель",
+    deleteModelConfirmDesc:
+      "Вы уверены, что хотите удалить эту модель? Вы сможете зарегистрировать её снова в любое время.",
+    modelAdded: "Модель успешно зарегистрирована",
+    modelRemoved: "Модель удалена",
+    modelDuplicate: "Эта модель уже зарегистрирована для данного провайдера",
+    modelIdRequired: "ID модели обязателен",
+    defaultModelUpdated: "Модель по умолчанию обновлена",
+    noModelsAvailable: "Для этого провайдера нет зарегистрированных моделей.",
+    customBadge: "Своя",
+    localBadge: "Локальная",
+    presetBadge: "Пресет",
+    builtInBadge: "Встроенная",
+    providerNotConfiguredWarning:
+      "Примечание: Для этого провайдера не настроен API-ключ в Интеграциях. Вы можете зарегистрировать модель сейчас, а ключ добавить позже.",
   },
   userProfile: {
     userNotFound: "Пользователь не найден",

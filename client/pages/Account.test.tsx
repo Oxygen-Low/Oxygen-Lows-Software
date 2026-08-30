@@ -1,8 +1,11 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import React from "react";
 import Account from "./Account";
 import { useAuth } from "@/hooks/useAuth";
+import { MemoryRouter } from "react-router-dom";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Full mock of db
 vi.mock("@/lib/db", () => {
@@ -28,13 +31,23 @@ vi.mock("@/lib/db", () => {
         single: vi.fn(() => {
           if (table === "user_preferences")
             return Promise.resolve({
-              data: { theme: "default", use_gradient: true },
+              data: {
+                theme: "default",
+                use_gradient: true,
+                chatbot_default_model: "gpt-4o",
+                chatbot_default_provider: "openai",
+                research_agent_default_model: "google/gemma-4-31b",
+                research_agent_default_provider: "horde",
+                research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
+                research_summarizer_default_provider: "cloudflare",
+              },
               error: null,
             });
           return Promise.resolve({ data: null, error: null });
         }),
+        insert: vi.fn(() => Promise.resolve({ data: [{ id: "m-new" }], error: null })),
         upsert: vi.fn(() => Promise.resolve({ data: null, error: null })),
-        delete: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        delete: vi.fn(() => builder),
       };
       return builder;
     }),
@@ -62,6 +75,7 @@ vi.mock("@/lib/db", () => {
           })),
         })),
       })),
+      rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
     })),
     db: mockClient,
     supabase: mockClient,
@@ -78,15 +92,53 @@ vi.mock("@/components/Layout", () => ({
 vi.mock("@/components/ui/tabs", () => ({
   Tabs: ({ children }: any) => <div>{children}</div>,
   TabsList: ({ children }: any) => <div>{children}</div>,
-  TabsTrigger: ({ children }: any) => <button>{children}</button>,
-  TabsContent: ({ children }: any) => <div>{children}</div>,
+  TabsTrigger: ({ children, value }: any) => <button data-value={value}>{children}</button>,
+  TabsContent: ({ children, value, ...props }: any) => (
+    <div data-testid={`tab-${value}`} {...props}>
+      {children}
+    </div>
+  ),
 }));
+
+// Mock sonner and toast
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
+function renderAccount() {
+  return render(
+    <MemoryRouter>
+      <ThemeProvider>
+        <Account />
+      </ThemeProvider>
+    </MemoryRouter>,
+  );
+}
 
 describe("Account Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
-      session: { user: { id: "u", email: "e@e.com" } },
+      session: { user: { id: "u", email: "e@e.com" }, access_token: "t" },
+    });
+    // mock global fetch
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (String(url).includes("/api/ai/local-providers")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      if (String(url).includes("/api/ai/horde-status")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
     });
   });
 
@@ -95,20 +147,20 @@ describe("Account Component", () => {
   });
 
   it("renders with correct header", async () => {
-    render(<Account />);
+    renderAccount();
     const headers = screen.getAllByText("Your Account", { selector: "h1" });
     expect(headers.length).toBeGreaterThan(0);
   });
 
   it("renders the language section and display language selector", async () => {
-    render(<Account />);
+    renderAccount();
     expect(screen.getByText("Language")).toBeDefined();
     expect(screen.getByText("Display Language")).toBeDefined();
     expect(screen.getByText("English")).toBeDefined();
   });
 
   it("renders additional languages section with controls", async () => {
-    render(<Account />);
+    renderAccount();
     expect(screen.getByText("Additional Languages")).toBeDefined();
     expect(screen.getByText("Add Language")).toBeDefined();
     expect(screen.getByText("No additional languages added.")).toBeDefined();
@@ -158,7 +210,7 @@ describe("Account Component", () => {
       return builder;
     });
 
-    render(<Account />);
+    renderAccount();
     expect(await screen.findByAltText("Test User")).toBeDefined();
   });
 
@@ -206,11 +258,35 @@ describe("Account Component", () => {
       return builder;
     });
 
-    const { container } = render(<Account />);
+    const { container } = renderAccount();
     await screen.findByText("Test User");
     const croppedDiv = container.querySelector(
       'div[style*="background-image: url(\\"https://example.com/avatar.png\\")"]',
     );
     expect(croppedDiv).toBeDefined();
+  });
+
+  it("renders Models tab with active models header and feature default pickers", async () => {
+    renderAccount();
+    expect(screen.getByTestId("models-tab-content")).toBeDefined();
+    expect(screen.getAllByText("Models").length).toBeGreaterThan(0);
+    expect(screen.getByText("Feature Default Models")).toBeDefined();
+    expect(screen.getByTestId("chatbot-default-card")).toBeDefined();
+    expect(screen.getByTestId("research-agent-default-card")).toBeDefined();
+    expect(screen.getByTestId("research-summarizer-default-card")).toBeDefined();
+    expect(screen.getByText("Active & Registered Models")).toBeDefined();
+  });
+
+  it("opens Add Model dialog when clicking Add Model button", async () => {
+    renderAccount();
+    const addBtn = screen.getByTestId("add-model-btn");
+    expect(addBtn).toBeDefined();
+    fireEvent.click(addBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Register AI Model")).toBeDefined();
+      expect(screen.getByLabelText(/Model ID/i)).toBeDefined();
+      expect(screen.getByTestId("submit-add-model-btn")).toBeDefined();
+    });
   });
 });

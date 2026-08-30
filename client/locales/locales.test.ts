@@ -92,6 +92,18 @@ describe("All Locales Verification", () => {
       expect(t("titles.account")).toBeTruthy();
       expect(t("titles.privacy")).toBeTruthy();
       expect(t("titles.terms")).toBeTruthy();
+
+      // Test account models customization keys
+      expect(t("account.models")).toBeTruthy();
+      expect(t("account.modelsSubtitle")).toBeTruthy();
+      expect(t("account.addModel")).toBeTruthy();
+      expect(t("account.featureDefaults")).toBeTruthy();
+      expect(t("account.chatbotDefaultTitle")).toBeTruthy();
+      expect(t("account.researchAgentDefaultTitle")).toBeTruthy();
+      expect(t("account.researchSummarizerDefaultTitle")).toBeTruthy();
+      expect(t("account.registeredModels")).toBeTruthy();
+      expect(t("account.localModelsGroup")).toBeTruthy();
+      expect(t("account.cloudModelsGroup")).toBeTruthy();
     });
   });
 });

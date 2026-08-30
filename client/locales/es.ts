@@ -138,6 +138,76 @@ export const es = {
     profileSaved: "Perfil guardado con éxito",
     invalidFileName: "Nombre de archivo no válido",
     changePassword: "Cambiar contraseña",
+    additionalLanguages: "Idiomas adicionales",
+    additionalLanguagesDesc:
+      "Idiomas cosméticos mostrados en tu perfil público para que otros los vean",
+    displayLanguageDesc:
+      "Controla el idioma de la interfaz en toda la aplicación",
+    addLanguage: "Añadir idioma",
+    selectLanguageToAdd: "Selecciona un idioma para añadir",
+    noAdditionalLanguages: "No se han añadido idiomas adicionales.",
+    removeLanguage: "Eliminar idioma",
+    additionalLanguagesUpdated: "Idiomas adicionales actualizados",
+    models: "Modelos",
+    modelsSubtitle:
+      "Configura modelos de IA, detecta instancias locales en ejecución, registra puntos de conexión personalizados y define modelos predeterminados.",
+    activeModelsCount: "Modelos activos",
+    detectedLocalModels: "Modelos locales en ejecución",
+    noLocalModelsDetected:
+      "No se detectaron modelos locales. Inicia Ollama (11434), LM Studio (1234) o KoboldCPP (5001) para autodetección.",
+    localStatusRunning: "Local activo",
+    localStatusOffline: "Local inactivo",
+    addModel: "Añadir modelo",
+    registerModel: "Registrar modelo",
+    addCustomModelTitle: "Registrar modelo de IA",
+    addCustomModelDesc:
+      "Añade un modelo desde un proveedor configurado o introduce un identificador de modelo personalizado.",
+    provider: "Proveedor",
+    selectProvider: "Selecciona un proveedor",
+    modelPreset: "Ajuste predeterminado",
+    selectPreset: "Selecciona un preajuste",
+    customModelPreset: "ID de modelo personalizado...",
+    modelId: "ID del modelo",
+    modelIdPlaceholder:
+      "ej. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelName: "Nombre a mostrar (opcional)",
+    modelNamePlaceholder: "ej. GPT-4o (Omni)",
+    featureDefaults: "Modelos predeterminados por función",
+    featureDefaultsDesc:
+      "Configura modelos de IA predeterminados para Chatbot, Agente de Investigación y Resumidor de Búsqueda.",
+    chatbotDefaultTitle: "Predeterminado de Chatbot",
+    chatbotDefaultDesc:
+      "Modelo predeterminado utilizado al iniciar y crear conversaciones en Chatbot.",
+    researchAgentDefaultTitle: "Predeterminado de Agente de Investigación",
+    researchAgentDefaultDesc:
+      "Modelo para exploración profunda de búsqueda web y bucle de recolección de hechos.",
+    researchSummarizerDefaultTitle: "Predeterminado de Resumidor de Búsqueda",
+    researchSummarizerDefaultDesc:
+      "Modelo utilizado para sintetizar hallazgos de investigación en respuestas finales completas.",
+    registeredModels: "Modelos activos y registrados",
+    registeredModelsDesc:
+      "Todos los modelos disponibles agrupados por proveedor, incluidos puntos locales detectados y registros personalizados.",
+    localModelsGroup: "Modelos locales (Ollama / LM Studio / KoboldCPP)",
+    cloudModelsGroup: "Proveedores en la nube",
+    builtInModelsGroup: "Servicios integrados en la nube (Cloudflare y AI Horde)",
+    configured: "Configurado",
+    notConfigured: "Clave de API requerida",
+    goToIntegrations: "Integraciones",
+    deleteModelConfirmTitle: "Eliminar modelo personalizado",
+    deleteModelConfirmDesc:
+      "¿Estás seguro de que deseas eliminar este modelo personalizado? Puedes volver a registrarlo en cualquier momento.",
+    modelAdded: "Modelo registrado con éxito",
+    modelRemoved: "Modelo eliminado",
+    modelDuplicate: "Este modelo ya está registrado para este proveedor",
+    modelIdRequired: "El ID del modelo es obligatorio",
+    defaultModelUpdated: "Modelo predeterminado actualizado",
+    noModelsAvailable: "No hay modelos personalizados registrados para este proveedor.",
+    customBadge: "Personalizado",
+    localBadge: "Local",
+    presetBadge: "Preajuste",
+    builtInBadge: "Integrado",
+    providerNotConfiguredWarning:
+      "Nota: Este proveedor no tiene una clave API activa en Integraciones. Puedes registrar el modelo ahora y configurar las credenciales más tarde.",
   },
   userProfile: {
     userNotFound: "Usuario no encontrado",
