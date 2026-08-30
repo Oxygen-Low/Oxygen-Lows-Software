@@ -1145,11 +1145,7 @@ export default function Account() {
                         {t("account.localModelsGroup", undefined, "Local Models (Ollama / LM Studio / KoboldCPP)")}
                       </h4>
                     </div>
-                    {localStatus.totalLocal > 0 ? (
-                      <Badge variant="outline" className="bg-emerald-950/30 border-emerald-800/60 text-emerald-300 text-xs">
-                        {localStatus.totalLocal} detected
-                      </Badge>
-                    ) : (
+                    {localStatus.totalLocal <= 0 && (
                       <Badge variant="outline" className="bg-slate-950 border-slate-800 text-slate-500 text-xs">
                         {t("account.localStatusOffline", undefined, "Offline")}
                       </Badge>
