@@ -419,7 +419,7 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       });
     });
 
-    it("displays detected count and model when local Ollama models are discovered", async () => {
+    it("displays discovered model when local Ollama models are discovered without count badge", async () => {
       global.fetch = vi.fn().mockImplementation((url) => {
         const urlStr = String(url);
         if (urlStr.includes(":11434/api/tags")) {
@@ -444,8 +444,8 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
 
       await waitFor(() => {
         expect(screen.getAllByText(/deepseek-r1:14b/i).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/detected/i).length).toBeGreaterThan(0);
       });
+      expect(screen.queryByText(/\d+\s+detected/i)).toBeNull();
     });
   });
 });
