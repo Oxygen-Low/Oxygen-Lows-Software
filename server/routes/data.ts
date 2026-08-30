@@ -15,7 +15,18 @@ export const dataRouter = new Hono();
 dataRouter.post("/query", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { table, filters, order, limit, offset, single, select } = body;
+    const {
+      table,
+      filters,
+      orFilters,
+      order,
+      limit,
+      offset,
+      single,
+      select,
+      count: countType,
+      head,
+    } = body;
 
     if (!table) {
       return c.json({ data: null, error: "Table name is required" }, 400);
@@ -36,18 +47,35 @@ dataRouter.post("/query", async (c) => {
       } catch {}
     }
 
-    const data = queryTable({
+    const result = queryTable({
       table,
       filters,
+      orFilters,
       order,
       limit,
       offset,
       single,
       userId,
       select,
+      head,
     });
 
-    return c.json({ data, error: null });
+    if (head && result && typeof result === "object" && "count" in result) {
+      return c.json({ data: result.data, count: result.count, error: null });
+    }
+
+    let countVal: number | null = null;
+    if (countType) {
+      const allMatching = queryTable({
+        table,
+        filters,
+        orFilters,
+        userId,
+      });
+      countVal = Array.isArray(allMatching) ? allMatching.length : 0;
+    }
+
+    return c.json({ data: result, count: countVal, error: null });
   } catch (err: any) {
     return c.json({ data: null, error: err.message || "Query failed" }, 500);
   }
@@ -76,7 +104,7 @@ dataRouter.post("/insert", localAuthMiddleware, async (c) => {
 dataRouter.post("/update", localAuthMiddleware, async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { table, filters = [], data } = body;
+    const { table, filters = [], orFilters = [], data } = body;
     const userId = c.get("userId" as any);
 
     if (!table || data === undefined) {
@@ -86,7 +114,7 @@ dataRouter.post("/update", localAuthMiddleware, async (c) => {
       );
     }
 
-    const result = updateTable(table, filters, data, userId);
+    const result = updateTable(table, filters, data, userId, orFilters);
     return c.json({ data: result, error: null });
   } catch (err: any) {
     return c.json({ data: null, error: err.message || "Update failed" }, 500);
@@ -116,14 +144,14 @@ dataRouter.post("/upsert", localAuthMiddleware, async (c) => {
 dataRouter.post("/delete", localAuthMiddleware, async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { table, filters = [] } = body;
+    const { table, filters = [], orFilters = [] } = body;
     const userId = c.get("userId" as any);
 
     if (!table) {
       return c.json({ data: null, error: "Table is required" }, 400);
     }
 
-    const result = deleteTable(table, filters, userId);
+    const result = deleteTable(table, filters, userId, orFilters);
     return c.json({ data: result, error: null });
   } catch (err: any) {
     return c.json({ data: null, error: err.message || "Delete failed" }, 500);

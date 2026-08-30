@@ -154,4 +154,66 @@ describe("dataStore", () => {
     expect(updatedPrefs.theme).toBe("light");
     expect(updatedPrefs.volume).toBe(90);
   });
+
+  it("should support orFilters and head options in queryTable and deleteTable", () => {
+    initUserFolder(testUserId, {
+      username: "filteruser",
+      email: "filter@example.com",
+      passwordHash: "hashfilter",
+      salt: "saltfilter",
+    });
+
+    insertTable(
+      "friendships",
+      [
+        { id: "f-1", user_id: testUserId, friend_id: "user-2", status: "accepted" },
+        { id: "f-2", user_id: "user-3", friend_id: testUserId, status: "pending" },
+        { id: "f-3", user_id: "user-4", friend_id: "user-5", status: "accepted" },
+      ],
+      testUserId,
+    );
+
+    // Test orFilters with simple OR
+    const orResult = queryTable({
+      table: "friendships",
+      orFilters: [`user_id.eq.${testUserId},friend_id.eq.${testUserId}`],
+      userId: testUserId,
+    });
+    expect(orResult).toHaveLength(2);
+
+    // Test orFilters with nested and(...)
+    const andOrResult = queryTable({
+      table: "friendships",
+      orFilters: [
+        `and(user_id.eq.${testUserId},friend_id.eq.user-2),and(user_id.eq.user-2,friend_id.eq.${testUserId})`,
+      ],
+      userId: testUserId,
+    });
+    expect(andOrResult).toHaveLength(1);
+    expect(andOrResult[0].id).toBe("f-1");
+
+    // Test head query option
+    const headResult = queryTable({
+      table: "friendships",
+      userId: testUserId,
+      head: true,
+    });
+    expect(headResult).toEqual({ data: [], count: 3 });
+
+    // Test deleteTable with orFilters
+    const deleted = deleteTable(
+      "friendships",
+      [],
+      testUserId,
+      [`and(user_id.eq.${testUserId},friend_id.eq.user-2),and(user_id.eq.user-2,friend_id.eq.${testUserId})`],
+    );
+    expect(deleted).toHaveLength(1);
+    expect(deleted[0].id).toBe("f-1");
+
+    const remaining = queryTable({
+      table: "friendships",
+      userId: testUserId,
+    });
+    expect(remaining).toHaveLength(2);
+  });
 });

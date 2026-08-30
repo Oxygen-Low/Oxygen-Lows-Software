@@ -46,11 +46,16 @@ class LocalQueryBuilder implements PromiseLike<any> {
   private action: "query" | "insert" | "update" | "upsert" | "delete" = "query";
   private payload: any = undefined;
   private filters: Array<{ field: string; operator: string; value: any }> = [];
+  private orFilters: string[] = [];
   private orderConfig?: { column: string; ascending?: boolean };
   private limitCount?: number;
   private offsetCount?: number;
   private isSingle: boolean = false;
   private selectCols?: string;
+  private selectOptions?: {
+    count?: "exact" | "planned" | "estimated";
+    head?: boolean;
+  };
   private onConflictField?: string;
 
   constructor(table: string, token?: string) {
@@ -58,8 +63,24 @@ class LocalQueryBuilder implements PromiseLike<any> {
     this.token = token;
   }
 
-  select(columns: string = "*") {
+  select(
+    columns: string = "*",
+    options?: { count?: "exact" | "planned" | "estimated"; head?: boolean },
+  ) {
     this.selectCols = columns;
+    this.selectOptions = options;
+    return this;
+  }
+
+  match(criteria: Record<string, any>) {
+    for (const [key, value] of Object.entries(criteria)) {
+      this.filters.push({ field: key, operator: "eq", value });
+    }
+    return this;
+  }
+
+  or(filterString: string) {
+    this.orFilters.push(filterString);
     return this;
   }
 
@@ -163,7 +184,7 @@ class LocalQueryBuilder implements PromiseLike<any> {
     return this;
   }
 
-  async execute(): Promise<{ data: any; error: any; count?: number | null }> {
+  async execute(): Promise<{ data: any; error: any; count: number | null }> {
     try {
       const fetchFn = getFetch();
       const session = getLocalSession();
@@ -181,11 +202,14 @@ class LocalQueryBuilder implements PromiseLike<any> {
         body = {
           table: this.table,
           filters: this.filters,
+          orFilters: this.orFilters,
           order: this.orderConfig,
           limit: this.limitCount,
           offset: this.offsetCount,
           single: this.isSingle,
           select: this.selectCols,
+          count: this.selectOptions?.count,
+          head: this.selectOptions?.head,
         };
       } else if (this.action === "insert") {
         endpoint = "/api/data/insert";
@@ -198,6 +222,7 @@ class LocalQueryBuilder implements PromiseLike<any> {
         body = {
           table: this.table,
           filters: this.filters,
+          orFilters: this.orFilters,
           data: this.payload,
         };
       } else if (this.action === "upsert") {
@@ -212,6 +237,7 @@ class LocalQueryBuilder implements PromiseLike<any> {
         body = {
           table: this.table,
           filters: this.filters,
+          orFilters: this.orFilters,
         };
       }
 
@@ -226,21 +252,36 @@ class LocalQueryBuilder implements PromiseLike<any> {
         return {
           data: null,
           error: new Error(json.error || `HTTP error ${res.status}`),
+          count: null,
         };
       }
 
-      return { data: json.data, error: null };
+      return {
+        data: json.data,
+        error: null,
+        count:
+          json.count !== undefined
+            ? json.count
+            : Array.isArray(json.data)
+              ? json.data.length
+              : null,
+      };
     } catch (err: any) {
       return {
         data: null,
         error: err instanceof Error ? err : new Error(String(err)),
+        count: null,
       };
     }
   }
 
   then<TResult1 = any, TResult2 = never>(
     onfulfilled?:
-      | ((value: { data: any; error: any }) => TResult1 | PromiseLike<TResult1>)
+      | ((value: {
+          data: any;
+          error: any;
+          count: number | null;
+        }) => TResult1 | PromiseLike<TResult1>)
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {

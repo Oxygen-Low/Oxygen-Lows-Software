@@ -23,12 +23,14 @@ export interface DataFilter {
 export interface QueryOptions {
   table: string;
   filters?: DataFilter[];
+  orFilters?: string[];
   order?: { column: string; ascending?: boolean };
   limit?: number;
   offset?: number;
   single?: boolean;
   userId?: string;
   select?: string;
+  head?: boolean;
 }
 
 // Ensure Data directory exists
@@ -442,7 +444,10 @@ export function matchesFilter(row: any, filter: DataFilter): boolean {
     case "lte":
       return rowVal <= value;
     case "is":
-      return rowVal === value || (value === null && (rowVal === null || rowVal === undefined));
+      return (
+        rowVal === value ||
+        (value === null && (rowVal === null || rowVal === undefined))
+      );
     case "in":
       return Array.isArray(value) && value.map(String).includes(String(rowVal));
     case "like": {
@@ -458,6 +463,63 @@ export function matchesFilter(row: any, filter: DataFilter): boolean {
   }
 }
 
+function parseSingleCondition(cond: string): DataFilter | null {
+  const parts = cond.trim().split(".");
+  if (parts.length < 2) return null;
+  const field = parts[0];
+  const operator = parts[1] as DataFilter["operator"];
+  const rawValue = parts.slice(2).join(".");
+  let value: any = rawValue;
+  if (rawValue === "null") value = null;
+  else if (rawValue === "true") value = true;
+  else if (rawValue === "false") value = false;
+  return { field, operator, value };
+}
+
+function splitTopLevel(str: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let depth = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (char === "(") depth++;
+    else if (char === ")") depth--;
+    else if (char === "," && depth === 0) {
+      result.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) {
+    result.push(current.trim());
+  }
+  return result;
+}
+
+function evaluateClause(row: any, clause: string): boolean {
+  clause = clause.trim();
+  if (clause.startsWith("and(") && clause.endsWith(")")) {
+    const inner = clause.substring(4, clause.length - 1);
+    const subConds = splitTopLevel(inner);
+    return subConds.every((c) => evaluateClause(row, c));
+  }
+  if (clause.startsWith("or(") && clause.endsWith(")")) {
+    const inner = clause.substring(3, clause.length - 1);
+    const subConds = splitTopLevel(inner);
+    return subConds.some((c) => evaluateClause(row, c));
+  }
+  const filter = parseSingleCondition(clause);
+  if (!filter) return true;
+  return matchesFilter(row, filter);
+}
+
+export function matchesOrFilter(row: any, orExpr: string): boolean {
+  const clauses = splitTopLevel(orExpr);
+  if (clauses.length === 0) return true;
+  return clauses.some((c) => evaluateClause(row, c));
+}
+
 /**
  * Execute a query on a table.
  */
@@ -465,12 +527,14 @@ export function queryTable(options: QueryOptions): any {
   const {
     table,
     filters = [],
+    orFilters = [],
     order,
     limit,
     offset = 0,
     single = false,
     userId,
     select,
+    head = false,
   } = options;
 
   let rows = getTableRows(table, userId);
@@ -482,10 +546,26 @@ export function queryTable(options: QueryOptions): any {
     );
   }
 
+  // Apply orFilters
+  if (orFilters && orFilters.length > 0) {
+    rows = rows.filter((row) =>
+      orFilters.every((orExpr) => matchesOrFilter(row, orExpr)),
+    );
+  }
+
+  const totalCount = rows.length;
+
+  if (head) {
+    return { data: [], count: totalCount };
+  }
+
   // For data_saves: expand category relation if requested (e.g., category:category_id(*))
   if (table === "data_saves" && select && select.includes("category")) {
     const cats = userId
-      ? readJsonFile<any[]>(path.join(DATA_DIR, userId, "datastore", "categories.json"), [])
+      ? readJsonFile<any[]>(
+          path.join(DATA_DIR, userId, "datastore", "categories.json"),
+          [],
+        )
       : [];
     const catMap = new Map<string, any>(cats.map((c) => [c.id, c]));
     rows = rows.map((r) => ({
@@ -530,7 +610,11 @@ export function queryTable(options: QueryOptions): any {
 /**
  * Insert a record or records into a table.
  */
-export function insertTable(table: string, data: any | any[], userId: string): any {
+export function insertTable(
+  table: string,
+  data: any | any[],
+  userId: string,
+): any {
   const normTable = table.toLowerCase();
   const items = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
@@ -543,7 +627,11 @@ export function insertTable(table: string, data: any | any[], userId: string): a
     ...item,
   }));
 
-  if (normTable === "profiles" || normTable === "profile_pictures" || normTable === "user_preferences") {
+  if (
+    normTable === "profiles" ||
+    normTable === "profile_pictures" ||
+    normTable === "user_preferences"
+  ) {
     saveTableRows(table, userId, prepared);
     return Array.isArray(data) ? prepared : prepared[0];
   }
@@ -560,14 +648,19 @@ export function insertTable(table: string, data: any | any[], userId: string): a
  */
 export function updateTable(
   table: string,
-  filters: DataFilter[],
+  filters: DataFilter[] = [],
   data: any,
   userId: string,
+  orFilters: string[] = [],
 ): any {
   const normTable = table.toLowerCase();
   const now = new Date().toISOString();
 
-  if (normTable === "profiles" || normTable === "profile_pictures" || normTable === "user_preferences") {
+  if (
+    normTable === "profiles" ||
+    normTable === "profile_pictures" ||
+    normTable === "user_preferences"
+  ) {
     const existing = getTableRows(table, userId)[0] || {};
     const updated = { ...existing, ...data, updated_at: now };
     saveTableRows(table, userId, [updated]);
@@ -577,7 +670,12 @@ export function updateTable(
   const existing = getTableRows(table, userId);
   const matched: any[] = [];
   const updated = existing.map((row) => {
-    if (filters.every((f) => matchesFilter(row, f))) {
+    const matchesAnd =
+      filters.length === 0 || filters.every((f) => matchesFilter(row, f));
+    const matchesOr =
+      orFilters.length === 0 ||
+      orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
+    if (matchesAnd && matchesOr) {
       const modified = { ...row, ...data, updated_at: now };
       matched.push(modified);
       return modified;
@@ -602,7 +700,11 @@ export function upsertTable(
   const items = Array.isArray(data) ? data : [data];
   const now = new Date().toISOString();
 
-  if (normTable === "profiles" || normTable === "profile_pictures" || normTable === "user_preferences") {
+  if (
+    normTable === "profiles" ||
+    normTable === "profile_pictures" ||
+    normTable === "user_preferences"
+  ) {
     const existing = getTableRows(table, userId)[0] || {};
     const updated = { ...existing, ...(items[0] || {}), updated_at: now };
     saveTableRows(table, userId, [updated]);
@@ -645,12 +747,21 @@ export function upsertTable(
 /**
  * Delete records matching filters.
  */
-export function deleteTable(table: string, filters: DataFilter[], userId: string): any {
+export function deleteTable(
+  table: string,
+  filters: DataFilter[] = [],
+  userId: string,
+  orFilters: string[] = [],
+): any {
   const existing = getTableRows(table, userId);
   const matched: any[] = [];
   const remaining = existing.filter((row) => {
-    const matches = filters.every((f) => matchesFilter(row, f));
-    if (matches) {
+    const matchesAnd =
+      filters.length === 0 || filters.every((f) => matchesFilter(row, f));
+    const matchesOr =
+      orFilters.length === 0 ||
+      orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
+    if (matchesAnd && matchesOr) {
       matched.push(row);
       return false;
     }
