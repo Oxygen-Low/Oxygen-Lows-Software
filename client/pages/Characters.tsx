@@ -14,7 +14,11 @@ import {
   AlertTriangle,
   Send,
   Lock,
+  Sparkles,
 } from "lucide-react";
+import { AiGenerateDialog } from "@/components/characters/AiGenerateDialog";
+import type { GeneratedEntityResult } from "@/services/entityGenerator";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -120,6 +124,41 @@ export default function Characters() {
     null,
   );
   const [deletingVerifId, setDeletingVerifId] = useState<string | null>(null);
+
+  // AI Generation Modal State
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiInitialType, setAiInitialType] = useState<"character" | "universe">(
+    "character",
+  );
+  const [aiInitialUniverse, setAiInitialUniverse] =
+    useState<Character | null>(null);
+
+  const handleOpenAiGenerate = (
+    type?: "character" | "universe",
+    univ?: Character | null,
+  ) => {
+    setAiInitialType(
+      type || (activeTab === "universes" ? "universe" : "character"),
+    );
+    setAiInitialUniverse(univ || null);
+    setAiDialogOpen(true);
+  };
+
+  const handleApplyAiGenerated = (entity: GeneratedEntityResult) => {
+    setCurrentCharacter((prev) => ({
+      ...prev,
+      name: entity.name,
+      display_name: entity.display_name,
+      short_description: entity.short_description,
+      appearance: entity.appearance,
+      personality: entity.personality,
+      backstory: entity.backstory,
+      hidden_description: entity.hidden_description,
+      is_universe: entity.is_universe,
+    }));
+    setActiveTab(entity.is_universe ? "universes" : "characters");
+    setIsEditing(true);
+  };
 
   useEffect(() => {
     setEncryptionLocked(isCategoryLocked("characters"));
@@ -593,41 +632,73 @@ export default function Characters() {
             </div>
             <p className="text-slate-400 mt-1"></p>
           </div>
-          <Dialog
-            open={isEditing}
-            onOpenChange={(open) => {
-              setIsEditing(open);
-              if (!open) setCurrentCharacter({});
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button
-                className="bg-cyan-600 hover:bg-cyan-700"
-                onClick={() =>
-                  setCurrentCharacter({
-                    is_universe: activeTab === "universes",
-                  })
-                }
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {activeTab === "characters"
-                  ? t("characters.createCharacter", undefined, "New Character")
-                  : t("characters.createUniverse", undefined, "New Universe")}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
-              <DialogHeader>
-                <DialogTitle>
-                  {currentCharacter.id
-                    ? `Edit ${currentCharacter.is_universe ? "Universe" : "Character"}`
-                    : `Create ${activeTab === "characters" ? "Character" : "Universe"}`}
-                </DialogTitle>
-                <DialogDescription className="text-slate-400">
-                  {currentCharacter.is_universe || activeTab === "universes"
-                    ? "Tell us a bit about your new universe and its lore."
-                    : "Tell us a bit about your character and what makes them unique."}
-                </DialogDescription>
-              </DialogHeader>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() =>
+                handleOpenAiGenerate(
+                  activeTab === "universes" ? "universe" : "character",
+                )
+              }
+              className="border-cyan-800/80 bg-cyan-950/30 text-cyan-300 hover:bg-cyan-900/50 hover:text-cyan-200"
+            >
+              <Sparkles className="w-4 h-4 mr-2 text-cyan-400" />
+              {t("characters.aiGenerate.button", undefined, "AI Generate")}
+            </Button>
+            <Dialog
+              open={isEditing}
+              onOpenChange={(open) => {
+                setIsEditing(open);
+                if (!open) setCurrentCharacter({});
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  className="bg-cyan-600 hover:bg-cyan-700"
+                  onClick={() =>
+                    setCurrentCharacter({
+                      is_universe: activeTab === "universes",
+                    })
+                  }
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {activeTab === "characters"
+                    ? t("characters.createCharacter", undefined, "New Character")
+                    : t("characters.createUniverse", undefined, "New Universe")}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
+                <DialogHeader>
+                  <div className="flex items-center justify-between pr-6">
+                    <DialogTitle>
+                      {currentCharacter.id
+                        ? `Edit ${currentCharacter.is_universe ? "Universe" : "Character"}`
+                        : `Create ${activeTab === "characters" ? "Character" : "Universe"}`}
+                    </DialogTitle>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleOpenAiGenerate(
+                          currentCharacter.is_universe || activeTab === "universes"
+                            ? "universe"
+                            : "character",
+                          null,
+                        )
+                      }
+                      className="border-cyan-800/80 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/60 flex items-center gap-1.5 text-xs"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                      {t("characters.aiGenerate.button", undefined, "AI Generate")}
+                    </Button>
+                  </div>
+                  <DialogDescription className="text-slate-400">
+                    {currentCharacter.is_universe || activeTab === "universes"
+                      ? "Tell us a bit about your new universe and its lore."
+                      : "Tell us a bit about your character and what makes them unique."}
+                  </DialogDescription>
+                </DialogHeader>
 
               {/* Versioning Notice if Character is Public */}
               {currentCharacter.id && publicCharsMap[currentCharacter.id] && (
@@ -910,6 +981,8 @@ export default function Characters() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
+
 
         {encryptionLocked ? (
           <EncryptionRequiredPrompt
@@ -1063,6 +1136,22 @@ export default function Characters() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
+
+                        {char.is_universe && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs border-cyan-800/60 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/60 hover:text-cyan-100 flex items-center justify-center gap-1.5"
+                            onClick={() => handleOpenAiGenerate("character", char)}
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                            {t(
+                              "characters.aiGenerate.generateForUniverse",
+                              undefined,
+                              "Generate Character in this Universe",
+                            )}
+                          </Button>
+                        )}
 
                         {/* Verification / Unpublish Actions */}
                         <div className="pt-2 border-t border-slate-800/80 flex flex-wrap gap-1.5">
@@ -1256,6 +1345,16 @@ export default function Characters() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AI Entity Generation Modal */}
+      <AiGenerateDialog
+        open={aiDialogOpen}
+        onOpenChange={setAiDialogOpen}
+        initialType={aiInitialType}
+        initialUniverse={aiInitialUniverse}
+        universes={characters.filter((c) => c.is_universe)}
+        onApply={handleApplyAiGenerated}
+      />
     </Layout>
   );
 }

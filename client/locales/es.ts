@@ -443,6 +443,37 @@ export const es = {
     verifiedBadge: "Verificado",
     reverificationRequired:
       "Personaje modificado. El estado de verificación se ha restablecido y requiere una nueva verificación para multijugador.",
+    aiGenerate: {
+      button: "Generar con IA",
+      generateForUniverse: "Generar personaje en este universo",
+      titleCharacter: "Generador de personajes con IA",
+      titleUniverse: "Generador de universos con IA",
+      subtitle:
+        "Describe tu concepto y deja que la IA investigue y genere atributos e historia detallada.",
+      targetType: "Objetivo de generación",
+      character: "Personaje",
+      universe: "Universo",
+      targetUniverse: "Universo objetivo",
+      standaloneOption: "Ninguno (Personaje independiente)",
+      model: "Modelo de IA",
+      promptLabel: "Concepto e indicación",
+      promptPlaceholder:
+        "Describe los antecedentes, personalidad, rol o temática del universo...",
+      generate: "Generar",
+      stopGeneration: "Detener generación",
+      stepSummarizing: "Paso 1: Resumiendo el universo",
+      stepResearching: "Paso 2: Investigando con el agente de búsqueda",
+      stepGenerating: "Paso 3: Generando",
+      errorPromptRequired:
+        "Por favor ingresa un concepto o indicación para generar.",
+      errorGeneric: "Error al generar. Por favor intenta de nuevo.",
+      generationComplete: "¡Generación completada!",
+      generatingCharacter: "Generando detalles del personaje...",
+      generatingUniverse: "Generando historia del universo...",
+      summarizingUniverse:
+        "Analizando el universo y formulando el informe...",
+      researchingLore: "Investigando arquetipos y conceptos...",
+    },
   },
   changelogs: {
     title: "Registros de cambios",

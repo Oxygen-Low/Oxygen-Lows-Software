@@ -104,6 +104,18 @@ describe("All Locales Verification", () => {
       expect(t("account.registeredModels")).toBeTruthy();
       expect(t("account.localModelsGroup")).toBeTruthy();
       expect(t("account.cloudModelsGroup")).toBeTruthy();
+
+      // Test AI generation keys in characters
+      expect(t("characters.aiGenerate.button")).toBeTruthy();
+      expect(t("characters.aiGenerate.generateForUniverse")).toBeTruthy();
+      expect(t("characters.aiGenerate.titleCharacter")).toBeTruthy();
+      expect(t("characters.aiGenerate.titleUniverse")).toBeTruthy();
+      expect(t("characters.aiGenerate.subtitle")).toBeTruthy();
+      expect(t("characters.aiGenerate.promptLabel")).toBeTruthy();
+      expect(t("characters.aiGenerate.generate")).toBeTruthy();
+      expect(t("characters.aiGenerate.stepSummarizing")).toBeTruthy();
+      expect(t("characters.aiGenerate.stepResearching")).toBeTruthy();
+      expect(t("characters.aiGenerate.stepGenerating")).toBeTruthy();
     });
   });
 });

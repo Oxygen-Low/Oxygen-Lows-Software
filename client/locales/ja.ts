@@ -437,6 +437,37 @@ export const ja = {
     verifiedBadge: "検証済み",
     reverificationRequired:
       "キャラクターが変更されました。検証ステータスがリセットされたため、マルチプレイヤー用に再検証が必要です。",
+    aiGenerate: {
+      button: "AI生成",
+      generateForUniverse: "この世界観でキャラクターを生成",
+      titleCharacter: "AIキャラクタージェネレーター",
+      titleUniverse: "AIユニバースジェネレーター",
+      subtitle:
+        "コンセプトを入力すると、AIが調査を行い詳細な設定や属性を生成します。",
+      targetType: "生成対象",
+      character: "キャラクター",
+      universe: "ユニバース（世界観）",
+      targetUniverse: "対象ユニバース",
+      standaloneOption: "なし（単体キャラクター）",
+      model: "AIモデル",
+      promptLabel: "コンセプト・プロンプト",
+      promptPlaceholder:
+        "経歴、性格、役割、世界観のテーマなどを入力...",
+      generate: "生成",
+      stopGeneration: "生成を停止",
+      stepSummarizing: "ステップ 1: ユニバースの要約",
+      stepResearching: "ステップ 2: サーチエージェントによる調査",
+      stepGenerating: "ステップ 3: 生成中",
+      errorPromptRequired:
+        "生成するコンセプトまたはプロンプトを入力してください。",
+      errorGeneric: "生成に失敗しました。もう一度お試しください。",
+      generationComplete: "生成完了！",
+      generatingCharacter: "キャラクターの詳細を生成中...",
+      generatingUniverse: "ユニバースの設定を生成中...",
+      summarizingUniverse:
+        "ユニバースの設定を分析し、要約を作成中...",
+      researchingLore: "アーキタイプと概念を調査中...",
+    },
   },
   changelogs: {
     title: "変更履歴",

@@ -1,0 +1,414 @@
+import { supabase } from "@/lib/db";
+
+export interface EntityGenerationOptions {
+  type: "character" | "universe";
+  prompt: string;
+  model: {
+    provider: string;
+    model_id: string;
+    name?: string;
+    isLocal?: boolean;
+  };
+  universe?: {
+    id?: string;
+    name: string;
+    display_name?: string | null;
+    short_description?: string | null;
+    appearance?: string | null;
+    personality?: string | null;
+    backstory?: string | null;
+    hidden_description?: string | null;
+    is_universe?: boolean;
+  } | null;
+  onProgress?: (step: GenerationStep, detail?: string) => void;
+  signal?: AbortSignal;
+}
+
+export type GenerationStep =
+  | "idle"
+  | "summarizing"
+  | "researching"
+  | "generating"
+  | "completed"
+  | "error";
+
+export interface GeneratedEntityResult {
+  name: string;
+  display_name: string;
+  short_description: string;
+  appearance: string;
+  personality: string;
+  backstory: string;
+  hidden_description: string;
+  universe_id?: string;
+  is_universe: boolean;
+}
+
+/**
+ * Resilient JSON Extraction Algorithm
+ * Extracts valid JSON payloads from markdown codeblocks, conversational preambles, and outermost braces.
+ */
+export function extractJsonPayload<T = any>(raw: string): T {
+  if (!raw || typeof raw !== "string") {
+    throw new Error("Empty response received from generator");
+  }
+  const trimmed = raw.trim();
+
+  // 1. Direct JSON parse
+  try {
+    return JSON.parse(trimmed);
+  } catch {}
+
+  // 2. Markdown ```json ... ``` codeblock extraction
+  const mdMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (mdMatch) {
+    try {
+      return JSON.parse(mdMatch[1].trim());
+    } catch {}
+  }
+
+  // 3. Outermost brace matching { ... }
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(trimmed.substring(firstBrace, lastBrace + 1));
+    } catch {}
+  }
+
+  throw new Error("Failed to parse structured JSON from generator output");
+}
+
+/**
+ * Universe Brief Builder for Character Generation
+ */
+export function buildUniverseBriefPrompt(
+  universe: NonNullable<EntityGenerationOptions["universe"]>,
+): string {
+  const parts: string[] = [];
+  parts.push(`Universe Name: ${universe.name}`);
+  if (universe.display_name) parts.push(`Title: ${universe.display_name}`);
+  if (universe.short_description)
+    parts.push(`World Lore & Setting:\n${universe.short_description.slice(0, 4000)}`);
+  if (universe.appearance)
+    parts.push(`Geography & Environment:\n${universe.appearance.slice(0, 2000)}`);
+  if (universe.personality)
+    parts.push(`Tone & Atmosphere:\n${universe.personality.slice(0, 2000)}`);
+  if (universe.backstory)
+    parts.push(`History & Factions:\n${universe.backstory.slice(0, 2000)}`);
+  if (universe.hidden_description)
+    parts.push(`Private Notes:\n${universe.hidden_description.slice(0, 2000)}`);
+  return parts.join("\n\n");
+}
+
+/**
+ * Character Generator Prompt Builder with Anti-Verbatim Rule
+ */
+export function buildCharacterGenerationPrompt(params: {
+  prompt: string;
+  universeSummary?: string;
+  researchFindings?: string;
+}): { system: string; user: string } {
+  const system = [
+    "You are an expert character creator and narrative designer for fiction and roleplay.",
+    "OUTPUT FORMAT: You MUST respond ONLY with a valid JSON object matching the schema below.",
+    JSON.stringify(
+      {
+        name: "Full character name",
+        display_name: "Title or moniker",
+        short_description: "1-2 sentence hook summarizing who they are",
+        appearance: "Physical traits, clothing, distinctive markings, gear",
+        personality: "Psychological profile, virtues, flaws, speech style",
+        backstory: "Personal history, formative events, affiliations",
+        hidden_description: "Private GM/creator notes and secrets",
+      },
+      null,
+      2,
+    ),
+    "CRITICAL RULES:",
+    "1. ANCHOR DEEPLY in the culture, factions, and rules of the provided universe context.",
+    "2. STRICTLY AVOID VERBATIM REPETITION: DO NOT copy-paste or duplicate the universe's world lore description verbatim into the character fields.",
+    "3. Fill out all 7 fields with vivid, creative details.",
+  ].join("\n\n");
+
+  const userParts: string[] = [`Concept / Prompt: "${params.prompt}"`];
+  if (params.universeSummary) {
+    userParts.push(`Universe Context & Design Brief:\n${params.universeSummary}`);
+  }
+  if (params.researchFindings) {
+    userParts.push(`Archetype & Lore Research Findings:\n${params.researchFindings}`);
+  }
+  userParts.push("Generate the structured character JSON object now.");
+
+  return { system, user: userParts.join("\n\n") };
+}
+
+/**
+ * Universe Generator Prompt Builder
+ */
+export function buildUniverseGenerationPrompt(params: {
+  prompt: string;
+  researchFindings?: string;
+}): { system: string; user: string } {
+  const system = [
+    "You are a master worldbuilding architect and setting designer.",
+    "OUTPUT FORMAT: You MUST respond ONLY with a valid JSON object matching the schema below.",
+    JSON.stringify(
+      {
+        name: "Unique Universe Name",
+        display_name: "Short subtitle or setting classification",
+        short_description:
+          "Comprehensive multi-paragraph world overview covering history, geography, magic/technology, and factions",
+        hidden_description:
+          "Private GM notes, cosmological secrets, and plot hooks",
+      },
+      null,
+      2,
+    ),
+    "CRITICAL RULES:",
+    "1. Establish coherent world rules, distinct cultures, and dynamic factions.",
+    "2. Fill out all 4 fields with evocative, high-quality worldbuilding.",
+  ].join("\n\n");
+
+  const userParts: string[] = [`Universe Concept: "${params.prompt}"`];
+  if (params.researchFindings) {
+    userParts.push(`Worldbuilding Research Findings:\n${params.researchFindings}`);
+  }
+  userParts.push("Generate the structured universe JSON object now.");
+
+  return { system, user: userParts.join("\n\n") };
+}
+
+async function callModel(
+  model: EntityGenerationOptions["model"],
+  messages: Array<{ role: string; content: string }>,
+  signal?: AbortSignal,
+): Promise<string> {
+  const isLocalOllama = model.isLocal && model.provider === "local-ollama";
+  const isLocalLmStudio = model.isLocal && model.provider === "local-lmstudio";
+  const isLocalKobold = model.isLocal && model.provider === "local-kobold";
+
+  let url = "/api/ai/proxy";
+  let headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  } catch {}
+
+  let bodyData: any = {
+    model: model.model_id,
+    provider: model.provider,
+    messages,
+  };
+
+  if (isLocalOllama) {
+    url = "http://127.0.0.1:11434/api/chat";
+    bodyData = {
+      model: model.model_id,
+      messages,
+      stream: false,
+    };
+  } else if (isLocalLmStudio) {
+    url = "http://127.0.0.1:1234/v1/chat/completions";
+    bodyData = {
+      model: model.model_id,
+      messages,
+      stream: false,
+    };
+  } else if (isLocalKobold) {
+    url = "http://127.0.0.1:5001/v1/chat/completions";
+    bodyData = {
+      model: model.model_id,
+      messages,
+      stream: false,
+    };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(bodyData),
+      signal,
+    });
+  } catch (err: any) {
+    if (url.includes("127.0.0.1")) {
+      const fallbackUrl = url.replace("127.0.0.1", "localhost");
+      res = await fetch(fallbackUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(bodyData),
+        signal,
+      });
+    } else if (url.includes("localhost")) {
+      const fallbackUrl = url.replace("localhost", "127.0.0.1");
+      res = await fetch(fallbackUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(bodyData),
+        signal,
+      });
+    } else {
+      throw err;
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error(`Generation failed with status ${res.status}`);
+  }
+
+  const json = await res.json();
+  return (
+    json?.choices?.[0]?.message?.content ||
+    json?.message?.content ||
+    json?.result ||
+    ""
+  );
+}
+
+/**
+ * Execute Multi-Stage Entity Generation Pipeline
+ */
+export async function executeEntityGeneration(
+  options: EntityGenerationOptions,
+): Promise<GeneratedEntityResult> {
+  const { type, prompt, model, universe, onProgress, signal } = options;
+
+  if (!prompt || !prompt.trim()) {
+    throw new Error("Prompt is required for entity generation");
+  }
+
+  if (signal?.aborted) {
+    throw new DOMException("Generation was cancelled", "AbortError");
+  }
+
+  let universeSummary = "";
+
+  // Step 1: Universe Summarization (if Character with Universe)
+  if (type === "character" && universe) {
+    onProgress?.("summarizing", "Analyzing universe lore and formulating brief...");
+
+    if (signal?.aborted) {
+      throw new DOMException("Generation was cancelled", "AbortError");
+    }
+
+    const briefInput = buildUniverseBriefPrompt(universe);
+    universeSummary = await callModel(
+      model,
+      [
+        {
+          role: "system",
+          content:
+            "Produce a concise character-design brief summarizing the world rules, tone, and factions.",
+        },
+        { role: "user", content: briefInput },
+      ],
+      signal,
+    );
+  }
+
+  // Step 2: Agent Search Research
+  onProgress?.("researching", "Researching lore archetypes and concepts...");
+  if (signal?.aborted) {
+    throw new DOMException("Generation was cancelled", "AbortError");
+  }
+
+  const searchQuery =
+    type === "character" && universe
+      ? `${prompt} archetypes in context of ${universe.name}: ${universeSummary.slice(0, 200)}`
+      : `${prompt} worldbuilding concepts and tropes`;
+
+  let researchFindings = "";
+  try {
+    const searchRes = await fetch("/api/ai/agent-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: searchQuery.slice(0, 950),
+        responseFormat: "summary",
+        researchOnly: true,
+        stream: false,
+      }),
+      signal,
+    });
+
+    if (searchRes.ok) {
+      const searchData = await searchRes.json();
+      researchFindings =
+        searchData?.result || searchData?.researchContext || "";
+    } else {
+      researchFindings = "Standard creative tropes applicable to this genre.";
+    }
+  } catch (err: any) {
+    if (signal?.aborted) {
+      throw new DOMException("Generation was cancelled", "AbortError");
+    }
+    // Graceful fallback on network search failure
+    researchFindings = "Standard creative tropes applicable to this genre.";
+  }
+
+  // Step 3: Generator Agent
+  onProgress?.(
+    "generating",
+    type === "character"
+      ? "Generating character details..."
+      : "Generating universe lore...",
+  );
+  if (signal?.aborted) {
+    throw new DOMException("Generation was cancelled", "AbortError");
+  }
+
+  const promptBundle =
+    type === "character"
+      ? buildCharacterGenerationPrompt({
+          prompt,
+          universeSummary,
+          researchFindings,
+        })
+      : buildUniverseGenerationPrompt({ prompt, researchFindings });
+
+  const rawContent = await callModel(
+    model,
+    [
+      { role: "system", content: promptBundle.system },
+      { role: "user", content: promptBundle.user },
+    ],
+    signal,
+  );
+
+  const parsed = extractJsonPayload<any>(rawContent);
+
+  onProgress?.("completed", "Generation complete!");
+
+  if (type === "character") {
+    return {
+      name: parsed.name || "Unnamed Character",
+      display_name: parsed.display_name || "",
+      short_description: parsed.short_description || "",
+      appearance: parsed.appearance || "",
+      personality: parsed.personality || "",
+      backstory: parsed.backstory || "",
+      hidden_description: parsed.hidden_description || "",
+      universe_id: universe?.id,
+      is_universe: false,
+    };
+  } else {
+    return {
+      name: parsed.name || "Unnamed Universe",
+      display_name: parsed.display_name || "",
+      short_description: parsed.short_description || "",
+      appearance: "",
+      personality: "",
+      backstory: "",
+      hidden_description: parsed.hidden_description || "",
+      is_universe: true,
+    };
+  }
+}
+
+export const generateEntity = executeEntityGeneration;

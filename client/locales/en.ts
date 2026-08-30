@@ -435,6 +435,36 @@ export const en = {
     verifiedBadge: "Verified",
     reverificationRequired:
       "Character modified. Verification status has been reset and requires re-verification for multiplayer usage.",
+    aiGenerate: {
+      button: "AI Generate",
+      generateForUniverse: "Generate Character in this Universe",
+      titleCharacter: "AI Character Generator",
+      titleUniverse: "AI Universe Generator",
+      subtitle:
+        "Describe your concept and let AI research and generate detailed lore and attributes.",
+      targetType: "Generation Target",
+      character: "Character",
+      universe: "Universe",
+      targetUniverse: "Target Universe",
+      standaloneOption: "None (Standalone Character)",
+      model: "AI Model",
+      promptLabel: "Concept & Prompt",
+      promptPlaceholder:
+        "Describe the character's background, personality, role, or universe theme...",
+      generate: "Generate",
+      stopGeneration: "Stop Generation",
+      stepSummarizing: "Step 1: Summarizing Universe",
+      stepResearching: "Step 2: Researching via Search Agent",
+      stepGenerating: "Step 3: Generating",
+      errorPromptRequired: "Please enter a concept or prompt to generate.",
+      errorGeneric: "Failed to generate. Please try again.",
+      generationComplete: "Generation complete!",
+      generatingCharacter: "Generating character details...",
+      generatingUniverse: "Generating universe lore...",
+      summarizingUniverse:
+        "Analyzing universe lore and formulating brief...",
+      researchingLore: "Researching lore archetypes and concepts...",
+    },
   },
   changelogs: {
     title: "Changelogs",

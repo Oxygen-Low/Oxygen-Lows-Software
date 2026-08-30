@@ -239,4 +239,32 @@ describe("Characters Component", () => {
 
     setCategoryEncryptionEnabled("characters", false);
   });
+
+  it("renders AI Generate button in header and opens AI generation modal", async () => {
+    render(<Characters />);
+
+    const aiGenButtons = screen.getAllByRole("button", {
+      name: /AI Generate/i,
+    });
+    expect(aiGenButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(aiGenButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ai-generate-dialog")).toBeDefined();
+      expect(screen.getByTestId("prompt-input")).toBeDefined();
+    });
+  });
+
+  it("switches to Universes tab and renders AI Generate trigger", async () => {
+    render(<Characters />);
+
+    const universesTab = screen.getByText("My Universes");
+    fireEvent.click(universesTab);
+
+    const aiGenButtons = screen.getAllByRole("button", {
+      name: /AI Generate/i,
+    });
+    expect(aiGenButtons.length).toBeGreaterThan(0);
+  });
 });

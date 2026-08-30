@@ -440,6 +440,37 @@ export const ru = {
     verifiedBadge: "Верифицировано",
     reverificationRequired:
       "Персонаж изменен. Статус верификации сброшен и требуется повторная проверка для мультиплеера.",
+    aiGenerate: {
+      button: "ИИ Генерация",
+      generateForUniverse: "Создать персонажа в этой вселенной",
+      titleCharacter: "ИИ Генератор персонажей",
+      titleUniverse: "ИИ Генератор вселенных",
+      subtitle:
+        "Опишите концепцию, и ИИ исследует и создаст подробный лор и характеристики.",
+      targetType: "Тип генерации",
+      character: "Персонаж",
+      universe: "Вселенная",
+      targetUniverse: "Целевая вселенная",
+      standaloneOption: "Нет (отдельный персонаж)",
+      model: "Модель ИИ",
+      promptLabel: "Концепция и промпт",
+      promptPlaceholder:
+        "Опишите предысторию, характер, роль или тему вселенной...",
+      generate: "Сгенерировать",
+      stopGeneration: "Остановить генерацию",
+      stepSummarizing: "Шаг 1: Обобщение вселенной",
+      stepResearching: "Шаг 2: Исследование через поискового агента",
+      stepGenerating: "Шаг 3: Генерация",
+      errorPromptRequired:
+        "Пожалуйста, введите концепцию или промпт для генерации.",
+      errorGeneric: "Не удалось сгенерировать. Попробуйте еще раз.",
+      generationComplete: "Генерация завершена!",
+      generatingCharacter: "Генерация деталей персонажа...",
+      generatingUniverse: "Генерация лора вселенной...",
+      summarizingUniverse:
+        "Анализ лора вселенной и составление краткого описания...",
+      researchingLore: "Исследование архетипов и концепций...",
+    },
   },
   changelogs: {
     title: "Список изменений",

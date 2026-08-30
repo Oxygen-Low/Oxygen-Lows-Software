@@ -432,6 +432,37 @@ export const ko = {
     verifiedBadge: "검증 완료",
     reverificationRequired:
       "캐릭터가 수정되었습니다. 검증 상태가 초기화되었으며 멀티플레이어용 재검증이 필요합니다.",
+    aiGenerate: {
+      button: "AI 생성",
+      generateForUniverse: "이 세계관에서 캐릭터 생성",
+      titleCharacter: "AI 캐릭터 생성기",
+      titleUniverse: "AI 세계관 생성기",
+      subtitle:
+        "컨셉을 입력하면 AI가 탐색하여 상세한 배경 설정과 속성을 생성합니다.",
+      targetType: "생성 대상",
+      character: "캐릭터",
+      universe: "세계관",
+      targetUniverse: "대상 세계관",
+      standaloneOption: "없음 (독립 캐릭터)",
+      model: "AI 모델",
+      promptLabel: "컨셉 및 프롬프트",
+      promptPlaceholder:
+        "캐릭터의 배경, 성격, 역할 또는 세계관 테마를 설명하세요...",
+      generate: "생성",
+      stopGeneration: "생성 중단",
+      stepSummarizing: "1단계: 세계관 요약",
+      stepResearching: "2단계: 검색 에이전트 조사",
+      stepGenerating: "3단계: 생성 중",
+      errorPromptRequired:
+        "생성할 컨셉 또는 프롬프트를 입력해 주세요.",
+      errorGeneric: "생성에 실패했습니다. 다시 시도해 주세요.",
+      generationComplete: "생성 완료!",
+      generatingCharacter: "캐릭터 상세 정보 생성 중...",
+      generatingUniverse: "세계관 설정 생성 중...",
+      summarizingUniverse:
+        "세계관 설정을 분석하고 브리프를 작성하는 중...",
+      researchingLore: "원형 및 설정을 조사하는 중...",
+    },
   },
   changelogs: {
     title: "변경 로그",
