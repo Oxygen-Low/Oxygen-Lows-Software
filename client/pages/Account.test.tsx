@@ -266,7 +266,7 @@ describe("Account Component", () => {
     expect(croppedDiv).toBeDefined();
   });
 
-  it("renders Models tab with active models header and feature default pickers", async () => {
+  it("renders Models tab and feature default pickers", async () => {
     renderAccount();
     expect(screen.getByTestId("models-tab-content")).toBeDefined();
     expect(screen.getAllByText("Models").length).toBeGreaterThan(0);
