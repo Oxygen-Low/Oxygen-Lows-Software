@@ -19,8 +19,6 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Activity,
-  Radio,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db, supabase } from "@/lib/db";
@@ -925,21 +923,6 @@ export default function Account() {
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="bg-slate-950 border-slate-800 text-slate-300 py-1 px-2.5">
-                    <Activity className="w-3.5 h-3.5 mr-1.5 text-cyan-400" />
-                    {models.length} {t("account.activeModelsCount", undefined, "Active Models")}
-                  </Badge>
-                  {localStatus.totalLocal > 0 ? (
-                    <Badge variant="outline" className="bg-emerald-950/40 border-emerald-800 text-emerald-300 py-1 px-2.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
-                      {localStatus.totalLocal} {t("account.localStatusRunning", undefined, "Local Running")}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-slate-950 border-slate-800 text-slate-500 py-1 px-2.5">
-                      <Radio className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                      {t("account.localStatusOffline", undefined, "Local Offline")}
-                    </Badge>
-                  )}
                   <Button
                     onClick={handleOpenAddModelModal}
                     className="bg-cyan-600 hover:bg-cyan-500 text-white gap-1.5"
