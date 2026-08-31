@@ -144,7 +144,7 @@ export default function Privacy() {
                 2.2 Cloud Storage Files
               </p>
               <P>
-                The Service provides up to 30 MB of personal cloud storage per
+                The Service provides up to 1 GB of personal cloud storage per
                 user for images, documents, and audio files. Any files you
                 upload are stored securely in your account and are accessible
                 only to you unless you explicitly make them public (e.g. a

@@ -61,7 +61,7 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
 
     if (currentSize + newFileSize > MAX_USER_QUOTA) {
       return c.json(
-        { error: "Quota exceeded. Maximum 300MB allowed per user." },
+        { error: "Quota exceeded. Maximum 1GB allowed per user." },
         400,
       );
     }

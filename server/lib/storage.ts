@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 export const STORAGE_DIR = path.join(process.cwd(), "uploads");
-export const MAX_USER_QUOTA = 300 * 1024 * 1024; // 300 MB
+export const MAX_USER_QUOTA = 1024 * 1024 * 1024; // 1 GB
 
 const MIME_MAP: Record<string, string> = {
   // Images

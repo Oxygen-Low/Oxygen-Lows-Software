@@ -284,8 +284,8 @@ export default function Storage() {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
 
-    if (totalSize + file.size > 300 * 1024 * 1024) {
-      toast.error("Storage limit reached (300MB)");
+    if (totalSize + file.size > 1024 * 1024 * 1024) {
+      toast.error("Storage limit reached (1GB)");
       return;
     }
 
@@ -658,11 +658,11 @@ export default function Storage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-xs sm:text-sm text-slate-400">
                   <span>{formatSize(totalAll)} used</span>
-                  <span>Limit: 300MB (Files & Public Assets)</span>
+                  <span>Limit: 1GB (Files & Public Assets)</span>
                 </div>
                 <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden flex">
                   {Object.entries(categories).map(([key, cat]) => {
-                    const width = (cat.size / (300 * 1024 * 1024)) * 100;
+                    const width = (cat.size / (1024 * 1024 * 1024)) * 100;
                     if (width === 0) return null;
                     return (
                       <HoverCard key={key}>
