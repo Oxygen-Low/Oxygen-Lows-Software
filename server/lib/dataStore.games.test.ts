@@ -73,23 +73,48 @@ describe("dataStore - Game Tables & Social RPCs", () => {
     });
 
     it("should resolve getTableFilePath for user_games, user_playtime, user_presence and aliases", () => {
-      const expectedGamesPath = path.join(DATA_DIR, user1, "games", "games.json");
-      const expectedPlaytimePath = path.join(DATA_DIR, user1, "games", "playtime.json");
-      const expectedPresencePath = path.join(DATA_DIR, user1, "games", "presence.json");
+      const expectedGamesPath = path.join(
+        DATA_DIR,
+        user1,
+        "games",
+        "games.json",
+      );
+      const expectedPlaytimePath = path.join(
+        DATA_DIR,
+        user1,
+        "games",
+        "playtime.json",
+      );
+      const expectedPresencePath = path.join(
+        DATA_DIR,
+        user1,
+        "games",
+        "presence.json",
+      );
 
       expect(getTableFilePath("user_games", user1)).toBe(expectedGamesPath);
       expect(getTableFilePath("games", user1)).toBe(expectedGamesPath);
       expect(getTableFilePath("game_library", user1)).toBe(expectedGamesPath);
-      expect(getTableFilePath("installed_games", user1)).toBe(expectedGamesPath);
+      expect(getTableFilePath("installed_games", user1)).toBe(
+        expectedGamesPath,
+      );
       expect(getTableFilePath("custom_games", user1)).toBe(expectedGamesPath);
 
-      expect(getTableFilePath("user_playtime", user1)).toBe(expectedPlaytimePath);
-      expect(getTableFilePath("game_playtime", user1)).toBe(expectedPlaytimePath);
+      expect(getTableFilePath("user_playtime", user1)).toBe(
+        expectedPlaytimePath,
+      );
+      expect(getTableFilePath("game_playtime", user1)).toBe(
+        expectedPlaytimePath,
+      );
       expect(getTableFilePath("playtime", user1)).toBe(expectedPlaytimePath);
       expect(getTableFilePath("playtimes", user1)).toBe(expectedPlaytimePath);
 
-      expect(getTableFilePath("user_presence", user1)).toBe(expectedPresencePath);
-      expect(getTableFilePath("game_presence", user1)).toBe(expectedPresencePath);
+      expect(getTableFilePath("user_presence", user1)).toBe(
+        expectedPresencePath,
+      );
+      expect(getTableFilePath("game_presence", user1)).toBe(
+        expectedPresencePath,
+      );
       expect(getTableFilePath("presence", user1)).toBe(expectedPresencePath);
       expect(getTableFilePath("presences", user1)).toBe(expectedPresencePath);
     });
@@ -215,8 +240,14 @@ describe("dataStore - Game Tables & Social RPCs", () => {
         expect(syncResult.count).toBe(3); // 1 custom + 2 scanned
 
         const games = getTableRows("user_games", user1) as UserGameRecord[];
-        expect(games.some((g) => g.title === "My Custom Emulator" && g.is_custom)).toBe(true);
-        expect(games.some((g) => g.game_id === "steam_1091500" && g.playtime_seconds === 3600)).toBe(true);
+        expect(
+          games.some((g) => g.title === "My Custom Emulator" && g.is_custom),
+        ).toBe(true);
+        expect(
+          games.some(
+            (g) => g.game_id === "steam_1091500" && g.playtime_seconds === 3600,
+          ),
+        ).toBe(true);
 
         // Re-sync with updated playtime
         callRpc(
@@ -234,7 +265,10 @@ describe("dataStore - Game Tables & Social RPCs", () => {
           user1,
         );
 
-        const updatedGames = getTableRows("user_games", user1) as UserGameRecord[];
+        const updatedGames = getTableRows(
+          "user_games",
+          user1,
+        ) as UserGameRecord[];
         const cp = updatedGames.find((g) => g.game_id === "steam_1091500");
         expect(cp?.playtime_seconds).toBe(7200);
       });
@@ -316,14 +350,18 @@ describe("dataStore - Game Tables & Social RPCs", () => {
         expect(log2.total_seconds).toBe(500);
 
         // Check user_games record was updated
-        const game = (getTableRows("user_games", user1) as UserGameRecord[]).find(
-          (g) => g.game_id === "steam_730",
-        );
+        const game = (
+          getTableRows("user_games", user1) as UserGameRecord[]
+        ).find((g) => g.game_id === "steam_730");
         expect(game?.playtime_seconds).toBe(600); // 100 initial + 300 + 200
         expect(game?.last_played_at).toBeDefined();
 
         // Check get_user_playtime for specific game
-        const specificPt = callRpc("get_user_playtime", { game_id: "steam_730" }, user1);
+        const specificPt = callRpc(
+          "get_user_playtime",
+          { game_id: "steam_730" },
+          user1,
+        );
         expect(specificPt.success).toBe(true);
         expect(specificPt.total_seconds).toBe(600);
 
@@ -352,7 +390,10 @@ describe("dataStore - Game Tables & Social RPCs", () => {
         expect(presence.game_id).toBe("steam_1091500");
         expect(presence.game_title).toBe("Cyberpunk 2077");
 
-        const rows = getTableRows("user_presence", user1) as UserPresenceRecord[];
+        const rows = getTableRows(
+          "user_presence",
+          user1,
+        ) as UserPresenceRecord[];
         expect(rows).toHaveLength(1);
         expect(rows[0].is_playing).toBe(true);
 
@@ -522,7 +563,9 @@ describe("dataStore - Game Tables & Social RPCs", () => {
 
       it("should handle heartbeat expiration (>3 minutes) as not currently playing", () => {
         // Set presence updated_at to 5 minutes ago for user2
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const fiveMinutesAgo = new Date(
+          Date.now() - 5 * 60 * 1000,
+        ).toISOString();
         const presenceRecord = {
           id: user2,
           user_id: user2,

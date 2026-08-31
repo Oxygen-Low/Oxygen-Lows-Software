@@ -138,7 +138,12 @@ function TestThemeConsumer() {
       </button>
       <button
         data-testid="set-research-summarizer-default"
-        onClick={() => setResearchSummarizerDefault("@cf/nvidia/nemotron-3-120b-a12b", "cloudflare")}
+        onClick={() =>
+          setResearchSummarizerDefault(
+            "@cf/nvidia/nemotron-3-120b-a12b",
+            "cloudflare",
+          )
+        }
       >
         Set Research Summarizer Default
       </button>

@@ -31,11 +31,9 @@ vi.mock("@/lib/db", () => {
         data: { session: { user: { id: "u" } } },
         error: null,
       }),
-      onAuthStateChange: vi
-        .fn()
-        .mockReturnValue({
-          data: { subscription: { unsubscribe: vi.fn() } },
-        }),
+      onAuthStateChange: vi.fn().mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }),
     },
     from: vi.fn().mockReturnValue(queryBuilder),
   };

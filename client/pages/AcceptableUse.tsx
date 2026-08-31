@@ -210,7 +210,7 @@ export default function AcceptableUse() {
               </p>
               <Ul
                 items={[
-                  "Exceeding your allocated 1 GB cloud storage quota by any means, including by using multiple accounts.",
+                  "Exceeding your allocated 500 MB cloud storage quota by any means, including by using multiple accounts.",
                   "Exceeding the 50 MB daily bandwidth limit for the VPN/proxy feature.",
                   "Using the Service's storage or bandwidth infrastructure to distribute commercial software, pirated content, or large files not intended for personal use.",
                 ]}

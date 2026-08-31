@@ -28,7 +28,9 @@ export function generateSalt(): string {
 }
 
 export function hashPassword(password: string, salt: string): string {
-  return crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
+  return crypto
+    .pbkdf2Sync(password, salt, 100000, 64, "sha512")
+    .toString("hex");
 }
 
 export function verifyPassword(
@@ -60,7 +62,7 @@ export function generateToken(
   expiresInDays: number = 30,
 ): string {
   const secret = getSecretKey();
-  const role = String(user.id) === "1" ? "admin" : (user.role || "user");
+  const role = String(user.id) === "1" ? "admin" : user.role || "user";
   const payload: TokenPayload = {
     userId: user.id,
     username: user.username,
@@ -94,10 +96,7 @@ export function verifyToken(token: string): TokenPayload | null {
       .digest("base64url");
 
     if (
-      !crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSig),
-      )
+      !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))
     ) {
       return null;
     }

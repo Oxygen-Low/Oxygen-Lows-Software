@@ -85,7 +85,11 @@ assetsRouter.post("/verifications/submit", async (c) => {
         "asset_verifications",
         [
           { field: "user_id", operator: "eq", value: user.id },
-          { field: "original_file_path", operator: "eq", value: original_file_path },
+          {
+            field: "original_file_path",
+            operator: "eq",
+            value: original_file_path,
+          },
         ],
         user.id,
       );
@@ -177,17 +181,22 @@ assetsRouter.delete("/verifications/:id", async (c) => {
       if (verif.asset_type === "file" && verif.public_asset_id) {
         const assets = queryTable({
           table: "public_assets",
-          filters: [{ field: "id", operator: "eq", value: verif.public_asset_id }],
+          filters: [
+            { field: "id", operator: "eq", value: verif.public_asset_id },
+          ],
         });
         const asset = assets && assets[0];
         if (asset) {
           if (asset.file_path) {
             await serverStorage.remove("public-assets", [asset.file_path]);
           }
-          deleteTable(
-            "public_asset_likes",
-            [{ field: "public_asset_id", operator: "eq", value: verif.public_asset_id }],
-          );
+          deleteTable("public_asset_likes", [
+            {
+              field: "public_asset_id",
+              operator: "eq",
+              value: verif.public_asset_id,
+            },
+          ]);
           deleteTable(
             "public_assets",
             [{ field: "id", operator: "eq", value: verif.public_asset_id }],
@@ -200,10 +209,13 @@ assetsRouter.delete("/verifications/:id", async (c) => {
           verif.asset_type === "race") &&
         verif.public_character_id
       ) {
-        deleteTable(
-          "public_character_likes",
-          [{ field: "public_character_id", operator: "eq", value: verif.public_character_id }],
-        );
+        deleteTable("public_character_likes", [
+          {
+            field: "public_character_id",
+            operator: "eq",
+            value: verif.public_character_id,
+          },
+        ]);
         deleteTable(
           "public_characters",
           [{ field: "id", operator: "eq", value: verif.public_character_id }],
@@ -262,7 +274,11 @@ assetsRouter.post("/verifications/invalidate", async (c) => {
           "asset_verifications",
           [
             { field: "user_id", operator: "eq", value: user.id },
-            { field: "original_file_path", operator: "eq", value: original_file_path },
+            {
+              field: "original_file_path",
+              operator: "eq",
+              value: original_file_path,
+            },
             { field: "target_type", operator: "eq", value: "public_usage" },
           ],
           user.id,
@@ -305,7 +321,11 @@ assetsRouter.post("/unpublish", async (c) => {
         return c.json({ error: "Public asset not found" }, 404);
       }
 
-      if (asset.uploader_id !== user.id && asset.user_id !== user.id && !isAdmin) {
+      if (
+        asset.uploader_id !== user.id &&
+        asset.user_id !== user.id &&
+        !isAdmin
+      ) {
         return c.json({ error: "Forbidden" }, 403);
       }
 
@@ -315,10 +335,9 @@ assetsRouter.post("/unpublish", async (c) => {
       }
 
       // Delete likes and public asset record
-      deleteTable(
-        "public_asset_likes",
-        [{ field: "public_asset_id", operator: "eq", value: id }],
-      );
+      deleteTable("public_asset_likes", [
+        { field: "public_asset_id", operator: "eq", value: id },
+      ]);
       deleteTable(
         "public_assets",
         [{ field: "id", operator: "eq", value: id }],
@@ -336,15 +355,18 @@ assetsRouter.post("/unpublish", async (c) => {
         return c.json({ error: "Public character not found" }, 404);
       }
 
-      if (char.uploader_id !== user.id && char.user_id !== user.id && !isAdmin) {
+      if (
+        char.uploader_id !== user.id &&
+        char.user_id !== user.id &&
+        !isAdmin
+      ) {
         return c.json({ error: "Forbidden" }, 403);
       }
 
       // Delete likes and public character record
-      deleteTable(
-        "public_character_likes",
-        [{ field: "public_character_id", operator: "eq", value: id }],
-      );
+      deleteTable("public_character_likes", [
+        { field: "public_character_id", operator: "eq", value: id },
+      ]);
       deleteTable(
         "public_characters",
         [{ field: "id", operator: "eq", value: id }],

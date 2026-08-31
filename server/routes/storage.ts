@@ -49,7 +49,11 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
 
     const user = c.get("user" as any) as any;
 
-    if (!filePath.startsWith(user.id + "/") && user.role !== "admin" && String(user.id) !== "1") {
+    if (
+      !filePath.startsWith(user.id + "/") &&
+      user.role !== "admin" &&
+      String(user.id) !== "1"
+    ) {
       return c.json({ error: "Cannot upload to other user's directory" }, 400);
     }
 
@@ -82,7 +86,7 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
 
     if (currentSize + newFileSize > MAX_USER_QUOTA) {
       return c.json(
-        { error: "Quota exceeded. Maximum 1GB allowed per user." },
+        { error: "Quota exceeded. Maximum 500MB allowed per user." },
         400,
       );
     }
@@ -120,7 +124,11 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
 
     const user = c.get("user" as any) as any;
 
-    if (!filePath.startsWith(user.id + "/") && user.role !== "admin" && String(user.id) !== "1") {
+    if (
+      !filePath.startsWith(user.id + "/") &&
+      user.role !== "admin" &&
+      String(user.id) !== "1"
+    ) {
       return c.json({ error: "Cannot upload to other user's directory" }, 400);
     }
 
@@ -144,7 +152,7 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
     const currentSize = getUserTotalSize(user.id);
     if (currentSize + totalSize > MAX_USER_QUOTA) {
       return c.json(
-        { error: "Quota exceeded. Maximum 1GB allowed per user." },
+        { error: "Quota exceeded. Maximum 500MB allowed per user." },
         400,
       );
     }

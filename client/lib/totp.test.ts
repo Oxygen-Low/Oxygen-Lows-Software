@@ -28,7 +28,9 @@ describe("TOTP Utilities", () => {
     });
 
     it("should throw error on invalid Base32 characters (like 8, 9, 0, 1)", () => {
-      expect(() => base32ToBytes("INVALID890")).toThrow("Invalid Base32 character");
+      expect(() => base32ToBytes("INVALID890")).toThrow(
+        "Invalid Base32 character",
+      );
     });
   });
 
@@ -39,42 +41,82 @@ describe("TOTP Utilities", () => {
     const rfcSecret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 
     it("matches RFC 6238 SHA-1 test vectors at T=59", async () => {
-      const otp8 = await generateTotp(rfcSecret, { time: 59, digits: 8, algorithm: "SHA-1" });
+      const otp8 = await generateTotp(rfcSecret, {
+        time: 59,
+        digits: 8,
+        algorithm: "SHA-1",
+      });
       expect(otp8).toBe("94287082");
 
-      const otp6 = await generateTotp(rfcSecret, { time: 59, digits: 6, algorithm: "SHA-1" });
+      const otp6 = await generateTotp(rfcSecret, {
+        time: 59,
+        digits: 6,
+        algorithm: "SHA-1",
+      });
       expect(otp6).toBe("287082");
     });
 
     it("matches RFC 6238 SHA-1 test vectors at T=1111111109", async () => {
-      const otp8 = await generateTotp(rfcSecret, { time: 1111111109, digits: 8, algorithm: "SHA-1" });
+      const otp8 = await generateTotp(rfcSecret, {
+        time: 1111111109,
+        digits: 8,
+        algorithm: "SHA-1",
+      });
       expect(otp8).toBe("07081804");
 
-      const otp6 = await generateTotp(rfcSecret, { time: 1111111109, digits: 6, algorithm: "SHA-1" });
+      const otp6 = await generateTotp(rfcSecret, {
+        time: 1111111109,
+        digits: 6,
+        algorithm: "SHA-1",
+      });
       expect(otp6).toBe("081804");
     });
 
     it("matches RFC 6238 SHA-1 test vectors at T=1111111111", async () => {
-      const otp8 = await generateTotp(rfcSecret, { time: 1111111111, digits: 8, algorithm: "SHA-1" });
+      const otp8 = await generateTotp(rfcSecret, {
+        time: 1111111111,
+        digits: 8,
+        algorithm: "SHA-1",
+      });
       expect(otp8).toBe("14050471");
 
-      const otp6 = await generateTotp(rfcSecret, { time: 1111111111, digits: 6, algorithm: "SHA-1" });
+      const otp6 = await generateTotp(rfcSecret, {
+        time: 1111111111,
+        digits: 6,
+        algorithm: "SHA-1",
+      });
       expect(otp6).toBe("050471");
     });
 
     it("matches RFC 6238 SHA-1 test vectors at T=1234567890", async () => {
-      const otp8 = await generateTotp(rfcSecret, { time: 1234567890, digits: 8, algorithm: "SHA-1" });
+      const otp8 = await generateTotp(rfcSecret, {
+        time: 1234567890,
+        digits: 8,
+        algorithm: "SHA-1",
+      });
       expect(otp8).toBe("89005924");
 
-      const otp6 = await generateTotp(rfcSecret, { time: 1234567890, digits: 6, algorithm: "SHA-1" });
+      const otp6 = await generateTotp(rfcSecret, {
+        time: 1234567890,
+        digits: 6,
+        algorithm: "SHA-1",
+      });
       expect(otp6).toBe("005924");
     });
 
     it("matches RFC 6238 SHA-1 test vectors at T=2000000000", async () => {
-      const otp8 = await generateTotp(rfcSecret, { time: 2000000000, digits: 8, algorithm: "SHA-1" });
+      const otp8 = await generateTotp(rfcSecret, {
+        time: 2000000000,
+        digits: 8,
+        algorithm: "SHA-1",
+      });
       expect(otp8).toBe("69279037");
 
-      const otp6 = await generateTotp(rfcSecret, { time: 2000000000, digits: 6, algorithm: "SHA-1" });
+      const otp6 = await generateTotp(rfcSecret, {
+        time: 2000000000,
+        digits: 6,
+        algorithm: "SHA-1",
+      });
       expect(otp6).toBe("279037");
     });
   });
@@ -83,7 +125,11 @@ describe("TOTP Utilities", () => {
     it("validates valid Base32 secrets", () => {
       expect(validateTotpSecret("JBSWY3DPEHPK3PXP")).toBe(true);
       expect(validateTotpSecret("jbsw y3dp ehpk 3pxp")).toBe(true);
-      expect(validateTotpSecret("otpauth://totp/GitHub:user?secret=JBSWY3DPEHPK3PXP")).toBe(true);
+      expect(
+        validateTotpSecret(
+          "otpauth://totp/GitHub:user?secret=JBSWY3DPEHPK3PXP",
+        ),
+      ).toBe(true);
     });
 
     it("rejects invalid secrets", () => {
@@ -93,9 +139,13 @@ describe("TOTP Utilities", () => {
     });
 
     it("cleans raw secrets and parses otpauth URIs", () => {
-      expect(cleanTotpSecret("  jbsw-y3dp ehpk 3pxp  ")).toBe("JBSWY3DPEHPK3PXP");
+      expect(cleanTotpSecret("  jbsw-y3dp ehpk 3pxp  ")).toBe(
+        "JBSWY3DPEHPK3PXP",
+      );
       expect(
-        cleanTotpSecret("otpauth://totp/Acme:alice?secret=JBSWY3DPEHPK3PXP&issuer=Acme"),
+        cleanTotpSecret(
+          "otpauth://totp/Acme:alice?secret=JBSWY3DPEHPK3PXP&issuer=Acme",
+        ),
       ).toBe("JBSWY3DPEHPK3PXP");
 
       const parsed = parseTotpSecret(

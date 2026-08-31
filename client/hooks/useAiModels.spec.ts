@@ -6,7 +6,9 @@ import { useAiModels, BUILTIN_MODELS } from "./useAiModels";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const mockRpc = vi.fn().mockResolvedValue({ data: null, error: null });
-const mockInsert = vi.fn().mockResolvedValue({ data: [{ id: "m-1" }], error: null });
+const mockInsert = vi
+  .fn()
+  .mockResolvedValue({ data: [{ id: "m-1" }], error: null });
 const mockDelete = vi.fn().mockReturnThis();
 const mockEq = vi.fn().mockReturnThis();
 
@@ -17,16 +19,22 @@ vi.mock("@/lib/db", () => {
   const mockClient = {
     auth: {
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "test-user-id" }, access_token: "mock-token" } },
+        data: {
+          session: { user: { id: "test-user-id" }, access_token: "mock-token" },
+        },
         error: null,
       }),
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user-id" } } }),
+      getUser: vi
+        .fn()
+        .mockResolvedValue({ data: { user: { id: "test-user-id" } } }),
     },
     from: vi.fn((table: string) => {
       if (table === "user_models") {
         return {
           select: vi.fn(() => ({
-            order: vi.fn().mockResolvedValue({ data: mockDbModels, error: null }),
+            order: vi
+              .fn()
+              .mockResolvedValue({ data: mockDbModels, error: null }),
           })),
           insert: mockInsert,
           delete: vi.fn(() => ({
@@ -38,7 +46,9 @@ vi.mock("@/lib/db", () => {
       }
       if (table === "user_integrations") {
         return {
-          select: vi.fn().mockResolvedValue({ data: mockIntegrations, error: null }),
+          select: vi
+            .fn()
+            .mockResolvedValue({ data: mockIntegrations, error: null }),
         };
       }
       if (table === "user_preferences") {
@@ -56,7 +66,8 @@ vi.mock("@/lib/db", () => {
                   chatbot_default_provider: "openai",
                   research_agent_default_model: "google/gemma-4-31b",
                   research_agent_default_provider: "horde",
-                  research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
+                  research_summarizer_default_model:
+                    "@cf/nvidia/nemotron-3-120b-a12b",
                   research_summarizer_default_provider: "cloudflare",
                 },
                 error: null,
@@ -113,7 +124,8 @@ describe("useAiModels Hook", () => {
       if (urlStr.includes(":11434/api/tags")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ models: [{ name: "llama3.2:latest" }] }),
+          json: () =>
+            Promise.resolve({ models: [{ name: "llama3.2:latest" }] }),
         });
       }
       if (urlStr.includes(":1234/v1/models")) {
@@ -137,7 +149,10 @@ describe("useAiModels Hook", () => {
       if (urlStr.includes("/api/ai/horde-status")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ Fast: { workers: 10, queued: 0, speed: "fast", eta: 0 } }),
+          json: () =>
+            Promise.resolve({
+              Fast: { workers: 10, queued: 0, speed: "fast", eta: 0 },
+            }),
         });
       }
       return Promise.resolve({
@@ -160,12 +175,22 @@ describe("useAiModels Hook", () => {
 
     // Verify built-in models definition
     expect(BUILTIN_MODELS.some((m) => m.provider === "cloudflare")).toBe(true);
-    expect(BUILTIN_MODELS.some((m) => m.provider === "horde" && m.model_id === "Fast")).toBe(true);
+    expect(
+      BUILTIN_MODELS.some(
+        (m) => m.provider === "horde" && m.model_id === "Fast",
+      ),
+    ).toBe(true);
 
     // Verify probed local models
-    expect(result.current.models.some((m) => m.model_id === "llama3.2:latest")).toBe(true);
-    expect(result.current.models.some((m) => m.model_id === "lm-local-qwen")).toBe(true);
-    expect(result.current.models.some((m) => m.model_id === "kobold-pygmalion")).toBe(true);
+    expect(
+      result.current.models.some((m) => m.model_id === "llama3.2:latest"),
+    ).toBe(true);
+    expect(
+      result.current.models.some((m) => m.model_id === "lm-local-qwen"),
+    ).toBe(true);
+    expect(
+      result.current.models.some((m) => m.model_id === "kobold-pygmalion"),
+    ).toBe(true);
 
     // Verify localStatus
     expect(result.current.localStatus.ollama).toBe(true);
@@ -193,7 +218,11 @@ describe("useAiModels Hook", () => {
 
     let addRes: any;
     await act(async () => {
-      addRes = await result.current.addCustomModel("openai", "gpt-4o-custom", "My Custom 4o");
+      addRes = await result.current.addCustomModel(
+        "openai",
+        "gpt-4o-custom",
+        "My Custom 4o",
+      );
     });
 
     expect(addRes.success).toBe(true);
@@ -223,7 +252,10 @@ describe("useAiModels Hook", () => {
 
     let removeRes: any;
     await act(async () => {
-      removeRes = await result.current.removeCustomModel("openai", "gpt-4o-custom");
+      removeRes = await result.current.removeCustomModel(
+        "openai",
+        "gpt-4o-custom",
+      );
     });
 
     expect(removeRes.success).toBe(true);
@@ -234,7 +266,11 @@ describe("useAiModels Hook", () => {
       "custom_user_models",
       JSON.stringify([
         { provider: "OpenAI", model_id: "GPT-4O-CUSTOM", name: "Custom 4O" },
-        { provider: "anthropic", model_id: "claude-custom", name: "Claude Custom" },
+        {
+          provider: "anthropic",
+          model_id: "claude-custom",
+          name: "Claude Custom",
+        },
       ]),
     );
 
@@ -248,7 +284,9 @@ describe("useAiModels Hook", () => {
       await result.current.removeCustomModel("openai", "gpt-4o-custom");
     });
 
-    const remaining = JSON.parse(localStorage.getItem("custom_user_models") || "[]");
+    const remaining = JSON.parse(
+      localStorage.getItem("custom_user_models") || "[]",
+    );
     expect(remaining).toHaveLength(1);
     expect(remaining[0].provider).toBe("anthropic");
     expect(remaining[0].model_id).toBe("claude-custom");
@@ -259,17 +297,24 @@ describe("useAiModels Hook", () => {
 
     await waitFor(() => {
       expect(result.current.chatbotDefaultModel).toBe("gpt-4o");
-      expect(result.current.researchAgentDefaultModel).toBe("google/gemma-4-31b");
-      expect(result.current.researchSummarizerDefaultModel).toBe("@cf/nvidia/nemotron-3-120b-a12b");
+      expect(result.current.researchAgentDefaultModel).toBe(
+        "google/gemma-4-31b",
+      );
+      expect(result.current.researchSummarizerDefaultModel).toBe(
+        "@cf/nvidia/nemotron-3-120b-a12b",
+      );
     });
 
     await act(async () => {
       await result.current.setChatbotDefault("claude-3-7-sonnet", "anthropic");
     });
 
-    expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", expect.objectContaining({
-      p_chatbot_default_model: "claude-3-7-sonnet",
-      p_chatbot_default_provider: "anthropic",
-    }));
+    expect(mockRpc).toHaveBeenCalledWith(
+      "upsert_user_preferences",
+      expect.objectContaining({
+        p_chatbot_default_model: "claude-3-7-sonnet",
+        p_chatbot_default_provider: "anthropic",
+      }),
+    );
   });
 });

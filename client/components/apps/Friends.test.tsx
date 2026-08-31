@@ -116,7 +116,11 @@ describe("FriendsApp", () => {
     setLocalSession({
       access_token: "test-token",
       token_type: "bearer",
-      user: { id: "test-user-id", email: "test@test.com", username: "testuser" },
+      user: {
+        id: "test-user-id",
+        email: "test@test.com",
+        username: "testuser",
+      },
     });
   });
 

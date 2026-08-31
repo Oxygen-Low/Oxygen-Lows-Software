@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
@@ -20,17 +20,17 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width
   <circle cx="256" cy="256" r="24" fill="#38bdf8" />
 </svg>`;
 
-const publicDir = path.resolve(__dirname, '../public');
-fs.writeFileSync(path.join(publicDir, 'favicon.svg'), svg, 'utf8');
+const publicDir = path.resolve(__dirname, "../public");
+fs.writeFileSync(path.join(publicDir, "favicon.svg"), svg, "utf8");
 
-const iconsDir = path.join(publicDir, 'icons');
+const iconsDir = path.join(publicDir, "icons");
 if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true });
 
-const icoFile = path.join(publicDir, 'favicon.ico');
+const icoFile = path.join(publicDir, "favicon.ico");
 if (fs.existsSync(icoFile)) {
   const iconBuf = fs.readFileSync(icoFile);
-  fs.writeFileSync(path.join(iconsDir, 'icon-512x512.png'), iconBuf);
-  fs.writeFileSync(path.join(publicDir, 'favicon.png'), iconBuf);
-  fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.png'), iconBuf);
+  fs.writeFileSync(path.join(iconsDir, "icon-512x512.png"), iconBuf);
+  fs.writeFileSync(path.join(publicDir, "favicon.png"), iconBuf);
+  fs.writeFileSync(path.join(publicDir, "apple-touch-icon.png"), iconBuf);
 }
-console.log('Icon assets generated successfully.');
+console.log("Icon assets generated successfully.");

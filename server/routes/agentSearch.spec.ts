@@ -43,7 +43,11 @@ describe("Agent Search Route", () => {
     baseApp.route("/api/ai/agent-search", agentSearchRouter);
     app = {
       request: (path: string, init?: any) => {
-        const ip = "10.0." + Math.floor(Math.random() * 200) + "." + Math.floor(Math.random() * 200);
+        const ip =
+          "10.0." +
+          Math.floor(Math.random() * 200) +
+          "." +
+          Math.floor(Math.random() * 200);
         return baseApp.request(path, {
           ...init,
           headers: {
@@ -65,9 +69,7 @@ describe("Agent Search Route", () => {
   test("Exports HORDE_FAST_MODEL and CLOUDFLARE_SMART_MODEL constants", () => {
     expect(HORDE_FAST_MODEL).toBe("google/gemma-4-31b");
     expect(CLOUDFLARE_SMART_MODEL).toBe("@cf/nvidia/nemotron-3-120b-a12b");
-    expect(HORDE_URL).toBe(
-      "https://oai.stablehorde.net/v1/chat/completions",
-    );
+    expect(HORDE_URL).toBe("https://oai.stablehorde.net/v1/chat/completions");
   });
 
   test("Requires authorization token", async () => {
@@ -137,20 +139,24 @@ describe("Agent Search Route", () => {
 
   test("Uses custom researchModel from request payload", async () => {
     let capturedHordeModel = "";
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-      const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
-        const reqBody = JSON.parse((init?.body as string) || "{}");
-        capturedHordeModel = reqBody.model;
-        return new Response(
-          JSON.stringify({
-            choices: [{ message: { content: '{"action": "done"}' } }],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
-    });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (url, init) => {
+        const urlStr = String(url);
+        if (urlStr.includes("stablehorde.net")) {
+          const reqBody = JSON.parse((init?.body as string) || "{}");
+          capturedHordeModel = reqBody.model;
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ error: "Not found" }), {
+          status: 404,
+        });
+      });
 
     const res = await app.request("/api/ai/agent-search", {
       method: "POST",
@@ -184,20 +190,24 @@ describe("Agent Search Route", () => {
     );
 
     let capturedHordeModel = "";
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-      const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
-        const reqBody = JSON.parse((init?.body as string) || "{}");
-        capturedHordeModel = reqBody.model;
-        return new Response(
-          JSON.stringify({
-            choices: [{ message: { content: '{"action": "done"}' } }],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
-    });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (url, init) => {
+        const urlStr = String(url);
+        if (urlStr.includes("stablehorde.net")) {
+          const reqBody = JSON.parse((init?.body as string) || "{}");
+          capturedHordeModel = reqBody.model;
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ error: "Not found" }), {
+          status: 404,
+        });
+      });
 
     const res = await app.request("/api/ai/agent-search", {
       method: "POST",
@@ -220,20 +230,24 @@ describe("Agent Search Route", () => {
 
   test("Falls back to HORDE_FAST_MODEL when neither body nor user_preferences specify model", async () => {
     let capturedHordeModel = "";
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-      const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
-        const reqBody = JSON.parse((init?.body as string) || "{}");
-        capturedHordeModel = reqBody.model;
-        return new Response(
-          JSON.stringify({
-            choices: [{ message: { content: '{"action": "done"}' } }],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
-    });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (url, init) => {
+        const urlStr = String(url);
+        if (urlStr.includes("stablehorde.net")) {
+          const reqBody = JSON.parse((init?.body as string) || "{}");
+          capturedHordeModel = reqBody.model;
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ error: "Not found" }), {
+          status: 404,
+        });
+      });
 
     const res = await app.request("/api/ai/agent-search", {
       method: "POST",
@@ -256,28 +270,32 @@ describe("Agent Search Route", () => {
 
   test("Uses custom summarizerModel for synthesis when provided", async () => {
     let capturedCfModel = "";
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-      const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
-        return new Response(
-          JSON.stringify({
-            choices: [{ message: { content: '{"action": "done"}' } }],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      if (urlStr.includes("api.cloudflare.com")) {
-        const reqBody = JSON.parse((init?.body as string) || "{}");
-        capturedCfModel = reqBody.model;
-        return new Response(
-          JSON.stringify({
-            result: { content: "Synthesized final answer" },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
-    });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (url, init) => {
+        const urlStr = String(url);
+        if (urlStr.includes("stablehorde.net")) {
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (urlStr.includes("api.cloudflare.com")) {
+          const reqBody = JSON.parse((init?.body as string) || "{}");
+          capturedCfModel = reqBody.model;
+          return new Response(
+            JSON.stringify({
+              result: { content: "Synthesized final answer" },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ error: "Not found" }), {
+          status: 404,
+        });
+      });
 
     process.env.CLOUDFLARE_ID = "mock_cf_id";
     process.env.CLOUDFLARE_TOKEN = "mock_cf_token";
@@ -315,7 +333,9 @@ describe("Agent Search Route", () => {
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
-      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+      });
     });
 
     const res = await app.request("/api/ai/agent-search", {
@@ -371,7 +391,9 @@ describe("Agent Search Route", () => {
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
-      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+      });
     });
 
     const res = await app.request("/api/ai/agent-search", {

@@ -248,7 +248,8 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.passwordManagerTitle",
     defaultName: "Password Manager",
     descKey: "apps.passwordManagerDesc",
-    defaultDesc: "Securely store and manage passwords with AES-256 zero-knowledge encryption.",
+    defaultDesc:
+      "Securely store and manage passwords with AES-256 zero-knowledge encryption.",
     categories: ["All", "Security", "Utility"],
     availability: "web-and-desktop",
     icon: <KeyRound className="w-8 h-8 text-cyan-500" />,

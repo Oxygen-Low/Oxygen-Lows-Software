@@ -36,12 +36,7 @@ export interface EntityGenerationOptions {
 }
 
 export type GenerationStep =
-  | "idle"
-  | "summarizing"
-  | "researching"
-  | "generating"
-  | "completed"
-  | "error";
+  "idle" | "summarizing" | "researching" | "generating" | "completed" | "error";
 
 export interface GeneratedEntityResult {
   name: string;
@@ -102,9 +97,13 @@ export function buildUniverseBriefPrompt(
   parts.push(`Universe Name: ${universe.name}`);
   if (universe.display_name) parts.push(`Title: ${universe.display_name}`);
   if (universe.short_description)
-    parts.push(`World Lore & Setting:\n${universe.short_description.slice(0, 4000)}`);
+    parts.push(
+      `World Lore & Setting:\n${universe.short_description.slice(0, 4000)}`,
+    );
   if (universe.appearance)
-    parts.push(`Geography & Environment:\n${universe.appearance.slice(0, 2000)}`);
+    parts.push(
+      `Geography & Environment:\n${universe.appearance.slice(0, 2000)}`,
+    );
   if (universe.personality)
     parts.push(`Tone & Atmosphere:\n${universe.personality.slice(0, 2000)}`);
   if (universe.backstory)
@@ -122,13 +121,20 @@ export function buildRaceBriefPrompt(
 ): string {
   const parts: string[] = [];
   parts.push(`Race/Species Name: ${race.name}`);
-  if (race.display_name) parts.push(`Classification / Moniker: ${race.display_name}`);
+  if (race.display_name)
+    parts.push(`Classification / Moniker: ${race.display_name}`);
   if (race.short_description)
-    parts.push(`Race Overview & Lore:\n${race.short_description.slice(0, 3000)}`);
+    parts.push(
+      `Race Overview & Lore:\n${race.short_description.slice(0, 3000)}`,
+    );
   if (race.appearance)
-    parts.push(`Physiology & Distinctive Physical Traits:\n${race.appearance.slice(0, 2000)}`);
+    parts.push(
+      `Physiology & Distinctive Physical Traits:\n${race.appearance.slice(0, 2000)}`,
+    );
   if (race.personality)
-    parts.push(`Cultural Traits & Behaviors:\n${race.personality.slice(0, 2000)}`);
+    parts.push(
+      `Cultural Traits & Behaviors:\n${race.personality.slice(0, 2000)}`,
+    );
   if (race.backstory)
     parts.push(`Origins & History:\n${race.backstory.slice(0, 2000)}`);
   if (race.hidden_description)
@@ -172,10 +178,14 @@ export function buildCharacterGenerationPrompt(params: {
     userParts.push(`Character Race Context & Biology:\n${params.raceSummary}`);
   }
   if (params.universeSummary) {
-    userParts.push(`Universe Context & Design Brief:\n${params.universeSummary}`);
+    userParts.push(
+      `Universe Context & Design Brief:\n${params.universeSummary}`,
+    );
   }
   if (params.researchFindings) {
-    userParts.push(`Archetype & Lore Research Findings:\n${params.researchFindings}`);
+    userParts.push(
+      `Archetype & Lore Research Findings:\n${params.researchFindings}`,
+    );
   }
   userParts.push("Generate the structured character JSON object now.");
 
@@ -219,10 +229,14 @@ export function buildRaceGenerationPrompt(params: {
 
   const userParts: string[] = [`Race / Species Concept: "${params.prompt}"`];
   if (params.universeSummary) {
-    userParts.push(`Universe Context & Design Brief:\n${params.universeSummary}`);
+    userParts.push(
+      `Universe Context & Design Brief:\n${params.universeSummary}`,
+    );
   }
   if (params.researchFindings) {
-    userParts.push(`Species & Lore Research Findings:\n${params.researchFindings}`);
+    userParts.push(
+      `Species & Lore Research Findings:\n${params.researchFindings}`,
+    );
   }
   userParts.push("Generate the structured race JSON object now.");
 
@@ -258,7 +272,9 @@ export function buildUniverseGenerationPrompt(params: {
 
   const userParts: string[] = [`Universe Concept: "${params.prompt}"`];
   if (params.researchFindings) {
-    userParts.push(`Worldbuilding Research Findings:\n${params.researchFindings}`);
+    userParts.push(
+      `Worldbuilding Research Findings:\n${params.researchFindings}`,
+    );
   }
   userParts.push("Generate the structured universe JSON object now.");
 
@@ -381,7 +397,10 @@ export async function executeEntityGeneration(
 
   // Step 1a: Universe Summarization (if Character or Race with Universe)
   if ((type === "character" || type === "race") && universe) {
-    onProgress?.("summarizing", "Analyzing universe lore and formulating brief...");
+    onProgress?.(
+      "summarizing",
+      "Analyzing universe lore and formulating brief...",
+    );
 
     if (signal?.aborted) {
       throw new DOMException("Generation was cancelled", "AbortError");

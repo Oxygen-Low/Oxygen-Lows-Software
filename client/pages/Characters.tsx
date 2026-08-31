@@ -116,10 +116,7 @@ export default function Characters() {
     () => characters.filter((c) => c.is_race),
     [characters],
   );
-  const racesMap = useMemo(
-    () => new Map(races.map((r) => [r.id, r])),
-    [races],
-  );
+  const racesMap = useMemo(() => new Map(races.map((r) => [r.id, r])), [races]);
   const universesMap = useMemo(
     () => new Map(universes.map((u) => [u.id, u])),
     [universes],
@@ -155,8 +152,9 @@ export default function Characters() {
   const [aiInitialType, setAiInitialType] = useState<
     "character" | "universe" | "race"
   >("character");
-  const [aiInitialUniverse, setAiInitialUniverse] =
-    useState<Character | null>(null);
+  const [aiInitialUniverse, setAiInitialUniverse] = useState<Character | null>(
+    null,
+  );
   const [aiInitialRace, setAiInitialRace] = useState<Character | null>(null);
 
   const handleOpenAiGenerate = (
@@ -736,10 +734,18 @@ export default function Characters() {
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   {activeTab === "characters"
-                    ? t("characters.createCharacter", undefined, "New Character")
+                    ? t(
+                        "characters.createCharacter",
+                        undefined,
+                        "New Character",
+                      )
                     : activeTab === "races"
                       ? t("characters.createRace", undefined, "New Race")
-                      : t("characters.createUniverse", undefined, "New Universe")}
+                      : t(
+                          "characters.createUniverse",
+                          undefined,
+                          "New Universe",
+                        )}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
@@ -758,7 +764,8 @@ export default function Characters() {
                         handleOpenAiGenerate(
                           currentCharacter.is_race || activeTab === "races"
                             ? "race"
-                            : currentCharacter.is_universe || activeTab === "universes"
+                            : currentCharacter.is_universe ||
+                                activeTab === "universes"
                               ? "universe"
                               : "character",
                           null,
@@ -768,7 +775,11 @@ export default function Characters() {
                       className="border-cyan-800/80 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/60 flex items-center gap-1.5 text-xs"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                      {t("characters.aiGenerate.button", undefined, "AI Generate")}
+                      {t(
+                        "characters.aiGenerate.button",
+                        undefined,
+                        "AI Generate",
+                      )}
                     </Button>
                   </div>
                   <DialogDescription className="text-slate-400">
@@ -778,7 +789,8 @@ export default function Characters() {
                           undefined,
                           "Define a unique species or race, including biological traits, culture, and origins.",
                         )
-                      : currentCharacter.is_universe || activeTab === "universes"
+                      : currentCharacter.is_universe ||
+                          activeTab === "universes"
                         ? t(
                             "characters.universeDescriptionSub",
                             undefined,
@@ -792,236 +804,427 @@ export default function Characters() {
                   </DialogDescription>
                 </DialogHeader>
 
-              {/* Versioning Notice if Character is Public */}
-              {currentCharacter.id && publicCharsMap[currentCharacter.id] && (
-                <div className="p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-lg text-xs text-cyan-300 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
-                  <span>
-                    {t(
-                      "verification.versionNotice",
-                      undefined,
-                      "Editing this asset locally does not affect the published version. To update the public asset, submit a new update verification request.",
-                    )}
-                  </span>
-                </div>
-              )}
+                {/* Versioning Notice if Character is Public */}
+                {currentCharacter.id && publicCharsMap[currentCharacter.id] && (
+                  <div className="p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-lg text-xs text-cyan-300 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
+                    <span>
+                      {t(
+                        "verification.versionNotice",
+                        undefined,
+                        "Editing this asset locally does not affect the published version. To update the public asset, submit a new update verification request.",
+                      )}
+                    </span>
+                  </div>
+                )}
 
-              <div className="space-y-4 py-4">
-                <div className="flex gap-4">
-                  <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
-                    {currentCharacter.image_url ? (
-                      <img
-                        src={currentCharacter.image_url}
-                        alt="Character"
-                        className="w-full h-full object-cover"
+                <div className="space-y-4 py-4">
+                  <div className="flex gap-4">
+                    <div className="w-24 h-24 bg-slate-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group border border-slate-700">
+                      {currentCharacter.image_url ? (
+                        <img
+                          src={currentCharacter.image_url}
+                          alt="Character"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-slate-600" />
+                      )}
+                      <StorageFileSelector
+                        onSelect={handleStorageSelect}
+                        allowedTypes={["image"]}
+                        trigger={
+                          <button
+                            type="button"
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            aria-label="Select character image"
+                          />
+                        }
                       />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-slate-600" />
-                    )}
-                    <StorageFileSelector
-                      onSelect={handleStorageSelect}
-                      allowedTypes={["image"]}
-                      trigger={
-                        <button
-                          type="button"
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                          aria-label="Select character image"
-                        />
-                      }
-                    />
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <label htmlFor="char-name" className="text-sm font-medium">
-                      {t("characters.name", undefined, "Name")}
-                    </label>
-                    <Input
-                      id="char-name"
-                      value={currentCharacter.name || ""}
-                      onChange={(e) =>
-                        setCurrentCharacter((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      placeholder={
-                        currentCharacter.is_race
-                          ? "Race/Species name (e.g. High Elf, Android)"
-                          : currentCharacter.is_universe
-                            ? "Universe name"
-                            : "Character name"
-                      }
-                      className="bg-slate-800 border-slate-700"
-                    />
-                  </div>
-                </div>
-
-                {currentCharacter.is_race ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="race-short-desc"
-                          className="text-sm font-medium"
-                        >
-                          {t(
-                            "characters.shortDescription",
-                            undefined,
-                            "Lore & Overview",
-                          )}
-                        </label>
-                        <Input
-                          id="race-short-desc"
-                          value={currentCharacter.short_description || ""}
-                          onChange={(e) =>
-                            setCurrentCharacter((prev) => ({
-                              ...prev,
-                              short_description: e.target.value,
-                            }))
-                          }
-                          placeholder="Overview of this race / species..."
-                          className="bg-slate-800 border-slate-700"
-                        />
-                      </div>
-                      <div className="space-y-2 text-cyan-400">
-                        <label
-                          htmlFor="race-display-name"
-                          className="text-sm font-medium"
-                        >
-                          {t(
-                            "characters.displayName",
-                            undefined,
-                            "Classification / Moniker",
-                          )}
-                        </label>
-                        <Input
-                          id="race-display-name"
-                          value={currentCharacter.display_name || ""}
-                          onChange={(e) =>
-                            setCurrentCharacter((prev) => ({
-                              ...prev,
-                              display_name: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g. Sub-species, Highborne..."
-                          className="bg-slate-800 border-cyan-900"
-                        />
-                      </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="race-universe-select" className="text-sm font-medium">
-                        {t("characters.targetUniverse", undefined, "Universe (Optional)")}
+                    <div className="flex-1 space-y-2">
+                      <label
+                        htmlFor="char-name"
+                        className="text-sm font-medium"
+                      >
+                        {t("characters.name", undefined, "Name")}
                       </label>
-                      <select
-                        id="race-universe-select"
-                        value={currentCharacter.universe_id || ""}
+                      <Input
+                        id="char-name"
+                        value={currentCharacter.name || ""}
                         onChange={(e) =>
                           setCurrentCharacter((prev) => ({
                             ...prev,
-                            universe_id: e.target.value || null,
+                            name: e.target.value,
                           }))
                         }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      >
-                        <option value="">{t("characters.noUniverse", undefined, "None / Standalone")}</option>
-                        {universes.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.display_name || u.name}
+                        placeholder={
+                          currentCharacter.is_race
+                            ? "Race/Species name (e.g. High Elf, Android)"
+                            : currentCharacter.is_universe
+                              ? "Universe name"
+                              : "Character name"
+                        }
+                        className="bg-slate-800 border-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  {currentCharacter.is_race ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="race-short-desc"
+                            className="text-sm font-medium"
+                          >
+                            {t(
+                              "characters.shortDescription",
+                              undefined,
+                              "Lore & Overview",
+                            )}
+                          </label>
+                          <Input
+                            id="race-short-desc"
+                            value={currentCharacter.short_description || ""}
+                            onChange={(e) =>
+                              setCurrentCharacter((prev) => ({
+                                ...prev,
+                                short_description: e.target.value,
+                              }))
+                            }
+                            placeholder="Overview of this race / species..."
+                            className="bg-slate-800 border-slate-700"
+                          />
+                        </div>
+                        <div className="space-y-2 text-cyan-400">
+                          <label
+                            htmlFor="race-display-name"
+                            className="text-sm font-medium"
+                          >
+                            {t(
+                              "characters.displayName",
+                              undefined,
+                              "Classification / Moniker",
+                            )}
+                          </label>
+                          <Input
+                            id="race-display-name"
+                            value={currentCharacter.display_name || ""}
+                            onChange={(e) =>
+                              setCurrentCharacter((prev) => ({
+                                ...prev,
+                                display_name: e.target.value,
+                              }))
+                            }
+                            placeholder="e.g. Sub-species, Highborne..."
+                            className="bg-slate-800 border-cyan-900"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="race-universe-select"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.targetUniverse",
+                            undefined,
+                            "Universe (Optional)",
+                          )}
+                        </label>
+                        <select
+                          id="race-universe-select"
+                          value={currentCharacter.universe_id || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              universe_id: e.target.value || null,
+                            }))
+                          }
+                          className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        >
+                          <option value="">
+                            {t(
+                              "characters.noUniverse",
+                              undefined,
+                              "None / Standalone",
+                            )}
                           </option>
-                        ))}
-                      </select>
-                    </div>
+                          {universes.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.display_name || u.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="race-appearance"
-                        className="text-sm font-medium"
-                      >
-                        {t("characters.racePhysiology", undefined, "Physical Traits & Physiology")}
-                      </label>
-                      <Textarea
-                        id="race-appearance"
-                        value={currentCharacter.appearance || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            appearance: e.target.value,
-                          }))
-                        }
-                        placeholder="Anatomy, size, distinct visual traits, lifespan..."
-                        className="bg-slate-800 border-slate-700 h-20"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="race-personality"
-                        className="text-sm font-medium"
-                      >
-                        {t("characters.raceCulture", undefined, "Cultural Traits & Behaviors")}
-                      </label>
-                      <Textarea
-                        id="race-personality"
-                        value={currentCharacter.personality || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            personality: e.target.value,
-                          }))
-                        }
-                        placeholder="Social norms, values, traditions, and tendencies..."
-                        className="bg-slate-800 border-slate-700 h-20"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="race-backstory"
-                        className="text-sm font-medium"
-                      >
-                        {t("characters.raceHistory", undefined, "Origins & History")}
-                      </label>
-                      <Textarea
-                        id="race-backstory"
-                        value={currentCharacter.backstory || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            backstory: e.target.value,
-                          }))
-                        }
-                        placeholder="Origins, evolutionary or mythological history..."
-                        className="bg-slate-800 border-slate-700 h-28"
-                      />
-                    </div>
-                  </>
-                ) : !currentCharacter.is_universe ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label
-                          htmlFor="char-short-desc"
+                          htmlFor="race-appearance"
                           className="text-sm font-medium"
                         >
                           {t(
-                            "characters.shortDescription",
+                            "characters.racePhysiology",
                             undefined,
-                            "Short Description",
+                            "Physical Traits & Physiology",
                           )}
                         </label>
-                        <Input
-                          id="char-short-desc"
-                          value={currentCharacter.short_description || ""}
+                        <Textarea
+                          id="race-appearance"
+                          value={currentCharacter.appearance || ""}
                           onChange={(e) =>
                             setCurrentCharacter((prev) => ({
                               ...prev,
-                              short_description: e.target.value,
+                              appearance: e.target.value,
                             }))
                           }
-                          placeholder="A one-line hook"
-                          className="bg-slate-800 border-slate-700"
+                          placeholder="Anatomy, size, distinct visual traits, lifespan..."
+                          className="bg-slate-800 border-slate-700 h-20"
                         />
                       </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="race-personality"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.raceCulture",
+                            undefined,
+                            "Cultural Traits & Behaviors",
+                          )}
+                        </label>
+                        <Textarea
+                          id="race-personality"
+                          value={currentCharacter.personality || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              personality: e.target.value,
+                            }))
+                          }
+                          placeholder="Social norms, values, traditions, and tendencies..."
+                          className="bg-slate-800 border-slate-700 h-20"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="race-backstory"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.raceHistory",
+                            undefined,
+                            "Origins & History",
+                          )}
+                        </label>
+                        <Textarea
+                          id="race-backstory"
+                          value={currentCharacter.backstory || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              backstory: e.target.value,
+                            }))
+                          }
+                          placeholder="Origins, evolutionary or mythological history..."
+                          className="bg-slate-800 border-slate-700 h-28"
+                        />
+                      </div>
+                    </>
+                  ) : !currentCharacter.is_universe ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="char-short-desc"
+                            className="text-sm font-medium"
+                          >
+                            {t(
+                              "characters.shortDescription",
+                              undefined,
+                              "Short Description",
+                            )}
+                          </label>
+                          <Input
+                            id="char-short-desc"
+                            value={currentCharacter.short_description || ""}
+                            onChange={(e) =>
+                              setCurrentCharacter((prev) => ({
+                                ...prev,
+                                short_description: e.target.value,
+                              }))
+                            }
+                            placeholder="A one-line hook"
+                            className="bg-slate-800 border-slate-700"
+                          />
+                        </div>
+                        <div className="space-y-2 text-cyan-400">
+                          <label
+                            htmlFor="char-display-name"
+                            className="text-sm font-medium"
+                          >
+                            {t(
+                              "characters.displayName",
+                              undefined,
+                              "Display Name",
+                            )}
+                          </label>
+                          <Input
+                            id="char-display-name"
+                            value={currentCharacter.display_name || ""}
+                            onChange={(e) =>
+                              setCurrentCharacter((prev) => ({
+                                ...prev,
+                                display_name: e.target.value,
+                              }))
+                            }
+                            placeholder="For organizing characters..."
+                            className="bg-slate-800 border-cyan-900"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="char-race-select"
+                            className="text-sm font-medium"
+                          >
+                            {t("characters.race", undefined, "Race / Species")}
+                          </label>
+                          <select
+                            id="char-race-select"
+                            value={currentCharacter.race_id || ""}
+                            onChange={(e) =>
+                              setCurrentCharacter((prev) => ({
+                                ...prev,
+                                race_id: e.target.value || null,
+                              }))
+                            }
+                            className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                          >
+                            <option value="">
+                              {t(
+                                "characters.noRace",
+                                undefined,
+                                "None / Standalone",
+                              )}
+                            </option>
+                            {races.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.display_name || r.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="char-univ-select"
+                            className="text-sm font-medium"
+                          >
+                            {t("characters.universe", undefined, "Universe")}
+                          </label>
+                          <select
+                            id="char-univ-select"
+                            value={currentCharacter.universe_id || ""}
+                            onChange={(e) =>
+                              setCurrentCharacter((prev) => ({
+                                ...prev,
+                                universe_id: e.target.value || null,
+                              }))
+                            }
+                            className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                          >
+                            <option value="">
+                              {t(
+                                "characters.noUniverse",
+                                undefined,
+                                "None / Standalone",
+                              )}
+                            </option>
+                            {universes.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.display_name || u.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="char-appearance"
+                          className="text-sm font-medium"
+                        >
+                          {t("characters.appearance", undefined, "Appearance")}
+                        </label>
+                        <Textarea
+                          id="char-appearance"
+                          value={currentCharacter.appearance || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              appearance: e.target.value,
+                            }))
+                          }
+                          placeholder="What do they look like?"
+                          className="bg-slate-800 border-slate-700 h-20"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="char-personality"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.personality",
+                            undefined,
+                            "Personality",
+                          )}
+                        </label>
+                        <Textarea
+                          id="char-personality"
+                          value={currentCharacter.personality || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              personality: e.target.value,
+                            }))
+                          }
+                          placeholder="How do they act?"
+                          className="bg-slate-800 border-slate-700 h-20"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="char-backstory"
+                          className="text-sm font-medium"
+                        >
+                          {t("characters.backstory", undefined, "Backstory")}
+                        </label>
+                        <Textarea
+                          id="char-backstory"
+                          value={currentCharacter.backstory || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              backstory: e.target.value,
+                            }))
+                          }
+                          placeholder="Their history and origins..."
+                          className="bg-slate-800 border-slate-700 h-32"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
                       <div className="space-y-2 text-cyan-400">
                         <label
                           htmlFor="char-display-name"
@@ -1042,235 +1245,98 @@ export default function Characters() {
                               display_name: e.target.value,
                             }))
                           }
-                          placeholder="For organizing characters..."
+                          placeholder="For organizing universes..."
                           className="bg-slate-800 border-cyan-900"
                         />
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label htmlFor="char-race-select" className="text-sm font-medium">
-                          {t("characters.race", undefined, "Race / Species")}
+                        <label
+                          htmlFor="char-short-desc"
+                          className="text-sm font-medium"
+                        >
+                          Description
                         </label>
-                        <select
-                          id="char-race-select"
-                          value={currentCharacter.race_id || ""}
+                        <Textarea
+                          id="char-short-desc"
+                          value={currentCharacter.short_description || ""}
                           onChange={(e) =>
                             setCurrentCharacter((prev) => ({
                               ...prev,
-                              race_id: e.target.value || null,
+                              short_description: e.target.value,
                             }))
                           }
-                          className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        >
-                          <option value="">{t("characters.noRace", undefined, "None / Standalone")}</option>
-                          {races.map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.display_name || r.name}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="Describe your universe..."
+                          className="bg-slate-800 border-slate-700 h-32"
+                        />
                       </div>
+                    </>
+                  )}
 
-                      <div className="space-y-2">
-                        <label htmlFor="char-univ-select" className="text-sm font-medium">
-                          {t("characters.universe", undefined, "Universe")}
-                        </label>
-                        <select
-                          id="char-univ-select"
-                          value={currentCharacter.universe_id || ""}
-                          onChange={(e) =>
-                            setCurrentCharacter((prev) => ({
-                              ...prev,
-                              universe_id: e.target.value || null,
-                            }))
-                          }
-                          className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        >
-                          <option value="">{t("characters.noUniverse", undefined, "None / Standalone")}</option>
-                          {universes.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.display_name || u.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="char-appearance"
-                        className="text-sm font-medium"
-                      >
-                        {t("characters.appearance", undefined, "Appearance")}
-                      </label>
-                      <Textarea
-                        id="char-appearance"
-                        value={currentCharacter.appearance || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            appearance: e.target.value,
-                          }))
-                        }
-                        placeholder="What do they look like?"
-                        className="bg-slate-800 border-slate-700 h-20"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="char-personality"
-                        className="text-sm font-medium"
-                      >
-                        {t("characters.personality", undefined, "Personality")}
-                      </label>
-                      <Textarea
-                        id="char-personality"
-                        value={currentCharacter.personality || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            personality: e.target.value,
-                          }))
-                        }
-                        placeholder="How do they act?"
-                        className="bg-slate-800 border-slate-700 h-20"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="char-backstory"
-                        className="text-sm font-medium"
-                      >
-                        {t("characters.backstory", undefined, "Backstory")}
-                      </label>
-                      <Textarea
-                        id="char-backstory"
-                        value={currentCharacter.backstory || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            backstory: e.target.value,
-                          }))
-                        }
-                        placeholder="Their history and origins..."
-                        className="bg-slate-800 border-slate-700 h-32"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="space-y-2 text-cyan-400">
-                      <label
-                        htmlFor="char-display-name"
-                        className="text-sm font-medium"
-                      >
-                        {t("characters.displayName", undefined, "Display Name")}
-                      </label>
-                      <Input
-                        id="char-display-name"
-                        value={currentCharacter.display_name || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            display_name: e.target.value,
-                          }))
-                        }
-                        placeholder="For organizing universes..."
-                        className="bg-slate-800 border-cyan-900"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="char-short-desc"
-                        className="text-sm font-medium"
-                      >
-                        Description
-                      </label>
-                      <Textarea
-                        id="char-short-desc"
-                        value={currentCharacter.short_description || ""}
-                        onChange={(e) =>
-                          setCurrentCharacter((prev) => ({
-                            ...prev,
-                            short_description: e.target.value,
-                          }))
-                        }
-                        placeholder="Describe your universe..."
-                        className="bg-slate-800 border-slate-700 h-32"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="space-y-2 text-cyan-400">
-                  <label
-                    htmlFor="char-hidden-desc"
-                    className="text-sm font-medium"
-                  >
-                    {t(
-                      "characters.hiddenDescription",
-                      undefined,
-                      "Private Notes",
-                    )}
-                  </label>
-                  <Textarea
-                    id="char-hidden-desc"
-                    value={currentCharacter.hidden_description || ""}
-                    onChange={(e) =>
-                      setCurrentCharacter((prev) => ({
-                        ...prev,
-                        hidden_description: e.target.value,
-                      }))
-                    }
-                    placeholder="Write notes for yourself here..."
-                    className="bg-slate-800 border-cyan-900 h-32"
-                  />
+                  <div className="space-y-2 text-cyan-400">
+                    <label
+                      htmlFor="char-hidden-desc"
+                      className="text-sm font-medium"
+                    >
+                      {t(
+                        "characters.hiddenDescription",
+                        undefined,
+                        "Private Notes",
+                      )}
+                    </label>
+                    <Textarea
+                      id="char-hidden-desc"
+                      value={currentCharacter.hidden_description || ""}
+                      onChange={(e) =>
+                        setCurrentCharacter((prev) => ({
+                          ...prev,
+                          hidden_description: e.target.value,
+                        }))
+                      }
+                      placeholder="Write notes for yourself here..."
+                      className="bg-slate-800 border-cyan-900 h-32"
+                    />
+                  </div>
                 </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(false)}
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                >
-                  {t("common.cancel", undefined, "Cancel")}
-                </Button>
-
-                {currentCharacter.id && publicCharsMap[currentCharacter.id] && (
+                <DialogFooter className="gap-2 sm:gap-0">
                   <Button
-                    onClick={() => handleSave(true)}
-                    className="bg-cyan-700 hover:bg-cyan-800 text-white"
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
                   >
-                    <Send className="w-4 h-4 mr-1.5" />
-                    {t(
-                      "verification.updatePublicVersion",
-                      undefined,
-                      "Update & Re-verify",
-                    )}
+                    {t("common.cancel", undefined, "Cancel")}
                   </Button>
-                )}
 
-                <Button
-                  onClick={() => handleSave(false)}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
-                >
-                  {t("common.save", undefined, "Save")}{" "}
-                  {currentCharacter.is_race
-                    ? "Race"
-                    : currentCharacter.is_universe
-                      ? "Universe"
-                      : "Character"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                  {currentCharacter.id &&
+                    publicCharsMap[currentCharacter.id] && (
+                      <Button
+                        onClick={() => handleSave(true)}
+                        className="bg-cyan-700 hover:bg-cyan-800 text-white"
+                      >
+                        <Send className="w-4 h-4 mr-1.5" />
+                        {t(
+                          "verification.updatePublicVersion",
+                          undefined,
+                          "Update & Re-verify",
+                        )}
+                      </Button>
+                    )}
+
+                  <Button
+                    onClick={() => handleSave(false)}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  >
+                    {t("common.save", undefined, "Save")}{" "}
+                    {currentCharacter.is_race
+                      ? "Race"
+                      : currentCharacter.is_universe
+                        ? "Universe"
+                        : "Character"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
-      </div>
-
 
         {encryptionLocked ? (
           <EncryptionRequiredPrompt
@@ -1320,8 +1386,7 @@ export default function Characters() {
                       v.status === "approved",
                   );
 
-                const assignedRace =
-                  char.race_id && racesMap.get(char.race_id);
+                const assignedRace = char.race_id && racesMap.get(char.race_id);
                 const assignedUniverse =
                   char.universe_id && universesMap.get(char.universe_id);
 
@@ -1382,7 +1447,8 @@ export default function Characters() {
                           {assignedUniverse && !char.is_universe && (
                             <Badge className="bg-indigo-600/90 text-white text-[10px] backdrop-blur-sm border border-indigo-400/30">
                               <Globe className="w-3 h-3 mr-1" />
-                              {assignedUniverse.display_name || assignedUniverse.name}
+                              {assignedUniverse.display_name ||
+                                assignedUniverse.name}
                             </Badge>
                           )}
                           {pendingVerif && (
@@ -1455,7 +1521,9 @@ export default function Characters() {
                             variant="outline"
                             size="sm"
                             className="w-full text-xs border-cyan-800/60 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/60 hover:text-cyan-100 flex items-center justify-center gap-1.5"
-                            onClick={() => handleOpenAiGenerate("character", null, char)}
+                            onClick={() =>
+                              handleOpenAiGenerate("character", null, char)
+                            }
                           >
                             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                             {t(
@@ -1471,7 +1539,9 @@ export default function Characters() {
                             variant="outline"
                             size="sm"
                             className="w-full text-xs border-cyan-800/60 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/60 hover:text-cyan-100 flex items-center justify-center gap-1.5"
-                            onClick={() => handleOpenAiGenerate("character", char, null)}
+                            onClick={() =>
+                              handleOpenAiGenerate("character", char, null)
+                            }
                           >
                             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                             {t(

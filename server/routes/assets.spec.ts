@@ -42,10 +42,14 @@ vi.mock("../lib/dataStore.ts", () => ({
     if (opts.table === "asset_verifications") {
       if (opts.filters?.some((f: any) => f.field === "id")) {
         const idFilter = opts.filters.find((f: any) => f.field === "id");
-        return mockVerifications.filter((v) => String(v.id) === String(idFilter.value));
+        return mockVerifications.filter(
+          (v) => String(v.id) === String(idFilter.value),
+        );
       }
       if (opts.userId) {
-        return mockVerifications.filter((v) => String(v.user_id) === String(opts.userId));
+        return mockVerifications.filter(
+          (v) => String(v.user_id) === String(opts.userId),
+        );
       }
       return mockVerifications;
     }
@@ -66,14 +70,20 @@ vi.mock("../lib/dataStore.ts", () => ({
     if (table === "asset_verifications") {
       const idFilter = filters.find((f: any) => f.field === "id");
       if (idFilter) {
-        const idx = mockVerifications.findIndex((v) => String(v.id) === String(idFilter.value));
+        const idx = mockVerifications.findIndex(
+          (v) => String(v.id) === String(idFilter.value),
+        );
         if (idx !== -1) {
           return mockVerifications.splice(idx, 1);
         }
       }
-      const pathFilter = filters.find((f: any) => f.field === "original_file_path");
+      const pathFilter = filters.find(
+        (f: any) => f.field === "original_file_path",
+      );
       if (pathFilter) {
-        const idx = mockVerifications.findIndex((v) => String(v.original_file_path) === String(pathFilter.value));
+        const idx = mockVerifications.findIndex(
+          (v) => String(v.original_file_path) === String(pathFilter.value),
+        );
         if (idx !== -1) {
           return mockVerifications.splice(idx, 1);
         }

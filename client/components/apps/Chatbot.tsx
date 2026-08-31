@@ -1380,10 +1380,14 @@ export function ChatbotApp() {
           responseFormat: parsedFormat,
           researchOnly: true,
           stream: true,
-          researchModel: selectedModel || researchAgentDefaultModel || undefined,
-          researchProvider: selectedProvider || researchAgentDefaultProvider || undefined,
-          summarizerModel: selectedModel || researchSummarizerDefaultModel || undefined,
-          summarizerProvider: selectedProvider || researchSummarizerDefaultProvider || undefined,
+          researchModel:
+            selectedModel || researchAgentDefaultModel || undefined,
+          researchProvider:
+            selectedProvider || researchAgentDefaultProvider || undefined,
+          summarizerModel:
+            selectedModel || researchSummarizerDefaultModel || undefined,
+          summarizerProvider:
+            selectedProvider || researchSummarizerDefaultProvider || undefined,
         }),
         signal,
       });

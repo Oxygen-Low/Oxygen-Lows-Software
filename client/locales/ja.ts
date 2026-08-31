@@ -98,13 +98,13 @@ export const ja = {
     explanation:
       "データストレージをウェブサイト直接保存へ移行しました。アカウント用のユーザー名とパスワードを設定してください。チャット履歴、ユニバース、データセーブ、パスワード、ストレージファイルがすべてシームレスに移行されます。",
     masterKeyLabel: "マスターキー（任意 / 暗号化データ用）",
-    masterKeyPlaceholder: "マスターキーを貼り付けるか、.keyファイルをアップロード",
+    masterKeyPlaceholder:
+      "マスターキーを貼り付けるか、.keyファイルをアップロード",
     uploadKeyFile: ".keyファイルを選択またはドロップしてキーを読み込む",
     masterKeyNotice:
       "暗号化データ（データセーブやパスワードマネージャー）をお持ちの場合、マスターキーを指定することで新しいアカウントでも復号可能になります。",
     keyFileLoaded: "マスターキーファイルを正常に読み込みました",
-    invalidKeyFile:
-      "無効なキーファイル形式です。32バイトのAESキーが必要です。",
+    invalidKeyFile: "無効なキーファイル形式です。32バイトのAESキーが必要です。",
     invalidMasterKey:
       "マスターキーは有効な64文字の16進数文字列または32バイトのキーである必要があります",
     migrating: "アカウントを移行中...",
@@ -167,8 +167,7 @@ export const ja = {
     selectPreset: "プリセットを選択",
     customModelPreset: "カスタムモデルID...",
     modelId: "モデルID",
-    modelIdPlaceholder:
-      "例: gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelIdPlaceholder: "例: gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
     modelName: "表示名（任意）",
     modelNamePlaceholder: "例: GPT-4o (Omni)",
     featureDefaults: "機能別デフォルトモデル",
@@ -200,7 +199,8 @@ export const ja = {
     modelDuplicate: "このモデルは既にこのプロバイダーに登録されています",
     modelIdRequired: "モデルIDは必須です",
     defaultModelUpdated: "デフォルトモデルが更新されました",
-    noModelsAvailable: "このプロバイダーに登録されたカスタムモデルはありません。",
+    noModelsAvailable:
+      "このプロバイダーに登録されたカスタムモデルはありません。",
     customBadge: "カスタム",
     localBadge: "ローカル",
     presetBadge: "プリセット",
@@ -409,8 +409,7 @@ export const ja = {
     // Add Custom Game dialog
     addCustomGame: "カスタムゲームを追加",
     dialogTitle: "カスタムゲームを追加",
-    dialogDesc:
-      "ランチャー外のゲームや実行ファイルをライブラリに追加します。",
+    dialogDesc: "ランチャー外のゲームや実行ファイルをライブラリに追加します。",
     addCustomGameTitle: "カスタムゲームの追加",
     addCustomGameDesc:
       "ローカルのゲーム実行ファイル (.exe) またはカスタムタイトルをライブラリに追加します。",
@@ -540,6 +539,10 @@ export const ja = {
     reverificationRequired:
       "ファイルが変更されました。前回の検証はリセットされたため、再検証が必要です。",
     noSubmissions: "ストレージファイルの検証申請はまだありません。",
+    storageLimitReached: "ストレージ容量の上限に達しました (500MB)",
+    storageLimit: "上限: 500MB (ファイルおよび公開アセット)",
+    storageQuotaError:
+      "割り当てを超過しました。ユーザーあたり最大500MBまで許可されています。",
   },
   customize: {
     title: "カスタマイズ",
@@ -581,8 +584,10 @@ export const ja = {
     racePhysiology: "身体的特徴・生理機能",
     raceCulture: "文化的特徴・習性",
     raceHistory: "起源・歴史",
-    raceDescriptionSub: "独自の種族や生物種を定義し、生体特徴、文化、起源を設定します。",
-    universeDescriptionSub: "新しいユニバースとその世界観の設定を入力してください。",
+    raceDescriptionSub:
+      "独自の種族や生物種を定義し、生体特徴、文化、起源を設定します。",
+    universeDescriptionSub:
+      "新しいユニバースとその世界観の設定を入力してください。",
     characterDescriptionSub: "キャラクターの特徴や魅力を入力してください。",
     hiddenDescription: "プライベートメモ",
     noCharacters:
@@ -616,8 +621,7 @@ export const ja = {
       noRaceOption: "なし（単体キャラクター）",
       model: "AIモデル",
       promptLabel: "コンセプト・プロンプト",
-      promptPlaceholder:
-        "経歴、性格、役割、世界観のテーマなどを入力...",
+      promptPlaceholder: "経歴、性格、役割、世界観のテーマなどを入力...",
       generate: "生成",
       stopGeneration: "生成を停止",
       stepSummarizing: "ステップ 1: ユニバースの要約",
@@ -630,10 +634,8 @@ export const ja = {
       generatingCharacter: "キャラクターの詳細を生成中...",
       generatingUniverse: "ユニバースの設定を生成中...",
       generatingRace: "種族の詳細を生成中...",
-      summarizingUniverse:
-        "ユニバースの設定を分析し、要約を作成中...",
-      summarizingRace:
-        "種族の特徴を分析し、要約を作成中...",
+      summarizingUniverse: "ユニバースの設定を分析し、要約を作成中...",
+      summarizingRace: "種族の特徴を分析し、要約を作成中...",
       researchingLore: "アーキタイプと概念を調査中...",
     },
   },
@@ -1037,12 +1039,14 @@ export const ja = {
     copiedToast: "パスワードをクリップボードにコピーしました",
     updated: "更新日",
     untitled: "無題のパスワード",
-    noPasswords: "パスワードがまだ保存されていません。左のフォームから追加してください。",
+    noPasswords:
+      "パスワードがまだ保存されていません。左のフォームから追加してください。",
     noResults: "検索条件に一致するパスワードがありません。",
     deleteConfirmTitle: "パスワードを削除しますか？",
     deleteConfirmDesc:
       "これにより、このパスワードが暗号化されたボールトから完全に削除されます。この操作は元に戻せません。",
-    editDesc: "パスワードの詳細を更新します。すべてのデータは保存前に暗号化されます。",
+    editDesc:
+      "パスワードの詳細を更新します。すべてのデータは保存前に暗号化されます。",
     encryptionRequiredTitle: "暗号化が必要です",
     encryptionRequiredDesc:
       "パスワードマネージャーはパスワードを保護するためにAES-256マスターキー暗号化が必要です。キーはブラウザから外に出ることはありません。",

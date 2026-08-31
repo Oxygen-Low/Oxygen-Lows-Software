@@ -134,9 +134,7 @@ export default function Security() {
 
   const [encryptPasswords, setEncryptPasswords] = useState<boolean>(() => {
     try {
-      return (
-        localStorage.getItem(STORAGE_KEYS.ENCRYPT_PASSWORDS) === "true"
-      );
+      return localStorage.getItem(STORAGE_KEYS.ENCRYPT_PASSWORDS) === "true";
     } catch {
       return false;
     }
@@ -1424,11 +1422,7 @@ export default function Security() {
                       htmlFor="toggle-passwords"
                       className="text-sm sm:text-base font-semibold text-white cursor-pointer"
                     >
-                      {t(
-                        "security.passwords",
-                        undefined,
-                        "Password Vault",
-                      )}
+                      {t("security.passwords", undefined, "Password Vault")}
                     </Label>
                     {encryptPasswords ? (
                       keyBytes ? (

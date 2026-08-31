@@ -50,10 +50,18 @@ describe("dataStore", () => {
     expect(user.username).toBe("testuser99");
     expect(fs.existsSync(path.join(testUserDir, "user.json"))).toBe(true);
     expect(fs.existsSync(path.join(testUserDir, "profile.json"))).toBe(true);
-    expect(fs.existsSync(path.join(testUserDir, "preferences.json"))).toBe(true);
-    expect(fs.existsSync(path.join(testUserDir, "datastore", "saves.json"))).toBe(true);
-    expect(fs.existsSync(path.join(testUserDir, "chatbot", "chats.json"))).toBe(true);
-    expect(fs.existsSync(path.join(testUserDir, "passwords", "passwords.json"))).toBe(true);
+    expect(fs.existsSync(path.join(testUserDir, "preferences.json"))).toBe(
+      true,
+    );
+    expect(
+      fs.existsSync(path.join(testUserDir, "datastore", "saves.json")),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(testUserDir, "chatbot", "chats.json"))).toBe(
+      true,
+    );
+    expect(
+      fs.existsSync(path.join(testUserDir, "passwords", "passwords.json")),
+    ).toBe(true);
   });
 
   it("should assign admin role to user id 1", () => {
@@ -188,9 +196,24 @@ describe("dataStore", () => {
     insertTable(
       "friendships",
       [
-        { id: "f-1", user_id: testUserId, friend_id: "user-2", status: "accepted" },
-        { id: "f-2", user_id: "user-3", friend_id: testUserId, status: "pending" },
-        { id: "f-3", user_id: "user-4", friend_id: "user-5", status: "accepted" },
+        {
+          id: "f-1",
+          user_id: testUserId,
+          friend_id: "user-2",
+          status: "accepted",
+        },
+        {
+          id: "f-2",
+          user_id: "user-3",
+          friend_id: testUserId,
+          status: "pending",
+        },
+        {
+          id: "f-3",
+          user_id: "user-4",
+          friend_id: "user-5",
+          status: "accepted",
+        },
       ],
       testUserId,
     );
@@ -223,12 +246,9 @@ describe("dataStore", () => {
     expect(headResult).toEqual({ data: [], count: 3 });
 
     // Test deleteTable with orFilters
-    const deleted = deleteTable(
-      "friendships",
-      [],
-      testUserId,
-      [`and(user_id.eq.${testUserId},friend_id.eq.user-2),and(user_id.eq.user-2,friend_id.eq.${testUserId})`],
-    );
+    const deleted = deleteTable("friendships", [], testUserId, [
+      `and(user_id.eq.${testUserId},friend_id.eq.user-2),and(user_id.eq.user-2,friend_id.eq.${testUserId})`,
+    ]);
     expect(deleted).toHaveLength(1);
     expect(deleted[0].id).toBe("f-1");
 
@@ -248,7 +268,9 @@ describe("dataStore", () => {
     });
 
     // Check models directory and models.json initialized
-    expect(fs.existsSync(path.join(testUserDir, "models", "models.json"))).toBe(true);
+    expect(fs.existsSync(path.join(testUserDir, "models", "models.json"))).toBe(
+      true,
+    );
     const initialModels = queryTable({
       table: "user_models",
       userId: testUserId,
@@ -371,10 +393,16 @@ describe("dataStore", () => {
     });
     expect(initialPrefs.chatbot_default_model).toBe("Fast");
     expect(initialPrefs.chatbot_default_provider).toBe("horde");
-    expect(initialPrefs.research_agent_default_model).toBe("google/gemma-4-31b");
+    expect(initialPrefs.research_agent_default_model).toBe(
+      "google/gemma-4-31b",
+    );
     expect(initialPrefs.research_agent_default_provider).toBe("horde");
-    expect(initialPrefs.research_summarizer_default_model).toBe("@cf/nvidia/nemotron-3-120b-a12b");
-    expect(initialPrefs.research_summarizer_default_provider).toBe("cloudflare");
+    expect(initialPrefs.research_summarizer_default_model).toBe(
+      "@cf/nvidia/nemotron-3-120b-a12b",
+    );
+    expect(initialPrefs.research_summarizer_default_provider).toBe(
+      "cloudflare",
+    );
 
     // Test upsert_user_preferences RPC with p_ prefixes
     const rpcResult1 = callRpc(

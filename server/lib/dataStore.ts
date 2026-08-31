@@ -7,16 +7,7 @@ export const DATA_DIR = path.join(process.cwd(), "Data");
 export interface DataFilter {
   field: string;
   operator:
-    | "eq"
-    | "neq"
-    | "gt"
-    | "gte"
-    | "lt"
-    | "lte"
-    | "like"
-    | "ilike"
-    | "is"
-    | "in";
+    "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "is" | "in";
   value: any;
 }
 
@@ -72,7 +63,8 @@ export interface UserGameRecord {
   user_id: string;
   game_id: string;
   title: string;
-  platform: "steam" | "epic" | "ea" | "xbox" | "gog" | "ubisoft" | "custom" | string;
+  platform:
+    "steam" | "epic" | "ea" | "xbox" | "gog" | "ubisoft" | "custom" | string;
   executable_path?: string;
   launch_url?: string;
   install_path?: string;
@@ -201,7 +193,8 @@ export function initUserFolder(
   ensureDir(path.join(process.cwd(), "uploads", "public-assets", userId));
 
   const now = new Date().toISOString();
-  const role = userInitialData.role || (String(userId) === "1" ? "admin" : "user");
+  const role =
+    userInitialData.role || (String(userId) === "1" ? "admin" : "user");
   const userData = {
     id: userId,
     username: userInitialData.username,
@@ -293,7 +286,8 @@ export function getAllUserIds(): string[] {
 }
 
 export function getUserById(userId: string | number) {
-  if (userId === undefined || userId === null || String(userId).trim() === "") return null;
+  if (userId === undefined || userId === null || String(userId).trim() === "")
+    return null;
   const userPath = path.join(DATA_DIR, String(userId), "user.json");
   const user = readJsonFile(userPath, null);
   if (user && String(userId) === "1" && user.role !== "admin") {
@@ -320,7 +314,8 @@ export function getUserByUsernameOrEmail(identifier: string) {
 }
 
 export function getProfileByUserId(userId: string | number) {
-  if (userId === undefined || userId === null || String(userId).trim() === "") return null;
+  if (userId === undefined || userId === null || String(userId).trim() === "")
+    return null;
   const profilePath = path.join(DATA_DIR, String(userId), "profile.json");
   return readJsonFile(profilePath, null);
 }
@@ -328,7 +323,10 @@ export function getProfileByUserId(userId: string | number) {
 /**
  * Returns the file path for a given table and userId.
  */
-export function getTableFilePath(table: string, userId?: string | number): string | null {
+export function getTableFilePath(
+  table: string,
+  userId?: string | number,
+): string | null {
   const normTable = table.toLowerCase();
 
   // If userId is provided, map user-specific tables
@@ -453,7 +451,9 @@ export function getTableRows(table: string, userId?: string | number): any[] {
     }
     const userIds = getAllUserIds();
     return userIds
-      .map((id) => readJsonFile(path.join(DATA_DIR, id, "preferences.json"), null))
+      .map((id) =>
+        readJsonFile(path.join(DATA_DIR, id, "preferences.json"), null),
+      )
       .filter((p) => p !== null);
   }
 
@@ -538,8 +538,13 @@ export function getTableRows(table: string, userId?: string | number): any[] {
 /**
  * Saves rows for a table and specific userId.
  */
-export function saveTableRows(table: string, userId: string | number, rows: any[]) {
-  if (userId === undefined || userId === null || String(userId).trim() === "") return;
+export function saveTableRows(
+  table: string,
+  userId: string | number,
+  rows: any[],
+) {
+  if (userId === undefined || userId === null || String(userId).trim() === "")
+    return;
   const userIdStr = String(userId);
   const normTable = table.toLowerCase();
   if (normTable === "profiles" || normTable === "profile_pictures") {
@@ -992,10 +997,12 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
 
   if (typeof param2 === "string" || typeof param2 === "number") {
     userId = String(param2);
-    args = typeof param3 === "object" && param3 !== null ? param3 : (param3 ?? {});
+    args =
+      typeof param3 === "object" && param3 !== null ? param3 : (param3 ?? {});
   } else if (typeof param3 === "string" || typeof param3 === "number") {
     userId = String(param3);
-    args = typeof param2 === "object" && param2 !== null ? param2 : (param2 ?? {});
+    args =
+      typeof param2 === "object" && param2 !== null ? param2 : (param2 ?? {});
   } else {
     if (param2 && typeof param2 === "object") {
       args = param2;
@@ -1008,7 +1015,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
     case "spend_points": {
       if (!userId) return { success: false, error: "Unauthorized" };
       const amount = Number(args?.p_amount ?? args?.amount ?? 0);
-      const pref = getTableRows("user_preferences", userId)[0] || { points: 100 };
+      const pref = getTableRows("user_preferences", userId)[0] || {
+        points: 100,
+      };
       const currentPoints = Number(pref.points ?? 100);
       if (currentPoints < amount) {
         return { success: false, error: "Insufficient points" };
@@ -1069,8 +1078,14 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         (Array.isArray(args) ? args : []);
 
       const now = new Date().toISOString();
-      const existingGames = getTableRows("user_games", userId) as UserGameRecord[];
-      const existingPlaytimes = getTableRows("user_playtime", userId) as UserPlaytimeRecord[];
+      const existingGames = getTableRows(
+        "user_games",
+        userId,
+      ) as UserGameRecord[];
+      const existingPlaytimes = getTableRows(
+        "user_playtime",
+        userId,
+      ) as UserPlaytimeRecord[];
 
       const playtimeMap = new Map<string, UserPlaytimeRecord>();
       for (const pt of existingPlaytimes) {
@@ -1085,7 +1100,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
 
       for (const item of incomingGames) {
         const gameId = item.game_id || item.id || crypto.randomUUID();
-        const existing = existingMap.get(gameId) || (item.id ? existingMap.get(item.id) : undefined);
+        const existing =
+          existingMap.get(gameId) ||
+          (item.id ? existingMap.get(item.id) : undefined);
         const ptRecord = playtimeMap.get(gameId);
 
         const isCustom = Boolean(
@@ -1116,11 +1133,14 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
           game_id: gameId,
           title: item.title ?? existing?.title ?? "",
           platform:
-            item.platform ?? existing?.platform ?? (isCustom ? "custom" : "unknown"),
+            item.platform ??
+            existing?.platform ??
+            (isCustom ? "custom" : "unknown"),
           executable_path:
             item.executable_path ?? existing?.executable_path ?? undefined,
           launch_url: item.launch_url ?? existing?.launch_url ?? undefined,
-          install_path: item.install_path ?? existing?.install_path ?? undefined,
+          install_path:
+            item.install_path ?? existing?.install_path ?? undefined,
           icon_url: item.icon_url ?? existing?.icon_url ?? undefined,
           banner_url: item.banner_url ?? existing?.banner_url ?? undefined,
           is_custom: isCustom,
@@ -1163,7 +1183,10 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         args?.p_game_id ??
         `custom_${crypto.randomUUID()}`;
 
-      const existingGames = getTableRows("user_games", userId) as UserGameRecord[];
+      const existingGames = getTableRows(
+        "user_games",
+        userId,
+      ) as UserGameRecord[];
       const existingIndex = existingGames.findIndex(
         (g) =>
           g.id === customId ||
@@ -1243,7 +1266,10 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         args?.last_played_at ?? args?.p_last_played_at ?? now;
 
       // 1. Update user_playtime table
-      const playtimes = getTableRows("user_playtime", userId) as UserPlaytimeRecord[];
+      const playtimes = getTableRows(
+        "user_playtime",
+        userId,
+      ) as UserPlaytimeRecord[];
       const ptIndex = playtimes.findIndex((p) => p.game_id === gameId);
       let totalSeconds = durationSeconds;
       let ptRecord: UserPlaytimeRecord;
@@ -1322,7 +1348,10 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       }
       const targetGameId = args?.game_id ?? args?.p_game_id ?? args?.id;
 
-      const playtimes = getTableRows("user_playtime", userId) as UserPlaytimeRecord[];
+      const playtimes = getTableRows(
+        "user_playtime",
+        userId,
+      ) as UserPlaytimeRecord[];
       const games = getTableRows("user_games", userId) as UserGameRecord[];
 
       const playtimeMap: Record<string, number> = {};
@@ -1359,7 +1388,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
     }
     case "set_game_presence": {
       if (!userId) return { success: false, error: "Unauthorized" };
-      const isPlaying = Boolean(args?.is_playing ?? args?.p_is_playing ?? false);
+      const isPlaying = Boolean(
+        args?.is_playing ?? args?.p_is_playing ?? false,
+      );
       const gameId = isPlaying
         ? (args?.game_id ?? args?.p_game_id ?? null)
         : null;
@@ -1395,15 +1426,16 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
     case "get_game_friends": {
       if (!userId) return [];
       const targetGameId = args?.game_id ?? args?.p_game_id;
-      let targetGameTitle = (
-        args?.game_title ??
-        args?.p_game_title ??
-        ""
-      ).trim().toLowerCase();
+      let targetGameTitle = (args?.game_title ?? args?.p_game_title ?? "")
+        .trim()
+        .toLowerCase();
 
       // If no game title was provided, but targetGameId is provided, attempt to infer title from caller's games/playtime
       if (!targetGameTitle && targetGameId) {
-        const callerGames = getTableRows("user_games", userId) as UserGameRecord[];
+        const callerGames = getTableRows(
+          "user_games",
+          userId,
+        ) as UserGameRecord[];
         const callerGame = callerGames.find(
           (g) => g.game_id === targetGameId || g.id === targetGameId,
         );
@@ -1411,8 +1443,13 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
           targetGameTitle = callerGame.title.trim().toLowerCase();
         }
         if (!targetGameTitle) {
-          const callerPlaytimes = getTableRows("user_playtime", userId) as UserPlaytimeRecord[];
-          const callerPt = callerPlaytimes.find((p) => p.game_id === targetGameId);
+          const callerPlaytimes = getTableRows(
+            "user_playtime",
+            userId,
+          ) as UserPlaytimeRecord[];
+          const callerPt = callerPlaytimes.find(
+            (p) => p.game_id === targetGameId,
+          );
           if (callerPt && callerPt.game_title) {
             targetGameTitle = callerPt.game_title.trim().toLowerCase();
           }
@@ -1451,7 +1488,8 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
 
         const matchingGame = friendGames.find((g) => {
           if (targetGameId) {
-            if (g.game_id === targetGameId || g.id === targetGameId) return true;
+            if (g.game_id === targetGameId || g.id === targetGameId)
+              return true;
             const cleanTarget = String(targetGameId).replace(
               /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i,
               "",
@@ -1495,7 +1533,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
           if (!isNaN(updatedAtMs) && nowMs - updatedAtMs <= THREE_MINUTES_MS) {
             isPlaying = true;
             const presGameId = String(presenceRecord.game_id || "");
-            const presGameTitle = String(presenceRecord.game_title || "").trim().toLowerCase();
+            const presGameTitle = String(presenceRecord.game_title || "")
+              .trim()
+              .toLowerCase();
             const cleanPres = presGameId.replace(
               /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i,
               "",
@@ -1510,12 +1550,22 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
             if (!targetGameId && !targetGameTitle) {
               isPlayingThisGame = true;
             } else if (
-              (targetGameId && (presGameId === targetGameId || (cleanTarget && cleanTarget === cleanPres))) ||
+              (targetGameId &&
+                (presGameId === targetGameId ||
+                  (cleanTarget && cleanTarget === cleanPres))) ||
               (targetGameTitle && presGameTitle === targetGameTitle) ||
-              (matchingGame && matchingGame.game_id && presGameId === matchingGame.game_id) ||
-              (matchingGame && matchingGame.title && presGameTitle === matchingGame.title.toLowerCase()) ||
-              (matchingPlaytime && matchingPlaytime.game_id && presGameId === matchingPlaytime.game_id) ||
-              (matchingPlaytime && matchingPlaytime.game_title && presGameTitle === matchingPlaytime.game_title.toLowerCase())
+              (matchingGame &&
+                matchingGame.game_id &&
+                presGameId === matchingGame.game_id) ||
+              (matchingGame &&
+                matchingGame.title &&
+                presGameTitle === matchingGame.title.toLowerCase()) ||
+              (matchingPlaytime &&
+                matchingPlaytime.game_id &&
+                presGameId === matchingPlaytime.game_id) ||
+              (matchingPlaytime &&
+                matchingPlaytime.game_title &&
+                presGameTitle === matchingPlaytime.game_title.toLowerCase())
             ) {
               isPlayingThisGame = true;
             }
@@ -1673,7 +1723,8 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
  * Resolves bidirectional accepted friendships for a user, filtering out blocked relations.
  */
 export function getAcceptedFriendIds(userId: string | number): string[] {
-  if (userId === undefined || userId === null || String(userId).trim() === "") return [];
+  if (userId === undefined || userId === null || String(userId).trim() === "")
+    return [];
   const userIdStr = String(userId);
   const friendSet = new Set<string>();
   const userIds = getAllUserIds();
@@ -1688,7 +1739,9 @@ export function getAcceptedFriendIds(userId: string | number): string[] {
     if (f && f.id && seenFriendIds.has(f.id)) continue;
     if (f && f.id) seenFriendIds.add(f.id);
     if (f && f.status === "accepted") {
-      const otherId = String(f.friend_id === userIdStr ? f.user_id : f.friend_id);
+      const otherId = String(
+        f.friend_id === userIdStr ? f.user_id : f.friend_id,
+      );
       if (otherId && otherId !== userIdStr) {
         friendSet.add(otherId);
       }
@@ -1752,5 +1805,7 @@ export function getAcceptedFriendIds(userId: string | number): string[] {
     }
   }
 
-  return Array.from(friendSet).filter((id) => !blockedIds.has(id) && id !== userIdStr);
+  return Array.from(friendSet).filter(
+    (id) => !blockedIds.has(id) && id !== userIdStr,
+  );
 }

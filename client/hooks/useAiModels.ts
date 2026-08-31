@@ -24,16 +24,43 @@ export interface LocalProviderStatus {
 }
 
 export const BUILTIN_MODELS: Model[] = [
-  { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b", name: "Nemotron 3 120B (Smart)" },
-  { provider: "cloudflare", model_id: "@cf/google/gemma-4-26b-a4b-it", name: "Gemma 4 26B IT (Balanced)" },
-  { provider: "cloudflare", model_id: "@cf/zai-org/glm-4.7-flash", name: "GLM 4.7 Flash (Fast)" },
-  { provider: "cloudflare", model_id: "@cf/ibm-granite/granite-4.0-h-micro", name: "Granite 4.0 H-Micro (Cheap)" },
-  { provider: "cloudflare", model_id: "@cf/meta/llama-3.1-8b-instruct-fast", name: "Llama 3.1 8B Instruct (Roleplay)" },
+  {
+    provider: "cloudflare",
+    model_id: "@cf/nvidia/nemotron-3-120b-a12b",
+    name: "Nemotron 3 120B (Smart)",
+  },
+  {
+    provider: "cloudflare",
+    model_id: "@cf/google/gemma-4-26b-a4b-it",
+    name: "Gemma 4 26B IT (Balanced)",
+  },
+  {
+    provider: "cloudflare",
+    model_id: "@cf/zai-org/glm-4.7-flash",
+    name: "GLM 4.7 Flash (Fast)",
+  },
+  {
+    provider: "cloudflare",
+    model_id: "@cf/ibm-granite/granite-4.0-h-micro",
+    name: "Granite 4.0 H-Micro (Cheap)",
+  },
+  {
+    provider: "cloudflare",
+    model_id: "@cf/meta/llama-3.1-8b-instruct-fast",
+    name: "Llama 3.1 8B Instruct (Roleplay)",
+  },
   { provider: "horde", model_id: "Fast", name: "Fast - google/gemma-4-31b" },
-  { provider: "horde", model_id: "Smart", name: "Smart - koboldcpp/Behemoth-128B-v3b-Q4_K_M" },
+  {
+    provider: "horde",
+    model_id: "Smart",
+    name: "Smart - koboldcpp/Behemoth-128B-v3b-Q4_K_M",
+  },
 ];
 
-export const POPULAR_PRESETS: Record<string, Array<{ model_id: string; name: string }>> = {
+export const POPULAR_PRESETS: Record<
+  string,
+  Array<{ model_id: string; name: string }>
+> = {
   openai: [
     { model_id: "gpt-4o", name: "GPT-4o (Omni)" },
     { model_id: "gpt-4o-mini", name: "GPT-4o Mini" },
@@ -57,7 +84,10 @@ export const POPULAR_PRESETS: Record<string, Array<{ model_id: string; name: str
   openrouter: [
     { model_id: "deepseek/deepseek-r1", name: "DeepSeek R1" },
     { model_id: "deepseek/deepseek-chat", name: "DeepSeek V3" },
-    { model_id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B Instruct" },
+    {
+      model_id: "meta-llama/llama-3.3-70b-instruct",
+      name: "Llama 3.3 70B Instruct",
+    },
     { model_id: "mistralai/mistral-large-2411", name: "Mistral Large 2411" },
     { model_id: "qwen/qwen-2.5-72b-instruct", name: "Qwen 2.5 72B Instruct" },
     { model_id: "openrouter/free", name: "Auto Select - Free Model" },
@@ -71,8 +101,14 @@ export const POPULAR_PRESETS: Record<string, Array<{ model_id: string; name: str
     { model_id: "@cf/nvidia/nemotron-3-120b-a12b", name: "Nemotron 3 120B" },
     { model_id: "@cf/google/gemma-4-26b-a4b-it", name: "Gemma 4 26B IT" },
     { model_id: "@cf/zai-org/glm-4.7-flash", name: "GLM 4.7 Flash" },
-    { model_id: "@cf/ibm-granite/granite-4.0-h-micro", name: "Granite 4.0 H-Micro" },
-    { model_id: "@cf/meta/llama-3.1-8b-instruct-fast", name: "Llama 3.1 8B Instruct" },
+    {
+      model_id: "@cf/ibm-granite/granite-4.0-h-micro",
+      name: "Granite 4.0 H-Micro",
+    },
+    {
+      model_id: "@cf/meta/llama-3.1-8b-instruct-fast",
+      name: "Llama 3.1 8B Instruct",
+    },
   ],
   horde: [
     { model_id: "Fast", name: "Fast - google/gemma-4-31b" },
@@ -84,26 +120,34 @@ export const POPULAR_PRESETS: Record<string, Array<{ model_id: string; name: str
     { model_id: "deepseek-r1:8b", name: "DeepSeek R1 8B" },
     { model_id: "qwen2.5:7b", name: "Qwen 2.5 7B" },
   ],
-  "local-lmstudio": [
-    { model_id: "local-model", name: "Loaded Local Model" },
-  ],
-  "local-kobold": [
-    { model_id: "kobold-active", name: "Active Kobold Model" },
-  ],
+  "local-lmstudio": [{ model_id: "local-model", name: "Loaded Local Model" }],
+  "local-kobold": [{ model_id: "kobold-active", name: "Active Kobold Model" }],
 };
 
-async function probeDirectLocalModels(): Promise<{ models: Model[]; status: { ollama: boolean; lmstudio: boolean; kobold: boolean } }> {
+async function probeDirectLocalModels(): Promise<{
+  models: Model[];
+  status: { ollama: boolean; lmstudio: boolean; kobold: boolean };
+}> {
   const discovered: Model[] = [];
   const seen = new Set<string>();
   const status = { ollama: false, lmstudio: false, kobold: false };
 
-  const add = (provider: string, modelId: string | null | undefined, name?: string) => {
+  const add = (
+    provider: string,
+    modelId: string | null | undefined,
+    name?: string,
+  ) => {
     if (!modelId || typeof modelId !== "string" || !modelId.trim()) return;
     const trimmed = modelId.trim();
     const key = `${provider}:${trimmed}`;
     if (!seen.has(key)) {
       seen.add(key);
-      discovered.push({ provider, model_id: trimmed, name: name || trimmed, isLocal: true });
+      discovered.push({
+        provider,
+        model_id: trimmed,
+        name: name || trimmed,
+        isLocal: true,
+      });
     }
   };
 
@@ -260,7 +304,11 @@ export const useAiModels = (
           .select("provider, is_active, api_key");
         if (!error && Array.isArray(data)) {
           for (const item of data) {
-            if (item.provider && item.is_active !== false && !baseProviders.includes(item.provider)) {
+            if (
+              item.provider &&
+              item.is_active !== false &&
+              !baseProviders.includes(item.provider)
+            ) {
               baseProviders.push(item.provider);
             }
           }
@@ -372,7 +420,10 @@ export const useAiModels = (
       const directLocalResult =
         results[3].status === "fulfilled"
           ? results[3].value
-          : { models: [], status: { ollama: false, lmstudio: false, kobold: false } };
+          : {
+              models: [],
+              status: { ollama: false, lmstudio: false, kobold: false },
+            };
 
       const directModels = directLocalResult.models || [];
       const localStatusResult = directLocalResult.status || {
@@ -399,9 +450,15 @@ export const useAiModels = (
       }
 
       setLocalStatus({
-        ollama: localStatusResult.ollama || discoveredLocalModels.some((m) => m.provider.includes("ollama")),
-        lmstudio: localStatusResult.lmstudio || discoveredLocalModels.some((m) => m.provider.includes("lmstudio")),
-        kobold: localStatusResult.kobold || discoveredLocalModels.some((m) => m.provider.includes("kobold")),
+        ollama:
+          localStatusResult.ollama ||
+          discoveredLocalModels.some((m) => m.provider.includes("ollama")),
+        lmstudio:
+          localStatusResult.lmstudio ||
+          discoveredLocalModels.some((m) => m.provider.includes("lmstudio")),
+        kobold:
+          localStatusResult.kobold ||
+          discoveredLocalModels.some((m) => m.provider.includes("kobold")),
         desktopBridge: bridgeAvailable,
         totalLocal: discoveredLocalModels.length,
       });
@@ -428,7 +485,10 @@ export const useAiModels = (
               model_id: trimmed,
               name: m.name || trimmed,
               isCustom: m.isCustom ?? false,
-              isLocal: m.isLocal ?? (m.provider.startsWith("local-") || ["ollama", "lmstudio", "kobold"].includes(m.provider)),
+              isLocal:
+                m.isLocal ??
+                (m.provider.startsWith("local-") ||
+                  ["ollama", "lmstudio", "kobold"].includes(m.provider)),
             });
           }
         }
@@ -452,14 +512,16 @@ export const useAiModels = (
             targetModel &&
             targetProvider &&
             allModels.some(
-              (m) => m.model_id === targetModel && m.provider === targetProvider,
+              (m) =>
+                m.model_id === targetModel && m.provider === targetProvider,
             );
 
           const defaultValid =
             defaultModelId &&
             defaultProvider &&
             allModels.some(
-              (m) => m.model_id === defaultModelId && m.provider === defaultProvider,
+              (m) =>
+                m.model_id === defaultModelId && m.provider === defaultProvider,
             );
 
           if (prefValid) {
@@ -550,11 +612,21 @@ export const useAiModels = (
       // Always save to guest localStorage as fallback
       try {
         const raw = localStorage.getItem("custom_user_models");
-        const existing: Array<{ provider: string; model_id: string; name?: string }> = raw
-          ? JSON.parse(raw)
-          : [];
-        if (!existing.some((m) => m.provider === cleanProvider && m.model_id === cleanModelId)) {
-          existing.push({ provider: cleanProvider, model_id: cleanModelId, name: cleanName });
+        const existing: Array<{
+          provider: string;
+          model_id: string;
+          name?: string;
+        }> = raw ? JSON.parse(raw) : [];
+        if (
+          !existing.some(
+            (m) => m.provider === cleanProvider && m.model_id === cleanModelId,
+          )
+        ) {
+          existing.push({
+            provider: cleanProvider,
+            model_id: cleanModelId,
+            name: cleanName,
+          });
           localStorage.setItem("custom_user_models", JSON.stringify(existing));
         }
       } catch {}
@@ -601,7 +673,10 @@ export const useAiModels = (
                   m.model_id.toLowerCase() === modelId.toLowerCase()
                 ),
             );
-            localStorage.setItem("custom_user_models", JSON.stringify(filtered));
+            localStorage.setItem(
+              "custom_user_models",
+              JSON.stringify(filtered),
+            );
           }
         } catch {}
 

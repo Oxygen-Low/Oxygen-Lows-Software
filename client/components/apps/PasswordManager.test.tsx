@@ -91,7 +91,9 @@ describe("PasswordManagerApp", () => {
     deleteMock = vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ data: null, error: null }),
     });
-    orderMock = vi.fn().mockResolvedValue({ data: [...mockPasswords], error: null });
+    orderMock = vi
+      .fn()
+      .mockResolvedValue({ data: [...mockPasswords], error: null });
 
     vi.spyOn(supabase, "from").mockImplementation((table: string) => {
       if (table === "user_passwords") {
@@ -173,8 +175,12 @@ describe("PasswordManagerApp", () => {
       expect(screen.queryByText("Google Workspace")).not.toBeNull();
     });
 
-    expect(screen.queryByPlaceholderText(/e\.g\. GitHub Account/i)).not.toBeNull();
-    expect(screen.queryByPlaceholderText(/https:\/\/example\.com/i)).not.toBeNull();
+    expect(
+      screen.queryByPlaceholderText(/e\.g\. GitHub Account/i),
+    ).not.toBeNull();
+    expect(
+      screen.queryByPlaceholderText(/https:\/\/example\.com/i),
+    ).not.toBeNull();
     expect(
       screen.queryByPlaceholderText(/e\.g\. JBSWY3DPEHPK3PXP/i),
     ).not.toBeNull();
@@ -224,7 +230,9 @@ describe("PasswordManagerApp", () => {
 
     fireEvent.click(screen.getByText(/Apply to Password Field/i));
 
-    const pwInput = screen.getByPlaceholderText(/Enter or generate a password/i) as HTMLInputElement;
+    const pwInput = screen.getByPlaceholderText(
+      /Enter or generate a password/i,
+    ) as HTMLInputElement;
     expect(pwInput.value.length).toBeGreaterThan(0);
   });
 
@@ -245,7 +253,9 @@ describe("PasswordManagerApp", () => {
 
     const titleInput = screen.getByPlaceholderText(/e\.g\. GitHub Account/i);
     const urlInput = screen.getByPlaceholderText(/https:\/\/example\.com/i);
-    const pwInput = screen.getByPlaceholderText(/Enter or generate a password/i);
+    const pwInput = screen.getByPlaceholderText(
+      /Enter or generate a password/i,
+    );
     const otpInput = screen.getByPlaceholderText(/e\.g\. JBSWY3DPEHPK3PXP/i);
 
     fireEvent.change(titleInput, { target: { value: "Twitter/X" } });
@@ -315,4 +325,3 @@ describe("PasswordManagerApp", () => {
     });
   });
 });
-

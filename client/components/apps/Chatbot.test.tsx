@@ -199,7 +199,9 @@ vi.mock("@/lib/db", () => {
       from: vi.fn(() => ({
         select: vi.fn(() => ({
           eq: vi.fn(() => ({
-            maybeSingle: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+            maybeSingle: vi.fn(() =>
+              Promise.resolve({ data: {}, error: null }),
+            ),
             single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
           })),
         })),

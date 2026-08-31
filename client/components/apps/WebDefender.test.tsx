@@ -339,4 +339,3 @@ describe("Defender SettingsTab Total Events Limit", () => {
     );
   });
 });
-

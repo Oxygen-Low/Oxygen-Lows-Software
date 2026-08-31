@@ -200,21 +200,18 @@ describe("WebDefender with local/migrated accounts", () => {
   });
 
   it("should update rate limit on a route via UI endpoint", async () => {
-    const res = await app.request(
-      `/api/webdefender/routes/${createdRouteId}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          rateLimitEnabled: true,
-          rateLimitRequests: 5,
-          rateLimitWindowSeconds: 30,
-        }),
+    const res = await app.request(`/api/webdefender/routes/${createdRouteId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
       },
-    );
+      body: JSON.stringify({
+        rateLimitEnabled: true,
+        rateLimitRequests: 5,
+        rateLimitWindowSeconds: 30,
+      }),
+    });
 
     expect(res.status).toBe(200);
     const json = await res.json();

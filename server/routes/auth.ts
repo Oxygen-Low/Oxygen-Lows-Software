@@ -25,7 +25,11 @@ authRouter.post("/register", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const { username, email, password } = body;
 
-    if (!username || typeof username !== "string" || username.trim().length < 3) {
+    if (
+      !username ||
+      typeof username !== "string" ||
+      username.trim().length < 3
+    ) {
       return c.json(
         { error: "Username must be at least 3 characters long" },
         400,
@@ -47,7 +51,9 @@ authRouter.post("/register", async (c) => {
     const cleanEmail = email.trim().toLowerCase();
 
     // Check for existing username or email
-    const existing = getUserByUsernameOrEmail(cleanUsername) || getUserByUsernameOrEmail(cleanEmail);
+    const existing =
+      getUserByUsernameOrEmail(cleanUsername) ||
+      getUserByUsernameOrEmail(cleanEmail);
     if (existing) {
       if (existing.username.toLowerCase() === cleanUsername.toLowerCase()) {
         return c.json({ error: "Username is already taken" }, 400);

@@ -88,10 +88,7 @@ dataRouter.post("/insert", localAuthMiddleware, async (c) => {
     const userId = c.get("userId" as any);
 
     if (!table || data === undefined) {
-      return c.json(
-        { data: null, error: "Table and data are required" },
-        400,
-      );
+      return c.json({ data: null, error: "Table and data are required" }, 400);
     }
 
     const result = insertTable(table, data, userId);
@@ -108,10 +105,7 @@ dataRouter.post("/update", localAuthMiddleware, async (c) => {
     const userId = c.get("userId" as any);
 
     if (!table || data === undefined) {
-      return c.json(
-        { data: null, error: "Table and data are required" },
-        400,
-      );
+      return c.json({ data: null, error: "Table and data are required" }, 400);
     }
 
     const result = updateTable(table, filters, data, userId, orFilters);
@@ -128,10 +122,7 @@ dataRouter.post("/upsert", localAuthMiddleware, async (c) => {
     const userId = c.get("userId" as any);
 
     if (!table || data === undefined) {
-      return c.json(
-        { data: null, error: "Table and data are required" },
-        400,
-      );
+      return c.json({ data: null, error: "Table and data are required" }, 400);
     }
 
     const result = upsertTable(table, data, userId, onConflict);

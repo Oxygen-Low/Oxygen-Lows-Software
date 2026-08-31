@@ -44,14 +44,18 @@ vi.mock("../lib/dataStore.ts", () => ({
     if (opts.table === "asset_verifications") {
       if (opts.filters?.some((f: any) => f.field === "id")) {
         const idFilter = opts.filters.find((f: any) => f.field === "id");
-        return mockVerifications.filter((v) => String(v.id) === String(idFilter.value));
+        return mockVerifications.filter(
+          (v) => String(v.id) === String(idFilter.value),
+        );
       }
       return mockVerifications;
     }
     if (opts.table === "public_assets") {
       if (opts.filters?.some((f: any) => f.field === "id")) {
         const idFilter = opts.filters.find((f: any) => f.field === "id");
-        return mockPublicAssets.filter((a) => String(a.id) === String(idFilter.value));
+        return mockPublicAssets.filter(
+          (a) => String(a.id) === String(idFilter.value),
+        );
       }
       return mockPublicAssets;
     }
@@ -71,7 +75,9 @@ vi.mock("../lib/dataStore.ts", () => ({
   updateTable: vi.fn((table: string, filters: any[], data: any) => {
     if (table === "asset_verifications") {
       const idFilter = filters.find((f: any) => f.field === "id");
-      const v = mockVerifications.find((item) => String(item.id) === String(idFilter?.value));
+      const v = mockVerifications.find(
+        (item) => String(item.id) === String(idFilter?.value),
+      );
       if (v) {
         Object.assign(v, data);
         return [v];
@@ -82,7 +88,9 @@ vi.mock("../lib/dataStore.ts", () => ({
   deleteTable: vi.fn((table: string, filters: any[]) => {
     if (table === "asset_verifications") {
       const idFilter = filters.find((f: any) => f.field === "id");
-      const idx = mockVerifications.findIndex((item) => String(item.id) === String(idFilter?.value));
+      const idx = mockVerifications.findIndex(
+        (item) => String(item.id) === String(idFilter?.value),
+      );
       if (idx !== -1) {
         return mockVerifications.splice(idx, 1);
       }

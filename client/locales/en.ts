@@ -103,14 +103,12 @@ export const en = {
     masterKeyNotice:
       "If you had encrypted data (Data Saves or Password Manager), providing your master key will ensure your decrypted data is accessible in your new account.",
     keyFileLoaded: "Master key file loaded successfully",
-    invalidKeyFile:
-      "Invalid key file format. Expected a 32-byte AES key.",
+    invalidKeyFile: "Invalid key file format. Expected a 32-byte AES key.",
     invalidMasterKey:
       "Master key must be a valid 64-character hex string or 32-byte key",
     migrating: "Migrating Account...",
     migrateButton: "Migrate Account",
-    successToast:
-      "Account successfully migrated to local website storage!",
+    successToast: "Account successfully migrated to local website storage!",
   },
   account: {
     title: "Your Account",
@@ -168,8 +166,7 @@ export const en = {
     selectPreset: "Select a preset",
     customModelPreset: "Custom Model ID...",
     modelId: "Model ID",
-    modelIdPlaceholder:
-      "e.g. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelIdPlaceholder: "e.g. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
     modelName: "Display Name (Optional)",
     modelNamePlaceholder: "e.g. GPT-4o (Omni)",
     featureDefaults: "Feature Default Models",
@@ -411,8 +408,7 @@ export const en = {
     // Add Custom Game dialog
     addCustomGame: "Add Custom Game",
     dialogTitle: "Add Custom Game",
-    dialogDesc:
-      "Add any non-launcher game or executable to your library.",
+    dialogDesc: "Add any non-launcher game or executable to your library.",
     addCustomGameTitle: "Add Custom Game",
     addCustomGameDesc:
       "Add a local game executable (.exe) or custom title to your library.",
@@ -540,6 +536,9 @@ export const en = {
     reverificationRequired:
       "File modified. Previous verification has been reset and requires re-verification.",
     noSubmissions: "No verification submissions for storage files yet.",
+    storageLimitReached: "Storage limit reached (500MB)",
+    storageLimit: "Limit: 500MB (Files & Public Assets)",
+    storageQuotaError: "Quota exceeded. Maximum 500MB allowed per user.",
   },
   customize: {
     title: "Customize",
@@ -579,9 +578,12 @@ export const en = {
     racePhysiology: "Physical Traits & Physiology",
     raceCulture: "Cultural Traits & Behaviors",
     raceHistory: "Origins & History",
-    raceDescriptionSub: "Define a unique species or race, including biological traits, culture, and origins.",
-    universeDescriptionSub: "Tell us a bit about your new universe and its lore.",
-    characterDescriptionSub: "Tell us a bit about your character and what makes them unique.",
+    raceDescriptionSub:
+      "Define a unique species or race, including biological traits, culture, and origins.",
+    universeDescriptionSub:
+      "Tell us a bit about your new universe and its lore.",
+    characterDescriptionSub:
+      "Tell us a bit about your character and what makes them unique.",
     hiddenDescription: "Private Notes",
     noCharacters:
       'No characters here yet! Click "New Character" to get started and add some to your collection.',
@@ -627,10 +629,8 @@ export const en = {
       generatingCharacter: "Generating character details...",
       generatingUniverse: "Generating universe lore...",
       generatingRace: "Generating race details...",
-      summarizingUniverse:
-        "Analyzing universe lore and formulating brief...",
-      summarizingRace:
-        "Analyzing race traits and formulating brief...",
+      summarizingUniverse: "Analyzing universe lore and formulating brief...",
+      summarizingRace: "Analyzing race traits and formulating brief...",
       researchingLore: "Researching lore archetypes and concepts...",
     },
   },
@@ -1036,7 +1036,8 @@ export const en = {
     deleteConfirmTitle: "Delete Password?",
     deleteConfirmDesc:
       "This will permanently remove this password from your encrypted vault. This action cannot be undone.",
-    editDesc: "Update the password details. All data is encrypted before saving.",
+    editDesc:
+      "Update the password details. All data is encrypted before saving.",
     encryptionRequiredTitle: "Encryption Required",
     encryptionRequiredDesc:
       "Password Manager requires AES-256 masterkey encryption to protect your passwords. Your key never leaves your browser.",

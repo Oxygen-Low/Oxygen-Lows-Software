@@ -196,9 +196,7 @@ export async function getRunningGames(): Promise<{
   return { runningGames: res?.runningGames || [] };
 }
 
-export function addPushEventListener(
-  listener: PushEventListener,
-): () => void {
+export function addPushEventListener(listener: PushEventListener): () => void {
   initBridgeListener();
   pushEventListeners.add(listener);
   return () => {

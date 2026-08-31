@@ -6,7 +6,11 @@ vi.mock("./localSession", () => ({
   getLocalSession: () => ({
     access_token: "test-token",
     token_type: "bearer",
-    user: { id: "test-user-id", email: "test@example.com", username: "testuser" },
+    user: {
+      id: "test-user-id",
+      email: "test@example.com",
+      username: "testuser",
+    },
   }),
 }));
 
@@ -68,7 +72,9 @@ describe("Client Storage Library", () => {
         ok: false,
         json: () =>
           Promise.reject(
-            new SyntaxError("Unexpected token '<', \"<html> <h\"... is not valid JSON"),
+            new SyntaxError(
+              "Unexpected token '<', \"<html> <h\"... is not valid JSON",
+            ),
           ),
         text: () =>
           Promise.resolve(
@@ -99,7 +105,9 @@ describe("Client Storage Library", () => {
       });
       global.fetch = mockFetch;
 
-      const smallFile = new Blob(["small content"], { type: "application/zip" });
+      const smallFile = new Blob(["small content"], {
+        type: "application/zip",
+      });
       const client = new CustomStorageClient();
       const res = await client.from("Storage").upload("u1/file.zip", smallFile);
 
@@ -121,7 +129,9 @@ describe("Client Storage Library", () => {
       const largeBlob = new Blob([largeData], { type: "application/zip" });
 
       const client = new CustomStorageClient();
-      const res = await client.from("Storage").upload("u1/large.zip", largeBlob);
+      const res = await client
+        .from("Storage")
+        .upload("u1/large.zip", largeBlob);
 
       expect(res.error).toBeNull();
       expect(res.data?.path).toBe("u1/large.zip");
@@ -139,7 +149,7 @@ describe("Client Storage Library", () => {
         ok: false,
         json: () =>
           Promise.resolve({
-            error: "Quota exceeded. Maximum 1GB allowed per user.",
+            error: "Quota exceeded. Maximum 500MB allowed per user.",
           }),
       });
       global.fetch = mockFetch;
@@ -150,7 +160,7 @@ describe("Client Storage Library", () => {
 
       expect(res.data).toBeNull();
       expect(res.error?.message).toBe(
-        "Quota exceeded. Maximum 1GB allowed per user.",
+        "Quota exceeded. Maximum 500MB allowed per user.",
       );
     });
   });

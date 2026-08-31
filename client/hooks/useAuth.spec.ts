@@ -64,7 +64,11 @@ describe("useAuth", () => {
     const { result } = renderHook(() => useAuth());
 
     await act(async () => {
-      const res = await result.current.signUp("newuser", "new@test.com", "password123");
+      const res = await result.current.signUp(
+        "newuser",
+        "new@test.com",
+        "password123",
+      );
       expect(res.session).toEqual(mockSession);
     });
 

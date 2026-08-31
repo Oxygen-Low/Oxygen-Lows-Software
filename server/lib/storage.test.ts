@@ -75,7 +75,9 @@ describe("Server Storage Library", () => {
     });
 
     it("uploads and downloads large binary .zip files properly", async () => {
-      const zipHeader = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00]);
+      const zipHeader = Buffer.from([
+        0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00,
+      ]);
       const zipBody = Buffer.alloc(1024 * 1024, 0xab);
       const zipData = Buffer.concat([zipHeader, zipBody]);
 
@@ -93,7 +95,9 @@ describe("Server Storage Library", () => {
       );
       expect(downloadRes.error).toBeNull();
       expect(downloadRes.data?.length).toBe(zipData.length);
-      expect(downloadRes.data?.subarray(0, 4)).toEqual(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+      expect(downloadRes.data?.subarray(0, 4)).toEqual(
+        Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+      );
     });
 
     it("lists files in directory with metadata", async () => {

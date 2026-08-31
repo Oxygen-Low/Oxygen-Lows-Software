@@ -8,7 +8,11 @@ import {
   cleanup,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { GameLibrary, formatPlaytime, formatDetailedPlaytime } from "./GameLibrary";
+import {
+  GameLibrary,
+  formatPlaytime,
+  formatDetailedPlaytime,
+} from "./GameLibrary";
 import * as desktopBridge from "@/lib/desktopBridge";
 import { supabase, db } from "@/lib/db";
 
@@ -25,9 +29,11 @@ const mockScannedGames: desktopBridge.InstalledGame[] = [
     title: "Cyberpunk 2077",
     platform: "steam",
     launchUri: "steam://rungameid/1091500",
-    executablePath: "C:\\Steam\\steamapps\\common\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe",
+    executablePath:
+      "C:\\Steam\\steamapps\\common\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe",
     installPath: "C:\\Steam\\steamapps\\common\\Cyberpunk 2077",
-    bannerUrl: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg",
+    bannerUrl:
+      "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg",
     isCustom: false,
     playtime_seconds: 7200,
     last_played_at: "2026-08-30T10:00:00Z",
@@ -36,8 +42,10 @@ const mockScannedGames: desktopBridge.InstalledGame[] = [
     id: "epic_Fortnite",
     title: "Fortnite",
     platform: "epic",
-    launchUri: "com.epicgames.launcher://apps/Fortnite?action=launch&silent=true",
-    executablePath: "C:\\Epic\\Fortnite\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe",
+    launchUri:
+      "com.epicgames.launcher://apps/Fortnite?action=launch&silent=true",
+    executablePath:
+      "C:\\Epic\\Fortnite\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe",
     installPath: "C:\\Epic\\Fortnite",
     iconUrl: "https://epicgames.com/fortnite_icon.png",
     isCustom: false,
@@ -130,7 +138,11 @@ vi.mock("@/lib/db", () => {
     rpc: vi.fn().mockImplementation((name: string, args: any) => {
       if (name === "sync_user_games") {
         return Promise.resolve({
-          data: { success: true, count: mockScannedGames.length, games: mockScannedGames },
+          data: {
+            success: true,
+            count: mockScannedGames.length,
+            games: mockScannedGames,
+          },
           error: null,
         });
       }
@@ -198,9 +210,13 @@ describe("GameLibrary Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (desktopBridge.isDesktopBridgeAvailable as any).mockReturnValue(true);
-    (desktopBridge.scanInstalledGames as any).mockResolvedValue(mockScannedGames);
+    (desktopBridge.scanInstalledGames as any).mockResolvedValue(
+      mockScannedGames,
+    );
     (desktopBridge.launchGame as any).mockResolvedValue({ success: true });
-    (desktopBridge.getRunningGames as any).mockResolvedValue({ runningGames: [] });
+    (desktopBridge.getRunningGames as any).mockResolvedValue({
+      runningGames: [],
+    });
     (desktopBridge.setupGameBridgeListeners as any).mockReturnValue(() => {});
   });
 
@@ -220,10 +236,14 @@ describe("GameLibrary Component", () => {
 
       expect(screen.getByText("Desktop App Required")).toBeDefined();
       expect(
-        screen.getByText(/Game Library requires Oxygen Low's Software desktop app/),
+        screen.getByText(
+          /Game Library requires Oxygen Low's Software desktop app/,
+        ),
       ).toBeDefined();
       expect(screen.getByText("Download Desktop App")).toBeDefined();
-      expect(screen.getByRole("link", { name: /Download Desktop App/i })).toBeDefined();
+      expect(
+        screen.getByRole("link", { name: /Download Desktop App/i }),
+      ).toBeDefined();
     });
   });
 
@@ -321,7 +341,9 @@ describe("GameLibrary Component", () => {
       fireEvent.click(listButton);
 
       // Verify list elements render (executable paths shown in list mode)
-      expect(screen.getByText(/steamapps\\common\\Cyberpunk 2077/)).toBeDefined();
+      expect(
+        screen.getByText(/steamapps\\common\\Cyberpunk 2077/),
+      ).toBeDefined();
 
       // Click Grid View button
       const gridButton = screen.getByLabelText("Grid View");
@@ -378,10 +400,14 @@ describe("GameLibrary Component", () => {
         </MemoryRouter>,
       );
 
-      const addGameBtn = screen.getAllByRole("button", { name: /Add Custom Game/i })[0];
+      const addGameBtn = screen.getAllByRole("button", {
+        name: /Add Custom Game/i,
+      })[0];
       fireEvent.click(addGameBtn);
 
-      expect(screen.getByRole("heading", { name: "Add Custom Game" })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: "Add Custom Game" }),
+      ).toBeDefined();
 
       // Click Browse
       const browseBtn = screen.getByRole("button", { name: /Browse/i });
@@ -389,10 +415,16 @@ describe("GameLibrary Component", () => {
 
       await waitFor(() => {
         expect(desktopBridge.pickGameExecutable).toHaveBeenCalled();
-        const titleInput = screen.getByLabelText(/Game Title/i) as HTMLInputElement;
-        const exeInput = screen.getByLabelText(/Executable Path/i) as HTMLInputElement;
+        const titleInput = screen.getByLabelText(
+          /Game Title/i,
+        ) as HTMLInputElement;
+        const exeInput = screen.getByLabelText(
+          /Executable Path/i,
+        ) as HTMLInputElement;
         expect(titleInput.value).toBe("Hollow Knight");
-        expect(exeInput.value).toBe("C:\\Games\\HollowKnight\\hollow_knight.exe");
+        expect(exeInput.value).toBe(
+          "C:\\Games\\HollowKnight\\hollow_knight.exe",
+        );
       });
 
       // Submit Form
@@ -460,7 +492,10 @@ describe("GameLibrary Component", () => {
           return Promise.resolve({ data: {}, error: null });
         }
         if (name === "sync_user_games") {
-          return Promise.resolve({ data: { games: mockScannedGames }, error: null });
+          return Promise.resolve({
+            data: { games: mockScannedGames },
+            error: null,
+          });
         }
         return Promise.resolve({ data: null, error: null });
       });
@@ -488,7 +523,9 @@ describe("GameLibrary Component", () => {
   describe("Push Event Listeners", () => {
     it("subscribes to bridge listeners on mount and unregisters on unmount", () => {
       const mockUnsubscribe = vi.fn();
-      (desktopBridge.setupGameBridgeListeners as any).mockReturnValue(mockUnsubscribe);
+      (desktopBridge.setupGameBridgeListeners as any).mockReturnValue(
+        mockUnsubscribe,
+      );
 
       const { unmount } = render(
         <MemoryRouter>

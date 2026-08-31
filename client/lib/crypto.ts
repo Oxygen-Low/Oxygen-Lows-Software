@@ -485,7 +485,10 @@ export function parseKeyFileContent(content: string): Uint8Array {
         parsed.data?.key,
       ];
       for (const candidate of possibleKeys) {
-        if (typeof candidate === "string" && isValidMasterKeyString(candidate.trim())) {
+        if (
+          typeof candidate === "string" &&
+          isValidMasterKeyString(candidate.trim())
+        ) {
           return parseMasterKeyString(candidate.trim());
         }
       }
@@ -523,7 +526,9 @@ export function parseKeyFileContent(content: string): Uint8Array {
     .map((l) => l.trim())
     .filter(Boolean);
   for (const line of lines) {
-    const stripped = line.replace(/^(?:0x|[0-9a-fA-F]{2}:)/i, "").replace(/\s+/g, "");
+    const stripped = line
+      .replace(/^(?:0x|[0-9a-fA-F]{2}:)/i, "")
+      .replace(/\s+/g, "");
     if (/^[0-9a-fA-F]{64}$/.test(stripped)) {
       return hexToBytes(stripped);
     }

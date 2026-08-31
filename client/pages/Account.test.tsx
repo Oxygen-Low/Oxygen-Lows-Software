@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import React from "react";
 import Account from "./Account";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,14 +44,17 @@ vi.mock("@/lib/db", () => {
                 chatbot_default_provider: "openai",
                 research_agent_default_model: "google/gemma-4-31b",
                 research_agent_default_provider: "horde",
-                research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
+                research_summarizer_default_model:
+                  "@cf/nvidia/nemotron-3-120b-a12b",
                 research_summarizer_default_provider: "cloudflare",
               },
               error: null,
             });
           return Promise.resolve({ data: null, error: null });
         }),
-        insert: vi.fn(() => Promise.resolve({ data: [{ id: "m-new" }], error: null })),
+        insert: vi.fn(() =>
+          Promise.resolve({ data: [{ id: "m-new" }], error: null }),
+        ),
         upsert: vi.fn(() => Promise.resolve({ data: null, error: null })),
         delete: vi.fn(() => builder),
       };
@@ -92,7 +101,9 @@ vi.mock("@/components/Layout", () => ({
 vi.mock("@/components/ui/tabs", () => ({
   Tabs: ({ children }: any) => <div>{children}</div>,
   TabsList: ({ children }: any) => <div>{children}</div>,
-  TabsTrigger: ({ children, value }: any) => <button data-value={value}>{children}</button>,
+  TabsTrigger: ({ children, value }: any) => (
+    <button data-value={value}>{children}</button>
+  ),
   TabsContent: ({ children, value, ...props }: any) => (
     <div data-testid={`tab-${value}`} {...props}>
       {children}
@@ -273,7 +284,9 @@ describe("Account Component", () => {
     expect(screen.getByText("Feature Default Models")).toBeDefined();
     expect(screen.getByTestId("chatbot-default-card")).toBeDefined();
     expect(screen.getByTestId("research-agent-default-card")).toBeDefined();
-    expect(screen.getByTestId("research-summarizer-default-card")).toBeDefined();
+    expect(
+      screen.getByTestId("research-summarizer-default-card"),
+    ).toBeDefined();
     expect(screen.getByText("Active & Registered Models")).toBeDefined();
   });
 

@@ -67,20 +67,10 @@ import {
 } from "@/lib/desktopBridge";
 
 export type PlatformFilter =
-  | "all"
-  | "steam"
-  | "epic"
-  | "ea"
-  | "xbox"
-  | "gog"
-  | "ubisoft"
-  | "custom";
+  "all" | "steam" | "epic" | "ea" | "xbox" | "gog" | "ubisoft" | "custom";
 
 export type SortOption =
-  | "recent"
-  | "playtime"
-  | "alphabetical_az"
-  | "alphabetical_za";
+  "recent" | "playtime" | "alphabetical_az" | "alphabetical_za";
 
 export interface FriendGameOwnership {
   user_id: string;
@@ -125,7 +115,13 @@ export function formatDetailedPlaytime(
 
 const PLATFORM_CONFIG: Record<
   PlatformFilter,
-  { label: string; color: string; badgeBg: string; badgeBorder: string; badgeText: string }
+  {
+    label: string;
+    color: string;
+    badgeBg: string;
+    badgeBorder: string;
+    badgeText: string;
+  }
 > = {
   all: {
     label: "All",
@@ -192,7 +188,9 @@ export function GameLibrary() {
 
   const [games, setGames] = useState<InstalledGame[]>([]);
   const [playtimeMap, setPlaytimeMap] = useState<Record<string, number>>({});
-  const [runningSessions, setRunningSessions] = useState<RunningGameSession[]>([]);
+  const [runningSessions, setRunningSessions] = useState<RunningGameSession[]>(
+    [],
+  );
   const [isScanning, setIsScanning] = useState(false);
   const [activePlatform, setActivePlatform] = useState<PlatformFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -201,7 +199,9 @@ export function GameLibrary() {
 
   // Selected game for details modal / drawer
   const [selectedGame, setSelectedGame] = useState<InstalledGame | null>(null);
-  const [friendsWithGame, setFriendsWithGame] = useState<FriendGameOwnership[]>([]);
+  const [friendsWithGame, setFriendsWithGame] = useState<FriendGameOwnership[]>(
+    [],
+  );
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [launchingGameId, setLaunchingGameId] = useState<string | null>(null);
 
@@ -209,7 +209,9 @@ export function GameLibrary() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
   const [customExePath, setCustomExePath] = useState("");
-  const [customIconData, setCustomIconData] = useState<string | undefined>(undefined);
+  const [customIconData, setCustomIconData] = useState<string | undefined>(
+    undefined,
+  );
   const [isSubmittingCustom, setIsSubmittingCustom] = useState(false);
 
   // Image load error fallback cache
@@ -392,9 +394,7 @@ export function GameLibrary() {
             })
             .catch(() => {});
         }
-        setRunningSessions((prev) =>
-          prev.filter((s) => s.gameId !== gameId),
-        );
+        setRunningSessions((prev) => prev.filter((s) => s.gameId !== gameId));
         loadServerGamesAndPlaytimes();
       },
       // On Session Started
@@ -494,10 +494,24 @@ export function GameLibrary() {
           is_playing: true,
         });
       } else {
-        toast.error(res.message || t("gameLibrary.errorLaunchFailed", undefined, "Failed to launch game"));
+        toast.error(
+          res.message ||
+            t(
+              "gameLibrary.errorLaunchFailed",
+              undefined,
+              "Failed to launch game",
+            ),
+        );
       }
     } catch (err: any) {
-      toast.error(err.message || t("gameLibrary.errorLaunchFailed", undefined, "Failed to launch game"));
+      toast.error(
+        err.message ||
+          t(
+            "gameLibrary.errorLaunchFailed",
+            undefined,
+            "Failed to launch game",
+          ),
+      );
     } finally {
       setTimeout(() => {
         setLaunchingGameId(null);
@@ -589,9 +603,7 @@ export function GameLibrary() {
           if (activePlatform === "custom") {
             if (!game.isCustom && game.platform !== "custom") return false;
           } else {
-            if (
-              game.platform?.toLowerCase() !== activePlatform.toLowerCase()
-            ) {
+            if (game.platform?.toLowerCase() !== activePlatform.toLowerCase()) {
               return false;
             }
           }
@@ -608,10 +620,8 @@ export function GameLibrary() {
         return true;
       })
       .sort((a, b) => {
-        const aPlaytime =
-          a.playtime_seconds || playtimeMap[a.id] || 0;
-        const bPlaytime =
-          b.playtime_seconds || playtimeMap[b.id] || 0;
+        const aPlaytime = a.playtime_seconds || playtimeMap[a.id] || 0;
+        const bPlaytime = b.playtime_seconds || playtimeMap[b.id] || 0;
 
         if (sortBy === "recent") {
           const aTime = a.last_played_at
@@ -761,7 +771,10 @@ export function GameLibrary() {
               className="border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs h-9"
             >
               <RefreshCw
-                className={cn("w-3.5 h-3.5 mr-1.5", isScanning && "animate-spin text-cyan-400")}
+                className={cn(
+                  "w-3.5 h-3.5 mr-1.5",
+                  isScanning && "animate-spin text-cyan-400",
+                )}
               />
               {isScanning
                 ? t("gameLibrary.scanning", undefined, "Scanning...")
@@ -820,13 +833,25 @@ export function GameLibrary() {
                   </span>
                   <span>
                     {sortBy === "recent" &&
-                      t("gameLibrary.sortRecentlyPlayed", undefined, "Recently Played")}
+                      t(
+                        "gameLibrary.sortRecentlyPlayed",
+                        undefined,
+                        "Recently Played",
+                      )}
                     {sortBy === "playtime" &&
                       t("gameLibrary.sortPlaytime", undefined, "Playtime")}
                     {sortBy === "alphabetical_az" &&
-                      t("gameLibrary.sortAlphabeticalAZ", undefined, "Alphabetical (A-Z)")}
+                      t(
+                        "gameLibrary.sortAlphabeticalAZ",
+                        undefined,
+                        "Alphabetical (A-Z)",
+                      )}
                     {sortBy === "alphabetical_za" &&
-                      t("gameLibrary.sortAlphabeticalZA", undefined, "Alphabetical (Z-A)")}
+                      t(
+                        "gameLibrary.sortAlphabeticalZA",
+                        undefined,
+                        "Alphabetical (Z-A)",
+                      )}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 opacity-50" />
                 </Button>
@@ -837,27 +862,47 @@ export function GameLibrary() {
               >
                 <DropdownMenuItem
                   onClick={() => setSortBy("recent")}
-                  className={cn(sortBy === "recent" && "text-cyan-400 font-medium")}
+                  className={cn(
+                    sortBy === "recent" && "text-cyan-400 font-medium",
+                  )}
                 >
-                  {t("gameLibrary.sortRecentlyPlayed", undefined, "Recently Played")}
+                  {t(
+                    "gameLibrary.sortRecentlyPlayed",
+                    undefined,
+                    "Recently Played",
+                  )}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortBy("playtime")}
-                  className={cn(sortBy === "playtime" && "text-cyan-400 font-medium")}
+                  className={cn(
+                    sortBy === "playtime" && "text-cyan-400 font-medium",
+                  )}
                 >
                   {t("gameLibrary.sortPlaytime", undefined, "Playtime")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortBy("alphabetical_az")}
-                  className={cn(sortBy === "alphabetical_az" && "text-cyan-400 font-medium")}
+                  className={cn(
+                    sortBy === "alphabetical_az" && "text-cyan-400 font-medium",
+                  )}
                 >
-                  {t("gameLibrary.sortAlphabeticalAZ", undefined, "Alphabetical (A-Z)")}
+                  {t(
+                    "gameLibrary.sortAlphabeticalAZ",
+                    undefined,
+                    "Alphabetical (A-Z)",
+                  )}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortBy("alphabetical_za")}
-                  className={cn(sortBy === "alphabetical_za" && "text-cyan-400 font-medium")}
+                  className={cn(
+                    sortBy === "alphabetical_za" && "text-cyan-400 font-medium",
+                  )}
                 >
-                  {t("gameLibrary.sortAlphabeticalZA", undefined, "Alphabetical (Z-A)")}
+                  {t(
+                    "gameLibrary.sortAlphabeticalZA",
+                    undefined,
+                    "Alphabetical (Z-A)",
+                  )}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -948,7 +993,11 @@ export function GameLibrary() {
             <div>
               <h3 className="text-lg font-semibold text-white mb-1">
                 {games.length === 0
-                  ? t("gameLibrary.emptyLibrary", undefined, "Your library is empty")
+                  ? t(
+                      "gameLibrary.emptyLibrary",
+                      undefined,
+                      "Your library is empty",
+                    )
                   : t("gameLibrary.noGamesFound", undefined, "No games found")}
               </h3>
               <p className="text-xs sm:text-sm text-slate-400 max-w-sm">
@@ -972,7 +1021,12 @@ export function GameLibrary() {
                   disabled={isScanning}
                   className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs"
                 >
-                  <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", isScanning && "animate-spin")} />
+                  <RefreshCw
+                    className={cn(
+                      "w-3.5 h-3.5 mr-1.5",
+                      isScanning && "animate-spin",
+                    )}
+                  />
                   {t("gameLibrary.scanGames", undefined, "Scan Games")}
                 </Button>
                 <Button
@@ -998,7 +1052,8 @@ export function GameLibrary() {
               PLATFORM_CONFIG[
                 (game.isCustom
                   ? "custom"
-                  : (game.platform?.toLowerCase() as PlatformFilter)) || "custom"
+                  : (game.platform?.toLowerCase() as PlatformFilter)) ||
+                  "custom"
               ] || PLATFORM_CONFIG.custom;
 
             const hasBanner =
@@ -1069,7 +1124,9 @@ export function GameLibrary() {
                   {isRunning && (
                     <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur shadow-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>{t("gameLibrary.running", undefined, "Playing")}</span>
+                      <span>
+                        {t("gameLibrary.running", undefined, "Playing")}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1093,10 +1150,13 @@ export function GameLibrary() {
 
                       {game.last_played_at && (
                         <span className="text-slate-500 truncate max-w-[100px]">
-                          {new Date(game.last_played_at).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {new Date(game.last_played_at).toLocaleDateString(
+                            undefined,
+                            {
+                              month: "short",
+                              day: "numeric",
+                            },
+                          )}
                         </span>
                       )}
                     </div>
@@ -1134,14 +1194,16 @@ export function GameLibrary() {
         <div className="w-full bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
           <div className="divide-y divide-slate-800/60">
             {filteredAndSortedGames.map((game) => {
-              const playtime = game.playtime_seconds || playtimeMap[game.id] || 0;
+              const playtime =
+                game.playtime_seconds || playtimeMap[game.id] || 0;
               const isRunning = isGameRunning(game.id);
               const isLaunching = launchingGameId === game.id;
               const platformConf =
                 PLATFORM_CONFIG[
                   (game.isCustom
                     ? "custom"
-                    : (game.platform?.toLowerCase() as PlatformFilter)) || "custom"
+                    : (game.platform?.toLowerCase() as PlatformFilter)) ||
+                    "custom"
                 ] || PLATFORM_CONFIG.custom;
 
               const hasIcon =
@@ -1184,7 +1246,9 @@ export function GameLibrary() {
                         )}
                       </div>
                       <p className="text-[11px] text-slate-500 truncate max-w-xs sm:max-w-md">
-                        {game.executablePath || game.installPath || game.platform}
+                        {game.executablePath ||
+                          game.installPath ||
+                          game.platform}
                       </p>
                     </div>
                   </div>
@@ -1312,7 +1376,11 @@ export function GameLibrary() {
                         {isGameRunning(selectedGame.id) && (
                           <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[10px] flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            {t("gameLibrary.playingNow", undefined, "Playing Now")}
+                            {t(
+                              "gameLibrary.playingNow",
+                              undefined,
+                              "Playing Now",
+                            )}
                           </Badge>
                         )}
                       </div>
@@ -1366,7 +1434,9 @@ export function GameLibrary() {
                     </span>
                     <span className="text-sm font-semibold text-slate-200">
                       {selectedGame.last_played_at
-                        ? new Date(selectedGame.last_played_at).toLocaleDateString()
+                        ? new Date(
+                            selectedGame.last_played_at,
+                          ).toLocaleDateString()
                         : t("gameLibrary.never", undefined, "Never")}
                     </span>
                   </div>
@@ -1387,7 +1457,11 @@ export function GameLibrary() {
                     <span className="text-slate-500 block mb-1 font-medium">
                       {selectedGame.executablePath
                         ? t("gameLibrary.executable", undefined, "Executable")
-                        : t("gameLibrary.installLocation", undefined, "Install Location")}
+                        : t(
+                            "gameLibrary.installLocation",
+                            undefined,
+                            "Install Location",
+                          )}
                     </span>
                     <code className="text-slate-300 break-all select-all font-mono">
                       {selectedGame.executablePath || selectedGame.installPath}
@@ -1407,7 +1481,8 @@ export function GameLibrary() {
                       )}
                     </h4>
                     <span className="text-xs text-slate-500">
-                      {friendsWithGame.length} {friendsWithGame.length === 1 ? "friend" : "friends"}
+                      {friendsWithGame.length}{" "}
+                      {friendsWithGame.length === 1 ? "friend" : "friends"}
                     </span>
                   </div>
 
@@ -1464,7 +1539,11 @@ export function GameLibrary() {
                                   {friend.is_playing && (
                                     <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded-full border border-emerald-600/40 font-medium">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                      {t("gameLibrary.playingNow", undefined, "Playing Now")}
+                                      {t(
+                                        "gameLibrary.playingNow",
+                                        undefined,
+                                        "Playing Now",
+                                      )}
                                     </span>
                                   )}
                                 </div>
@@ -1525,7 +1604,10 @@ export function GameLibrary() {
             <div className="space-y-4 py-4">
               {/* Game Title Field */}
               <div className="space-y-1.5">
-                <Label htmlFor="custom-title" className="text-xs text-slate-300">
+                <Label
+                  htmlFor="custom-title"
+                  className="text-xs text-slate-300"
+                >
                   {t("gameLibrary.gameTitleLabel", undefined, "Game Title")}{" "}
                   <span className="text-rose-500">*</span>
                 </Label>
@@ -1546,7 +1628,11 @@ export function GameLibrary() {
               {/* Executable Path Field with Browse Button */}
               <div className="space-y-1.5">
                 <Label htmlFor="custom-exe" className="text-xs text-slate-300">
-                  {t("gameLibrary.executablePathLabel", undefined, "Executable Path")}{" "}
+                  {t(
+                    "gameLibrary.executablePathLabel",
+                    undefined,
+                    "Executable Path",
+                  )}{" "}
                   <span className="text-rose-500">*</span>
                 </Label>
                 <div className="flex gap-2">

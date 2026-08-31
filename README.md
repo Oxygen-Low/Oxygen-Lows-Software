@@ -12,6 +12,6 @@ _Note: This project was originally designed as a self-hostable website, but it h
 
 ## Features
 
-- **Cloud Storage:** You get 1GB of image, document, and audio storage on the cloud at no cost.
+- **Cloud Storage:** You get 500MB of image, document, and audio storage on the cloud at no cost.
 - **Cross-Platform:** Access your data anywhere via the web app or the desktop client.
 - **Tools & Apps:** Various built-in applications and tools are provided out of the box.

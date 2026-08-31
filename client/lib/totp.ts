@@ -28,9 +28,7 @@ function getCrypto(): Crypto {
  * Handles uppercase, lowercase, whitespace, hyphens, and optional '=' padding.
  */
 export function base32ToBytes(base32: string): Uint8Array {
-  const clean = base32
-    .toUpperCase()
-    .replace(/[\s\-_=]/g, "");
+  const clean = base32.toUpperCase().replace(/[\s\-_=]/g, "");
 
   if (!clean) {
     throw new Error("Base32 string is empty");
@@ -112,7 +110,10 @@ export function parseTotpSecret(input: string): ParsedTotpUri {
       const digitsStr = url.searchParams.get("digits");
       const algoStr = url.searchParams.get("algorithm");
       const issuer = url.searchParams.get("issuer") || undefined;
-      const label = decodeURIComponent(url.pathname.replace(/^\/\/?[^/]*\//, "").replace(/^\//, "")) || undefined;
+      const label =
+        decodeURIComponent(
+          url.pathname.replace(/^\/\/?[^/]*\//, "").replace(/^\//, ""),
+        ) || undefined;
 
       const period = periodStr ? parseInt(periodStr, 10) : undefined;
       const digits = digitsStr ? parseInt(digitsStr, 10) : undefined;
@@ -149,7 +150,9 @@ export function cleanTotpSecret(secret: string): string {
   if (trimmed.startsWith("otpauth://")) {
     const match = trimmed.match(/[?&]secret=([^&]+)/i);
     if (match && match[1]) {
-      return decodeURIComponent(match[1]).replace(/[\s\-_=]/g, "").toUpperCase();
+      return decodeURIComponent(match[1])
+        .replace(/[\s\-_=]/g, "")
+        .toUpperCase();
     }
   }
   return trimmed.replace(/[\s\-_=]/g, "").toUpperCase();

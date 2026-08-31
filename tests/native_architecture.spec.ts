@@ -3,7 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import app from "../server/index.ts";
-import { db, setLocalSession, getAuthenticatedClient } from "../client/lib/db.ts";
+import {
+  db,
+  setLocalSession,
+  getAuthenticatedClient,
+} from "../client/lib/db.ts";
 import {
   generateToken,
   verifyToken,
@@ -47,7 +51,9 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       outboundRequests.push(url);
 
       if (url.includes("supabase.co") || url.includes("supabase.in")) {
-        throw new Error(`CRITICAL VIOLATION: Outbound Supabase network call detected to ${url}`);
+        throw new Error(
+          `CRITICAL VIOLATION: Outbound Supabase network call detected to ${url}`,
+        );
       }
 
       if (url.startsWith("/api/")) {
@@ -60,18 +66,30 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
   afterAll(() => {
     globalThis.fetch = originalFetch;
     // Clean up test users from Data/ and uploads/
-    const usersToClean = [testUser1?.id, testUser2?.id, adminUser?.id].filter(Boolean);
+    const usersToClean = [testUser1?.id, testUser2?.id, adminUser?.id].filter(
+      Boolean,
+    );
     for (const uid of usersToClean) {
       try {
         const uPath = path.join(DATA_DIR, String(uid));
         if (fs.existsSync(uPath)) {
           fs.rmSync(uPath, { recursive: true, force: true });
         }
-        const storagePath = path.join(process.cwd(), "uploads", "Storage", String(uid));
+        const storagePath = path.join(
+          process.cwd(),
+          "uploads",
+          "Storage",
+          String(uid),
+        );
         if (fs.existsSync(storagePath)) {
           fs.rmSync(storagePath, { recursive: true, force: true });
         }
-        const publicStoragePath = path.join(process.cwd(), "uploads", "public-assets", String(uid));
+        const publicStoragePath = path.join(
+          process.cwd(),
+          "uploads",
+          "public-assets",
+          String(uid),
+        );
         if (fs.existsSync(publicStoragePath)) {
           fs.rmSync(publicStoragePath, { recursive: true, force: true });
         }
@@ -154,7 +172,8 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
 
       // Clean up this temp user
       const uPath = path.join(DATA_DIR, String(json.user.id));
-      if (fs.existsSync(uPath)) fs.rmSync(uPath, { recursive: true, force: true });
+      if (fs.existsSync(uPath))
+        fs.rmSync(uPath, { recursive: true, force: true });
     });
 
     it("should successfully register valid User 1 and return session token", async () => {
@@ -314,7 +333,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
           email: testUser1.email,
           role: "user",
         },
-        -1 // expired 1 day ago
+        -1, // expired 1 day ago
       );
       const verified = verifyToken(expiredToken);
       expect(verified).toBeNull();
@@ -349,7 +368,9 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
     });
 
     it("should validate session with query param token fallback", async () => {
-      const res = await app.request(`/api/auth/session?token=${encodeURIComponent(testUser1Token)}`);
+      const res = await app.request(
+        `/api/auth/session?token=${encodeURIComponent(testUser1Token)}`,
+      );
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.session).toBeDefined();
@@ -429,7 +450,9 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       const { data, error } = await db.from("data_saves").insert(insertData);
       expect(error).toBeNull();
       expect(data).toBeDefined();
-      expect(Array.isArray(data) ? data[0].title : data.title).toBe("Adversarial Save 1");
+      expect(Array.isArray(data) ? data[0].title : data.title).toBe(
+        "Adversarial Save 1",
+      );
     });
 
     it("should insert multiple records via db.from().insert()", async () => {
@@ -555,7 +578,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         .from("data_saves")
         .upsert(
           { id: "save_adv_1", title: "Upserted Title 1" },
-          { onConflict: "id" }
+          { onConflict: "id" },
         );
       expect(err1).toBeNull();
 
@@ -564,7 +587,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         .from("data_saves")
         .upsert(
           { id: "save_adv_4", title: "Upserted Title 4", category_id: "cat_2" },
-          { onConflict: "id" }
+          { onConflict: "id" },
         );
       expect(err2).toBeNull();
 
@@ -594,19 +617,26 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
 
     it("should execute RPC calls: get_points_status and spend_points", async () => {
       // 1. Check points status
-      const { data: statusData, error: statusErr } = await db.rpc("get_points_status");
+      const { data: statusData, error: statusErr } =
+        await db.rpc("get_points_status");
       expect(statusErr).toBeNull();
       expect(statusData.points).toBe(100);
       expect(statusData.daily_claim_available).toBe(true);
 
       // 2. Spend points
-      const { data: spendData, error: spendErr } = await db.rpc("spend_points", { amount: 30 });
+      const { data: spendData, error: spendErr } = await db.rpc(
+        "spend_points",
+        { amount: 30 },
+      );
       expect(spendErr).toBeNull();
       expect(spendData.success).toBe(true);
       expect(spendData.points).toBe(70);
 
       // 3. Attempt spending more points than available
-      const { data: overspendData, error: overspendErr } = await db.rpc("spend_points", { amount: 500 });
+      const { data: overspendData, error: overspendErr } = await db.rpc(
+        "spend_points",
+        { amount: 500 },
+      );
       expect(overspendErr).toBeNull();
       expect(overspendData.success).toBe(false);
       expect(overspendData.error).toMatch(/insufficient points/i);
@@ -638,24 +668,38 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
   describe("3. Storage API (/api/storage/*) File Operations & Access Control", () => {
     it("should reject unauthenticated upload", async () => {
       const formData = new FormData();
-      formData.append("file", new Blob(["hello world"], { type: "text/plain" }), "hello.txt");
+      formData.append(
+        "file",
+        new Blob(["hello world"], { type: "text/plain" }),
+        "hello.txt",
+      );
 
-      const res = await app.request(`/api/storage/upload/Storage/${testUser1.id}/hello.txt`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await app.request(
+        `/api/storage/upload/Storage/${testUser1.id}/hello.txt`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
       expect(res.status).toBe(401);
     });
 
     it("should prevent User 1 from uploading into User 2's storage directory", async () => {
       const formData = new FormData();
-      formData.append("file", new Blob(["malicious payload"], { type: "text/plain" }), "hack.txt");
+      formData.append(
+        "file",
+        new Blob(["malicious payload"], { type: "text/plain" }),
+        "hack.txt",
+      );
 
-      const res = await app.request(`/api/storage/upload/Storage/${testUser2.id}/hack.txt`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${testUser1Token}` },
-        body: formData,
-      });
+      const res = await app.request(
+        `/api/storage/upload/Storage/${testUser2.id}/hack.txt`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${testUser1Token}` },
+          body: formData,
+        },
+      );
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.error).toMatch(/cannot upload to other user's directory/i);
@@ -663,30 +707,41 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
 
     it("should prevent path traversal attacks in storage upload", async () => {
       const formData = new FormData();
-      formData.append("file", new Blob(["malicious file"], { type: "text/plain" }), "evil.txt");
+      formData.append(
+        "file",
+        new Blob(["malicious file"], { type: "text/plain" }),
+        "evil.txt",
+      );
 
-      const res = await app.request(`/api/storage/upload/Storage/../../../evil.txt`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${testUser1Token}` },
-        body: formData,
-      });
+      const res = await app.request(
+        `/api/storage/upload/Storage/../../../evil.txt`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${testUser1Token}` },
+          body: formData,
+        },
+      );
       expect(res.status).toBeGreaterThanOrEqual(400);
     });
 
     it("should successfully upload file to user's own directory", async () => {
-      const testContent = "Hello from adversarial storage tester! " + Date.now();
+      const testContent =
+        "Hello from adversarial storage tester! " + Date.now();
       const formData = new FormData();
       formData.append(
         "file",
         new Blob([testContent], { type: "text/plain" }),
-        "adversarial_test.txt"
+        "adversarial_test.txt",
       );
 
-      const res = await app.request(`/api/storage/upload/Storage/${testUser1.id}/adversarial_test.txt`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${testUser1Token}` },
-        body: formData,
-      });
+      const res = await app.request(
+        `/api/storage/upload/Storage/${testUser1.id}/adversarial_test.txt`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${testUser1Token}` },
+          body: formData,
+        },
+      );
 
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -699,7 +754,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         "uploads",
         "Storage",
         String(testUser1.id),
-        "adversarial_test.txt"
+        "adversarial_test.txt",
       );
       expect(fs.existsSync(diskPath)).toBe(true);
       expect(fs.readFileSync(diskPath, "utf-8")).toBe(testContent);
@@ -728,7 +783,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         `/api/storage/download/Storage/${testUser1.id}/adversarial_test.txt`,
         {
           headers: { Authorization: `Bearer ${testUser1Token}` },
-        }
+        },
       );
 
       expect(res.status).toBe(200);
@@ -742,7 +797,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         `/api/storage/download/Storage/${testUser1.id}/non_existent_file_999.txt`,
         {
           headers: { Authorization: `Bearer ${testUser1Token}` },
-        }
+        },
       );
       expect(res.status).toBe(404);
     });
@@ -768,7 +823,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         `/api/storage/download/Storage/${testUser1.id}/adversarial_test.txt`,
         {
           headers: { Authorization: `Bearer ${testUser1Token}` },
-        }
+        },
       );
       expect(checkRes.status).toBe(404);
     });
@@ -791,7 +846,11 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       adminUser = json.user;
 
       // Update role to admin in user.json
-      const userFilePath = path.join(DATA_DIR, String(adminUser.id), "user.json");
+      const userFilePath = path.join(
+        DATA_DIR,
+        String(adminUser.id),
+        "user.json",
+      );
       const uData = JSON.parse(fs.readFileSync(userFilePath, "utf-8"));
       uData.role = "admin";
       fs.writeFileSync(userFilePath, JSON.stringify(uData, null, 2), "utf-8");
@@ -829,10 +888,13 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
     });
 
     it("should reject non-admin user token to /api/admin/verifications/:id/approve (403)", async () => {
-      const res = await app.request("/api/admin/verifications/some-id/approve", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${testUser1Token}` },
-      });
+      const res = await app.request(
+        "/api/admin/verifications/some-id/approve",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${testUser1Token}` },
+        },
+      );
       expect(res.status).toBe(403);
     });
 
@@ -896,7 +958,9 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       });
       expect(myVerifRes.status).toBe(200);
       const myVerifJson = await myVerifRes.json();
-      expect(myVerifJson.verifications.some((v: any) => v.id === verificationId)).toBe(true);
+      expect(
+        myVerifJson.verifications.some((v: any) => v.id === verificationId),
+      ).toBe(true);
 
       // 3. Admin lists verifications and sees the submitted request
       const adminListRes = await app.request("/api/admin/verifications", {
@@ -904,24 +968,32 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       });
       expect(adminListRes.status).toBe(200);
       const adminListJson = await adminListRes.json();
-      expect(adminListJson.verifications.some((v: any) => v.id === verificationId)).toBe(true);
+      expect(
+        adminListJson.verifications.some((v: any) => v.id === verificationId),
+      ).toBe(true);
 
       // 4. Admin rejects without reason -> rejected with 400
-      const noReasonReject = await app.request(`/api/admin/verifications/${verificationId}/reject`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          "Content-Type": "application/json",
+      const noReasonReject = await app.request(
+        `/api/admin/verifications/${verificationId}/reject`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
         },
-        body: JSON.stringify({}),
-      });
+      );
       expect(noReasonReject.status).toBe(400);
 
       // 5. Admin approves the verification request
-      const approveRes = await app.request(`/api/admin/verifications/${verificationId}/approve`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
+      const approveRes = await app.request(
+        `/api/admin/verifications/${verificationId}/approve`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}` },
+        },
+      );
       expect(approveRes.status).toBe(200);
       const approveJson = await approveRes.json();
       expect(approveJson.success).toBe(true);
@@ -932,7 +1004,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
   describe("5. Zero Outbound Network Calls & Supabase Independence", () => {
     it("should confirm 0 outbound network calls were made to Supabase during all operations", () => {
       const supabaseCalls = outboundRequests.filter(
-        (url) => url.includes("supabase.co") || url.includes("supabase.in")
+        (url) => url.includes("supabase.co") || url.includes("supabase.in"),
       );
       expect(supabaseCalls.length).toBe(0);
     });
@@ -944,7 +1016,9 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         ...pkg.dependencies,
         ...pkg.devDependencies,
       };
-      const supabasePackages = Object.keys(allDeps).filter((k) => k.includes("supabase"));
+      const supabasePackages = Object.keys(allDeps).filter((k) =>
+        k.includes("supabase"),
+      );
       expect(supabasePackages).toEqual([]);
     });
 

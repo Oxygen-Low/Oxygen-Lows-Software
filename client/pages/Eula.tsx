@@ -242,11 +242,11 @@ export default function Eula() {
         >
           <P>
             The Software may incorporate or interface with third-party software
-            libraries, APIs, and services (including OpenAI, Anthropic,
-            Google, Cloudflare, and others). Your use of such third-party
-            components is subject to their respective licence terms and privacy
-            policies. The Licensor is not responsible for the availability,
-            accuracy, or conduct of any third-party service.
+            libraries, APIs, and services (including OpenAI, Anthropic, Google,
+            Cloudflare, and others). Your use of such third-party components is
+            subject to their respective licence terms and privacy policies. The
+            Licensor is not responsible for the availability, accuracy, or
+            conduct of any third-party service.
           </P>
         </Section>
 

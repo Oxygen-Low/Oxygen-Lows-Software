@@ -22,11 +22,13 @@ export const useAuth = () => {
       setLoading(false);
     }
 
-    const { data } = db.auth.onAuthStateChange((_event: any, newSession: any) => {
-      if (mounted) {
-        setSession(newSession);
-      }
-    });
+    const { data } = db.auth.onAuthStateChange(
+      (_event: any, newSession: any) => {
+        if (mounted) {
+          setSession(newSession);
+        }
+      },
+    );
 
     return () => {
       mounted = false;

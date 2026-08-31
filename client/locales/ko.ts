@@ -103,14 +103,12 @@ export const ko = {
     masterKeyNotice:
       "암호화된 데이터(데이터 세이브 또는 비밀번호 관리자)가 있는 경우 마스터 키를 제공해야 새 계정에서 복호화할 수 있습니다.",
     keyFileLoaded: "마스터 키 파일을 성공적으로 불러왔습니다",
-    invalidKeyFile:
-      "잘못된 키 파일 형식입니다. 32바이트 AES 키가 필요합니다.",
+    invalidKeyFile: "잘못된 키 파일 형식입니다. 32바이트 AES 키가 필요합니다.",
     invalidMasterKey:
       "마스터 키는 유효한 64자 16진수 문자열 또는 32바이트 키여야 합니다",
     migrating: "계정 이전 중...",
     migrateButton: "계정 이전",
-    successToast:
-      "웹사이트 로컬 스토리지로 계정이 성공적으로 이전되었습니다!",
+    successToast: "웹사이트 로컬 스토리지로 계정이 성공적으로 이전되었습니다!",
   },
   account: {
     title: "내 계정",
@@ -139,7 +137,8 @@ export const ko = {
     invalidFileName: "유효하지 않은 파일 이름",
     changePassword: "비밀번호 변경",
     additionalLanguages: "추가 언어",
-    additionalLanguagesDesc: "다른 사람에게 보여질 공개 프로필에 표시되는 언어입니다",
+    additionalLanguagesDesc:
+      "다른 사람에게 보여질 공개 프로필에 표시되는 언어입니다",
     displayLanguageDesc: "애플리케이션 전반의 인터페이스 언어를 제어합니다",
     addLanguage: "언어 추가",
     selectLanguageToAdd: "추가할 언어 선택",
@@ -166,8 +165,7 @@ export const ko = {
     selectPreset: "프리셋 선택",
     customModelPreset: "커스텀 모델 ID...",
     modelId: "모델 ID",
-    modelIdPlaceholder:
-      "예: gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelIdPlaceholder: "예: gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
     modelName: "표시 이름 (선택사항)",
     modelNamePlaceholder: "예: GPT-4o (Omni)",
     featureDefaults: "기능별 기본 모델",
@@ -347,10 +345,8 @@ export const ko = {
   gameLibrary: {
     // Title & Descriptions
     title: "게임 라이브러리",
-    subtitle:
-      "설치된 모든 PC 게임을 관리, 실행 및 플레이 시간 기록.",
-    description:
-      "다양한 플랫폼에 설치된 로컬 게임을 집계하고 바로 실행합니다.",
+    subtitle: "설치된 모든 PC 게임을 관리, 실행 및 플레이 시간 기록.",
+    description: "다양한 플랫폼에 설치된 로컬 게임을 집계하고 바로 실행합니다.",
 
     // Platform Names & Filters
     platformAll: "전체",
@@ -408,8 +404,7 @@ export const ko = {
     // Add Custom Game dialog
     addCustomGame: "커스텀 게임 추가",
     dialogTitle: "커스텀 게임 추가",
-    dialogDesc:
-      "런처 외부의 게임이나 실행 파일을 라이브러리에 추가합니다.",
+    dialogDesc: "런처 외부의 게임이나 실행 파일을 라이브러리에 추가합니다.",
     addCustomGameTitle: "사용자 지정 게임 추가",
     addCustomGameDesc:
       "로컬 게임 실행 파일(.exe) 또는 사용자 지정 타이틀을 라이브러리에 추가합니다.",
@@ -458,8 +453,7 @@ export const ko = {
     friendsWithGame: "이 게임을 보유한 친구",
     friendsPlaying: "플레이 중인 친구",
     noFriendsWithGame: "이 게임을 보유한 친구가 없습니다.",
-    noFriendsOwnThisGame:
-      "아직 이 게임을 플레이하거나 보유한 친구가 없습니다.",
+    noFriendsOwnThisGame: "아직 이 게임을 플레이하거나 보유한 친구가 없습니다.",
     noFriendsPlaying: "현재 이 게임을 플레이 중인 친구가 없습니다.",
     playingNow: "지금 플레이 중",
     offline: "오프라인",
@@ -536,6 +530,10 @@ export const ko = {
     reverificationRequired:
       "파일이 수정되었습니다. 이전 검증이 초기화되었으며 재검증이 필요합니다.",
     noSubmissions: "저장소 파일에 대한 검증 신청이 아직 없습니다.",
+    storageLimitReached: "저장공간 한도에 도달했습니다 (500MB)",
+    storageLimit: "한도: 500MB (파일 및 공개 자산)",
+    storageQuotaError:
+      "할당량이 초과되었습니다. 사용자당 최대 500MB까지 허용됩니다.",
   },
   customize: {
     title: "커스터마이즈",
@@ -576,7 +574,8 @@ export const ko = {
     racePhysiology: "신체적 특성 및 생리학",
     raceCulture: "문화적 특성 및 행동 양식",
     raceHistory: "기원 및 역사",
-    raceDescriptionSub: "생물학적 특성, 문화, 기원을 포함한 고유한 종족 또는 종을 정의합니다.",
+    raceDescriptionSub:
+      "생물학적 특성, 문화, 기원을 포함한 고유한 종족 또는 종을 정의합니다.",
     universeDescriptionSub: "새로운 유니버스와 그 설정에 대해 설명해 주세요.",
     characterDescriptionSub: "캐릭터와 그 특징에 대해 설명해 주세요.",
     hiddenDescription: "비공개 노트",
@@ -618,17 +617,14 @@ export const ko = {
       stepSummarizing: "1단계: 세계관 요약",
       stepResearching: "2단계: 검색 에이전트 조사",
       stepGenerating: "3단계: 생성 중",
-      errorPromptRequired:
-        "생성할 컨셉 또는 프롬프트를 입력해 주세요.",
+      errorPromptRequired: "생성할 컨셉 또는 프롬프트를 입력해 주세요.",
       errorGeneric: "생성에 실패했습니다. 다시 시도해 주세요.",
       generationComplete: "생성 완료!",
       generatingCharacter: "캐릭터 상세 정보 생성 중...",
       generatingUniverse: "세계관 설정 생성 중...",
       generatingRace: "종족 상세 정보 생성 중...",
-      summarizingUniverse:
-        "세계관 설정을 분석하고 브리프를 작성하는 중...",
-      summarizingRace:
-        "종족 특성을 분석하고 브리프를 작성하는 중...",
+      summarizingUniverse: "세계관 설정을 분석하고 브리프를 작성하는 중...",
+      summarizingRace: "종족 특성을 분석하고 브리프를 작성하는 중...",
       researchingLore: "원형 및 설정을 조사하는 중...",
     },
   },
@@ -1028,7 +1024,8 @@ export const ko = {
     deleteConfirmTitle: "비밀번호를 삭제하시겠습니까?",
     deleteConfirmDesc:
       "이 작업은 암호화된 볼트에서 이 비밀번호를 영구적으로 제거합니다. 이 작업은 취소할 수 없습니다.",
-    editDesc: "비밀번호 세부 정보를 수정합니다. 모든 데이터는 저장 전에 암호화됩니다.",
+    editDesc:
+      "비밀번호 세부 정보를 수정합니다. 모든 데이터는 저장 전에 암호화됩니다.",
     encryptionRequiredTitle: "암호화 필요",
     encryptionRequiredDesc:
       "비밀번호 관리자는 비밀번호를 보호하기 위해 AES-256 마스터 키 암호화가 필요합니다. 키는 브라우저 외부로 전송되지 않습니다.",

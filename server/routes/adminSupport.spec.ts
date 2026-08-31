@@ -36,14 +36,20 @@ vi.mock("../lib/dataStore.ts", () => ({
     if (opts.table === "support_tickets") {
       if (opts.filters?.some((f: any) => f.field === "id")) {
         const idFilter = opts.filters.find((f: any) => f.field === "id");
-        return mockTickets.filter((t) => String(t.id) === String(idFilter.value));
+        return mockTickets.filter(
+          (t) => String(t.id) === String(idFilter.value),
+        );
       }
       return mockTickets;
     }
     if (opts.table === "support_messages") {
       if (opts.filters?.some((f: any) => f.field === "ticket_id")) {
-        const ticketFilter = opts.filters.find((f: any) => f.field === "ticket_id");
-        return mockMessages.filter((m) => String(m.ticket_id) === String(ticketFilter.value));
+        const ticketFilter = opts.filters.find(
+          (f: any) => f.field === "ticket_id",
+        );
+        return mockMessages.filter(
+          (m) => String(m.ticket_id) === String(ticketFilter.value),
+        );
       }
       return mockMessages;
     }
@@ -63,7 +69,9 @@ vi.mock("../lib/dataStore.ts", () => ({
   updateTable: vi.fn((table: string, filters: any[], data: any) => {
     if (table === "support_tickets") {
       const idFilter = filters.find((f: any) => f.field === "id");
-      const ticket = mockTickets.find((t) => String(t.id) === String(idFilter?.value));
+      const ticket = mockTickets.find(
+        (t) => String(t.id) === String(idFilter?.value),
+      );
       if (ticket) {
         Object.assign(ticket, data);
         return [ticket];
@@ -156,7 +164,11 @@ describe("Admin Support Routes", () => {
     it("should fetch a specific ticket and its user profile successfully", async () => {
       mockTickets = [{ id: 123, user_id: "user-123", status: "Open" }];
       mockProfiles = {
-        "user-123": { user_id: "user-123", username: "charlie", avatar_url: "url3" },
+        "user-123": {
+          user_id: "user-123",
+          username: "charlie",
+          avatar_url: "url3",
+        },
       };
 
       const res = await app.request("/tickets/123", {
@@ -169,7 +181,11 @@ describe("Admin Support Routes", () => {
         id: 123,
         user_id: "user-123",
         status: "Open",
-        profiles: { user_id: "user-123", username: "charlie", avatar_url: "url3" },
+        profiles: {
+          user_id: "user-123",
+          username: "charlie",
+          avatar_url: "url3",
+        },
       });
     });
 

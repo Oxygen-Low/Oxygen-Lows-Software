@@ -61,7 +61,10 @@ vi.mock("@/hooks/use-toast", () => ({
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
-    session: { user: { id: "u-123", email: "test@example.com" }, access_token: "mock-token" },
+    session: {
+      user: { id: "u-123", email: "test@example.com" },
+      access_token: "mock-token",
+    },
     loading: false,
     signOut: vi.fn(),
   }),
@@ -74,7 +77,9 @@ let mockDbUpdated: any[] = [];
 vi.mock("@/lib/db", () => {
   const builder: any = {
     select: vi.fn(() => builder),
-    order: vi.fn(() => Promise.resolve({ data: [...mockDbCharacters], error: null })),
+    order: vi.fn(() =>
+      Promise.resolve({ data: [...mockDbCharacters], error: null }),
+    ),
     insert: vi.fn((data: any) => {
       mockDbInserted.push(data);
       return {
@@ -101,7 +106,9 @@ vi.mock("@/lib/db", () => {
     from: vi.fn(() => builder),
     auth: {
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { access_token: "mock-token", user: { id: "u-123" } } },
+        data: {
+          session: { access_token: "mock-token", user: { id: "u-123" } },
+        },
         error: null,
       }),
       onAuthStateChange: vi.fn().mockReturnValue({
@@ -119,7 +126,9 @@ vi.mock("@/lib/db", () => {
 vi.mock("@/lib/storage", () => ({
   storage: {
     from: vi.fn(() => ({
-      createSignedUrl: vi.fn(() => Promise.resolve({ data: { signedUrl: "" } })),
+      createSignedUrl: vi.fn(() =>
+        Promise.resolve({ data: { signedUrl: "" } }),
+      ),
     })),
   },
 }));
@@ -162,7 +171,8 @@ describe("AiGenerateDialog & Characters — Adversarial Stress Suite", () => {
       id: "u-1",
       name: "Solaris Empire",
       display_name: "Solaris Prime",
-      short_description: "A galaxy-spanning empire powered by solar sails and dyson swarms.",
+      short_description:
+        "A galaxy-spanning empire powered by solar sails and dyson swarms.",
       appearance: "Gilded spires, blinding starlight, obsidian armor.",
       personality: "Authoritarian, proud, ritualistic.",
       backstory: "Formed after the Great Stellar Collapse of 3400.",
@@ -203,29 +213,31 @@ describe("AiGenerateDialog & Characters — Adversarial Stress Suite", () => {
       let runCount = 0;
       const abortSignals: AbortSignal[] = [];
 
-      const mockGenerator = vi.fn().mockImplementation(({ signal, onProgress }) => {
-        runCount++;
-        abortSignals.push(signal);
-        return new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            resolve({
-              name: `Generated Entity ${runCount}`,
-              display_name: "Title",
-              short_description: "Desc",
-              appearance: "App",
-              personality: "Pers",
-              backstory: "Back",
-              hidden_description: "Hidden",
-              is_universe: false,
-            });
-          }, 500);
+      const mockGenerator = vi
+        .fn()
+        .mockImplementation(({ signal, onProgress }) => {
+          runCount++;
+          abortSignals.push(signal);
+          return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              resolve({
+                name: `Generated Entity ${runCount}`,
+                display_name: "Title",
+                short_description: "Desc",
+                appearance: "App",
+                personality: "Pers",
+                backstory: "Back",
+                hidden_description: "Hidden",
+                is_universe: false,
+              });
+            }, 500);
 
-          signal.addEventListener("abort", () => {
-            clearTimeout(timeout);
-            reject(new DOMException("Cancelled", "AbortError"));
+            signal.addEventListener("abort", () => {
+              clearTimeout(timeout);
+              reject(new DOMException("Cancelled", "AbortError"));
+            });
           });
         });
-      });
 
       const onApply = vi.fn();
       const onOpenChange = vi.fn();
@@ -323,9 +335,9 @@ describe("AiGenerateDialog & Characters — Adversarial Stress Suite", () => {
       });
 
       // Prompt preserved in textarea
-      expect((screen.getByTestId("prompt-input") as HTMLTextAreaElement).value).toBe(
-        "Resilient warrior prompt",
-      );
+      expect(
+        (screen.getByTestId("prompt-input") as HTMLTextAreaElement).value,
+      ).toBe("Resilient warrior prompt");
 
       // Retry immediately
       fireEvent.click(screen.getByTestId("start-generate-btn"));
@@ -458,7 +470,9 @@ describe("AiGenerateDialog & Characters — Adversarial Stress Suite", () => {
       expect(screen.getByText("AI Character Generator")).toBeDefined();
       expect(screen.getByTestId("universe-selector-container")).toBeDefined();
 
-      const universeSelect = screen.getByTestId("universe-select") as HTMLSelectElement;
+      const universeSelect = screen.getByTestId(
+        "universe-select",
+      ) as HTMLSelectElement;
       fireEvent.change(universeSelect, { target: { value: "u-1" } });
 
       fireEvent.click(screen.getByTestId("start-generate-btn"));
@@ -479,7 +493,9 @@ describe("AiGenerateDialog & Characters — Adversarial Stress Suite", () => {
         />,
       );
 
-      const promptInput = screen.getByTestId("prompt-input") as HTMLTextAreaElement;
+      const promptInput = screen.getByTestId(
+        "prompt-input",
+      ) as HTMLTextAreaElement;
       fireEvent.change(promptInput, {
         target: { value: "A persistent storyline prompt" },
       });
@@ -643,7 +659,9 @@ I hope this meets your expectations!`;
       const decrypted = await decryptCharacterData(encrypted, testKey);
       expect(decrypted.name).toBe("Shadow Blade");
       expect(decrypted.backstory).toBe("Trained in the mountain monastery");
-      expect(decrypted.hidden_description).toBe("Target list includes the king");
+      expect(decrypted.hidden_description).toBe(
+        "Target list includes the king",
+      );
     });
   });
 

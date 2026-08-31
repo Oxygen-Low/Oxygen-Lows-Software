@@ -154,7 +154,11 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
-          const inserted = insertTable("public_assets", newAsset, verification.user_id);
+          const inserted = insertTable(
+            "public_assets",
+            newAsset,
+            verification.user_id,
+          );
           const insObj = Array.isArray(inserted) ? inserted[0] : inserted;
           if (insObj) publicAssetId = insObj.id;
         }
@@ -201,7 +205,11 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
         } else {
           payload.id = crypto.randomUUID();
           payload.created_at = new Date().toISOString();
-          const inserted = insertTable("public_characters", payload, verification.user_id);
+          const inserted = insertTable(
+            "public_characters",
+            payload,
+            verification.user_id,
+          );
           const insObj = Array.isArray(inserted) ? inserted[0] : inserted;
           if (insObj) publicCharacterId = insObj.id;
         }
@@ -293,10 +301,9 @@ adminVerificationRouter.post("/:id/reject", async (c) => {
 adminVerificationRouter.delete("/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    deleteTable(
-      "asset_verifications",
-      [{ field: "id", operator: "eq", value: id }],
-    );
+    deleteTable("asset_verifications", [
+      { field: "id", operator: "eq", value: id },
+    ]);
 
     return c.json({ success: true });
   } catch (error: any) {

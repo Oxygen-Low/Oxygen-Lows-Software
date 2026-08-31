@@ -103,7 +103,8 @@ async function requireApiKey(c: Context, next: Next) {
   }
 
   const allConfigs = getTableRows("defender_config", localApp.user_id);
-  const config = allConfigs.find((cfg: any) => cfg.app_id === localApp.id) || null;
+  const config =
+    allConfigs.find((cfg: any) => cfg.app_id === localApp.id) || null;
   const allRoutes = getTableRows("defender_routes", localApp.user_id);
   const routes = allRoutes.filter((r: any) => r.app_id === localApp.id);
 
@@ -253,9 +254,7 @@ defenderRouter.post("/register", packageLimiter, requireApiKey, async (c) => {
   for (const r of routes) {
     const match = existingRoutes.find(
       (er: any) =>
-        er.app_id === app.id &&
-        er.method === r.method &&
-        er.path === r.path,
+        er.app_id === app.id && er.method === r.method && er.path === r.path,
     );
     if (!match) {
       const newRoute = {
@@ -312,7 +311,9 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
     : app.defender_config || {};
   const maxEvents = Math.min(1000, Math.max(1, config.events_limit || 50));
 
-  const appEvents = existingEvents.filter((e: any) => e.app_id === app.id).slice(0, maxEvents);
+  const appEvents = existingEvents
+    .filter((e: any) => e.app_id === app.id)
+    .slice(0, maxEvents);
   const otherEvents = existingEvents.filter((e: any) => e.app_id !== app.id);
   saveTableRows("defender_events", app.user_id, [...appEvents, ...otherEvents]);
 
@@ -367,7 +368,10 @@ const uiLimiter = rateLimiter(30, 60000, "def_ui");
 defenderRouter.get("/apps", uiLimiter, requireAuth, async (c) => {
   const user = c.get("user" as any);
   const apps = getTableRows("defender_apps", user.id);
-  apps.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  apps.sort(
+    (a: any, b: any) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
   return c.json(apps);
 });
 
@@ -442,11 +446,31 @@ defenderRouter.delete("/apps/:id", uiLimiter, requireAuth, async (c) => {
   const user = c.get("user" as any);
   const id = c.req.param("id");
 
-  deleteTable("defender_apps", [{ field: "id", operator: "eq", value: id }], user.id);
-  deleteTable("defender_config", [{ field: "app_id", operator: "eq", value: id }], user.id);
-  deleteTable("defender_routes", [{ field: "app_id", operator: "eq", value: id }], user.id);
-  deleteTable("defender_events", [{ field: "app_id", operator: "eq", value: id }], user.id);
-  deleteTable("defender_outbound", [{ field: "app_id", operator: "eq", value: id }], user.id);
+  deleteTable(
+    "defender_apps",
+    [{ field: "id", operator: "eq", value: id }],
+    user.id,
+  );
+  deleteTable(
+    "defender_config",
+    [{ field: "app_id", operator: "eq", value: id }],
+    user.id,
+  );
+  deleteTable(
+    "defender_routes",
+    [{ field: "app_id", operator: "eq", value: id }],
+    user.id,
+  );
+  deleteTable(
+    "defender_events",
+    [{ field: "app_id", operator: "eq", value: id }],
+    user.id,
+  );
+  deleteTable(
+    "defender_outbound",
+    [{ field: "app_id", operator: "eq", value: id }],
+    user.id,
+  );
 
   return c.body(null, 204);
 });
@@ -472,31 +496,36 @@ defenderRouter.get("/apps/:id", uiLimiter, requireAuth, async (c) => {
 });
 
 // 9. PUT /apps/:id/block-mode - Toggle block mode
-defenderRouter.put("/apps/:id/block-mode", uiLimiter, requireAuth, async (c) => {
-  const user = c.get("user" as any);
-  const id = c.req.param("id");
-  const { enabled } = await c.req.json().catch(() => ({}));
+defenderRouter.put(
+  "/apps/:id/block-mode",
+  uiLimiter,
+  requireAuth,
+  async (c) => {
+    const user = c.get("user" as any);
+    const id = c.req.param("id");
+    const { enabled } = await c.req.json().catch(() => ({}));
 
-  const apps = getTableRows("defender_apps", user.id);
-  const app = apps.find((a: any) => a.id === id);
+    const apps = getTableRows("defender_apps", user.id);
+    const app = apps.find((a: any) => a.id === id);
 
-  if (!app) {
-    return c.json({ error: "App not found" }, 404);
-  }
+    if (!app) {
+      return c.json({ error: "App not found" }, 404);
+    }
 
-  const updateData: any = { block_mode_enabled: Boolean(enabled) };
-  if (enabled && !app.block_mode_enabled_at) {
-    updateData.block_mode_enabled_at = new Date().toISOString();
-  }
-  const updated = updateTable(
-    "defender_apps",
-    [{ field: "id", operator: "eq", value: id }],
-    updateData,
-    user.id,
-  );
-  broadcastConfigUpdate(id).catch(() => {});
-  return c.json(updated[0] || { ...app, ...updateData });
-});
+    const updateData: any = { block_mode_enabled: Boolean(enabled) };
+    if (enabled && !app.block_mode_enabled_at) {
+      updateData.block_mode_enabled_at = new Date().toISOString();
+    }
+    const updated = updateTable(
+      "defender_apps",
+      [{ field: "id", operator: "eq", value: id }],
+      updateData,
+      user.id,
+    );
+    broadcastConfigUpdate(id).catch(() => {});
+    return c.json(updated[0] || { ...app, ...updateData });
+  },
+);
 
 // 10. PUT /apps/:id/config - Update security config
 defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
@@ -541,7 +570,12 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     }
   }
 
-  const result = upsertTable("defender_config", updatePayload, user.id, "app_id");
+  const result = upsertTable(
+    "defender_config",
+    updatePayload,
+    user.id,
+    "app_id",
+  );
 
   // If events_limit was configured, prune any existing events exceeding the new limit
   if (updatePayload.events_limit !== undefined) {
@@ -563,7 +597,9 @@ defenderRouter.get("/apps/:id/routes", uiLimiter, requireAuth, async (c) => {
   const user = c.get("user" as any);
   const id = c.req.param("id");
 
-  const routes = getTableRows("defender_routes", user.id).filter((r: any) => r.app_id === id);
+  const routes = getTableRows("defender_routes", user.id).filter(
+    (r: any) => r.app_id === id,
+  );
   routes.sort((a: any, b: any) => (a.path || "").localeCompare(b.path || ""));
   return c.json(routes);
 });
@@ -575,13 +611,24 @@ defenderRouter.put("/routes/:routeId", uiLimiter, requireAuth, async (c) => {
   const body = await c.req.json().catch(() => ({}));
 
   const updateData: any = {};
-  if (body.rateLimitEnabled !== undefined || body.rate_limit_enabled !== undefined) {
-    updateData.rate_limit_enabled = body.rateLimitEnabled ?? body.rate_limit_enabled;
+  if (
+    body.rateLimitEnabled !== undefined ||
+    body.rate_limit_enabled !== undefined
+  ) {
+    updateData.rate_limit_enabled =
+      body.rateLimitEnabled ?? body.rate_limit_enabled;
   }
-  if (body.rateLimitRequests !== undefined || body.rate_limit_requests !== undefined) {
-    updateData.rate_limit_requests = body.rateLimitRequests ?? body.rate_limit_requests;
+  if (
+    body.rateLimitRequests !== undefined ||
+    body.rate_limit_requests !== undefined
+  ) {
+    updateData.rate_limit_requests =
+      body.rateLimitRequests ?? body.rate_limit_requests;
   }
-  if (body.rateLimitWindowSeconds !== undefined || body.rate_limit_window_seconds !== undefined) {
+  if (
+    body.rateLimitWindowSeconds !== undefined ||
+    body.rate_limit_window_seconds !== undefined
+  ) {
     updateData.rate_limit_window_seconds =
       body.rateLimitWindowSeconds ?? body.rate_limit_window_seconds;
   }
@@ -615,7 +662,9 @@ defenderRouter.get("/apps/:id/events", uiLimiter, requireAuth, async (c) => {
   const startDate = c.req.query("startDate");
   const endDate = c.req.query("endDate");
 
-  let events = getTableRows("defender_events", user.id).filter((e: any) => e.app_id === id);
+  let events = getTableRows("defender_events", user.id).filter(
+    (e: any) => e.app_id === id,
+  );
 
   if (eventType) {
     events = events.filter((e: any) => e.event_type === eventType);
@@ -624,14 +673,19 @@ defenderRouter.get("/apps/:id/events", uiLimiter, requireAuth, async (c) => {
     events = events.filter((e: any) => String(e.blocked) === blockedStr);
   }
   if (startDate) {
-    events = events.filter((e: any) => new Date(e.created_at) >= new Date(startDate));
+    events = events.filter(
+      (e: any) => new Date(e.created_at) >= new Date(startDate),
+    );
   }
   if (endDate) {
-    events = events.filter((e: any) => new Date(e.created_at) <= new Date(endDate));
+    events = events.filter(
+      (e: any) => new Date(e.created_at) <= new Date(endDate),
+    );
   }
 
   events.sort(
-    (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    (a: any, b: any) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
 
   const total = events.length;
@@ -657,7 +711,8 @@ defenderRouter.get("/apps/:id/outbound", uiLimiter, requireAuth, async (c) => {
 
   outbound.sort(
     (a: any, b: any) =>
-      new Date(b.last_seen || 0).getTime() - new Date(a.last_seen || 0).getTime(),
+      new Date(b.last_seen || 0).getTime() -
+      new Date(a.last_seen || 0).getTime(),
   );
   return c.json(outbound);
 });
@@ -724,4 +779,3 @@ defenderRouter.post(
     });
   },
 );
-

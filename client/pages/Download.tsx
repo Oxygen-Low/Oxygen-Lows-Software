@@ -51,9 +51,10 @@ export default function Download() {
           const assets = Array.isArray(release.assets) ? release.assets : [];
 
           if (!resolvedWindowsUrl) {
-            const exeAsset = assets.find((asset: any) =>
-              typeof asset.name === "string" &&
-              asset.name.toLowerCase().endsWith(".exe"),
+            const exeAsset = assets.find(
+              (asset: any) =>
+                typeof asset.name === "string" &&
+                asset.name.toLowerCase().endsWith(".exe"),
             );
             if (exeAsset?.browser_download_url) {
               resolvedWindowsUrl = exeAsset.browser_download_url;
@@ -61,9 +62,10 @@ export default function Download() {
           }
 
           if (!resolvedAndroidUrl) {
-            const apkAsset = assets.find((asset: any) =>
-              typeof asset.name === "string" &&
-              asset.name.toLowerCase().endsWith(".apk"),
+            const apkAsset = assets.find(
+              (asset: any) =>
+                typeof asset.name === "string" &&
+                asset.name.toLowerCase().endsWith(".apk"),
             );
             if (apkAsset?.browser_download_url) {
               resolvedAndroidUrl = apkAsset.browser_download_url;

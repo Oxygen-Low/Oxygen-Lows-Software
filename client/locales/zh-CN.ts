@@ -102,10 +102,8 @@ export const zhCN = {
     masterKeyNotice:
       "如果您有加密数据（数据保存或密码管理器），提供主密钥将确保您能在新账户中访问已解密的数据。",
     keyFileLoaded: "主密钥文件加载成功",
-    invalidKeyFile:
-      "密钥文件格式无效。需要 32 字节的 AES 密钥。",
-    invalidMasterKey:
-      "主密钥必须是有效的 64 位十六进制字符串或 32 字节密钥",
+    invalidKeyFile: "密钥文件格式无效。需要 32 字节的 AES 密钥。",
+    invalidMasterKey: "主密钥必须是有效的 64 位十六进制字符串或 32 字节密钥",
     migrating: "正在迁移账户...",
     migrateButton: "迁移账户",
     successToast: "账户已成功迁移至网站本地存储！",
@@ -155,30 +153,25 @@ export const zhCN = {
     addModel: "添加模型",
     registerModel: "注册模型",
     addCustomModelTitle: "注册 AI 模型",
-    addCustomModelDesc:
-      "从已配置的提供商添加模型或输入自定义模型标识符。",
+    addCustomModelDesc: "从已配置的提供商添加模型或输入自定义模型标识符。",
     provider: "提供商",
     selectProvider: "选择提供商",
     modelPreset: "模型预设",
     selectPreset: "选择预设",
     customModelPreset: "自定义模型 ID...",
     modelId: "模型 ID",
-    modelIdPlaceholder:
-      "例如: gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelIdPlaceholder: "例如: gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
     modelName: "显示名称（可选）",
     modelNamePlaceholder: "例如: GPT-4o (Omni)",
     featureDefaults: "功能默认模型",
-    featureDefaultsDesc:
-      "配置聊天机器人、研究代理和搜索总结器的默认 AI 模型。",
+    featureDefaultsDesc: "配置聊天机器人、研究代理和搜索总结器的默认 AI 模型。",
     chatbotDefaultTitle: "聊天机器人默认模型",
-    chatbotDefaultDesc:
-      "打开并创建新聊天机器人对话时使用的默认模型。",
+    chatbotDefaultDesc: "打开并创建新聊天机器人对话时使用的默认模型。",
     researchAgentDefaultTitle: "研究代理默认模型",
     researchAgentDefaultDesc:
       "用于代理搜索深度网络探索和事实收集工具循环的模型。",
     researchSummarizerDefaultTitle: "搜索总结器默认模型",
-    researchSummarizerDefaultDesc:
-      "用于将研究发现综合为最终完整回答的模型。",
+    researchSummarizerDefaultDesc: "用于将研究发现综合为最终完整回答的模型。",
     registeredModels: "活跃与已注册模型",
     registeredModelsDesc:
       "按提供商分组的所有可用模型，包含检测到的本地端点和自定义注册模型。",
@@ -189,8 +182,7 @@ export const zhCN = {
     notConfigured: "需要 API 密钥",
     goToIntegrations: "前往集成",
     deleteModelConfirmTitle: "移除自定义模型",
-    deleteModelConfirmDesc:
-      "您确定要移除此自定义模型吗？您可以随时重新注册。",
+    deleteModelConfirmDesc: "您确定要移除此自定义模型吗？您可以随时重新注册。",
     modelAdded: "模型注册成功",
     modelRemoved: "模型已移除",
     modelDuplicate: "该模型已为此提供商注册",
@@ -326,8 +318,7 @@ export const zhCN = {
     webDefenderRealTime: "实时",
     webDefenderConnecting: "连接中...",
     passwordManagerTitle: "密码管理器",
-    passwordManagerDesc:
-      "使用 AES-256 零知识加密安全存储和管理密码。",
+    passwordManagerDesc: "使用 AES-256 零知识加密安全存储和管理密码。",
     gameLibraryTitle: "游戏库",
     gameLibraryDesc:
       "跨平台汇集、管理和启动本地安装的游戏，支持游戏时长统计与好友动态展示。",
@@ -395,11 +386,9 @@ export const zhCN = {
     // Add Custom Game dialog
     addCustomGame: "添加自定义游戏",
     dialogTitle: "添加自定义游戏",
-    dialogDesc:
-      "将任何非启动器游戏或可执行文件添加到您的游戏库中。",
+    dialogDesc: "将任何非启动器游戏或可执行文件添加到您的游戏库中。",
     addCustomGameTitle: "添加自定义游戏",
-    addCustomGameDesc:
-      "向游戏库添加本地游戏可执行程序 (.exe) 或自定义项目。",
+    addCustomGameDesc: "向游戏库添加本地游戏可执行程序 (.exe) 或自定义项目。",
     gameTitleLabel: "游戏名称",
     gameTitlePlaceholder: "例如：Cyberpunk 2077",
     customGameTitle: "游戏名称",
@@ -466,8 +455,7 @@ export const zhCN = {
     desktopOnlyBadge: "仅限桌面端",
 
     // Privacy & Preferences
-    privacyNotice:
-      "你的游戏动态与时长将根据你的隐私设置向好友公开展示。",
+    privacyNotice: "你的游戏动态与时长将根据你的隐私设置向好友公开展示。",
     shareActivityEnabled: "已启用游戏动态共享",
     shareActivityDisabled: "已禁用游戏动态共享",
   },
@@ -519,6 +507,9 @@ export const zhCN = {
     verifiedBadge: "已验证",
     reverificationRequired: "文件已被修改。之前的验证已重置，需要重新验证。",
     noSubmissions: "暂无存储文件的验证申请记录。",
+    storageLimitReached: "已达到存储空间上限 (500MB)",
+    storageLimit: "上限：500MB（文件与公开资源）",
+    storageQuotaError: "超出配额。每位用户最多允许使用 500MB。",
   },
   customize: {
     title: "个性化",
@@ -557,7 +548,8 @@ export const zhCN = {
     racePhysiology: "生理特征与外貌生理",
     raceCulture: "文化特质与行为习性",
     raceHistory: "起源与历史",
-    raceDescriptionSub: "定义独特的生物种族，包含生理特质、文化传统与起源演化。",
+    raceDescriptionSub:
+      "定义独特的生物种族，包含生理特质、文化传统与起源演化。",
     universeDescriptionSub: "简要介绍您的新宇宙及其世界观设定。",
     characterDescriptionSub: "简要介绍您的角色及其独特之处。",
     hiddenDescription: "私人笔记",
@@ -977,8 +969,7 @@ export const zhCN = {
     noPasswords: "暂无保存的密码。请使用左侧表单添加密码。",
     noResults: "未找到符合搜索条件的密码。",
     deleteConfirmTitle: "删除密码？",
-    deleteConfirmDesc:
-      "这将从您的加密密码库中永久删除此密码。此操作无法撤销。",
+    deleteConfirmDesc: "这将从您的加密密码库中永久删除此密码。此操作无法撤销。",
     editDesc: "更新密码详细信息。所有数据在保存前均已加密。",
     encryptionRequiredTitle: "需要加密",
     encryptionRequiredDesc:
@@ -1001,8 +992,7 @@ export const zhCN = {
     avoidAmbiguous: "避免易混淆字符 (l,1,I,O,0)",
     otpSecretLabel: "一次性密码 (OTP) 密钥 / 2FA 密钥",
     otpSecretPlaceholder: "例如 JBSWY3DPEHPK3PXP 或 otpauth://...",
-    otpSecretHelp:
-      "请输入双重认证设置时提供的自选密钥。不支持二维码扫描。",
+    otpSecretHelp: "请输入双重认证设置时提供的自选密钥。不支持二维码扫描。",
     otpCodeLabel: "一次性密码",
     copyOtp: "复制 OTP 验证码",
     otpCopiedToast: "一次性密码已复制到剪贴板",

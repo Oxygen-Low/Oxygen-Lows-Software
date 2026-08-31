@@ -94,12 +94,14 @@ export const es = {
   },
   migration: {
     title: "Migrar a Cuenta del Sitio Web",
-    subtitle: "Transfiere todos tus datos al almacenamiento local del sitio web",
+    subtitle:
+      "Transfiere todos tus datos al almacenamiento local del sitio web",
     explanation:
       "Hemos migrado el almacenamiento de datos directamente al sitio web. Por favor, define un nombre de usuario y contraseña para tu cuenta. Todos tus chats, universos, guardados, contraseñas y archivos se transferirán sin problemas.",
     masterKeyLabel: "Clave maestra (Opcional / Para datos cifrados)",
     masterKeyPlaceholder: "Pega tu clave maestra o sube un archivo .key",
-    uploadKeyFile: "Elige o suelta un archivo .key para cargar la clave maestra",
+    uploadKeyFile:
+      "Elige o suelta un archivo .key para cargar la clave maestra",
     masterKeyNotice:
       "Si tenías datos cifrados (Guardados de datos o Gestor de contraseñas), proporcionar tu clave maestra asegurará que tus datos descifrados sean accesibles.",
     keyFileLoaded: "Archivo de clave maestra cargado con éxito",
@@ -168,8 +170,7 @@ export const es = {
     selectPreset: "Selecciona un preajuste",
     customModelPreset: "ID de modelo personalizado...",
     modelId: "ID del modelo",
-    modelIdPlaceholder:
-      "ej. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+    modelIdPlaceholder: "ej. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
     modelName: "Nombre a mostrar (opcional)",
     modelNamePlaceholder: "ej. GPT-4o (Omni)",
     featureDefaults: "Modelos predeterminados por función",
@@ -189,7 +190,8 @@ export const es = {
       "Todos los modelos disponibles agrupados por proveedor, incluidos puntos locales detectados y registros personalizados.",
     localModelsGroup: "Modelos locales (Ollama / LM Studio / KoboldCPP)",
     cloudModelsGroup: "Proveedores en la nube",
-    builtInModelsGroup: "Servicios integrados en la nube (Cloudflare y AI Horde)",
+    builtInModelsGroup:
+      "Servicios integrados en la nube (Cloudflare y AI Horde)",
     configured: "Configurado",
     notConfigured: "Clave de API requerida",
     goToIntegrations: "Integraciones",
@@ -201,7 +203,8 @@ export const es = {
     modelDuplicate: "Este modelo ya está registrado para este proveedor",
     modelIdRequired: "El ID del modelo es obligatorio",
     defaultModelUpdated: "Modelo predeterminado actualizado",
-    noModelsAvailable: "No hay modelos personalizados registrados para este proveedor.",
+    noModelsAvailable:
+      "No hay modelos personalizados registrados para este proveedor.",
     customBadge: "Personalizado",
     localBadge: "Local",
     presetBadge: "Preajuste",
@@ -545,6 +548,9 @@ export const es = {
       "Archivo modificado. La verificación anterior se ha restablecido y requiere una nueva verificación.",
     noSubmissions:
       "Aún no hay solicitudes de verificación para archivos de almacenamiento.",
+    storageLimitReached: "Límite de almacenamiento alcanzado (500MB)",
+    storageLimit: "Límite: 500MB (Archivos y recursos públicos)",
+    storageQuotaError: "Cuota excedida. Máximo de 500MB permitido por usuario.",
   },
   customize: {
     title: "Personalizar",
@@ -587,9 +593,12 @@ export const es = {
     racePhysiology: "Rasgos físicos y fisiología",
     raceCulture: "Rasgos culturales y comportamientos",
     raceHistory: "Orígenes e historia",
-    raceDescriptionSub: "Define una especie o raza única, incluyendo rasgos biológicos, cultura y orígenes.",
-    universeDescriptionSub: "Cuéntanos un poco sobre tu nuevo universo y su historia.",
-    characterDescriptionSub: "Cuéntanos un poco sobre tu personaje y lo que lo hace único.",
+    raceDescriptionSub:
+      "Define una especie o raza única, incluyendo rasgos biológicos, cultura y orígenes.",
+    universeDescriptionSub:
+      "Cuéntanos un poco sobre tu nuevo universo y su historia.",
+    characterDescriptionSub:
+      "Cuéntanos un poco sobre tu personaje y lo que lo hace único.",
     hiddenDescription: "Notas privadas",
     noCharacters:
       '¡Aún no hay personajes aquí! Haz clic en "Nuevo Personaje" para empezar y añadir algunos a tu colección.',
@@ -636,8 +645,7 @@ export const es = {
       generatingCharacter: "Generando detalles del personaje...",
       generatingUniverse: "Generando historia del universo...",
       generatingRace: "Generando detalles de la raza...",
-      summarizingUniverse:
-        "Analizando el universo y formulando el informe...",
+      summarizingUniverse: "Analizando el universo y formulando el informe...",
       summarizingRace:
         "Analizando los rasgos de la raza y formulando el informe...",
       researchingLore: "Investigando arquetipos y conceptos...",
@@ -1050,12 +1058,14 @@ export const es = {
     copiedToast: "Contraseña copiada al portapapeles",
     updated: "Actualizado",
     untitled: "Contraseña sin título",
-    noPasswords: "Aún no se han guardado contraseñas. Añade una usando el formulario de la izquierda.",
+    noPasswords:
+      "Aún no se han guardado contraseñas. Añade una usando el formulario de la izquierda.",
     noResults: "Ninguna contraseña coincide con tu búsqueda.",
     deleteConfirmTitle: "¿Eliminar Contraseña?",
     deleteConfirmDesc:
       "Esto eliminará permanentemente esta contraseña de tu bóveda cifrada. Esta acción no se puede deshacer.",
-    editDesc: "Actualiza los detalles de la contraseña. Todos los datos se cifran antes de guardar.",
+    editDesc:
+      "Actualiza los detalles de la contraseña. Todos los datos se cifran antes de guardar.",
     encryptionRequiredTitle: "Cifrado Requerido",
     encryptionRequiredDesc:
       "El Gestor de Contraseñas requiere cifrado de clave maestra AES-256 para proteger tus contraseñas. Tu clave nunca abandona tu navegador.",

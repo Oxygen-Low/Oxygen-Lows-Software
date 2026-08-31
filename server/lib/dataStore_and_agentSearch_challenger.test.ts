@@ -105,7 +105,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
         const updated = queryTable({
           table: "user_models",
           userId: uid,
-          filters: [{ field: "name", operator: "like", value: "%Updated Name%" }],
+          filters: [
+            { field: "name", operator: "like", value: "%Updated Name%" },
+          ],
         });
         expect(updated).toHaveLength(4);
 
@@ -180,8 +182,18 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
     it("supports batch array insertion and multi-record upsert for user_models", () => {
       const uid = testUsers[1];
       const batchModels = [
-        { id: "batch-1", provider: "openai", model_id: "o3-mini", name: "O3 Mini" },
-        { id: "batch-2", provider: "google", model_id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+        {
+          id: "batch-1",
+          provider: "openai",
+          model_id: "o3-mini",
+          name: "O3 Mini",
+        },
+        {
+          id: "batch-2",
+          provider: "google",
+          model_id: "gemini-2.5-flash",
+          name: "Gemini 2.5 Flash",
+        },
         { id: "batch-3", provider: "xai", model_id: "grok-3", name: "Grok 3" },
       ];
 
@@ -203,8 +215,18 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
 
       // Batch upsert with modifications and 1 new record
       const upsertBatch = [
-        { id: "batch-1", provider: "openai", model_id: "o3-mini-high", name: "O3 Mini High Reasoning" },
-        { id: "batch-4", provider: "cloudflare", model_id: "@cf/meta/llama-3.3-70b-instruct", name: "CF Llama 3.3" },
+        {
+          id: "batch-1",
+          provider: "openai",
+          model_id: "o3-mini-high",
+          name: "O3 Mini High Reasoning",
+        },
+        {
+          id: "batch-4",
+          provider: "cloudflare",
+          model_id: "@cf/meta/llama-3.3-70b-instruct",
+          name: "CF Llama 3.3",
+        },
       ];
       upsertTable("user_models", upsertBatch, uid, "id");
 
@@ -265,14 +287,22 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       const uid = testUsers[2];
 
       // Initial defaults
-      const pref0 = queryTable({ table: "user_preferences", userId: uid, single: true });
+      const pref0 = queryTable({
+        table: "user_preferences",
+        userId: uid,
+        single: true,
+      });
       expect(pref0.theme).toBe("dark");
       expect(pref0.volume).toBe(80);
       expect(pref0.chatbot_default_model).toBe("Fast");
 
       // Step 1: Update theme only
       callRpc("upsert_user_preferences", { p_theme: "light" }, uid);
-      let p = queryTable({ table: "user_preferences", userId: uid, single: true });
+      let p = queryTable({
+        table: "user_preferences",
+        userId: uid,
+        single: true,
+      });
       expect(p.theme).toBe("light");
       expect(p.volume).toBe(80);
       expect(p.chatbot_default_model).toBe("Fast");
@@ -291,7 +321,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       expect(p.volume).toBe(80);
       expect(p.research_agent_default_model).toBe("claude-3-7-sonnet");
       expect(p.research_agent_default_provider).toBe("anthropic");
-      expect(p.research_summarizer_default_model).toBe("@cf/nvidia/nemotron-3-120b-a12b");
+      expect(p.research_summarizer_default_model).toBe(
+        "@cf/nvidia/nemotron-3-120b-a12b",
+      );
 
       // Step 3: Update research_summarizer_default_model only
       callRpc(
@@ -329,7 +361,11 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       expect(result.temperature).toBe(0.7);
       expect("undefined_field" in result).toBe(false);
 
-      const persisted = queryTable({ table: "user_preferences", userId: uid, single: true });
+      const persisted = queryTable({
+        table: "user_preferences",
+        userId: uid,
+        single: true,
+      });
       expect(persisted.profile_picture_path).toBeNull();
       expect(persisted.custom_flag).toBe(true);
       expect(persisted.temperature).toBe(0.7);
@@ -356,11 +392,15 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
         if (String(url).includes("stablehorde.net")) {
           capturedPayload = JSON.parse((init?.body as string) || "{}");
           return new Response(
-            JSON.stringify({ choices: [{ message: { content: '{"action": "done"}' } }] }),
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+        return new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+        });
       });
 
       const exoticModel = "custom-org/llama-3.1-405b-fp8:extreme_special_v2";
@@ -393,11 +433,15 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
           const body = JSON.parse((init?.body as string) || "{}");
           capturedModel = body.model;
           return new Response(
-            JSON.stringify({ choices: [{ message: { content: '{"action": "done"}' } }] }),
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+        return new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+        });
       });
 
       // Tier 1: Explicit payload takes top priority even if preferences differ
@@ -490,7 +534,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
         const urlStr = String(url);
         if (urlStr.includes("stablehorde.net")) {
           return new Response(
-            JSON.stringify({ choices: [{ message: { content: '{"action": "done"}' } }] }),
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -502,7 +548,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+        return new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+        });
       });
 
       // Tier 1: Payload override
@@ -521,7 +569,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       // Tier 2: User preference
       callRpc(
         "upsert_user_preferences",
-        { p_research_summarizer_default_model: "@cf/qwen/qwen2.5-72b-instruct" },
+        {
+          p_research_summarizer_default_model: "@cf/qwen/qwen2.5-72b-instruct",
+        },
         uid,
       );
       await app.request("/api/ai/agent-search", {
@@ -587,15 +637,25 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
           const body = JSON.parse((init?.body as string) || "{}");
           capturedModel = body.model;
           return new Response(
-            JSON.stringify({ choices: [{ message: { content: '{"action": "done"}' } }] }),
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' } }],
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+        return new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+        });
       });
 
       // Pass invalid types: number, boolean, object, array
-      const invalidTypes = [12345, true, { nested: "object" }, ["array", "item"], null];
+      const invalidTypes = [
+        12345,
+        true,
+        { nested: "object" },
+        ["array", "item"],
+        null,
+      ];
 
       for (const invalid of invalidTypes) {
         const res = await app.request("/api/ai/agent-search", {
@@ -632,7 +692,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
         }),
       });
       expect(longQueryRes.status).toBe(400);
-      expect((await longQueryRes.json()).error).toContain("query exceeds maximum length");
+      expect((await longQueryRes.json()).error).toContain(
+        "query exceeds maximum length",
+      );
 
       // responseFormat > 100 chars
       const longFormatRes = await app.request("/api/ai/agent-search", {
@@ -644,7 +706,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
         }),
       });
       expect(longFormatRes.status).toBe(400);
-      expect((await longFormatRes.json()).error).toContain("responseFormat exceeds maximum length");
+      expect((await longFormatRes.json()).error).toContain(
+        "responseFormat exceeds maximum length",
+      );
 
       // > 5 images
       const tooManyImagesRes = await app.request("/api/ai/agent-search", {
@@ -664,7 +728,9 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
         }),
       });
       expect(tooManyImagesRes.status).toBe(400);
-      expect((await tooManyImagesRes.json()).error).toContain("maximum of 5 items");
+      expect((await tooManyImagesRes.json()).error).toContain(
+        "maximum of 5 items",
+      );
     });
   });
 });

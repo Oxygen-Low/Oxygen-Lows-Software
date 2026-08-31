@@ -361,11 +361,7 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
 
   // 1. Check standard OpenAI / Cloudflare tool_calls
   const toolCalls = msg?.tool_calls || data.tool_calls;
-  if (
-    toolCalls &&
-    Array.isArray(toolCalls) &&
-    toolCalls.length > 0
-  ) {
+  if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
     const tc = toolCalls[0];
     const name = tc.name || tc.function?.name || "";
     let args: any = {};
@@ -387,9 +383,15 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
   } else if (typeof data.content === "string") {
     content = data.content.trim();
   } else if (Array.isArray(data.content)) {
-    content = data.content.map((c: any) => c.text || "").join("").trim();
+    content = data.content
+      .map((c: any) => c.text || "")
+      .join("")
+      .trim();
   } else if (data.candidates?.[0]?.content?.parts) {
-    content = data.candidates[0].content.parts.map((p: any) => p.text || "").join("").trim();
+    content = data.candidates[0].content.parts
+      .map((p: any) => p.text || "")
+      .join("")
+      .trim();
   } else if (typeof data.result === "string") {
     content = data.result.trim();
   } else if (data.result?.response) {
@@ -511,7 +513,8 @@ async function callModelProvider({
       temperature: 0.2,
       max_tokens: tools ? 200 : 2048,
     };
-    headers["Authorization"] = `Bearer ${hordeApiKey || apiKey || "0000000000"}`;
+    headers["Authorization"] =
+      `Bearer ${hordeApiKey || apiKey || "0000000000"}`;
   } else if (provider === "cloudflare") {
     if (!cloudflareId || !cloudflareToken) {
       throw new Error("Cloudflare AI is temporarily unavailable.");
@@ -745,7 +748,11 @@ agentSearchRouter.post(
             table: "user_integrations",
             userId: user.id,
             filters: [
-              { field: "provider", operator: "eq", value: effectiveResearchProvider },
+              {
+                field: "provider",
+                operator: "eq",
+                value: effectiveResearchProvider,
+              },
             ],
           });
           if (Array.isArray(ints) && ints[0]?.api_key) intg = ints[0];
@@ -772,7 +779,11 @@ agentSearchRouter.post(
             table: "user_integrations",
             userId: user.id,
             filters: [
-              { field: "provider", operator: "eq", value: effectiveSummarizerProvider },
+              {
+                field: "provider",
+                operator: "eq",
+                value: effectiveSummarizerProvider,
+              },
             ],
           });
           if (Array.isArray(ints) && ints[0]?.api_key) intg = ints[0];
@@ -1073,9 +1084,13 @@ Guidelines:
         } else if (typeof synthData.content === "string") {
           finalResult = synthData.content;
         } else if (Array.isArray(synthData.content)) {
-          finalResult = synthData.content.map((item: any) => item.text || "").join("");
+          finalResult = synthData.content
+            .map((item: any) => item.text || "")
+            .join("");
         } else if (synthData.candidates?.[0]?.content?.parts) {
-          finalResult = synthData.candidates[0].content.parts.map((p: any) => p.text || "").join("");
+          finalResult = synthData.candidates[0].content.parts
+            .map((p: any) => p.text || "")
+            .join("");
         } else if (typeof synthData.result === "string") {
           finalResult = synthData.result;
         } else if (synthData.result?.response) {
@@ -1364,7 +1379,10 @@ Guidelines:
             });
           } catch (e: any) {
             await write(
-              sseJson({ type: "error", message: e?.message || "Search synthesis error" }),
+              sseJson({
+                type: "error",
+                message: e?.message || "Search synthesis error",
+              }),
             );
             return;
           }

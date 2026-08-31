@@ -154,7 +154,9 @@ adminSupportRouter.post("/tickets/:id/messages", async (c) => {
 
     const inserted = insertTable("support_messages", newMessage, targetUserId);
 
-    return c.json({ message: Array.isArray(inserted) ? inserted[0] : inserted });
+    return c.json({
+      message: Array.isArray(inserted) ? inserted[0] : inserted,
+    });
   } catch (error: any) {
     console.error("Error posting ticket message:", error);
     return c.json({ error: "Internal server error" }, 500);

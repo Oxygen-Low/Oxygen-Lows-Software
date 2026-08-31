@@ -144,7 +144,8 @@ export default function Account() {
   const [addProvider, setAddProvider] = useState<string>("openai");
   const [selectedPreset, setSelectedPreset] = useState<string>("gpt-4o");
   const [customModelId, setCustomModelId] = useState<string>("gpt-4o");
-  const [customModelName, setCustomModelName] = useState<string>("GPT-4o (Omni)");
+  const [customModelName, setCustomModelName] =
+    useState<string>("GPT-4o (Omni)");
   const [addError, setAddError] = useState<string | null>(null);
   const [isSubmittingModel, setIsSubmittingModel] = useState(false);
 
@@ -386,18 +387,21 @@ export default function Account() {
   };
 
   // Provider options for Add Model Dialog
-  const providerOptions = useMemo(() => [
-    { value: "openai", label: "OpenAI", isLocal: false },
-    { value: "anthropic", label: "Anthropic Claude", isLocal: false },
-    { value: "google", label: "Google Gemini", isLocal: false },
-    { value: "openrouter", label: "OpenRouter", isLocal: false },
-    { value: "grok", label: "xAI Grok", isLocal: false },
-    { value: "local-ollama", label: "Local Ollama", isLocal: true },
-    { value: "local-lmstudio", label: "Local LM Studio", isLocal: true },
-    { value: "local-kobold", label: "Local KoboldCPP", isLocal: true },
-    { value: "cloudflare", label: "Cloudflare", isLocal: false },
-    { value: "horde", label: "AI Horde", isLocal: false },
-  ], []);
+  const providerOptions = useMemo(
+    () => [
+      { value: "openai", label: "OpenAI", isLocal: false },
+      { value: "anthropic", label: "Anthropic Claude", isLocal: false },
+      { value: "google", label: "Google Gemini", isLocal: false },
+      { value: "openrouter", label: "OpenRouter", isLocal: false },
+      { value: "grok", label: "xAI Grok", isLocal: false },
+      { value: "local-ollama", label: "Local Ollama", isLocal: true },
+      { value: "local-lmstudio", label: "Local LM Studio", isLocal: true },
+      { value: "local-kobold", label: "Local KoboldCPP", isLocal: true },
+      { value: "cloudflare", label: "Cloudflare", isLocal: false },
+      { value: "horde", label: "AI Horde", isLocal: false },
+    ],
+    [],
+  );
 
   // When provider changes in Add Model modal, update default preset & custom id
   const handleProviderSelectChange = (newProvider: string) => {
@@ -445,30 +449,45 @@ export default function Account() {
 
   const handleAddModelSubmit = async () => {
     if (!customModelId.trim()) {
-      setAddError(t("account.modelIdRequired", undefined, "Model ID is required"));
+      setAddError(
+        t("account.modelIdRequired", undefined, "Model ID is required"),
+      );
       return;
     }
 
     setIsSubmittingModel(true);
     setAddError(null);
 
-    const res = await addCustomModel(addProvider, customModelId.trim(), customModelName.trim() || undefined);
+    const res = await addCustomModel(
+      addProvider,
+      customModelId.trim(),
+      customModelName.trim() || undefined,
+    );
     setIsSubmittingModel(false);
 
     if (res.success) {
       toast({
-        title: t("account.modelAdded", undefined, "Model registered successfully"),
+        title: t(
+          "account.modelAdded",
+          undefined,
+          "Model registered successfully",
+        ),
       });
       setIsAddModalOpen(false);
     } else {
-      setAddError(res.error || t("common.error", undefined, "Error registering model"));
+      setAddError(
+        res.error || t("common.error", undefined, "Error registering model"),
+      );
     }
   };
 
   const handleDeleteModelConfirm = async () => {
     if (!modelToDelete) return;
     setIsDeletingModel(true);
-    const res = await removeCustomModel(modelToDelete.provider, modelToDelete.model_id);
+    const res = await removeCustomModel(
+      modelToDelete.provider,
+      modelToDelete.model_id,
+    );
     setIsDeletingModel(false);
     setModelToDelete(null);
 
@@ -495,7 +514,10 @@ export default function Account() {
     );
   }, [models]);
 
-  const cloudProviders = useMemo(() => ["openai", "google", "anthropic", "openrouter", "grok"], []);
+  const cloudProviders = useMemo(
+    () => ["openai", "google", "anthropic", "openrouter", "grok"],
+    [],
+  );
 
   const cloudModelsByProvider = useMemo(() => {
     const map: Record<string, Model[]> = {};
@@ -526,16 +548,29 @@ export default function Account() {
     return null;
   };
 
-  const chatbotSelectedKey = getModelKey(chatbotDefaultProvider, chatbotDefaultModel);
-  const researchAgentSelectedKey = getModelKey(researchAgentDefaultProvider, researchAgentDefaultModel);
-  const researchSummarizerSelectedKey = getModelKey(researchSummarizerDefaultProvider, researchSummarizerDefaultModel);
+  const chatbotSelectedKey = getModelKey(
+    chatbotDefaultProvider,
+    chatbotDefaultModel,
+  );
+  const researchAgentSelectedKey = getModelKey(
+    researchAgentDefaultProvider,
+    researchAgentDefaultModel,
+  );
+  const researchSummarizerSelectedKey = getModelKey(
+    researchSummarizerDefaultProvider,
+    researchSummarizerDefaultModel,
+  );
 
   const handleChatbotDefaultSelect = async (val: string) => {
     const parsed = parseModelKey(val);
     if (parsed) {
       await setChatbotDefault(parsed.modelId, parsed.provider);
       toast({
-        title: t("account.defaultModelUpdated", undefined, "Default model updated"),
+        title: t(
+          "account.defaultModelUpdated",
+          undefined,
+          "Default model updated",
+        ),
       });
     }
   };
@@ -545,7 +580,11 @@ export default function Account() {
     if (parsed) {
       await setResearchAgentDefault(parsed.modelId, parsed.provider);
       toast({
-        title: t("account.defaultModelUpdated", undefined, "Default model updated"),
+        title: t(
+          "account.defaultModelUpdated",
+          undefined,
+          "Default model updated",
+        ),
       });
     }
   };
@@ -555,7 +594,11 @@ export default function Account() {
     if (parsed) {
       await setResearchSummarizerDefault(parsed.modelId, parsed.provider);
       toast({
-        title: t("account.defaultModelUpdated", undefined, "Default model updated"),
+        title: t(
+          "account.defaultModelUpdated",
+          undefined,
+          "Default model updated",
+        ),
       });
     }
   };
@@ -583,9 +626,7 @@ export default function Account() {
                   <img
                     src={profilePicture.image_url}
                     alt={
-                      profile?.display_name ||
-                      profile?.username ||
-                      "Profile"
+                      profile?.display_name || profile?.username || "Profile"
                     }
                     className="w-full h-full object-cover"
                   />
@@ -905,7 +946,11 @@ export default function Account() {
           </TabsContent>
 
           {/* Models Tab */}
-          <TabsContent value="models" className="space-y-6" data-testid="models-tab-content">
+          <TabsContent
+            value="models"
+            className="space-y-6"
+            data-testid="models-tab-content"
+          >
             {/* Header Card */}
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -940,7 +985,11 @@ export default function Account() {
               <CardHeader>
                 <CardTitle className="text-white text-lg flex items-center gap-2">
                   <Layers className="w-5 h-5 text-cyan-400" />
-                  {t("account.featureDefaults", undefined, "Feature Default Models")}
+                  {t(
+                    "account.featureDefaults",
+                    undefined,
+                    "Feature Default Models",
+                  )}
                 </CardTitle>
                 <CardDescription>
                   {t(
@@ -953,17 +1002,27 @@ export default function Account() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Card 1: Chatbot Default */}
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 flex flex-col justify-between" data-testid="chatbot-default-card">
+                  <div
+                    className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 flex flex-col justify-between"
+                    data-testid="chatbot-default-card"
+                  >
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Bot className="w-4 h-4 text-cyan-400" />
                           <h4 className="text-sm font-semibold text-white">
-                            {t("account.chatbotDefaultTitle", undefined, "Chatbot Default")}
+                            {t(
+                              "account.chatbotDefaultTitle",
+                              undefined,
+                              "Chatbot Default",
+                            )}
                           </h4>
                         </div>
                         {chatbotDefaultProvider && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/30 text-cyan-300">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/30 text-cyan-300"
+                          >
                             {chatbotDefaultProvider}
                           </Badge>
                         )}
@@ -984,10 +1043,16 @@ export default function Account() {
                       <SelectTrigger
                         id="chatbot-default-select"
                         data-testid="chatbot-default-select"
-                        aria-label={t("account.chatbotDefaultTitle", undefined, "Chatbot Default Model")}
+                        aria-label={t(
+                          "account.chatbotDefaultTitle",
+                          undefined,
+                          "Chatbot Default Model",
+                        )}
                         className="bg-slate-900 border-slate-800 text-xs text-white h-9"
                       >
-                        <SelectValue placeholder={chatbotDefaultModel || "Select Model..."} />
+                        <SelectValue
+                          placeholder={chatbotDefaultModel || "Select Model..."}
+                        />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
                         {models.map((m) => (
@@ -996,8 +1061,12 @@ export default function Account() {
                             value={`${m.provider}:::${m.model_id}`}
                             className="text-xs focus:bg-slate-800 py-1.5"
                           >
-                            <span className="font-medium text-slate-200">{m.name || m.model_id}</span>
-                            <span className="ml-2 text-[10px] text-slate-400">({m.provider})</span>
+                            <span className="font-medium text-slate-200">
+                              {m.name || m.model_id}
+                            </span>
+                            <span className="ml-2 text-[10px] text-slate-400">
+                              ({m.provider})
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1005,17 +1074,27 @@ export default function Account() {
                   </div>
 
                   {/* Card 2: Research Agent Default */}
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 flex flex-col justify-between" data-testid="research-agent-default-card">
+                  <div
+                    className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 flex flex-col justify-between"
+                    data-testid="research-agent-default-card"
+                  >
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Search className="w-4 h-4 text-purple-400" />
                           <h4 className="text-sm font-semibold text-white">
-                            {t("account.researchAgentDefaultTitle", undefined, "Research Agent Default")}
+                            {t(
+                              "account.researchAgentDefaultTitle",
+                              undefined,
+                              "Research Agent Default",
+                            )}
                           </h4>
                         </div>
                         {researchAgentDefaultProvider && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-purple-800/60 bg-purple-950/30 text-purple-300">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 border-purple-800/60 bg-purple-950/30 text-purple-300"
+                          >
                             {researchAgentDefaultProvider}
                           </Badge>
                         )}
@@ -1036,10 +1115,19 @@ export default function Account() {
                       <SelectTrigger
                         id="research-agent-default-select"
                         data-testid="research-agent-default-select"
-                        aria-label={t("account.researchAgentDefaultTitle", undefined, "Research Agent Default Model")}
+                        aria-label={t(
+                          "account.researchAgentDefaultTitle",
+                          undefined,
+                          "Research Agent Default Model",
+                        )}
                         className="bg-slate-900 border-slate-800 text-xs text-white h-9"
                       >
-                        <SelectValue placeholder={researchAgentDefaultModel || "Default: google/gemma-4-31b"} />
+                        <SelectValue
+                          placeholder={
+                            researchAgentDefaultModel ||
+                            "Default: google/gemma-4-31b"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
                         {models.map((m) => (
@@ -1048,8 +1136,12 @@ export default function Account() {
                             value={`${m.provider}:::${m.model_id}`}
                             className="text-xs focus:bg-slate-800 py-1.5"
                           >
-                            <span className="font-medium text-slate-200">{m.name || m.model_id}</span>
-                            <span className="ml-2 text-[10px] text-slate-400">({m.provider})</span>
+                            <span className="font-medium text-slate-200">
+                              {m.name || m.model_id}
+                            </span>
+                            <span className="ml-2 text-[10px] text-slate-400">
+                              ({m.provider})
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1057,17 +1149,27 @@ export default function Account() {
                   </div>
 
                   {/* Card 3: Research Summarizer Default */}
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 flex flex-col justify-between" data-testid="research-summarizer-default-card">
+                  <div
+                    className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 flex flex-col justify-between"
+                    data-testid="research-summarizer-default-card"
+                  >
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-amber-400" />
                           <h4 className="text-sm font-semibold text-white">
-                            {t("account.researchSummarizerDefaultTitle", undefined, "Search Summarizer Default")}
+                            {t(
+                              "account.researchSummarizerDefaultTitle",
+                              undefined,
+                              "Search Summarizer Default",
+                            )}
                           </h4>
                         </div>
                         {researchSummarizerDefaultProvider && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-800/60 bg-amber-950/30 text-amber-300">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 border-amber-800/60 bg-amber-950/30 text-amber-300"
+                          >
                             {researchSummarizerDefaultProvider}
                           </Badge>
                         )}
@@ -1088,10 +1190,19 @@ export default function Account() {
                       <SelectTrigger
                         id="research-summarizer-default-select"
                         data-testid="research-summarizer-default-select"
-                        aria-label={t("account.researchSummarizerDefaultTitle", undefined, "Research Summarizer Default Model")}
+                        aria-label={t(
+                          "account.researchSummarizerDefaultTitle",
+                          undefined,
+                          "Research Summarizer Default Model",
+                        )}
                         className="bg-slate-900 border-slate-800 text-xs text-white h-9"
                       >
-                        <SelectValue placeholder={researchSummarizerDefaultModel || "Default: nemotron-3-120b"} />
+                        <SelectValue
+                          placeholder={
+                            researchSummarizerDefaultModel ||
+                            "Default: nemotron-3-120b"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
                         {models.map((m) => (
@@ -1100,8 +1211,12 @@ export default function Account() {
                             value={`${m.provider}:::${m.model_id}`}
                             className="text-xs focus:bg-slate-800 py-1.5"
                           >
-                            <span className="font-medium text-slate-200">{m.name || m.model_id}</span>
-                            <span className="ml-2 text-[10px] text-slate-400">({m.provider})</span>
+                            <span className="font-medium text-slate-200">
+                              {m.name || m.model_id}
+                            </span>
+                            <span className="ml-2 text-[10px] text-slate-400">
+                              ({m.provider})
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1115,7 +1230,13 @@ export default function Account() {
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader>
                 <CardTitle className="text-white text-lg flex items-center justify-between">
-                  <span>{t("account.registeredModels", undefined, "Active & Registered Models")}</span>
+                  <span>
+                    {t(
+                      "account.registeredModels",
+                      undefined,
+                      "Active & Registered Models",
+                    )}
+                  </span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1123,7 +1244,9 @@ export default function Account() {
                     className="text-slate-400 hover:text-white h-8 px-2 gap-1.5 text-xs"
                     title={t("common.refresh", undefined, "Refresh")}
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${modelsLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${modelsLoading ? "animate-spin" : ""}`}
+                    />
                     {t("common.refresh", undefined, "Refresh")}
                   </Button>
                 </CardTitle>
@@ -1142,11 +1265,18 @@ export default function Account() {
                     <div className="flex items-center gap-2">
                       <Server className="w-4 h-4 text-emerald-400" />
                       <h4 className="text-sm font-semibold text-white">
-                        {t("account.localModelsGroup", undefined, "Local Models (Ollama / LM Studio / KoboldCPP)")}
+                        {t(
+                          "account.localModelsGroup",
+                          undefined,
+                          "Local Models (Ollama / LM Studio / KoboldCPP)",
+                        )}
                       </h4>
                     </div>
                     {localStatus.totalLocal <= 0 && (
-                      <Badge variant="outline" className="bg-slate-950 border-slate-800 text-slate-500 text-xs">
+                      <Badge
+                        variant="outline"
+                        className="bg-slate-950 border-slate-800 text-slate-500 text-xs"
+                      >
                         {t("account.localStatusOffline", undefined, "Offline")}
                       </Badge>
                     )}
@@ -1202,7 +1332,11 @@ export default function Account() {
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-800/80">
                     <Cpu className="w-4 h-4 text-cyan-400" />
                     <h4 className="text-sm font-semibold text-white">
-                      {t("account.cloudModelsGroup", undefined, "Cloud Providers")}
+                      {t(
+                        "account.cloudModelsGroup",
+                        undefined,
+                        "Cloud Providers",
+                      )}
                     </h4>
                   </div>
 
@@ -1222,21 +1356,38 @@ export default function Account() {
                                 : "xAI Grok";
 
                       return (
-                        <div key={prov} className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
+                        <div
+                          key={prov}
+                          className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3"
+                        >
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-semibold text-slate-200">
                                 {providerLabel}
                               </span>
                               {isConfigured ? (
-                                <Badge variant="outline" className="bg-emerald-950/40 border-emerald-800 text-emerald-300 text-[10px] px-2 py-0.5">
+                                <Badge
+                                  variant="outline"
+                                  className="bg-emerald-950/40 border-emerald-800 text-emerald-300 text-[10px] px-2 py-0.5"
+                                >
                                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                                  {t("account.configured", undefined, "Configured")}
+                                  {t(
+                                    "account.configured",
+                                    undefined,
+                                    "Configured",
+                                  )}
                                 </Badge>
                               ) : (
-                                <Badge variant="outline" className="bg-amber-950/30 border-amber-800/60 text-amber-300 text-[10px] px-2 py-0.5">
+                                <Badge
+                                  variant="outline"
+                                  className="bg-amber-950/30 border-amber-800/60 text-amber-300 text-[10px] px-2 py-0.5"
+                                >
                                   <AlertCircle className="w-3 h-3 mr-1" />
-                                  {t("account.notConfigured", undefined, "API Key Required")}
+                                  {t(
+                                    "account.notConfigured",
+                                    undefined,
+                                    "API Key Required",
+                                  )}
                                 </Badge>
                               )}
                             </div>
@@ -1245,14 +1396,22 @@ export default function Account() {
                               to="/integrations"
                               className="text-xs text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
                             >
-                              {t("account.goToIntegrations", undefined, "Integrations")}
+                              {t(
+                                "account.goToIntegrations",
+                                undefined,
+                                "Integrations",
+                              )}
                               <ExternalLink className="w-3 h-3" />
                             </Link>
                           </div>
 
                           {pModels.length === 0 ? (
                             <p className="text-xs text-slate-500 italic">
-                              {t("account.noModelsAvailable", undefined, "No custom models registered for this provider.")}
+                              {t(
+                                "account.noModelsAvailable",
+                                undefined,
+                                "No custom models registered for this provider.",
+                              )}
                             </p>
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1267,8 +1426,15 @@ export default function Account() {
                                         {m.name || m.model_id}
                                       </p>
                                       {m.isCustom && (
-                                        <Badge variant="outline" className="text-[9px] px-1 py-0 border-cyan-800/50 bg-cyan-950/30 text-cyan-400">
-                                          {t("account.customBadge", undefined, "Custom")}
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[9px] px-1 py-0 border-cyan-800/50 bg-cyan-950/30 text-cyan-400"
+                                        >
+                                          {t(
+                                            "account.customBadge",
+                                            undefined,
+                                            "Custom",
+                                          )}
                                         </Badge>
                                       )}
                                     </div>
@@ -1282,7 +1448,11 @@ export default function Account() {
                                       size="sm"
                                       onClick={() => setModelToDelete(m)}
                                       className="text-slate-500 hover:text-red-400 p-1 h-6 w-6 rounded shrink-0"
-                                      title={t("common.delete", undefined, "Delete")}
+                                      title={t(
+                                        "common.delete",
+                                        undefined,
+                                        "Delete",
+                                      )}
                                     >
                                       <Trash2 className="w-3 h-3" />
                                     </Button>
@@ -1302,7 +1472,11 @@ export default function Account() {
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-800/80">
                     <Sparkles className="w-4 h-4 text-amber-400" />
                     <h4 className="text-sm font-semibold text-white">
-                      {t("account.builtInModelsGroup", undefined, "Built-in Cloud Services (Cloudflare & AI Horde)")}
+                      {t(
+                        "account.builtInModelsGroup",
+                        undefined,
+                        "Built-in Cloud Services (Cloudflare & AI Horde)",
+                      )}
                     </h4>
                   </div>
 
@@ -1317,7 +1491,10 @@ export default function Account() {
                             <p className="text-xs font-medium text-white truncate">
                               {m.name || m.model_id}
                             </p>
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 border-slate-700 bg-slate-900 text-slate-400">
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1 py-0 border-slate-700 bg-slate-900 text-slate-400"
+                            >
                               {m.provider}
                             </Badge>
                           </div>
@@ -1358,19 +1535,38 @@ export default function Account() {
               <Label className="text-xs font-medium text-slate-300">
                 {t("account.provider", undefined, "Provider")}
               </Label>
-              <Select value={addProvider} onValueChange={handleProviderSelectChange}>
-                <SelectTrigger id="add-model-provider-select" className="bg-slate-950 border-slate-800 text-white text-xs h-9">
-                  <SelectValue placeholder={t("account.selectProvider", undefined, "Select a provider")} />
+              <Select
+                value={addProvider}
+                onValueChange={handleProviderSelectChange}
+              >
+                <SelectTrigger
+                  id="add-model-provider-select"
+                  className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                >
+                  <SelectValue
+                    placeholder={t(
+                      "account.selectProvider",
+                      undefined,
+                      "Select a provider",
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
                   {providerOptions.map((opt) => {
-                    const isConfigured = opt.isLocal || isProviderConfigured(opt.value);
+                    const isConfigured =
+                      opt.isLocal || isProviderConfigured(opt.value);
                     return (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs focus:bg-slate-800 py-1.5">
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="text-xs focus:bg-slate-800 py-1.5"
+                      >
                         <div className="flex items-center justify-between w-full gap-2">
                           <span>{opt.label}</span>
                           {isConfigured && (
-                            <span className="text-[10px] text-emerald-400">&#10003; active</span>
+                            <span className="text-[10px] text-emerald-400">
+                              &#10003; active
+                            </span>
                           )}
                         </div>
                       </SelectItem>
@@ -1386,19 +1582,45 @@ export default function Account() {
                 <Label className="text-xs font-medium text-slate-300">
                   {t("account.modelPreset", undefined, "Model Preset")}
                 </Label>
-                <Select value={selectedPreset} onValueChange={handlePresetSelectChange}>
-                  <SelectTrigger id="add-model-preset-select" className="bg-slate-950 border-slate-800 text-white text-xs h-9">
-                    <SelectValue placeholder={t("account.selectPreset", undefined, "Select a preset")} />
+                <Select
+                  value={selectedPreset}
+                  onValueChange={handlePresetSelectChange}
+                >
+                  <SelectTrigger
+                    id="add-model-preset-select"
+                    className="bg-slate-950 border-slate-800 text-white text-xs h-9"
+                  >
+                    <SelectValue
+                      placeholder={t(
+                        "account.selectPreset",
+                        undefined,
+                        "Select a preset",
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[220px]">
                     {POPULAR_PRESETS[addProvider].map((preset) => (
-                      <SelectItem key={preset.model_id} value={preset.model_id} className="text-xs focus:bg-slate-800 py-1.5">
+                      <SelectItem
+                        key={preset.model_id}
+                        value={preset.model_id}
+                        className="text-xs focus:bg-slate-800 py-1.5"
+                      >
                         <span className="font-medium">{preset.name}</span>
-                        <span className="ml-2 text-[10px] text-slate-400">({preset.model_id})</span>
+                        <span className="ml-2 text-[10px] text-slate-400">
+                          ({preset.model_id})
+                        </span>
                       </SelectItem>
                     ))}
-                    <SelectItem value="custom" className="text-xs focus:bg-slate-800 py-1.5 font-semibold text-cyan-400">
-                      + {t("account.customModelPreset", undefined, "Custom Model ID...")}
+                    <SelectItem
+                      value="custom"
+                      className="text-xs focus:bg-slate-800 py-1.5 font-semibold text-cyan-400"
+                    >
+                      +{" "}
+                      {t(
+                        "account.customModelPreset",
+                        undefined,
+                        "Custom Model ID...",
+                      )}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -1407,8 +1629,12 @@ export default function Account() {
 
             {/* Model ID Text Input */}
             <div className="space-y-1.5">
-              <Label htmlFor="custom-model-id-input" className="text-xs font-medium text-slate-300">
-                {t("account.modelId", undefined, "Model ID")} <span className="text-red-400">*</span>
+              <Label
+                htmlFor="custom-model-id-input"
+                className="text-xs font-medium text-slate-300"
+              >
+                {t("account.modelId", undefined, "Model ID")}{" "}
+                <span className="text-red-400">*</span>
               </Label>
               <Input
                 id="custom-model-id-input"
@@ -1417,21 +1643,32 @@ export default function Account() {
                   setCustomModelId(e.target.value);
                   setAddError(null);
                 }}
-                placeholder={t("account.modelIdPlaceholder", undefined, "e.g. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1")}
+                placeholder={t(
+                  "account.modelIdPlaceholder",
+                  undefined,
+                  "e.g. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
+                )}
                 className="bg-slate-950 border-slate-800 text-xs h-9 text-white font-mono"
               />
             </div>
 
             {/* Display Name Input */}
             <div className="space-y-1.5">
-              <Label htmlFor="custom-model-name-input" className="text-xs font-medium text-slate-300">
+              <Label
+                htmlFor="custom-model-name-input"
+                className="text-xs font-medium text-slate-300"
+              >
                 {t("account.modelName", undefined, "Display Name (Optional)")}
               </Label>
               <Input
                 id="custom-model-name-input"
                 value={customModelName}
                 onChange={(e) => setCustomModelName(e.target.value)}
-                placeholder={t("account.modelNamePlaceholder", undefined, "e.g. GPT-4o (Omni)")}
+                placeholder={t(
+                  "account.modelNamePlaceholder",
+                  undefined,
+                  "e.g. GPT-4o (Omni)",
+                )}
                 className="bg-slate-950 border-slate-800 text-xs h-9 text-white"
               />
             </div>
@@ -1485,11 +1722,18 @@ export default function Account() {
       </Dialog>
 
       {/* Delete Model Confirmation Dialog */}
-      <AlertDialog open={!!modelToDelete} onOpenChange={(open) => !open && setModelToDelete(null)}>
+      <AlertDialog
+        open={!!modelToDelete}
+        onOpenChange={(open) => !open && setModelToDelete(null)}
+      >
         <AlertDialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white text-base">
-              {t("account.deleteModelConfirmTitle", undefined, "Remove Custom Model")}
+              {t(
+                "account.deleteModelConfirmTitle",
+                undefined,
+                "Remove Custom Model",
+              )}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-slate-400">
               {t(
@@ -1514,7 +1758,9 @@ export default function Account() {
               className="bg-red-600 hover:bg-red-500 text-white text-xs"
               data-testid="confirm-delete-model-btn"
             >
-              {isDeletingModel ? t("common.loading", undefined, "Removing...") : t("common.delete", undefined, "Delete")}
+              {isDeletingModel
+                ? t("common.loading", undefined, "Removing...")
+                : t("common.delete", undefined, "Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -299,8 +299,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       fetchOptions.headers["Authorization"] =
         `Bearer ${integration?.api_key || "0000000000"}`;
     } else if (provider === "cloudflare") {
-      if (!user)
-        return c.json({ error: "Authentication required" }, 401);
+      if (!user) return c.json({ error: "Authentication required" }, 401);
 
       // Estimate token usage (input + 400 estimated output)
       const inputChars = finalMessages.reduce(

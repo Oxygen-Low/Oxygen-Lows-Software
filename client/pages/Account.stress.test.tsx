@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import React from "react";
 import Account from "./Account";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,12 +24,19 @@ vi.mock("@/lib/db", () => {
   const mockClient = {
     auth: {
       updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-stress-1" } } }),
+      getUser: vi
+        .fn()
+        .mockResolvedValue({ data: { user: { id: "user-stress-1" } } }),
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "user-stress-1" } }, access_token: "mock-token" },
+        data: {
+          session: { user: { id: "user-stress-1" } },
+          access_token: "mock-token",
+        },
         error: null,
       }),
-      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+      onAuthStateChange: vi
+        .fn()
+        .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
     },
     from: vi.fn((table: string) => {
       const builder: any = {
@@ -31,7 +44,10 @@ vi.mock("@/lib/db", () => {
         eq: vi.fn(() => builder),
         order: vi.fn(() => {
           if (table === "user_models") {
-            return Promise.resolve({ data: [...mockDbUserModels], error: null });
+            return Promise.resolve({
+              data: [...mockDbUserModels],
+              error: null,
+            });
           }
           return builder;
         }),
@@ -45,7 +61,8 @@ vi.mock("@/lib/db", () => {
                 chatbot_default_provider: "openai",
                 research_agent_default_model: "google/gemma-4-31b",
                 research_agent_default_provider: "horde",
-                research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
+                research_summarizer_default_model:
+                  "@cf/nvidia/nemotron-3-120b-a12b",
                 research_summarizer_default_provider: "cloudflare",
               },
               error: null,
@@ -77,7 +94,7 @@ vi.mock("@/lib/db", () => {
                 eq: vi.fn((field2: string, val2: string) => {
                   mockDeleteCalls.push({ [field1]: val1, [field2]: val2 });
                   mockDbUserModels = mockDbUserModels.filter(
-                    (m) => !(m[field1] === val1 && m[field2] === val2)
+                    (m) => !(m[field1] === val1 && m[field2] === val2),
                   );
                   return Promise.resolve({ data: null, error: null });
                 }),
@@ -89,7 +106,9 @@ vi.mock("@/lib/db", () => {
 
       if (table === "user_integrations") {
         return {
-          select: vi.fn().mockResolvedValue({ data: [...mockDbIntegrations], error: null }),
+          select: vi
+            .fn()
+            .mockResolvedValue({ data: [...mockDbIntegrations], error: null }),
         };
       }
 
@@ -104,7 +123,9 @@ vi.mock("@/lib/db", () => {
       getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: "" } }),
       upload: vi.fn().mockResolvedValue({ data: { path: "" } }),
       remove: vi.fn().mockResolvedValue({}),
-      createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: "" }, error: null }),
+      createSignedUrl: vi
+        .fn()
+        .mockResolvedValue({ data: { signedUrl: "" }, error: null }),
     },
   };
 
@@ -131,7 +152,11 @@ vi.mock("@/components/Layout", () => ({
 vi.mock("@/components/ui/tabs", () => ({
   Tabs: ({ children }: any) => <div>{children}</div>,
   TabsList: ({ children }: any) => <div>{children}</div>,
-  TabsTrigger: ({ children, value, ...props }: any) => <button data-value={value} {...props}>{children}</button>,
+  TabsTrigger: ({ children, value, ...props }: any) => (
+    <button data-value={value} {...props}>
+      {children}
+    </button>
+  ),
   TabsContent: ({ children, value, ...props }: any) => (
     <div data-testid={`tab-${value}`} {...props}>
       {children}
@@ -150,7 +175,7 @@ function renderAccount() {
       <ThemeProvider>
         <Account />
       </ThemeProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -172,7 +197,8 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       if (urlStr.includes(":11434/api/tags")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ models: [{ name: "llama3.2:latest" }] }),
+          json: () =>
+            Promise.resolve({ models: [{ name: "llama3.2:latest" }] }),
         });
       }
       if (urlStr.includes(":1234/v1/models")) {
@@ -223,7 +249,9 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       // Verify 3 Default Model Cards
       expect(screen.getByTestId("chatbot-default-card")).toBeDefined();
       expect(screen.getByTestId("research-agent-default-card")).toBeDefined();
-      expect(screen.getByTestId("research-summarizer-default-card")).toBeDefined();
+      expect(
+        screen.getByTestId("research-summarizer-default-card"),
+      ).toBeDefined();
 
       // Verify Group Headers
       expect(screen.getByText("Active & Registered Models")).toBeDefined();
@@ -255,7 +283,9 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       await waitFor(() => {
         expect(screen.getByText("Register AI Model")).toBeDefined();
         expect(document.getElementById("custom-model-id-input")).toBeDefined();
-        expect(document.getElementById("custom-model-name-input")).toBeDefined();
+        expect(
+          document.getElementById("custom-model-name-input"),
+        ).toBeDefined();
         expect(screen.getByTestId("submit-add-model-btn")).toBeDefined();
       });
     });
@@ -269,12 +299,16 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
         expect(screen.getByText("Register AI Model")).toBeDefined();
       });
 
-      const idInput = document.getElementById("custom-model-id-input") as HTMLInputElement;
+      const idInput = document.getElementById(
+        "custom-model-id-input",
+      ) as HTMLInputElement;
       expect(idInput).toBeDefined();
 
       // Empty input
       fireEvent.change(idInput, { target: { value: "" } });
-      const submitBtn = screen.getByTestId("submit-add-model-btn") as HTMLButtonElement;
+      const submitBtn = screen.getByTestId(
+        "submit-add-model-btn",
+      ) as HTMLButtonElement;
       expect(submitBtn.disabled).toBe(true);
 
       // Whitespace only input
@@ -291,7 +325,9 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
         expect(screen.getByText("Register AI Model")).toBeDefined();
       });
 
-      expect(screen.getByText(/Add a model from a configured provider/i)).toBeDefined();
+      expect(
+        screen.getByText(/Add a model from a configured provider/i),
+      ).toBeDefined();
     });
   });
 
@@ -305,8 +341,12 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
         expect(screen.getByText("Register AI Model")).toBeDefined();
       });
 
-      const idInput = document.getElementById("custom-model-id-input") as HTMLInputElement;
-      const nameInput = document.getElementById("custom-model-name-input") as HTMLInputElement;
+      const idInput = document.getElementById(
+        "custom-model-id-input",
+      ) as HTMLInputElement;
+      const nameInput = document.getElementById(
+        "custom-model-name-input",
+      ) as HTMLInputElement;
 
       fireEvent.change(idInput, { target: { value: "gpt-4o-custom-2026" } });
       fireEvent.change(nameInput, { target: { value: "Custom 4o Pro" } });
@@ -327,7 +367,12 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
 
     it("renders delete confirmation dialog when removing custom models", async () => {
       mockDbUserModels = [
-        { id: "m-to-delete", provider: "openai", model_id: "gpt-obsolete", name: "Obsolete Model" },
+        {
+          id: "m-to-delete",
+          provider: "openai",
+          model_id: "gpt-obsolete",
+          name: "Obsolete Model",
+        },
       ];
 
       renderAccount();
@@ -342,7 +387,11 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Remove Custom Model")).toBeDefined();
-        expect(screen.getByText(/Are you sure you want to remove this custom model/i)).toBeDefined();
+        expect(
+          screen.getByText(
+            /Are you sure you want to remove this custom model/i,
+          ),
+        ).toBeDefined();
         expect(screen.getByText("openai : gpt-obsolete")).toBeDefined();
       });
 
@@ -351,7 +400,10 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
 
       await waitFor(() => {
         expect(mockDeleteCalls.length).toBe(1);
-        expect(mockDeleteCalls[0]).toEqual({ provider: "openai", model_id: "gpt-obsolete" });
+        expect(mockDeleteCalls[0]).toEqual({
+          provider: "openai",
+          model_id: "gpt-obsolete",
+        });
       });
     });
   });
@@ -362,8 +414,12 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
 
       await waitFor(() => {
         expect(screen.getByTestId("chatbot-default-select")).toBeDefined();
-        expect(screen.getByTestId("research-agent-default-select")).toBeDefined();
-        expect(screen.getByTestId("research-summarizer-default-select")).toBeDefined();
+        expect(
+          screen.getByTestId("research-agent-default-select"),
+        ).toBeDefined();
+        expect(
+          screen.getByTestId("research-summarizer-default-select"),
+        ).toBeDefined();
       });
     });
   });
@@ -372,7 +428,11 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
     it("displays 'Local Offline' and help banner when local ports are unreachable", async () => {
       global.fetch = vi.fn().mockImplementation((url) => {
         const urlStr = String(url);
-        if (urlStr.includes("11434") || urlStr.includes("1234") || urlStr.includes("5001")) {
+        if (
+          urlStr.includes("11434") ||
+          urlStr.includes("1234") ||
+          urlStr.includes("5001")
+        ) {
           return Promise.reject(new Error("ECONNREFUSED"));
         }
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -383,7 +443,7 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       await waitFor(() => {
         expect(screen.getAllByText(/Local Offline/i).length).toBeGreaterThan(0);
         expect(
-          screen.getByText(/No local models detected\. Launch Ollama/i)
+          screen.getByText(/No local models detected\. Launch Ollama/i),
         ).toBeDefined();
       });
     });
@@ -425,7 +485,8 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
         if (urlStr.includes(":11434/api/tags")) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ models: [{ name: "deepseek-r1:14b" }] }),
+            json: () =>
+              Promise.resolve({ models: [{ name: "deepseek-r1:14b" }] }),
           });
         }
         if (urlStr.includes(":11434/v1/models")) {
@@ -443,7 +504,9 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       renderAccount();
 
       await waitFor(() => {
-        expect(screen.getAllByText(/deepseek-r1:14b/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/deepseek-r1:14b/i).length).toBeGreaterThan(
+          0,
+        );
       });
       expect(screen.queryByText(/\d+\s+detected/i)).toBeNull();
     });

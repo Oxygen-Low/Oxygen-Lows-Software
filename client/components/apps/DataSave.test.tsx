@@ -84,12 +84,10 @@ describe("DataSaveApp", () => {
 
     insertMock = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
-        single: vi
-          .fn()
-          .mockResolvedValue({
-            data: { id: "new-id", name: "NewCat" },
-            error: null,
-          }),
+        single: vi.fn().mockResolvedValue({
+          data: { id: "new-id", name: "NewCat" },
+          error: null,
+        }),
       }),
       then: vi.fn((onFulfilled) =>
         Promise.resolve({ data: null, error: null }).then(onFulfilled),

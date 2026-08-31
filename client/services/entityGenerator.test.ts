@@ -12,7 +12,6 @@ import {
   type GeneratedEntityResult,
 } from "./entityGenerator";
 
-
 describe("entityGenerator Service — 4-Tier Test Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -23,13 +22,18 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
   // =========================================================================
   describe("Tier 1: Feature Coverage", () => {
     it("T1-05: executes 2-stage pipeline for standalone character generation", async () => {
-      const progressCalls: Array<{ step: GenerationStep; detail?: string }> = [];
+      const progressCalls: Array<{ step: GenerationStep; detail?: string }> =
+        [];
 
       global.fetch = vi.fn().mockImplementation((url: string) => {
         if (url === "/api/ai/agent-search") {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ result: "Netrunner archetypes: deckers, street shamans, ICE breakers." }),
+            json: () =>
+              Promise.resolve({
+                result:
+                  "Netrunner archetypes: deckers, street shamans, ICE breakers.",
+              }),
           });
         }
         if (url === "/api/ai/proxy") {
@@ -43,11 +47,16 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
                       content: JSON.stringify({
                         name: "Cipher Nyx",
                         display_name: "Cipher",
-                        short_description: "A freelance cyber-infiltrator who hacks neural implants.",
-                        appearance: "Wears an optic visor with glowing amber telemetry data and a synth-leather duster.",
-                        personality: "Calculated, paranoid, fiercely protective of personal privacy.",
-                        backstory: "Ex-Megacorp systems architect who vanished into the neon slums.",
-                        hidden_description: "Has a dormant AI fragment embedded in her neural link.",
+                        short_description:
+                          "A freelance cyber-infiltrator who hacks neural implants.",
+                        appearance:
+                          "Wears an optic visor with glowing amber telemetry data and a synth-leather duster.",
+                        personality:
+                          "Calculated, paranoid, fiercely protective of personal privacy.",
+                        backstory:
+                          "Ex-Megacorp systems architect who vanished into the neon slums.",
+                        hidden_description:
+                          "Has a dormant AI fragment embedded in her neural link.",
                       }),
                     },
                   },
@@ -61,7 +70,10 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
       const result = await executeEntityGeneration({
         type: "character",
         prompt: "A rogue cyber-infiltrator in the neon slums",
-        model: { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b" },
+        model: {
+          provider: "cloudflare",
+          model_id: "@cf/nvidia/nemotron-3-120b-a12b",
+        },
         universe: null,
         onProgress: (step, detail) => progressCalls.push({ step, detail }),
       });
@@ -75,22 +87,31 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
       expect(result.hidden_description).toContain("dormant AI");
 
       // Verify progress sequence (2 stages: researching -> generating -> completed)
-      expect(progressCalls.map((p) => p.step)).toEqual(["researching", "generating", "completed"]);
+      expect(progressCalls.map((p) => p.step)).toEqual([
+        "researching",
+        "generating",
+        "completed",
+      ]);
     });
 
     it("T1-06: executes 3-stage pipeline for universe-contextualized character with anti-verbatim rule", async () => {
-      const progressCalls: Array<{ step: GenerationStep; detail?: string }> = [];
+      const progressCalls: Array<{ step: GenerationStep; detail?: string }> =
+        [];
       const fetchCalls: Array<{ url: string; body: any }> = [];
 
       const mockUniverse = {
         id: "univ-neo-kyoto-99",
         name: "Neo-Kyoto 2099",
         display_name: "Cyberpunk Metropolis",
-        short_description: "A sprawling neon megacity governed by megacorps where rain never stops and synthetics have no civil rights.",
-        appearance: "Bioluminescent skyscrapers, rainy asphalt alleyways, flying transit lines.",
+        short_description:
+          "A sprawling neon megacity governed by megacorps where rain never stops and synthetics have no civil rights.",
+        appearance:
+          "Bioluminescent skyscrapers, rainy asphalt alleyways, flying transit lines.",
         personality: "High-tech noir, corporate oppression, cynical rebellion.",
-        backstory: "After the 2070 Corporate War, Kyoto was rebuilt by Arasaka-style zaibatsu cartels.",
-        hidden_description: "The underworld runs an underground railway for sentient synthetics.",
+        backstory:
+          "After the 2070 Corporate War, Kyoto was rebuilt by Arasaka-style zaibatsu cartels.",
+        hidden_description:
+          "The underworld runs an underground railway for sentient synthetics.",
         is_universe: true,
       };
 
@@ -98,24 +119,46 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
         const parsedBody = JSON.parse(init.body);
         fetchCalls.push({ url, body: parsedBody });
 
-        if (url === "/api/ai/proxy" && parsedBody.messages[0].content.includes("brief")) {
+        if (
+          url === "/api/ai/proxy" &&
+          parsedBody.messages[0].content.includes("brief")
+        ) {
           // Stage 1: Universe summary
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ choices: [{ message: { content: "Brief: Oppressive zaibatsu megacity, synthetic rights tension, cyberware arms race." } }] }),
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content:
+                        "Brief: Oppressive zaibatsu megacity, synthetic rights tension, cyberware arms race.",
+                    },
+                  },
+                ],
+              }),
           });
         }
         if (url === "/api/ai/agent-search") {
           // Stage 2: Research
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ result: "Street medic and cyberdoc archetypes in cyberpunk noir." }),
+            json: () =>
+              Promise.resolve({
+                result:
+                  "Street medic and cyberdoc archetypes in cyberpunk noir.",
+              }),
           });
         }
-        if (url === "/api/ai/proxy" && parsedBody.messages[0].content.includes("CRITICAL RULES")) {
+        if (
+          url === "/api/ai/proxy" &&
+          parsedBody.messages[0].content.includes("CRITICAL RULES")
+        ) {
           // Stage 3: Character Generation
           // Assert Anti-Verbatim instructions exist in prompt
-          expect(parsedBody.messages[0].content).toContain("STRICTLY AVOID VERBATIM REPETITION");
+          expect(parsedBody.messages[0].content).toContain(
+            "STRICTLY AVOID VERBATIM REPETITION",
+          );
           return Promise.resolve({
             ok: true,
             json: () =>
@@ -126,11 +169,16 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
                       content: JSON.stringify({
                         name: "Dr. Kenji Sato",
                         display_name: "Doc Sato",
-                        short_description: "An underground cyberdoc patching up rogue synthetics.",
-                        appearance: "Wears blood-stained surgical scrubs over chrome cybernetic hands.",
-                        personality: "Weary pragmatist with a strict medical oath.",
-                        backstory: "Fired from a zaibatsu trauma clinic for refusing to let a synthetic bleed out.",
-                        hidden_description: "Maintains an unregistered surgical theater in an abandoned subway station.",
+                        short_description:
+                          "An underground cyberdoc patching up rogue synthetics.",
+                        appearance:
+                          "Wears blood-stained surgical scrubs over chrome cybernetic hands.",
+                        personality:
+                          "Weary pragmatist with a strict medical oath.",
+                        backstory:
+                          "Fired from a zaibatsu trauma clinic for refusing to let a synthetic bleed out.",
+                        hidden_description:
+                          "Maintains an unregistered surgical theater in an abandoned subway station.",
                       }),
                     },
                   },
@@ -154,18 +202,28 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
       expect(result.is_universe).toBe(false);
 
       // Verify 3-stage progress
-      expect(progressCalls.map((p) => p.step)).toEqual(["summarizing", "researching", "generating", "completed"]);
+      expect(progressCalls.map((p) => p.step)).toEqual([
+        "summarizing",
+        "researching",
+        "generating",
+        "completed",
+      ]);
       expect(fetchCalls.length).toBe(3);
     });
 
     it("T1-07: executes 2-stage pipeline for standalone universe generation", async () => {
-      const progressCalls: Array<{ step: GenerationStep; detail?: string }> = [];
+      const progressCalls: Array<{ step: GenerationStep; detail?: string }> =
+        [];
 
       global.fetch = vi.fn().mockImplementation((url: string) => {
         if (url === "/api/ai/agent-search") {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ result: "Solarpunk floating island worldbuilding tropes, crystal energy grids." }),
+            json: () =>
+              Promise.resolve({
+                result:
+                  "Solarpunk floating island worldbuilding tropes, crystal energy grids.",
+              }),
           });
         }
         if (url === "/api/ai/proxy") {
@@ -179,8 +237,10 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
                       content: JSON.stringify({
                         name: "Aetheria: The Skyward Realm",
                         display_name: "Floating Archipelago",
-                        short_description: "A world of drifting celestial landmasses interconnected by solar-gliders and powered by harmonic aether crystals.",
-                        hidden_description: "The central core crystal is suffering from harmonic decay.",
+                        short_description:
+                          "A world of drifting celestial landmasses interconnected by solar-gliders and powered by harmonic aether crystals.",
+                        hidden_description:
+                          "The central core crystal is suffering from harmonic decay.",
                       }),
                     },
                   },
@@ -193,8 +253,12 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
 
       const result = await executeEntityGeneration({
         type: "universe",
-        prompt: "Floating sky islands with solarpunk aesthetic and crystal airships",
-        model: { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b" },
+        prompt:
+          "Floating sky islands with solarpunk aesthetic and crystal airships",
+        model: {
+          provider: "cloudflare",
+          model_id: "@cf/nvidia/nemotron-3-120b-a12b",
+        },
         onProgress: (step, detail) => progressCalls.push({ step, detail }),
       });
 
@@ -203,7 +267,11 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
       expect(result.display_name).toBe("Floating Archipelago");
       expect(result.short_description).toContain("celestial landmasses");
       expect(result.hidden_description).toContain("harmonic decay");
-      expect(progressCalls.map((p) => p.step)).toEqual(["researching", "generating", "completed"]);
+      expect(progressCalls.map((p) => p.step)).toEqual([
+        "researching",
+        "generating",
+        "completed",
+      ]);
     });
   });
 
@@ -217,7 +285,7 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
           type: "character",
           prompt: "   ",
           model: { provider: "cloudflare", model_id: "fast" },
-        })
+        }),
       ).rejects.toThrow("Prompt is required");
     });
 
@@ -225,12 +293,26 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
       const longPrompt = "A fantasy knight ".repeat(300); // 5100 characters
 
       global.fetch = vi.fn().mockImplementation((url: string) => {
-        if (url === "/api/ai/agent-search") return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: "Knight tropes" }) });
+        if (url === "/api/ai/agent-search")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Knight tropes" }),
+          });
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              choices: [{ message: { content: JSON.stringify({ name: "Sir Galahad", display_name: "The White Knight", short_description: "A knight of valor." }) } }],
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      name: "Sir Galahad",
+                      display_name: "The White Knight",
+                      short_description: "A knight of valor.",
+                    }),
+                  },
+                },
+              ],
             }),
         });
       });
@@ -245,10 +327,15 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
     });
 
     it("T2-03: handles unicode, emoji, quotes, and multilingual text", async () => {
-      const complexPrompt = 'An enigmatic 🧙‍♂️ sorcerer known as "O\'Connor" in 桜の国 (Sakura Realm)';
+      const complexPrompt =
+        'An enigmatic 🧙‍♂️ sorcerer known as "O\'Connor" in 桜の国 (Sakura Realm)';
 
       global.fetch = vi.fn().mockImplementation((url: string) => {
-        if (url === "/api/ai/agent-search") return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: "Sorcerer tropes" }) });
+        if (url === "/api/ai/agent-search")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Sorcerer tropes" }),
+          });
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -259,11 +346,15 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
                     content: JSON.stringify({
                       name: "Kaelen O'Connor 🧙‍♂️",
                       display_name: "桜の賢者 (Sakura Sage)",
-                      short_description: "A wandering sorcerer weaving cherry-blossom magic.",
-                      appearance: 'Kimono with embroidered dragons & glowing runes: "永遠の光"',
+                      short_description:
+                        "A wandering sorcerer weaving cherry-blossom magic.",
+                      appearance:
+                        'Kimono with embroidered dragons & glowing runes: "永遠の光"',
                       personality: "Stoic, cryptic, speaks in haiku.",
-                      backstory: "Banished from the Emperor's court for forbidden arcane research.",
-                      hidden_description: "Possesses the final shard of the Cherry Blossom Relic.",
+                      backstory:
+                        "Banished from the Emperor's court for forbidden arcane research.",
+                      hidden_description:
+                        "Possesses the final shard of the Cherry Blossom Relic.",
                     }),
                   },
                 },
@@ -284,15 +375,30 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
     });
 
     it("T2-04: handles prompt injection / HTML tags safely as plain text", async () => {
-      const injectionPrompt = '<script>alert("XSS")</script> Netrunner --drop table users;';
+      const injectionPrompt =
+        '<script>alert("XSS")</script> Netrunner --drop table users;';
 
       global.fetch = vi.fn().mockImplementation((url: string) => {
-        if (url === "/api/ai/agent-search") return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: "Hacker tropes" }) });
+        if (url === "/api/ai/agent-search")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Hacker tropes" }),
+          });
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              choices: [{ message: { content: JSON.stringify({ name: "Null Pointer", display_name: "Null", short_description: "A glitch hacker." }) } }],
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      name: "Null Pointer",
+                      display_name: "Null",
+                      short_description: "A glitch hacker.",
+                    }),
+                  },
+                },
+              ],
             }),
         });
       });
@@ -311,11 +417,15 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
 
       global.fetch = vi.fn().mockImplementation((_url: string, init: any) => {
         if (init?.signal?.aborted) {
-          return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
+          return Promise.reject(
+            new DOMException("The operation was aborted.", "AbortError"),
+          );
         }
         // Simulate in-flight abort
         abortController.abort();
-        return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
+        return Promise.reject(
+          new DOMException("The operation was aborted.", "AbortError"),
+        );
       });
 
       await expect(
@@ -324,7 +434,7 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
           prompt: "Interrupted generation test",
           model: { provider: "cloudflare", model_id: "smart" },
           signal: abortController.signal,
-        })
+        }),
       ).rejects.toThrow();
     });
 
@@ -370,12 +480,18 @@ Let me know if you want any modifications!`;
 
     it("T2-08: throws descriptive error on malformed JSON response from LLM", () => {
       const invalidJson = `Here is your character: { "name": "Broken JSON without close brace...`;
-      expect(() => extractJsonPayload(invalidJson)).toThrow("Failed to parse structured JSON from generator output");
+      expect(() => extractJsonPayload(invalidJson)).toThrow(
+        "Failed to parse structured JSON from generator output",
+      );
     });
 
     it("T2-09: handles 500 error from proxy gracefully", async () => {
       global.fetch = vi.fn().mockImplementation((url: string) => {
-        if (url === "/api/ai/agent-search") return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: "Tropes" }) });
+        if (url === "/api/ai/agent-search")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Tropes" }),
+          });
         return Promise.resolve({
           ok: false,
           status: 500,
@@ -388,7 +504,7 @@ Let me know if you want any modifications!`;
           type: "character",
           prompt: "Failing server test",
           model: { provider: "cloudflare", model_id: "smart" },
-        })
+        }),
       ).rejects.toThrow("Generation failed with status 500");
     });
 
@@ -416,7 +532,11 @@ Let me know if you want any modifications!`;
 
       global.fetch = vi.fn().mockImplementation((url: string) => {
         routedUrl = url;
-        if (url === "/api/ai/agent-search") return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: "Local tropes" }) });
+        if (url === "/api/ai/agent-search")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Local tropes" }),
+          });
         if (url === "http://127.0.0.1:11434/api/chat") {
           return Promise.resolve({
             ok: true,
@@ -438,7 +558,11 @@ Let me know if you want any modifications!`;
       const result = await executeEntityGeneration({
         type: "character",
         prompt: "Generate with local Ollama",
-        model: { provider: "local-ollama", model_id: "llama3.2:latest", isLocal: true },
+        model: {
+          provider: "local-ollama",
+          model_id: "llama3.2:latest",
+          isLocal: true,
+        },
       });
 
       expect(result.name).toBe("Ollama Runner");
@@ -461,7 +585,8 @@ Let me know if you want any modifications!`;
                     content: JSON.stringify({
                       name: "Resilient Hero",
                       display_name: "Fallback",
-                      short_description: "Generated despite search agent failure.",
+                      short_description:
+                        "Generated despite search agent failure.",
                     }),
                   },
                 },
@@ -477,7 +602,9 @@ Let me know if you want any modifications!`;
       });
 
       expect(result.name).toBe("Resilient Hero");
-      expect(result.short_description).toContain("Generated despite search agent failure");
+      expect(result.short_description).toContain(
+        "Generated despite search agent failure",
+      );
     });
 
     it("T3-03: routes Step 1 universe summarization to local Ollama endpoint without calling /api/ai/proxy", async () => {
@@ -521,7 +648,8 @@ Let me know if you want any modifications!`;
                   content: JSON.stringify({
                     name: "Local Nomad",
                     display_name: "Nomad",
-                    short_description: "A wanderer generated entirely through local Ollama.",
+                    short_description:
+                      "A wanderer generated entirely through local Ollama.",
                     appearance: "Wears insulated cloak and mechanical boots.",
                     personality: "Independent and quiet.",
                     backstory: "Operates outside corporate cloud services.",
@@ -545,7 +673,11 @@ Let me know if you want any modifications!`;
       const result = await executeEntityGeneration({
         type: "character",
         prompt: "A nomad disconnected from cloud networks",
-        model: { provider: "local-ollama", model_id: "llama3.2:latest", isLocal: true },
+        model: {
+          provider: "local-ollama",
+          model_id: "llama3.2:latest",
+          isLocal: true,
+        },
         universe: mockUniverse,
       });
 
@@ -557,7 +689,9 @@ Let me know if you want any modifications!`;
       expect(proxyCalls.length).toBe(0);
 
       // Verify calls went to local Ollama endpoint (Step 1 and Step 3) and search endpoint (Step 2)
-      const localOllamaCalls = calls.filter((c) => c.url === "http://127.0.0.1:11434/api/chat");
+      const localOllamaCalls = calls.filter(
+        (c) => c.url === "http://127.0.0.1:11434/api/chat",
+      );
       expect(localOllamaCalls.length).toBe(2);
       expect(calls.some((c) => c.url === "/api/ai/agent-search")).toBe(true);
     });
@@ -572,26 +706,46 @@ Let me know if you want any modifications!`;
         id: "u-cyber-001",
         name: "Neo-Veridia",
         display_name: "Dystopian Megalopolis",
-        short_description: "A neon-soaked sprawl where biotech corporations rule the sky platforms while the ground levels drown in toxic fog and black-market cyber-enhancements.",
-        appearance: "Multi-tiered sky towers, holo-billboards, subterranean bio-markets.",
+        short_description:
+          "A neon-soaked sprawl where biotech corporations rule the sky platforms while the ground levels drown in toxic fog and black-market cyber-enhancements.",
+        appearance:
+          "Multi-tiered sky towers, holo-billboards, subterranean bio-markets.",
         personality: "Grim, high-tech, transhumanist, hyper-capitalist.",
         backstory: "Created following the Great Bio-Collapse of 2104.",
-        hidden_description: "The atmospheric scrubbers are failing, a secret guarded by the governing board.",
+        hidden_description:
+          "The atmospheric scrubbers are failing, a secret guarded by the governing board.",
         is_universe: true,
       };
 
       global.fetch = vi.fn().mockImplementation((url: string, init: any) => {
         const body = JSON.parse(init.body);
-        if (url === "/api/ai/proxy" && body.messages[0].content.includes("brief")) {
+        if (
+          url === "/api/ai/proxy" &&
+          body.messages[0].content.includes("brief")
+        ) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ choices: [{ message: { content: "Setting: Bio-capitalist sprawl. Factions: Sky corps vs Underground bio-hackers." } }] }),
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content:
+                        "Setting: Bio-capitalist sprawl. Factions: Sky corps vs Underground bio-hackers.",
+                    },
+                  },
+                ],
+              }),
           });
         }
         if (url === "/api/ai/agent-search") {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ result: "Bio-hacker naming tropes: Razor, Wire, Helix, Echo. Archetypes: Black market organ dealer." }),
+            json: () =>
+              Promise.resolve({
+                result:
+                  "Bio-hacker naming tropes: Razor, Wire, Helix, Echo. Archetypes: Black market organ dealer.",
+              }),
           });
         }
         if (url === "/api/ai/proxy") {
@@ -605,11 +759,16 @@ Let me know if you want any modifications!`;
                       content: JSON.stringify({
                         name: "Jax 'Helix' Thorne",
                         display_name: "Helix",
-                        short_description: "A rogue bio-engineer synthesizing synthetic blood for fog refugees.",
-                        appearance: "Slender build, dermal chrome ports on wrists, augmented green iris lenses.",
-                        personality: "Sarcastic, deeply compassionate, caffeine-addicted.",
-                        backstory: "Former head of genetics at Veridia Bio-Corp before smuggling artificial immunity strains.",
-                        hidden_description: "Injected himself with the only stable cure to the fog contagion.",
+                        short_description:
+                          "A rogue bio-engineer synthesizing synthetic blood for fog refugees.",
+                        appearance:
+                          "Slender build, dermal chrome ports on wrists, augmented green iris lenses.",
+                        personality:
+                          "Sarcastic, deeply compassionate, caffeine-addicted.",
+                        backstory:
+                          "Former head of genetics at Veridia Bio-Corp before smuggling artificial immunity strains.",
+                        hidden_description:
+                          "Injected himself with the only stable cure to the fog contagion.",
                       }),
                     },
                   },
@@ -622,8 +781,12 @@ Let me know if you want any modifications!`;
 
       const character = await executeEntityGeneration({
         type: "character",
-        prompt: "A rogue bio-engineer creating black-market cures for the toxic fog",
-        model: { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b" },
+        prompt:
+          "A rogue bio-engineer creating black-market cures for the toxic fog",
+        model: {
+          provider: "cloudflare",
+          model_id: "@cf/nvidia/nemotron-3-120b-a12b",
+        },
         universe: cyberpunkUniverse,
       });
 
@@ -642,7 +805,10 @@ Let me know if you want any modifications!`;
           capturedSearchBody = JSON.parse(init.body);
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ result: "Smart archetypes research findings." }),
+            json: () =>
+              Promise.resolve({
+                result: "Smart archetypes research findings.",
+              }),
           });
         }
         if (url === "/api/ai/proxy") {

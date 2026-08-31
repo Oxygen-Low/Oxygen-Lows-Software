@@ -144,7 +144,7 @@ export default function Privacy() {
                 2.2 Cloud Storage Files
               </p>
               <P>
-                The Service provides up to 1 GB of personal cloud storage per
+                The Service provides up to 500 MB of personal cloud storage per
                 user for images, documents, and audio files. Any files you
                 upload are stored securely in your account and are accessible
                 only to you unless you explicitly make them public (e.g. a
@@ -436,7 +436,8 @@ export default function Privacy() {
             <P>
               Because some of our third-party infrastructure and AI processors
               (including OpenAI, Anthropic, and Google) are based in the United
-              States or other countries outside the United Kingdom and European Economic Area, your personal data may be transferred
+              States or other countries outside the United Kingdom and European
+              Economic Area, your personal data may be transferred
               internationally. We ensure that appropriate safeguards are in
               place in accordance with UK GDPR Chapter V and EU GDPR Articles
               44–49, such as the UK International Data Transfer Agreement
@@ -592,11 +593,11 @@ export default function Privacy() {
         {/* Cookies */}
         <Section id="cookies" title="8. Cookies & Local Storage" index={8}>
           <P>
-            We use only <strong>strictly necessary session mechanisms</strong> to
-            maintain your authenticated session. These session tokens are managed
-            locally and are essential for the Service to function. They are not
-            used to track you across other websites and are deleted when you sign
-            out or when your session expires.
+            We use only <strong>strictly necessary session mechanisms</strong>{" "}
+            to maintain your authenticated session. These session tokens are
+            managed locally and are essential for the Service to function. They
+            are not used to track you across other websites and are deleted when
+            you sign out or when your session expires.
           </P>
           <P>
             We do not use advertising, analytics, social media, or any other

@@ -8,7 +8,15 @@
  * - Tier 4: Real-World Application Scenarios (Full lifecycle end-to-end workflows: 10+ tests)
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+} from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -27,7 +35,15 @@ import {
   callRpc,
 } from "../../server/lib/dataStore.ts";
 import { generateToken } from "../../server/lib/auth.ts";
-import { LOCALES, en, es, ja, ko, ru, zhCN } from "../../client/locales/index.ts";
+import {
+  LOCALES,
+  en,
+  es,
+  ja,
+  ko,
+  ru,
+  zhCN,
+} from "../../client/locales/index.ts";
 import { createTranslator } from "../../client/lib/i18n.ts";
 import { SUPPORTED_LANGUAGES } from "../../client/lib/languages.ts";
 
@@ -36,7 +52,8 @@ import { SUPPORTED_LANGUAGES } from "../../client/lib/languages.ts";
 export interface InstalledGame {
   id: string;
   title: string;
-  platform: "steam" | "epic" | "ea" | "xbox" | "gog" | "ubisoft" | "custom" | string;
+  platform:
+    "steam" | "epic" | "ea" | "xbox" | "gog" | "ubisoft" | "custom" | string;
   launchUri?: string;
   executablePath?: string;
   installPath?: string;
@@ -101,9 +118,20 @@ export interface FriendGameActivity {
 class MockDesktopBridgeHarness {
   public isAvailable = true;
   public installedGames: InstalledGame[] = [];
-  public runningProcesses: Map<string, { gameId: string; title: string; platform: string; startTime: number; lastTick: number; elapsedSeconds: number }> = new Map();
+  public runningProcesses: Map<
+    string,
+    {
+      gameId: string;
+      title: string;
+      platform: string;
+      startTime: number;
+      lastTick: number;
+      elapsedSeconds: number;
+    }
+  > = new Map();
   public eventListeners: Map<string, ((event: any) => void)[]> = new Map();
-  public bridgeCallLogs: { command: string; params: any; timestamp: number }[] = [];
+  public bridgeCallLogs: { command: string; params: any; timestamp: number }[] =
+    [];
 
   constructor() {
     this.reset();
@@ -120,10 +148,14 @@ class MockDesktopBridgeHarness {
         title: "Cyberpunk 2077",
         platform: "steam",
         launchUri: "steam://rungameid/1091500",
-        installPath: "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077",
-        executablePath: "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe",
-        bannerUrl: "https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg",
-        iconUrl: "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1091500/icon.ico",
+        installPath:
+          "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077",
+        executablePath:
+          "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe",
+        bannerUrl:
+          "https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg",
+        iconUrl:
+          "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/1091500/icon.ico",
         isCustom: false,
       },
       {
@@ -132,8 +164,10 @@ class MockDesktopBridgeHarness {
         platform: "epic",
         launchUri: "com.epicgames.launcher://apps/Fortnite?action=launch",
         installPath: "C:\\Program Files\\Epic Games\\Fortnite",
-        executablePath: "C:\\Program Files\\Epic Games\\Fortnite\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe",
-        iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        executablePath:
+          "C:\\Program Files\\Epic Games\\Fortnite\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe",
+        iconUrl:
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
         isCustom: false,
       },
       {
@@ -151,7 +185,8 @@ class MockDesktopBridgeHarness {
         platform: "xbox",
         launchUri: "ms-xbl-38446452://",
         installPath: "C:\\Program Files\\WindowsApps\\Microsoft.HaloInfinite",
-        executablePath: "C:\\Program Files\\WindowsApps\\Microsoft.HaloInfinite\\HaloInfinite.exe",
+        executablePath:
+          "C:\\Program Files\\WindowsApps\\Microsoft.HaloInfinite\\HaloInfinite.exe",
         isCustom: false,
       },
       {
@@ -160,7 +195,8 @@ class MockDesktopBridgeHarness {
         platform: "gog",
         launchUri: "goggalaxy://openGameView/1430782390",
         installPath: "C:\\GOG Games\\The Witcher 3 Wild Hunt GOTY",
-        executablePath: "C:\\GOG Games\\The Witcher 3 Wild Hunt GOTY\\bin\\x64\\witcher3.exe",
+        executablePath:
+          "C:\\GOG Games\\The Witcher 3 Wild Hunt GOTY\\bin\\x64\\witcher3.exe",
         isCustom: false,
       },
       {
@@ -168,8 +204,10 @@ class MockDesktopBridgeHarness {
         title: "Tom Clancy's Rainbow Six Siege",
         platform: "ubisoft",
         launchUri: "uplay://launch/54/0",
-        installPath: "C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\games\\Rainbow Six Siege",
-        executablePath: "C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\games\\Rainbow Six Siege\\RainbowSix.exe",
+        installPath:
+          "C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\games\\Rainbow Six Siege",
+        executablePath:
+          "C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\games\\Rainbow Six Siege\\RainbowSix.exe",
         isCustom: false,
       },
     ];
@@ -201,7 +239,10 @@ class MockDesktopBridgeHarness {
     }
   }
 
-  public async callBridge(command: string, params: Record<string, any> = {}): Promise<any> {
+  public async callBridge(
+    command: string,
+    params: Record<string, any> = {},
+  ): Promise<any> {
     this.bridgeCallLogs.push({ command, params, timestamp: Date.now() });
 
     if (!this.isAvailable) {
@@ -213,10 +254,14 @@ class MockDesktopBridgeHarness {
         return { games: [...this.installedGames] };
       }
       case "launch_game": {
-        const { gameId, platform, launchUri, executablePath, title } = params || {};
+        const { gameId, platform, launchUri, executablePath, title } =
+          params || {};
         const game = this.installedGames.find((g) => g.id === gameId);
         if (!game && !launchUri && !executablePath && !title) {
-          return { success: false, message: `Game ${gameId} not found and no executable provided` };
+          return {
+            success: false,
+            message: `Game ${gameId} not found and no executable provided`,
+          };
         }
         const effectiveTitle = game?.title || title || "Unknown Game";
         const effectivePlatform = game?.platform || platform || "custom";
@@ -246,8 +291,10 @@ class MockDesktopBridgeHarness {
         if (params.__cancel) return null;
         return {
           title: params.simulatedTitle || "Custom Indie Platformer",
-          executablePath: params.simulatedPath || "C:\\Games\\IndieGame\\game.exe",
-          iconDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAASUlEQVR42u3PQQ0AAAjEMN6/aWBhIu2uBNT0rP8WwIAADAgwgAABBhAgwAABAggwgAABBhAggAADCDCAAAGGgIEAAQYQIIAAAwL4dAM7nQEZ8R3zkwAAAABJRU5ErkJggg==",
+          executablePath:
+            params.simulatedPath || "C:\\Games\\IndieGame\\game.exe",
+          iconDataUrl:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAASUlEQVR42u3PQQ0AAAjEMN6/aWBhIu2uBNT0rP8WwIAADAgwgAABBhAgwAABAggwgAABBhAggAADCDCAAAGGgIEAAQYQIIAAAwL4dAM7nQEZ8R3zkwAAAABJRU5ErkJggg==",
         };
       }
       case "get_game_icon": {
@@ -255,7 +302,8 @@ class MockDesktopBridgeHarness {
           throw new Error("executablePath is required");
         }
         return {
-          iconDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAASUlEQVR42u3PQQ0AAAjEMN6/aWBhIu2uBNT0rP8WwIAADAgwgAABBhAgwAABAggwgAABBhAggAADCDCAAAGGgIEAAQYQIIAAAwL4dAM7nQEZ8R3zkwAAAABJRU5ErkJggg==",
+          iconDataUrl:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAASUlEQVR42u3PQQ0AAAjEMN6/aWBhIu2uBNT0rP8WwIAADAgwgAABBhAgwAABAggwgAABBhAggAADCDCAAAGGgIEAAQYQIIAAAwL4dAM7nQEZ8R3zkwAAAABJRU5ErkJggg==",
         };
       }
       case "get_running_games": {
@@ -312,10 +360,15 @@ class GameServerTestEngine {
     }
   }
 
-  public static syncUserGames(userId: string, games: InstalledGame[]): { success: boolean; count: number } {
+  public static syncUserGames(
+    userId: string,
+    games: InstalledGame[],
+  ): { success: boolean; count: number } {
     this.ensureGameStore(userId);
     const existing = getTableRows("user_games", userId);
-    const existingMap = new Map<string, any>(existing.map((g: any) => [g.game_id || g.id, g]));
+    const existingMap = new Map<string, any>(
+      existing.map((g: any) => [g.game_id || g.id, g]),
+    );
     const now = new Date().toISOString();
 
     for (const g of games) {
@@ -344,7 +397,12 @@ class GameServerTestEngine {
 
   public static addCustomGame(
     userId: string,
-    data: { title: string; executable_path: string; launch_url?: string; icon_url?: string },
+    data: {
+      title: string;
+      executable_path: string;
+      launch_url?: string;
+      icon_url?: string;
+    },
   ): { success: boolean; game: UserGameRecord } {
     this.ensureGameStore(userId);
     const now = new Date().toISOString();
@@ -369,7 +427,12 @@ class GameServerTestEngine {
 
   public static logPlaytime(
     userId: string,
-    data: { game_id: string; game_title?: string; platform?: string; duration_seconds: number },
+    data: {
+      game_id: string;
+      game_title?: string;
+      platform?: string;
+      duration_seconds: number;
+    },
   ): { success: boolean; total_seconds: number } {
     this.ensureGameStore(userId);
     const dur = Math.max(0, Math.floor(Number(data.duration_seconds) || 0));
@@ -408,7 +471,10 @@ class GameServerTestEngine {
     return { success: true, total_seconds: total };
   }
 
-  public static getUserPlaytime(userId: string, gameId?: string): { total_seconds: number; playtime?: Record<string, number> } {
+  public static getUserPlaytime(
+    userId: string,
+    gameId?: string,
+  ): { total_seconds: number; playtime?: Record<string, number> } {
     const rows = getTableRows("user_playtime", userId);
     if (gameId) {
       const match = rows.find((r: any) => r.game_id === gameId);
@@ -425,7 +491,12 @@ class GameServerTestEngine {
 
   public static setGamePresence(
     userId: string,
-    data: { game_id?: string | null; game_title?: string | null; platform?: string | null; is_playing: boolean },
+    data: {
+      game_id?: string | null;
+      game_title?: string | null;
+      platform?: string | null;
+      is_playing: boolean;
+    },
   ): { success: boolean } {
     this.ensureGameStore(userId);
     const now = new Date().toISOString();
@@ -448,8 +519,12 @@ class GameServerTestEngine {
     gameId: string,
   ): { friends: FriendGameActivity[] } {
     // 1. Get accepted friendships
-    const friendships = getTableRows("friendships", userId).filter((f: any) => f.status === "accepted");
-    const friendIds = friendships.map((f: any) => (f.user_id === userId ? f.friend_id : f.user_id));
+    const friendships = getTableRows("friendships", userId).filter(
+      (f: any) => f.status === "accepted",
+    );
+    const friendIds = friendships.map((f: any) =>
+      f.user_id === userId ? f.friend_id : f.user_id,
+    );
 
     const result: FriendGameActivity[] = [];
 
@@ -475,10 +550,13 @@ class GameServerTestEngine {
       const friendProf = getTableRows("profiles", fid)[0] || {};
 
       // Get friend playtime
-      const friendPlaytime = friendPlaytimes.find((p: any) => p.game_id === gameId);
+      const friendPlaytime = friendPlaytimes.find(
+        (p: any) => p.game_id === gameId,
+      );
 
       // Get friend presence
-      const isPlayingThisGame = friendPresence.is_playing && friendPresence.game_id === gameId;
+      const isPlayingThisGame =
+        friendPresence.is_playing && friendPresence.game_id === gameId;
 
       result.push({
         user_id: String(fid),
@@ -495,8 +573,12 @@ class GameServerTestEngine {
   }
 
   public static getFriendsGameActivity(userId: string): { activity: any[] } {
-    const friendships = getTableRows("friendships", userId).filter((f: any) => f.status === "accepted");
-    const friendIds = friendships.map((f: any) => (f.user_id === userId ? f.friend_id : f.user_id));
+    const friendships = getTableRows("friendships", userId).filter(
+      (f: any) => f.status === "accepted",
+    );
+    const friendIds = friendships.map((f: any) =>
+      f.user_id === userId ? f.friend_id : f.user_id,
+    );
     const result: any[] = [];
 
     for (const fid of friendIds) {
@@ -507,8 +589,10 @@ class GameServerTestEngine {
       const friendProf = getTableRows("profiles", fid)[0] || {};
       const friendPresence = getTableRows("user_presence", fid)[0] || {};
       const friendPlaytimes = getTableRows("user_playtime", fid);
-      const lastPlayed = friendPlaytimes.sort((a: any, b: any) =>
-        new Date(b.last_played_at || 0).getTime() - new Date(a.last_played_at || 0).getTime()
+      const lastPlayed = friendPlaytimes.sort(
+        (a: any, b: any) =>
+          new Date(b.last_played_at || 0).getTime() -
+          new Date(a.last_played_at || 0).getTime(),
       )[0];
 
       result.push({
@@ -517,7 +601,9 @@ class GameServerTestEngine {
         display_name: friendProf?.display_name || null,
         avatar_url: friendProf?.avatar_url || null,
         is_playing: !!friendPresence.is_playing,
-        current_game: friendPresence.is_playing ? friendPresence.game_title : null,
+        current_game: friendPresence.is_playing
+          ? friendPresence.game_title
+          : null,
         platform: friendPresence.is_playing ? friendPresence.platform : null,
         last_played_game: lastPlayed?.game_title || null,
       });
@@ -642,7 +728,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
             isCustom: false,
           },
         ];
-        const res = GameServerTestEngine.syncUserGames(String(userAlice.id), games);
+        const res = GameServerTestEngine.syncUserGames(
+          String(userAlice.id),
+          games,
+        );
         expect(res.success).toBe(true);
         expect(res.count).toBe(1);
 
@@ -687,16 +776,29 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F1-05: enforces strict multi-tenant isolation across distinct user IDs", () => {
         GameServerTestEngine.syncUserGames(String(userBob.id), [
-          { id: "epic_Fortnite", title: "Fortnite", platform: "epic", isCustom: false },
+          {
+            id: "epic_Fortnite",
+            title: "Fortnite",
+            platform: "epic",
+            isCustom: false,
+          },
         ]);
 
         const aliceGames = getTableRows("user_games", String(userAlice.id));
         const bobGames = getTableRows("user_games", String(userBob.id));
 
-        expect(aliceGames.some((g: any) => g.game_id === "steam_1091500")).toBe(true);
-        expect(aliceGames.some((g: any) => g.game_id === "epic_Fortnite")).toBe(false);
-        expect(bobGames.some((g: any) => g.game_id === "epic_Fortnite")).toBe(true);
-        expect(bobGames.some((g: any) => g.game_id === "steam_1091500")).toBe(false);
+        expect(aliceGames.some((g: any) => g.game_id === "steam_1091500")).toBe(
+          true,
+        );
+        expect(aliceGames.some((g: any) => g.game_id === "epic_Fortnite")).toBe(
+          false,
+        );
+        expect(bobGames.some((g: any) => g.game_id === "epic_Fortnite")).toBe(
+          true,
+        );
+        expect(bobGames.some((g: any) => g.game_id === "steam_1091500")).toBe(
+          false,
+        );
       });
     });
 
@@ -704,7 +806,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     describe("F2: Server Playtime & Sync RPCs", () => {
       it("F2-01: sync_user_games stores batch of detected games and returns count", () => {
         const games = bridgeHarness.installedGames;
-        const res = GameServerTestEngine.syncUserGames(String(userAlice.id), games);
+        const res = GameServerTestEngine.syncUserGames(
+          String(userAlice.id),
+          games,
+        );
         expect(res.success).toBe(true);
         expect(res.count).toBe(games.length);
       });
@@ -722,7 +827,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F2-03: log_playtime increments cumulative playtime and updates last_played_at", () => {
-        const initial = GameServerTestEngine.getUserPlaytime(String(userAlice.id), "steam_1091500");
+        const initial = GameServerTestEngine.getUserPlaytime(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         const res = GameServerTestEngine.logPlaytime(String(userAlice.id), {
           game_id: "steam_1091500",
           duration_seconds: 1200,
@@ -732,7 +840,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F2-04: get_user_playtime retrieves playtime for single game and aggregate dictionary", () => {
-        const single = GameServerTestEngine.getUserPlaytime(String(userAlice.id), "steam_1091500");
+        const single = GameServerTestEngine.getUserPlaytime(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         expect(single.total_seconds).toBeGreaterThan(0);
 
         const all = GameServerTestEngine.getUserPlaytime(String(userAlice.id));
@@ -757,7 +868,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       beforeEach(() => {
         // Setup Bob and Charlie owning Cyberpunk
         GameServerTestEngine.syncUserGames(String(userBob.id), [
-          { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+          {
+            id: "steam_1091500",
+            title: "Cyberpunk 2077",
+            platform: "steam",
+            isCustom: false,
+          },
         ]);
         // Reset Bob's playtime table
         saveTableRows("user_playtime", String(userBob.id), [
@@ -781,7 +897,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
         });
 
         GameServerTestEngine.syncUserGames(String(userCharlie.id), [
-          { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+          {
+            id: "steam_1091500",
+            title: "Cyberpunk 2077",
+            platform: "steam",
+            isCustom: false,
+          },
         ]);
         saveTableRows("user_playtime", String(userCharlie.id), [
           {
@@ -802,7 +923,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F3-01: get_game_friends returns accepted friends owning target game", () => {
-        const res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
+        const res = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         expect(res.friends.length).toBe(2);
         const usernames = res.friends.map((f) => f.username);
         expect(usernames).toContain(userBob.username);
@@ -810,9 +934,16 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F3-02: get_game_friends includes server playtime and real-time live playing status", () => {
-        const res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-        const bobFriend = res.friends.find((f) => f.user_id === String(userBob.id));
-        const charlieFriend = res.friends.find((f) => f.user_id === String(userCharlie.id));
+        const res = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
+        const bobFriend = res.friends.find(
+          (f) => f.user_id === String(userBob.id),
+        );
+        const charlieFriend = res.friends.find(
+          (f) => f.user_id === String(userCharlie.id),
+        );
 
         expect(bobFriend?.playtime_seconds).toBe(7200);
         expect(bobFriend?.is_playing).toBe(true);
@@ -822,9 +953,13 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F3-03: get_friends_game_activity returns broad overview of friends playing games", () => {
-        const res = GameServerTestEngine.getFriendsGameActivity(String(userAlice.id));
+        const res = GameServerTestEngine.getFriendsGameActivity(
+          String(userAlice.id),
+        );
         expect(res.activity.length).toBe(2);
-        const bobAct = res.activity.find((a) => a.user_id === String(userBob.id));
+        const bobAct = res.activity.find(
+          (a) => a.user_id === String(userBob.id),
+        );
         expect(bobAct?.is_playing).toBe(true);
         expect(bobAct?.current_game).toBe("Cyberpunk 2077");
       });
@@ -832,24 +967,45 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       it("F3-04: strictly excludes non-friends from game presence and ownership queries", () => {
         // Dave (non-friend) also owns Cyberpunk
         GameServerTestEngine.syncUserGames(String(userDave.id), [
-          { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+          {
+            id: "steam_1091500",
+            title: "Cyberpunk 2077",
+            platform: "steam",
+            isCustom: false,
+          },
         ]);
-        const res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
+        const res = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         const userIds = res.friends.map((f) => f.user_id);
         expect(userIds).not.toContain(String(userDave.id));
       });
 
       it("F3-05: respects share_game_activity: false privacy setting", () => {
         // Bob disables game activity sharing
-        upsertTable("user_preferences", { share_game_activity: false }, String(userBob.id), "user_id");
+        upsertTable(
+          "user_preferences",
+          { share_game_activity: false },
+          String(userBob.id),
+          "user_id",
+        );
 
-        const res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
+        const res = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         const friendIds = res.friends.map((f) => f.user_id);
         expect(friendIds).not.toContain(String(userBob.id));
         expect(friendIds).toContain(String(userCharlie.id));
 
         // Restore Bob privacy
-        upsertTable("user_preferences", { share_game_activity: true }, String(userBob.id), "user_id");
+        upsertTable(
+          "user_preferences",
+          { share_game_activity: true },
+          String(userBob.id),
+          "user_id",
+        );
       });
     });
 
@@ -857,7 +1013,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     describe("F4: 6-Platform Game Scanner", () => {
       it("F4-01: detects Steam games via VDF and ACF manifests with steam:// URI", async () => {
         const res = await bridgeHarness.callBridge("scan_installed_games");
-        const steamGame = res.games.find((g: InstalledGame) => g.platform === "steam");
+        const steamGame = res.games.find(
+          (g: InstalledGame) => g.platform === "steam",
+        );
         expect(steamGame).toBeDefined();
         expect(steamGame.id).toBe("steam_1091500");
         expect(steamGame.launchUri).toBe("steam://rungameid/1091500");
@@ -865,7 +1023,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F4-02: detects Epic Games via manifest .item files with com.epicgames.launcher:// URI", async () => {
         const res = await bridgeHarness.callBridge("scan_installed_games");
-        const epicGame = res.games.find((g: InstalledGame) => g.platform === "epic");
+        const epicGame = res.games.find(
+          (g: InstalledGame) => g.platform === "epic",
+        );
         expect(epicGame).toBeDefined();
         expect(epicGame.id).toBe("epic_Fortnite");
         expect(epicGame.launchUri).toContain("com.epicgames.launcher://apps/");
@@ -873,7 +1033,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F4-03: detects EA App games with origin2:// launch URI", async () => {
         const res = await bridgeHarness.callBridge("scan_installed_games");
-        const eaGame = res.games.find((g: InstalledGame) => g.platform === "ea");
+        const eaGame = res.games.find(
+          (g: InstalledGame) => g.platform === "ea",
+        );
         expect(eaGame).toBeDefined();
         expect(eaGame.id).toBe("ea_ApexLegends");
         expect(eaGame.launchUri).toContain("origin2://");
@@ -881,7 +1043,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F4-04: detects Xbox / Microsoft Store UWP packages", async () => {
         const res = await bridgeHarness.callBridge("scan_installed_games");
-        const xboxGame = res.games.find((g: InstalledGame) => g.platform === "xbox");
+        const xboxGame = res.games.find(
+          (g: InstalledGame) => g.platform === "xbox",
+        );
         expect(xboxGame).toBeDefined();
         expect(xboxGame.id).toBe("xbox_HaloInfinite");
         expect(xboxGame.launchUri).toContain("ms-xbl-");
@@ -889,8 +1053,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F4-05: detects GOG Galaxy and Ubisoft Connect games", async () => {
         const res = await bridgeHarness.callBridge("scan_installed_games");
-        const gogGame = res.games.find((g: InstalledGame) => g.platform === "gog");
-        const ubiGame = res.games.find((g: InstalledGame) => g.platform === "ubisoft");
+        const gogGame = res.games.find(
+          (g: InstalledGame) => g.platform === "gog",
+        );
+        const ubiGame = res.games.find(
+          (g: InstalledGame) => g.platform === "ubisoft",
+        );
 
         expect(gogGame).toBeDefined();
         expect(gogGame.launchUri).toContain("goggalaxy://");
@@ -1021,16 +1189,32 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F6-04: verifies get_running_games reflects terminated process removed", async () => {
         const res = await bridgeHarness.callBridge("get_running_games");
-        const exists = res.runningGames.some((p: any) => p.gameId === "epic_Fortnite");
+        const exists = res.runningGames.some(
+          (p: any) => p.gameId === "epic_Fortnite",
+        );
         expect(exists).toBe(false);
       });
 
       it("F6-05: tracks multiple simultaneous active processes independently", async () => {
-        await bridgeHarness.callBridge("launch_game", { gameId: "game_a", title: "Game A", platform: "custom" });
-        await bridgeHarness.callBridge("launch_game", { gameId: "game_b", title: "Game B", platform: "custom" });
+        await bridgeHarness.callBridge("launch_game", {
+          gameId: "game_a",
+          title: "Game A",
+          platform: "custom",
+        });
+        await bridgeHarness.callBridge("launch_game", {
+          gameId: "game_b",
+          title: "Game B",
+          platform: "custom",
+        });
 
-        await bridgeHarness.callBridge("simulate_process_tick", { gameId: "game_a", deltaSeconds: 20 });
-        await bridgeHarness.callBridge("simulate_process_tick", { gameId: "game_b", deltaSeconds: 30 });
+        await bridgeHarness.callBridge("simulate_process_tick", {
+          gameId: "game_a",
+          deltaSeconds: 20,
+        });
+        await bridgeHarness.callBridge("simulate_process_tick", {
+          gameId: "game_b",
+          deltaSeconds: 30,
+        });
 
         const res = await bridgeHarness.callBridge("get_running_games");
         const gA = res.runningGames.find((g: any) => g.gameId === "game_a");
@@ -1039,8 +1223,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
         expect(gA?.elapsedSeconds).toBe(20);
         expect(gB?.elapsedSeconds).toBe(30);
 
-        await bridgeHarness.callBridge("simulate_process_exit", { gameId: "game_a" });
-        await bridgeHarness.callBridge("simulate_process_exit", { gameId: "game_b" });
+        await bridgeHarness.callBridge("simulate_process_exit", {
+          gameId: "game_a",
+        });
+        await bridgeHarness.callBridge("simulate_process_exit", {
+          gameId: "game_b",
+        });
       });
     });
 
@@ -1061,9 +1249,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F7-03: rejects calls with descriptive error when bridge is unavailable", async () => {
         bridgeHarness.isAvailable = false;
-        await expect(bridgeHarness.callBridge("scan_installed_games")).rejects.toThrow(
-          /Desktop bridge not available/i,
-        );
+        await expect(
+          bridgeHarness.callBridge("scan_installed_games"),
+        ).rejects.toThrow(/Desktop bridge not available/i);
         bridgeHarness.isAvailable = true;
       });
 
@@ -1082,7 +1270,8 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F7-05: logs all executed bridge commands with parameters and timestamps", async () => {
         await bridgeHarness.callBridge("scan_installed_games");
-        const lastLog = bridgeHarness.bridgeCallLogs[bridgeHarness.bridgeCallLogs.length - 1];
+        const lastLog =
+          bridgeHarness.bridgeCallLogs[bridgeHarness.bridgeCallLogs.length - 1];
         expect(lastLog.command).toBe("scan_installed_games");
         expect(lastLog.timestamp).toBeGreaterThan(0);
       });
@@ -1091,11 +1280,41 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     // --- F8: Client Game Library View ---
     describe("F8: Client Game Library View & Navigation", () => {
       const mockGames: InstalledGame[] = [
-        { id: "1", title: "Apex Legends", platform: "ea", isCustom: false, playtimeMinutes: 120 },
-        { id: "2", title: "Cyberpunk 2077", platform: "steam", isCustom: false, playtimeMinutes: 600 },
-        { id: "3", title: "Fortnite", platform: "epic", isCustom: false, playtimeMinutes: 45 },
-        { id: "4", title: "Halo Infinite", platform: "xbox", isCustom: false, playtimeMinutes: 300 },
-        { id: "5", title: "My Custom Game", platform: "custom", isCustom: true, playtimeMinutes: 10 },
+        {
+          id: "1",
+          title: "Apex Legends",
+          platform: "ea",
+          isCustom: false,
+          playtimeMinutes: 120,
+        },
+        {
+          id: "2",
+          title: "Cyberpunk 2077",
+          platform: "steam",
+          isCustom: false,
+          playtimeMinutes: 600,
+        },
+        {
+          id: "3",
+          title: "Fortnite",
+          platform: "epic",
+          isCustom: false,
+          playtimeMinutes: 45,
+        },
+        {
+          id: "4",
+          title: "Halo Infinite",
+          platform: "xbox",
+          isCustom: false,
+          playtimeMinutes: 300,
+        },
+        {
+          id: "5",
+          title: "My Custom Game",
+          platform: "custom",
+          isCustom: true,
+          playtimeMinutes: 10,
+        },
       ];
 
       it("F8-01: filters games by platform tab accurately", () => {
@@ -1110,19 +1329,25 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F8-02: filters games dynamically by search query (case-insensitive)", () => {
         const query = "halo";
-        const matches = mockGames.filter((g) => g.title.toLowerCase().includes(query.toLowerCase()));
+        const matches = mockGames.filter((g) =>
+          g.title.toLowerCase().includes(query.toLowerCase()),
+        );
         expect(matches.length).toBe(1);
         expect(matches[0].title).toBe("Halo Infinite");
       });
 
       it("F8-03: sorts games by Alphabetical ascending", () => {
-        const sorted = [...mockGames].sort((a, b) => a.title.localeCompare(b.title));
+        const sorted = [...mockGames].sort((a, b) =>
+          a.title.localeCompare(b.title),
+        );
         expect(sorted[0].title).toBe("Apex Legends");
         expect(sorted[sorted.length - 1].title).toBe("My Custom Game");
       });
 
       it("F8-04: sorts games by Playtime descending", () => {
-        const sorted = [...mockGames].sort((a, b) => (b.playtimeMinutes || 0) - (a.playtimeMinutes || 0));
+        const sorted = [...mockGames].sort(
+          (a, b) => (b.playtimeMinutes || 0) - (a.playtimeMinutes || 0),
+        );
         expect(sorted[0].title).toBe("Cyberpunk 2077"); // 600 mins
         expect(sorted[sorted.length - 1].title).toBe("My Custom Game"); // 10 mins
       });
@@ -1135,7 +1360,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
           isCustom: true,
           executablePath: "C:\\Games\\Retro\\game.exe",
         };
-        const resolvedIcon = gameWithoutBanner.bannerUrl || gameWithoutBanner.iconUrl || "default_fallback_game_icon";
+        const resolvedIcon =
+          gameWithoutBanner.bannerUrl ||
+          gameWithoutBanner.iconUrl ||
+          "default_fallback_game_icon";
         expect(resolvedIcon).toBe("default_fallback_game_icon");
       });
     });
@@ -1172,7 +1400,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F9-03: details drawer renders friends panel with avatar, playtime and live indicator", () => {
         GameServerTestEngine.syncUserGames(String(userBob.id), [
-          { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+          {
+            id: "steam_1091500",
+            title: "Cyberpunk 2077",
+            platform: "steam",
+            isCustom: false,
+          },
         ]);
         GameServerTestEngine.setGamePresence(String(userBob.id), {
           game_id: "steam_1091500",
@@ -1181,7 +1414,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
           is_playing: true,
         });
 
-        const friendsData = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
+        const friendsData = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         expect(friendsData.friends.length).toBeGreaterThan(0);
         const playingFriend = friendsData.friends.find((f) => f.is_playing);
         expect(playingFriend).toBeDefined();
@@ -1198,7 +1434,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
         expect(validateCustomGame("", "").isValid).toBe(false);
         expect(validateCustomGame("My Game", "").isValid).toBe(false);
-        expect(validateCustomGame("My Game", "C:\\path\\game.exe").isValid).toBe(true);
+        expect(
+          validateCustomGame("My Game", "C:\\path\\game.exe").isValid,
+        ).toBe(true);
       });
 
       it("F9-05: custom game modal persists new custom game to server and updates list", () => {
@@ -1222,7 +1460,8 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
           nameKey: "apps.gameLibraryTitle",
           defaultName: "Game Library",
           descKey: "apps.gameLibraryDesc",
-          defaultDesc: "Aggregate and launch locally installed games across platforms.",
+          defaultDesc:
+            "Aggregate and launch locally installed games across platforms.",
           categories: ["All", "Utility"],
           availability: "desktop-only",
         };
@@ -1344,7 +1583,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F12-05: verifies comprehensive tier architecture validation", () => {
-        const tiers = ["Tier 1: Feature Coverage", "Tier 2: Boundary & Corner Cases", "Tier 3: Cross-Feature Combinations", "Tier 4: Real-World Scenarios"];
+        const tiers = [
+          "Tier 1: Feature Coverage",
+          "Tier 2: Boundary & Corner Cases",
+          "Tier 3: Cross-Feature Combinations",
+          "Tier 4: Real-World Scenarios",
+        ];
         expect(tiers.length).toBe(4);
       });
     });
@@ -1358,7 +1602,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     // --- F1 Boundary: Server Storage ---
     describe("F1 Boundary: Server Storage", () => {
       it("F1-B01: handles empty game list synchronization cleanly", () => {
-        const res = GameServerTestEngine.syncUserGames(String(userAlice.id), []);
+        const res = GameServerTestEngine.syncUserGames(
+          String(userAlice.id),
+          [],
+        );
         expect(res.success).toBe(true);
         expect(res.count).toBeGreaterThanOrEqual(0);
       });
@@ -1376,7 +1623,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
           platform: "custom",
           isCustom: true,
         };
-        const res = GameServerTestEngine.syncUserGames(String(userAlice.id), [specialGame]);
+        const res = GameServerTestEngine.syncUserGames(String(userAlice.id), [
+          specialGame,
+        ]);
         expect(res.success).toBe(true);
         const rows = getTableRows("user_games", String(userAlice.id));
         const found = rows.find((r: any) => r.game_id === specialGame.id);
@@ -1385,13 +1634,19 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F1-B04: handles large volume of games (100+ items) without file corruption", () => {
-        const bulkGames: InstalledGame[] = Array.from({ length: 100 }, (_, i) => ({
-          id: `bulk_game_${i}`,
-          title: `Bulk Game Title ${i}`,
-          platform: "steam",
-          isCustom: false,
-        }));
-        const res = GameServerTestEngine.syncUserGames(String(userAlice.id), bulkGames);
+        const bulkGames: InstalledGame[] = Array.from(
+          { length: 100 },
+          (_, i) => ({
+            id: `bulk_game_${i}`,
+            title: `Bulk Game Title ${i}`,
+            platform: "steam",
+            isCustom: false,
+          }),
+        );
+        const res = GameServerTestEngine.syncUserGames(
+          String(userAlice.id),
+          bulkGames,
+        );
         expect(res.success).toBe(true);
         expect(res.count).toBeGreaterThanOrEqual(100);
       });
@@ -1403,7 +1658,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
             duration_seconds: 10,
           });
         }
-        const total = GameServerTestEngine.getUserPlaytime(String(userAlice.id), "race_game_test");
+        const total = GameServerTestEngine.getUserPlaytime(
+          String(userAlice.id),
+          "race_game_test",
+        );
         expect(total.total_seconds).toBe(100);
       });
     });
@@ -1411,7 +1669,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     // --- F2 Boundary: Server RPCs ---
     describe("F2 Boundary: Server RPCs", () => {
       it("F2-B01: log_playtime with 0 duration returns existing playtime without change", () => {
-        const before = GameServerTestEngine.getUserPlaytime(String(userAlice.id), "steam_1091500");
+        const before = GameServerTestEngine.getUserPlaytime(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         const res = GameServerTestEngine.logPlaytime(String(userAlice.id), {
           game_id: "steam_1091500",
           duration_seconds: 0,
@@ -1420,7 +1681,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F2-B02: log_playtime with negative duration is clamped to 0", () => {
-        const before = GameServerTestEngine.getUserPlaytime(String(userAlice.id), "steam_1091500");
+        const before = GameServerTestEngine.getUserPlaytime(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         const res = GameServerTestEngine.logPlaytime(String(userAlice.id), {
           game_id: "steam_1091500",
           duration_seconds: -500,
@@ -1439,17 +1703,32 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F2-B04: sync_user_games with duplicate game IDs merges cleanly without duplicates", () => {
         const duplicates: InstalledGame[] = [
-          { id: "dup_1", title: "Dup Title A", platform: "steam", isCustom: false },
-          { id: "dup_1", title: "Dup Title B Updated", platform: "steam", isCustom: false },
+          {
+            id: "dup_1",
+            title: "Dup Title A",
+            platform: "steam",
+            isCustom: false,
+          },
+          {
+            id: "dup_1",
+            title: "Dup Title B Updated",
+            platform: "steam",
+            isCustom: false,
+          },
         ];
         GameServerTestEngine.syncUserGames(String(userAlice.id), duplicates);
-        const rows = getTableRows("user_games", String(userAlice.id)).filter((r: any) => r.game_id === "dup_1");
+        const rows = getTableRows("user_games", String(userAlice.id)).filter(
+          (r: any) => r.game_id === "dup_1",
+        );
         expect(rows.length).toBe(1);
         expect(rows[0].title).toBe("Dup Title B Updated");
       });
 
       it("F2-B05: get_user_playtime for non-existent game ID returns 0 seconds", () => {
-        const res = GameServerTestEngine.getUserPlaytime(String(userAlice.id), "non_existent_game_999");
+        const res = GameServerTestEngine.getUserPlaytime(
+          String(userAlice.id),
+          "non_existent_game_999",
+        );
         expect(res.total_seconds).toBe(0);
       });
     });
@@ -1457,30 +1736,53 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     // --- F3 Boundary: Social & Presence ---
     describe("F3 Boundary: Social & Presence", () => {
       it("F3-B01: get_game_friends for user with 0 friends returns empty array", () => {
-        const res = GameServerTestEngine.getGameFriends(String(userDave.id), "steam_1091500");
+        const res = GameServerTestEngine.getGameFriends(
+          String(userDave.id),
+          "steam_1091500",
+        );
         expect(res.friends).toEqual([]);
       });
 
       it("F3-B02: get_game_friends for game that no friends own returns empty array", () => {
-        const res = GameServerTestEngine.getGameFriends(String(userAlice.id), "unowned_game_999");
+        const res = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "unowned_game_999",
+        );
         expect(res.friends).toEqual([]);
       });
 
       it("F3-B03: handles friend with null avatar or display name gracefully", () => {
         GameServerTestEngine.syncUserGames(String(userCharlie.id), [
-          { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+          {
+            id: "steam_1091500",
+            title: "Cyberpunk 2077",
+            platform: "steam",
+            isCustom: false,
+          },
         ]);
         // Clear Charlie's profile
-        saveTableRows("profiles", String(userCharlie.id), [{ display_name: null, avatar_url: null }]);
-        const res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-        const charlie = res.friends.find((f) => f.user_id === String(userCharlie.id));
+        saveTableRows("profiles", String(userCharlie.id), [
+          { display_name: null, avatar_url: null },
+        ]);
+        const res = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
+        const charlie = res.friends.find(
+          (f) => f.user_id === String(userCharlie.id),
+        );
         expect(charlie).toBeDefined();
         expect(charlie?.avatar_url).toBeNull();
       });
 
       it("F3-B04: real-time presence toggle dynamically updates presence timestamps", () => {
         GameServerTestEngine.syncUserGames(String(userBob.id), [
-          { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+          {
+            id: "steam_1091500",
+            title: "Cyberpunk 2077",
+            platform: "steam",
+            isCustom: false,
+          },
         ]);
         GameServerTestEngine.setGamePresence(String(userBob.id), {
           game_id: "steam_1091500",
@@ -1488,25 +1790,59 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
           platform: "steam",
           is_playing: true,
         });
-        const active = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-        expect(active.friends.find((f) => f.user_id === String(userBob.id))?.is_playing).toBe(true);
+        const active = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
+        expect(
+          active.friends.find((f) => f.user_id === String(userBob.id))
+            ?.is_playing,
+        ).toBe(true);
 
-        GameServerTestEngine.setGamePresence(String(userBob.id), { is_playing: false });
-        const inactive = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-        expect(inactive.friends.find((f) => f.user_id === String(userBob.id))?.is_playing).toBe(false);
+        GameServerTestEngine.setGamePresence(String(userBob.id), {
+          is_playing: false,
+        });
+        const inactive = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
+        expect(
+          inactive.friends.find((f) => f.user_id === String(userBob.id))
+            ?.is_playing,
+        ).toBe(false);
       });
 
       it("F3-B05: blocked or unfriended users immediately lose visibility in friend queries", () => {
         // Remove friendship between Alice and Bob
-        deleteTable("friendships", [{ field: "friend_id", operator: "eq", value: String(userBob.id) }], String(userAlice.id));
-        deleteTable("friendships", [{ field: "user_id", operator: "eq", value: String(userBob.id) }], String(userAlice.id));
+        deleteTable(
+          "friendships",
+          [{ field: "friend_id", operator: "eq", value: String(userBob.id) }],
+          String(userAlice.id),
+        );
+        deleteTable(
+          "friendships",
+          [{ field: "user_id", operator: "eq", value: String(userBob.id) }],
+          String(userAlice.id),
+        );
 
-        const res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
+        const res = GameServerTestEngine.getGameFriends(
+          String(userAlice.id),
+          "steam_1091500",
+        );
         const friendIds = res.friends.map((f) => f.user_id);
         expect(friendIds).not.toContain(String(userBob.id));
 
         // Restore friendship
-        upsertTable("friendships", { id: `f_${userAlice.id}_${userBob.id}`, user_id: String(userAlice.id), friend_id: String(userBob.id), status: "accepted" }, String(userAlice.id));
+        upsertTable(
+          "friendships",
+          {
+            id: `f_${userAlice.id}_${userBob.id}`,
+            user_id: String(userAlice.id),
+            friend_id: String(userBob.id),
+            status: "accepted",
+          },
+          String(userAlice.id),
+        );
       });
     });
 
@@ -1546,7 +1882,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
         const customHarness = new MockDesktopBridgeHarness();
         customHarness.installedGames = [unicodePathGame];
         const res = await customHarness.callBridge("scan_installed_games");
-        expect(res.games[0].installPath).toBe("D:\\Juegos\\フォルダ (2026) [Special]\\game.exe");
+        expect(res.games[0].installPath).toBe(
+          "D:\\Juegos\\フォルダ (2026) [Special]\\game.exe",
+        );
       });
 
       it("F4-B04: handles unknown platform strings with safe fallback handling", () => {
@@ -1582,7 +1920,8 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
           gameId: "custom_args_game",
           title: "Arg Tester",
           executablePath: "C:\\Game\\run.exe",
-          arguments: '-fullscreen -width 1920 -height 1080 +connect "127.0.0.1:27015"',
+          arguments:
+            '-fullscreen -width 1920 -height 1080 +connect "127.0.0.1:27015"',
         });
         expect(res.success).toBe(true);
       });
@@ -1595,14 +1934,18 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F5-B04: handles get_game_icon with missing executablePath by throwing error", async () => {
-        await expect(bridgeHarness.callBridge("get_game_icon", {})).rejects.toThrow(
-          /executablePath is required/i,
-        );
+        await expect(
+          bridgeHarness.callBridge("get_game_icon", {}),
+        ).rejects.toThrow(/executablePath is required/i);
       });
 
       it("F5-B05: handles rapid repeated launch requests for same game ID", async () => {
-        const p1 = bridgeHarness.callBridge("launch_game", { gameId: "steam_1091500" });
-        const p2 = bridgeHarness.callBridge("launch_game", { gameId: "steam_1091500" });
+        const p1 = bridgeHarness.callBridge("launch_game", {
+          gameId: "steam_1091500",
+        });
+        const p2 = bridgeHarness.callBridge("launch_game", {
+          gameId: "steam_1091500",
+        });
         const [r1, r2] = await Promise.all([p1, p2]);
         expect(r1.success).toBe(true);
         expect(r2.success).toBe(true);
@@ -1612,33 +1955,58 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     // --- F6 Boundary: Process Monitor ---
     describe("F6 Boundary: Process Monitor", () => {
       it("F6-B01: handles rapid launch and quit sequence within sub-second interval", async () => {
-        await bridgeHarness.callBridge("launch_game", { gameId: "rapid_game", title: "Rapid" });
-        const exitRes = await bridgeHarness.callBridge("simulate_process_exit", { gameId: "rapid_game" });
+        await bridgeHarness.callBridge("launch_game", {
+          gameId: "rapid_game",
+          title: "Rapid",
+        });
+        const exitRes = await bridgeHarness.callBridge(
+          "simulate_process_exit",
+          { gameId: "rapid_game" },
+        );
         expect(exitRes.success).toBe(true);
         expect(exitRes.sessionSeconds).toBe(0);
       });
 
       it("F6-B02: handles simulate_process_exit on non-running game ID gracefully", async () => {
-        const exitRes = await bridgeHarness.callBridge("simulate_process_exit", { gameId: "not_running_id" });
+        const exitRes = await bridgeHarness.callBridge(
+          "simulate_process_exit",
+          { gameId: "not_running_id" },
+        );
         expect(exitRes.success).toBe(false);
       });
 
       it("F6-B03: handles simulate_process_tick on non-running process safely", async () => {
-        const tickRes = await bridgeHarness.callBridge("simulate_process_tick", { gameId: "not_running_id", deltaSeconds: 10 });
+        const tickRes = await bridgeHarness.callBridge(
+          "simulate_process_tick",
+          { gameId: "not_running_id", deltaSeconds: 10 },
+        );
         expect(tickRes.success).toBe(false);
       });
 
       it("F6-B04: handles large tick increments (e.g. after system resume from sleep)", async () => {
-        await bridgeHarness.callBridge("launch_game", { gameId: "sleep_game", title: "Sleep Game" });
-        await bridgeHarness.callBridge("simulate_process_tick", { gameId: "sleep_game", deltaSeconds: 7200 }); // 2 hours
+        await bridgeHarness.callBridge("launch_game", {
+          gameId: "sleep_game",
+          title: "Sleep Game",
+        });
+        await bridgeHarness.callBridge("simulate_process_tick", {
+          gameId: "sleep_game",
+          deltaSeconds: 7200,
+        }); // 2 hours
         const running = await bridgeHarness.callBridge("get_running_games");
-        const found = running.runningGames.find((g: any) => g.gameId === "sleep_game");
+        const found = running.runningGames.find(
+          (g: any) => g.gameId === "sleep_game",
+        );
         expect(found?.elapsedSeconds).toBe(7200);
-        await bridgeHarness.callBridge("simulate_process_exit", { gameId: "sleep_game" });
+        await bridgeHarness.callBridge("simulate_process_exit", {
+          gameId: "sleep_game",
+        });
       });
 
       it("F6-B05: process monitor cleanup stops all active timers upon reset", async () => {
-        await bridgeHarness.callBridge("launch_game", { gameId: "cleanup_game", title: "Cleanup Game" });
+        await bridgeHarness.callBridge("launch_game", {
+          gameId: "cleanup_game",
+          title: "Cleanup Game",
+        });
         bridgeHarness.reset();
         const res = await bridgeHarness.callBridge("get_running_games");
         expect(res.runningGames).toEqual([]);
@@ -1648,9 +2016,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     // --- F7 Boundary: Bridge Protocol ---
     describe("F7 Boundary: Bridge Protocol", () => {
       it("F7-B01: rejects invalid/unsupported bridge command with error", async () => {
-        await expect(bridgeHarness.callBridge("invalid_command_xyz")).rejects.toThrow(
-          /Unknown desktop bridge command/i,
-        );
+        await expect(
+          bridgeHarness.callBridge("invalid_command_xyz"),
+        ).rejects.toThrow(/Unknown desktop bridge command/i);
       });
 
       it("F7-B02: handles burst of 50 concurrent bridge calls without race condition failures", async () => {
@@ -1674,7 +2042,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F7-B04: handles null / undefined parameters in callBridge safely", async () => {
-        const res = await bridgeHarness.callBridge("scan_installed_games", undefined as any);
+        const res = await bridgeHarness.callBridge(
+          "scan_installed_games",
+          undefined as any,
+        );
         expect(res.games.length).toBe(6);
       });
 
@@ -1683,8 +2054,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
         await bridgeHarness.callBridge("scan_installed_games");
         await bridgeHarness.callBridge("get_running_games");
         expect(bridgeHarness.bridgeCallLogs.length).toBe(2);
-        expect(bridgeHarness.bridgeCallLogs[0].command).toBe("scan_installed_games");
-        expect(bridgeHarness.bridgeCallLogs[1].command).toBe("get_running_games");
+        expect(bridgeHarness.bridgeCallLogs[0].command).toBe(
+          "scan_installed_games",
+        );
+        expect(bridgeHarness.bridgeCallLogs[1].command).toBe(
+          "get_running_games",
+        );
       });
     });
 
@@ -1692,8 +2067,18 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     describe("F8 Boundary: Library View", () => {
       it("F8-B01: search input handles regex special characters without crashing (*, +, ?, ^, $, (, ), [, ], {, }, |, \\)", () => {
         const games: InstalledGame[] = [
-          { id: "1", title: "C++ Programming Game", platform: "custom", isCustom: true },
-          { id: "2", title: "Regex (Test) [V1.0]", platform: "custom", isCustom: true },
+          {
+            id: "1",
+            title: "C++ Programming Game",
+            platform: "custom",
+            isCustom: true,
+          },
+          {
+            id: "2",
+            title: "Regex (Test) [V1.0]",
+            platform: "custom",
+            isCustom: true,
+          },
         ];
         const searchSafe = (list: InstalledGame[], q: string) => {
           const lower = q.toLowerCase();
@@ -1708,13 +2093,29 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F8-B02: filters games correctly with Unicode Japanese, Cyrillic, Korean, and Emoji titles", () => {
         const unicodeGames: InstalledGame[] = [
-          { id: "u1", title: "ゼルダの伝説", platform: "custom", isCustom: true },
+          {
+            id: "u1",
+            title: "ゼルダの伝説",
+            platform: "custom",
+            isCustom: true,
+          },
           { id: "u2", title: "Метро 2033", platform: "steam", isCustom: false },
-          { id: "u3", title: "배틀그라운드", platform: "steam", isCustom: false },
-          { id: "u4", title: "🚀 Space Rocket Explorer", platform: "custom", isCustom: true },
+          {
+            id: "u3",
+            title: "배틀그라운드",
+            platform: "steam",
+            isCustom: false,
+          },
+          {
+            id: "u4",
+            title: "🚀 Space Rocket Explorer",
+            platform: "custom",
+            isCustom: true,
+          },
         ];
 
-        const search = (q: string) => unicodeGames.filter((g) => g.title.includes(q));
+        const search = (q: string) =>
+          unicodeGames.filter((g) => g.title.includes(q));
         expect(search("ゼルダ").length).toBe(1);
         expect(search("Метро").length).toBe(1);
         expect(search("배틀").length).toBe(1);
@@ -1723,9 +2124,27 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
       it("F8-B03: sorting with identical playtime falls back to alphabetical order", () => {
         const games: InstalledGame[] = [
-          { id: "1", title: "Zebra Game", platform: "steam", isCustom: false, playtimeMinutes: 0 },
-          { id: "2", title: "Alpha Game", platform: "steam", isCustom: false, playtimeMinutes: 0 },
-          { id: "3", title: "Beta Game", platform: "steam", isCustom: false, playtimeMinutes: 0 },
+          {
+            id: "1",
+            title: "Zebra Game",
+            platform: "steam",
+            isCustom: false,
+            playtimeMinutes: 0,
+          },
+          {
+            id: "2",
+            title: "Alpha Game",
+            platform: "steam",
+            isCustom: false,
+            playtimeMinutes: 0,
+          },
+          {
+            id: "3",
+            title: "Beta Game",
+            platform: "steam",
+            isCustom: false,
+            playtimeMinutes: 0,
+          },
         ];
         const sorted = [...games].sort((a, b) => {
           const diff = (b.playtimeMinutes || 0) - (a.playtimeMinutes || 0);
@@ -1790,8 +2209,16 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F9-B04: custom game modal reset clears all form fields", () => {
-        const formState = { title: "Title", executablePath: "C:\\path", iconUrl: "icon" };
-        const clearForm = () => ({ title: "", executablePath: "", iconUrl: "" });
+        const formState = {
+          title: "Title",
+          executablePath: "C:\\path",
+          iconUrl: "icon",
+        };
+        const clearForm = () => ({
+          title: "",
+          executablePath: "",
+          iconUrl: "",
+        });
         const resetState = clearForm();
         expect(resetState.title).toBe("");
         expect(resetState.executablePath).toBe("");
@@ -1823,7 +2250,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F10-B02: ?desktop=1 query param allows desktop emulation in test environments", () => {
-        const checkDesktop = (searchParams: URLSearchParams, hasBridge: boolean) => {
+        const checkDesktop = (
+          searchParams: URLSearchParams,
+          hasBridge: boolean,
+        ) => {
           return hasBridge || searchParams.get("desktop") === "1";
         };
         const params = new URLSearchParams("?desktop=1");
@@ -1831,7 +2261,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F10-B03: ?desktop=0 query param does not falsely enable desktop mode", () => {
-        const checkDesktop = (searchParams: URLSearchParams, hasBridge: boolean) => {
+        const checkDesktop = (
+          searchParams: URLSearchParams,
+          hasBridge: boolean,
+        ) => {
           return hasBridge || searchParams.get("desktop") === "1";
         };
         const params = new URLSearchParams("?desktop=0");
@@ -1868,7 +2301,11 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F11-B03: formats playtime correctly for singular and plural units across locales", () => {
-        const formatLocalePlaytime = (hrs: number, mins: number, lang: string) => {
+        const formatLocalePlaytime = (
+          hrs: number,
+          mins: number,
+          lang: string,
+        ) => {
           if (lang === "es") return `${hrs} h ${mins} min`;
           if (lang === "ja") return `${hrs}時間 ${mins}分`;
           if (lang === "ko") return `${hrs}시간 ${mins}분`;
@@ -1895,7 +2332,8 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
         const findLang = (query: string) => {
           const lower = query.toLowerCase();
           return SUPPORTED_LANGUAGES.find(
-            (l) => l.code.toLowerCase() === lower || l.name.toLowerCase() === lower,
+            (l) =>
+              l.code.toLowerCase() === lower || l.name.toLowerCase() === lower,
           );
         };
         expect(findLang("japanese")?.code).toBe("ja");
@@ -1915,11 +2353,20 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       it("F12-B02: test engine ensures directories are created recursively without throw", () => {
-        const deepDir = path.join(DATA_DIR, "deep_test", "sub1", "sub2", "games");
+        const deepDir = path.join(
+          DATA_DIR,
+          "deep_test",
+          "sub1",
+          "sub2",
+          "games",
+        );
         GameServerTestEngine.ensureGameStore("deep_test/sub1/sub2");
         expect(fs.existsSync(deepDir)).toBe(true);
         // Clean up
-        fs.rmSync(path.join(DATA_DIR, "deep_test"), { recursive: true, force: true });
+        fs.rmSync(path.join(DATA_DIR, "deep_test"), {
+          recursive: true,
+          force: true,
+        });
       });
 
       it("F12-B03: test harness executes deterministic microsecond timestamps", () => {
@@ -1958,7 +2405,10 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       expect(scanRes.games.length).toBe(6);
 
       // 2. Sync to server for Alice
-      const syncRes = GameServerTestEngine.syncUserGames(String(userAlice.id), scanRes.games);
+      const syncRes = GameServerTestEngine.syncUserGames(
+        String(userAlice.id),
+        scanRes.games,
+      );
       expect(syncRes.success).toBe(true);
       expect(syncRes.count).toBe(6);
 
@@ -1976,7 +2426,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     it("T3-02: Launch Game -> Process Monitor Tick -> Presence Update -> Friend Live Presence", async () => {
       // Ensure Bob owns Cyberpunk
       GameServerTestEngine.syncUserGames(String(userBob.id), [
-        { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+        {
+          id: "steam_1091500",
+          title: "Cyberpunk 2077",
+          platform: "steam",
+          isCustom: false,
+        },
       ]);
 
       // 1. Bob launches Cyberpunk
@@ -2000,8 +2455,13 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // 4. Alice inspects friends with Cyberpunk
-      const friendsRes = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-      const bob = friendsRes.friends.find((f) => f.user_id === String(userBob.id));
+      const friendsRes = GameServerTestEngine.getGameFriends(
+        String(userAlice.id),
+        "steam_1091500",
+      );
+      const bob = friendsRes.friends.find(
+        (f) => f.user_id === String(userBob.id),
+      );
       expect(bob).toBeDefined();
       expect(bob?.is_playing).toBe(true);
     });
@@ -2009,7 +2469,12 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     it("T3-03: Process Exit -> Server Playtime Log -> Cumulative Playtime Update -> Friend Inactive Status", async () => {
       // Ensure Bob owns Cyberpunk
       GameServerTestEngine.syncUserGames(String(userBob.id), [
-        { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+        {
+          id: "steam_1091500",
+          title: "Cyberpunk 2077",
+          platform: "steam",
+          isCustom: false,
+        },
       ]);
 
       // Launch and tick session
@@ -2040,8 +2505,13 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // 3. Alice inspects Cyberpunk friends again: Bob is now inactive with updated playtime
-      const friendsRes = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-      const bob = friendsRes.friends.find((f) => f.user_id === String(userBob.id));
+      const friendsRes = GameServerTestEngine.getGameFriends(
+        String(userAlice.id),
+        "steam_1091500",
+      );
+      const bob = friendsRes.friends.find(
+        (f) => f.user_id === String(userBob.id),
+      );
       expect(bob?.is_playing).toBe(false);
       expect(bob?.playtime_seconds).toBe(logRes.total_seconds);
     });
@@ -2077,13 +2547,20 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
       expect(launchRes.success).toBe(true);
 
-      await bridgeHarness.callBridge("simulate_process_exit", { gameId: addRes.game.game_id });
+      await bridgeHarness.callBridge("simulate_process_exit", {
+        gameId: addRes.game.game_id,
+      });
     });
 
     it("T3-05: Social Graph Privacy Toggle -> Real-Time Presence Invalidation", () => {
       // Ensure Bob owns and is playing Cyberpunk
       GameServerTestEngine.syncUserGames(String(userBob.id), [
-        { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+        {
+          id: "steam_1091500",
+          title: "Cyberpunk 2077",
+          platform: "steam",
+          isCustom: false,
+        },
       ]);
       GameServerTestEngine.setGamePresence(String(userBob.id), {
         game_id: "steam_1091500",
@@ -2093,18 +2570,38 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // Alice sees Bob playing
-      let res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-      expect(res.friends.some((f) => f.user_id === String(userBob.id))).toBe(true);
+      let res = GameServerTestEngine.getGameFriends(
+        String(userAlice.id),
+        "steam_1091500",
+      );
+      expect(res.friends.some((f) => f.user_id === String(userBob.id))).toBe(
+        true,
+      );
 
       // Bob sets privacy share_game_activity: false
-      upsertTable("user_preferences", { share_game_activity: false }, String(userBob.id), "user_id");
+      upsertTable(
+        "user_preferences",
+        { share_game_activity: false },
+        String(userBob.id),
+        "user_id",
+      );
 
       // Alice immediately no longer sees Bob in friends list
-      res = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-      expect(res.friends.some((f) => f.user_id === String(userBob.id))).toBe(false);
+      res = GameServerTestEngine.getGameFriends(
+        String(userAlice.id),
+        "steam_1091500",
+      );
+      expect(res.friends.some((f) => f.user_id === String(userBob.id))).toBe(
+        false,
+      );
 
       // Re-enable
-      upsertTable("user_preferences", { share_game_activity: true }, String(userBob.id), "user_id");
+      upsertTable(
+        "user_preferences",
+        { share_game_activity: true },
+        String(userBob.id),
+        "user_id",
+      );
     });
 
     it("T3-06: Desktop Gating Transition -> Bridge Scan Auto-Trigger", async () => {
@@ -2130,10 +2627,34 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
     it("T3-07: Search Query + Platform Filter + Sort by Playtime", () => {
       const library: InstalledGame[] = [
-        { id: "1", title: "Call of Duty: Warzone", platform: "steam", playtimeMinutes: 300, isCustom: false },
-        { id: "2", title: "Call of Duty: Modern Warfare", platform: "steam", playtimeMinutes: 900, isCustom: false },
-        { id: "3", title: "Call of Duty: Black Ops", platform: "ea", playtimeMinutes: 1200, isCustom: false },
-        { id: "4", title: "Cyberpunk 2077", platform: "steam", playtimeMinutes: 500, isCustom: false },
+        {
+          id: "1",
+          title: "Call of Duty: Warzone",
+          platform: "steam",
+          playtimeMinutes: 300,
+          isCustom: false,
+        },
+        {
+          id: "2",
+          title: "Call of Duty: Modern Warfare",
+          platform: "steam",
+          playtimeMinutes: 900,
+          isCustom: false,
+        },
+        {
+          id: "3",
+          title: "Call of Duty: Black Ops",
+          platform: "ea",
+          playtimeMinutes: 1200,
+          isCustom: false,
+        },
+        {
+          id: "4",
+          title: "Cyberpunk 2077",
+          platform: "steam",
+          playtimeMinutes: 500,
+          isCustom: false,
+        },
       ];
 
       // Filter by platform 'steam', search 'Duty', sort by Playtime descending
@@ -2150,11 +2671,20 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     it("T3-08: Sequential Multi-Game Playtime Accumulation", () => {
       const uid = String(userAlice.id);
       // Play Game 1 for 600s
-      GameServerTestEngine.logPlaytime(uid, { game_id: "seq_g1", duration_seconds: 600 });
+      GameServerTestEngine.logPlaytime(uid, {
+        game_id: "seq_g1",
+        duration_seconds: 600,
+      });
       // Play Game 2 for 900s
-      GameServerTestEngine.logPlaytime(uid, { game_id: "seq_g2", duration_seconds: 900 });
+      GameServerTestEngine.logPlaytime(uid, {
+        game_id: "seq_g2",
+        duration_seconds: 900,
+      });
       // Play Game 1 again for 400s
-      GameServerTestEngine.logPlaytime(uid, { game_id: "seq_g1", duration_seconds: 400 });
+      GameServerTestEngine.logPlaytime(uid, {
+        game_id: "seq_g1",
+        duration_seconds: 400,
+      });
 
       const g1 = GameServerTestEngine.getUserPlaytime(uid, "seq_g1");
       const g2 = GameServerTestEngine.getUserPlaytime(uid, "seq_g2");
@@ -2164,20 +2694,49 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
     it("T3-09: Multi-User Simultaneous Game Sessions", () => {
       // Alice and Bob both launch Rocket League
-      GameServerTestEngine.syncUserGames(String(userAlice.id), [{ id: "rl_1", title: "Rocket League", platform: "epic", isCustom: false }]);
-      GameServerTestEngine.syncUserGames(String(userBob.id), [{ id: "rl_1", title: "Rocket League", platform: "epic", isCustom: false }]);
+      GameServerTestEngine.syncUserGames(String(userAlice.id), [
+        {
+          id: "rl_1",
+          title: "Rocket League",
+          platform: "epic",
+          isCustom: false,
+        },
+      ]);
+      GameServerTestEngine.syncUserGames(String(userBob.id), [
+        {
+          id: "rl_1",
+          title: "Rocket League",
+          platform: "epic",
+          isCustom: false,
+        },
+      ]);
 
-      GameServerTestEngine.setGamePresence(String(userAlice.id), { game_id: "rl_1", game_title: "Rocket League", is_playing: true });
-      GameServerTestEngine.setGamePresence(String(userBob.id), { game_id: "rl_1", game_title: "Rocket League", is_playing: true });
+      GameServerTestEngine.setGamePresence(String(userAlice.id), {
+        game_id: "rl_1",
+        game_title: "Rocket League",
+        is_playing: true,
+      });
+      GameServerTestEngine.setGamePresence(String(userBob.id), {
+        game_id: "rl_1",
+        game_title: "Rocket League",
+        is_playing: true,
+      });
 
       // Charlie (friend of both) checks who is playing Rocket League
-      const res = GameServerTestEngine.getGameFriends(String(userCharlie.id), "rl_1");
+      const res = GameServerTestEngine.getGameFriends(
+        String(userCharlie.id),
+        "rl_1",
+      );
       expect(res.friends.length).toBe(2);
       expect(res.friends.every((f) => f.is_playing)).toBe(true);
 
       // Clean presence
-      GameServerTestEngine.setGamePresence(String(userAlice.id), { is_playing: false });
-      GameServerTestEngine.setGamePresence(String(userBob.id), { is_playing: false });
+      GameServerTestEngine.setGamePresence(String(userAlice.id), {
+        is_playing: false,
+      });
+      GameServerTestEngine.setGamePresence(String(userBob.id), {
+        is_playing: false,
+      });
     });
 
     it("T3-10: Localization Change + Game Library Navigation & Details Drawer", () => {
@@ -2221,7 +2780,9 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     it("T3-12: Offline Bridge Scanner Failure -> Retry Recovery", async () => {
       // Simulate transient scanner error
       bridgeHarness.isAvailable = false;
-      await expect(bridgeHarness.callBridge("scan_installed_games")).rejects.toThrow();
+      await expect(
+        bridgeHarness.callBridge("scan_installed_games"),
+      ).rejects.toThrow();
 
       // Retry when bridge is reconnected
       bridgeHarness.isAvailable = true;
@@ -2233,40 +2794,84 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       const u1 = String(userAlice.id);
       const u4 = String(userDave.id);
 
-      GameServerTestEngine.syncUserGames(u4, [{ id: "shared_g", title: "Shared Game", platform: "steam", isCustom: false }]);
+      GameServerTestEngine.syncUserGames(u4, [
+        {
+          id: "shared_g",
+          title: "Shared Game",
+          platform: "steam",
+          isCustom: false,
+        },
+      ]);
 
       // 1. Pending: Dave not visible
-      upsertTable("friendships", { id: `f_${u1}_${u4}`, user_id: u1, friend_id: u4, status: "pending" }, u1);
+      upsertTable(
+        "friendships",
+        { id: `f_${u1}_${u4}`, user_id: u1, friend_id: u4, status: "pending" },
+        u1,
+      );
       let friends = GameServerTestEngine.getGameFriends(u1, "shared_g");
       expect(friends.friends.some((f) => f.user_id === u4)).toBe(false);
 
       // 2. Accepted: Dave becomes visible
-      upsertTable("friendships", { id: `f_${u1}_${u4}`, user_id: u1, friend_id: u4, status: "accepted" }, u1);
+      upsertTable(
+        "friendships",
+        { id: `f_${u1}_${u4}`, user_id: u1, friend_id: u4, status: "accepted" },
+        u1,
+      );
       friends = GameServerTestEngine.getGameFriends(u1, "shared_g");
       expect(friends.friends.some((f) => f.user_id === u4)).toBe(true);
 
       // 3. Unfriended: Dave disappears
-      deleteTable("friendships", [{ field: "id", operator: "eq", value: `f_${u1}_${u4}` }], u1);
+      deleteTable(
+        "friendships",
+        [{ field: "id", operator: "eq", value: `f_${u1}_${u4}` }],
+        u1,
+      );
       friends = GameServerTestEngine.getGameFriends(u1, "shared_g");
       expect(friends.friends.some((f) => f.user_id === u4)).toBe(false);
     });
 
     it("T3-14: Executable Fallback Artwork Resolution across Mixed Game List", () => {
       const games: InstalledGame[] = [
-        { id: "1", title: "CDN Art", platform: "steam", bannerUrl: "https://cdn.com/art.jpg", isCustom: false },
-        { id: "2", title: "Base64 Icon", platform: "epic", iconUrl: "data:image/png;base64,abc", isCustom: false },
-        { id: "3", title: "Fallback Generic", platform: "custom", isCustom: true },
+        {
+          id: "1",
+          title: "CDN Art",
+          platform: "steam",
+          bannerUrl: "https://cdn.com/art.jpg",
+          isCustom: false,
+        },
+        {
+          id: "2",
+          title: "Base64 Icon",
+          platform: "epic",
+          iconUrl: "data:image/png;base64,abc",
+          isCustom: false,
+        },
+        {
+          id: "3",
+          title: "Fallback Generic",
+          platform: "custom",
+          isCustom: true,
+        },
       ];
 
-      const resolveArtwork = (g: InstalledGame) => g.bannerUrl || g.iconUrl || "GENERIC_FALLBACK_ARTWORK";
+      const resolveArtwork = (g: InstalledGame) =>
+        g.bannerUrl || g.iconUrl || "GENERIC_FALLBACK_ARTWORK";
       expect(resolveArtwork(games[0])).toBe("https://cdn.com/art.jpg");
       expect(resolveArtwork(games[1])).toBe("data:image/png;base64,abc");
       expect(resolveArtwork(games[2])).toBe("GENERIC_FALLBACK_ARTWORK");
     });
 
     it("T3-15: Process Monitor Crash Recovery & Playtime Reconciliation", async () => {
-      await bridgeHarness.callBridge("launch_game", { gameId: "crash_game", title: "Crash Game", platform: "custom" });
-      await bridgeHarness.callBridge("simulate_process_tick", { gameId: "crash_game", deltaSeconds: 45 });
+      await bridgeHarness.callBridge("launch_game", {
+        gameId: "crash_game",
+        title: "Crash Game",
+        platform: "custom",
+      });
+      await bridgeHarness.callBridge("simulate_process_tick", {
+        gameId: "crash_game",
+        deltaSeconds: 45,
+      });
 
       // Simulate unexpected crash (process abruptly removed from table)
       const running = bridgeHarness.runningProcesses.get("crash_game");
@@ -2321,14 +2926,27 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     it("T4-02: End-to-End Social Gaming Night (Multi-Friend Co-op)", async () => {
       // Sync Cyberpunk for Alice and Bob
       GameServerTestEngine.syncUserGames(String(userAlice.id), [
-        { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+        {
+          id: "steam_1091500",
+          title: "Cyberpunk 2077",
+          platform: "steam",
+          isCustom: false,
+        },
       ]);
       GameServerTestEngine.syncUserGames(String(userBob.id), [
-        { id: "steam_1091500", title: "Cyberpunk 2077", platform: "steam", isCustom: false },
+        {
+          id: "steam_1091500",
+          title: "Cyberpunk 2077",
+          platform: "steam",
+          isCustom: false,
+        },
       ]);
 
       // Alice launches Cyberpunk
-      await bridgeHarness.callBridge("launch_game", { gameId: "steam_1091500", platform: "steam" });
+      await bridgeHarness.callBridge("launch_game", {
+        gameId: "steam_1091500",
+        platform: "steam",
+      });
       GameServerTestEngine.setGamePresence(String(userAlice.id), {
         game_id: "steam_1091500",
         game_title: "Cyberpunk 2077",
@@ -2337,12 +2955,20 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // Bob checks Game Library -> Cyberpunk details drawer -> sees Alice playing live
-      const bobCheck = GameServerTestEngine.getGameFriends(String(userBob.id), "steam_1091500");
-      const aliceInBobView = bobCheck.friends.find((f) => f.user_id === String(userAlice.id));
+      const bobCheck = GameServerTestEngine.getGameFriends(
+        String(userBob.id),
+        "steam_1091500",
+      );
+      const aliceInBobView = bobCheck.friends.find(
+        (f) => f.user_id === String(userAlice.id),
+      );
       expect(aliceInBobView?.is_playing).toBe(true);
 
       // Bob joins the game
-      await bridgeHarness.callBridge("launch_game", { gameId: "steam_1091500", platform: "steam" });
+      await bridgeHarness.callBridge("launch_game", {
+        gameId: "steam_1091500",
+        platform: "steam",
+      });
       GameServerTestEngine.setGamePresence(String(userBob.id), {
         game_id: "steam_1091500",
         game_title: "Cyberpunk 2077",
@@ -2351,17 +2977,33 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // Charlie checks -> sees BOTH Alice and Bob playing live
-      const charlieCheck = GameServerTestEngine.getGameFriends(String(userCharlie.id), "steam_1091500");
+      const charlieCheck = GameServerTestEngine.getGameFriends(
+        String(userCharlie.id),
+        "steam_1091500",
+      );
       expect(charlieCheck.friends.filter((f) => f.is_playing).length).toBe(2);
 
       // Gaming session ends after 1800s
-      GameServerTestEngine.logPlaytime(String(userAlice.id), { game_id: "steam_1091500", duration_seconds: 1800 });
-      GameServerTestEngine.logPlaytime(String(userBob.id), { game_id: "steam_1091500", duration_seconds: 1800 });
-      GameServerTestEngine.setGamePresence(String(userAlice.id), { is_playing: false });
-      GameServerTestEngine.setGamePresence(String(userBob.id), { is_playing: false });
+      GameServerTestEngine.logPlaytime(String(userAlice.id), {
+        game_id: "steam_1091500",
+        duration_seconds: 1800,
+      });
+      GameServerTestEngine.logPlaytime(String(userBob.id), {
+        game_id: "steam_1091500",
+        duration_seconds: 1800,
+      });
+      GameServerTestEngine.setGamePresence(String(userAlice.id), {
+        is_playing: false,
+      });
+      GameServerTestEngine.setGamePresence(String(userBob.id), {
+        is_playing: false,
+      });
 
       // Charlie checks again -> neither is playing, playtimes updated
-      const finalCheck = GameServerTestEngine.getGameFriends(String(userCharlie.id), "steam_1091500");
+      const finalCheck = GameServerTestEngine.getGameFriends(
+        String(userCharlie.id),
+        "steam_1091500",
+      );
       expect(finalCheck.friends.every((f) => !f.is_playing)).toBe(true);
     });
 
@@ -2399,13 +3041,21 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // 5. Query user playtime
-      const pt = GameServerTestEngine.getUserPlaytime(String(userAlice.id), addRes.game.game_id);
+      const pt = GameServerTestEngine.getUserPlaytime(
+        String(userAlice.id),
+        addRes.game.game_id,
+      );
       expect(pt.total_seconds).toBe(2700);
     });
 
     it("T4-04: End-to-End Privacy-Conscious User Workflow", () => {
       // Charlie disables game activity sharing
-      upsertTable("user_preferences", { share_game_activity: false }, String(userCharlie.id), "user_id");
+      upsertTable(
+        "user_preferences",
+        { share_game_activity: false },
+        String(userCharlie.id),
+        "user_id",
+      );
 
       // Charlie plays Cyberpunk for 7200s
       GameServerTestEngine.logPlaytime(String(userCharlie.id), {
@@ -2419,15 +3069,28 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // Alice checks Cyberpunk -> Charlie is completely hidden
-      const aliceCheck = GameServerTestEngine.getGameFriends(String(userAlice.id), "steam_1091500");
-      expect(aliceCheck.friends.some((f) => f.user_id === String(userCharlie.id))).toBe(false);
+      const aliceCheck = GameServerTestEngine.getGameFriends(
+        String(userAlice.id),
+        "steam_1091500",
+      );
+      expect(
+        aliceCheck.friends.some((f) => f.user_id === String(userCharlie.id)),
+      ).toBe(false);
 
       // Charlie's personal playtime is still fully retained
-      const charliePt = GameServerTestEngine.getUserPlaytime(String(userCharlie.id), "steam_1091500");
+      const charliePt = GameServerTestEngine.getUserPlaytime(
+        String(userCharlie.id),
+        "steam_1091500",
+      );
       expect(charliePt.total_seconds).toBeGreaterThanOrEqual(7200);
 
       // Restore privacy
-      upsertTable("user_preferences", { share_game_activity: true }, String(userCharlie.id), "user_id");
+      upsertTable(
+        "user_preferences",
+        { share_game_activity: true },
+        String(userCharlie.id),
+        "user_id",
+      );
     });
 
     it("T4-05: End-to-End Multi-Platform Power User Workflow", async () => {
@@ -2437,20 +3100,30 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       GameServerTestEngine.syncUserGames(uid, bridgeHarness.installedGames);
 
       // Log variable playtimes
-      GameServerTestEngine.logPlaytime(uid, { game_id: "steam_1091500", duration_seconds: 50000 });
-      GameServerTestEngine.logPlaytime(uid, { game_id: "epic_Fortnite", duration_seconds: 10000 });
-      GameServerTestEngine.logPlaytime(uid, { game_id: "gog_1430782390", duration_seconds: 90000 });
+      GameServerTestEngine.logPlaytime(uid, {
+        game_id: "steam_1091500",
+        duration_seconds: 50000,
+      });
+      GameServerTestEngine.logPlaytime(uid, {
+        game_id: "epic_Fortnite",
+        duration_seconds: 10000,
+      });
+      GameServerTestEngine.logPlaytime(uid, {
+        game_id: "gog_1430782390",
+        duration_seconds: 90000,
+      });
 
       // Power user sorts by Playtime descending
-      const playtimes = GameServerTestEngine.getUserPlaytime(uid).playtime || {};
+      const playtimes =
+        GameServerTestEngine.getUserPlaytime(uid).playtime || {};
       const allGames = getTableRows("user_games", uid);
       const sorted = [...allGames].sort((a: any, b: any) => {
         return (playtimes[b.game_id] || 0) - (playtimes[a.game_id] || 0);
       });
 
       expect(sorted[0].game_id).toBe("gog_1430782390"); // 90000s
-      expect(sorted[1].game_id).toBe("steam_1091500");  // 50000s
-      expect(sorted[2].game_id).toBe("epic_Fortnite");  // 10000s
+      expect(sorted[1].game_id).toBe("steam_1091500"); // 50000s
+      expect(sorted[2].game_id).toBe("epic_Fortnite"); // 10000s
     });
 
     it("T4-06: End-to-End Web vs Desktop Experience", () => {
@@ -2482,7 +3155,11 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
     it("T4-08: End-to-End Process Interruption & Offline Queue Flush", async () => {
       // 1. User launches game
-      await bridgeHarness.callBridge("launch_game", { gameId: "offline_g", title: "Offline Game", platform: "custom" });
+      await bridgeHarness.callBridge("launch_game", {
+        gameId: "offline_g",
+        title: "Offline Game",
+        platform: "custom",
+      });
 
       // 2. Simulated network disconnect -> playtime ticks accumulate in local queue
       const offlineQueue: { gameId: string; delta: number }[] = [];
@@ -2501,10 +3178,15 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       }
       expect(totalFlushed).toBe(180);
 
-      const serverPlaytime = GameServerTestEngine.getUserPlaytime(String(userAlice.id), "offline_g");
+      const serverPlaytime = GameServerTestEngine.getUserPlaytime(
+        String(userAlice.id),
+        "offline_g",
+      );
       expect(serverPlaytime.total_seconds).toBe(180);
 
-      await bridgeHarness.callBridge("simulate_process_exit", { gameId: "offline_g" });
+      await bridgeHarness.callBridge("simulate_process_exit", {
+        gameId: "offline_g",
+      });
     });
 
     it("T4-09: End-to-End Game Library Management & Custom Game Deletion", () => {
@@ -2520,7 +3202,11 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       expect(rows.some((r: any) => r.game_id === res.game.game_id)).toBe(true);
 
       // User deletes custom game
-      deleteTable("user_games", [{ field: "game_id", operator: "eq", value: res.game.game_id }], uid);
+      deleteTable(
+        "user_games",
+        [{ field: "game_id", operator: "eq", value: res.game.game_id }],
+        uid,
+      );
 
       // Verify removed
       rows = getTableRows("user_games", uid);
@@ -2556,19 +3242,36 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       });
 
       // 6. Live friend verification
-      const friendView = GameServerTestEngine.getFriendsGameActivity(String(userBob.id));
-      const aliceLive = friendView.activity.find((a) => a.user_id === String(userAlice.id));
+      const friendView = GameServerTestEngine.getFriendsGameActivity(
+        String(userBob.id),
+      );
+      const aliceLive = friendView.activity.find(
+        (a) => a.user_id === String(userAlice.id),
+      );
       expect(aliceLive?.is_playing).toBe(true);
       expect(aliceLive?.current_game).toBe("Masterpiece Odyssey");
 
       // 7. Session tick & stop
-      await bridgeHarness.callBridge("simulate_process_tick", { gameId: custom.game.game_id, deltaSeconds: 3600 });
-      await bridgeHarness.callBridge("simulate_process_exit", { gameId: custom.game.game_id });
-      GameServerTestEngine.logPlaytime(String(userAlice.id), { game_id: custom.game.game_id, duration_seconds: 3600 });
-      GameServerTestEngine.setGamePresence(String(userAlice.id), { is_playing: false });
+      await bridgeHarness.callBridge("simulate_process_tick", {
+        gameId: custom.game.game_id,
+        deltaSeconds: 3600,
+      });
+      await bridgeHarness.callBridge("simulate_process_exit", {
+        gameId: custom.game.game_id,
+      });
+      GameServerTestEngine.logPlaytime(String(userAlice.id), {
+        game_id: custom.game.game_id,
+        duration_seconds: 3600,
+      });
+      GameServerTestEngine.setGamePresence(String(userAlice.id), {
+        is_playing: false,
+      });
 
       // 8. Verification of accumulated server playtime
-      const finalPlaytime = GameServerTestEngine.getUserPlaytime(String(userAlice.id), custom.game.game_id);
+      const finalPlaytime = GameServerTestEngine.getUserPlaytime(
+        String(userAlice.id),
+        custom.game.game_id,
+      );
       expect(finalPlaytime.total_seconds).toBe(3600);
     });
   });

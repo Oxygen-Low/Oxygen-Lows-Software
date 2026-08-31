@@ -233,9 +233,15 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
   it("verifies favicon tags are present in root index.html", async () => {
     const fs = await import("node:fs");
     const indexHtml = fs.readFileSync("index.html", "utf-8");
-    expect(indexHtml).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />');
-    expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="/favicon.ico" />');
-    expect(indexHtml).toContain('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />');
+    expect(indexHtml).toContain(
+      '<link rel="icon" type="image/svg+xml" href="/favicon.svg" />',
+    );
+    expect(indexHtml).toContain(
+      '<link rel="icon" type="image/x-icon" href="/favicon.ico" />',
+    );
+    expect(indexHtml).toContain(
+      '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />',
+    );
   });
 
   it("ensures orphan pages (/apps/base64-encoder, /apps/json-formatter, /apps/vpn) have inbound links in index.html and navigation", async () => {

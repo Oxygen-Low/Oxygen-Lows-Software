@@ -168,16 +168,76 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
     beforeEach(() => {
       // Seed rich dataset for userA
       const seedData = [
-        { id: "m-1", provider: "openai", model_id: "gpt-4o", name: "GPT-4o Omnimodel", created_at: "2026-01-01T00:00:00Z" },
-        { id: "m-2", provider: "openai", model_id: "gpt-4o-mini", name: "GPT-4o Mini", created_at: "2026-01-02T00:00:00Z" },
-        { id: "m-3", provider: "openai", model_id: "o1-preview", name: "o1 Preview", created_at: "2026-01-03T00:00:00Z" },
-        { id: "m-4", provider: "anthropic", model_id: "claude-3-7-sonnet", name: "Claude 3.7 Sonnet", created_at: "2026-01-04T00:00:00Z" },
-        { id: "m-5", provider: "anthropic", model_id: "claude-3-5-haiku", name: "Claude 3.5 Haiku", created_at: "2026-01-05T00:00:00Z" },
-        { id: "m-6", provider: "google", model_id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", created_at: "2026-01-06T00:00:00Z" },
-        { id: "m-7", provider: "google", model_id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", created_at: "2026-01-07T00:00:00Z" },
-        { id: "m-8", provider: "openrouter", model_id: "deepseek/deepseek-r1", name: "DeepSeek R1", created_at: "2026-01-08T00:00:00Z" },
-        { id: "m-9", provider: "local", model_id: "qwen2.5:32b", name: "Qwen 2.5 32B Local", created_at: "2026-01-09T00:00:00Z" },
-        { id: "m-10", provider: "ollama", model_id: "llama3.3:70b", name: "Llama 3.3 70B Ollama", created_at: "2026-01-10T00:00:00Z" },
+        {
+          id: "m-1",
+          provider: "openai",
+          model_id: "gpt-4o",
+          name: "GPT-4o Omnimodel",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "m-2",
+          provider: "openai",
+          model_id: "gpt-4o-mini",
+          name: "GPT-4o Mini",
+          created_at: "2026-01-02T00:00:00Z",
+        },
+        {
+          id: "m-3",
+          provider: "openai",
+          model_id: "o1-preview",
+          name: "o1 Preview",
+          created_at: "2026-01-03T00:00:00Z",
+        },
+        {
+          id: "m-4",
+          provider: "anthropic",
+          model_id: "claude-3-7-sonnet",
+          name: "Claude 3.7 Sonnet",
+          created_at: "2026-01-04T00:00:00Z",
+        },
+        {
+          id: "m-5",
+          provider: "anthropic",
+          model_id: "claude-3-5-haiku",
+          name: "Claude 3.5 Haiku",
+          created_at: "2026-01-05T00:00:00Z",
+        },
+        {
+          id: "m-6",
+          provider: "google",
+          model_id: "gemini-2.5-pro",
+          name: "Gemini 2.5 Pro",
+          created_at: "2026-01-06T00:00:00Z",
+        },
+        {
+          id: "m-7",
+          provider: "google",
+          model_id: "gemini-2.5-flash",
+          name: "Gemini 2.5 Flash",
+          created_at: "2026-01-07T00:00:00Z",
+        },
+        {
+          id: "m-8",
+          provider: "openrouter",
+          model_id: "deepseek/deepseek-r1",
+          name: "DeepSeek R1",
+          created_at: "2026-01-08T00:00:00Z",
+        },
+        {
+          id: "m-9",
+          provider: "local",
+          model_id: "qwen2.5:32b",
+          name: "Qwen 2.5 32B Local",
+          created_at: "2026-01-09T00:00:00Z",
+        },
+        {
+          id: "m-10",
+          provider: "ollama",
+          model_id: "llama3.3:70b",
+          name: "Llama 3.3 70B Ollama",
+          created_at: "2026-01-10T00:00:00Z",
+        },
       ];
 
       for (const item of seedData) {
@@ -187,12 +247,22 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       // Seed userB with isolated models
       insertTable(
         "user_models",
-        { id: "m-b-1", provider: "openai", model_id: "gpt-4o", name: "Bob GPT-4o" },
+        {
+          id: "m-b-1",
+          provider: "openai",
+          model_id: "gpt-4o",
+          name: "Bob GPT-4o",
+        },
         userB,
       );
       insertTable(
         "user_models",
-        { id: "m-b-2", provider: "xai", model_id: "grok-2", name: "Bob Grok 2" },
+        {
+          id: "m-b-2",
+          provider: "xai",
+          model_id: "grok-2",
+          name: "Bob Grok 2",
+        },
         userB,
       );
     });
@@ -236,7 +306,13 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       const selected = queryTable({
         table: "user_models",
         userId: userA,
-        filters: [{ field: "provider", operator: "in", value: ["google", "openrouter"] }],
+        filters: [
+          {
+            field: "provider",
+            operator: "in",
+            value: ["google", "openrouter"],
+          },
+        ],
       });
       expect(selected).toHaveLength(3);
       expect(selected.map((m: any) => m.model_id).sort()).toEqual([
@@ -250,7 +326,9 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       const deepseek = queryTable({
         table: "user_models",
         userId: userA,
-        filters: [{ field: "model_id", operator: "eq", value: "deepseek/deepseek-r1" }],
+        filters: [
+          { field: "model_id", operator: "eq", value: "deepseek/deepseek-r1" },
+        ],
         single: true,
       });
       expect(deepseek).not.toBeNull();
@@ -372,7 +450,10 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
         userId: userB,
       });
       expect(userBModels).toHaveLength(2);
-      expect(userBModels.map((m: any) => m.id).sort()).toEqual(["m-b-1", "m-b-2"]);
+      expect(userBModels.map((m: any) => m.id).sort()).toEqual([
+        "m-b-1",
+        "m-b-2",
+      ]);
 
       // Aggregated query (no userId specified) aggregates across all users
       const allUsersModels = queryTable({
@@ -436,7 +517,9 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       const diskPrefs = JSON.parse(fs.readFileSync(prefPath, "utf-8"));
       expect(diskPrefs.chatbot_default_model).toBe("gpt-4o");
       expect(diskPrefs.research_agent_default_model).toBe("claude-3-7-sonnet");
-      expect(diskPrefs.research_summarizer_default_model).toBe("gemini-2.5-pro");
+      expect(diskPrefs.research_summarizer_default_model).toBe(
+        "gemini-2.5-pro",
+      );
     });
 
     test("Partial updates to preferences do not overwrite other fields", () => {
@@ -469,9 +552,15 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       expect(partialResult.theme).toBe("dark");
       expect(partialResult.volume).toBe(80);
       expect(partialResult.chatbot_default_model).toBe("gpt-4o");
-      expect(partialResult.research_agent_default_model).toBe("claude-3-7-sonnet");
-      expect(partialResult.research_summarizer_default_model).toBe("deepseek/deepseek-r1");
-      expect(partialResult.research_summarizer_default_provider).toBe("openrouter");
+      expect(partialResult.research_agent_default_model).toBe(
+        "claude-3-7-sonnet",
+      );
+      expect(partialResult.research_summarizer_default_model).toBe(
+        "deepseek/deepseek-r1",
+      );
+      expect(partialResult.research_summarizer_default_provider).toBe(
+        "openrouter",
+      );
     });
 
     test("Unauthorized RPC calls fail cleanly", () => {
@@ -538,7 +627,9 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+        return new Response(JSON.stringify({ error: "Not found" }), {
+          status: 404,
+        });
       });
 
       process.env.CLOUDFLARE_ID = "mock_id";
@@ -587,7 +678,10 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       // 1. Missing query
       const r1 = await app.request("/api/ai/agent-search", {
         method: "POST",
-        headers: { Authorization: `Bearer ${tokenA}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${tokenA}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ responseFormat: "summary" }),
       });
       expect(r1.status).toBe(400);
@@ -595,23 +689,38 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       // 2. Query exceeding 1000 characters
       const r2 = await app.request("/api/ai/agent-search", {
         method: "POST",
-        headers: { Authorization: `Bearer ${tokenA}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "a".repeat(1001), responseFormat: "summary" }),
+        headers: {
+          Authorization: `Bearer ${tokenA}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: "a".repeat(1001),
+          responseFormat: "summary",
+        }),
       });
       expect(r2.status).toBe(400);
 
       // 3. ResponseFormat exceeding 100 characters
       const r3 = await app.request("/api/ai/agent-search", {
         method: "POST",
-        headers: { Authorization: `Bearer ${tokenA}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "valid query", responseFormat: "b".repeat(101) }),
+        headers: {
+          Authorization: `Bearer ${tokenA}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: "valid query",
+          responseFormat: "b".repeat(101),
+        }),
       });
       expect(r3.status).toBe(400);
 
       // 4. Images array > 5 items
       const r4 = await app.request("/api/ai/agent-search", {
         method: "POST",
-        headers: { Authorization: `Bearer ${tokenA}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${tokenA}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           query: "valid query",
           responseFormat: "summary",
@@ -631,7 +740,10 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       const r5 = await app.request("/api/ai/agent-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "valid query", responseFormat: "summary" }),
+        body: JSON.stringify({
+          query: "valid query",
+          responseFormat: "summary",
+        }),
       });
       expect(r5.status).toBe(401);
     });
@@ -649,7 +761,9 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+        return new Response(JSON.stringify({ error: "Not found" }), {
+          status: 404,
+        });
       });
 
       const res = await app.request("/api/ai/agent-search", {
@@ -677,10 +791,30 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
   describe("5. Tricky Character Fuzzing & Filter Operator Exhaustion", () => {
     test("Handles complex unicode, slashes, and colons in model_id seamlessly", () => {
       const specialModels = [
-        { id: "sp-1", provider: "local", model_id: "日本語/model:v1.0@q8", name: "日本語モデル" },
-        { id: "sp-2", provider: "ollama", model_id: "qwen2.5:32b-instruct-q4_K_M", name: "Qwen 32B Ollama" },
-        { id: "sp-3", provider: "openrouter", model_id: "deepseek/deepseek-r1:free", name: "DeepSeek Free" },
-        { id: "sp-4", provider: "xai", model_id: "grok-2-vision-1212", name: "Grok 2 Vision" },
+        {
+          id: "sp-1",
+          provider: "local",
+          model_id: "日本語/model:v1.0@q8",
+          name: "日本語モデル",
+        },
+        {
+          id: "sp-2",
+          provider: "ollama",
+          model_id: "qwen2.5:32b-instruct-q4_K_M",
+          name: "Qwen 32B Ollama",
+        },
+        {
+          id: "sp-3",
+          provider: "openrouter",
+          model_id: "deepseek/deepseek-r1:free",
+          name: "DeepSeek Free",
+        },
+        {
+          id: "sp-4",
+          provider: "xai",
+          model_id: "grok-2-vision-1212",
+          name: "Grok 2 Vision",
+        },
       ];
 
       for (const m of specialModels) {
@@ -691,7 +825,9 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       const hitUnicode = queryTable({
         table: "user_models",
         userId: userA,
-        filters: [{ field: "model_id", operator: "eq", value: "日本語/model:v1.0@q8" }],
+        filters: [
+          { field: "model_id", operator: "eq", value: "日本語/model:v1.0@q8" },
+        ],
         single: true,
       });
       expect(hitUnicode).not.toBeNull();
@@ -707,7 +843,11 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       expect(hitQwen[0].id).toBe("sp-2");
 
       // Multiple deletions by ID
-      const del = deleteTable("user_models", [{ field: "id", operator: "eq", value: "sp-1" }], userA);
+      const del = deleteTable(
+        "user_models",
+        [{ field: "id", operator: "eq", value: "sp-1" }],
+        userA,
+      );
       expect(del).toHaveLength(1);
 
       const remaining = queryTable({ table: "user_models", userId: userA });

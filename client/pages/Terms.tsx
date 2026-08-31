@@ -241,7 +241,7 @@ export default function Terms() {
           index={7}
         >
           <P>
-            Each account is provided with up to <strong>1 GB</strong> of cloud
+            Each account is provided with up to <strong>500 MB</strong> of cloud
             storage for personal files. The VPN/proxy feature is subject to a{" "}
             <strong>50 MB daily bandwidth limit</strong>. These limits may
             change at any time with reasonable notice. Exceeding these limits

@@ -8,7 +8,15 @@ import {
 } from "@/services/entityGenerator";
 export type { GeneratedEntityResult, GenerationStep };
 
-import { Sparkles, Loader2, StopCircle, Globe, User, Users, AlertCircle } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  StopCircle,
+  Globe,
+  User,
+  Users,
+  AlertCircle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -77,9 +85,9 @@ export function AiGenerateDialog({
     selectedProvider: hookProvider = "cloudflare",
   } = hookData;
 
-  const [targetType, setTargetType] = useState<"character" | "universe" | "race">(
-    initialType || "character",
-  );
+  const [targetType, setTargetType] = useState<
+    "character" | "universe" | "race"
+  >(initialType || "character");
   const [prompt, setPrompt] = useState("");
   const [selectedUniverseId, setSelectedUniverseId] = useState<string>(
     initialUniverse?.id || "",
@@ -97,9 +105,8 @@ export function AiGenerateDialog({
   const [currentStep, setCurrentStep] = useState<GenerationStep>("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [abortController, setAbortController] = useState<AbortController | null>(
-    null,
-  );
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -141,7 +148,8 @@ export function AiGenerateDialog({
 
     try {
       const chosenUniverse =
-        (targetType === "character" || targetType === "race") && selectedUniverseId
+        (targetType === "character" || targetType === "race") &&
+        selectedUniverseId
           ? universes.find((u) => u.id === selectedUniverseId) || null
           : null;
 
@@ -150,7 +158,9 @@ export function AiGenerateDialog({
           ? races.find((r) => r.id === selectedRaceId) || null
           : null;
 
-      const chosenModel = models.find((m) => m.model_id === selectedModelId) || {
+      const chosenModel = models.find(
+        (m) => m.model_id === selectedModelId,
+      ) || {
         provider: selectedProvider,
         model_id: selectedModelId,
       };
@@ -262,7 +272,11 @@ export function AiGenerateDialog({
           {/* Target Type Selector */}
           <div className="space-y-1.5" data-testid="target-type-selector">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              {t("characters.aiGenerate.targetType", undefined, "Generation Target")}
+              {t(
+                "characters.aiGenerate.targetType",
+                undefined,
+                "Generation Target",
+              )}
             </label>
             <div className="flex gap-2 p-1 bg-slate-950/60 border border-slate-800 rounded-lg">
               <label
@@ -332,7 +346,11 @@ export function AiGenerateDialog({
                 htmlFor="race-select"
                 className="text-xs font-semibold text-slate-400 uppercase tracking-wider block"
               >
-                {t("characters.aiGenerate.targetRace", undefined, "Character Race (Optional)")}
+                {t(
+                  "characters.aiGenerate.targetRace",
+                  undefined,
+                  "Character Race (Optional)",
+                )}
               </label>
               <select
                 id="race-select"
@@ -360,7 +378,10 @@ export function AiGenerateDialog({
 
           {/* Universe Selector (When targetType === character or targetType === race) */}
           {(targetType === "character" || targetType === "race") && (
-            <div className="space-y-1.5" data-testid="universe-selector-container">
+            <div
+              className="space-y-1.5"
+              data-testid="universe-selector-container"
+            >
               <label
                 htmlFor="universe-select"
                 className="text-xs font-semibold text-slate-400 uppercase tracking-wider block"
@@ -481,7 +502,8 @@ export function AiGenerateDialog({
                 <span
                   data-testid="step-summarizing"
                   style={{
-                    fontWeight: currentStep === "summarizing" ? "bold" : "normal",
+                    fontWeight:
+                      currentStep === "summarizing" ? "bold" : "normal",
                   }}
                   className={`p-2 rounded text-center transition-all ${
                     currentStep === "summarizing"
@@ -498,7 +520,8 @@ export function AiGenerateDialog({
                 <span
                   data-testid="step-researching"
                   style={{
-                    fontWeight: currentStep === "researching" ? "bold" : "normal",
+                    fontWeight:
+                      currentStep === "researching" ? "bold" : "normal",
                   }}
                   className={`p-2 rounded text-center transition-all ${
                     currentStep === "researching"
@@ -515,7 +538,8 @@ export function AiGenerateDialog({
                 <span
                   data-testid="step-generating"
                   style={{
-                    fontWeight: currentStep === "generating" ? "bold" : "normal",
+                    fontWeight:
+                      currentStep === "generating" ? "bold" : "normal",
                   }}
                   className={`p-2 rounded text-center transition-all ${
                     currentStep === "generating"

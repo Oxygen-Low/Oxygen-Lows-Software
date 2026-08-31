@@ -11,7 +11,9 @@ vi.mock("@/lib/db", () => {
   const mockClient = {
     auth: {
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "test-user-id" }, access_token: "test-token" } },
+        data: {
+          session: { user: { id: "test-user-id" }, access_token: "test-token" },
+        },
         error: null,
       }),
     },
@@ -31,7 +33,12 @@ describe("useAgentSearch Hook", () => {
       lastFetchCall = { url: String(url), options };
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ result: "mock result", searches: [], totalPointsUsed: 5 }),
+        json: () =>
+          Promise.resolve({
+            result: "mock result",
+            searches: [],
+            totalPointsUsed: 5,
+          }),
         body: null,
       });
     });
