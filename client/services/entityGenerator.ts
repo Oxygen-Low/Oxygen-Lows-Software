@@ -345,7 +345,10 @@ async function callModel(
   }
 
   if (!res.ok) {
-    throw new Error(`Generation failed with status ${res.status}`);
+    const err: any = new Error(`Generation failed with status ${res.status}`);
+    err.status = res.status;
+    err.statusText = res.statusText;
+    throw err;
   }
 
   const json = await res.json();
@@ -385,18 +388,25 @@ export async function executeEntityGeneration(
     }
 
     const briefInput = buildUniverseBriefPrompt(universe);
-    universeSummary = await callModel(
-      model,
-      [
-        {
-          role: "system",
-          content:
-            "Produce a concise design brief summarizing the world rules, tone, and factions.",
-        },
-        { role: "user", content: briefInput },
-      ],
-      signal,
-    );
+    try {
+      universeSummary = await callModel(
+        model,
+        [
+          {
+            role: "system",
+            content:
+              "Produce a concise design brief summarizing the world rules, tone, and factions.",
+          },
+          { role: "user", content: briefInput },
+        ],
+        signal,
+      );
+    } catch (err: any) {
+      if (signal?.aborted) throw err;
+      throw new Error(
+        `Universe summarization failed: ${err.statusText || err.message}`,
+      );
+    }
   }
 
   // Step 1b: Race Context (if Character with Race)
