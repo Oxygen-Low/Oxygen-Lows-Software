@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { adminVerificationRouter } from "./adminVerification";
+import { serverStorage } from "../lib/storage";
 import { Hono } from "hono";
 
 const app = new Hono();
@@ -36,6 +37,7 @@ vi.mock("../lib/storage.ts", () => ({
     download: vi.fn(async () => ({ data: Buffer.from("test"), error: null })),
     upload: vi.fn(async () => ({ data: {}, error: null })),
     remove: vi.fn(async () => ({ data: {}, error: null })),
+    move: vi.fn(async () => ({ data: { path: "test.png" }, error: null })),
   },
 }));
 
@@ -195,5 +197,11 @@ describe("Admin Verification Routes", () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.verification.status).toBe("approved");
+    expect(serverStorage.move).toHaveBeenCalledWith(
+      "Storage",
+      "user-123/test.png",
+      "public-assets",
+      "user-123/test.png",
+    );
   });
 });

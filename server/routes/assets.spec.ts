@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { assetsRouter } from "./assets";
+import { serverStorage } from "../lib/storage";
 import { Hono } from "hono";
 
 const app = new Hono();
 app.route("/", assetsRouter);
 
 let mockVerifications: any[] = [];
+let mockPublicAssets: any[] = [];
 
 vi.mock("../lib/auth.ts", () => ({
   resolveUserFromToken: vi.fn(async (token: string) => {
@@ -34,6 +36,7 @@ vi.mock("../lib/storage.ts", () => ({
     download: vi.fn(async () => ({ data: Buffer.from("test"), error: null })),
     upload: vi.fn(async () => ({ data: {}, error: null })),
     remove: vi.fn(async () => ({ data: {}, error: null })),
+    move: vi.fn(async () => ({ data: { path: "moved" }, error: null })),
   },
 }));
 
@@ -52,6 +55,15 @@ vi.mock("../lib/dataStore.ts", () => ({
         );
       }
       return mockVerifications;
+    }
+    if (opts.table === "public_assets") {
+      if (opts.filters?.some((f: any) => f.field === "id")) {
+        const idFilter = opts.filters.find((f: any) => f.field === "id");
+        return mockPublicAssets.filter(
+          (a) => String(a.id) === String(idFilter.value),
+        );
+      }
+      return mockPublicAssets;
     }
     return [];
   }),
@@ -186,5 +198,67 @@ describe("Assets & Verification Routes", () => {
     });
 
     expect(res.status).toBe(403);
+  });
+
+  it("moves file back to Storage bucket when deleting approved public asset verification", async () => {
+    mockVerifications = [
+      {
+        id: "v-pub",
+        user_id: "user-123",
+        asset_type: "file",
+        target_type: "public_asset",
+        status: "approved",
+        public_asset_id: "pa-1",
+      },
+    ];
+    mockPublicAssets = [
+      {
+        id: "pa-1",
+        uploader_id: "user-123",
+        user_id: "user-123",
+        file_path: "user-123/published.png",
+      },
+    ];
+
+    const res = await app.request("/verifications/v-pub", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer user-token" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(serverStorage.move).toHaveBeenCalledWith(
+      "public-assets",
+      "user-123/published.png",
+      "Storage",
+      "user-123/published.png",
+    );
+  });
+
+  it("moves file back to Storage bucket when unpublishing a public file", async () => {
+    mockPublicAssets = [
+      {
+        id: "pa-2",
+        uploader_id: "user-123",
+        user_id: "user-123",
+        file_path: "user-123/my-asset.mp3",
+      },
+    ];
+
+    const res = await app.request("/unpublish", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer user-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type: "file", id: "pa-2" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(serverStorage.move).toHaveBeenCalledWith(
+      "public-assets",
+      "user-123/my-asset.mp3",
+      "Storage",
+      "user-123/my-asset.mp3",
+    );
   });
 });

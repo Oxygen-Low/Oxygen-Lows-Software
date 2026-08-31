@@ -188,7 +188,12 @@ assetsRouter.delete("/verifications/:id", async (c) => {
         const asset = assets && assets[0];
         if (asset) {
           if (asset.file_path) {
-            await serverStorage.remove("public-assets", [asset.file_path]);
+            await serverStorage.move(
+              "public-assets",
+              asset.file_path,
+              "Storage",
+              asset.file_path,
+            );
           }
           deleteTable("public_asset_likes", [
             {
@@ -329,9 +334,14 @@ assetsRouter.post("/unpublish", async (c) => {
         return c.json({ error: "Forbidden" }, 403);
       }
 
-      // Remove from public-assets storage bucket if path exists
+      // Move file back from public-assets to private Storage bucket so it is reverted to private
       if (asset.file_path) {
-        await serverStorage.remove("public-assets", [asset.file_path]);
+        await serverStorage.move(
+          "public-assets",
+          asset.file_path,
+          "Storage",
+          asset.file_path,
+        );
       }
 
       // Delete likes and public asset record

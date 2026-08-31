@@ -175,6 +175,8 @@ export default function Storage() {
       );
       setTotalSize(privateSize + pubSize);
 
+      const urls: Record<string, string> = {};
+
       // Get signed URLs for private files
       if (files.length > 0) {
         const filePaths = files.map((f) => `${session.user.id}/${f.name}`);
@@ -182,7 +184,6 @@ export default function Storage() {
           .from("Storage")
           .createSignedUrls(filePaths, 3600);
 
-        const urls: Record<string, string> = {};
         if (!signedError && signedData) {
           signedData.forEach((s: any, i: number) => {
             const file = files[i];
@@ -208,8 +209,20 @@ export default function Storage() {
             }
           }
         }
-        setCloudFileSignedUrls(urls);
       }
+
+      // Populate public URLs for public files
+      publicFiles.forEach((file) => {
+        const { data: pubData } = storage
+          .from("public-assets")
+          .getPublicUrl(`${session.user.id}/${file.name}`);
+        if (pubData?.publicUrl) {
+          if (file.id) urls[file.id] = pubData.publicUrl;
+          if (file.name) urls[file.name] = pubData.publicUrl;
+        }
+      });
+
+      setCloudFileSignedUrls(urls);
 
       // 3. Fetch published public_assets for user
       const { data: pubAssets } = await supabase

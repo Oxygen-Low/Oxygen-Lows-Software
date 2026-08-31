@@ -243,6 +243,44 @@ export const serverStorage = {
     }
   },
 
+  move: async (
+    fromBucket: string,
+    rawFromPath: string,
+    toBucket: string,
+    rawToPath: string,
+  ): Promise<{ data: { path: string } | null; error: Error | null }> => {
+    try {
+      const cleanFromBucket = sanitizePath(fromBucket);
+      const fromPath = sanitizePath(rawFromPath);
+      const cleanToBucket = sanitizePath(toBucket);
+      const toPath = sanitizePath(rawToPath);
+
+      const srcFullPath = path.join(STORAGE_DIR, cleanFromBucket, fromPath);
+      if (!fs.existsSync(srcFullPath)) {
+        return { data: null, error: new Error("Source file not found") };
+      }
+
+      const destTargetDir = path.join(
+        STORAGE_DIR,
+        cleanToBucket,
+        path.dirname(toPath),
+      );
+      fs.mkdirSync(destTargetDir, { recursive: true });
+
+      const destFullPath = path.join(STORAGE_DIR, cleanToBucket, toPath);
+      try {
+        fs.renameSync(srcFullPath, destFullPath);
+      } catch {
+        fs.copyFileSync(srcFullPath, destFullPath);
+        fs.unlinkSync(srcFullPath);
+      }
+
+      return { data: { path: toPath }, error: null };
+    } catch (err: any) {
+      return { data: null, error: err };
+    }
+  },
+
   getPublicUrl: (bucket: string, rawFilePath: string): string => {
     const cleanBucket = sanitizePath(bucket);
     const filePath = sanitizePath(rawFilePath);

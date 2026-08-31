@@ -102,20 +102,32 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
 
     if (verification.target_type === "public_asset") {
       if (verification.asset_type === "file") {
-        // Copy file from private Storage bucket to public-assets bucket if filePath present
+        // Move file from private Storage bucket to public-assets bucket if filePath present
         if (verification.original_file_path) {
-          const { data: fileData, error: downloadErr } =
-            await serverStorage.download(
-              "Storage",
-              verification.original_file_path,
-            );
+          const moveRes = await serverStorage.move(
+            "Storage",
+            verification.original_file_path,
+            "public-assets",
+            verification.original_file_path,
+          );
+          if (moveRes.error) {
+            // Fallback in case file was already moved or needs download/upload
+            const { data: fileData, error: downloadErr } =
+              await serverStorage.download(
+                "Storage",
+                verification.original_file_path,
+              );
 
-          if (!downloadErr && fileData) {
-            await serverStorage.upload(
-              "public-assets",
-              verification.original_file_path,
-              fileData,
-            );
+            if (!downloadErr && fileData) {
+              await serverStorage.upload(
+                "public-assets",
+                verification.original_file_path,
+                fileData,
+              );
+              await serverStorage.remove("Storage", [
+                verification.original_file_path,
+              ]);
+            }
           }
         }
 

@@ -140,6 +140,32 @@ describe("Server Storage Library", () => {
       expect(download2.data?.toString()).toBe("2");
     });
 
+    it("moves files across buckets and cleans up source file", async () => {
+      const destBucket = "dest-bucket";
+      const destDir = path.join(STORAGE_DIR, destBucket);
+
+      try {
+        await serverStorage.upload(testBucket, "u1/moveme.txt", Buffer.from("move content"));
+        const moveRes = await serverStorage.move(testBucket, "u1/moveme.txt", destBucket, "u1/moveme.txt");
+
+        expect(moveRes.error).toBeNull();
+        expect(moveRes.data?.path).toBe("u1/moveme.txt");
+
+        // Old file should no longer exist
+        const oldDownload = await serverStorage.download(testBucket, "u1/moveme.txt");
+        expect(oldDownload.error).not.toBeNull();
+
+        // New file should exist with same content
+        const newDownload = await serverStorage.download(destBucket, "u1/moveme.txt");
+        expect(newDownload.error).toBeNull();
+        expect(newDownload.data?.toString()).toBe("move content");
+      } finally {
+        if (fs.existsSync(destDir)) {
+          fs.rmSync(destDir, { recursive: true, force: true });
+        }
+      }
+    });
+
     it("downloads file when path has nested UUID prefix fallback", async () => {
       await serverStorage.upload(
         testBucket,
