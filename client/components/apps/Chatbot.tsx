@@ -509,6 +509,8 @@ export function ChatbotApp() {
     chatbotDefaultProvider,
     researchAgentDefaultModel,
     researchAgentDefaultProvider,
+    researchSummarizerDefaultModel,
+    researchSummarizerDefaultProvider,
   } = useAiModels();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -1378,8 +1380,10 @@ export function ChatbotApp() {
           responseFormat: parsedFormat,
           researchOnly: true,
           stream: true,
-          ...(researchAgentDefaultModel ? { researchModel: researchAgentDefaultModel } : {}),
-          ...(researchAgentDefaultProvider ? { researchProvider: researchAgentDefaultProvider } : {}),
+          researchModel: selectedModel || researchAgentDefaultModel || undefined,
+          researchProvider: selectedProvider || researchAgentDefaultProvider || undefined,
+          summarizerModel: selectedModel || researchSummarizerDefaultModel || undefined,
+          summarizerProvider: selectedProvider || researchSummarizerDefaultProvider || undefined,
         }),
         signal,
       });

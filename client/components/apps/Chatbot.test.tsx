@@ -800,6 +800,9 @@ describe("ChatbotApp", () => {
 
         if (url === "/api/ai/agent-search") {
           callOrder.push("agent_search");
+          const bodyJson = JSON.parse((options?.body as string) || "{}");
+          expect(bodyJson.researchModel).toBeDefined();
+          expect(bodyJson.researchProvider).toBeDefined();
           const stream = new ReadableStream({
             start(controller) {
               controller.enqueue(

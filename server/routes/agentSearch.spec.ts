@@ -18,11 +18,14 @@ import {
 
 describe("Agent Search Route", () => {
   let app: Hono;
-  const testUserId = "88888";
-  const testUserDir = path.join(DATA_DIR, testUserId);
+  let testUserId = "88888";
+  let testUserDir = path.join(DATA_DIR, testUserId);
   let validToken: string;
 
   beforeEach(() => {
+    testUserId = "search_user_" + Math.random().toString(36).substring(2);
+    testUserDir = path.join(DATA_DIR, testUserId);
+
     if (fs.existsSync(testUserDir)) {
       fs.rmSync(testUserDir, { recursive: true, force: true });
     }
@@ -36,8 +39,20 @@ describe("Agent Search Route", () => {
 
     validToken = generateToken(userData);
 
-    app = new Hono();
-    app.route("/api/ai/agent-search", agentSearchRouter);
+    const baseApp = new Hono();
+    baseApp.route("/api/ai/agent-search", agentSearchRouter);
+    app = {
+      request: (path: string, init?: any) => {
+        const ip = "10.0." + Math.floor(Math.random() * 200) + "." + Math.floor(Math.random() * 200);
+        return baseApp.request(path, {
+          ...init,
+          headers: {
+            "x-forwarded-for": ip,
+            ...init?.headers,
+          },
+        });
+      },
+    } as any;
   });
 
   afterEach(() => {
@@ -284,5 +299,100 @@ describe("Agent Search Route", () => {
 
     expect(res.status).toBe(200);
     expect(capturedCfModel).toBe("@cf/meta/llama-3.1-8b-instruct-fast");
+  });
+
+  test("Maps Horde 'Smart' model alias to koboldcpp/Behemoth-128B-v3b-Q4_K_M", async () => {
+    let capturedHordeModel = "";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      const urlStr = String(url);
+      if (urlStr.includes("stablehorde.net")) {
+        const reqBody = JSON.parse((init?.body as string) || "{}");
+        capturedHordeModel = reqBody.model;
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"action": "done"}' } }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+    });
+
+    const res = await app.request("/api/ai/agent-search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${validToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "What is quantum computing?",
+        responseFormat: "summary",
+        researchOnly: true,
+        stream: false,
+        researchModel: "Smart",
+        researchProvider: "horde",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(capturedHordeModel).toBe("koboldcpp/Behemoth-128B-v3b-Q4_K_M");
+  });
+
+  test("Fails with 400 when unconfigured third-party provider is selected", async () => {
+    const res = await app.request("/api/ai/agent-search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${validToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "Test search",
+        responseFormat: "summary",
+        researchOnly: true,
+        stream: false,
+        researchModel: "gpt-4o",
+        researchProvider: "openai",
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain("Provider 'openai' is not configured");
+  });
+
+  test("Streams generic status messages rather than hardcoding 'fast'", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const urlStr = String(url);
+      if (urlStr.includes("stablehorde.net")) {
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"action": "done"}' } }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+    });
+
+    const res = await app.request("/api/ai/agent-search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${validToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "Test streaming status",
+        responseFormat: "summary",
+        researchOnly: true,
+        stream: true,
+        researchModel: "Smart",
+        researchProvider: "horde",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("Connecting to research agent...");
+    expect(text).not.toContain("Connecting to fast research agent...");
   });
 });

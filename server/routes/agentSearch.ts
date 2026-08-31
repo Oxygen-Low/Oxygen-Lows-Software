@@ -9,6 +9,16 @@ export const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
 export const HORDE_FAST_MODEL = "google/gemma-4-31b";
 export const CLOUDFLARE_SMART_MODEL = "@cf/nvidia/nemotron-3-120b-a12b";
 
+export const HORDE_MODELS_MAP: Record<string, string[]> = {
+  TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
+  Fast: ["google/gemma-4-31b"],
+  Smart: ["koboldcpp/Behemoth-128B-v3b-Q4_K_M"],
+};
+
+export function resolveHordeModel(model: string): string {
+  return HORDE_MODELS_MAP[model]?.[0] || model;
+}
+
 // Max research tool rounds with Horde (up to 100 calls)
 const MAX_RESEARCH_ROUNDS = 100;
 // Global total context token ceiling across the entire research payload combined (~4 chars per token)
@@ -346,16 +356,17 @@ function getTotalResearchChars(
 }
 
 function parseHordeAction(data: any): { tool: string; args: any } | null {
+  if (!data) return null;
   const msg = data.result || data.choices?.[0]?.message;
-  if (!msg) return null;
 
-  // 1. Check standard OpenAI tool_calls
+  // 1. Check standard OpenAI / Cloudflare tool_calls
+  const toolCalls = msg?.tool_calls || data.tool_calls;
   if (
-    msg.tool_calls &&
-    Array.isArray(msg.tool_calls) &&
-    msg.tool_calls.length > 0
+    toolCalls &&
+    Array.isArray(toolCalls) &&
+    toolCalls.length > 0
   ) {
-    const tc = msg.tool_calls[0];
+    const tc = toolCalls[0];
     const name = tc.name || tc.function?.name || "";
     let args: any = {};
     const rawArgs = tc.arguments || tc.function?.arguments;
@@ -369,8 +380,24 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
     if (name) return { tool: name, args };
   }
 
-  // 2. Check JSON content in msg.content
-  const content = typeof msg.content === "string" ? msg.content.trim() : "";
+  // 2. Check text content
+  let content = "";
+  if (typeof msg?.content === "string") {
+    content = msg.content.trim();
+  } else if (typeof data.content === "string") {
+    content = data.content.trim();
+  } else if (Array.isArray(data.content)) {
+    content = data.content.map((c: any) => c.text || "").join("").trim();
+  } else if (data.candidates?.[0]?.content?.parts) {
+    content = data.candidates[0].content.parts.map((p: any) => p.text || "").join("").trim();
+  } else if (typeof data.result === "string") {
+    content = data.result.trim();
+  } else if (data.result?.response) {
+    content = data.result.response.trim();
+  } else if (typeof data.response === "string") {
+    content = data.response.trim();
+  }
+
   if (!content) return null;
 
   try {
@@ -416,6 +443,156 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
   }
 
   return null;
+}
+
+async function callModelProvider({
+  provider,
+  model,
+  messages,
+  stream = false,
+  tools,
+  userId,
+  cloudflareId,
+  cloudflareToken,
+  hordeApiKey,
+  signal,
+}: {
+  provider: string;
+  model: string;
+  messages: any[];
+  stream?: boolean;
+  tools?: any[];
+  userId?: string;
+  cloudflareId?: string;
+  cloudflareToken?: string;
+  hordeApiKey?: string;
+  signal?: AbortSignal;
+}): Promise<Response> {
+  let integration: any = null;
+  if (userId) {
+    try {
+      const ints = queryTable({
+        table: "user_integrations",
+        userId,
+        filters: [{ field: "provider", operator: "eq", value: provider }],
+      });
+      if (Array.isArray(ints) && ints[0]) {
+        integration = ints[0];
+      }
+    } catch {}
+  }
+
+  const apiKey = integration?.api_key;
+
+  if (
+    !apiKey &&
+    provider !== "horde" &&
+    !provider.includes("horde") &&
+    provider !== "cloudflare"
+  ) {
+    throw new Error(
+      `Provider '${provider}' is not configured. Please configure an API key in Integrations.`,
+    );
+  }
+
+  let targetUrl = "";
+  let requestBody: any = { stream, tools };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (provider === "horde" || provider.includes("horde")) {
+    targetUrl = HORDE_URL;
+    const actualModel = resolveHordeModel(model);
+    requestBody = {
+      model: actualModel,
+      messages,
+      tools,
+      temperature: 0.2,
+      max_tokens: tools ? 200 : 2048,
+    };
+    headers["Authorization"] = `Bearer ${hordeApiKey || apiKey || "0000000000"}`;
+  } else if (provider === "cloudflare") {
+    if (!cloudflareId || !cloudflareToken) {
+      throw new Error("Cloudflare AI is temporarily unavailable.");
+    }
+    targetUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareId}/ai/v1/chat/completions`;
+    requestBody = {
+      model,
+      messages,
+      stream,
+      tools,
+    };
+    headers["Authorization"] = `Bearer ${cloudflareToken}`;
+  } else if (provider === "openai") {
+    targetUrl = "https://api.openai.com/v1/chat/completions";
+    requestBody = { ...requestBody, model, messages };
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  } else if (provider === "anthropic") {
+    targetUrl = "https://api.anthropic.com/v1/messages";
+    const systemMessages = messages.filter((m: any) => m.role === "system");
+    const systemContent = systemMessages
+      .map((m: any) => m.content)
+      .join("\n\n");
+    const transformedMessages = messages.filter(
+      (m: any) => m.role !== "system",
+    );
+    requestBody = {
+      model,
+      messages: transformedMessages,
+      max_tokens: tools ? 300 : 4096,
+      system: systemContent || undefined,
+    };
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+  } else if (provider === "google") {
+    const action = stream
+      ? "streamGenerateContent?alt=sse&"
+      : "generateContent?";
+    targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${action}key=${apiKey}`;
+    requestBody = {
+      systemInstruction: {
+        parts: messages
+          .filter((m: any) => m.role === "system")
+          .map((m: any) => ({ text: m.content })),
+      },
+      contents: messages
+        .filter((m: any) => m.role !== "system")
+        .map((m: any) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+      tools: tools
+        ? tools.map((t: any) => ({ function_declarations: [t.function] }))
+        : undefined,
+    };
+  } else if (provider === "openrouter") {
+    targetUrl = "https://openrouter.ai/api/v1/chat/completions";
+    requestBody = { ...requestBody, model, messages };
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  } else if (provider === "grok") {
+    targetUrl = "https://api.x.ai/v1/chat/completions";
+    requestBody = { ...requestBody, model, messages };
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  } else {
+    throw new Error(`Unsupported provider '${provider}'.`);
+  }
+
+  const res = await fetch(targetUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(requestBody),
+    signal,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(
+      `AI provider (${provider}) error: HTTP ${res.status}${errText ? ` - ${errText.slice(0, 100)}` : ""}`,
+    );
+  }
+
+  return res;
 }
 
 agentSearchRouter.post(
@@ -546,11 +723,68 @@ agentSearchRouter.post(
       if (!cloudflareToken)
         cloudflareToken = (procEnv.CLOUDFLARE_TOKEN || "").trim();
 
-      if (!researchOnly && (!cloudflareId || !cloudflareToken)) {
+      if (
+        (effectiveResearchProvider === "cloudflare" ||
+          (!researchOnly && effectiveSummarizerProvider === "cloudflare")) &&
+        (!cloudflareId || !cloudflareToken)
+      ) {
         return c.json(
           { error: "Agent search is temporarily unavailable" },
           500,
         );
+      }
+
+      if (
+        effectiveResearchProvider !== "horde" &&
+        !effectiveResearchProvider.includes("horde") &&
+        effectiveResearchProvider !== "cloudflare"
+      ) {
+        let intg = null;
+        try {
+          const ints = queryTable({
+            table: "user_integrations",
+            userId: user.id,
+            filters: [
+              { field: "provider", operator: "eq", value: effectiveResearchProvider },
+            ],
+          });
+          if (Array.isArray(ints) && ints[0]?.api_key) intg = ints[0];
+        } catch {}
+        if (!intg) {
+          return c.json(
+            {
+              error: `Provider '${effectiveResearchProvider}' is not configured. Please configure an API key in Integrations.`,
+            },
+            400,
+          );
+        }
+      }
+
+      if (
+        !researchOnly &&
+        effectiveSummarizerProvider !== "horde" &&
+        !effectiveSummarizerProvider.includes("horde") &&
+        effectiveSummarizerProvider !== "cloudflare"
+      ) {
+        let intg = null;
+        try {
+          const ints = queryTable({
+            table: "user_integrations",
+            userId: user.id,
+            filters: [
+              { field: "provider", operator: "eq", value: effectiveSummarizerProvider },
+            ],
+          });
+          if (Array.isArray(ints) && ints[0]?.api_key) intg = ints[0];
+        } catch {}
+        if (!intg) {
+          return c.json(
+            {
+              error: `Provider '${effectiveSummarizerProvider}' is not configured. Please configure an API key in Integrations.`,
+            },
+            400,
+          );
+        }
       }
 
       // Check if user has Horde integration key
@@ -590,11 +824,11 @@ agentSearchRouter.post(
       const allSearches: any[] = [];
       const fetchedPages: Array<{ url: string; content: string }> = [];
 
-      // Horde prompt for fast tool decisions
-      const hordeMessages: any[] = [
+      // Research prompt for tool decisions
+      const researchMessages: any[] = [
         {
           role: "system",
-          content: `You are a fast autonomous research agent. Your goal is to gather facts from the web to answer the user's query up to a 4000 total context token budget.
+          content: `You are an autonomous research agent. Your goal is to gather facts from the web to answer the user's query up to a 4000 total context token budget.
 
 Available actions (respond ONLY with a single JSON object):
 1. Search the web:
@@ -611,60 +845,6 @@ Available actions (respond ONLY with a single JSON object):
           content: `Research topic: "${query}". What is your first research action?`,
         },
       ];
-
-      async function callHorde(msgs: any[]) {
-        const res = await fetch(HORDE_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${hordeApiKey}`,
-          },
-          body: JSON.stringify({
-            model: effectiveResearchModel,
-            messages: msgs,
-            tools: SEARCH_TOOLS,
-            temperature: 0.2,
-            max_tokens: 200,
-          }),
-          signal: AbortSignal.timeout(10000),
-        });
-        if (!res.ok) {
-          const errText = await res.text();
-          console.error(`AI Horde error ${res.status}:`, errText);
-          throw new Error(`AI Horde error: ${res.status}`);
-        }
-        return res;
-      }
-
-      const cloudflareUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareId}/ai/v1/chat/completions`;
-
-      async function callCloudflareSmart(
-        synthesisMessages: any[],
-        streamMode: boolean,
-      ) {
-        const res = await fetch(cloudflareUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${cloudflareToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: effectiveSummarizerModel,
-            messages: synthesisMessages,
-            stream: streamMode,
-          }),
-          signal: AbortSignal.timeout(60000),
-        });
-        if (!res.ok) {
-          const errText = await res.text();
-          console.error(
-            `Cloudflare smart synthesis error ${res.status}:`,
-            errText,
-          );
-          throw new Error(`Search synthesis error: ${res.status}`);
-        }
-        return res;
-      }
 
       // Build research context text strictly capped at 4000 total context tokens
       function buildResearchContext(): string {
@@ -754,7 +934,7 @@ Guidelines:
 
       // ─── Non-streaming mode ───
       if (!stream) {
-        // 1. Fast tool calling loop with AI Horde (up to 100 calls or 4000 total tokens)
+        // 1. Tool calling research loop (up to 100 calls or 4000 total tokens)
         for (let i = 0; i < MAX_RESEARCH_ROUNDS; i++) {
           // If total context has reached 4000 tokens, conclude research early
           if (
@@ -767,11 +947,21 @@ Guidelines:
           let action: { tool: string; args: any } | null = null;
 
           try {
-            const hordeRes = await callHorde(hordeMessages);
-            const data = await hordeRes.json();
+            const res = await callModelProvider({
+              provider: effectiveResearchProvider,
+              model: effectiveResearchModel,
+              messages: researchMessages,
+              tools: SEARCH_TOOLS,
+              userId: user.id,
+              cloudflareId,
+              cloudflareToken,
+              hordeApiKey,
+              signal: AbortSignal.timeout(10000),
+            });
+            const data = await res.json();
             action = parseHordeAction(data);
           } catch {
-            // If Horde times out or fails, fallback to direct query search
+            // If model call times out or fails, fallback to direct query search on first round
             if (i === 0) {
               action = { tool: "web_search", args: { query } };
             } else {
@@ -821,18 +1011,18 @@ Guidelines:
             toolResult = "Error: Unknown tool";
           }
 
-          hordeMessages.push({
+          researchMessages.push({
             role: "assistant",
             content: JSON.stringify({ action: action.tool, ...action.args }),
           });
-          hordeMessages.push({
+          researchMessages.push({
             role: "user",
             content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nNext action? (Respond with JSON action or {"action": "done"})`,
           });
 
           // Prune older history to stay within 4000 context token limits across 100 calls
-          if (hordeMessages.length > 16) {
-            hordeMessages.splice(2, hordeMessages.length - 16);
+          if (researchMessages.length > 16) {
+            researchMessages.splice(2, researchMessages.length - 16);
           }
         }
 
@@ -856,33 +1046,59 @@ Guidelines:
           });
         }
 
-        // 2. Synthesis with Cloudflare Smart model
+        // 2. Synthesis step
         const synthMsgs = buildSynthesisMessages();
-        let cfRes: Response;
+        let synthRes: Response;
         try {
-          cfRes = await callCloudflareSmart(synthMsgs, false);
-        } catch (e) {
-          return c.json({ error: "Search synthesis error" }, 502);
+          synthRes = await callModelProvider({
+            provider: effectiveSummarizerProvider,
+            model: effectiveSummarizerModel,
+            messages: synthMsgs,
+            stream: false,
+            userId: user.id,
+            cloudflareId,
+            cloudflareToken,
+            hordeApiKey,
+            signal: AbortSignal.timeout(60000),
+          });
+        } catch (e: any) {
+          return c.json({ error: e?.message || "Search synthesis error" }, 502);
         }
 
-        const cfData = await cfRes.json();
-        const finalMsg = cfData.result || cfData.choices?.[0]?.message;
-        const finalResult =
-          typeof finalMsg?.content === "string" ? finalMsg.content : "";
+        const synthData = await synthRes.json();
+        let finalResult = "";
+        const finalMsg = synthData.result || synthData.choices?.[0]?.message;
+        if (typeof finalMsg?.content === "string") {
+          finalResult = finalMsg.content;
+        } else if (typeof synthData.content === "string") {
+          finalResult = synthData.content;
+        } else if (Array.isArray(synthData.content)) {
+          finalResult = synthData.content.map((item: any) => item.text || "").join("");
+        } else if (synthData.candidates?.[0]?.content?.parts) {
+          finalResult = synthData.candidates[0].content.parts.map((p: any) => p.text || "").join("");
+        } else if (typeof synthData.result === "string") {
+          finalResult = synthData.result;
+        } else if (synthData.result?.response) {
+          finalResult = synthData.result.response;
+        } else if (typeof synthData.response === "string") {
+          finalResult = synthData.response;
+        }
 
-        // Calculate points ONLY from Cloudflare Smart synthesis call
-        const usage = cfData.usage || {};
-        const synthInputTokens =
-          usage.prompt_tokens ||
-          Math.floor(JSON.stringify(synthMsgs).length / 4);
-        const synthOutputTokens =
-          usage.completion_tokens || Math.floor(finalResult.length / 4);
-        const totalTokens = synthInputTokens + synthOutputTokens;
-        const p_amount = Math.max(10, Math.floor(totalTokens / 10));
+        let p_amount = 0;
+        if (effectiveSummarizerProvider === "cloudflare") {
+          const usage = synthData.usage || {};
+          const synthInputTokens =
+            usage.prompt_tokens ||
+            Math.floor(JSON.stringify(synthMsgs).length / 4);
+          const synthOutputTokens =
+            usage.completion_tokens || Math.floor(finalResult.length / 4);
+          const totalTokens = synthInputTokens + synthOutputTokens;
+          p_amount = Math.max(10, Math.floor(totalTokens / 10));
 
-        const rpcRes = callRpc("spend_points", { p_amount }, user.id);
-        if (!rpcRes || !rpcRes.success) {
-          console.error("Agent search points deduction failed", rpcRes);
+          const rpcRes = callRpc("spend_points", { p_amount }, user.id);
+          if (!rpcRes || !rpcRes.success) {
+            console.error("Agent search points deduction failed", rpcRes);
+          }
         }
 
         return c.json({
@@ -908,11 +1124,11 @@ Guidelines:
           await write(
             sseJson({
               type: "status",
-              message: "Connecting to fast research agent...",
+              message: "Connecting to research agent...",
             }),
           );
 
-          // 1. Tool execution loop using AI Horde Fast (up to 100 calls or 4000 total tokens)
+          // 1. Tool execution loop (up to 100 calls or 4000 total tokens)
           for (let i = 0; i < MAX_RESEARCH_ROUNDS; i++) {
             // If total context has reached 4000 total tokens, conclude research early
             if (
@@ -942,13 +1158,23 @@ Guidelines:
             let action: { tool: string; args: any } | null = null;
 
             try {
-              const hordeRes = await callHorde(hordeMessages);
-              const data = await hordeRes.json();
+              const res = await callModelProvider({
+                provider: effectiveResearchProvider,
+                model: effectiveResearchModel,
+                messages: researchMessages,
+                tools: SEARCH_TOOLS,
+                userId: user.id,
+                cloudflareId,
+                cloudflareToken,
+                hordeApiKey,
+                signal: AbortSignal.timeout(10000),
+              });
+              const data = await res.json();
               action = parseHordeAction(data);
-            } catch (hordeErr) {
+            } catch (modelErr) {
               console.warn(
-                "AI Horde call timed out or failed, falling back to direct search",
-                hordeErr,
+                "Research model call timed out or failed, falling back to direct search",
+                modelErr,
               );
               if (i === 0) {
                 action = { tool: "web_search", args: { query } };
@@ -1046,18 +1272,18 @@ Guidelines:
               }),
             );
 
-            hordeMessages.push({
+            researchMessages.push({
               role: "assistant",
               content: JSON.stringify({ action: action.tool, ...action.args }),
             });
-            hordeMessages.push({
+            researchMessages.push({
               role: "user",
               content: `Tool result for ${action.tool}:\n${typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult)}\n\nNext action? (Respond with JSON action or {"action": "done"})`,
             });
 
             // Prune older history to stay within 4000 context token limits across 100 calls
-            if (hordeMessages.length > 16) {
-              hordeMessages.splice(2, hordeMessages.length - 16);
+            if (researchMessages.length > 16) {
+              researchMessages.splice(2, researchMessages.length - 16);
             }
           }
 
@@ -1114,22 +1340,31 @@ Guidelines:
             return;
           }
 
-          // 2. Final Synthesis using Cloudflare Smart model
+          // 2. Final Synthesis
           await write(
             sseJson({
               type: "status",
-              message:
-                "Synthesizing comprehensive final answer with Cloudflare Smart model...",
+              message: "Synthesizing comprehensive final answer...",
             }),
           );
 
           const synthMsgs = buildSynthesisMessages();
           let streamRes: Response;
           try {
-            streamRes = await callCloudflareSmart(synthMsgs, true);
-          } catch (e) {
+            streamRes = await callModelProvider({
+              provider: effectiveSummarizerProvider,
+              model: effectiveSummarizerModel,
+              messages: synthMsgs,
+              stream: true,
+              userId: user.id,
+              cloudflareId,
+              cloudflareToken,
+              hordeApiKey,
+              signal: AbortSignal.timeout(60000),
+            });
+          } catch (e: any) {
             await write(
-              sseJson({ type: "error", message: "Search synthesis error" }),
+              sseJson({ type: "error", message: e?.message || "Search synthesis error" }),
             );
             return;
           }
@@ -1162,6 +1397,8 @@ Guidelines:
                   const token =
                     parsed.response ||
                     parsed.choices?.[0]?.delta?.content ||
+                    parsed.delta?.text ||
+                    parsed.candidates?.[0]?.content?.parts?.[0]?.text ||
                     "";
                   if (token) {
                     finalContent += token;
@@ -1172,17 +1409,19 @@ Guidelines:
             }
           }
 
-          // Calculate points solely on the Cloudflare Smart synthesis call
-          const synthInputTokens = Math.floor(
-            JSON.stringify(synthMsgs).length / 4,
-          );
-          const synthOutputTokens = Math.floor(finalContent.length / 4);
-          const estimatedTokens = synthInputTokens + synthOutputTokens;
-          const p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
+          let p_amount = 0;
+          if (effectiveSummarizerProvider === "cloudflare") {
+            const synthInputTokens = Math.floor(
+              JSON.stringify(synthMsgs).length / 4,
+            );
+            const synthOutputTokens = Math.floor(finalContent.length / 4);
+            const estimatedTokens = synthInputTokens + synthOutputTokens;
+            p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
 
-          const rpcRes = callRpc("spend_points", { p_amount }, user.id);
-          if (!rpcRes || !rpcRes.success) {
-            console.error("Agent search points deduction failed", rpcRes);
+            const rpcRes = callRpc("spend_points", { p_amount }, user.id);
+            if (!rpcRes || !rpcRes.success) {
+              console.error("Agent search points deduction failed", rpcRes);
+            }
           }
 
           await write(

@@ -437,14 +437,29 @@ export async function executeEntityGeneration(
 
   let researchFindings = "";
   try {
+    const searchHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (token) {
+        searchHeaders["Authorization"] = `Bearer ${token}`;
+      }
+    } catch {}
+
     const searchRes = await fetch("/api/ai/agent-search", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: searchHeaders,
       body: JSON.stringify({
         query: searchQuery.slice(0, 950),
         responseFormat: "summary",
         researchOnly: true,
         stream: false,
+        researchModel: model?.model_id,
+        researchProvider: model?.provider,
+        summarizerModel: model?.model_id,
+        summarizerProvider: model?.provider,
       }),
       signal,
     });

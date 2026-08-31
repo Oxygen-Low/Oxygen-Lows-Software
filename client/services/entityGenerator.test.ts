@@ -633,5 +633,55 @@ Let me know if you want any modifications!`;
       expect(character.appearance).toContain("dermal chrome");
       expect(character.hidden_description).toContain("fog contagion");
     });
+
+    it("T4-02: Forwards selected model & provider to agent-search endpoint", async () => {
+      let capturedSearchBody: any = null;
+
+      global.fetch = vi.fn().mockImplementation((url: string, init: any) => {
+        if (url === "/api/ai/agent-search") {
+          capturedSearchBody = JSON.parse(init.body);
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Smart archetypes research findings." }),
+          });
+        }
+        if (url === "/api/ai/proxy") {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({
+                        name: "Cosmic Sentinel",
+                        display_name: "Sentinel",
+                        short_description: "An ancient guardian.",
+                        appearance: "Star metal armor.",
+                        personality: "Vigilant.",
+                        backstory: "Forged in a supernova.",
+                        hidden_description: "Knows the universe origin.",
+                      }),
+                    },
+                  },
+                ],
+              }),
+          });
+        }
+        return Promise.reject(new Error("Unexpected"));
+      });
+
+      await executeEntityGeneration({
+        type: "character",
+        prompt: "A cosmic guardian",
+        model: { provider: "horde", model_id: "Smart" },
+      });
+
+      expect(capturedSearchBody).not.toBeNull();
+      expect(capturedSearchBody.researchModel).toBe("Smart");
+      expect(capturedSearchBody.researchProvider).toBe("horde");
+      expect(capturedSearchBody.summarizerModel).toBe("Smart");
+      expect(capturedSearchBody.summarizerProvider).toBe("horde");
+    });
   });
 });
