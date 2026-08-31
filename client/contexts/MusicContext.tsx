@@ -13,18 +13,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export interface PlaylistTrack {
+  id?: string;
   name: string;
   artist?: string;
   fileName: string;
 }
 
-interface MusicContextType {
+export interface MusicContextType {
   playlist: PlaylistTrack[];
   currentTrack: PlaylistTrack | null;
   currentPosition: number;
+  duration: number;
   isPlaying: boolean;
   shuffle: boolean;
   loop: boolean;
+  volume: number;
+  isMuted: boolean;
   isLoading: boolean;
   audioRef: React.RefObject<HTMLAudioElement>;
   play: () => Promise<void>;
@@ -35,14 +39,22 @@ interface MusicContextType {
   ) => Promise<void>;
   playNext: () => Promise<void>;
   playPrev: () => Promise<void>;
+  seek: (positionMs: number) => void;
+  setVolume: (vol: number) => void;
+  toggleMute: () => void;
   addTrack: (track: PlaylistTrack) => Promise<void>;
   removeTrack: (trackFileName: string) => Promise<void>;
+  reorderPlaylist: (newPlaylist: PlaylistTrack[]) => Promise<void>;
+  moveTrack: (fromIndex: number, toIndex: number) => Promise<void>;
+  clearPlaylist: () => Promise<void>;
   toggleShuffle: (shuffle: boolean) => Promise<void>;
   toggleLoop: (loop: boolean) => Promise<void>;
 }
 
 const AUTO_RESUME_STORAGE_KEY = "oxygen_music_exit_state";
 const AUTO_RESUME_WINDOW_MS = 10000; // 10 seconds
+const VOLUME_STORAGE_KEY = "oxygen_music_volume";
+const MUTED_STORAGE_KEY = "oxygen_music_muted";
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
@@ -55,12 +67,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     null,
   );
   const [currentPosition, setCurrentPositionState] = useState(0);
+  const [duration, setDurationState] = useState(0);
   const [isPlaying, setIsPlayingState] = useState(false);
   const [shuffle, setShuffleState] = useState(false);
   const [loop, setLoopState] = useState(false);
+  const [volume, setVolumeState] = useState(() => {
+    try {
+      const savedVol = localStorage.getItem(VOLUME_STORAGE_KEY);
+      return savedVol !== null ? parseFloat(savedVol) : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const [isMuted, setIsMutedState] = useState(() => {
+    try {
+      return localStorage.getItem(MUTED_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const playlistRef = useRef<PlaylistTrack[]>([]);
   const currentTrackRef = useRef<PlaylistTrack | null>(null);
   const isPlayingRef = useRef(false);
@@ -78,12 +107,37 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     loopRef.current = loop;
     if (audioRef.current) {
       audioRef.current.loop = loop;
+      audioRef.current.volume = isMuted ? 0 : volume;
+      audioRef.current.muted = isMuted;
     }
-  }, [playlist, currentTrack, isPlaying, shuffle, loop]);
+  }, [playlist, currentTrack, isPlaying, shuffle, loop, volume, isMuted]);
+
+  // Clean up blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const resolvePlaybackUrl = useCallback(
-    async (fileName: string) => {
+    async (fileName: string): Promise<string | null> => {
+      if (!fileName) return null;
+
+      // Direct HTTP / Blob URLs
+      if (
+        fileName.startsWith("http://") ||
+        fileName.startsWith("https://") ||
+        fileName.startsWith("blob:") ||
+        fileName.startsWith("data:")
+      ) {
+        return fileName;
+      }
+
       if (!session?.user?.id) return null;
+
       let path = fileName;
       let previous: string;
       do {
@@ -93,6 +147,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           .replace(/\.\.\//g, "")
           .replace(/^\/+/, "");
       } while (path !== previous);
+
+      // Handle public assets bucket
+      if (path.startsWith("public-assets/")) {
+        const cleanPath = path.replace(/^public-assets\//, "");
+        const { data } = storage.from("public-assets").getPublicUrl(cleanPath);
+        if (data?.publicUrl) return data.publicUrl;
+      }
 
       const UUID_REGEX =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
@@ -109,10 +170,38 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         path = `${session.user.id}/${path}`;
       }
 
-      const { data } = await storage
-        .from("Storage")
-        .createSignedUrl(path, 3600);
-      return data?.signedUrl || null;
+      // 1. Try to create signed URL from Storage
+      try {
+        const { data: signedData, error: signedErr } = await storage
+          .from("Storage")
+          .createSignedUrl(path, 3600);
+
+        if (!signedErr && signedData?.signedUrl) {
+          return signedData.signedUrl;
+        }
+      } catch (err) {
+        console.warn("Error creating signed URL for playback, attempting blob download fallback:", err);
+      }
+
+      // 2. Fallback: Download file as Blob and create Blob URL
+      try {
+        const { data: blobData, error: downloadErr } = await storage
+          .from("Storage")
+          .download(path);
+
+        if (!downloadErr && blobData) {
+          if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current);
+          }
+          const blobUrl = URL.createObjectURL(blobData);
+          blobUrlRef.current = blobUrl;
+          return blobUrl;
+        }
+      } catch (blobErr) {
+        console.error("Blob fallback download also failed:", blobErr);
+      }
+
+      return null;
     },
     [session?.user?.id],
   );
@@ -140,17 +229,21 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       const loop_enabled =
         overrides.loop !== undefined ? overrides.loop : loopRef.current;
 
-      await db.from("user_preferences").upsert(
-        {
-          user_id: session.user.id,
-          music_playlist,
-          current_music_track,
-          current_music_position,
-          shuffle_enabled,
-          loop_enabled,
-        },
-        { onConflict: "user_id" },
-      );
+      try {
+        await db.from("user_preferences").upsert(
+          {
+            user_id: session.user.id,
+            music_playlist,
+            current_music_track,
+            current_music_position,
+            shuffle_enabled,
+            loop_enabled,
+          },
+          { onConflict: "user_id" },
+        );
+      } catch (err) {
+        console.warn("Failed to persist user preferences:", err);
+      }
     },
     [session?.user?.id],
   );
@@ -258,12 +351,20 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (audioRef.current) {
           audioRef.current.loop = loopEnabled;
+          audioRef.current.volume = isMuted ? 0 : volume;
+          audioRef.current.muted = isMuted;
         }
 
-        if (currentTrackName && loadedPlaylist.length > 0) {
-          const track = loadedPlaylist.find(
-            (t) => t.fileName === currentTrackName,
-          );
+        if (loadedPlaylist.length > 0) {
+          // Find matching track, or fallback to first track if not found
+          const track =
+            loadedPlaylist.find(
+              (t) =>
+                t.fileName === currentTrackName ||
+                t.fileName.endsWith("/" + currentTrackName) ||
+                currentTrackName?.endsWith("/" + t.fileName),
+            ) || loadedPlaylist[0];
+
           if (track) {
             setCurrentTrackState(track);
             currentTrackRef.current = track;
@@ -275,7 +376,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
               audioRef.current.src = url;
 
-              // Wait for the audio to be ready before seeking
               const doSeekAndPlay = async () => {
                 if (!audioRef.current) return;
                 try {
@@ -311,24 +411,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
                 }
               };
 
-              // Attempt immediately — if seek fails before metadata it's fine,
-              // play() will still work and the browser will seek as it loads.
               doSeekAndPlay();
-              // Also register loadedmetadata in case the above is called before
-              // the audio element has duration info yet (sets currentTime again).
               audioRef.current.addEventListener(
                 "loadedmetadata",
                 () => {
                   if (!audioRef.current) return;
                   try {
                     audioRef.current.currentTime = seekTo / 1000;
+                    if (isFinite(audioRef.current.duration)) {
+                      setDurationState(audioRef.current.duration * 1000);
+                    }
                   } catch {}
                 },
                 { once: true },
-              );
-
-              console.log(
-                `Loaded track "${track.name}" at ${seekTo}ms (autoResume: ${shouldResume})`,
               );
             }
           }
@@ -344,7 +439,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadMusicPreferences();
-  }, [session?.user?.id, resolvePlaybackUrl, getAutoResumeState]);
+  }, [session?.user?.id, resolvePlaybackUrl, getAutoResumeState, isMuted, volume]);
 
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
@@ -367,6 +462,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (!url) {
         console.error(`Failed to resolve URL for track: ${track.fileName}`);
+        setIsPlayingState(false);
+        isPlayingRef.current = false;
+        saveExitState(false);
         return;
       }
 
@@ -398,13 +496,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     const playlistArr = playlistRef.current;
     const isShuffle = shuffleRef.current;
 
-    if (!currentT || playlistArr.length === 0) return;
+    if (playlistArr.length === 0) return;
+
+    if (!currentT) {
+      await playTrack(playlistArr[0]);
+      return;
+    }
 
     let nextTrack: PlaylistTrack;
 
-    if (isShuffle) {
-      const randomIndex = Math.floor(Math.random() * playlistArr.length);
-      nextTrack = playlistArr[randomIndex];
+    if (isShuffle && playlistArr.length > 1) {
+      // Pick random track excluding current track to avoid immediate repeat
+      const otherTracks = playlistArr.filter(
+        (t) => t.fileName !== currentT.fileName,
+      );
+      const randomIndex = Math.floor(Math.random() * otherTracks.length);
+      nextTrack = otherTracks[randomIndex] || playlistArr[0];
     } else {
       const currentIndex = playlistArr.findIndex(
         (t) => t.fileName === currentT.fileName,
@@ -420,7 +527,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     playNextRef.current = playNext;
   }, [playNext]);
 
-  // Setup audio event listeners
+  // Setup audio event listeners for reliable React state synchronization
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -431,18 +538,70 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       currentPositionRef.current = pos;
     };
 
+    const handleLoadedMetadata = () => {
+      if (isFinite(audio.duration)) {
+        setDurationState(audio.duration * 1000);
+      }
+    };
+
+    const handlePlay = () => {
+      setIsPlayingState(true);
+      isPlayingRef.current = true;
+    };
+
+    const handlePause = () => {
+      setIsPlayingState(false);
+      isPlayingRef.current = false;
+    };
+
     const handleEnded = () => {
       if (!loopRef.current) {
         playNextRef.current?.();
       }
     };
 
+    const handleError = async () => {
+      // Attempt blob fallback if streaming signed URL fails during playback
+      const currentT = currentTrackRef.current;
+      if (currentT && audio.src && !audio.src.startsWith("blob:")) {
+        try {
+          const { data: blobData } = await storage
+            .from("Storage")
+            .download(currentT.fileName.replace(/^\/+/, ""));
+          if (blobData) {
+            if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+            const blobUrl = URL.createObjectURL(blobData);
+            blobUrlRef.current = blobUrl;
+            audio.src = blobUrl;
+            await audio.play();
+            setIsPlayingState(true);
+            isPlayingRef.current = true;
+            return;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      setIsPlayingState(false);
+      isPlayingRef.current = false;
+    };
+
     audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("durationchange", handleLoadedMetadata);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("durationchange", handleLoadedMetadata);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
     };
   }, []);
 
@@ -456,11 +615,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [isPlaying, session?.user?.id, savePreferences]);
 
   const play = useCallback(async () => {
-    if (!currentTrack) return;
+    const currentT = currentTrack || playlist[0];
+    if (!currentT) return;
+
+    if (!currentTrack && playlist.length > 0) {
+      await playTrack(playlist[0]);
+      return;
+    }
+
     try {
       if (audioRef.current) {
-        if (!audioRef.current.src && currentTrack.fileName) {
-          const url = await resolvePlaybackUrl(currentTrack.fileName);
+        if (!audioRef.current.src && currentT.fileName) {
+          const url = await resolvePlaybackUrl(currentT.fileName);
           if (url) {
             audioRef.current.src = url;
             audioRef.current.currentTime = currentPositionRef.current / 1000;
@@ -474,7 +640,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error("Failed to play audio:", error);
     }
-  }, [currentTrack, resolvePlaybackUrl, saveExitState]);
+  }, [currentTrack, playlist, playTrack, resolvePlaybackUrl, saveExitState]);
 
   const pause = useCallback(() => {
     if (audioRef.current) {
@@ -486,11 +652,68 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     savePreferences();
   }, [savePreferences, saveExitState]);
 
+  const seek = useCallback(
+    (positionMs: number) => {
+      const targetSec = Math.max(0, positionMs / 1000);
+      if (audioRef.current && isFinite(targetSec)) {
+        try {
+          audioRef.current.currentTime = targetSec;
+        } catch {}
+      }
+      setCurrentPositionState(positionMs);
+      currentPositionRef.current = positionMs;
+      savePreferences({ currentPosition: positionMs });
+    },
+    [savePreferences],
+  );
+
+  const setVolume = useCallback(
+    (vol: number) => {
+      const clamped = Math.max(0, Math.min(1, vol));
+      setVolumeState(clamped);
+      if (audioRef.current) {
+        audioRef.current.volume = isMuted ? 0 : clamped;
+      }
+      try {
+        localStorage.setItem(VOLUME_STORAGE_KEY, String(clamped));
+      } catch {}
+    },
+    [isMuted],
+  );
+
+  const toggleMute = useCallback(() => {
+    setIsMutedState((prev) => {
+      const next = !prev;
+      if (audioRef.current) {
+        audioRef.current.muted = next;
+        audioRef.current.volume = next ? 0 : volume;
+      }
+      try {
+        localStorage.setItem(MUTED_STORAGE_KEY, String(next));
+      } catch {}
+      return next;
+    });
+  }, [volume]);
+
   const playPrev = useCallback(async () => {
     const currentT = currentTrackRef.current;
     const playlistArr = playlistRef.current;
 
-    if (!currentT || playlistArr.length === 0) return;
+    if (playlistArr.length === 0) return;
+
+    if (!currentT) {
+      await playTrack(playlistArr[playlistArr.length - 1]);
+      return;
+    }
+
+    // Standard media player UX: If played for more than 3 seconds, restart current track
+    if (currentPositionRef.current > 3000) {
+      seek(0);
+      if (audioRef.current && !isPlayingRef.current) {
+        audioRef.current.play().catch(() => {});
+      }
+      return;
+    }
 
     const currentIndex = playlistArr.findIndex(
       (t) => t.fileName === currentT.fileName,
@@ -500,34 +723,54 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     const prevTrack = playlistArr[prevIndex];
 
     await playTrack(prevTrack);
-  }, [playTrack]);
+  }, [playTrack, seek]);
 
   const addTrack = useCallback(
     async (track: PlaylistTrack) => {
       if (!session?.user?.id) return;
-      const updatedPlaylist = [...playlist, track];
-      setPlaylistState(updatedPlaylist);
-      savePreferences({ playlist: updatedPlaylist });
+      setPlaylistState((prev) => {
+        const updatedPlaylist = [...prev, track];
+        savePreferences({
+          playlist: updatedPlaylist,
+          currentTrack: currentTrackRef.current || track,
+        });
+        return updatedPlaylist;
+      });
+
+      if (!currentTrackRef.current) {
+        setCurrentTrackState(track);
+        currentTrackRef.current = track;
+        const url = await resolvePlaybackUrl(track.fileName);
+        if (url && audioRef.current) {
+          audioRef.current.src = url;
+          audioRef.current.currentTime = 0;
+        }
+      }
     },
-    [session?.user?.id, playlist, savePreferences],
+    [session?.user?.id, resolvePlaybackUrl, savePreferences],
   );
 
   const removeTrack = useCallback(
     async (trackFileName: string) => {
       if (!session?.user?.id) return;
 
-      const updatedPlaylist = playlist.filter(
-        (t) => t.fileName !== trackFileName,
+      const updatedPlaylist = playlistRef.current.filter(
+        (t) =>
+          t.fileName !== trackFileName &&
+          !t.fileName.endsWith("/" + trackFileName) &&
+          !trackFileName.endsWith("/" + t.fileName),
       );
       setPlaylistState(updatedPlaylist);
 
-      let nextTrack = currentTrack;
-      const wasPlaying = isPlaying;
+      const isCurrent =
+        currentTrackRef.current?.fileName === trackFileName ||
+        currentTrackRef.current?.fileName.endsWith("/" + trackFileName) ||
+        trackFileName.endsWith("/" + currentTrackRef.current?.fileName);
 
-      if (currentTrack?.fileName === trackFileName) {
+      if (isCurrent) {
         if (updatedPlaylist.length > 0) {
-          nextTrack = updatedPlaylist[0];
-          if (wasPlaying) {
+          const nextTrack = updatedPlaylist[0];
+          if (isPlayingRef.current) {
             await playTrack(nextTrack, updatedPlaylist);
           } else {
             setCurrentTrackState(nextTrack);
@@ -548,9 +791,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             });
           }
         } else {
-          nextTrack = null;
           setCurrentTrackState(null);
           currentTrackRef.current = null;
+          setCurrentPositionState(0);
+          currentPositionRef.current = 0;
           setIsPlayingState(false);
           isPlayingRef.current = false;
           saveExitState(false);
@@ -559,8 +803,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             audioRef.current.src = "";
           }
           savePreferences({
-            playlist: updatedPlaylist,
-            currentTrack: nextTrack,
+            playlist: [],
+            currentTrack: null,
+            currentPosition: 0,
           });
         }
       } else {
@@ -569,15 +814,64 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [
       session?.user?.id,
-      playlist,
-      currentTrack,
-      isPlaying,
       playTrack,
       resolvePlaybackUrl,
       savePreferences,
       saveExitState,
     ],
   );
+
+  const reorderPlaylist = useCallback(
+    async (newPlaylist: PlaylistTrack[]) => {
+      setPlaylistState(newPlaylist);
+      savePreferences({ playlist: newPlaylist });
+    },
+    [savePreferences],
+  );
+
+  const moveTrack = useCallback(
+    async (fromIndex: number, toIndex: number) => {
+      if (
+        fromIndex < 0 ||
+        fromIndex >= playlistRef.current.length ||
+        toIndex < 0 ||
+        toIndex >= playlistRef.current.length ||
+        fromIndex === toIndex
+      ) {
+        return;
+      }
+
+      const updated = [...playlistRef.current];
+      const [movedItem] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, movedItem);
+
+      setPlaylistState(updated);
+      savePreferences({ playlist: updated });
+    },
+    [savePreferences],
+  );
+
+  const clearPlaylist = useCallback(async () => {
+    setPlaylistState([]);
+    setCurrentTrackState(null);
+    currentTrackRef.current = null;
+    setCurrentPositionState(0);
+    currentPositionRef.current = 0;
+    setIsPlayingState(false);
+    isPlayingRef.current = false;
+    saveExitState(false);
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+
+    savePreferences({
+      playlist: [],
+      currentTrack: null,
+      currentPosition: 0,
+    });
+  }, [savePreferences, saveExitState]);
 
   const toggleShuffle = useCallback(
     async (newShuffleState: boolean) => {
@@ -604,9 +898,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playlist,
       currentTrack,
       currentPosition,
+      duration,
       isPlaying,
       shuffle,
       loop,
+      volume,
+      isMuted,
       isLoading,
       audioRef,
       play,
@@ -614,8 +911,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playTrack,
       playNext,
       playPrev,
+      seek,
+      setVolume,
+      toggleMute,
       addTrack,
       removeTrack,
+      reorderPlaylist,
+      moveTrack,
+      clearPlaylist,
       toggleShuffle,
       toggleLoop,
     }),
@@ -623,17 +926,26 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playlist,
       currentTrack,
       currentPosition,
+      duration,
       isPlaying,
       shuffle,
       loop,
+      volume,
+      isMuted,
       isLoading,
       play,
       pause,
       playTrack,
       playNext,
       playPrev,
+      seek,
+      setVolume,
+      toggleMute,
       addTrack,
       removeTrack,
+      reorderPlaylist,
+      moveTrack,
+      clearPlaylist,
       toggleShuffle,
       toggleLoop,
     ],
@@ -647,10 +959,39 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+const defaultFallbackMusicContext: MusicContextType = {
+  playlist: [],
+  currentTrack: null,
+  currentPosition: 0,
+  duration: 0,
+  isPlaying: false,
+  shuffle: false,
+  loop: false,
+  volume: 1,
+  isMuted: false,
+  isLoading: false,
+  audioRef: { current: null },
+  play: async () => {},
+  pause: () => {},
+  playTrack: async () => {},
+  playNext: async () => {},
+  playPrev: async () => {},
+  seek: () => {},
+  setVolume: () => {},
+  toggleMute: () => {},
+  addTrack: async () => {},
+  removeTrack: async () => {},
+  reorderPlaylist: async () => {},
+  moveTrack: async () => {},
+  clearPlaylist: async () => {},
+  toggleShuffle: async () => {},
+  toggleLoop: async () => {},
+};
+
 export const useMusicContext = () => {
   const context = useContext(MusicContext);
   if (context === undefined) {
-    throw new Error("useMusicContext must be used within a MusicProvider");
+    return defaultFallbackMusicContext;
   }
   return context;
 };

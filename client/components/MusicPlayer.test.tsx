@@ -529,3 +529,153 @@ describe("MusicContext storage path sanitization", () => {
     });
   });
 });
+
+describe("MusicContext playlist management and playback features", () => {
+  let mockUpsert: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpsert = vi.fn().mockResolvedValue({ data: null, error: null });
+    mockSupabase.from = vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              music_playlist: [
+                { name: "Song A", fileName: "songA.mp3" },
+                { name: "Song B", fileName: "songB.mp3" },
+                { name: "Song C", fileName: "songC.mp3" },
+              ],
+              current_music_track: "songA.mp3",
+              current_music_position: 0,
+              shuffle_enabled: false,
+              loop_enabled: false,
+            },
+            error: null,
+          }),
+        })),
+      })),
+      upsert: mockUpsert,
+    }));
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  const PlaylistConsumer = () => {
+    const {
+      playlist,
+      currentTrack,
+      currentPosition,
+      seek,
+      volume,
+      isMuted,
+      setVolume,
+      toggleMute,
+      moveTrack,
+      clearPlaylist,
+      playNext,
+      playPrev,
+    } = useMusicContext();
+
+    return (
+      <div>
+        <span data-testid="track-count">{playlist.length}</span>
+        <span data-testid="current-track">{currentTrack?.name || "none"}</span>
+        <span data-testid="position">{currentPosition}</span>
+        <span data-testid="volume">{volume}</span>
+        <span data-testid="muted">{isMuted ? "muted" : "unmuted"}</span>
+        <div data-testid="playlist-order">
+          {playlist.map((t) => t.name).join(",")}
+        </div>
+        <button data-testid="seek-btn" onClick={() => seek(30000)}>
+          Seek
+        </button>
+        <button data-testid="volume-btn" onClick={() => setVolume(0.5)}>
+          Set Volume
+        </button>
+        <button data-testid="mute-btn" onClick={toggleMute}>
+          Toggle Mute
+        </button>
+        <button data-testid="move-btn" onClick={() => moveTrack(0, 2)}>
+          Move Track
+        </button>
+        <button data-testid="clear-btn" onClick={clearPlaylist}>
+          Clear Playlist
+        </button>
+        <button data-testid="next-btn" onClick={() => playNext()}>
+          Next
+        </button>
+        <button data-testid="prev-btn" onClick={() => playPrev()}>
+          Prev
+        </button>
+      </div>
+    );
+  };
+
+  it("allows seeking to a specific position", async () => {
+    render(
+      <MusicProvider>
+        <PlaylistConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("current-track").textContent).toBe("Song A");
+    });
+
+    fireEvent.click(screen.getByTestId("seek-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("position").textContent).toBe("30000");
+    });
+  });
+
+  it("handles volume adjustments and mute toggling", async () => {
+    render(
+      <MusicProvider>
+        <PlaylistConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("volume").textContent).toBe("1");
+    });
+
+    fireEvent.click(screen.getByTestId("volume-btn"));
+    expect(screen.getByTestId("volume").textContent).toBe("0.5");
+
+    fireEvent.click(screen.getByTestId("mute-btn"));
+    expect(screen.getByTestId("muted").textContent).toBe("muted");
+  });
+
+  it("allows reordering tracks with moveTrack and clearing the playlist", async () => {
+    render(
+      <MusicProvider>
+        <PlaylistConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("playlist-order").textContent).toBe(
+        "Song A,Song B,Song C",
+      );
+    });
+
+    fireEvent.click(screen.getByTestId("move-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("playlist-order").textContent).toBe(
+        "Song B,Song C,Song A",
+      );
+    });
+
+    fireEvent.click(screen.getByTestId("clear-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("track-count").textContent).toBe("0");
+      expect(screen.getByTestId("current-track").textContent).toBe("none");
+    });
+  });
+});

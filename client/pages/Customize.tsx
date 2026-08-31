@@ -7,11 +7,11 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Button } from "@/components/ui/button";
-import { Music, Trash2, Play, Type } from "lucide-react";
+import { Music, Trash2, Play, Pause, Type, ChevronUp, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlaylistTrack {
-  id: string;
+  id?: string;
   name: string;
   fileName: string;
 }
@@ -89,8 +89,13 @@ export default function Customize() {
   const {
     playlist,
     currentTrack,
+    isPlaying,
+    play,
+    pause,
     addTrack,
     removeTrack,
+    moveTrack,
+    clearPlaylist,
     playTrack,
     shuffle,
     toggleShuffle,
@@ -380,11 +385,52 @@ export default function Customize() {
 
           {/* Playlist */}
           <div className="space-y-4 mb-6">
-            <h3 className="text-lg font-semibold text-foreground">
-              Current Playlist
-            </h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {t("customize.currentPlaylist", undefined, "Current Playlist")}
+                </h3>
+                {playlist.length > 0 && (
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary font-medium">
+                    {playlist.length} {t("customize.tracksCount", undefined, "tracks")}
+                  </span>
+                )}
+              </div>
+              {playlist.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        t(
+                          "customize.clearPlaylistConfirm",
+                          undefined,
+                          "Are you sure you want to clear your entire playlist?",
+                        ),
+                      )
+                    ) {
+                      clearPlaylist();
+                      toast({
+                        title: t("common.success", undefined, "Success"),
+                        description: t(
+                          "customize.clearPlaylistSuccess",
+                          undefined,
+                          "Playlist cleared",
+                        ),
+                      });
+                    }
+                  }}
+                  className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  {t("customize.clearPlaylist", undefined, "Clear Playlist")}
+                </Button>
+              )}
+            </div>
+
             {playlist.length === 0 ? (
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {t(
                   "customize.noTracks",
                   undefined,
@@ -393,44 +439,104 @@ export default function Customize() {
               </p>
             ) : (
               <div className="space-y-2">
-                {playlist.map((track) => (
-                  <div
-                    key={track.fileName}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
-                      currentTrack?.fileName === track.fileName
-                        ? "bg-primary/10 border-primary"
-                        : "bg-card border-border hover:bg-muted"
-                    }`}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Music className="w-4 h-4 text-primary" />
-                        <p className="font-medium text-foreground">
-                          {track.name}
-                        </p>
+                {playlist.map((track, index) => {
+                  const isThisTrack =
+                    currentTrack?.fileName === track.fileName ||
+                    currentTrack?.fileName.endsWith("/" + track.fileName) ||
+                    track.fileName.endsWith("/" + currentTrack?.fileName);
+                  const isThisPlaying = isThisTrack && isPlaying;
+
+                  return (
+                    <div
+                      key={track.fileName + index}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                        isThisTrack
+                          ? "bg-primary/10 border-primary"
+                          : "bg-card border-border hover:bg-muted"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-3">
+                        <span className="text-xs font-mono text-muted-foreground w-4 text-center shrink-0">
+                          {index + 1}
+                        </span>
+                        <div className="shrink-0">
+                          <Music className={`w-4 h-4 ${isThisTrack ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm text-foreground truncate">
+                              {track.name}
+                            </p>
+                            {isThisPlaying && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-semibold uppercase tracking-wider shrink-0">
+                                {t("customize.nowPlaying", undefined, "Now Playing")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {track.fileName}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {track.fileName}
-                      </p>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Reorder Buttons */}
+                        <button
+                          disabled={index === 0}
+                          onClick={() => moveTrack(index, index - 1)}
+                          title={t("customize.moveUp", undefined, "Move Up")}
+                          aria-label={t("customize.moveUp", undefined, "Move Up")}
+                          className="p-1.5 hover:bg-muted-foreground/10 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          disabled={index === playlist.length - 1}
+                          onClick={() => moveTrack(index, index + 1)}
+                          title={t("customize.moveDown", undefined, "Move Down")}
+                          aria-label={t("customize.moveDown", undefined, "Move Down")}
+                          className="p-1.5 hover:bg-muted-foreground/10 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+
+                        {/* Play/Pause Button */}
+                        <button
+                          onClick={() => {
+                            if (isThisTrack) {
+                              if (isPlaying) {
+                                pause();
+                              } else {
+                                play();
+                              }
+                            } else {
+                              playTrack(track);
+                            }
+                          }}
+                          aria-label={isThisPlaying ? `Pause ${track.name}` : `Play ${track.name}`}
+                          title={isThisPlaying ? `Pause ${track.name}` : `Play ${track.name}`}
+                          className="p-1.5 hover:bg-primary/20 rounded-lg text-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                        >
+                          {isThisPlaying ? (
+                            <Pause className="w-4 h-4" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        {/* Remove Track Button */}
+                        <button
+                          onClick={() => handleRemoveTrack(track.fileName)}
+                          aria-label={`Remove ${track.name}`}
+                          title={t("customize.removeTrack", undefined, `Remove ${track.name}`)}
+                          className="p-1.5 hover:bg-destructive/20 rounded-lg text-destructive transition-colors focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-none"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => playTrack(track)}
-                      aria-label={`Play ${track.name}`}
-                      title={`Play ${track.name}`}
-                      className="p-2 hover:bg-primary/20 rounded-lg text-primary transition-colors mr-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                    >
-                      <Play className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleRemoveTrack(track.fileName)}
-                      aria-label={`Remove ${track.name}`}
-                      title={`Remove ${track.name}`}
-                      className="p-2 hover:bg-destructive/20 rounded-lg text-destructive transition-colors focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-none"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -438,10 +544,21 @@ export default function Customize() {
           {/* Available Audio Files */}
           <div>
             <h3 className="text-lg font-semibold mb-3 text-foreground">
-              Add from Storage
+              {t("customize.addFromStorage", undefined, "Add from Storage")}
             </h3>
             <StorageFileSelector
-              allowedExtensions={[".mp3", ".wav", ".ogg"]}
+              allowedExtensions={[
+                ".mp3",
+                ".wav",
+                ".ogg",
+                ".m4a",
+                ".aac",
+                ".flac",
+                ".opus",
+                ".webm",
+                ".wma",
+              ]}
+              allowedTypes={["audio"]}
               onSelect={(file) => {
                 const track = {
                   id: file.id,
@@ -452,7 +569,7 @@ export default function Customize() {
               trigger={
                 <Button className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2">
                   <Music className="w-8 h-8 opacity-50" />
-                  <span>Select Audio from Storage</span>
+                  <span>{t("customize.selectAudioFromStorage", undefined, "Select Audio from Storage")}</span>
                 </Button>
               }
             />

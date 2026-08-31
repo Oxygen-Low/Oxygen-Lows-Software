@@ -72,6 +72,7 @@ import { storage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
+import { useMusic } from "@/hooks/useMusic";
 
 interface FileVerificationInfo {
   id: string;
@@ -87,6 +88,7 @@ interface FileVerificationInfo {
 export default function Storage() {
   const { session } = useAuth();
   const { t } = useTranslation();
+  const { addTrack, playlist } = useMusic();
   usePageTitle(t("titles.storage", undefined, "Storage"), {
     description: t(
       "storage.subtitle",
@@ -1092,6 +1094,64 @@ export default function Storage() {
                               </Button>
                             )}
                           </>
+                        )}
+                        {/* Add to Playlist button for audio */}
+                        {isAudio && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const fileName = `${session?.user?.id}/${file.name}`;
+                              const alreadyIn = playlist.some(
+                                (t) =>
+                                  t.fileName === fileName ||
+                                  t.fileName === file.name ||
+                                  t.fileName.endsWith("/" + file.name),
+                              );
+                              if (alreadyIn) {
+                                toast.info(
+                                  t(
+                                    "customize.trackAlreadyInPlaylist",
+                                    undefined,
+                                    "Track already in playlist",
+                                  ),
+                                );
+                              } else {
+                                const trackName =
+                                  file.name
+                                    .split("/")
+                                    .pop()
+                                    ?.replace(/\.[^/.]+$/, "") || file.name;
+                                addTrack({
+                                  id: file.id,
+                                  name: trackName,
+                                  fileName: fileName,
+                                });
+                                toast.success(
+                                  t(
+                                    "customize.trackAdded",
+                                    undefined,
+                                    "Added to playlist",
+                                  ),
+                                );
+                              }
+                            }}
+                            className="w-full text-[11px] h-7 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 flex items-center justify-center gap-1.5"
+                            title={t(
+                              "customize.addToPlaylist",
+                              undefined,
+                              "Add to Playlist",
+                            )}
+                          >
+                            <Music className="w-3 h-3 text-cyan-400" />
+                            <span>
+                              {t(
+                                "customize.addToPlaylist",
+                                undefined,
+                                "Add to Playlist",
+                              )}
+                            </span>
+                          </Button>
                         )}
                       </div>
                     </CardContent>
