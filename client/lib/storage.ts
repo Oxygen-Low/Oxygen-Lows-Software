@@ -52,31 +52,44 @@ async function parseResponse<T = any>(
   if (!isOk || (json && json.error)) {
     let errorMsg = json?.error;
     if (!errorMsg) {
-      try {
-        if (typeof res.text === "function") {
-          const text = await res.text();
-          if (
-            text.includes("<html") ||
-            text.includes("<!DOCTYPE") ||
-            text.includes("<HTML")
-          ) {
-            errorMsg = `Server error (${res.status || 500}): Please try again later.`;
-          } else if (text.trim()) {
-            errorMsg = text.trim().slice(0, 200);
+      if (res.status === 413) {
+        errorMsg =
+          "File is too large. The payload exceeds the upload limit (413 Payload Too Large).";
+      } else {
+        try {
+          if (typeof res.text === "function") {
+            const text = await res.text();
+            if (
+              text.includes("<html") ||
+              text.includes("<!DOCTYPE") ||
+              text.includes("<HTML")
+            ) {
+              errorMsg = `Server error (${res.status || 500}): Please try again later.`;
+            } else if (text.trim()) {
+              errorMsg = text.trim().slice(0, 200);
+            }
           }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
     }
     if (!errorMsg) {
-      errorMsg = `Request failed with status ${res.status || "unknown"}`;
+      if (res.status === 413) {
+        errorMsg =
+          "File is too large. The payload exceeds the upload limit (413 Payload Too Large).";
+      } else {
+        errorMsg = `Request failed with status ${res.status || "unknown"}`;
+      }
     }
     return { data: null, error: new Error(errorMsg) };
   }
 
   return { data: json?.data !== undefined ? json.data : json, error: null };
 }
+
+const CHUNK_THRESHOLD = 5 * 1024 * 1024; // 5 MB
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4 MB chunks
 
 export class CustomStorageClient {
   async upload(
@@ -88,7 +101,8 @@ export class CustomStorageClient {
     try {
       const token = await getAuthToken();
       const FormDataConstructor = getFormData();
-      const formData = new FormDataConstructor();
+      const cleanPath = path.replace(/^\/+/, "");
+      const fetchFn = getFetch();
 
       let uploadBlob: Blob;
       if (typeof Blob !== "undefined" && file instanceof Blob) {
@@ -101,18 +115,108 @@ export class CustomStorageClient {
         uploadBlob = file as any;
       }
 
+      const fileSize = uploadBlob.size || 0;
+
+      // For larger files, use chunked upload
+      if (fileSize > CHUNK_THRESHOLD) {
+        const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
+        const uploadId =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+        let lastResult: any = null;
+
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+          const start = chunkIndex * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, fileSize);
+          const chunkBlob = uploadBlob.slice(start, end);
+
+          const formData = new FormDataConstructor();
+          formData.append("file", chunkBlob);
+          formData.append("uploadId", uploadId);
+          formData.append("chunkIndex", String(chunkIndex));
+          formData.append("totalChunks", String(totalChunks));
+          formData.append("totalSize", String(fileSize));
+          if (options) {
+            formData.append("options", JSON.stringify(options));
+          }
+
+          const res = await fetchFn(
+            `/api/storage/upload-chunk/${bucket}/${cleanPath}`,
+            {
+              method: "POST",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              body: formData,
+            },
+          );
+
+          const parsed = await parseResponse<{ path: string }>(res);
+          if (parsed.error) {
+            return { data: null, error: parsed.error };
+          }
+          lastResult = parsed.data;
+        }
+
+        return { data: lastResult || { path: cleanPath }, error: null };
+      }
+
+      // For smaller files, standard single-request upload
+      const formData = new FormDataConstructor();
       formData.append("file", uploadBlob);
       if (options) {
         formData.append("options", JSON.stringify(options));
       }
 
-      const fetchFn = getFetch();
-      const cleanPath = path.replace(/^\/+/, "");
       const res = await fetchFn(`/api/storage/upload/${bucket}/${cleanPath}`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
+
+      // If status 413 was encountered on single upload, fall back to chunked upload with 1MB chunks
+      if (res.status === 413 && fileSize > 1024 * 1024) {
+        const SMALL_CHUNK_SIZE = 1024 * 1024; // 1 MB
+        const totalChunks = Math.ceil(fileSize / SMALL_CHUNK_SIZE);
+        const uploadId =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+        let lastResult: any = null;
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+          const start = chunkIndex * SMALL_CHUNK_SIZE;
+          const end = Math.min(start + SMALL_CHUNK_SIZE, fileSize);
+          const chunkBlob = uploadBlob.slice(start, end);
+
+          const chunkFormData = new FormDataConstructor();
+          chunkFormData.append("file", chunkBlob);
+          chunkFormData.append("uploadId", uploadId);
+          chunkFormData.append("chunkIndex", String(chunkIndex));
+          chunkFormData.append("totalChunks", String(totalChunks));
+          chunkFormData.append("totalSize", String(fileSize));
+          if (options) {
+            chunkFormData.append("options", JSON.stringify(options));
+          }
+
+          const chunkRes = await fetchFn(
+            `/api/storage/upload-chunk/${bucket}/${cleanPath}`,
+            {
+              method: "POST",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              body: chunkFormData,
+            },
+          );
+
+          const parsed = await parseResponse<{ path: string }>(chunkRes);
+          if (parsed.error) {
+            return { data: null, error: parsed.error };
+          }
+          lastResult = parsed.data;
+        }
+
+        return { data: lastResult || { path: cleanPath }, error: null };
+      }
 
       const parsed = await parseResponse<{ path: string }>(res);
       if (parsed.error) {

@@ -87,6 +87,52 @@ describe("Client Storage Library", () => {
       expect(res.error?.message).not.toContain("Unexpected token '<'");
     });
 
+    it("handles 413 Payload Too Large error with a clear message", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 413,
+        ok: false,
+        json: () => Promise.reject(new Error("Not JSON")),
+        text: () =>
+          Promise.resolve(
+            "<html><head><title>413 Request Entity Too Large</title></head><body><h1>413 Request Entity Too Large</h1></body></html>",
+          ),
+      });
+      global.fetch = mockFetch;
+
+      const smallFile = new Blob(["small content"], { type: "application/zip" });
+      const client = new CustomStorageClient();
+      const res = await client.from("Storage").upload("u1/file.zip", smallFile);
+
+      expect(res.data).toBeNull();
+      expect(res.error?.message).toContain("413 Payload Too Large");
+    });
+
+    it("automatically chunks files larger than 5MB", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: () =>
+          Promise.resolve({ data: { path: "u1/large.zip" }, error: null }),
+      });
+      global.fetch = mockFetch;
+
+      // 6 MB blob
+      const largeData = new Uint8Array(6 * 1024 * 1024);
+      const largeBlob = new Blob([largeData], { type: "application/zip" });
+
+      const client = new CustomStorageClient();
+      const res = await client.from("Storage").upload("u1/large.zip", largeBlob);
+
+      expect(res.error).toBeNull();
+      expect(res.data?.path).toBe("u1/large.zip");
+      // 6MB should be split into 2 chunks (4MB + 2MB)
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/storage/upload-chunk/Storage/u1/large.zip",
+        expect.anything(),
+      );
+    });
+
     it("handles 400 JSON errors correctly", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         status: 400,

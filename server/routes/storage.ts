@@ -1,10 +1,13 @@
 import { Hono } from "hono";
+import fs from "fs";
+import path from "path";
 import {
   serverStorage,
   getUserTotalSize,
   MAX_USER_QUOTA,
   getMimeType,
   sanitizePath,
+  STORAGE_DIR,
 } from "../lib/storage.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 
@@ -97,6 +100,116 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
     return c.json({ data, error: null });
   } catch (err: any) {
     return c.json({ error: err.message || "Upload failed" }, 500);
+  }
+});
+
+storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
+  try {
+    const bucket = c.req.param("bucket");
+    let rawFilePath =
+      c.req.param("*") ||
+      c.req.param("path") ||
+      c.req.path.split(`/upload-chunk/${bucket}/`)[1];
+
+    let filePath: string;
+    try {
+      filePath = sanitizePath(rawFilePath);
+    } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+
+    const user = c.get("user" as any) as any;
+
+    if (!filePath.startsWith(user.id + "/") && user.role !== "admin") {
+      return c.json({ error: "Cannot upload to other user's directory" }, 400);
+    }
+
+    const body = await c.req.parseBody();
+    const uploadId = body["uploadId"] as string;
+    const chunkIndex = parseInt(body["chunkIndex"] as string, 10);
+    const totalChunks = parseInt(body["totalChunks"] as string, 10);
+    const totalSize = parseInt(body["totalSize"] as string, 10) || 0;
+    const file = body["file"] as any;
+
+    if (!uploadId || isNaN(chunkIndex) || isNaN(totalChunks) || !file) {
+      return c.json({ error: "Missing chunk parameters" }, 400);
+    }
+
+    // Sanitize uploadId to prevent directory traversal
+    const safeUploadId = uploadId.replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!safeUploadId) {
+      return c.json({ error: "Invalid upload ID" }, 400);
+    }
+
+    const currentSize = getUserTotalSize(user.id);
+    if (currentSize + totalSize > MAX_USER_QUOTA) {
+      return c.json(
+        { error: "Quota exceeded. Maximum 1GB allowed per user." },
+        400,
+      );
+    }
+
+    let buffer: Buffer;
+    if (
+      typeof file === "object" &&
+      file !== null &&
+      typeof file.arrayBuffer === "function"
+    ) {
+      const arrayBuffer = await file.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    } else if (Buffer.isBuffer(file)) {
+      buffer = file;
+    } else if (typeof file === "string") {
+      buffer = Buffer.from(file, "utf-8");
+    } else if (file instanceof Uint8Array || file instanceof ArrayBuffer) {
+      buffer = Buffer.from(file as any);
+    } else {
+      return c.json({ error: "Invalid file format" }, 400);
+    }
+
+    const tmpDir = path.join(STORAGE_DIR, ".tmp", safeUploadId);
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    const chunkPath = path.join(tmpDir, `chunk_${chunkIndex}`);
+    fs.writeFileSync(chunkPath, buffer);
+
+    // If this is the last chunk
+    if (chunkIndex === totalChunks - 1) {
+      // Check if all chunks from 0 to totalChunks - 1 exist
+      const assembledChunks: Buffer[] = [];
+      for (let i = 0; i < totalChunks; i++) {
+        const p = path.join(tmpDir, `chunk_${i}`);
+        if (!fs.existsSync(p)) {
+          return c.json({
+            data: { chunkIndex, status: "pending" },
+            error: null,
+          });
+        }
+        assembledChunks.push(fs.readFileSync(p));
+      }
+
+      const completeBuffer = Buffer.concat(assembledChunks);
+      const { data, error } = await serverStorage.upload(
+        bucket,
+        filePath,
+        completeBuffer,
+      );
+
+      // Clean up tmp files
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch {}
+
+      if (error) {
+        return c.json({ error: error.message }, 500);
+      }
+
+      return c.json({ data, error: null });
+    }
+
+    return c.json({ data: { chunkIndex, status: "uploaded" }, error: null });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Chunk upload failed" }, 500);
   }
 });
 

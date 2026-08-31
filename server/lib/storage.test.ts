@@ -74,6 +74,28 @@ describe("Server Storage Library", () => {
       expect(downloadRes.data?.toString()).toBe("Hello custom storage!");
     });
 
+    it("uploads and downloads large binary .zip files properly", async () => {
+      const zipHeader = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00]);
+      const zipBody = Buffer.alloc(1024 * 1024, 0xab);
+      const zipData = Buffer.concat([zipHeader, zipBody]);
+
+      const uploadRes = await serverStorage.upload(
+        testBucket,
+        "test-user/large-archive.zip",
+        zipData,
+      );
+      expect(uploadRes.error).toBeNull();
+      expect(uploadRes.data?.path).toBe("test-user/large-archive.zip");
+
+      const downloadRes = await serverStorage.download(
+        testBucket,
+        "test-user/large-archive.zip",
+      );
+      expect(downloadRes.error).toBeNull();
+      expect(downloadRes.data?.length).toBe(zipData.length);
+      expect(downloadRes.data?.subarray(0, 4)).toEqual(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+    });
+
     it("lists files in directory with metadata", async () => {
       await serverStorage.upload(testBucket, "u1/a.txt", Buffer.from("aaa"));
       await serverStorage.upload(testBucket, "u1/b.png", Buffer.from("bbbb"));
