@@ -1094,6 +1094,9 @@ export interface CharacterData {
   backstory?: string | null;
   hidden_description?: string | null;
   is_universe?: boolean;
+  is_race?: boolean;
+  race_id?: string | null;
+  universe_id?: string | null;
   [key: string]: any;
 }
 

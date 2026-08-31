@@ -16,6 +16,7 @@ import {
   Heart,
   Globe,
   User,
+  Users,
   Search,
   ArrowUpDown,
 } from "lucide-react";
@@ -55,6 +56,9 @@ interface PublicCharacter {
   hidden_description: string | null;
   backstory: string | null;
   is_universe: boolean;
+  is_race?: boolean;
+  race_id?: string | null;
+  universe_id?: string | null;
   downloads: number;
   created_at: string;
   author_username?: string;
@@ -67,6 +71,9 @@ interface LocalCharacter {
   name: string;
   display_name: string | null;
   is_universe: boolean;
+  is_race?: boolean;
+  race_id?: string | null;
+  universe_id?: string | null;
   short_description: string | null;
   appearance: string | null;
   personality: string | null;
@@ -81,9 +88,9 @@ export function PublicCharactersApp() {
   const { session } = useAuth();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"characters" | "universes">(
-    "characters",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "characters" | "universes" | "races"
+  >("characters");
   const [sortBy, setSortBy] = useState<SortOption>("most_recent");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -259,7 +266,10 @@ export function PublicCharactersApp() {
         backstory: item.backstory,
         hidden_description: item.hidden_description,
         image_path: item.image_path,
-        is_universe: item.is_universe,
+        is_universe: item.is_universe || false,
+        is_race: item.is_race || false,
+        race_id: item.race_id || null,
+        universe_id: item.universe_id || null,
       };
 
       if (isCategoryEncryptionEnabled("characters")) {
@@ -325,6 +335,9 @@ export function PublicCharactersApp() {
         hidden_description: charToUpload.hidden_description,
         image_path: charToUpload.image_path,
         is_universe: charToUpload.is_universe || false,
+        is_race: charToUpload.is_race || false,
+        race_id: charToUpload.race_id || null,
+        universe_id: charToUpload.universe_id || null,
       };
 
       const { error } = await supabase
@@ -349,7 +362,11 @@ export function PublicCharactersApp() {
   const filteredItems = useMemo(() => {
     let filtered = items.filter((item) => {
       const matchesTab =
-        activeTab === "characters" ? !item.is_universe : item.is_universe;
+        activeTab === "characters"
+          ? !item.is_universe && !item.is_race
+          : activeTab === "universes"
+            ? item.is_universe
+            : item.is_race;
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -382,14 +399,20 @@ export function PublicCharactersApp() {
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as any)}
-          className="w-[400px]"
+          className="w-full sm:w-[420px]"
         >
-          <TabsList className="bg-slate-900 border border-slate-800">
+          <TabsList className="bg-slate-900 border border-slate-800 w-full grid grid-cols-3">
             <TabsTrigger
               value="characters"
               className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400"
             >
               Characters
+            </TabsTrigger>
+            <TabsTrigger
+              value="races"
+              className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400"
+            >
+              Races
             </TabsTrigger>
             <TabsTrigger
               value="universes"
@@ -439,8 +462,13 @@ export function PublicCharactersApp() {
               <DialogHeader>
                 <DialogTitle>Publish to Public Hub</DialogTitle>
                 <DialogDescription className="text-slate-400">
-                  Select one of your existing {activeTab} to publish for
-                  everyone to see and download.
+                  Select one of your existing{" "}
+                  {activeTab === "characters"
+                    ? "characters"
+                    : activeTab === "races"
+                      ? "races"
+                      : "universes"}{" "}
+                  to publish for everyone to see and download.
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4">
@@ -450,15 +478,17 @@ export function PublicCharactersApp() {
                 >
                   <SelectTrigger className="w-full bg-slate-800 border-slate-700 text-white">
                     <SelectValue
-                      placeholder={`Select a ${activeTab === "characters" ? "character" : "universe"}`}
+                      placeholder={`Select a ${activeTab === "characters" ? "character" : activeTab === "races" ? "race" : "universe"}`}
                     />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700 text-white">
                     {localCharacters
                       .filter((c) =>
                         activeTab === "characters"
-                          ? !c.is_universe
-                          : c.is_universe,
+                          ? !c.is_universe && !c.is_race
+                          : activeTab === "universes"
+                            ? c.is_universe
+                            : c.is_race,
                       )
                       .map((c) => (
                         <SelectItem key={c.id} value={c.id}>
@@ -467,8 +497,10 @@ export function PublicCharactersApp() {
                       ))}
                     {localCharacters.filter((c) =>
                       activeTab === "characters"
-                        ? !c.is_universe
-                        : c.is_universe,
+                        ? !c.is_universe && !c.is_race
+                        : activeTab === "universes"
+                          ? c.is_universe
+                          : c.is_race,
                     ).length === 0 && (
                       <div className="p-2 text-sm text-slate-500 text-center">
                         No {activeTab} found in your collection.
@@ -525,7 +557,80 @@ export function PublicCharactersApp() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-700">
-                    {item.is_universe ? (
+                    {item.is_race ? (
+                      <Users className="w-16 h-16" />
+                    ) : item.is_universe ? (
+                      <Globe className="w-16 h-16" />
+                    ) : (
+                      <User className="w-16 h-16" />
+                    )}
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent" />
+
+                <div className="absolute top-3 right-3 flex flex-col gap-2">
+                  <button
+                    onClick={(e) => handleLike(item, e)}
+                    className="p-2 rounded-full bg-slate-900/60 backdrop-blur-sm border border-slate-800 hover:bg-slate-800 transition-colors flex flex-col items-center gap-1"
+                    aria-label={`${item.is_liked_by_user ? "Unlike" : "Like"} ${item.is_race ? "race" : item.is_universe ? "universe" : "character"}`}
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${item.is_liked_by_user ? "fill-pink-500 text-pink-500" : "text-white"}`}
+                    />
+                  </button>
+                </div>
+
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h3 className="text-xl font-bold text-white truncate">
+                    {item.display_name || item.name}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
+                      @{item.author_username}
+                    </span>
+                    <span className="text-xs text-slate-400 flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
+                      <Download className="w-3 h-3" /> {item.downloads}
+                    </span>
+                    <span className="text-xs text-slate-400 flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
+                      <Heart className="w-3 h-3" /> {item.likes_count}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <CardContent className="p-4">
+                <p className="text-sm text-slate-300 line-clamp-2">
+                  {item.short_description || "No description provided."}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+          {filteredItems.length === 0 && (
+            <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
+              <p className="text-slate-500">
+                No public {activeTab} found. Be the first to upload one!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-slate-900 border-slate-800 text-white p-0 overflow-hidden">
+          {selectedItem && (
+            <>
+              <div className="h-48 relative bg-slate-800 shrink-0">
+                {selectedItem.image_url ? (
+                  <img
+                    src={selectedItem.image_url}
+                    alt={selectedItem.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-700">
+                    {selectedItem.is_race ? (
+                      <Users className="w-16 h-16" />
+                    ) : selectedItem.is_universe ? (
                       <Globe className="w-16 h-16" />
                     ) : (
                       <User className="w-16 h-16" />

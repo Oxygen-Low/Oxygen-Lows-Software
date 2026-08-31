@@ -71,7 +71,7 @@ assetsRouter.post("/verifications/submit", async (c) => {
 
     if (
       !asset_type ||
-      !["file", "character", "universe"].includes(asset_type)
+      !["file", "character", "universe", "race"].includes(asset_type)
     ) {
       return c.json({ error: "Invalid asset type" }, 400);
     }
@@ -195,7 +195,9 @@ assetsRouter.delete("/verifications/:id", async (c) => {
           );
         }
       } else if (
-        (verif.asset_type === "character" || verif.asset_type === "universe") &&
+        (verif.asset_type === "character" ||
+          verif.asset_type === "universe" ||
+          verif.asset_type === "race") &&
         verif.public_character_id
       ) {
         deleteTable(
@@ -231,7 +233,11 @@ assetsRouter.post("/verifications/invalidate", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const { asset_type, original_id, original_file_path } = body;
 
-    if (asset_type === "character" || asset_type === "universe") {
+    if (
+      asset_type === "character" ||
+      asset_type === "universe" ||
+      asset_type === "race"
+    ) {
       if (original_id) {
         updateTable(
           "characters",
@@ -278,7 +284,11 @@ assetsRouter.post("/unpublish", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const { type, id } = body;
 
-    if (!type || !["file", "character", "universe"].includes(type) || !id) {
+    if (
+      !type ||
+      !["file", "character", "universe", "race"].includes(type) ||
+      !id
+    ) {
       return c.json({ error: "Invalid parameters" }, 400);
     }
 

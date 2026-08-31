@@ -160,12 +160,15 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
         }
       } else if (
         verification.asset_type === "character" ||
-        verification.asset_type === "universe"
+        verification.asset_type === "universe" ||
+        verification.asset_type === "race"
       ) {
         // Publish/Update Character Snapshot in public_characters
         const meta = verification.metadata || {};
         const isUniverse =
           verification.asset_type === "universe" || Boolean(meta.is_universe);
+        const isRace =
+          verification.asset_type === "race" || Boolean(meta.is_race);
         const payload: any = {
           uploader_id: verification.user_id,
           user_id: verification.user_id,
@@ -181,6 +184,9 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
           image_path: meta.image_path || null,
           image_url: meta.image_url || null,
           is_universe: isUniverse,
+          is_race: isRace,
+          race_id: meta.race_id || null,
+          universe_id: meta.universe_id || null,
           updated_at: new Date().toISOString(),
         };
 
@@ -203,7 +209,8 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
     } else if (verification.target_type === "public_usage") {
       if (
         (verification.asset_type === "character" ||
-          verification.asset_type === "universe") &&
+          verification.asset_type === "universe" ||
+          verification.asset_type === "race") &&
         verification.original_id
       ) {
         updateTable(

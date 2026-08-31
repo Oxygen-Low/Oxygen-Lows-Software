@@ -8,7 +8,7 @@ import {
 } from "@/services/entityGenerator";
 export type { GeneratedEntityResult, GenerationStep };
 
-import { Sparkles, Loader2, StopCircle, Globe, User, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, StopCircle, Globe, User, Users, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,14 +30,19 @@ export interface Character {
   backstory?: string | null;
   hidden_description?: string | null;
   is_universe?: boolean;
+  is_race?: boolean;
+  race_id?: string | null;
+  universe_id?: string | null;
 }
 
 export interface AiGenerateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialType?: "character" | "universe";
+  initialType?: "character" | "universe" | "race";
   initialUniverse?: Character | null;
+  initialRace?: Character | null;
   universes: Character[];
+  races?: Character[];
   onApply: (entity: GeneratedEntityResult) => void;
   generateEntityFn?: (options: any) => Promise<GeneratedEntityResult>;
 }
@@ -47,7 +52,9 @@ export function AiGenerateDialog({
   onOpenChange,
   initialType = "character",
   initialUniverse = null,
+  initialRace = null,
   universes = [],
+  races = [],
   onApply,
   generateEntityFn,
 }: AiGenerateDialogProps) {
@@ -70,12 +77,15 @@ export function AiGenerateDialog({
     selectedProvider: hookProvider = "cloudflare",
   } = hookData;
 
-  const [targetType, setTargetType] = useState<"character" | "universe">(
+  const [targetType, setTargetType] = useState<"character" | "universe" | "race">(
     initialType || "character",
   );
   const [prompt, setPrompt] = useState("");
   const [selectedUniverseId, setSelectedUniverseId] = useState<string>(
     initialUniverse?.id || "",
+  );
+  const [selectedRaceId, setSelectedRaceId] = useState<string>(
+    initialRace?.id || "",
   );
   const [selectedModelId, setSelectedModelId] = useState<string>(
     hookModel || "@cf/nvidia/nemotron-3-120b-a12b",
@@ -95,8 +105,9 @@ export function AiGenerateDialog({
     if (open) {
       if (initialType) setTargetType(initialType);
       if (initialUniverse) setSelectedUniverseId(initialUniverse.id || "");
+      if (initialRace) setSelectedRaceId(initialRace.id || "");
     }
-  }, [open, initialType, initialUniverse]);
+  }, [open, initialType, initialUniverse, initialRace]);
 
   useEffect(() => {
     if (hookModel) {
@@ -130,8 +141,13 @@ export function AiGenerateDialog({
 
     try {
       const chosenUniverse =
-        targetType === "character" && selectedUniverseId
+        (targetType === "character" || targetType === "race") && selectedUniverseId
           ? universes.find((u) => u.id === selectedUniverseId) || null
+          : null;
+
+      const chosenRace =
+        targetType === "character" && selectedRaceId
+          ? races.find((r) => r.id === selectedRaceId) || null
           : null;
 
       const chosenModel = models.find((m) => m.model_id === selectedModelId) || {
@@ -146,6 +162,7 @@ export function AiGenerateDialog({
         prompt,
         model: chosenModel,
         universe: chosenUniverse,
+        race: chosenRace,
         onProgress: (step: GenerationStep, detail?: string) => {
           setCurrentStep(step);
           if (detail) setStatusMessage(detail);
@@ -220,11 +237,17 @@ export function AiGenerateDialog({
                   undefined,
                   "AI Character Generator",
                 )
-              : t(
-                  "characters.aiGenerate.titleUniverse",
-                  undefined,
-                  "AI Universe Generator",
-                )}
+              : targetType === "race"
+                ? t(
+                    "characters.aiGenerate.titleRace",
+                    undefined,
+                    "AI Race Generator",
+                  )
+                : t(
+                    "characters.aiGenerate.titleUniverse",
+                    undefined,
+                    "AI Universe Generator",
+                  )}
           </DialogTitle>
           <DialogDescription className="text-slate-400 text-sm">
             {t(
@@ -241,7 +264,7 @@ export function AiGenerateDialog({
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               {t("characters.aiGenerate.targetType", undefined, "Generation Target")}
             </label>
-            <div className="flex gap-4 p-1 bg-slate-950/60 border border-slate-800 rounded-lg">
+            <div className="flex gap-2 p-1 bg-slate-950/60 border border-slate-800 rounded-lg">
               <label
                 className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md cursor-pointer text-sm font-medium transition-all ${
                   targetType === "character"
@@ -260,6 +283,25 @@ export function AiGenerateDialog({
                 />
                 <User className="w-4 h-4" />
                 {t("characters.aiGenerate.character", undefined, "Character")}
+              </label>
+              <label
+                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md cursor-pointer text-sm font-medium transition-all ${
+                  targetType === "race"
+                    ? "bg-cyan-600/20 border border-cyan-500/50 text-cyan-300"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="targetType"
+                  value="race"
+                  checked={targetType === "race"}
+                  disabled={isGenerating}
+                  onChange={() => setTargetType("race")}
+                  className="sr-only"
+                />
+                <Users className="w-4 h-4" />
+                {t("characters.aiGenerate.race", undefined, "Race")}
               </label>
               <label
                 className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md cursor-pointer text-sm font-medium transition-all ${
@@ -283,8 +325,41 @@ export function AiGenerateDialog({
             </div>
           </div>
 
-          {/* Universe Selector (Only when targetType === character) */}
+          {/* Race Selector (Only when targetType === character) */}
           {targetType === "character" && (
+            <div className="space-y-1.5" data-testid="race-selector-container">
+              <label
+                htmlFor="race-select"
+                className="text-xs font-semibold text-slate-400 uppercase tracking-wider block"
+              >
+                {t("characters.aiGenerate.targetRace", undefined, "Character Race (Optional)")}
+              </label>
+              <select
+                id="race-select"
+                data-testid="race-select"
+                value={selectedRaceId}
+                disabled={isGenerating}
+                onChange={(e) => setSelectedRaceId(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50"
+              >
+                <option value="">
+                  {t(
+                    "characters.aiGenerate.noRaceOption",
+                    undefined,
+                    "None / Any Race",
+                  )}
+                </option>
+                {races.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.display_name || r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Universe Selector (When targetType === character or targetType === race) */}
+          {(targetType === "character" || targetType === "race") && (
             <div className="space-y-1.5" data-testid="universe-selector-container">
               <label
                 htmlFor="universe-select"
@@ -293,7 +368,7 @@ export function AiGenerateDialog({
                 {t(
                   "characters.aiGenerate.targetUniverse",
                   undefined,
-                  "Target Universe",
+                  "Target Universe (Optional)",
                 )}
               </label>
               <select
@@ -308,7 +383,7 @@ export function AiGenerateDialog({
                   {t(
                     "characters.aiGenerate.standaloneOption",
                     undefined,
-                    "None (Standalone Character)",
+                    "None (Standalone / Any Universe)",
                   )}
                 </option>
                 {universes.map((u) => (

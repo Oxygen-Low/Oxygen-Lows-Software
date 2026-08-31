@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Layout from "@/components/Layout";
 import {
   User,
+  Users,
   Plus,
   Edit2,
   Trash2,
@@ -73,6 +74,9 @@ interface Character {
   backstory: string | null;
   hidden_description: string | null;
   is_universe?: boolean;
+  is_race?: boolean;
+  race_id?: string | null;
+  universe_id?: string | null;
   is_verified_public?: boolean;
 }
 
@@ -92,12 +96,33 @@ export default function Characters() {
     description: t(
       "characters.subtitle",
       undefined,
-      "Create, customize, and share AI characters and interactive universes.",
+      "Create, customize, and share AI characters, races, and interactive universes.",
     ),
   });
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [activeTab, setActiveTab] = useState<"characters" | "universes">(
-    "characters",
+  const [activeTab, setActiveTab] = useState<
+    "characters" | "universes" | "races"
+  >("characters");
+
+  const regularCharacters = useMemo(
+    () => characters.filter((c) => !c.is_universe && !c.is_race),
+    [characters],
+  );
+  const universes = useMemo(
+    () => characters.filter((c) => c.is_universe),
+    [characters],
+  );
+  const races = useMemo(
+    () => characters.filter((c) => c.is_race),
+    [characters],
+  );
+  const racesMap = useMemo(
+    () => new Map(races.map((r) => [r.id, r])),
+    [races],
+  );
+  const universesMap = useMemo(
+    () => new Map(universes.map((u) => [u.id, u])),
+    [universes],
   );
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -127,20 +152,28 @@ export default function Characters() {
 
   // AI Generation Modal State
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
-  const [aiInitialType, setAiInitialType] = useState<"character" | "universe">(
-    "character",
-  );
+  const [aiInitialType, setAiInitialType] = useState<
+    "character" | "universe" | "race"
+  >("character");
   const [aiInitialUniverse, setAiInitialUniverse] =
     useState<Character | null>(null);
+  const [aiInitialRace, setAiInitialRace] = useState<Character | null>(null);
 
   const handleOpenAiGenerate = (
-    type?: "character" | "universe",
+    type?: "character" | "universe" | "race",
     univ?: Character | null,
+    race?: Character | null,
   ) => {
     setAiInitialType(
-      type || (activeTab === "universes" ? "universe" : "character"),
+      type ||
+        (activeTab === "races"
+          ? "race"
+          : activeTab === "universes"
+            ? "universe"
+            : "character"),
     );
     setAiInitialUniverse(univ || null);
+    setAiInitialRace(race || null);
     setAiDialogOpen(true);
   };
 
@@ -155,8 +188,17 @@ export default function Characters() {
       backstory: entity.backstory,
       hidden_description: entity.hidden_description,
       is_universe: entity.is_universe,
+      is_race: entity.is_race,
+      universe_id: entity.universe_id,
+      race_id: entity.race_id,
     }));
-    setActiveTab(entity.is_universe ? "universes" : "characters");
+    setActiveTab(
+      entity.is_race
+        ? "races"
+        : entity.is_universe
+          ? "universes"
+          : "characters",
+    );
     setIsEditing(true);
   };
 
@@ -239,7 +281,7 @@ export default function Characters() {
           .from("asset_verifications")
           .select("*")
           .eq("user_id", session.user.id)
-          .in("asset_type", ["character", "universe"])
+          .in("asset_type", ["character", "universe", "race"])
           .order("created_at", { ascending: false });
 
         const vMap: Record<string, CharVerificationInfo[]> = {};
@@ -291,6 +333,9 @@ export default function Characters() {
         backstory: currentCharacter.backstory,
         hidden_description: currentCharacter.hidden_description,
         is_universe: currentCharacter.is_universe || false,
+        is_race: currentCharacter.is_race || false,
+        race_id: currentCharacter.race_id || null,
+        universe_id: currentCharacter.universe_id || null,
       };
 
       if (isCategoryEncryptionEnabled("characters")) {
@@ -321,9 +366,11 @@ export default function Characters() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              asset_type: currentCharacter.is_universe
-                ? "universe"
-                : "character",
+              asset_type: currentCharacter.is_race
+                ? "race"
+                : currentCharacter.is_universe
+                  ? "universe"
+                  : "character",
               original_id: currentCharacter.id,
             }),
           }).catch(() => {});
@@ -348,7 +395,11 @@ export default function Characters() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            asset_type: currentCharacter.is_universe ? "universe" : "character",
+            asset_type: currentCharacter.is_race
+              ? "race"
+              : currentCharacter.is_universe
+                ? "universe"
+                : "character",
             target_type: "public_asset",
             title: currentCharacter.display_name || currentCharacter.name,
             description: currentCharacter.short_description || "",
@@ -364,6 +415,9 @@ export default function Characters() {
               hidden_description: currentCharacter.hidden_description,
               image_path: currentCharacter.image_path,
               is_universe: currentCharacter.is_universe || false,
+              is_race: currentCharacter.is_race || false,
+              race_id: currentCharacter.race_id || null,
+              universe_id: currentCharacter.universe_id || null,
             },
           }),
         });
@@ -486,7 +540,11 @@ export default function Characters() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          asset_type: char.is_universe ? "universe" : "character",
+          asset_type: char.is_race
+            ? "race"
+            : char.is_universe
+              ? "universe"
+              : "character",
           target_type: targetType,
           title: char.display_name || char.name,
           description: char.short_description || "",
@@ -503,6 +561,9 @@ export default function Characters() {
             image_path: char.image_path,
             image_url: char.image_url,
             is_universe: Boolean(char.is_universe),
+            is_race: Boolean(char.is_race),
+            race_id: char.race_id || null,
+            universe_id: char.universe_id || null,
           },
         }),
       });
@@ -624,6 +685,13 @@ export default function Characters() {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("races")}
+                className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "races" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
+              >
+                {t("characters.racesTab", undefined, "My Races")}
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("universes")}
                 className={`text-3xl font-bold tracking-tight transition-colors ${activeTab === "universes" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
               >
@@ -637,7 +705,11 @@ export default function Characters() {
               variant="outline"
               onClick={() =>
                 handleOpenAiGenerate(
-                  activeTab === "universes" ? "universe" : "character",
+                  activeTab === "races"
+                    ? "race"
+                    : activeTab === "universes"
+                      ? "universe"
+                      : "character",
                 )
               }
               className="border-cyan-800/80 bg-cyan-950/30 text-cyan-300 hover:bg-cyan-900/50 hover:text-cyan-200"
@@ -658,13 +730,16 @@ export default function Characters() {
                   onClick={() =>
                     setCurrentCharacter({
                       is_universe: activeTab === "universes",
+                      is_race: activeTab === "races",
                     })
                   }
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   {activeTab === "characters"
                     ? t("characters.createCharacter", undefined, "New Character")
-                    : t("characters.createUniverse", undefined, "New Universe")}
+                    : activeTab === "races"
+                      ? t("characters.createRace", undefined, "New Race")
+                      : t("characters.createUniverse", undefined, "New Universe")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
@@ -672,8 +747,8 @@ export default function Characters() {
                   <div className="flex items-center justify-between pr-6">
                     <DialogTitle>
                       {currentCharacter.id
-                        ? `Edit ${currentCharacter.is_universe ? "Universe" : "Character"}`
-                        : `Create ${activeTab === "characters" ? "Character" : "Universe"}`}
+                        ? `Edit ${currentCharacter.is_race ? "Race" : currentCharacter.is_universe ? "Universe" : "Character"}`
+                        : `Create ${activeTab === "races" ? "Race" : activeTab === "universes" ? "Universe" : "Character"}`}
                     </DialogTitle>
                     <Button
                       type="button"
@@ -681,9 +756,12 @@ export default function Characters() {
                       size="sm"
                       onClick={() =>
                         handleOpenAiGenerate(
-                          currentCharacter.is_universe || activeTab === "universes"
-                            ? "universe"
-                            : "character",
+                          currentCharacter.is_race || activeTab === "races"
+                            ? "race"
+                            : currentCharacter.is_universe || activeTab === "universes"
+                              ? "universe"
+                              : "character",
+                          null,
                           null,
                         )
                       }
@@ -694,9 +772,23 @@ export default function Characters() {
                     </Button>
                   </div>
                   <DialogDescription className="text-slate-400">
-                    {currentCharacter.is_universe || activeTab === "universes"
-                      ? "Tell us a bit about your new universe and its lore."
-                      : "Tell us a bit about your character and what makes them unique."}
+                    {currentCharacter.is_race || activeTab === "races"
+                      ? t(
+                          "characters.raceDescriptionSub",
+                          undefined,
+                          "Define a unique species or race, including biological traits, culture, and origins.",
+                        )
+                      : currentCharacter.is_universe || activeTab === "universes"
+                        ? t(
+                            "characters.universeDescriptionSub",
+                            undefined,
+                            "Tell us a bit about your new universe and its lore.",
+                          )
+                        : t(
+                            "characters.characterDescriptionSub",
+                            undefined,
+                            "Tell us a bit about your character and what makes them unique.",
+                          )}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -752,16 +844,158 @@ export default function Characters() {
                         }))
                       }
                       placeholder={
-                        currentCharacter.is_universe
-                          ? "Universe name"
-                          : "Character name"
+                        currentCharacter.is_race
+                          ? "Race/Species name (e.g. High Elf, Android)"
+                          : currentCharacter.is_universe
+                            ? "Universe name"
+                            : "Character name"
                       }
                       className="bg-slate-800 border-slate-700"
                     />
                   </div>
                 </div>
 
-                {!currentCharacter.is_universe ? (
+                {currentCharacter.is_race ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="race-short-desc"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.shortDescription",
+                            undefined,
+                            "Lore & Overview",
+                          )}
+                        </label>
+                        <Input
+                          id="race-short-desc"
+                          value={currentCharacter.short_description || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              short_description: e.target.value,
+                            }))
+                          }
+                          placeholder="Overview of this race / species..."
+                          className="bg-slate-800 border-slate-700"
+                        />
+                      </div>
+                      <div className="space-y-2 text-cyan-400">
+                        <label
+                          htmlFor="race-display-name"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.displayName",
+                            undefined,
+                            "Classification / Moniker",
+                          )}
+                        </label>
+                        <Input
+                          id="race-display-name"
+                          value={currentCharacter.display_name || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              display_name: e.target.value,
+                            }))
+                          }
+                          placeholder="e.g. Sub-species, Highborne..."
+                          className="bg-slate-800 border-cyan-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="race-universe-select" className="text-sm font-medium">
+                        {t("characters.targetUniverse", undefined, "Universe (Optional)")}
+                      </label>
+                      <select
+                        id="race-universe-select"
+                        value={currentCharacter.universe_id || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            universe_id: e.target.value || null,
+                          }))
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      >
+                        <option value="">{t("characters.noUniverse", undefined, "None / Standalone")}</option>
+                        {universes.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.display_name || u.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="race-appearance"
+                        className="text-sm font-medium"
+                      >
+                        {t("characters.racePhysiology", undefined, "Physical Traits & Physiology")}
+                      </label>
+                      <Textarea
+                        id="race-appearance"
+                        value={currentCharacter.appearance || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            appearance: e.target.value,
+                          }))
+                        }
+                        placeholder="Anatomy, size, distinct visual traits, lifespan..."
+                        className="bg-slate-800 border-slate-700 h-20"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="race-personality"
+                        className="text-sm font-medium"
+                      >
+                        {t("characters.raceCulture", undefined, "Cultural Traits & Behaviors")}
+                      </label>
+                      <Textarea
+                        id="race-personality"
+                        value={currentCharacter.personality || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            personality: e.target.value,
+                          }))
+                        }
+                        placeholder="Social norms, values, traditions, and tendencies..."
+                        className="bg-slate-800 border-slate-700 h-20"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="race-backstory"
+                        className="text-sm font-medium"
+                      >
+                        {t("characters.raceHistory", undefined, "Origins & History")}
+                      </label>
+                      <Textarea
+                        id="race-backstory"
+                        value={currentCharacter.backstory || ""}
+                        onChange={(e) =>
+                          setCurrentCharacter((prev) => ({
+                            ...prev,
+                            backstory: e.target.value,
+                          }))
+                        }
+                        placeholder="Origins, evolutionary or mythological history..."
+                        className="bg-slate-800 border-slate-700 h-28"
+                      />
+                    </div>
+                  </>
+                ) : !currentCharacter.is_universe ? (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -811,6 +1045,56 @@ export default function Characters() {
                           placeholder="For organizing characters..."
                           className="bg-slate-800 border-cyan-900"
                         />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="char-race-select" className="text-sm font-medium">
+                          {t("characters.race", undefined, "Race / Species")}
+                        </label>
+                        <select
+                          id="char-race-select"
+                          value={currentCharacter.race_id || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              race_id: e.target.value || null,
+                            }))
+                          }
+                          className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        >
+                          <option value="">{t("characters.noRace", undefined, "None / Standalone")}</option>
+                          {races.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.display_name || r.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="char-univ-select" className="text-sm font-medium">
+                          {t("characters.universe", undefined, "Universe")}
+                        </label>
+                        <select
+                          id="char-univ-select"
+                          value={currentCharacter.universe_id || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              universe_id: e.target.value || null,
+                            }))
+                          }
+                          className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        >
+                          <option value="">{t("characters.noUniverse", undefined, "None / Standalone")}</option>
+                          {universes.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.display_name || u.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -975,7 +1259,11 @@ export default function Characters() {
                   className="bg-cyan-600 hover:bg-cyan-700 text-white"
                 >
                   {t("common.save", undefined, "Save")}{" "}
-                  {currentCharacter.is_universe ? "Universe" : "Character"}
+                  {currentCharacter.is_race
+                    ? "Race"
+                    : currentCharacter.is_universe
+                      ? "Universe"
+                      : "Character"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -990,9 +1278,11 @@ export default function Characters() {
             returnTo="/characters"
             onUnlocked={handleUnlocked}
             categoryLabel={
-              activeTab === "characters"
-                ? t("characters.charactersTab", undefined, "My Characters")
-                : t("characters.universesTab", undefined, "My Universes")
+              activeTab === "races"
+                ? t("characters.racesTab", undefined, "My Races")
+                : activeTab === "characters"
+                  ? t("characters.charactersTab", undefined, "My Characters")
+                  : t("characters.universesTab", undefined, "My Universes")
             }
           />
         ) : loading ? (
@@ -1003,7 +1293,11 @@ export default function Characters() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {characters
               .filter((c) =>
-                activeTab === "characters" ? !c.is_universe : c.is_universe,
+                activeTab === "characters"
+                  ? !c.is_universe && !c.is_race
+                  : activeTab === "universes"
+                    ? c.is_universe
+                    : c.is_race,
               )
               .map((char) => {
                 const pubChar =
@@ -1026,6 +1320,11 @@ export default function Characters() {
                       v.status === "approved",
                   );
 
+                const assignedRace =
+                  char.race_id && racesMap.get(char.race_id);
+                const assignedUniverse =
+                  char.universe_id && universesMap.get(char.universe_id);
+
                 return (
                   <Card
                     key={char.id}
@@ -1041,7 +1340,9 @@ export default function Characters() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-slate-700">
-                            {char.is_universe ? (
+                            {char.is_race ? (
+                              <Users className="w-16 h-16" />
+                            ) : char.is_universe ? (
                               <Globe className="w-16 h-16" />
                             ) : (
                               <User className="w-16 h-16" />
@@ -1070,6 +1371,18 @@ export default function Characters() {
                                 undefined,
                                 "Verified",
                               )}
+                            </Badge>
+                          )}
+                          {assignedRace && (
+                            <Badge className="bg-purple-600/90 text-white text-[10px] backdrop-blur-sm border border-purple-400/30">
+                              <Users className="w-3 h-3 mr-1" />
+                              {assignedRace.display_name || assignedRace.name}
+                            </Badge>
+                          )}
+                          {assignedUniverse && !char.is_universe && (
+                            <Badge className="bg-indigo-600/90 text-white text-[10px] backdrop-blur-sm border border-indigo-400/30">
+                              <Globe className="w-3 h-3 mr-1" />
+                              {assignedUniverse.display_name || assignedUniverse.name}
                             </Badge>
                           )}
                           {pendingVerif && (
@@ -1137,12 +1450,28 @@ export default function Characters() {
                           </Button>
                         </div>
 
+                        {char.is_race && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs border-cyan-800/60 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/60 hover:text-cyan-100 flex items-center justify-center gap-1.5"
+                            onClick={() => handleOpenAiGenerate("character", null, char)}
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                            {t(
+                              "characters.aiGenerate.generateForRace",
+                              undefined,
+                              "Generate Character for this Race",
+                            )}
+                          </Button>
+                        )}
+
                         {char.is_universe && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="w-full text-xs border-cyan-800/60 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/60 hover:text-cyan-100 flex items-center justify-center gap-1.5"
-                            onClick={() => handleOpenAiGenerate("character", char)}
+                            onClick={() => handleOpenAiGenerate("character", char, null)}
                           >
                             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                             {t(
@@ -1352,7 +1681,9 @@ export default function Characters() {
         onOpenChange={setAiDialogOpen}
         initialType={aiInitialType}
         initialUniverse={aiInitialUniverse}
-        universes={characters.filter((c) => c.is_universe)}
+        initialRace={aiInitialRace}
+        universes={universes}
+        races={races}
         onApply={handleApplyAiGenerated}
       />
     </Layout>

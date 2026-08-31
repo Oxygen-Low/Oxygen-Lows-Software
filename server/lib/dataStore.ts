@@ -209,6 +209,7 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "chatbot", "messages.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "characters.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "universes.json"), []);
+  writeJsonFile(path.join(userDir, "chatbot", "races.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "character_likes.json"), []);
   writeJsonFile(path.join(userDir, "passwords", "passwords.json"), []);
   writeJsonFile(path.join(userDir, "vpn", "configs.json"), []);
@@ -295,6 +296,8 @@ export function getTableFilePath(table: string, userId?: string): string | null 
         return path.join(userDir, "chatbot", "characters.json");
       case "universes":
         return path.join(userDir, "chatbot", "universes.json");
+      case "races":
+        return path.join(userDir, "chatbot", "races.json");
       case "user_passwords":
         return path.join(userDir, "passwords", "passwords.json");
       case "vpn_configs":

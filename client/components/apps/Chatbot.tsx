@@ -194,6 +194,9 @@ interface Character {
   name: string;
   display_name: string | null;
   is_universe: boolean;
+  is_race?: boolean;
+  race_id?: string | null;
+  universe_id?: string | null;
   short_description?: string | null;
   appearance?: string | null;
   personality?: string | null;
@@ -1224,6 +1227,18 @@ export function ChatbotApp() {
       );
       if (char) {
         injected += `You are playing the role of: ${char.display_name || char.name}.\n`;
+        if (char.race_id) {
+          const race = availableCharacters.find((c) => c.id === char.race_id);
+          if (race) {
+            injected += `Race / Species: ${race.display_name || race.name}\n`;
+            if (race.appearance)
+              injected += `Racial Traits & Physiology: ${race.appearance}\n`;
+            if (race.personality)
+              injected += `Racial Culture & Behaviors: ${race.personality}\n`;
+            if (race.backstory)
+              injected += `Racial Origins & Lore: ${race.backstory}\n`;
+          }
+        }
         if (char.short_description)
           injected += `Description: ${char.short_description}\n`;
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
@@ -1237,6 +1252,18 @@ export function ChatbotApp() {
       );
       if (char) {
         injected += `\nThe user is playing the role of: ${char.display_name || char.name}.\n`;
+        if (char.race_id) {
+          const race = availableCharacters.find((c) => c.id === char.race_id);
+          if (race) {
+            injected += `User Race / Species: ${race.display_name || race.name}\n`;
+            if (race.appearance)
+              injected += `User Racial Traits & Physiology: ${race.appearance}\n`;
+            if (race.personality)
+              injected += `User Racial Culture & Behaviors: ${race.personality}\n`;
+            if (race.backstory)
+              injected += `User Racial Origins & Lore: ${race.backstory}\n`;
+          }
+        }
         if (char.short_description)
           injected += `Description: ${char.short_description}\n`;
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
@@ -2584,7 +2611,7 @@ export function ChatbotApp() {
                         >
                           <option value="">None</option>
                           {availableCharacters
-                            .filter((c) => !c.is_universe)
+                            .filter((c) => !c.is_universe && !c.is_race)
                             .map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.display_name || c.name}
@@ -2607,7 +2634,7 @@ export function ChatbotApp() {
                         >
                           <option value="">None</option>
                           {availableCharacters
-                            .filter((c) => !c.is_universe)
+                            .filter((c) => !c.is_universe && !c.is_race)
                             .map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.display_name || c.name}

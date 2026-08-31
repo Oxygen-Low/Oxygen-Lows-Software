@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/db";
 
 export interface EntityGenerationOptions {
-  type: "character" | "universe";
+  type: "character" | "universe" | "race";
   prompt: string;
   model: {
     provider: string;
@@ -19,6 +19,17 @@ export interface EntityGenerationOptions {
     backstory?: string | null;
     hidden_description?: string | null;
     is_universe?: boolean;
+  } | null;
+  race?: {
+    id?: string;
+    name: string;
+    display_name?: string | null;
+    short_description?: string | null;
+    appearance?: string | null;
+    personality?: string | null;
+    backstory?: string | null;
+    hidden_description?: string | null;
+    is_race?: boolean;
   } | null;
   onProgress?: (step: GenerationStep, detail?: string) => void;
   signal?: AbortSignal;
@@ -41,7 +52,9 @@ export interface GeneratedEntityResult {
   backstory: string;
   hidden_description: string;
   universe_id?: string;
+  race_id?: string;
   is_universe: boolean;
+  is_race?: boolean;
 }
 
 /**
@@ -80,7 +93,7 @@ export function extractJsonPayload<T = any>(raw: string): T {
 }
 
 /**
- * Universe Brief Builder for Character Generation
+ * Universe Brief Builder for Character or Race Generation
  */
 export function buildUniverseBriefPrompt(
   universe: NonNullable<EntityGenerationOptions["universe"]>,
@@ -102,11 +115,34 @@ export function buildUniverseBriefPrompt(
 }
 
 /**
+ * Race Brief Builder for Character Generation
+ */
+export function buildRaceBriefPrompt(
+  race: NonNullable<EntityGenerationOptions["race"]>,
+): string {
+  const parts: string[] = [];
+  parts.push(`Race/Species Name: ${race.name}`);
+  if (race.display_name) parts.push(`Classification / Moniker: ${race.display_name}`);
+  if (race.short_description)
+    parts.push(`Race Overview & Lore:\n${race.short_description.slice(0, 3000)}`);
+  if (race.appearance)
+    parts.push(`Physiology & Distinctive Physical Traits:\n${race.appearance.slice(0, 2000)}`);
+  if (race.personality)
+    parts.push(`Cultural Traits & Behaviors:\n${race.personality.slice(0, 2000)}`);
+  if (race.backstory)
+    parts.push(`Origins & History:\n${race.backstory.slice(0, 2000)}`);
+  if (race.hidden_description)
+    parts.push(`Private Notes:\n${race.hidden_description.slice(0, 2000)}`);
+  return parts.join("\n\n");
+}
+
+/**
  * Character Generator Prompt Builder with Anti-Verbatim Rule
  */
 export function buildCharacterGenerationPrompt(params: {
   prompt: string;
   universeSummary?: string;
+  raceSummary?: string;
   researchFindings?: string;
 }): { system: string; user: string } {
   const system = [
@@ -126,12 +162,15 @@ export function buildCharacterGenerationPrompt(params: {
       2,
     ),
     "CRITICAL RULES:",
-    "1. ANCHOR DEEPLY in the culture, factions, and rules of the provided universe context.",
-    "2. STRICTLY AVOID VERBATIM REPETITION: DO NOT copy-paste or duplicate the universe's world lore description verbatim into the character fields.",
+    "1. ANCHOR DEEPLY in the culture, factions, and rules of the provided universe and race context.",
+    "2. STRICTLY AVOID VERBATIM REPETITION: DO NOT copy-paste or duplicate the universe or race descriptions verbatim into the character fields.",
     "3. Fill out all 7 fields with vivid, creative details.",
   ].join("\n\n");
 
   const userParts: string[] = [`Concept / Prompt: "${params.prompt}"`];
+  if (params.raceSummary) {
+    userParts.push(`Character Race Context & Biology:\n${params.raceSummary}`);
+  }
   if (params.universeSummary) {
     userParts.push(`Universe Context & Design Brief:\n${params.universeSummary}`);
   }
@@ -139,6 +178,53 @@ export function buildCharacterGenerationPrompt(params: {
     userParts.push(`Archetype & Lore Research Findings:\n${params.researchFindings}`);
   }
   userParts.push("Generate the structured character JSON object now.");
+
+  return { system, user: userParts.join("\n\n") };
+}
+
+/**
+ * Race Generator Prompt Builder
+ */
+export function buildRaceGenerationPrompt(params: {
+  prompt: string;
+  universeSummary?: string;
+  researchFindings?: string;
+}): { system: string; user: string } {
+  const system = [
+    "You are an expert fantasy and sci-fi worldbuilder and species designer.",
+    "OUTPUT FORMAT: You MUST respond ONLY with a valid JSON object matching the schema below.",
+    JSON.stringify(
+      {
+        name: "Race or species name",
+        display_name: "Subspecies, moniker, or classification",
+        short_description:
+          "Comprehensive overview of this race's culture, physiology, and role in the world",
+        appearance:
+          "Physiology, anatomical traits, size, skin/fur/scale features, distinctive visual traits",
+        personality:
+          "Cultural norms, societal values, common behavioral tendencies, and worldview",
+        backstory:
+          "Origins, evolutionary/mythological history, ancestral homeworld, and major cultural milestones",
+        hidden_description:
+          "Private GM notes, hidden biological quirks, and racial secrets",
+      },
+      null,
+      2,
+    ),
+    "CRITICAL RULES:",
+    "1. Establish distinct biology, cultural values, and history for this race or species.",
+    "2. If universe context is provided, anchor the race believably into the universe's world rules.",
+    "3. Fill out all 7 fields with evocative, high-quality lore.",
+  ].join("\n\n");
+
+  const userParts: string[] = [`Race / Species Concept: "${params.prompt}"`];
+  if (params.universeSummary) {
+    userParts.push(`Universe Context & Design Brief:\n${params.universeSummary}`);
+  }
+  if (params.researchFindings) {
+    userParts.push(`Species & Lore Research Findings:\n${params.researchFindings}`);
+  }
+  userParts.push("Generate the structured race JSON object now.");
 
   return { system, user: userParts.join("\n\n") };
 }
@@ -277,7 +363,7 @@ async function callModel(
 export async function executeEntityGeneration(
   options: EntityGenerationOptions,
 ): Promise<GeneratedEntityResult> {
-  const { type, prompt, model, universe, onProgress, signal } = options;
+  const { type, prompt, model, universe, race, onProgress, signal } = options;
 
   if (!prompt || !prompt.trim()) {
     throw new Error("Prompt is required for entity generation");
@@ -288,9 +374,10 @@ export async function executeEntityGeneration(
   }
 
   let universeSummary = "";
+  let raceSummary = "";
 
-  // Step 1: Universe Summarization (if Character with Universe)
-  if (type === "character" && universe) {
+  // Step 1a: Universe Summarization (if Character or Race with Universe)
+  if ((type === "character" || type === "race") && universe) {
     onProgress?.("summarizing", "Analyzing universe lore and formulating brief...");
 
     if (signal?.aborted) {
@@ -304,12 +391,17 @@ export async function executeEntityGeneration(
         {
           role: "system",
           content:
-            "Produce a concise character-design brief summarizing the world rules, tone, and factions.",
+            "Produce a concise design brief summarizing the world rules, tone, and factions.",
         },
         { role: "user", content: briefInput },
       ],
       signal,
     );
+  }
+
+  // Step 1b: Race Context (if Character with Race)
+  if (type === "character" && race) {
+    raceSummary = buildRaceBriefPrompt(race);
   }
 
   // Step 2: Agent Search Research
@@ -318,10 +410,20 @@ export async function executeEntityGeneration(
     throw new DOMException("Generation was cancelled", "AbortError");
   }
 
-  const searchQuery =
-    type === "character" && universe
-      ? `${prompt} archetypes in context of ${universe.name}: ${universeSummary.slice(0, 200)}`
-      : `${prompt} worldbuilding concepts and tropes`;
+  let searchQuery = `${prompt} worldbuilding concepts and tropes`;
+  if (type === "character") {
+    if (race && universe) {
+      searchQuery = `${prompt} ${race.name} archetype in context of ${universe.name}`;
+    } else if (universe) {
+      searchQuery = `${prompt} archetypes in context of ${universe.name}: ${universeSummary.slice(0, 200)}`;
+    } else if (race) {
+      searchQuery = `${prompt} character concepts for ${race.name} species`;
+    }
+  } else if (type === "race") {
+    searchQuery = universe
+      ? `${prompt} species and race concepts in context of ${universe.name}`
+      : `${prompt} species and race worldbuilding concepts and traits`;
+  }
 
   let researchFindings = "";
   try {
@@ -357,20 +459,34 @@ export async function executeEntityGeneration(
     "generating",
     type === "character"
       ? "Generating character details..."
-      : "Generating universe lore...",
+      : type === "race"
+        ? "Generating race lore and traits..."
+        : "Generating universe lore...",
   );
   if (signal?.aborted) {
     throw new DOMException("Generation was cancelled", "AbortError");
   }
 
-  const promptBundle =
-    type === "character"
-      ? buildCharacterGenerationPrompt({
-          prompt,
-          universeSummary,
-          researchFindings,
-        })
-      : buildUniverseGenerationPrompt({ prompt, researchFindings });
+  let promptBundle: { system: string; user: string };
+  if (type === "character") {
+    promptBundle = buildCharacterGenerationPrompt({
+      prompt,
+      universeSummary,
+      raceSummary,
+      researchFindings,
+    });
+  } else if (type === "race") {
+    promptBundle = buildRaceGenerationPrompt({
+      prompt,
+      universeSummary,
+      researchFindings,
+    });
+  } else {
+    promptBundle = buildUniverseGenerationPrompt({
+      prompt,
+      researchFindings,
+    });
+  }
 
   const rawContent = await callModel(
     model,
@@ -395,7 +511,22 @@ export async function executeEntityGeneration(
       backstory: parsed.backstory || "",
       hidden_description: parsed.hidden_description || "",
       universe_id: universe?.id,
+      race_id: race?.id,
       is_universe: false,
+      is_race: false,
+    };
+  } else if (type === "race") {
+    return {
+      name: parsed.name || "Unnamed Race",
+      display_name: parsed.display_name || "",
+      short_description: parsed.short_description || "",
+      appearance: parsed.appearance || "",
+      personality: parsed.personality || "",
+      backstory: parsed.backstory || "",
+      hidden_description: parsed.hidden_description || "",
+      universe_id: universe?.id,
+      is_universe: false,
+      is_race: true,
     };
   } else {
     return {
@@ -406,7 +537,9 @@ export async function executeEntityGeneration(
       personality: "",
       backstory: "",
       hidden_description: parsed.hidden_description || "",
+      universe_id: undefined,
       is_universe: true,
+      is_race: false,
     };
   }
 }
