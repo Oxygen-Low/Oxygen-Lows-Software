@@ -54,4 +54,17 @@ describe("auth library", () => {
     expect(verifyToken("invalid.token")).toBeNull();
     expect(verifyToken("")).toBeNull();
   });
+
+  it("should assign admin role to user id 1", () => {
+    const adminUser = {
+      id: "1",
+      username: "admin",
+      email: "admin@example.com",
+    };
+
+    const token = generateToken(adminUser);
+    const payload = verifyToken(token);
+    expect(payload?.role).toBe("admin");
+    expect(payload?.userId).toBe("1");
+  });
 });

@@ -13,7 +13,7 @@ vi.mock("../lib/auth.ts", () => ({
   resolveUserFromToken: vi.fn(async (token: string) => {
     if (token === "admin-token") {
       return {
-        id: "admin-1",
+        id: "1",
         email: "admin@example.com",
         username: "admin",
         role: "admin",
@@ -193,13 +193,13 @@ describe("Admin Support Routes", () => {
         {
           id: 2,
           ticket_id: 123,
-          sender_id: "admin-1",
+          sender_id: "1",
           message: "Hi there",
         },
       ];
       mockProfiles = {
         "user-1": { user_id: "user-1", username: "alice", avatar_url: "url1" },
-        "admin-1": { user_id: "admin-1", username: "admin", avatar_url: "url2" },
+        "1": { user_id: "1", username: "admin", avatar_url: "url2" },
       };
 
       const res = await app.request("/tickets/123/messages", {
@@ -223,10 +223,10 @@ describe("Admin Support Routes", () => {
         {
           id: 2,
           ticket_id: 123,
-          sender_id: "admin-1",
+          sender_id: "1",
           message: "Hi there",
           profiles: {
-            user_id: "admin-1",
+            user_id: "1",
             username: "admin",
             avatar_url: "url2",
           },
@@ -266,7 +266,7 @@ describe("Admin Support Routes", () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.message.message).toBe("Hello world");
-      expect(data.message.sender_id).toBe("admin-1");
+      expect(data.message.sender_id).toBe("1");
     });
   });
 

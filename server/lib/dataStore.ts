@@ -201,13 +201,14 @@ export function initUserFolder(
   ensureDir(path.join(process.cwd(), "uploads", "public-assets", userId));
 
   const now = new Date().toISOString();
+  const role = userInitialData.role || (String(userId) === "1" ? "admin" : "user");
   const userData = {
     id: userId,
     username: userInitialData.username,
     email: userInitialData.email,
     password_hash: userInitialData.passwordHash,
     salt: userInitialData.salt,
-    role: userInitialData.role || "user",
+    role,
     points: 100,
     custom_models: [],
     created_at: now,
@@ -294,7 +295,11 @@ export function getAllUserIds(): string[] {
 export function getUserById(userId: string | number) {
   if (userId === undefined || userId === null || String(userId).trim() === "") return null;
   const userPath = path.join(DATA_DIR, String(userId), "user.json");
-  return readJsonFile(userPath, null);
+  const user = readJsonFile(userPath, null);
+  if (user && String(userId) === "1" && user.role !== "admin") {
+    user.role = "admin";
+  }
+  return user;
 }
 
 export function getUserByUsernameOrEmail(identifier: string) {

@@ -13,7 +13,7 @@ vi.mock("../lib/auth.ts", () => ({
   resolveUserFromToken: vi.fn(async (token: string) => {
     if (token === "admin-token") {
       return {
-        id: "admin-1",
+        id: "1",
         email: "admin@example.com",
         username: "admin",
         role: "admin",

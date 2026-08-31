@@ -58,13 +58,14 @@ authRouter.post("/register", async (c) => {
     const userId = getNextUserId();
     const salt = generateSalt();
     const passwordHash = hashPassword(password, salt);
+    const role = String(userId) === "1" ? "admin" : "user";
 
     const user = initUserFolder(userId, {
       username: cleanUsername,
       email: cleanEmail,
       passwordHash,
       salt,
-      role: "user",
+      role,
     });
 
     const token = generateToken(user);

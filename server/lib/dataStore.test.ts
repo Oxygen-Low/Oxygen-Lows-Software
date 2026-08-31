@@ -56,6 +56,28 @@ describe("dataStore", () => {
     expect(fs.existsSync(path.join(testUserDir, "passwords", "passwords.json"))).toBe(true);
   });
 
+  it("should assign admin role to user id 1", () => {
+    const user1Dir = path.join(DATA_DIR, "1");
+    try {
+      const user = initUserFolder("1", {
+        username: "adminuser",
+        email: "adminuser@example.com",
+        passwordHash: "hash123",
+        salt: "salt123",
+      });
+
+      expect(user.id).toBe("1");
+      expect(user.role).toBe("admin");
+
+      const retrieved = getUserById("1");
+      expect(retrieved?.role).toBe("admin");
+    } finally {
+      if (fs.existsSync(user1Dir)) {
+        fs.rmSync(user1Dir, { recursive: true, force: true });
+      }
+    }
+  });
+
   it("should retrieve user by ID and by username/email", () => {
     initUserFolder(testUserId, {
       username: "lookupuser",
