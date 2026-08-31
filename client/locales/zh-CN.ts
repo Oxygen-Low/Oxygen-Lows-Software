@@ -328,6 +328,148 @@ export const zhCN = {
     passwordManagerTitle: "密码管理器",
     passwordManagerDesc:
       "使用 AES-256 零知识加密安全存储和管理密码。",
+    gameLibraryTitle: "游戏库",
+    gameLibraryDesc:
+      "跨平台汇集、管理和启动本地安装的游戏，支持游戏时长统计与好友动态展示。",
+  },
+  gameLibrary: {
+    // Title & Descriptions
+    title: "游戏库",
+    subtitle:
+      "跨平台汇集、管理和启动本地安装的游戏，支持游戏时长统计与好友动态展示。",
+    description: "跨平台汇集并启动本地安装的游戏。",
+
+    // Platform Names & Filters
+    platformAll: "全部",
+    platformSteam: "Steam",
+    platformEpic: "Epic Games",
+    platformEA: "EA App",
+    platformXbox: "Xbox / PC Game Pass",
+    platformGOG: "GOG Galaxy",
+    platformUbisoft: "Ubisoft Connect",
+    platformCustom: "自定义",
+    allPlatforms: "所有平台",
+    platforms: "平台",
+
+    // Search & Library
+    searchPlaceholder: "按标题搜索游戏...",
+    searchGames: "搜索游戏...",
+    noGamesFound: "未找到游戏",
+    noGamesFoundDesc:
+      "没有与当前筛选或搜索词匹配的游戏。请尝试调整筛选条件或添加自定义游戏。",
+    emptyLibrary: "游戏库为空",
+    emptyLibraryDesc:
+      "点击“扫描游戏”以检测已安装的游戏，或手动添加可执行文件。",
+    totalGames: "{count} 款游戏",
+    scanGames: "扫描游戏",
+    scanning: "正在扫描已安装的游戏...",
+    scanComplete: "扫描完成",
+    scanFailed: "扫描游戏失败",
+    refreshLibrary: "刷新游戏库",
+
+    // Sort labels
+    sortBy: "排序方式",
+    sortRecentlyPlayed: "最近游玩",
+    sortPlaytime: "游玩时长",
+    sortAlphabetical: "字母顺序",
+    sortAlphabeticalAZ: "字母顺序 (A-Z)",
+    sortAlphabeticalZA: "字母倒序 (Z-A)",
+    recentlyPlayed: "最近游玩",
+    playtime: "游玩时长",
+    alphabetical: "字母顺序",
+
+    // View Switcher
+    viewMode: "视图模式",
+    viewGrid: "网格视图",
+    viewList: "列表视图",
+    gridView: "网格视图",
+    listView: "列表视图",
+    grid: "网格",
+    list: "列表",
+
+    // Filter labels
+    filterByPlatform: "按平台筛选",
+    all: "全部",
+    filter: "筛选",
+
+    // Add Custom Game dialog
+    addCustomGame: "添加自定义游戏",
+    dialogTitle: "添加自定义游戏",
+    dialogDesc:
+      "将任何非启动器游戏或可执行文件添加到您的游戏库中。",
+    addCustomGameTitle: "添加自定义游戏",
+    addCustomGameDesc:
+      "向游戏库添加本地游戏可执行程序 (.exe) 或自定义项目。",
+    gameTitleLabel: "游戏名称",
+    gameTitlePlaceholder: "例如：Cyberpunk 2077",
+    customGameTitle: "游戏名称",
+    customGameTitlePlaceholder: "例如：我喜爱的游戏",
+    executablePathLabel: "可执行文件路径 (.exe)",
+    executablePathPlaceholder: "C:\\Games\\MyGame\\game.exe",
+    executablePath: "可执行文件路径 (.exe)",
+    browse: "浏览...",
+    selectExecutable: "选择可执行文件",
+    selectExecutableTitle: "选择游戏可执行程序",
+    addGameButton: "添加游戏",
+    addButton: "添加游戏",
+    cancel: "取消",
+    successCustomAdded: "成功添加自定义游戏",
+    customGameAdded: "自定义游戏添加成功",
+    customGameError: "添加自定义游戏失败",
+    titleRequired: "请输入游戏名称",
+    pathRequired: "请输入可执行文件路径",
+
+    // Game Details Drawer
+    details: "游戏详情",
+    gameDetails: "游戏详情",
+    play: "开始游戏",
+    launchGame: "启动游戏",
+    launching: "正在启动...",
+    running: "游戏中",
+    gameRunning: "正在运行",
+    launchSuccess: "游戏启动成功",
+    launchFailed: "启动游戏失败",
+    errorLaunchFailed: "启动游戏失败",
+    totalPlaytime: "总游玩时长",
+    yourPlaytime: "你的游玩时长",
+    lastPlayed: "上次游玩",
+    lastPlayedNever: "从未游玩",
+    noPlaytime: "暂无游玩记录",
+    neverPlayed: "从未游玩",
+    never: "从未",
+    installPath: "安装路径",
+    installLocation: "安装目录",
+    executable: "可执行文件",
+    platform: "平台",
+    friendsWithThisGame: "拥有此游戏的好友",
+    friendsWithGame: "拥有此游戏的好友",
+    friendsPlaying: "正在游玩的好友",
+    noFriendsWithGame: "暂无好友拥有此游戏。",
+    noFriendsOwnThisGame: "尚无好友拥有或游玩过此游戏。",
+    noFriendsPlaying: "当前没有好友在玩此游戏。",
+    playingNow: "正在游戏中",
+    offline: "离线",
+    hours: "小时",
+    minutes: "分钟",
+    hoursPlayed: "{hours}小时 {minutes}分钟",
+    minutesPlayed: "{minutes}分钟",
+    justNow: "刚刚",
+
+    // Desktop Required
+    desktopRequiredTitle: "需要桌面客户端",
+    desktopRequiredDesc:
+      "游戏库需要 Oxygen Low's Software 桌面客户端以扫描本地启动器、启动程序并追踪游戏时长。",
+    desktopRequiredMessage:
+      "游戏库汇集本地启动器清单、启动原生可执行程序并监控正在运行的进程。此功能需要Windows上的Oxygen Low's Software桌面应用程序。",
+    downloadDesktopApp: "下载桌面客户端",
+    backToApps: "返回应用列表",
+    desktopOnlyBadge: "仅限桌面端",
+
+    // Privacy & Preferences
+    privacyNotice:
+      "你的游戏动态与时长将根据你的隐私设置向好友公开展示。",
+    shareActivityEnabled: "已启用游戏动态共享",
+    shareActivityDisabled: "已禁用游戏动态共享",
   },
   games: {
     title: "游戏",
@@ -899,5 +1041,6 @@ export const zhCN = {
     notFound: "页面未找到",
     oauthConsent: "授权应用",
     userProfile: "用户资料",
+    gameLibrary: "游戏库",
   },
 } as const;

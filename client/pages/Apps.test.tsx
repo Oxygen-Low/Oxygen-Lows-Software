@@ -1,11 +1,21 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import Apps from "./Apps";
 
 vi.mock("@/components/Layout", () => ({
   Layout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@/lib/desktopBridge", () => ({
+  isDesktopBridgeAvailable: vi.fn(() => false),
+  scanInstalledGames: vi.fn(async () => []),
+  launchGame: vi.fn(async () => ({ success: true })),
+  pickGameExecutable: vi.fn(async () => null),
+  getGameIcon: vi.fn(async () => ({ iconDataUrl: "" })),
+  getRunningGames: vi.fn(async () => ({ runningGames: [] })),
+  setupGameBridgeListeners: vi.fn(() => () => {}),
 }));
 
 afterEach(() => {
@@ -27,6 +37,7 @@ describe("Apps", () => {
     expect(screen.getByLabelText(/Utility \(\d+ apps\)/)).toBeDefined();
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.getByText("File Compressor")).toBeDefined();
+    expect(screen.getByText("Game Library")).toBeDefined();
   });
 
   it("filters the catalogue by category and desktop availability", () => {
@@ -47,7 +58,7 @@ describe("Apps", () => {
     expect(screen.getByLabelText(/LLM\/AI \(1 apps\)/)).toBeDefined();
   });
 
-  it("hides the desktop-only filter in the browser catalogue", () => {
+  it("hides desktop-only apps (like Game Library) in the browser catalogue", () => {
     render(
       <MemoryRouter initialEntries={["/apps"]}>
         <Apps />
@@ -57,6 +68,7 @@ describe("Apps", () => {
     expect(screen.queryByRole("heading", { name: "Availability" })).toBeNull();
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.getByText("File Compressor")).toBeDefined();
+    expect(screen.queryByText("Game Library")).toBeNull();
   });
 
   it("renders Web Defender app when navigating to /apps/webdefender", () => {
@@ -67,5 +79,17 @@ describe("Apps", () => {
     );
 
     expect(screen.getAllByText("Web Defender").length).toBeGreaterThan(0);
+  });
+
+  it("renders Game Library app when navigating to /apps/game-library", () => {
+    render(
+      <MemoryRouter initialEntries={["/apps/game-library?desktop=1"]}>
+        <Routes>
+          <Route path="/apps/:appId" element={<Apps />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText(/Game Library/i).length).toBeGreaterThan(0);
   });
 });

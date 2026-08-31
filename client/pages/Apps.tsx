@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Globe,
   KeyRound,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -41,6 +42,7 @@ import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
 import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
 import { PasswordManagerApp } from "@/components/apps/PasswordManager";
+import { GameLibraryApp } from "@/components/apps/GameLibrary";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -253,6 +255,18 @@ const APPS: AppMetadata[] = [
     component: PasswordManagerApp,
     authRequired: true,
   },
+  {
+    id: "game-library",
+    nameKey: "apps.gameLibraryTitle",
+    defaultName: "Game Library",
+    descKey: "apps.gameLibraryDesc",
+    defaultDesc:
+      "Unified desktop launcher for Steam, Epic, Xbox, EA, GOG, Ubisoft, and custom games.",
+    categories: ["All", "Social", "Utility"],
+    availability: "desktop-only",
+    icon: <Gamepad2 className="w-8 h-8 text-cyan-500" />,
+    component: GameLibraryApp,
+  },
 ];
 
 export default function Apps() {
@@ -411,7 +425,8 @@ export default function Apps() {
     const isFullWidthApp =
       activeApp.id === "chatbot" ||
       activeApp.id === "llm-agent" ||
-      activeApp.id === "vpn";
+      activeApp.id === "vpn" ||
+      activeApp.id === "game-library";
 
     return (
       <Layout fullWidth={isFullWidthApp}>

@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Security.Principal;
+using DesktopApp.Models;
 using Microsoft.Web.WebView2.Core;
 
 namespace DesktopApp;
@@ -105,6 +106,73 @@ public partial class MainWindow : Window
             });
         };
         _ = PythonServerManager.Instance.StartAsync();
+
+        // Initialize Game Process Monitor
+        GameProcessMonitor.Instance.SessionStarted += (session) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                SendWebMessage(new
+                {
+                    @event = "game_session_started",
+                    event_type = "game_session_started",
+                    gameId = session.GameId,
+                    title = session.Title,
+                    platform = session.Platform,
+                    startedAt = session.StartedAt.ToString("o"),
+                    data = new
+                    {
+                        gameId = session.GameId,
+                        title = session.Title,
+                        platform = session.Platform,
+                        startedAt = session.StartedAt.ToString("o")
+                    }
+                });
+            });
+        };
+
+        GameProcessMonitor.Instance.PlaytimeTick += (session, deltaSeconds, totalSeconds) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                SendWebMessage(new
+                {
+                    @event = "game_playtime_tick",
+                    event_type = "game_playtime_tick",
+                    gameId = session.GameId,
+                    deltaSeconds = deltaSeconds,
+                    totalSessionSeconds = totalSeconds,
+                    data = new
+                    {
+                        gameId = session.GameId,
+                        deltaSeconds = deltaSeconds,
+                        totalSessionSeconds = totalSeconds
+                    }
+                });
+            });
+        };
+
+        GameProcessMonitor.Instance.SessionEnded += (session, totalSeconds) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                SendWebMessage(new
+                {
+                    @event = "game_session_ended",
+                    event_type = "game_session_ended",
+                    gameId = session.GameId,
+                    totalSessionSeconds = totalSeconds,
+                    endedAt = DateTime.UtcNow.ToString("o"),
+                    data = new
+                    {
+                        gameId = session.GameId,
+                        totalSessionSeconds = totalSeconds,
+                        endedAt = DateTime.UtcNow.ToString("o")
+                    }
+                });
+            });
+        };
+        _ = GameProcessMonitor.Instance.StartAsync();
 
         await Task.Delay(1000); 
         
@@ -572,6 +640,105 @@ public partial class MainWindow : Window
                 {
                     SendWebMessage(new { id, success = true, data = new { isFullscreen = _isFullscreen } });
                 }
+                else if (cmd == "scan_installed_games")
+                {
+                    var games = await GameScannerService.ScanAllAsync();
+                    GameProcessMonitor.Instance.RegisterGames(games);
+                    SendWebMessage(new { id, success = true, data = new { games } });
+                }
+                else if (cmd == "launch_game")
+                {
+                    string gameId = doc.RootElement.TryGetProperty("gameId", out var gIdProp) ? gIdProp.GetString() ?? "" : "";
+                    string platform = doc.RootElement.TryGetProperty("platform", out var pProp) ? pProp.GetString() ?? "" : "";
+                    string? title = doc.RootElement.TryGetProperty("title", out var tProp) ? tProp.GetString() : null;
+                    string? launchUri = doc.RootElement.TryGetProperty("launchUri", out var luProp) ? luProp.GetString() : null;
+                    string? executablePath = doc.RootElement.TryGetProperty("executablePath", out var epProp) ? epProp.GetString() : null;
+                    string? arguments = doc.RootElement.TryGetProperty("arguments", out var aProp) ? aProp.GetString() : null;
+                    string? workingDirectory = doc.RootElement.TryGetProperty("workingDirectory", out var wdProp) ? wdProp.GetString() : null;
+                    string? executableName = doc.RootElement.TryGetProperty("executableName", out var enProp) ? enProp.GetString() : null;
+
+                    var req = new LaunchGameRequest
+                    {
+                        GameId = gameId,
+                        Platform = platform,
+                        Title = title,
+                        LaunchUri = launchUri,
+                        ExecutablePath = executablePath,
+                        Arguments = arguments,
+                        WorkingDirectory = workingDirectory,
+                        ExecutableName = executableName
+                    };
+
+                    var result = await GameProcessMonitor.Instance.LaunchGameAsync(req);
+                    SendWebMessage(new { id, success = result.Success, data = new { success = result.Success, message = result.Message, processId = result.ProcessId } });
+                }
+                else if (cmd == "pick_game_executable")
+                {
+                    PickGameResult? pickResult = null;
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        using var dialog = new System.Windows.Forms.OpenFileDialog
+                        {
+                            Title = "Select Game Executable",
+                            Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*",
+                            Multiselect = false,
+                            CheckFileExists = true
+                        };
+
+                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrEmpty(dialog.FileName))
+                        {
+                            var exePath = dialog.FileName;
+                            string gameTitle = Path.GetFileNameWithoutExtension(exePath);
+                            try
+                            {
+                                var fileVersion = FileVersionInfo.GetVersionInfo(exePath);
+                                if (!string.IsNullOrWhiteSpace(fileVersion.FileDescription))
+                                {
+                                    gameTitle = fileVersion.FileDescription.Trim();
+                                }
+                                else if (!string.IsNullOrWhiteSpace(fileVersion.ProductName))
+                                {
+                                    gameTitle = fileVersion.ProductName.Trim();
+                                }
+                            }
+                            catch { }
+
+                            var iconDataUrl = GameIconExtractor.ExtractIconAsDataUrl(exePath);
+
+                            pickResult = new PickGameResult
+                            {
+                                Title = gameTitle,
+                                ExecutablePath = exePath,
+                                IconDataUrl = iconDataUrl
+                            };
+                        }
+                    });
+
+                    SendWebMessage(new { id, success = true, data = pickResult });
+                }
+                else if (cmd == "get_game_icon")
+                {
+                    string exePath = doc.RootElement.TryGetProperty("executablePath", out var ep) ? ep.GetString() ?? "" : "";
+                    string? gameId = doc.RootElement.TryGetProperty("gameId", out var gi) ? gi.GetString() : null;
+
+                    var iconDataUrl = await GameIconExtractor.ExtractIconAsDataUrlAsync(exePath, gameId);
+                    SendWebMessage(new { id, success = true, data = new { iconDataUrl } });
+                }
+                else if (cmd == "get_running_games")
+                {
+                    var sessions = GameProcessMonitor.Instance.GetRunningSessions();
+                    var runningGames = sessions.Select(s => new
+                    {
+                        gameId = s.GameId,
+                        title = s.Title,
+                        platform = s.Platform,
+                        elapsedSeconds = s.ElapsedSeconds,
+                        totalSessionSeconds = s.TotalSessionSeconds,
+                        startedAt = s.StartedAt.ToString("o")
+                    }).ToList();
+
+                    SendWebMessage(new { id, success = true, data = new { runningGames } });
+                }
             }
             catch (Exception ex)
             {
@@ -676,6 +843,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        GameProcessMonitor.Instance.Stop();
         PythonServerManager.Instance.Stop();
     }
 }

@@ -343,6 +343,150 @@ export const en = {
     passwordManagerTitle: "Password Manager",
     passwordManagerDesc:
       "Securely store and manage passwords with AES-256 zero-knowledge encryption.",
+    gameLibraryTitle: "Game Library",
+    gameLibraryDesc:
+      "Aggregate, manage, and launch your locally installed games across platforms with playtime tracking and friend activity.",
+  },
+  gameLibrary: {
+    // Title & Descriptions
+    title: "Game Library",
+    subtitle:
+      "Manage, launch, and track playtime across all your installed PC games.",
+    description:
+      "Aggregate and launch locally installed games across platforms.",
+
+    // Platform Names & Filters
+    platformAll: "All",
+    platformSteam: "Steam",
+    platformEpic: "Epic Games",
+    platformEA: "EA App",
+    platformXbox: "Xbox / PC Game Pass",
+    platformGOG: "GOG Galaxy",
+    platformUbisoft: "Ubisoft Connect",
+    platformCustom: "Custom",
+    allPlatforms: "All Platforms",
+    platforms: "Platforms",
+
+    // Search & Library
+    searchPlaceholder: "Search games by title...",
+    searchGames: "Search games...",
+    noGamesFound: "No games found",
+    noGamesFoundDesc:
+      "No games match the current filters or search query. Try adjusting your filters or add a custom game.",
+    emptyLibrary: "Your library is empty",
+    emptyLibraryDesc:
+      "Click 'Scan Games' to detect installed games or add a custom executable.",
+    totalGames: "{count} games",
+    scanGames: "Scan Games",
+    scanning: "Scanning installed games...",
+    scanComplete: "Scan complete",
+    scanFailed: "Failed to scan games",
+    refreshLibrary: "Refresh Library",
+
+    // Sort labels
+    sortBy: "Sort by",
+    sortRecentlyPlayed: "Recently Played",
+    sortPlaytime: "Playtime",
+    sortAlphabetical: "Alphabetical",
+    sortAlphabeticalAZ: "Alphabetical (A-Z)",
+    sortAlphabeticalZA: "Alphabetical (Z-A)",
+    recentlyPlayed: "Recently Played",
+    playtime: "Playtime",
+    alphabetical: "Alphabetical",
+
+    // View Switcher
+    viewMode: "View Mode",
+    viewGrid: "Grid View",
+    viewList: "List View",
+    gridView: "Grid View",
+    listView: "List View",
+    grid: "Grid",
+    list: "List",
+
+    // Filter labels
+    filterByPlatform: "Filter by Platform",
+    all: "All",
+    filter: "Filter",
+
+    // Add Custom Game dialog
+    addCustomGame: "Add Custom Game",
+    dialogTitle: "Add Custom Game",
+    dialogDesc:
+      "Add any non-launcher game or executable to your library.",
+    addCustomGameTitle: "Add Custom Game",
+    addCustomGameDesc:
+      "Add a local game executable (.exe) or custom title to your library.",
+    gameTitleLabel: "Game Title",
+    gameTitlePlaceholder: "e.g. Cyberpunk 2077",
+    customGameTitle: "Game Title",
+    customGameTitlePlaceholder: "e.g. My Favorite Game",
+    executablePathLabel: "Executable Path (.exe)",
+    executablePathPlaceholder: "C:\\Games\\MyGame\\game.exe",
+    executablePath: "Executable Path (.exe)",
+    browse: "Browse...",
+    selectExecutable: "Select Executable",
+    selectExecutableTitle: "Select Game Executable",
+    addGameButton: "Add Game",
+    addButton: "Add Game",
+    cancel: "Cancel",
+    successCustomAdded: "Custom game added successfully",
+    customGameAdded: "Custom game added successfully",
+    customGameError: "Failed to add custom game",
+    titleRequired: "Game title is required",
+    pathRequired: "Executable path is required",
+
+    // Game Details Drawer
+    details: "Game Details",
+    gameDetails: "Game Details",
+    play: "Play",
+    launchGame: "Launch Game",
+    launching: "Launching...",
+    running: "Playing",
+    gameRunning: "Currently Running",
+    launchSuccess: "Game launched successfully",
+    launchFailed: "Failed to launch game",
+    errorLaunchFailed: "Failed to launch game",
+    totalPlaytime: "Total Playtime",
+    yourPlaytime: "Your Playtime",
+    lastPlayed: "Last Played",
+    lastPlayedNever: "Never played",
+    noPlaytime: "No playtime recorded",
+    neverPlayed: "Never played",
+    never: "Never",
+    installPath: "Install Path",
+    installLocation: "Install Location",
+    executable: "Executable",
+    platform: "Platform",
+    friendsWithThisGame: "Friends with this Game",
+    friendsWithGame: "Friends with this Game",
+    friendsPlaying: "Friends Playing",
+    noFriendsWithGame: "None of your friends own this game yet.",
+    noFriendsOwnThisGame:
+      "None of your friends have played or own this game yet.",
+    noFriendsPlaying: "No friends are currently playing this game.",
+    playingNow: "Playing Now",
+    offline: "Offline",
+    hours: "hrs",
+    minutes: "min",
+    hoursPlayed: "{hours} hrs {minutes} mins",
+    minutesPlayed: "{minutes} mins",
+    justNow: "Just now",
+
+    // Desktop Required
+    desktopRequiredTitle: "Desktop App Required",
+    desktopRequiredDesc:
+      "Game Library requires Oxygen Low's Software desktop app to scan local game launchers, launch executables, and track active playtime.",
+    desktopRequiredMessage:
+      "The Game Library aggregates local launcher manifests, launches native executables, and monitors active processes. This feature requires Oxygen Low's Software Desktop App on Windows.",
+    downloadDesktopApp: "Download Desktop App",
+    backToApps: "Back to Apps",
+    desktopOnlyBadge: "Desktop Only",
+
+    // Privacy & Preferences
+    privacyNotice:
+      "Your game activity and playtime are shared with your friends according to your privacy settings.",
+    shareActivityEnabled: "Game activity sharing enabled",
+    shareActivityDisabled: "Game activity sharing disabled",
   },
   games: {
     title: "Games",
@@ -954,6 +1098,7 @@ export const en = {
     notFound: "Page Not Found",
     oauthConsent: "Authorize Application",
     userProfile: "User Profile",
+    gameLibrary: "Game Library",
   },
 } as const;
 

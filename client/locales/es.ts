@@ -345,6 +345,150 @@ export const es = {
     passwordManagerTitle: "Gestor de Contraseñas",
     passwordManagerDesc:
       "Almacena y gestiona contraseñas de forma segura con cifrado de conocimiento cero AES-256.",
+    gameLibraryTitle: "Biblioteca de juegos",
+    gameLibraryDesc:
+      "Reúne, administra e inicia tus juegos instalados localmente en todas las plataformas con seguimiento de tiempo de juego y actividad de amigos.",
+  },
+  gameLibrary: {
+    // Title & Descriptions
+    title: "Biblioteca de Juegos",
+    subtitle:
+      "Administra, inicia y rastrea el tiempo de juego en todos tus juegos instalados en PC.",
+    description:
+      "Reúne e inicia juegos instalados localmente en todas las plataformas.",
+
+    // Platform Names & Filters
+    platformAll: "Todos",
+    platformSteam: "Steam",
+    platformEpic: "Epic Games",
+    platformEA: "EA App",
+    platformXbox: "Xbox / PC Game Pass",
+    platformGOG: "GOG Galaxy",
+    platformUbisoft: "Ubisoft Connect",
+    platformCustom: "Personalizado",
+    allPlatforms: "Todas las plataformas",
+    platforms: "Plataformas",
+
+    // Search & Library
+    searchPlaceholder: "Buscar juegos por título...",
+    searchGames: "Buscar juegos...",
+    noGamesFound: "No se encontraron juegos",
+    noGamesFoundDesc:
+      "Ningún juego coincide con los filtros o la búsqueda actual. Prueba ajustando los filtros o añade un juego personalizado.",
+    emptyLibrary: "Tu biblioteca está vacía",
+    emptyLibraryDesc:
+      "Haz clic en 'Escanear Juegos' para detectar juegos instalados o añade un ejecutable personalizado.",
+    totalGames: "{count} juegos",
+    scanGames: "Escanear Juegos",
+    scanning: "Escaneando juegos instalados...",
+    scanComplete: "Escaneo completado",
+    scanFailed: "Error al escanear juegos",
+    refreshLibrary: "Actualizar biblioteca",
+
+    // Sort labels
+    sortBy: "Ordenar por",
+    sortRecentlyPlayed: "Jugado recientemente",
+    sortPlaytime: "Tiempo de juego",
+    sortAlphabetical: "Alfabético",
+    sortAlphabeticalAZ: "Alfabético (A-Z)",
+    sortAlphabeticalZA: "Alfabético (Z-A)",
+    recentlyPlayed: "Jugado recientemente",
+    playtime: "Tiempo de juego",
+    alphabetical: "Alfabético",
+
+    // View Switcher
+    viewMode: "Modo de vista",
+    viewGrid: "Vista en cuadrícula",
+    viewList: "Vista en lista",
+    gridView: "Vista en cuadrícula",
+    listView: "Vista en lista",
+    grid: "Cuadrícula",
+    list: "Lista",
+
+    // Filter labels
+    filterByPlatform: "Filtrar por plataforma",
+    all: "Todos",
+    filter: "Filtrar",
+
+    // Add Custom Game dialog
+    addCustomGame: "Agregar Juego Personalizado",
+    dialogTitle: "Agregar Juego Personalizado",
+    dialogDesc:
+      "Añade cualquier juego o ejecutable fuera de los lanzadores a tu biblioteca.",
+    addCustomGameTitle: "Añadir juego personalizado",
+    addCustomGameDesc:
+      "Añade un ejecutable de juego local (.exe) o un título personalizado a tu biblioteca.",
+    gameTitleLabel: "Título del juego",
+    gameTitlePlaceholder: "p. ej. Cyberpunk 2077",
+    customGameTitle: "Título del juego",
+    customGameTitlePlaceholder: "p. ej. Mi juego favorito",
+    executablePathLabel: "Ruta del ejecutable (.exe)",
+    executablePathPlaceholder: "C:\\Games\\MiJuego\\game.exe",
+    executablePath: "Ruta del ejecutable (.exe)",
+    browse: "Examinar...",
+    selectExecutable: "Seleccionar ejecutable",
+    selectExecutableTitle: "Seleccionar ejecutable del juego",
+    addGameButton: "Añadir juego",
+    addButton: "Añadir juego",
+    cancel: "Cancelar",
+    successCustomAdded: "Juego personalizado añadido con éxito",
+    customGameAdded: "Juego personalizado añadido con éxito",
+    customGameError: "Error al añadir el juego personalizado",
+    titleRequired: "El título del juego es obligatorio",
+    pathRequired: "La ruta del ejecutable es obligatoria",
+
+    // Game Details Drawer
+    details: "Detalles del juego",
+    gameDetails: "Detalles del juego",
+    play: "Jugar",
+    launchGame: "Iniciar juego",
+    launching: "Iniciando...",
+    running: "Jugando",
+    gameRunning: "Actualmente en ejecución",
+    launchSuccess: "Juego iniciado con éxito",
+    launchFailed: "Error al iniciar el juego",
+    errorLaunchFailed: "Error al iniciar el juego",
+    totalPlaytime: "Tiempo total de juego",
+    yourPlaytime: "Tu tiempo de juego",
+    lastPlayed: "Última vez jugado",
+    lastPlayedNever: "Nunca jugado",
+    noPlaytime: "Sin tiempo de juego registrado",
+    neverPlayed: "Nunca jugado",
+    never: "Nunca",
+    installPath: "Ruta de instalación",
+    installLocation: "Ubicación de instalación",
+    executable: "Ejecutable",
+    platform: "Plataforma",
+    friendsWithThisGame: "Amigos con este juego",
+    friendsWithGame: "Amigos con este juego",
+    friendsPlaying: "Amigos jugando",
+    noFriendsWithGame: "Ninguno de tus amigos tiene este juego todavía.",
+    noFriendsOwnThisGame:
+      "Ninguno de tus amigos tiene o ha jugado a este juego todavía.",
+    noFriendsPlaying: "Ningún amigo está jugando a este juego ahora.",
+    playingNow: "Jugando ahora",
+    offline: "Desconectado",
+    hours: "h",
+    minutes: "min",
+    hoursPlayed: "{hours} h {minutes} min",
+    minutesPlayed: "{minutes} min",
+    justNow: "Justo ahora",
+
+    // Desktop Required
+    desktopRequiredTitle: "Se requiere la aplicación de escritorio",
+    desktopRequiredDesc:
+      "La Biblioteca de juegos requiere la aplicación de escritorio Oxygen Low's Software para escanear lanzadores locales, iniciar ejecutables y rastrear el tiempo de juego activo.",
+    desktopRequiredMessage:
+      "La Biblioteca de juegos recopila manifiestos de lanzadores locales, inicia ejecutables nativos y monitorea procesos activos. Esta función requiere la aplicación de escritorio Oxygen Low's Software en Windows.",
+    downloadDesktopApp: "Descargar aplicación de escritorio",
+    backToApps: "Volver a Aplicaciones",
+    desktopOnlyBadge: "Solo escritorio",
+
+    // Privacy & Preferences
+    privacyNotice:
+      "Tu actividad de juego y tiempo de juego se comparten con tus amigos según tu configuración de privacidad.",
+    shareActivityEnabled: "Compartir actividad de juego activado",
+    shareActivityDisabled: "Compartir actividad de juego desactivado",
   },
   games: {
     title: "Juegos",
@@ -973,5 +1117,6 @@ export const es = {
     notFound: "Página no encontrada",
     oauthConsent: "Autorizar aplicación",
     userProfile: "Perfil de usuario",
+    gameLibrary: "Biblioteca de juegos",
   },
 } as const;

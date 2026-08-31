@@ -340,6 +340,150 @@ export const ko = {
     passwordManagerTitle: "비밀번호 관리자",
     passwordManagerDesc:
       "AES-256 제로 지식 암호화로 비밀번호를 안전하게 저장하고 관리합니다.",
+    gameLibraryTitle: "게임 라이브러리",
+    gameLibraryDesc:
+      "플레이 시간 기록 및 친구 활동 현황과 함께 다양한 플랫폼의 로컬 설치 게임을 집계, 관리 및 실행합니다.",
+  },
+  gameLibrary: {
+    // Title & Descriptions
+    title: "게임 라이브러리",
+    subtitle:
+      "설치된 모든 PC 게임을 관리, 실행 및 플레이 시간 기록.",
+    description:
+      "다양한 플랫폼에 설치된 로컬 게임을 집계하고 바로 실행합니다.",
+
+    // Platform Names & Filters
+    platformAll: "전체",
+    platformSteam: "Steam",
+    platformEpic: "Epic Games",
+    platformEA: "EA App",
+    platformXbox: "Xbox / PC Game Pass",
+    platformGOG: "GOG Galaxy",
+    platformUbisoft: "Ubisoft Connect",
+    platformCustom: "사용자 지정",
+    allPlatforms: "모든 플랫폼",
+    platforms: "플랫폼",
+
+    // Search & Library
+    searchPlaceholder: "게임 제목으로 검색...",
+    searchGames: "게임 검색...",
+    noGamesFound: "게임을 찾을 수 없음",
+    noGamesFoundDesc:
+      "필터 또는 검색어와 일치하는 게임이 없습니다. 필터를 조정하거나 사용자 지정 게임을 추가해보세요.",
+    emptyLibrary: "라이브러리가 비어 있습니다",
+    emptyLibraryDesc:
+      "'게임 스캔'을 클릭하여 설치된 게임을 감지하거나 실행 파일을 추가하세요.",
+    totalGames: "{count}개의 게임",
+    scanGames: "게임 스캔",
+    scanning: "설치된 게임 스캔 중...",
+    scanComplete: "스캔 완료",
+    scanFailed: "게임 스캔 실패",
+    refreshLibrary: "라이브러리 새로고침",
+
+    // Sort labels
+    sortBy: "정렬 기준",
+    sortRecentlyPlayed: "최근 플레이순",
+    sortPlaytime: "플레이 시간순",
+    sortAlphabetical: "가나다순 / 알파벳순",
+    sortAlphabeticalAZ: "가나다순 (A-Z)",
+    sortAlphabeticalZA: "역가나다순 (Z-A)",
+    recentlyPlayed: "최근 플레이한 순",
+    playtime: "플레이 시간",
+    alphabetical: "이름순",
+
+    // View Switcher
+    viewMode: "보기 모드",
+    viewGrid: "그리드 보기",
+    viewList: "목록 보기",
+    gridView: "그리드 보기",
+    listView: "목록 보기",
+    grid: "그리드",
+    list: "목록",
+
+    // Filter labels
+    filterByPlatform: "플랫폼별 필터",
+    all: "전체",
+    filter: "필터",
+
+    // Add Custom Game dialog
+    addCustomGame: "커스텀 게임 추가",
+    dialogTitle: "커스텀 게임 추가",
+    dialogDesc:
+      "런처 외부의 게임이나 실행 파일을 라이브러리에 추가합니다.",
+    addCustomGameTitle: "사용자 지정 게임 추가",
+    addCustomGameDesc:
+      "로컬 게임 실행 파일(.exe) 또는 사용자 지정 타이틀을 라이브러리에 추가합니다.",
+    gameTitleLabel: "게임 제목",
+    gameTitlePlaceholder: "예: Cyberpunk 2077",
+    customGameTitle: "게임 제목",
+    customGameTitlePlaceholder: "예: 내가 좋아하는 게임",
+    executablePathLabel: "실행 파일 경로 (.exe)",
+    executablePathPlaceholder: "C:\\Games\\MyGame\\game.exe",
+    executablePath: "실행 파일 경로 (.exe)",
+    browse: "찾아보기...",
+    selectExecutable: "실행 파일 선택",
+    selectExecutableTitle: "게임 실행 파일 선택",
+    addGameButton: "게임 추가",
+    addButton: "게임 추가",
+    cancel: "취소",
+    successCustomAdded: "커스텀 게임이 성공적으로 추가되었습니다",
+    customGameAdded: "사용자 지정 게임이 성공적으로 추가되었습니다",
+    customGameError: "사용자 지정 게임 추가 실패",
+    titleRequired: "게임 제목을 입력해주세요",
+    pathRequired: "실행 파일 경로를 입력해주세요",
+
+    // Game Details Drawer
+    details: "게임 상세 정보",
+    gameDetails: "게임 상세 정보",
+    play: "플레이",
+    launchGame: "게임 실행",
+    launching: "실행 중...",
+    running: "플레이 중",
+    gameRunning: "현재 실행 중",
+    launchSuccess: "게임이 성공적으로 실행되었습니다",
+    launchFailed: "게임 실행 실패",
+    errorLaunchFailed: "게임 실행 실패",
+    totalPlaytime: "총 플레이 시간",
+    yourPlaytime: "내 플레이 시간",
+    lastPlayed: "최근 플레이",
+    lastPlayedNever: "플레이 기록 없음",
+    noPlaytime: "플레이 기록 없음",
+    neverPlayed: "플레이 기록 없음",
+    never: "없음",
+    installPath: "설치 경로",
+    installLocation: "설치 위치",
+    executable: "실행 파일",
+    platform: "플랫폼",
+    friendsWithThisGame: "이 게임을 보유한 친구",
+    friendsWithGame: "이 게임을 보유한 친구",
+    friendsPlaying: "플레이 중인 친구",
+    noFriendsWithGame: "이 게임을 보유한 친구가 없습니다.",
+    noFriendsOwnThisGame:
+      "아직 이 게임을 플레이하거나 보유한 친구가 없습니다.",
+    noFriendsPlaying: "현재 이 게임을 플레이 중인 친구가 없습니다.",
+    playingNow: "지금 플레이 중",
+    offline: "오프라인",
+    hours: "시간",
+    minutes: "분",
+    hoursPlayed: "{hours}시간 {minutes}분",
+    minutesPlayed: "{minutes}분",
+    justNow: "방금 전",
+
+    // Desktop Required
+    desktopRequiredTitle: "데스크톱 앱 필요",
+    desktopRequiredDesc:
+      "게임 라이브러리는 로컬 런처 스캔, 실행 및 플레이 시간 추적을 위해 Oxygen Low's Software 데스크톱 앱이 필요합니다.",
+    desktopRequiredMessage:
+      "게임 라이브러리는 로컬 런처 매니페스트를 집계하고 네이티브 실행 파일을 실행하며 활성 프로세스를 모니터링합니다. 이 기능을 사용하려면 Windows용 Oxygen Low's Software 데스크톱 앱이 필요합니다.",
+    downloadDesktopApp: "데스크톱 앱 다운로드",
+    backToApps: "앱 목록으로 돌아가기",
+    desktopOnlyBadge: "데스크톱 전용",
+
+    // Privacy & Preferences
+    privacyNotice:
+      "게임 활동 및 플레이 시간은 개인정보 설정에 따라 친구들과 공유됩니다.",
+    shareActivityEnabled: "게임 활동 공유 활성화됨",
+    shareActivityDisabled: "게임 활동 공유 비활성화됨",
   },
   games: {
     title: "게임",
@@ -946,5 +1090,6 @@ export const ko = {
     notFound: "페이지를 찾을 수 없음",
     oauthConsent: "애플리케이션 승인",
     userProfile: "사용자 프로필",
+    gameLibrary: "게임 라이브러리",
   },
 } as const;

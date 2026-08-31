@@ -346,6 +346,150 @@ export const ru = {
     passwordManagerTitle: "Менеджер паролей",
     passwordManagerDesc:
       "Безопасно храните и управляйте паролями с AES-256 шифрованием с нулевым разглашением.",
+    gameLibraryTitle: "Библиотека игр",
+    gameLibraryDesc:
+      "Объединяйте, управляйте и запускайте локально установленные игры со всех платформ с отслеживанием времени и активности друзей.",
+  },
+  gameLibrary: {
+    // Title & Descriptions
+    title: "Библиотека игр",
+    subtitle:
+      "Управляйте, запускайте и отслеживайте время во всех установленных играх на ПК.",
+    description:
+      "Объединяйте и запускайте локально установленные игры со всех платформ.",
+
+    // Platform Names & Filters
+    platformAll: "Все",
+    platformSteam: "Steam",
+    platformEpic: "Epic Games",
+    platformEA: "EA App",
+    platformXbox: "Xbox / PC Game Pass",
+    platformGOG: "GOG Galaxy",
+    platformUbisoft: "Ubisoft Connect",
+    platformCustom: "Пользовательские",
+    allPlatforms: "Все платформы",
+    platforms: "Платформы",
+
+    // Search & Library
+    searchPlaceholder: "Поиск игр по названию...",
+    searchGames: "Поиск игр...",
+    noGamesFound: "Игры не найдены",
+    noGamesFoundDesc:
+      "Нет игр, соответствующих фильтрам или поисковому запросу. Измените параметры поиска или добавьте свою игру.",
+    emptyLibrary: "Библиотека пуста",
+    emptyLibraryDesc:
+      "Нажмите «Сканировать игры» для обнаружения установленных игр или добавьте исполняемый файл вручную.",
+    totalGames: "{count} игр",
+    scanGames: "Сканировать игры",
+    scanning: "Сканирование установленных игр...",
+    scanComplete: "Сканирование завершено",
+    scanFailed: "Не удалось просканировать игры",
+    refreshLibrary: "Обновить библиотеку",
+
+    // Sort labels
+    sortBy: "Сортировка",
+    sortRecentlyPlayed: "Недавно запущенные",
+    sortPlaytime: "Время в игре",
+    sortAlphabetical: "По алфавиту",
+    sortAlphabeticalAZ: "По алфавиту (А-Я / A-Z)",
+    sortAlphabeticalZA: "По алфавиту (Я-А / Z-A)",
+    recentlyPlayed: "Недавно запущенные",
+    playtime: "Время в игре",
+    alphabetical: "По алфавиту",
+
+    // View Switcher
+    viewMode: "Режим отображения",
+    viewGrid: "Сетка",
+    viewList: "Список",
+    gridView: "Сетка",
+    listView: "Список",
+    grid: "Сетка",
+    list: "Список",
+
+    // Filter labels
+    filterByPlatform: "Фильтр по платформе",
+    all: "Все",
+    filter: "Фильтр",
+
+    // Add Custom Game dialog
+    addCustomGame: "Добавить свою игру",
+    dialogTitle: "Добавить свою игру",
+    dialogDesc:
+      "Добавьте любую игру или исполняемый файл в свою библиотеку.",
+    addCustomGameTitle: "Добавление пользовательской игры",
+    addCustomGameDesc:
+      "Добавьте исполняемый файл (.exe) или стороннюю игру в вашу библиотеку.",
+    gameTitleLabel: "Название игры",
+    gameTitlePlaceholder: "напр. Cyberpunk 2077",
+    customGameTitle: "Название игры",
+    customGameTitlePlaceholder: "например, Моя любимая игра",
+    executablePathLabel: "Путь к файлу (.exe)",
+    executablePathPlaceholder: "C:\\Games\\MyGame\\game.exe",
+    executablePath: "Путь к файлу (.exe)",
+    browse: "Обзор...",
+    selectExecutable: "Выбрать файл",
+    selectExecutableTitle: "Выберите исполняемый файл игры",
+    addGameButton: "Добавить игру",
+    addButton: "Добавить игру",
+    cancel: "Отмена",
+    successCustomAdded: "Пользовательская игра успешно добавлена",
+    customGameAdded: "Игра успешно добавлена",
+    customGameError: "Не удалось добавить игру",
+    titleRequired: "Укажите название игры",
+    pathRequired: "Укажите путь к исполняемому файлу",
+
+    // Game Details Drawer
+    details: "Информация об игре",
+    gameDetails: "Сведения об игре",
+    play: "Играть",
+    launchGame: "Запустить игру",
+    launching: "Запуск...",
+    running: "В игре",
+    gameRunning: "Сейчас запущено",
+    launchSuccess: "Игра успешно запущена",
+    launchFailed: "Не удалось запустить игру",
+    errorLaunchFailed: "Не удалось запустить игру",
+    totalPlaytime: "Общее время в игре",
+    yourPlaytime: "Ваше время в игре",
+    lastPlayed: "Последний запуск",
+    lastPlayedNever: "Ни разу не запускалась",
+    noPlaytime: "Нет данных о времени",
+    neverPlayed: "Ни разу не запускалась",
+    never: "Никогда",
+    installPath: "Путь установки",
+    installLocation: "Папка установки",
+    executable: "Исполняемый файл",
+    platform: "Платформа",
+    friendsWithThisGame: "Друзья с этой игрой",
+    friendsWithGame: "Друзья с этой игрой",
+    friendsPlaying: "Играют сейчас",
+    noFriendsWithGame: "Ни у кого из ваших друзей пока нет этой игры.",
+    noFriendsOwnThisGame:
+      "Никто из ваших друзей пока не играл и не имеет этой игры.",
+    noFriendsPlaying: "Сейчас никто из друзей не играет в эту игру.",
+    playingNow: "Играет сейчас",
+    offline: "Не в сети",
+    hours: "ч",
+    minutes: "мин",
+    hoursPlayed: "{hours} ч {minutes} мин",
+    minutesPlayed: "{minutes} мин",
+    justNow: "Только что",
+
+    // Desktop Required
+    desktopRequiredTitle: "Требуется приложение для ПК",
+    desktopRequiredDesc:
+      "Для работы библиотеки игр, сканирования лаунчеров, запуска и учета времени требуется десктопное приложение Oxygen Low's Software.",
+    desktopRequiredMessage:
+      "Библиотека игр собирает манифесты локальных лаунчеров, запускает нативные исполняемые файлы и отслеживает активные процессы. Для этой функции требуется приложение Oxygen Low's Software для Windows.",
+    downloadDesktopApp: "Скачать десктопное приложение",
+    backToApps: "Назад к приложениям",
+    desktopOnlyBadge: "Только на ПК",
+
+    // Privacy & Preferences
+    privacyNotice:
+      "Ваша игровая активность и время в игре видны друзьям в соответствии с настройками конфиденциальности.",
+    shareActivityEnabled: "Публикация игровой активности включена",
+    shareActivityDisabled: "Публикация игровой активности отключена",
   },
   games: {
     title: "Игры",
@@ -962,5 +1106,6 @@ export const ru = {
     notFound: "Страница не найдена",
     oauthConsent: "Авторизация приложения",
     userProfile: "Профиль пользователя",
+    gameLibrary: "Библиотека игр",
   },
 } as const;

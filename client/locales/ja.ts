@@ -341,6 +341,150 @@ export const ja = {
     passwordManagerTitle: "パスワードマネージャー",
     passwordManagerDesc:
       "AES-256ゼロ知識暗号化でパスワードを安全に保存・管理します。",
+    gameLibraryTitle: "ゲームライブラリ",
+    gameLibraryDesc:
+      "プレイ時間の記録やフレンドのアクティビティとともに、インストールされているゲームをプラットフォームを横断して集約・管理・起動します。",
+  },
+  gameLibrary: {
+    // Title & Descriptions
+    title: "ゲームライブラリ",
+    subtitle:
+      "インストール済みのすべてのPCゲームの管理、起動、プレイ時間の記録を行います。",
+    description:
+      "インストールされているゲームをプラットフォームを横断して集約・起動します。",
+
+    // Platform Names & Filters
+    platformAll: "すべて",
+    platformSteam: "Steam",
+    platformEpic: "Epic Games",
+    platformEA: "EA App",
+    platformXbox: "Xbox / PC Game Pass",
+    platformGOG: "GOG Galaxy",
+    platformUbisoft: "Ubisoft Connect",
+    platformCustom: "カスタム",
+    allPlatforms: "すべてのプラットフォーム",
+    platforms: "プラットフォーム",
+
+    // Search & Library
+    searchPlaceholder: "タイトルでゲームを検索...",
+    searchGames: "ゲームを検索...",
+    noGamesFound: "ゲームが見つかりません",
+    noGamesFoundDesc:
+      "現在のフィルターまたは検索条件に一致するゲームがありません。フィルターを変更するか、カスタムゲームを追加してください。",
+    emptyLibrary: "ライブラリは空です",
+    emptyLibraryDesc:
+      "「ゲームをスキャン」をクリックしてインストール済みゲームを検出するか、カスタム実行ファイルを追加してください。",
+    totalGames: "{count}本のゲーム",
+    scanGames: "ゲームをスキャン",
+    scanning: "インストール済みゲームをスキャン中...",
+    scanComplete: "スキャン完了",
+    scanFailed: "ゲームのスキャンに失敗しました",
+    refreshLibrary: "ライブラリを更新",
+
+    // Sort labels
+    sortBy: "並べ替え",
+    sortRecentlyPlayed: "最近プレイした順",
+    sortPlaytime: "プレイ時間順",
+    sortAlphabetical: "アルファベット順",
+    sortAlphabeticalAZ: "アルファベット順 (A-Z)",
+    sortAlphabeticalZA: "アルファベット順 (Z-A)",
+    recentlyPlayed: "最近プレイした順",
+    playtime: "プレイ時間",
+    alphabetical: "アルファベット順",
+
+    // View Switcher
+    viewMode: "表示モード",
+    viewGrid: "グリッド表示",
+    viewList: "リスト表示",
+    gridView: "グリッド表示",
+    listView: "リスト表示",
+    grid: "グリッド",
+    list: "リスト",
+
+    // Filter labels
+    filterByPlatform: "プラットフォームで絞り込み",
+    all: "すべて",
+    filter: "フィルター",
+
+    // Add Custom Game dialog
+    addCustomGame: "カスタムゲームを追加",
+    dialogTitle: "カスタムゲームを追加",
+    dialogDesc:
+      "ランチャー外のゲームや実行ファイルをライブラリに追加します。",
+    addCustomGameTitle: "カスタムゲームの追加",
+    addCustomGameDesc:
+      "ローカルのゲーム実行ファイル (.exe) またはカスタムタイトルをライブラリに追加します。",
+    gameTitleLabel: "ゲームタイトル",
+    gameTitlePlaceholder: "例: Cyberpunk 2077",
+    customGameTitle: "ゲームタイトル",
+    customGameTitlePlaceholder: "例: お気に入りのゲーム",
+    executablePathLabel: "実行ファイルのパス (.exe)",
+    executablePathPlaceholder: "C:\\Games\\MyGame\\game.exe",
+    executablePath: "実行ファイルのパス (.exe)",
+    browse: "参照...",
+    selectExecutable: "実行ファイルを選択",
+    selectExecutableTitle: "ゲーム実行ファイルを選択",
+    addGameButton: "ゲームを追加",
+    addButton: "ゲームを追加",
+    cancel: "キャンセル",
+    successCustomAdded: "カスタムゲームが正常に追加されました",
+    customGameAdded: "カスタムゲームが正常に追加されました",
+    customGameError: "カスタムゲームの追加に失敗しました",
+    titleRequired: "ゲームタイトルを入力してください",
+    pathRequired: "実行ファイルのパスを入力してください",
+
+    // Game Details Drawer
+    details: "ゲームの詳細",
+    gameDetails: "ゲームの詳細",
+    play: "プレイ",
+    launchGame: "ゲームを起動",
+    launching: "起動中...",
+    running: "プレイ中",
+    gameRunning: "現在実行中",
+    launchSuccess: "ゲームが正常に起動しました",
+    launchFailed: "ゲームの起動に失敗しました",
+    errorLaunchFailed: "ゲームの起動に失敗しました",
+    totalPlaytime: "総プレイ時間",
+    yourPlaytime: "あなたのプレイ時間",
+    lastPlayed: "最後にプレイ",
+    lastPlayedNever: "未プレイ",
+    noPlaytime: "プレイ記録なし",
+    neverPlayed: "未プレイ",
+    never: "未プレイ",
+    installPath: "インストール先パス",
+    installLocation: "インストール場所",
+    executable: "実行ファイル",
+    platform: "プラットフォーム",
+    friendsWithThisGame: "このゲームを所持しているフレンド",
+    friendsWithGame: "このゲームを所持しているフレンド",
+    friendsPlaying: "プレイ中のフレンド",
+    noFriendsWithGame: "このゲームを所持しているフレンドはまだいません。",
+    noFriendsOwnThisGame:
+      "このゲームを所持またはプレイしたフレンドはまだいません。",
+    noFriendsPlaying: "現在このゲームをプレイしているフレンドはいません。",
+    playingNow: "プレイ中",
+    offline: "オフライン",
+    hours: "時間",
+    minutes: "分",
+    hoursPlayed: "{hours}時間 {minutes}分",
+    minutesPlayed: "{minutes}分",
+    justNow: "たった今",
+
+    // Desktop Required
+    desktopRequiredTitle: "デスクトップアプリが必要です",
+    desktopRequiredDesc:
+      "ゲームライブラリを使用するには、ローカルランチャーのスキャン、起動、プレイ時間記録のために Oxygen Low's Software デスクトップアプリが必要です。",
+    desktopRequiredMessage:
+      "ゲームライブラリはローカルのランチャーマニフェストを集約し、ネイティブ実行ファイルを起動して、アクティブなプロセスを監視します。この機能にはWindows用のOxygen Low's Softwareデスクトップアプリが必要です。",
+    downloadDesktopApp: "デスクトップアプリをダウンロード",
+    backToApps: "アプリ一覧に戻る",
+    desktopOnlyBadge: "デスクトップ専用",
+
+    // Privacy & Preferences
+    privacyNotice:
+      "ゲームのアクティビティとプレイ時間は、プライバシー設定に従ってフレンドと共有されます。",
+    shareActivityEnabled: "ゲームアクティビティの共有が有効です",
+    shareActivityDisabled: "ゲームアクティビティの共有が無効です",
   },
   games: {
     title: "ゲーム",
@@ -960,5 +1104,6 @@ export const ja = {
     notFound: "ページが見つかりません",
     oauthConsent: "アプリケーションの承認",
     userProfile: "ユーザープロフィール",
+    gameLibrary: "ゲームライブラリ",
   },
 } as const;

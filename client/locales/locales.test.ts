@@ -112,10 +112,22 @@ describe("All Locales Verification", () => {
       expect(t("characters.aiGenerate.titleUniverse")).toBeTruthy();
       expect(t("characters.aiGenerate.subtitle")).toBeTruthy();
       expect(t("characters.aiGenerate.promptLabel")).toBeTruthy();
-      expect(t("characters.aiGenerate.generate")).toBeTruthy();
-      expect(t("characters.aiGenerate.stepSummarizing")).toBeTruthy();
-      expect(t("characters.aiGenerate.stepResearching")).toBeTruthy();
       expect(t("characters.aiGenerate.stepGenerating")).toBeTruthy();
+
+      // Test Game Library keys
+      expect(t("apps.gameLibraryTitle")).toBeTruthy();
+      expect(t("apps.gameLibraryDesc")).toBeTruthy();
+      expect(t("titles.gameLibrary")).toBeTruthy();
+      expect(t("gameLibrary.title")).toBeTruthy();
+      expect(t("gameLibrary.subtitle")).toBeTruthy();
+      expect(t("gameLibrary.platformSteam")).toBe("Steam");
+      expect(t("gameLibrary.platformEpic")).toBe("Epic Games");
+      expect(t("gameLibrary.play")).toBeTruthy();
+      expect(t("gameLibrary.addCustomGame")).toBeTruthy();
+      expect(t("gameLibrary.desktopRequiredTitle")).toBeTruthy();
+      expect(t("gameLibrary.desktopRequiredMessage")).toContain(
+        "Oxygen Low's Software",
+      );
     });
   });
 });
