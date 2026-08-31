@@ -30,6 +30,54 @@ const getFetch = () =>
 const getFormData = () =>
   typeof FormData !== "undefined" ? FormData : (globalThis as any).FormData;
 
+async function parseResponse<T = any>(
+  res: any,
+): Promise<{ data: T | null; error: Error | null }> {
+  let json: any = null;
+  const isOk =
+    res.ok !== undefined
+      ? res.ok
+      : typeof res.status === "number"
+        ? res.status >= 200 && res.status < 300
+        : true;
+
+  try {
+    if (typeof res.json === "function") {
+      json = await res.json();
+    }
+  } catch {
+    json = null;
+  }
+
+  if (!isOk || (json && json.error)) {
+    let errorMsg = json?.error;
+    if (!errorMsg) {
+      try {
+        if (typeof res.text === "function") {
+          const text = await res.text();
+          if (
+            text.includes("<html") ||
+            text.includes("<!DOCTYPE") ||
+            text.includes("<HTML")
+          ) {
+            errorMsg = `Server error (${res.status || 500}): Please try again later.`;
+          } else if (text.trim()) {
+            errorMsg = text.trim().slice(0, 200);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (!errorMsg) {
+      errorMsg = `Request failed with status ${res.status || "unknown"}`;
+    }
+    return { data: null, error: new Error(errorMsg) };
+  }
+
+  return { data: json?.data !== undefined ? json.data : json, error: null };
+}
+
 export class CustomStorageClient {
   async upload(
     bucket: string,
@@ -66,16 +114,11 @@ export class CustomStorageClient {
         body: formData,
       });
 
-      const json = await res.json();
-      if (res.status >= 400 || json.error) {
-        return {
-          data: null,
-          error: new Error(
-            json.error || `Upload failed with status ${res.status}`,
-          ),
-        };
+      const parsed = await parseResponse<{ path: string }>(res);
+      if (parsed.error) {
+        return { data: null, error: parsed.error };
       }
-      return { data: json.data || { path: cleanPath }, error: null };
+      return { data: parsed.data || { path: cleanPath }, error: null };
     } catch (e: any) {
       return {
         data: null,
@@ -101,16 +144,11 @@ export class CustomStorageClient {
         body: JSON.stringify({ path: path.replace(/^\/+/, "") }),
       });
 
-      const json = await res.json();
-      if (res.status >= 400 || json.error) {
-        return {
-          data: null,
-          error: new Error(
-            json.error || `List failed with status ${res.status}`,
-          ),
-        };
+      const parsed = await parseResponse<StorageFileItem[]>(res);
+      if (parsed.error) {
+        return { data: null, error: parsed.error };
       }
-      return { data: json.data || [], error: null };
+      return { data: parsed.data || [], error: null };
     } catch (e: any) {
       return {
         data: null,
@@ -136,16 +174,11 @@ export class CustomStorageClient {
         body: JSON.stringify({ paths: cleanPaths }),
       });
 
-      const json = await res.json();
-      if (res.status >= 400 || json.error) {
-        return {
-          data: null,
-          error: new Error(
-            json.error || `Remove failed with status ${res.status}`,
-          ),
-        };
+      const parsed = await parseResponse<string[]>(res);
+      if (parsed.error) {
+        return { data: null, error: parsed.error };
       }
-      return { data: json.data || cleanPaths, error: null };
+      return { data: parsed.data || cleanPaths, error: null };
     } catch (e: any) {
       return {
         data: null,
@@ -170,11 +203,25 @@ export class CustomStorageClient {
       );
 
       if (!res.ok) {
-        const errorText = await res.text().catch(() => "Download failed");
+        let errorMsg = "";
+        try {
+          const text = await res.text();
+          if (
+            text.includes("<html") ||
+            text.includes("<!DOCTYPE") ||
+            text.includes("<HTML")
+          ) {
+            errorMsg = `Download failed with status ${res.status}`;
+          } else if (text.trim()) {
+            errorMsg = text.trim();
+          }
+        } catch {
+          // ignore
+        }
         return {
           data: null,
           error: new Error(
-            errorText || `Download failed with status ${res.status}`,
+            errorMsg || `Download failed with status ${res.status}`,
           ),
         };
       }
@@ -213,16 +260,17 @@ export class CustomStorageClient {
         body: JSON.stringify({ paths: cleanPaths, expiresIn }),
       });
 
-      const json = await res.json();
-      if (res.status >= 400 || json.error) {
-        return {
-          data: null,
-          error: new Error(
-            json.error || `Signed URLs failed with status ${res.status}`,
-          ),
-        };
+      const parsed = await parseResponse<
+        Array<{
+          signedUrl: string;
+          error: string | null;
+          path?: string;
+        }>
+      >(res);
+      if (parsed.error) {
+        return { data: null, error: parsed.error };
       }
-      return { data: json.data || [], error: null };
+      return { data: parsed.data || [], error: null };
     } catch (e: any) {
       return {
         data: null,

@@ -56,7 +56,25 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
       return c.json({ error: "No file provided" }, 400);
     }
 
-    const newFileSize = file.size || 0;
+    let buffer: Buffer;
+    if (
+      typeof file === "object" &&
+      file !== null &&
+      typeof file.arrayBuffer === "function"
+    ) {
+      const arrayBuffer = await file.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    } else if (Buffer.isBuffer(file)) {
+      buffer = file;
+    } else if (typeof file === "string") {
+      buffer = Buffer.from(file, "utf-8");
+    } else if (file instanceof Uint8Array || file instanceof ArrayBuffer) {
+      buffer = Buffer.from(file as any);
+    } else {
+      return c.json({ error: "Invalid file format" }, 400);
+    }
+
+    const newFileSize = file.size ?? buffer.length;
     const currentSize = getUserTotalSize(user.id);
 
     if (currentSize + newFileSize > MAX_USER_QUOTA) {
@@ -66,11 +84,10 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
       );
     }
 
-    const arrayBuffer = await file.arrayBuffer();
     const { data, error } = await serverStorage.upload(
       bucket,
       filePath,
-      Buffer.from(arrayBuffer),
+      buffer,
     );
 
     if (error) {

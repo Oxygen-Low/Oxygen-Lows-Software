@@ -97,19 +97,26 @@ function expressPlugin(): Plugin {
           }
           const method = req.method || "GET";
           const hasBody = method !== "GET" && method !== "HEAD";
-          let body: string | undefined;
+          let body: Uint8Array | undefined;
           if (hasBody) {
-            body = await new Promise<string>((resolve) => {
-              let data = "";
-              req.on("data", (chunk: any) => (data += chunk));
-              req.on("end", () => resolve(data));
+            const chunks: Buffer[] = [];
+            await new Promise<void>((resolve, reject) => {
+              req.on("data", (chunk: Buffer) =>
+                chunks.push(
+                  Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk),
+                ),
+              );
+              req.on("end", () => resolve());
+              req.on("error", (err) => reject(err));
             });
+            body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
           }
           const honoReq = new Request(fullUrl, {
             method,
             headers,
             body: hasBody ? body : undefined,
-          });
+            duplex: hasBody ? "half" : undefined,
+          } as any);
           const honoRes = await app.fetch(honoReq);
           res.statusCode = honoRes.status;
           honoRes.headers.forEach((value, key) => {
@@ -117,7 +124,17 @@ function expressPlugin(): Plugin {
           });
           const arrayBuf = await honoRes.arrayBuffer();
           res.end(Buffer.from(arrayBuf));
-        } catch (err) {
+        } catch (err: any) {
+          if (url.startsWith("/api/")) {
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(
+              JSON.stringify({
+                error: err?.message || "Internal Server Error",
+              }),
+            );
+            return;
+          }
           next(err);
         }
       });

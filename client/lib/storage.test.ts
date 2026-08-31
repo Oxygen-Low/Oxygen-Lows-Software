@@ -43,6 +43,70 @@ describe("Client Storage Library", () => {
         }),
       );
     });
+
+    it("handles binary ArrayBuffer / Uint8Array uploads", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 200,
+        json: () =>
+          Promise.resolve({ data: { path: "u1/archive.zip" }, error: null }),
+      });
+      global.fetch = mockFetch;
+
+      const binaryData = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00]);
+      const client = new CustomStorageClient();
+      const res = await client
+        .from("Storage")
+        .upload("u1/archive.zip", binaryData.buffer);
+
+      expect(res.error).toBeNull();
+      expect(res.data?.path).toBe("u1/archive.zip");
+    });
+
+    it("gracefully handles HTML error responses without throwing JSON parse error", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 500,
+        ok: false,
+        json: () =>
+          Promise.reject(
+            new SyntaxError("Unexpected token '<', \"<html> <h\"... is not valid JSON"),
+          ),
+        text: () =>
+          Promise.resolve(
+            "<html> <head><title>500 Internal Server Error</title></head><body><h1>Internal Server Error</h1></body></html>",
+          ),
+      });
+      global.fetch = mockFetch;
+
+      const file = new Blob(["zip content"], { type: "application/zip" });
+      const client = new CustomStorageClient();
+      const res = await client.from("Storage").upload("u1/large.zip", file);
+
+      expect(res.data).toBeNull();
+      expect(res.error).toBeInstanceOf(Error);
+      expect(res.error?.message).toContain("Server error (500)");
+      expect(res.error?.message).not.toContain("Unexpected token '<'");
+    });
+
+    it("handles 400 JSON errors correctly", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 400,
+        ok: false,
+        json: () =>
+          Promise.resolve({
+            error: "Quota exceeded. Maximum 1GB allowed per user.",
+          }),
+      });
+      global.fetch = mockFetch;
+
+      const file = new Blob(["content"], { type: "application/zip" });
+      const client = new CustomStorageClient();
+      const res = await client.from("Storage").upload("u1/large.zip", file);
+
+      expect(res.data).toBeNull();
+      expect(res.error?.message).toBe(
+        "Quota exceeded. Maximum 1GB allowed per user.",
+      );
+    });
   });
 
   describe("list", () => {
