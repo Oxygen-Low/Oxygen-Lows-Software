@@ -1086,6 +1086,15 @@ export async function decryptField(
   }
 }
 
+export interface CharacterStats {
+  str?: number | null;
+  dex?: number | null;
+  con?: number | null;
+  int?: number | null;
+  wis?: number | null;
+  cha?: number | null;
+}
+
 export interface CharacterData {
   id?: string;
   user_id?: string;
@@ -1102,6 +1111,8 @@ export interface CharacterData {
   is_race?: boolean;
   race_id?: string | null;
   universe_id?: string | null;
+  stats_enabled?: boolean;
+  stats?: CharacterStats | string | null;
   [key: string]: any;
 }
 
@@ -1130,6 +1141,13 @@ export async function encryptCharacterData<T extends CharacterData>(
       char.hidden_description,
       keyBytes,
     );
+  if (char.stats !== undefined && char.stats !== null) {
+    const rawVal =
+      typeof char.stats === "object"
+        ? JSON.stringify(char.stats)
+        : String(char.stats);
+    result.stats = await encryptField(rawVal, keyBytes);
+  }
   return result;
 }
 
@@ -1158,6 +1176,20 @@ export async function decryptCharacterData<T extends CharacterData>(
       char.hidden_description,
       keyBytes,
     );
+  if (char.stats !== undefined && char.stats !== null) {
+    if (typeof char.stats === "string") {
+      const decrypted = await decryptField(char.stats, keyBytes);
+      if (decrypted && typeof decrypted === "string") {
+        try {
+          result.stats = JSON.parse(decrypted);
+        } catch {
+          result.stats = decrypted;
+        }
+      } else {
+        result.stats = decrypted;
+      }
+    }
+  }
   return result;
 }
 

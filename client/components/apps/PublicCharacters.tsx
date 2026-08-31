@@ -64,6 +64,8 @@ interface PublicCharacter {
   author_username?: string;
   likes_count: number;
   is_liked_by_user: boolean;
+  stats_enabled?: boolean;
+  stats?: any;
 }
 
 interface LocalCharacter {
@@ -80,6 +82,8 @@ interface LocalCharacter {
   backstory: string | null;
   hidden_description: string | null;
   image_path: string | null;
+  stats_enabled?: boolean;
+  stats?: any;
 }
 
 type SortOption = "most_liked" | "most_recent" | "most_downloaded";
@@ -270,6 +274,8 @@ export function PublicCharactersApp() {
         is_race: item.is_race || false,
         race_id: item.race_id || null,
         universe_id: item.universe_id || null,
+        stats_enabled: item.stats_enabled || false,
+        stats: item.stats || null,
       };
 
       if (isCategoryEncryptionEnabled("characters")) {
@@ -688,6 +694,71 @@ export function PublicCharactersApp() {
                       </p>
                     </div>
                   )}
+                  {selectedItem.stats_enabled &&
+                    selectedItem.stats &&
+                    typeof selectedItem.stats === "object" && (
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-400 mb-2">
+                          Attributes & Stats
+                        </h4>
+                        <div className="grid grid-cols-3 gap-2 bg-slate-950/60 p-3 rounded-lg border border-slate-800 text-xs">
+                          {selectedItem.stats.str !== undefined &&
+                            selectedItem.stats.str !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">STR:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedItem.stats.str}
+                                </span>
+                              </div>
+                            )}
+                          {selectedItem.stats.dex !== undefined &&
+                            selectedItem.stats.dex !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">DEX:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedItem.stats.dex}
+                                </span>
+                              </div>
+                            )}
+                          {selectedItem.stats.con !== undefined &&
+                            selectedItem.stats.con !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">CON:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedItem.stats.con}
+                                </span>
+                              </div>
+                            )}
+                          {selectedItem.stats.int !== undefined &&
+                            selectedItem.stats.int !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">INT:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedItem.stats.int}
+                                </span>
+                              </div>
+                            )}
+                          {selectedItem.stats.wis !== undefined &&
+                            selectedItem.stats.wis !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">WIS:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedItem.stats.wis}
+                                </span>
+                              </div>
+                            )}
+                          {selectedItem.stats.cha !== undefined &&
+                            selectedItem.stats.cha !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">CHA:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedItem.stats.cha}
+                                </span>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    )}
                 </div>
               </ScrollArea>
 

@@ -94,6 +94,74 @@ describe("entityGenerator Service — 4-Tier Test Suite", () => {
       ]);
     });
 
+    it("executes character generation with optional stats enabled", async () => {
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/ai/agent-search") {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                result: "Paladin tropes and martial prowess.",
+              }),
+          });
+        }
+        if (url === "/api/ai/proxy") {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({
+                        name: "Sir Gareth",
+                        display_name: "The Iron Knight",
+                        short_description: "A holy knight clad in plate armor.",
+                        appearance: "Silver plate with blue cloth.",
+                        personality: "Noble, unyielding, kind to the weak.",
+                        backstory: "Served in the Sun Order for twenty years.",
+                        hidden_description: "Carries a cursed talisman.",
+                        stats: {
+                          str: 18,
+                          dex: 12,
+                          con: 16,
+                          int: 10,
+                          wis: 14,
+                          cha: 15,
+                        },
+                      }),
+                    },
+                  },
+                ],
+              }),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await executeEntityGeneration({
+        type: "character",
+        prompt: "A holy knight of the Sun Order",
+        include_stats: true,
+        model: {
+          provider: "cloudflare",
+          model_id: "@cf/nvidia/nemotron-3-120b-a12b",
+        },
+        universe: null,
+      });
+
+      expect(result.name).toBe("Sir Gareth");
+      expect(result.stats_enabled).toBe(true);
+      expect(result.stats).toEqual({
+        str: 18,
+        dex: 12,
+        con: 16,
+        int: 10,
+        wis: 14,
+        cha: 15,
+      });
+    });
+
     it("T1-06: executes 3-stage pipeline for universe-contextualized character with anti-verbatim rule", async () => {
       const progressCalls: Array<{ step: GenerationStep; detail?: string }> =
         [];

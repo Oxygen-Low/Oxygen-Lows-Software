@@ -9,6 +9,7 @@ export interface EntityGenerationOptions {
     name?: string;
     isLocal?: boolean;
   };
+  include_stats?: boolean;
   universe?: {
     id?: string;
     name: string;
@@ -50,6 +51,15 @@ export interface GeneratedEntityResult {
   race_id?: string;
   is_universe: boolean;
   is_race?: boolean;
+  stats_enabled?: boolean;
+  stats?: {
+    str?: number | null;
+    dex?: number | null;
+    con?: number | null;
+    int?: number | null;
+    wis?: number | null;
+    cha?: number | null;
+  };
 }
 
 /**
@@ -150,27 +160,47 @@ export function buildCharacterGenerationPrompt(params: {
   universeSummary?: string;
   raceSummary?: string;
   researchFindings?: string;
+  include_stats?: boolean;
 }): { system: string; user: string } {
-  const system = [
-    "You are an expert character creator and narrative designer for fiction and roleplay.",
-    "OUTPUT FORMAT: You MUST respond ONLY with a valid JSON object matching the schema below.",
-    JSON.stringify(
-      {
-        name: "Full character name",
-        display_name: "Title or moniker",
-        short_description: "1-2 sentence hook summarizing who they are",
-        appearance: "Physical traits, clothing, distinctive markings, gear",
-        personality: "Psychological profile, virtues, flaws, speech style",
-        backstory: "Personal history, formative events, affiliations",
-        hidden_description: "Private GM/creator notes and secrets",
-      },
-      null,
-      2,
-    ),
+  const schema: any = {
+    name: "Full character name",
+    display_name: "Title or moniker",
+    short_description: "1-2 sentence hook summarizing who they are",
+    appearance: "Physical traits, clothing, distinctive markings, gear",
+    personality: "Psychological profile, virtues, flaws, speech style",
+    backstory: "Personal history, formative events, affiliations",
+    hidden_description: "Private GM/creator notes and secrets",
+  };
+
+  if (params.include_stats) {
+    schema.stats = {
+      str: 10,
+      dex: 10,
+      con: 10,
+      int: 10,
+      wis: 10,
+      cha: 10,
+    };
+  }
+
+  const rules = [
     "CRITICAL RULES:",
     "1. ANCHOR DEEPLY in the culture, factions, and rules of the provided universe and race context.",
     "2. STRICTLY AVOID VERBATIM REPETITION: DO NOT copy-paste or duplicate the universe or race descriptions verbatim into the character fields.",
-    "3. Fill out all 7 fields with vivid, creative details.",
+    "3. Fill out all text fields with vivid, creative details.",
+  ];
+
+  if (params.include_stats) {
+    rules.push(
+      "4. Generate integer numbers between -100 and 100 for each stat (str, dex, con, int, wis, cha) that fit the character's archetype, strengths, and weaknesses.",
+    );
+  }
+
+  const system = [
+    "You are an expert character creator and narrative designer for fiction and roleplay.",
+    "OUTPUT FORMAT: You MUST respond ONLY with a valid JSON object matching the schema below.",
+    JSON.stringify(schema, null, 2),
+    rules.join("\n"),
   ].join("\n\n");
 
   const userParts: string[] = [`Concept / Prompt: "${params.prompt}"`];
@@ -518,6 +548,7 @@ export async function executeEntityGeneration(
       universeSummary,
       raceSummary,
       researchFindings,
+      include_stats: options.include_stats,
     });
   } else if (type === "race") {
     promptBundle = buildRaceGenerationPrompt({
@@ -546,6 +577,42 @@ export async function executeEntityGeneration(
   onProgress?.("completed", "Generation complete!");
 
   if (type === "character") {
+    let generatedStats: any = undefined;
+    let statsEnabled = Boolean(options.include_stats && parsed.stats);
+    if (parsed.stats && typeof parsed.stats === "object") {
+      const clampStat = (val: any) => {
+        if (val === null || val === undefined || val === "") return undefined;
+        const num = typeof val === "number" ? val : parseInt(String(val), 10);
+        if (isNaN(num)) return undefined;
+        return Math.max(-100, Math.min(100, num));
+      };
+      const parsedStr = clampStat(parsed.stats.str ?? parsed.stats.STR);
+      const parsedDex = clampStat(parsed.stats.dex ?? parsed.stats.DEX);
+      const parsedCon = clampStat(parsed.stats.con ?? parsed.stats.CON);
+      const parsedInt = clampStat(parsed.stats.int ?? parsed.stats.INT);
+      const parsedWis = clampStat(parsed.stats.wis ?? parsed.stats.WIS);
+      const parsedCha = clampStat(parsed.stats.cha ?? parsed.stats.CHA);
+
+      if (
+        parsedStr !== undefined ||
+        parsedDex !== undefined ||
+        parsedCon !== undefined ||
+        parsedInt !== undefined ||
+        parsedWis !== undefined ||
+        parsedCha !== undefined
+      ) {
+        generatedStats = {
+          str: parsedStr,
+          dex: parsedDex,
+          con: parsedCon,
+          int: parsedInt,
+          wis: parsedWis,
+          cha: parsedCha,
+        };
+        statsEnabled = true;
+      }
+    }
+
     return {
       name: parsed.name || "Unnamed Character",
       display_name: parsed.display_name || "",
@@ -558,6 +625,8 @@ export async function executeEntityGeneration(
       race_id: race?.id,
       is_universe: false,
       is_race: false,
+      stats_enabled: statsEnabled,
+      stats: generatedStats,
     };
   } else if (type === "race") {
     return {

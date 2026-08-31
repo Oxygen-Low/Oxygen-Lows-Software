@@ -203,6 +203,8 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
           is_race: isRace,
           race_id: meta.race_id || null,
           universe_id: meta.universe_id || null,
+          stats_enabled: Boolean(meta.stats_enabled),
+          stats: meta.stats || null,
           updated_at: new Date().toISOString(),
         };
 

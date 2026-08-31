@@ -381,6 +381,8 @@ describe("Crypto Utilities (AES-256)", () => {
         personality: "Courageous",
         backstory: "Born in the mountains",
         hidden_description: "Secret details",
+        stats_enabled: true,
+        stats: { str: 18, dex: 14, con: 16, int: 10, wis: 12, cha: 8 },
       };
 
       const encrypted = await encryptCharacterData(char, key);
@@ -393,6 +395,8 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(encrypted.personality).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.backstory).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.hidden_description).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.stats_enabled).toBe(true);
+      expect(encrypted.stats).toMatch(/^ENC:aes-256-gcm:/);
 
       const decrypted = await decryptCharacterData(encrypted, key);
       expect(decrypted.name).toBe("Alice");
@@ -401,6 +405,15 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(decrypted.personality).toBe("Courageous");
       expect(decrypted.backstory).toBe("Born in the mountains");
       expect(decrypted.hidden_description).toBe("Secret details");
+      expect(decrypted.stats_enabled).toBe(true);
+      expect(decrypted.stats).toEqual({
+        str: 18,
+        dex: 14,
+        con: 16,
+        int: 10,
+        wis: 12,
+        cha: 8,
+      });
     });
 
     it("should handle null/undefined fields gracefully in character data", async () => {
@@ -410,11 +423,13 @@ describe("Crypto Utilities (AES-256)", () => {
         name: "Bob",
         short_description: null,
         appearance: undefined,
+        stats: null,
       };
       const encrypted = await encryptCharacterData(char, key);
       expect(encrypted.name).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.short_description).toBeNull();
       expect(encrypted.appearance).toBeUndefined();
+      expect(encrypted.stats).toBeNull();
     });
   });
 

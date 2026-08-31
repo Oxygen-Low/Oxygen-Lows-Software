@@ -620,6 +620,16 @@ export const es = {
     characterDescriptionSub:
       "Cuéntanos un poco sobre tu personaje y lo que lo hace único.",
     hiddenDescription: "Notas privadas",
+    statsTitle: "Estadísticas / Atributos del Personaje",
+    enableStats: "Habilitar Estadísticas",
+    statsHelp:
+      "Atributos opcionales de -100 a 100. Las estadísticas en blanco se omiten de los prompts.",
+    statStr: "Fuerza (STR)",
+    statDex: "Destreza (DEX)",
+    statCon: "Constitución (CON)",
+    statInt: "Inteligencia (INT)",
+    statWis: "Sabiduría (WIS)",
+    statCha: "Carisma (CHA)",
     noCharacters:
       '¡Aún no hay personajes aquí! Haz clic en "Nuevo Personaje" para empezar y añadir algunos a tu colección.',
     noRaces:
@@ -634,6 +644,7 @@ export const es = {
       "Personaje modificado. El estado de verificación se ha restablecido y requiere una nueva verificación para multijugador.",
     aiGenerate: {
       button: "Generar con IA",
+      includeStats: "Generar Estadísticas del Personaje",
       generateForUniverse: "Generar personaje en este universo",
       generateForRace: "Generar personaje para esta raza",
       titleCharacter: "Generador de personajes con IA",

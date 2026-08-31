@@ -25,6 +25,7 @@ window.HTMLElement.prototype.scrollIntoView = function () {};
 
 // Mock chats list
 let mockChats: any[] = [];
+let mockCharacters: any[] = [];
 let msgIdCounter = 0;
 let mockUserModels: any[] = [{ provider: "openai", model_id: "gpt-4" }];
 let mockUserPreferences: any = {
@@ -176,7 +177,7 @@ vi.mock("@/lib/db", () => {
         };
         return builder;
       }
-      if (table === "characters") return mockSupabaseChain([]);
+      if (table === "characters") return mockSupabaseChain(mockCharacters);
       if (table === "user_preferences")
         return mockSupabaseChain(mockUserPreferences);
       return mockSupabaseChain(null);
@@ -944,6 +945,133 @@ describe("ChatbotApp", () => {
         expect(screen.getByText("Ollama/llama3:latest")).toBeDefined();
       });
     } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("injects character stats into system instructions when character with stats is selected", async () => {
+    const originalFetch = global.fetch;
+    const sentApiRequests: any[] = [];
+
+    const mockCharWithStats = {
+      id: "char-with-stats-1",
+      user_id: "test-user",
+      name: "Eldrin",
+      display_name: "Eldrin the Mage",
+      short_description: "A scholar of the arcane",
+      appearance: "Blue robes",
+      personality: "Wise and patient",
+      backstory: "Studied at the academy",
+      stats_enabled: true,
+      stats: {
+        str: 8,
+        dex: 14,
+        con: 12,
+        int: 20,
+        wis: 16,
+        cha: 10,
+      },
+    };
+
+    global.fetch = vi.fn((url: any, options: any) => {
+      const urlStr = typeof url === "string" ? url : url.toString();
+      if (urlStr.includes("/api/ai/proxy")) {
+        if (options?.body && options.body.includes('"stream":false')) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content: "Title",
+                    },
+                  },
+                ],
+              }),
+          });
+        }
+        const parsedBody = JSON.parse(options?.body || "{}");
+        sentApiRequests.push(parsedBody);
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                'data: {"choices":[{"delta":{"content":"Greetings traveler."}}]}\n',
+              ),
+            );
+            controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+            controller.close();
+          },
+        });
+        return Promise.resolve({
+          ok: true,
+          body: stream,
+          headers: { get: () => null },
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+    }) as any;
+
+    mockCharacters = [mockCharWithStats];
+
+    try {
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      // Open options dropdown
+      const toggleOptionsButton = await screen.findByTitle("Toggle Options");
+      fireEvent.click(toggleOptionsButton);
+
+      // Find LLM Character option (second character dropdown is LLM Character)
+      const charOptions = await screen.findAllByRole("option", {
+        name: "Eldrin the Mage",
+      });
+      expect(charOptions.length).toBeGreaterThan(0);
+      const llmCharSelect = (charOptions[1] || charOptions[0])
+        .parentElement as HTMLSelectElement;
+      fireEvent.change(llmCharSelect, {
+        target: { value: "char-with-stats-1" },
+      });
+
+      // Send a message
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "Hello Eldrin!" } });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      await waitFor(() => {
+        expect(sentApiRequests.length).toBeGreaterThan(0);
+        const requestWithSystem = sentApiRequests.find((req) =>
+          req.messages?.some((m: any) => m.role === "system"),
+        );
+        expect(requestWithSystem).toBeDefined();
+        const systemMessage = requestWithSystem.messages.find(
+          (m: any) => m.role === "system",
+        );
+        expect(systemMessage).toBeDefined();
+        expect(systemMessage.content).toContain("Attributes / Stats:");
+        expect(systemMessage.content).toContain("- Strength (STR): 8");
+        expect(systemMessage.content).toContain("- Dexterity (DEX): 14");
+        expect(systemMessage.content).toContain("- Constitution (CON): 12");
+        expect(systemMessage.content).toContain("- Intelligence (INT): 20");
+        expect(systemMessage.content).toContain("- Wisdom (WIS): 16");
+        expect(systemMessage.content).toContain("- Charisma (CHA): 10");
+      });
+    } finally {
+      mockCharacters = [];
       global.fetch = originalFetch;
     }
   });

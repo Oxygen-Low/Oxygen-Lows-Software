@@ -598,6 +598,16 @@ export const ko = {
     universeDescriptionSub: "새로운 유니버스와 그 설정에 대해 설명해 주세요.",
     characterDescriptionSub: "캐릭터와 그 특징에 대해 설명해 주세요.",
     hiddenDescription: "비공개 노트",
+    statsTitle: "캐릭터 스탯 / 능력치",
+    enableStats: "스탯 활성화",
+    statsHelp:
+      "-100에서 100 사이의 선택적 능력치입니다. 비어있는 스탯은 프롬프트에서 제외됩니다.",
+    statStr: "근력 (STR)",
+    statDex: "민첩성 (DEX)",
+    statCon: "건강 (CON)",
+    statInt: "지능 (INT)",
+    statWis: "지혜 (WIS)",
+    statCha: "매력 (CHA)",
     noCharacters:
       '아직 캐릭터가 없습니다! "새 캐릭터"를 클릭하여 시작하고 컬렉션에 추가해 보세요.',
     noRaces:
@@ -612,6 +622,7 @@ export const ko = {
       "캐릭터가 수정되었습니다. 검증 상태가 초기화되었으며 멀티플레이어용 재검증이 필요합니다.",
     aiGenerate: {
       button: "AI 생성",
+      includeStats: "캐릭터 스탯 생성",
       generateForUniverse: "이 세계관에서 캐릭터 생성",
       generateForRace: "이 종족의 캐릭터 생성",
       titleCharacter: "AI 캐릭터 생성기",

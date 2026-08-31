@@ -609,6 +609,16 @@ export const ja = {
       "新しいユニバースとその世界観の設定を入力してください。",
     characterDescriptionSub: "キャラクターの特徴や魅力を入力してください。",
     hiddenDescription: "プライベートメモ",
+    statsTitle: "キャラクターステータス / 能力値",
+    enableStats: "ステータスを有効化",
+    statsHelp:
+      "-100から100までの任意の能力値。空欄のステータスはプロンプトに含まれません。",
+    statStr: "筋力 (STR)",
+    statDex: "敏捷性 (DEX)",
+    statCon: "耐久力 (CON)",
+    statInt: "知力 (INT)",
+    statWis: "判断力 (WIS)",
+    statCha: "魅力 (CHA)",
     noCharacters:
       "まだキャラクターがいません！「新しいキャラクター」をクリックして開始し、コレクションに追加してください。",
     noRaces:
@@ -623,6 +633,7 @@ export const ja = {
       "キャラクターが変更されました。検証ステータスがリセットされたため、マルチプレイヤー用に再検証が必要です。",
     aiGenerate: {
       button: "AI生成",
+      includeStats: "キャラクターステータスを生成",
       generateForUniverse: "この世界観でキャラクターを生成",
       generateForRace: "この種族のキャラクターを生成",
       titleCharacter: "AIキャラクタージェネレーター",

@@ -267,4 +267,40 @@ describe("Characters Component", () => {
     });
     expect(aiGenButtons.length).toBeGreaterThan(0);
   });
+
+  it("toggles character stats and inputs stat values bounded between -100 and 100", async () => {
+    render(<Characters />);
+
+    const newCharButton = screen.getByRole("button", {
+      name: /New Character/i,
+    });
+    fireEvent.click(newCharButton);
+
+    // Enter character name
+    const nameInput = screen.getByLabelText("Name");
+    fireEvent.change(nameInput, { target: { value: "Valerius" } });
+
+    // Enable stats toggle
+    const statsToggle = screen.getByTestId("char-stats-toggle");
+    expect(statsToggle).toBeDefined();
+    fireEvent.click(statsToggle);
+
+    // Stat inputs should now be visible
+    const strInput = screen.getByTestId("char-stat-str");
+    const intInput = screen.getByTestId("char-stat-int");
+    expect(strInput).toBeDefined();
+    expect(intInput).toBeDefined();
+
+    // Set stat values
+    fireEvent.change(strInput, { target: { value: "85" } });
+    fireEvent.change(intInput, { target: { value: "-40" } });
+
+    // Save character
+    const saveBtn = screen.getByRole("button", { name: /Save Character/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(supabase.from).toHaveBeenCalledWith("characters");
+    });
+  });
 });

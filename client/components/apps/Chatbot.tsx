@@ -201,6 +201,8 @@ interface Character {
   appearance?: string | null;
   personality?: string | null;
   backstory?: string | null;
+  stats_enabled?: boolean;
+  stats?: any;
 }
 
 interface Artifact {
@@ -1246,6 +1248,30 @@ export function ChatbotApp() {
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
         if (char.personality) injected += `Personality: ${char.personality}\n`;
         if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
+        if (
+          char.stats_enabled &&
+          char.stats &&
+          typeof char.stats === "object"
+        ) {
+          const statLines: string[] = [];
+          const statDefs = [
+            { key: "str", label: "Strength (STR)" },
+            { key: "dex", label: "Dexterity (DEX)" },
+            { key: "con", label: "Constitution (CON)" },
+            { key: "int", label: "Intelligence (INT)" },
+            { key: "wis", label: "Wisdom (WIS)" },
+            { key: "cha", label: "Charisma (CHA)" },
+          ];
+          for (const { key, label } of statDefs) {
+            const val = (char.stats as any)[key];
+            if (val !== undefined && val !== null && val !== "") {
+              statLines.push(`- ${label}: ${val}`);
+            }
+          }
+          if (statLines.length > 0) {
+            injected += `Attributes / Stats:\n${statLines.join("\n")}\n`;
+          }
+        }
       }
     }
     if (selectedUserCharacter) {
@@ -1271,6 +1297,30 @@ export function ChatbotApp() {
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
         if (char.personality) injected += `Personality: ${char.personality}\n`;
         if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
+        if (
+          char.stats_enabled &&
+          char.stats &&
+          typeof char.stats === "object"
+        ) {
+          const statLines: string[] = [];
+          const statDefs = [
+            { key: "str", label: "Strength (STR)" },
+            { key: "dex", label: "Dexterity (DEX)" },
+            { key: "con", label: "Constitution (CON)" },
+            { key: "int", label: "Intelligence (INT)" },
+            { key: "wis", label: "Wisdom (WIS)" },
+            { key: "cha", label: "Charisma (CHA)" },
+          ];
+          for (const { key, label } of statDefs) {
+            const val = (char.stats as any)[key];
+            if (val !== undefined && val !== null && val !== "") {
+              statLines.push(`- ${label}: ${val}`);
+            }
+          }
+          if (statLines.length > 0) {
+            injected += `User Attributes / Stats:\n${statLines.join("\n")}\n`;
+          }
+        }
       }
     }
     if (selectedUniverse) {

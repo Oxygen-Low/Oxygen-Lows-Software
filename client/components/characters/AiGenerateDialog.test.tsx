@@ -341,5 +341,57 @@ describe("AiGenerateDialog Component — 4-Tier Test Suite", () => {
         expect(mockOpenChange).toHaveBeenCalledWith(false);
       });
     });
+
+    it("passes include_stats: true when checkbox is checked", async () => {
+      const mockApply = vi.fn();
+      const mockOpenChange = vi.fn();
+      const mockSuccessfulGen = vi.fn().mockResolvedValue({
+        name: "Knight Artorias",
+        display_name: "Abysswalker",
+        short_description: "A legendary knight.",
+        appearance: "Armor.",
+        personality: "Resolute.",
+        backstory: "History.",
+        hidden_description: "",
+        is_universe: false,
+        stats_enabled: true,
+        stats: { str: 20, dex: 16, con: 18, int: 10, wis: 14, cha: 12 },
+      });
+
+      render(
+        <AiGenerateDialog
+          open={true}
+          onOpenChange={mockOpenChange}
+          universes={mockUniverses}
+          onApply={mockApply}
+          generateEntityFn={mockSuccessfulGen}
+        />,
+      );
+
+      const statsCheckbox = screen.getByTestId("include-stats-checkbox");
+      expect(statsCheckbox).toBeDefined();
+      fireEvent.click(statsCheckbox);
+
+      fireEvent.change(screen.getByTestId("prompt-input"), {
+        target: { value: "A legendary knight who walks the abyss" },
+      });
+
+      fireEvent.click(screen.getByTestId("start-generate-btn"));
+
+      await waitFor(() => {
+        expect(mockSuccessfulGen).toHaveBeenCalledWith(
+          expect.objectContaining({
+            include_stats: true,
+            type: "character",
+          }),
+        );
+        expect(mockApply).toHaveBeenCalledWith(
+          expect.objectContaining({
+            stats_enabled: true,
+            stats: { str: 20, dex: 16, con: 18, int: 10, wis: 14, cha: 12 },
+          }),
+        );
+      });
+    });
   });
 });

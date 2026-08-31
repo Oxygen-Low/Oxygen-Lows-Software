@@ -107,12 +107,24 @@ describe("All Locales Verification", () => {
 
       // Test AI generation keys in characters
       expect(t("characters.aiGenerate.button")).toBeTruthy();
+      expect(t("characters.aiGenerate.includeStats")).toBeTruthy();
       expect(t("characters.aiGenerate.generateForUniverse")).toBeTruthy();
       expect(t("characters.aiGenerate.titleCharacter")).toBeTruthy();
       expect(t("characters.aiGenerate.titleUniverse")).toBeTruthy();
       expect(t("characters.aiGenerate.subtitle")).toBeTruthy();
       expect(t("characters.aiGenerate.promptLabel")).toBeTruthy();
       expect(t("characters.aiGenerate.stepGenerating")).toBeTruthy();
+
+      // Test Character stats keys
+      expect(t("characters.statsTitle")).toBeTruthy();
+      expect(t("characters.enableStats")).toBeTruthy();
+      expect(t("characters.statsHelp")).toBeTruthy();
+      expect(t("characters.statStr")).toBeTruthy();
+      expect(t("characters.statDex")).toBeTruthy();
+      expect(t("characters.statCon")).toBeTruthy();
+      expect(t("characters.statInt")).toBeTruthy();
+      expect(t("characters.statWis")).toBeTruthy();
+      expect(t("characters.statCha")).toBeTruthy();
 
       // Test Game Library keys
       expect(t("apps.gameLibraryTitle")).toBeTruthy();

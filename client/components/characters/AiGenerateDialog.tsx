@@ -101,6 +101,7 @@ export function AiGenerateDialog({
   const [selectedProvider, setSelectedProvider] = useState<string>(
     hookProvider || "cloudflare",
   );
+  const [includeStats, setIncludeStats] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState<GenerationStep>("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -170,6 +171,7 @@ export function AiGenerateDialog({
       const result = await generator({
         type: targetType,
         prompt,
+        include_stats: targetType === "character" && includeStats,
         model: chosenModel,
         universe: chosenUniverse,
         race: chosenRace,
@@ -471,6 +473,29 @@ export function AiGenerateDialog({
               onChange={(e) => setPrompt(e.target.value)}
               className="bg-slate-950 border-slate-800 min-h-[110px] text-sm text-slate-200 placeholder:text-slate-500 focus:ring-cyan-500"
             />
+            {targetType === "character" && (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="include-stats-checkbox"
+                  data-testid="include-stats-checkbox"
+                  checked={includeStats}
+                  disabled={isGenerating}
+                  onChange={(e) => setIncludeStats(e.target.checked)}
+                  className="rounded bg-slate-950 border-slate-700 text-cyan-600 focus:ring-cyan-500 w-4 h-4 cursor-pointer"
+                />
+                <label
+                  htmlFor="include-stats-checkbox"
+                  className="text-xs text-slate-300 cursor-pointer select-none"
+                >
+                  {t(
+                    "characters.aiGenerate.includeStats",
+                    undefined,
+                    "Generate Character Stats",
+                  )}
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Error Alert */}

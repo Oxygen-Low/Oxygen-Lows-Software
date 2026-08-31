@@ -59,6 +59,7 @@ import {
   getActiveMasterKey,
   encryptCharacterData,
   decryptCharacterData,
+  type CharacterStats,
 } from "@/lib/crypto";
 
 interface Character {
@@ -78,6 +79,8 @@ interface Character {
   race_id?: string | null;
   universe_id?: string | null;
   is_verified_public?: boolean;
+  stats_enabled?: boolean;
+  stats?: CharacterStats | null;
 }
 
 interface CharVerificationInfo {
@@ -189,6 +192,8 @@ export default function Characters() {
       is_race: entity.is_race,
       universe_id: entity.universe_id,
       race_id: entity.race_id,
+      stats_enabled: entity.stats_enabled,
+      stats: entity.stats,
     }));
     setActiveTab(
       entity.is_race
@@ -334,6 +339,8 @@ export default function Characters() {
         is_race: currentCharacter.is_race || false,
         race_id: currentCharacter.race_id || null,
         universe_id: currentCharacter.universe_id || null,
+        stats_enabled: currentCharacter.stats_enabled || false,
+        stats: currentCharacter.stats || null,
       };
 
       if (isCategoryEncryptionEnabled("characters")) {
@@ -416,6 +423,8 @@ export default function Characters() {
               is_race: currentCharacter.is_race || false,
               race_id: currentCharacter.race_id || null,
               universe_id: currentCharacter.universe_id || null,
+              stats_enabled: currentCharacter.stats_enabled || false,
+              stats: currentCharacter.stats || null,
             },
           }),
         });
@@ -562,6 +571,8 @@ export default function Characters() {
             is_race: Boolean(char.is_race),
             race_id: char.race_id || null,
             universe_id: char.universe_id || null,
+            stats_enabled: Boolean(char.stats_enabled),
+            stats: char.stats || null,
           },
         }),
       });
@@ -1221,6 +1232,162 @@ export default function Characters() {
                           placeholder="Their history and origins..."
                           className="bg-slate-800 border-slate-700 h-32"
                         />
+                      </div>
+
+                      {/* Character Stats Block */}
+                      <div className="p-4 bg-slate-950/60 rounded-lg border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label
+                              htmlFor="char-stats-toggle"
+                              className="text-sm font-medium text-slate-200 cursor-pointer select-none"
+                            >
+                              {t(
+                                "characters.statsTitle",
+                                undefined,
+                                "Character Stats / Attributes",
+                              )}
+                            </label>
+                            <p className="text-xs text-slate-400">
+                              {t(
+                                "characters.statsHelp",
+                                undefined,
+                                "Optional attributes ranging from -100 to 100. Blank stats are omitted from prompts.",
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="char-stats-toggle"
+                              data-testid="char-stats-toggle"
+                              checked={Boolean(currentCharacter.stats_enabled)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setCurrentCharacter((prev) => ({
+                                  ...prev,
+                                  stats_enabled: checked,
+                                  stats: checked ? prev.stats || {} : prev.stats,
+                                }));
+                              }}
+                              className="rounded bg-slate-900 border-slate-700 text-cyan-600 focus:ring-cyan-500 w-4 h-4 cursor-pointer"
+                            />
+                            <label
+                              htmlFor="char-stats-toggle"
+                              className="text-xs text-slate-300 cursor-pointer select-none"
+                            >
+                              {t(
+                                "characters.enableStats",
+                                undefined,
+                                "Enable Stats",
+                              )}
+                            </label>
+                          </div>
+                        </div>
+
+                        {currentCharacter.stats_enabled && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
+                            {[
+                              {
+                                key: "str",
+                                label: t(
+                                  "characters.statStr",
+                                  undefined,
+                                  "Strength (STR)",
+                                ),
+                              },
+                              {
+                                key: "dex",
+                                label: t(
+                                  "characters.statDex",
+                                  undefined,
+                                  "Dexterity (DEX)",
+                                ),
+                              },
+                              {
+                                key: "con",
+                                label: t(
+                                  "characters.statCon",
+                                  undefined,
+                                  "Constitution (CON)",
+                                ),
+                              },
+                              {
+                                key: "int",
+                                label: t(
+                                  "characters.statInt",
+                                  undefined,
+                                  "Intelligence (INT)",
+                                ),
+                              },
+                              {
+                                key: "wis",
+                                label: t(
+                                  "characters.statWis",
+                                  undefined,
+                                  "Wisdom (WIS)",
+                                ),
+                              },
+                              {
+                                key: "cha",
+                                label: t(
+                                  "characters.statCha",
+                                  undefined,
+                                  "Charisma (CHA)",
+                                ),
+                              },
+                            ].map(({ key, label }) => {
+                              const currentVal =
+                                (currentCharacter.stats as any)?.[key];
+                              return (
+                                <div key={key} className="space-y-1">
+                                  <label
+                                    htmlFor={`char-stat-${key}`}
+                                    className="text-xs text-slate-300 font-medium"
+                                  >
+                                    {label}
+                                  </label>
+                                  <Input
+                                    id={`char-stat-${key}`}
+                                    data-testid={`char-stat-${key}`}
+                                    type="number"
+                                    min="-100"
+                                    max="100"
+                                    step="1"
+                                    value={
+                                      currentVal !== undefined &&
+                                      currentVal !== null
+                                        ? currentVal
+                                        : ""
+                                    }
+                                    placeholder="—"
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      let parsedVal: number | null = null;
+                                      if (raw !== "") {
+                                        const num = parseInt(raw, 10);
+                                        if (!isNaN(num)) {
+                                          parsedVal = Math.max(
+                                            -100,
+                                            Math.min(100, num),
+                                          );
+                                        }
+                                      }
+                                      setCurrentCharacter((prev) => ({
+                                        ...prev,
+                                        stats: {
+                                          ...(prev.stats || {}),
+                                          [key]: parsedVal,
+                                        },
+                                      }));
+                                    }}
+                                    className="bg-slate-800 border-slate-700 h-9 text-sm"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </>
                   ) : (

@@ -604,6 +604,16 @@ export const en = {
     characterDescriptionSub:
       "Tell us a bit about your character and what makes them unique.",
     hiddenDescription: "Private Notes",
+    statsTitle: "Character Stats / Attributes",
+    enableStats: "Enable Stats",
+    statsHelp:
+      "Optional attributes ranging from -100 to 100. Blank stats are omitted from prompts.",
+    statStr: "Strength (STR)",
+    statDex: "Dexterity (DEX)",
+    statCon: "Constitution (CON)",
+    statInt: "Intelligence (INT)",
+    statWis: "Wisdom (WIS)",
+    statCha: "Charisma (CHA)",
     noCharacters:
       'No characters here yet! Click "New Character" to get started and add some to your collection.',
     noRaces:
@@ -618,6 +628,7 @@ export const en = {
       "Character modified. Verification status has been reset and requires re-verification for multiplayer usage.",
     aiGenerate: {
       button: "AI Generate",
+      includeStats: "Generate Character Stats",
       generateForUniverse: "Generate Character in this Universe",
       generateForRace: "Generate Character for this Race",
       titleCharacter: "AI Character Generator",

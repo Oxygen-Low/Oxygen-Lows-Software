@@ -86,6 +86,8 @@ interface PublicCharacter {
   likes_count: number;
   is_liked_by_user: boolean;
   item_type: "character" | "universe";
+  stats_enabled?: boolean;
+  stats?: any;
 }
 
 interface PublicFileAsset {
@@ -118,6 +120,8 @@ interface LocalCharacter {
   backstory: string | null;
   hidden_description: string | null;
   image_path: string | null;
+  stats_enabled?: boolean;
+  stats?: any;
 }
 
 interface VerificationSubmission {
@@ -448,6 +452,8 @@ export function PublicAssetsApp() {
         hidden_description: item.hidden_description,
         image_path: item.image_path,
         is_universe: item.is_universe,
+        stats_enabled: item.stats_enabled || false,
+        stats: item.stats || null,
       };
 
       if (isCategoryEncryptionEnabled("characters")) {
@@ -1508,6 +1514,71 @@ export function PublicAssetsApp() {
                       </p>
                     </div>
                   )}
+                  {selectedChar.stats_enabled &&
+                    selectedChar.stats &&
+                    typeof selectedChar.stats === "object" && (
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-400 mb-2">
+                          Attributes & Stats
+                        </h4>
+                        <div className="grid grid-cols-3 gap-2 bg-slate-950/60 p-3 rounded-lg border border-slate-800 text-xs">
+                          {selectedChar.stats.str !== undefined &&
+                            selectedChar.stats.str !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">STR:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedChar.stats.str}
+                                </span>
+                              </div>
+                            )}
+                          {selectedChar.stats.dex !== undefined &&
+                            selectedChar.stats.dex !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">DEX:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedChar.stats.dex}
+                                </span>
+                              </div>
+                            )}
+                          {selectedChar.stats.con !== undefined &&
+                            selectedChar.stats.con !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">CON:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedChar.stats.con}
+                                </span>
+                              </div>
+                            )}
+                          {selectedChar.stats.int !== undefined &&
+                            selectedChar.stats.int !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">INT:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedChar.stats.int}
+                                </span>
+                              </div>
+                            )}
+                          {selectedChar.stats.wis !== undefined &&
+                            selectedChar.stats.wis !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">WIS:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedChar.stats.wis}
+                                </span>
+                              </div>
+                            )}
+                          {selectedChar.stats.cha !== undefined &&
+                            selectedChar.stats.cha !== null && (
+                              <div className="flex justify-between px-2 py-1 bg-slate-900 rounded">
+                                <span className="text-slate-400">CHA:</span>
+                                <span className="font-semibold text-cyan-400">
+                                  {selectedChar.stats.cha}
+                                </span>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    )}
                 </div>
               </ScrollArea>
 
