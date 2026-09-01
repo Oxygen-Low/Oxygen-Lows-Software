@@ -81,6 +81,44 @@ export function getDaysRemainingInCurrentMonth(date: Date = new Date()): number 
 const DEFINITIONS_FILE = path.join(SURVEYS_DIR, "definitions.json");
 const RESPONSES_FILE = path.join(SURVEYS_DIR, "responses.json");
 const SUBMISSIONS_FILE = path.join(SURVEYS_DIR, "submissions.json");
+export const MONTHLY_HISTORY_FILE = path.join(SURVEYS_DIR, "monthly_history.json");
+
+export interface MonthlyHistorySnapshot {
+  survey_id: string;
+  month_key: string;
+  variant: "all" | "verified" | "unverified";
+  question_id: string;
+  option_name: string;
+  count: number;
+  percentage: number;
+}
+
+export function getPast12MonthKeys(refDate: Date = new Date()): { key: string; label: string }[] {
+  const months: { key: string; label: string }[] = [];
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(Date.UTC(refDate.getUTCFullYear(), refDate.getUTCMonth() - i, 1));
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+    const label = `${monthNames[m]} '${String(y).slice(-2)}`;
+    months.push({ key, label });
+  }
+  return months;
+}
 
 function readJson<T>(filePath: string, fallback: T): T {
   try {
@@ -418,7 +456,100 @@ export const PREDEFINED_SURVEYS: SurveyDefinition[] = [
 ];
 
 /**
- * Hard monthly purge: deletes responses and submissions from previous months for monthly surveys.
+ * Archives aggregate distribution snapshots for expired survey responses into monthly_history.json.
+ */
+export function archiveMonthlyHistory(expiredResponses: AnonymousSurveyResponse[]): void {
+  if (expiredResponses.length === 0) return;
+  ensureSurveysDir();
+  const history = readJson<MonthlyHistorySnapshot[]>(MONTHLY_HISTORY_FILE, []);
+
+  // Group by survey_id and month_key
+  const groups = new Map<string, AnonymousSurveyResponse[]>();
+  for (const r of expiredResponses) {
+    const key = `${r.survey_id}:::${r.month_key}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(r);
+  }
+
+  const past12Keys = new Set(getPast12MonthKeys().map((m) => m.key));
+
+  for (const [groupKey, groupResponses] of groups) {
+    const [surveyId, monthKey] = groupKey.split(":::");
+    const survey = getSurveyById(surveyId);
+    if (!survey) continue;
+
+    const variants: ("all" | "verified" | "unverified")[] = survey.isHardwareSurvey
+      ? ["all", "verified", "unverified"]
+      : ["all"];
+
+    for (const variant of variants) {
+      const vFiltered = groupResponses.filter((r) => {
+        if (variant === "all") return true;
+        return r.variant === variant;
+      });
+
+      for (const q of survey.questions) {
+        const rawValues: any[] = [];
+        for (const resp of vFiltered) {
+          const val = resp.answers[q.id];
+          if (val !== undefined && val !== null && String(val).trim() !== "") {
+            rawValues.push(val);
+          }
+        }
+        const total = rawValues.length;
+
+        const counts: Record<string, number> = {};
+        for (const val of rawValues) {
+          if (Array.isArray(val)) {
+            for (const sub of val) counts[sub] = (counts[sub] || 0) + 1;
+          } else {
+            counts[String(val)] = (counts[String(val)] || 0) + 1;
+          }
+        }
+
+        for (const [optName, count] of Object.entries(counts)) {
+          const percentage = total > 0 ? Number(((count / total) * 100).toFixed(1)) : 0;
+          const existingIdx = history.findIndex(
+            (h) =>
+              h.survey_id === surveyId &&
+              h.month_key === monthKey &&
+              h.variant === variant &&
+              h.question_id === q.id &&
+              h.option_name === optName,
+          );
+          if (existingIdx >= 0) {
+            history[existingIdx] = {
+              survey_id: surveyId,
+              month_key: monthKey,
+              variant,
+              question_id: q.id,
+              option_name: optName,
+              count,
+              percentage,
+            };
+          } else {
+            history.push({
+              survey_id: surveyId,
+              month_key: monthKey,
+              variant,
+              question_id: q.id,
+              option_name: optName,
+              count,
+              percentage,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  const prunedHistory = history.filter((h) => past12Keys.has(h.month_key));
+  writeJson(MONTHLY_HISTORY_FILE, prunedHistory);
+}
+
+/**
+ * Hard monthly purge: deletes raw responses and submissions from previous months for monthly surveys,
+ * after archiving aggregated percentages to history.
  */
 export function purgeExpiredMonthlySurveys(): { purgedResponses: number; purgedSubmissions: number } {
   ensureSurveysDir();
@@ -431,6 +562,14 @@ export function purgeExpiredMonthlySurveys(): { purgedResponses: number; purgedS
 
   const responses = readJson<AnonymousSurveyResponse[]>(RESPONSES_FILE, []);
   const submissions = readJson<UserSurveySubmission[]>(SUBMISSIONS_FILE, []);
+
+  const expiredResponses = responses.filter(
+    (r) => monthlySurveyIds.has(r.survey_id) && r.month_key !== currentMonthKey,
+  );
+
+  if (expiredResponses.length > 0) {
+    archiveMonthlyHistory(expiredResponses);
+  }
 
   const freshResponses = responses.filter((r) => {
     if (!monthlySurveyIds.has(r.survey_id)) return true;
@@ -607,6 +746,13 @@ export function submitSurveyAnswers(params: {
   return { success: true };
 }
 
+export interface MonthlyTimelinePoint {
+  monthKey: string;
+  monthLabel: string;
+  totalResponses: number;
+  [optionName: string]: number | string;
+}
+
 export interface QuestionAggregatedResult {
   questionId: string;
   questionTitle: string;
@@ -616,6 +762,8 @@ export interface QuestionAggregatedResult {
     count: number;
     percentage: number;
   }[];
+  monthlyTimeline: MonthlyTimelinePoint[];
+  seriesKeys: string[];
   lineChartSeries: {
     label: string;
     value: number;
@@ -629,6 +777,7 @@ export interface SurveyAggregatedResults {
   surveyId: string;
   title: string;
   monthKey: string;
+  isHardwareSurvey?: boolean;
   totalSubmissions: number;
   verifiedCount: number;
   unverifiedCount: number;
@@ -637,7 +786,7 @@ export interface SurveyAggregatedResults {
 }
 
 /**
- * Calculates aggregate statistics and line chart points for a survey.
+ * Calculates aggregate statistics, current distribution, and 12-month multi-line timeline for a survey.
  */
 export function calculateSurveyResults(
   surveyId: string,
@@ -651,8 +800,10 @@ export function calculateSurveyResults(
 
   const currentMonthKey = getCurrentMonthKey();
   const allResponses = readJson<AnonymousSurveyResponse[]>(RESPONSES_FILE, []);
+  const historySnapshots = readJson<MonthlyHistorySnapshot[]>(MONTHLY_HISTORY_FILE, []);
+  const past12Months = getPast12MonthKeys();
 
-  // Filter responses by survey and current month (if monthly)
+  // Filter current active responses by survey and current month (if monthly)
   const surveyResponses = allResponses.filter((r) => {
     if (r.survey_id !== surveyId) return false;
     if (survey.recurrence === "monthly") {
@@ -666,12 +817,16 @@ export function calculateSurveyResults(
   const unverifiedCount = surveyResponses.filter((r) => r.variant === "unverified").length;
 
   const filteredResponses = surveyResponses.filter((r) => {
+    if (!survey.isHardwareSurvey) return true;
     if (variantFilter === "verified") return r.variant === "verified";
     if (variantFilter === "unverified") return r.variant === "unverified";
     return true;
   });
 
+  const effectiveVariant = survey.isHardwareSurvey ? variantFilter : "all";
+
   const questionResults: QuestionAggregatedResult[] = survey.questions.map((q) => {
+    // 1. Current Month Distribution
     const rawValues: any[] = [];
     for (const resp of filteredResponses) {
       const val = resp.answers[q.id];
@@ -682,119 +837,182 @@ export function calculateSurveyResults(
 
     const questionTotal = rawValues.length;
 
-    if (q.type === "single_choice" || q.type === "multiple_choice") {
-      const counts: Record<string, number> = {};
-      const predefinedOptions = q.options?.map((o) => o.value) || [];
+    let seriesKeys: string[] = [];
+    let optionsDistribution: { name: string; count: number; percentage: number }[] = [];
+    let lineChartSeries: { label: string; value: number; count: number }[] = [];
+    let topAnswers: { value: string; count: number; percentage: number }[] | undefined;
+    let averageRating: number | undefined;
 
-      for (const opt of predefinedOptions) {
-        counts[opt] = 0;
-      }
+    if (q.type === "single_choice" || q.type === "multiple_choice") {
+      const predefinedOptions = q.options?.map((o) => o.value) || [];
+      seriesKeys = predefinedOptions;
+
+      const counts: Record<string, number> = {};
+      for (const opt of predefinedOptions) counts[opt] = 0;
 
       for (const val of rawValues) {
         if (Array.isArray(val)) {
-          for (const subVal of val) {
-            counts[subVal] = (counts[subVal] || 0) + 1;
-          }
+          for (const subVal of val) counts[subVal] = (counts[subVal] || 0) + 1;
         } else {
           counts[val] = (counts[val] || 0) + 1;
         }
       }
 
-      const optionsDistribution = Object.entries(counts).map(([name, count]) => {
+      optionsDistribution = Object.entries(counts).map(([name, count]) => {
         const percentage =
           questionTotal > 0 ? Number(((count / questionTotal) * 100).toFixed(1)) : 0;
         return { name, count, percentage };
       });
 
-      const sortedByCount = [...optionsDistribution].sort((a, b) => b.count - a.count);
+      optionsDistribution.sort((a, b) => b.count - a.count);
 
-      const lineChartSeries = optionsDistribution.map((opt) => ({
+      lineChartSeries = optionsDistribution.map((opt) => ({
         label: opt.name,
         value: opt.percentage,
         count: opt.count,
       }));
-
-      return {
-        questionId: q.id,
-        questionTitle: q.defaultTitle,
-        totalResponses: questionTotal,
-        optionsDistribution: sortedByCount,
-        lineChartSeries,
-      };
-    }
-
-    if (q.type === "rating") {
-      const counts: Record<number, number> = {};
+    } else if (q.type === "rating") {
       const min = q.min ?? 1;
       const max = q.max ?? 5;
-      for (let i = min; i <= max; i++) counts[i] = 0;
+      seriesKeys = [];
+      for (let i = min; i <= max; i++) seriesKeys.push(`Rating ${i}`);
+
+      const counts: Record<string, number> = {};
+      for (const k of seriesKeys) counts[k] = 0;
 
       let sum = 0;
       for (const val of rawValues) {
         const num = Number(val);
         if (!isNaN(num)) {
-          counts[num] = (counts[num] || 0) + 1;
+          const key = `Rating ${num}`;
+          counts[key] = (counts[key] || 0) + 1;
           sum += num;
         }
       }
 
-      const optionsDistribution = Object.entries(counts).map(([name, count]) => ({
-        name: `Rating ${name}`,
+      optionsDistribution = Object.entries(counts).map(([name, count]) => ({
+        name,
         count,
         percentage: questionTotal > 0 ? Number(((count / questionTotal) * 100).toFixed(1)) : 0,
       }));
 
-      const lineChartSeries = Object.entries(counts).map(([score, count]) => ({
-        label: `Rating ${score}`,
-        value: questionTotal > 0 ? Number(((count / questionTotal) * 100).toFixed(1)) : 0,
-        count,
+      lineChartSeries = optionsDistribution.map((opt) => ({
+        label: opt.name,
+        value: opt.percentage,
+        count: opt.count,
       }));
 
-      return {
-        questionId: q.id,
-        questionTitle: q.defaultTitle,
-        totalResponses: questionTotal,
-        optionsDistribution,
-        lineChartSeries,
-        averageRating: questionTotal > 0 ? Number((sum / questionTotal).toFixed(2)) : 0,
-      };
-    }
-
-    // Text / general responses -> Aggregate top models or occurrences
-    const counts: Record<string, number> = {};
-    for (const val of rawValues) {
-      const clean = String(val).trim();
-      if (clean) {
-        counts[clean] = (counts[clean] || 0) + 1;
+      averageRating = questionTotal > 0 ? Number((sum / questionTotal).toFixed(2)) : 0;
+    } else {
+      // Text / Number / Freeform
+      const counts: Record<string, number> = {};
+      for (const val of rawValues) {
+        const clean = String(val).trim();
+        if (clean) counts[clean] = (counts[clean] || 0) + 1;
       }
+
+      topAnswers = Object.entries(counts)
+        .map(([value, count]) => ({
+          value,
+          count,
+          percentage: questionTotal > 0 ? Number(((count / questionTotal) * 100).toFixed(1)) : 0,
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 15);
+
+      optionsDistribution = topAnswers.map((t) => ({
+        name: t.value,
+        count: t.count,
+        percentage: t.percentage,
+      }));
+
+      lineChartSeries = topAnswers.slice(0, 10).map((t) => ({
+        label: t.value.length > 20 ? `${t.value.slice(0, 17)}...` : t.value,
+        value: t.percentage,
+        count: t.count,
+      }));
+
+      seriesKeys = topAnswers.slice(0, 8).map((t) => t.value);
     }
 
-    const topAnswers = Object.entries(counts)
-      .map(([value, count]) => ({
-        value,
-        count,
-        percentage: questionTotal > 0 ? Number(((count / questionTotal) * 100).toFixed(1)) : 0,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 15);
+    // 2. Build 12-Month Multi-Line Timeline
+    const monthlyTimeline: MonthlyTimelinePoint[] = past12Months.map((m) => {
+      const monthResponses = allResponses.filter((r) => {
+        if (r.survey_id !== surveyId || r.month_key !== m.key) return false;
+        if (survey.isHardwareSurvey && effectiveVariant !== "all") {
+          return r.variant === effectiveVariant;
+        }
+        return true;
+      });
 
-    const lineChartSeries = topAnswers.slice(0, 10).map((t) => ({
-      label: t.value.length > 20 ? `${t.value.slice(0, 17)}...` : t.value,
-      value: t.percentage,
-      count: t.count,
-    }));
+      const point: MonthlyTimelinePoint = {
+        monthKey: m.key,
+        monthLabel: m.label,
+        totalResponses: monthResponses.length,
+      };
+
+      if (monthResponses.length > 0) {
+        // Compute live from responses
+        const mValues: any[] = [];
+        for (const resp of monthResponses) {
+          const v = resp.answers[q.id];
+          if (v !== undefined && v !== null && String(v).trim() !== "") {
+            mValues.push(v);
+          }
+        }
+        const mTotal = mValues.length;
+        point.totalResponses = mTotal;
+
+        const mCounts: Record<string, number> = {};
+        for (const v of mValues) {
+          if (q.type === "rating") {
+            const rKey = `Rating ${v}`;
+            mCounts[rKey] = (mCounts[rKey] || 0) + 1;
+          } else if (Array.isArray(v)) {
+            for (const sub of v) mCounts[sub] = (mCounts[sub] || 0) + 1;
+          } else {
+            const strVal = String(v);
+            mCounts[strVal] = (mCounts[strVal] || 0) + 1;
+          }
+        }
+
+        for (const key of seriesKeys) {
+          const c = mCounts[key] || 0;
+          point[key] = mTotal > 0 ? Number(((c / mTotal) * 100).toFixed(1)) : 0;
+        }
+      } else {
+        // Query history snapshot
+        const snapshots = historySnapshots.filter(
+          (h) =>
+            h.survey_id === surveyId &&
+            h.month_key === m.key &&
+            h.variant === effectiveVariant &&
+            h.question_id === q.id,
+        );
+
+        let snapTotal = 0;
+        for (const s of snapshots) snapTotal += s.count;
+        point.totalResponses = snapTotal;
+
+        for (const key of seriesKeys) {
+          const match = snapshots.find((s) => s.option_name === key);
+          point[key] = match ? match.percentage : 0;
+        }
+      }
+
+      return point;
+    });
 
     return {
       questionId: q.id,
       questionTitle: q.defaultTitle,
       totalResponses: questionTotal,
-      optionsDistribution: topAnswers.map((t) => ({
-        name: t.value,
-        count: t.count,
-        percentage: t.percentage,
-      })),
+      optionsDistribution,
+      monthlyTimeline,
+      seriesKeys,
       lineChartSeries,
       topAnswers,
+      averageRating,
     };
   });
 
@@ -802,9 +1020,10 @@ export function calculateSurveyResults(
     surveyId,
     title: survey.defaultTitle,
     monthKey: currentMonthKey,
+    isHardwareSurvey: Boolean(survey.isHardwareSurvey || survey.id === "monthly-hardware-survey"),
     totalSubmissions,
-    verifiedCount,
-    unverifiedCount,
+    verifiedCount: survey.isHardwareSurvey ? verifiedCount : 0,
+    unverifiedCount: survey.isHardwareSurvey ? unverifiedCount : 0,
     variantFilter,
     questions: questionResults,
   };

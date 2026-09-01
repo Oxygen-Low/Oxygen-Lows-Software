@@ -102,6 +102,13 @@ export interface SurveyDetail {
   questions: SurveyQuestion[];
 }
 
+export interface MonthlyTimelinePoint {
+  monthKey: string;
+  monthLabel: string;
+  totalResponses: number;
+  [optionName: string]: number | string;
+}
+
 export interface QuestionAggregatedResult {
   questionId: string;
   questionTitle: string;
@@ -111,6 +118,8 @@ export interface QuestionAggregatedResult {
     count: number;
     percentage: number;
   }[];
+  monthlyTimeline: MonthlyTimelinePoint[];
+  seriesKeys: string[];
   lineChartSeries: {
     label: string;
     value: number;
@@ -120,10 +129,28 @@ export interface QuestionAggregatedResult {
   averageRating?: number;
 }
 
+export const LINE_COLORS = [
+  "#38bdf8", // Sky blue
+  "#818cf8", // Indigo
+  "#34d399", // Emerald
+  "#fbbf24", // Amber
+  "#f43f5e", // Rose
+  "#a855f7", // Purple
+  "#ec4899", // Pink
+  "#14b8a6", // Teal
+  "#fb923c", // Orange
+  "#60a5fa", // Blue
+  "#a3e635", // Lime
+  "#e879f9", // Fuchsia
+  "#2dd4bf", // Cyan-teal
+  "#facc15", // Yellow
+];
+
 export interface SurveyAggregatedResults {
   surveyId: string;
   title: string;
   monthKey: string;
+  isHardwareSurvey?: boolean;
   totalSubmissions: number;
   verifiedCount: number;
   unverifiedCount: number;
@@ -472,9 +499,6 @@ export function SurveysApp() {
               <div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
                   {t("surveys.title", undefined, "Community Surveys")}
-                  <Badge variant="outline" className="border-cyan-400 text-cyan-300 text-xs px-2 py-0.5">
-                    {t("surveys.anonymousBadge", undefined, "100% Anonymous")}
-                  </Badge>
                 </h1>
                 <p className="text-slate-300 text-sm mt-0.5">
                   {t(
@@ -955,47 +979,49 @@ export function SurveysApp() {
                 </Button>
               </div>
 
-              {/* Verified vs Unverified Filter Tabs */}
-              <div className="bg-slate-900 border border-slate-700 rounded-lg p-1 flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewResults(resultsData.surveyId, "all")}
-                  className={`h-7 px-2.5 text-xs ${
-                    resultsFilter === "all"
-                      ? "bg-slate-700 text-white font-bold"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  {t("common.all", undefined, "All")} ({resultsData.totalSubmissions})
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewResults(resultsData.surveyId, "verified")}
-                  className={`h-7 px-2.5 text-xs ${
-                    resultsFilter === "verified"
-                      ? "bg-emerald-600 text-white font-bold"
-                      : "text-emerald-400 hover:text-emerald-300"
-                  }`}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                  {t("surveys.verified", undefined, "Verified")} ({resultsData.verifiedCount})
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewResults(resultsData.surveyId, "unverified")}
-                  className={`h-7 px-2.5 text-xs ${
-                    resultsFilter === "unverified"
-                      ? "bg-amber-600 text-white font-bold"
-                      : "text-amber-400 hover:text-amber-300"
-                  }`}
-                >
-                  <ShieldAlert className="w-3.5 h-3.5 mr-1" />
-                  {t("surveys.unverified", undefined, "Unverified")} ({resultsData.unverifiedCount})
-                </Button>
-              </div>
+              {/* Verified vs Unverified Filter Tabs (Hardware Survey Only) */}
+              {(resultsData.isHardwareSurvey || resultsData.surveyId === "monthly-hardware-survey") && (
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-1 flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewResults(resultsData.surveyId, "all")}
+                    className={`h-7 px-2.5 text-xs ${
+                      resultsFilter === "all"
+                        ? "bg-slate-700 text-white font-bold"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {t("common.all", undefined, "All")} ({resultsData.totalSubmissions})
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewResults(resultsData.surveyId, "verified")}
+                    className={`h-7 px-2.5 text-xs ${
+                      resultsFilter === "verified"
+                        ? "bg-emerald-600 text-white font-bold"
+                        : "text-emerald-400 hover:text-emerald-300"
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                    {t("surveys.verified", undefined, "Verified")} ({resultsData.verifiedCount})
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewResults(resultsData.surveyId, "unverified")}
+                    className={`h-7 px-2.5 text-xs ${
+                      resultsFilter === "unverified"
+                        ? "bg-amber-600 text-white font-bold"
+                        : "text-amber-400 hover:text-amber-300"
+                    }`}
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 mr-1" />
+                    {t("surveys.unverified", undefined, "Unverified")} ({resultsData.unverifiedCount})
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1014,14 +1040,18 @@ export function SurveysApp() {
                   <div className="text-xs text-slate-400 font-semibold uppercase">{t("surveys.totalResponses", undefined, "Total Responses")}</div>
                   <div className="text-xl font-extrabold text-cyan-400">{resultsData.totalSubmissions}</div>
                 </div>
-                <div className="bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2 text-center">
-                  <div className="text-xs text-emerald-400 font-semibold uppercase">{t("surveys.verifiedCount", undefined, "Verified")}</div>
-                  <div className="text-xl font-extrabold text-emerald-400">{resultsData.verifiedCount}</div>
-                </div>
-                <div className="bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2 text-center">
-                  <div className="text-xs text-amber-400 font-semibold uppercase">{t("surveys.unverifiedCount", undefined, "Unverified")}</div>
-                  <div className="text-xl font-extrabold text-amber-400">{resultsData.unverifiedCount}</div>
-                </div>
+                {(resultsData.isHardwareSurvey || resultsData.surveyId === "monthly-hardware-survey") && (
+                  <>
+                    <div className="bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2 text-center">
+                      <div className="text-xs text-emerald-400 font-semibold uppercase">{t("surveys.verifiedCount", undefined, "Verified")}</div>
+                      <div className="text-xl font-extrabold text-emerald-400">{resultsData.verifiedCount}</div>
+                    </div>
+                    <div className="bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2 text-center">
+                      <div className="text-xs text-amber-400 font-semibold uppercase">{t("surveys.unverifiedCount", undefined, "Unverified")}</div>
+                      <div className="text-xl font-extrabold text-amber-400">{resultsData.unverifiedCount}</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </Card>
@@ -1045,58 +1075,105 @@ export function SurveysApp() {
                 </CardHeader>
 
                 <CardContent className="pt-6 space-y-6">
-                  {/* Chart Visualization (Line or Bar) */}
-                  {qResult.lineChartSeries.length > 0 && (
-                    <div className="h-64 w-full bg-slate-950/50 p-4 rounded-xl border border-slate-800/70">
-                      <ResponsiveContainer width="100%" height="100%">
-                        {chartType === "line" ? (
-                          <LineChart data={qResult.lineChartSeries} margin={{ top: 10, right: 20, left: -10, bottom: 25 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  {/* Chart Visualization (12-Month Multi-Line or Current Month Bar) */}
+                  {(qResult.monthlyTimeline?.length > 0 || qResult.optionsDistribution?.length > 0) && (
+                    <div className="h-80 w-full bg-slate-950/50 p-4 rounded-xl border border-slate-800/70">
+                      <div className="text-xs text-slate-400 font-medium mb-2 flex items-center justify-between">
+                        <span>
+                          {chartType === "line"
+                            ? t("surveys.past12MonthsTrend", undefined, "12-Month Trend (% Share by Option)")
+                            : t("surveys.currentMonthDistribution", undefined, "Current Month Distribution (% of Votes)")}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          {qResult.seriesKeys?.length || 0} {t("surveys.optionsTracked", undefined, "options tracked")}
+                        </span>
+                      </div>
+
+                      <ResponsiveContainer width="100%" height="90%">
+                        {chartType === "line" && qResult.monthlyTimeline?.length > 0 ? (
+                          <LineChart
+                            data={qResult.monthlyTimeline}
+                            margin={{ top: 10, right: 25, left: -15, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
                             <XAxis
-                              dataKey="label"
+                              dataKey="monthLabel"
                               stroke="#94a3b8"
                               fontSize={11}
-                              angle={-20}
-                              textAnchor="end"
-                              interval={0}
+                              tick={{ fill: "#94a3b8" }}
                             />
-                            <YAxis stroke="#94a3b8" fontSize={11} unit="%" />
+                            <YAxis
+                              stroke="#94a3b8"
+                              fontSize={11}
+                              unit="%"
+                              domain={[0, 100]}
+                              tick={{ fill: "#94a3b8" }}
+                            />
                             <Tooltip
-                              contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", color: "#fff" }}
-                              formatter={(value: any, name: any, props: any) => [
-                                `${value}% (${props.payload.count} votes)`,
-                                "Percentage",
+                              contentStyle={{
+                                backgroundColor: "#0f172a",
+                                borderColor: "#334155",
+                                color: "#fff",
+                                borderRadius: "0.5rem",
+                                boxShadow: "0 10px 25px -5px rgba(0,0,0,0.6)",
+                              }}
+                              formatter={(value: any, name: string) => [
+                                `${value}%`,
+                                name,
                               ]}
                             />
-                            <Line
-                              type="monotone"
-                              dataKey="value"
-                              stroke="#06b6d4"
-                              strokeWidth={3}
-                              dot={{ r: 5, fill: "#06b6d4", strokeWidth: 2, stroke: "#083344" }}
-                              activeDot={{ r: 7 }}
+                            <Legend
+                              wrapperStyle={{
+                                paddingTop: "8px",
+                                fontSize: "11px",
+                                color: "#cbd5e1",
+                              }}
                             />
+                            {(qResult.seriesKeys || []).map((key, keyIdx) => {
+                              const strokeColor = LINE_COLORS[keyIdx % LINE_COLORS.length];
+                              return (
+                                <Line
+                                  key={key}
+                                  type="monotone"
+                                  dataKey={key}
+                                  name={key}
+                                  stroke={strokeColor}
+                                  strokeWidth={2.5}
+                                  dot={{ r: 3, fill: strokeColor, strokeWidth: 1, stroke: "#0f172a" }}
+                                  activeDot={{ r: 6 }}
+                                />
+                              );
+                            })}
                           </LineChart>
                         ) : (
-                          <BarChart data={qResult.lineChartSeries} margin={{ top: 10, right: 20, left: -10, bottom: 25 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                          <BarChart
+                            data={qResult.optionsDistribution}
+                            margin={{ top: 10, right: 20, left: -15, bottom: 25 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
                             <XAxis
-                              dataKey="label"
+                              dataKey="name"
                               stroke="#94a3b8"
                               fontSize={11}
                               angle={-20}
                               textAnchor="end"
                               interval={0}
+                              tick={{ fill: "#94a3b8" }}
                             />
-                            <YAxis stroke="#94a3b8" fontSize={11} unit="%" />
+                            <YAxis stroke="#94a3b8" fontSize={11} unit="%" tick={{ fill: "#94a3b8" }} />
                             <Tooltip
-                              contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", color: "#fff" }}
+                              contentStyle={{
+                                backgroundColor: "#0f172a",
+                                borderColor: "#334155",
+                                color: "#fff",
+                                borderRadius: "0.5rem",
+                              }}
                               formatter={(value: any, name: any, props: any) => [
                                 `${value}% (${props.payload.count} votes)`,
-                                "Percentage",
+                                "Share",
                               ]}
                             />
-                            <Bar dataKey="value" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="percentage" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         )}
                       </ResponsiveContainer>

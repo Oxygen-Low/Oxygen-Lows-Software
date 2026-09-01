@@ -92,9 +92,10 @@ const mockResultsData = {
   surveyId: "monthly-browser-survey",
   title: "Browser Survey",
   monthKey: "2026-09",
+  isHardwareSurvey: false,
   totalSubmissions: 10,
-  verifiedCount: 8,
-  unverifiedCount: 2,
+  verifiedCount: 0,
+  unverifiedCount: 0,
   variantFilter: "all",
   questions: [
     {
@@ -104,6 +105,11 @@ const mockResultsData = {
       optionsDistribution: [
         { name: "Chrome", count: 7, percentage: 70 },
         { name: "Firefox", count: 3, percentage: 30 },
+      ],
+      seriesKeys: ["Chrome", "Firefox"],
+      monthlyTimeline: [
+        { monthKey: "2026-08", monthLabel: "Aug '26", totalResponses: 8, Chrome: 65, Firefox: 35 },
+        { monthKey: "2026-09", monthLabel: "Sep '26", totalResponses: 10, Chrome: 70, Firefox: 30 },
       ],
       lineChartSeries: [
         { label: "Chrome", value: 70, count: 7 },

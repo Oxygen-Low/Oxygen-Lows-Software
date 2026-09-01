@@ -20,8 +20,8 @@ describe("Surveys API & Core Engine", () => {
   const app = new Hono();
   app.route("/api/surveys", surveysRouter);
 
-  const testUserId = "99881";
-  const adminUserId = "1";
+  const testUserId = "survey-user-99881";
+  const adminUserId = "survey-admin-99882";
   let userToken: string;
   let adminToken: string;
 
@@ -35,8 +35,8 @@ describe("Surveys API & Core Engine", () => {
       role: "user",
     });
     initUserFolder(adminUserId, {
-      username: "adminuser",
-      email: "admin@example.com",
+      username: "surveyadmin",
+      email: "surveyadmin@example.com",
       passwordHash: "hash",
       salt: "salt",
       role: "admin",
@@ -51,8 +51,8 @@ describe("Surveys API & Core Engine", () => {
 
     adminToken = generateToken({
       id: adminUserId,
-      username: "adminuser",
-      email: "admin@example.com",
+      username: "surveyadmin",
+      email: "surveyadmin@example.com",
       role: "admin",
     });
 
@@ -64,6 +64,18 @@ describe("Surveys API & Core Engine", () => {
       if (fs.existsSync(path.join(SURVEYS_DIR, "submissions.json"))) {
         fs.writeFileSync(path.join(SURVEYS_DIR, "submissions.json"), "[]", "utf-8");
       }
+      if (fs.existsSync(path.join(SURVEYS_DIR, "monthly_history.json"))) {
+        fs.writeFileSync(path.join(SURVEYS_DIR, "monthly_history.json"), "[]", "utf-8");
+      }
+    } catch {}
+  });
+
+  afterEach(() => {
+    try {
+      const uPath1 = path.join(DATA_DIR, testUserId);
+      if (fs.existsSync(uPath1)) fs.rmSync(uPath1, { recursive: true, force: true });
+      const uPath2 = path.join(DATA_DIR, adminUserId);
+      if (fs.existsSync(uPath2)) fs.rmSync(uPath2, { recursive: true, force: true });
     } catch {}
   });
 
@@ -188,9 +200,50 @@ describe("Surveys API & Core Engine", () => {
     expect(resUnlocked.status).toBe(200);
     const jsonUnlocked = await resUnlocked.json();
     expect(jsonUnlocked.results.totalSubmissions).toBe(1);
-    expect(jsonUnlocked.results.unverifiedCount).toBe(1);
+    expect(jsonUnlocked.results.isHardwareSurvey).toBe(false);
     expect(jsonUnlocked.results.questions.length).toBeGreaterThan(0);
     expect(jsonUnlocked.results.questions[0].lineChartSeries).toBeDefined();
+    expect(jsonUnlocked.results.questions[0].monthlyTimeline).toBeDefined();
+    expect(jsonUnlocked.results.questions[0].monthlyTimeline.length).toBe(12);
+    expect(jsonUnlocked.results.questions[0].seriesKeys.length).toBeGreaterThan(0);
+
+    // Now test hardware survey specifically for verified/unverified exclusivity
+    const hwSubmitRes = await app.request("/api/surveys/monthly-hardware-survey/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userToken}`,
+      },
+      body: JSON.stringify({
+        variant: "verified",
+        answers: {
+          os: "Windows 11",
+          form_factor: "Desktop PC",
+          cpu_manufacturer: "AMD",
+          cpu_name: "Ryzen 7 7800X3D",
+          cpu_cores: "8",
+          gpu_manufacturer: "NVIDIA",
+          gpu_name: "RTX 4080",
+          ram_amount_gb: "32 GB",
+          storage_total_gb: "2 TB (2000 GB)",
+          storage_free_gb: "500 GB - 1 TB",
+          storage_type: "NVMe SSD (M.2 / PCIe)",
+        },
+      }),
+    });
+    expect(hwSubmitRes.status).toBe(200);
+
+    const hwResultsRes = await app.request("/api/surveys/monthly-hardware-survey/results", {
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+      },
+    });
+    expect(hwResultsRes.status).toBe(200);
+    const hwResultsJson = await hwResultsRes.json();
+    expect(hwResultsJson.results.isHardwareSurvey).toBe(true);
+    expect(hwResultsJson.results.verifiedCount).toBe(1);
+    expect(hwResultsJson.results.unverifiedCount).toBe(0);
+    expect(hwResultsJson.results.questions[0].monthlyTimeline.length).toBe(12);
   });
 
   it("should allow admin to create and delete custom surveys", async () => {
