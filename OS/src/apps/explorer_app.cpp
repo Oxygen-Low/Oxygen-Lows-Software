@@ -1,6 +1,7 @@
 #include "apps/explorer_app.h"
 #include "gui/font.h"
 #include "gui/window.h"
+#include "drivers/keyboard.h"
 
 static const Color COLOR_EXP_BG       = Color(15, 23, 42, 255);
 static const Color COLOR_EXP_BAR      = Color(28, 37, 65, 255);

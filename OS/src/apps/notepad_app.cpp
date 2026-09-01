@@ -2,6 +2,7 @@
 #include "gui/font.h"
 #include "gui/window.h"
 #include "arch/x86_64/pit.h"
+#include "drivers/keyboard.h"
 
 static const Color COLOR_NOTEPAD_TOOLBAR = Color(226, 232, 240, 255); // Slate 200
 static const Color COLOR_NOTEPAD_MARGIN  = Color(241, 245, 249, 255); // Slate 100

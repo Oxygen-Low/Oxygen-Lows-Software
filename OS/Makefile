@@ -10,10 +10,10 @@ LD = ld
 
 ASFLAGS = -f elf64
 CXXFLAGS = -ffreestanding -fno-builtin -fno-exceptions -fno-rtti -nostdlib \
-           -mno-red-zone -mcmodel=kernel -O2 -Wall -Wextra -std=c++17 \
+           -m64 -fno-pic -fno-pie -mno-red-zone -mcmodel=small -O2 -Wall -Wextra -std=c++17 \
            -I include -I src/gui
 
-LDFLAGS = -n -T linker.ld -nostdlib -z max-page-size=0x1000
+LDFLAGS = -n -T linker.ld -nostdlib -z max-page-size=0x1000 -m elf_x86_64
 
 # Recursive source file discovery
 SRC_ASM := $(wildcard src/boot/*.asm) \

@@ -63,12 +63,10 @@ void vfs_init(void) {
     g_vfs_root = create_node("/", VFS_TYPE_DIRECTORY, nullptr);
 
     // Create standard directory tree
-    VFSNode* sys_dir  = vfs_create_directory("/system");
-    VFSNode* apps_dir = vfs_create_directory("/apps");
-    VFSNode* docs_dir = vfs_create_directory("/docs");
-    VFSNode* logs_dir = vfs_create_directory("/logs");
-
-    UNUSED(apps_dir);
+    vfs_create_directory("/system");
+    vfs_create_directory("/apps");
+    vfs_create_directory("/docs");
+    vfs_create_directory("/logs");
 
     // Create system information and documentation files
     vfs_create_file("/system/version.txt",

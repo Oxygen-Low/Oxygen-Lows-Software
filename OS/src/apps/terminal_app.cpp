@@ -6,6 +6,7 @@
 #include "mm/pmm.h"
 #include "mm/heap.h"
 #include "drivers/serial.h"
+#include "drivers/keyboard.h"
 
 static const Color COLOR_TERM_BG     = Color(0, 0, 0, 255);
 static const Color COLOR_TERM_PROMPT = Color(0, 229, 255, 255); // Cyan
@@ -195,7 +196,6 @@ void TerminalApp::execute_command(const char* cmd) {
         size_t total_mb = pmm_get_total_memory() / (1024 * 1024);
         size_t used_mb  = pmm_get_used_memory() / (1024 * 1024);
         size_t free_mb  = pmm_get_free_memory() / (1024 * 1024);
-        char mem_line[80];
         // Format memory
         print_string("Memory:        Total: ");
         print_char('0' + (total_mb / 100) % 10);

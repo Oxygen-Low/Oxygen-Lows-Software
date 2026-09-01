@@ -165,9 +165,7 @@ static void render_taskbar(int32_t screen_w, int32_t screen_h) {
 
     // 3. System Tray (Right aligned)
     // RAM usage badge
-    size_t total_ram_mb = pmm_get_total_memory() / (1024 * 1024);
-    size_t used_ram_mb  = pmm_get_used_memory() / (1024 * 1024);
-    char ram_str[32];
+    size_t used_ram_mb = pmm_get_used_memory() / (1024 * 1024);
     font_printf(screen_w - 180, tb_y + 8, Color(148, 163, 184, 255), COLOR_TRANSPARENT,
                 "RAM: %uMB", static_cast<unsigned int>(used_ram_mb));
 

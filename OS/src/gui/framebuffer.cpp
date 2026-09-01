@@ -3,7 +3,7 @@
 #include "mm/vmm.h"
 #include "drivers/serial.h"
 
-static FramebufferConfig g_fb_config = {0};
+static FramebufferConfig g_fb_config = {};
 
 bool fb_init(uint64_t multiboot_info_addr) {
     if (multiboot_info_addr == 0) {

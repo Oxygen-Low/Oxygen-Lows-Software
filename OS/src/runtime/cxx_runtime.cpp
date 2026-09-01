@@ -77,8 +77,6 @@ extern constructor_fn __init_array_start[];
 extern constructor_fn __init_array_end[];
 
 void call_global_constructors(void) {
-    if (!__init_array_start || !__init_array_end) return;
-
     for (constructor_fn* fn = __init_array_start; fn < __init_array_end; ++fn) {
         if (*fn) {
             (*fn)();

@@ -1,4 +1,5 @@
 #include "arch/x86_64/pit.h"
+#include "arch/x86_64/idt.h"
 #include "arch/x86_64/pic.h"
 #include "arch/x86_64/io.h"
 #include "drivers/serial.h"
