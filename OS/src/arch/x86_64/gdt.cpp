@@ -3,14 +3,9 @@
 
 namespace {
 
-// GDT has 5 standard 8-byte descriptors + 1 16-byte TSS descriptor (total 7 entries / 56 bytes)
-union GDTTableEntry {
-    GDTEntry standard;
-    TSSDescriptor tss;
-};
-
-// Align GDT and TSS to 16 bytes for hardware compliance
-alignas(16) GDTTableEntry g_gdt[7];
+// Standard GDT entries are 8 bytes each.
+// 5 standard descriptors (0x00, 0x08, 0x10, 0x18, 0x20) + 1 TSS descriptor (16 bytes, spans 0x28 and 0x30) = 7 entries (56 bytes).
+alignas(16) GDTEntry g_gdt[7];
 alignas(16) TSS64 g_tss;
 GDTPointer g_gdtr;
 
@@ -18,12 +13,12 @@ GDTPointer g_gdtr;
 alignas(16) uint8_t g_df_stack[8192];
 
 void set_standard_entry(int index, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran) {
-    g_gdt[index].standard.base_low = (uint16_t)(base & 0xFFFF);
-    g_gdt[index].standard.base_middle = (uint8_t)((base >> 16) & 0xFF);
-    g_gdt[index].standard.base_high = (uint8_t)((base >> 24) & 0xFF);
-    g_gdt[index].standard.limit_low = (uint16_t)(limit & 0xFFFF);
-    g_gdt[index].standard.granularity = (uint8_t)((limit >> 16) & 0x0F) | (gran & 0xF0);
-    g_gdt[index].standard.access = access;
+    g_gdt[index].base_low = (uint16_t)(base & 0xFFFF);
+    g_gdt[index].base_middle = (uint8_t)((base >> 16) & 0xFF);
+    g_gdt[index].base_high = (uint8_t)((base >> 24) & 0xFF);
+    g_gdt[index].limit_low = (uint16_t)(limit & 0xFFFF);
+    g_gdt[index].granularity = (uint8_t)((limit >> 16) & 0x0F) | (gran & 0xF0);
+    g_gdt[index].access = access;
 }
 
 void set_tss_entry(int index, uint64_t base, uint32_t limit) {
