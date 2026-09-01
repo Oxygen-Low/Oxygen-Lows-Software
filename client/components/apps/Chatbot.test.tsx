@@ -23,6 +23,13 @@ global.ResizeObserver = class {
 // Mock scrollIntoView
 window.HTMLElement.prototype.scrollIntoView = function () {};
 
+// Mock clipboard
+Object.assign(navigator, {
+  clipboard: {
+    writeText: vi.fn().mockResolvedValue(undefined),
+  },
+});
+
 // Mock chats list
 let mockChats: any[] = [];
 let mockCharacters: any[] = [];
@@ -878,6 +885,141 @@ describe("ChatbotApp", () => {
         "reasoning_after_search",
         "final_synthesis",
       ]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  }, 30000);
+
+  it("renders dedicated Copy Reasoning button and copies reasoning to clipboard", async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = vi.fn((url: string, options: any) => {
+        if (url === "/api/ai/proxy") {
+          const bodyStr = options?.body || "";
+          if (bodyStr.includes('"stream":false')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  choices: [{ message: { content: "Mock Title" } }],
+                }),
+            });
+          }
+
+          if (
+            bodyStr.includes(
+              "Output your internal reasoning process and analysis",
+            )
+          ) {
+            const stream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    'data: {"choices":[{"delta":{"content":"This is my internal reasoning step by step."}}]}\n',
+                  ),
+                );
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+                controller.close();
+              },
+            });
+            return Promise.resolve({
+              ok: true,
+              body: stream,
+              headers: { get: () => null },
+            });
+          }
+
+          if (bodyStr.includes("Great. Now based on your reasoning")) {
+            const stream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    'data: {"choices":[{"delta":{"content":"Here is the final answer."}}]}\n',
+                  ),
+                );
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+                controller.close();
+              },
+            });
+            return Promise.resolve({
+              ok: true,
+              body: stream,
+              headers: { get: () => null },
+            });
+          }
+
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  'data: {"choices":[{"delta":{"content":"Generic AI message"}}]}\n',
+                ),
+              );
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+              controller.close();
+            },
+          });
+          return Promise.resolve({
+            ok: true,
+            body: stream,
+            headers: { get: () => null },
+          });
+        }
+
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }) as any;
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      // Open options dropdown
+      const toggleOptionsButton = await screen.findByTitle("Toggle Options");
+      fireEvent.click(toggleOptionsButton);
+
+      // Enable Reasoning Process
+      const reasoningToggle = await screen.findByText("Reasoning Process");
+      fireEvent.click(reasoningToggle);
+
+      // Send a message
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "Solve this problem" } });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      // Verify reasoning block appears
+      await waitFor(
+        () => {
+          expect(document.querySelector(".reasoning-block")).not.toBeNull();
+        },
+        { timeout: 15000 },
+      );
+
+      const copyReasoningBtn = await screen.findByRole("button", {
+        name: "Copy Reasoning",
+      });
+      expect(copyReasoningBtn).toBeDefined();
+
+      // Click Copy Reasoning button
+      fireEvent.click(copyReasoningBtn);
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "This is my internal reasoning step by step.",
+      );
+
+      // Check button text updates to Copied
+      await screen.findByText("Copied");
     } finally {
       global.fetch = originalFetch;
     }

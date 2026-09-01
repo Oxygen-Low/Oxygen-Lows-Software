@@ -119,11 +119,42 @@ function expressPlugin(): Plugin {
           } as any);
           const honoRes = await app.fetch(honoReq);
           res.statusCode = honoRes.status;
-          honoRes.headers.forEach((value, key) => {
-            res.setHeader(key, value);
-          });
-          const arrayBuf = await honoRes.arrayBuffer();
-          res.end(Buffer.from(arrayBuf));
+
+          const contentType = honoRes.headers.get("content-type") || "";
+
+          if (contentType.includes("text/event-stream") && honoRes.body) {
+            // Stream SSE responses – never buffer them or the client will
+            // receive nothing until the stream closes.
+            honoRes.headers.forEach((value, key) => {
+              const lk = key.toLowerCase();
+              // Let Node.js manage these automatically for SSE
+              if (lk === "content-length" || lk === "transfer-encoding") return;
+              res.setHeader(key, value);
+            });
+            const reader = honoRes.body.getReader();
+            const pump = async () => {
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  if (!res.writableEnded) res.write(Buffer.from(value));
+                }
+              } catch {
+                // Connection closed by client
+              } finally {
+                if (!res.writableEnded) res.end();
+              }
+            };
+            req.on("close", () => reader.cancel().catch(() => {}));
+            pump();
+          } else {
+            honoRes.headers.forEach((value, key) => {
+              res.setHeader(key, value);
+            });
+            const arrayBuf = await honoRes.arrayBuffer();
+            res.end(Buffer.from(arrayBuf));
+          }
+
         } catch (err: any) {
           if (url.startsWith("/api/")) {
             res.statusCode = 500;

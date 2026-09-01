@@ -277,8 +277,7 @@ export const en = {
     llmAgentDesc:
       "An autonomous AI coding agent that reads, edits, and builds your projects.",
     surveysTitle: "Surveys",
-    surveysDesc:
-      "Monthly anonymous hardware, browser, gaming, and community surveys with interactive line charts & statistics.",
+    surveysDesc: "Anonymous community surveys with interactive charts & stats.",
     chatbotWebSearch: "Web Search",
     chatbotWebSearchDesc: "Deep agentic web research before answering",
     chatbotSearchedTheWeb: "Searched The Web",
@@ -286,6 +285,9 @@ export const en = {
     chatbotReasoning: "Reasoning Process",
     chatbotReasoningDesc: "Toggle AI thought process",
     chatbotReasoningProcess: "Reasoning Process",
+    chatbotCopyReasoning: "Copy Reasoning",
+    chatbotReasoningCopied: "Reasoning copied to clipboard",
+    chatbotCopied: "Copied",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",
@@ -336,16 +338,14 @@ export const en = {
     vpnOffline: "Offline",
     vpnPinging: "Pinging...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc:
-      "Protect your website or API from DDoS, injection attacks, bots, VPNs, and malicious traffic.",
+    webDefenderDesc: "Block DDoS, bots, and malicious traffic from your site or API.",
     webDefenderRealTime: "Real-Time",
     webDefenderConnecting: "Connecting...",
     passwordManagerTitle: "Password Manager",
     passwordManagerDesc:
       "Securely store and manage passwords with AES-256 zero-knowledge encryption.",
     gameLibraryTitle: "Game Library",
-    gameLibraryDesc:
-      "Aggregate, manage, and launch your locally installed games across platforms with playtime tracking and friend activity.",
+    gameLibraryDesc: "Launch and track your PC games across all platforms.",
   },
   gameLibrary: {
     // Title & Descriptions
@@ -716,6 +716,7 @@ export const en = {
     supportTitle: "Support",
     supportDesc: "Manage and respond to user support tickets.",
     allTickets: "All Support Tickets",
+    userId: "User ID",
     hideClosed: "Hide Closed Tickets",
     showClosed: "Show Closed Tickets",
     filterAll: "All",

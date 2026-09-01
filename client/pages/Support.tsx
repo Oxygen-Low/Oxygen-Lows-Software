@@ -68,6 +68,57 @@ export default function Support() {
     }
   }, [session]);
 
+  // Real-time updates for the ticket list
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channel = supabase
+      .channel(`user_tickets_list_${session.user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "support_tickets" },
+        (payload) => {
+          const newTicket = {
+            ...payload.new,
+            status: payload.new?.status || "Open",
+          } as Ticket;
+          setTickets((prev) => {
+            if (prev.some((t) => t.id === newTicket.id)) return prev;
+            return [newTicket, ...prev];
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "support_tickets" },
+        (payload) => {
+          setTickets((prev) =>
+            prev.map((t) =>
+              t.id === payload.new?.id
+                ? { ...t, ...payload.new, status: payload.new?.status || "Open" }
+                : t,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "support_tickets" },
+        (payload) => {
+          const deletedId = payload.old?.id;
+          if (deletedId) {
+            setTickets((prev) => prev.filter((t) => t.id !== deletedId));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
+
+
   const fetchTickets = async () => {
     try {
       const { data, error } = await supabase

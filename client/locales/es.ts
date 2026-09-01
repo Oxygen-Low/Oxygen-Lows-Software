@@ -286,8 +286,7 @@ export const es = {
     llmAgentDesc:
       "Un agente de codificación de IA autónomo que lee, edita y construye tus proyectos.",
     surveysTitle: "Encuestas",
-    surveysDesc:
-      "Encuestas comunitarias mensuales y anónimas sobre hardware, navegadores y juegos con gráficos de líneas e interactivos.",
+    surveysDesc: "Encuestas comunitarias anónimas con gráficos interactivos y estadísticas.",
     chatbotWebSearch: "Búsqueda Web",
     chatbotWebSearchDesc: "Investigación web profunda antes de responder",
     chatbotSearchedTheWeb: "Búsqueda en la Web Realizada",
@@ -295,6 +294,9 @@ export const es = {
     chatbotReasoning: "Proceso de Razonamiento",
     chatbotReasoningDesc: "Alternar el proceso de pensamiento de IA",
     chatbotReasoningProcess: "Proceso de Razonamiento",
+    chatbotCopyReasoning: "Copiar razonamiento",
+    chatbotReasoningCopied: "Razonamiento copiado al portapapeles",
+    chatbotCopied: "Copiado",
     agentSearchTitle: "Búsqueda Agente",
     agentSearchDesc:
       "Búsqueda agéntica impulsada por IA que investiga la web y sintetiza respuestas.",
@@ -344,16 +346,14 @@ export const es = {
     vpnOffline: "Fuera de línea",
     vpnPinging: "Haciendo ping...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc:
-      "Protege tu sitio web o API de DDoS, ataques de inyección, bots, VPNs y tráfico malicioso.",
+    webDefenderDesc: "Bloquea DDoS, bots y tráfico malicioso en tu sitio o API.",
     webDefenderRealTime: "En tiempo real",
     webDefenderConnecting: "Conectando...",
     passwordManagerTitle: "Gestor de Contraseñas",
     passwordManagerDesc:
       "Almacena y gestiona contraseñas de forma segura con cifrado de conocimiento cero AES-256.",
     gameLibraryTitle: "Biblioteca de juegos",
-    gameLibraryDesc:
-      "Reúne, administra e inicia tus juegos instalados localmente en todas las plataformas con seguimiento de tiempo de juego y actividad de amigos.",
+    gameLibraryDesc: "Lanza y rastrea tus juegos de PC en todas las plataformas.",
   },
   gameLibrary: {
     // Title & Descriptions
@@ -737,6 +737,7 @@ export const es = {
     supportDesc:
       "Gestiona y responde a los tickets de soporte de los usuarios.",
     allTickets: "Todos los tickets de soporte",
+    userId: "ID de usuario",
     hideClosed: "Ocultar tickets cerrados",
     showClosed: "Mostrar tickets cerrados",
     filterAll: "Todos",

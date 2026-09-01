@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
@@ -9,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Info } from "lucide-react";
+import { supabase } from "@/lib/db";
+
 
 type Ticket = {
   id: string;
@@ -18,10 +21,12 @@ type Ticket = {
   status: string;
   created_at: string;
   closed_at?: string | null;
+  user_id?: string;
   user: {
     email: string;
   };
   profiles: {
+    user_id?: string;
     username: string;
   };
 };
@@ -55,6 +60,50 @@ export default function AdminSupport() {
       fetchTickets(hideClosed);
     }
   }, [session, hideClosed]);
+
+  // Real-time subscription for admin ticket list
+  useEffect(() => {
+    if (!session?.access_token) return;
+
+    const channel = supabase
+      .channel("admin_tickets_list")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "support_tickets" },
+        () => {
+          fetchTickets(hideClosed);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "support_tickets" },
+        (payload) => {
+          setTickets((prev) =>
+            prev.map((t) =>
+              t.id === payload.new?.id
+                ? { ...t, ...payload.new, status: payload.new?.status || "Open" }
+                : t,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "support_tickets" },
+        (payload) => {
+          const deletedId = payload.old?.id;
+          if (deletedId) {
+            setTickets((prev) => prev.filter((t) => t.id !== deletedId));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.access_token, hideClosed]);
+
 
   const handleToggleHideClosed = (checked: boolean) => {
     setHideClosed(checked);
@@ -209,6 +258,18 @@ export default function AdminSupport() {
                             ticket.user?.email ||
                             "Unknown User"}
                         </span>
+                        {(ticket.profiles?.user_id || ticket.user_id) && (
+                          <>
+                            <span>•</span>
+                            <span
+                              className="text-xs font-mono text-muted-foreground/70"
+                              title={t("admin.userId", undefined, "User ID")}
+                            >
+                              {t("admin.userId", undefined, "UID")}:{" "}
+                              {ticket.profiles?.user_id || ticket.user_id}
+                            </span>
+                          </>
+                        )}
                         {ticket.status === "Closed" && (
                           <>
                             <span>•</span>

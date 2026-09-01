@@ -261,8 +261,7 @@ export const zhCN = {
     llmAgentTitle: "LLM 智能体",
     llmAgentDesc: "一个自主的 AI 编程助手，可阅读、编辑和构建您的项目。",
     surveysTitle: "问卷调查",
-    surveysDesc:
-      "每月匿名的硬件、浏览器、游戏与社区调查，提供交互式折线图和统计数据。",
+    surveysDesc: "带有互动图表和统计数据的匿名社区调查。",
     chatbotWebSearch: "网络搜索",
     chatbotWebSearchDesc: "回答前进行深度的智能网络研究",
     chatbotSearchedTheWeb: "已搜索网络",
@@ -270,6 +269,9 @@ export const zhCN = {
     chatbotReasoning: "推理过程",
     chatbotReasoningDesc: "切换 AI 思考过程",
     chatbotReasoningProcess: "推理过程",
+    chatbotCopyReasoning: "复制推理过程",
+    chatbotReasoningCopied: "推理过程已复制到剪贴板",
+    chatbotCopied: "已复制",
     agentSearchTitle: "智能搜索",
     agentSearchDesc: "由AI驱动的智能搜索，研究网络并综合答案。",
     agentSearchPlaceholder: "您想研究什么？",
@@ -316,15 +318,13 @@ export const zhCN = {
     vpnOffline: "离线",
     vpnPinging: "正在 Ping...",
     webDefenderTitle: "网页防御者",
-    webDefenderDesc:
-      "保护您的网站或 API 免受 DDoS、注入攻击、机器人、VPN 和恶意流量的侵害。",
+    webDefenderDesc: "阻止 DDoS、机器人和恶意流量侵害您的网站或 API。",
     webDefenderRealTime: "实时",
     webDefenderConnecting: "连接中...",
     passwordManagerTitle: "密码管理器",
     passwordManagerDesc: "使用 AES-256 零知识加密安全存储和管理密码。",
     gameLibraryTitle: "游戏库",
-    gameLibraryDesc:
-      "跨平台汇集、管理和启动本地安装的游戏，支持游戏时长统计与好友动态展示。",
+    gameLibraryDesc: "跨平台启动并管理您的PC游戏。",
   },
   gameLibrary: {
     // Title & Descriptions
@@ -676,6 +676,7 @@ export const zhCN = {
     supportTitle: "支持",
     supportDesc: "管理和回复用户工单。",
     allTickets: "所有工单",
+    userId: "用户ID",
     hideClosed: "隐藏已关闭工单",
     showClosed: "显示已关闭工单",
     filterAll: "全部",

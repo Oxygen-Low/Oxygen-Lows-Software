@@ -280,8 +280,7 @@ export const ru = {
     llmAgentDesc:
       "Автономный ИИ-агент для кодинга, который читает, редактирует и создает ваши проекты.",
     surveysTitle: "Опросы",
-    surveysDesc:
-      "Ежемесячные анонимные опросы о железе, браузерах, играх и сообществе с интерактивными графиками и статистикой.",
+    surveysDesc: "Анонимные опросы сообщества с интерактивными графиками и статистикой.",
     chatbotWebSearch: "Веб-поиск",
     chatbotWebSearchDesc:
       "Глубокое агентское исследование в сети перед ответом",
@@ -290,6 +289,9 @@ export const ru = {
     chatbotReasoning: "Процесс рассуждения",
     chatbotReasoningDesc: "Переключить процесс мышления ИИ",
     chatbotReasoningProcess: "Процесс рассуждения",
+    chatbotCopyReasoning: "Копировать рассуждение",
+    chatbotReasoningCopied: "Рассуждение скопировано в буфер обмена",
+    chatbotCopied: "Скопировано",
     agentSearchTitle: "Агентский поиск",
     agentSearchDesc:
       "Агентский поиск на основе ИИ, который исследует веб и синтезирует ответы.",
@@ -340,16 +342,14 @@ export const ru = {
     vpnOffline: "Не в сети",
     vpnPinging: "Проверка пинга...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc:
-      "Защитите ваш сайт или API от DDoS, инъекций, ботов, VPN и вредоносного трафика.",
+    webDefenderDesc: "Блокируйте DDoS, ботов и вредоносный трафик на вашем сайте или API.",
     webDefenderRealTime: "В реальном времени",
     webDefenderConnecting: "Подключение...",
     passwordManagerTitle: "Менеджер паролей",
     passwordManagerDesc:
       "Безопасно храните и управляйте паролями с AES-256 шифрованием с нулевым разглашением.",
     gameLibraryTitle: "Библиотека игр",
-    gameLibraryDesc:
-      "Объединяйте, управляйте и запускайте локально установленные игры со всех платформ с отслеживанием времени и активности друзей.",
+    gameLibraryDesc: "Запускайте и отслеживайте PC-игры на всех платформах.",
   },
   gameLibrary: {
     // Title & Descriptions
@@ -726,6 +726,7 @@ export const ru = {
     supportTitle: "Поддержка",
     supportDesc: "Управление и ответы на тикеты поддержки пользователей.",
     allTickets: "Все тикеты поддержки",
+    userId: "ID пользователя",
     hideClosed: "Скрыть закрытые тикеты",
     showClosed: "Показать закрытые тикеты",
     filterAll: "Все",

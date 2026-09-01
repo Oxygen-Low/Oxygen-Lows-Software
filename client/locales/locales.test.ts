@@ -157,6 +157,7 @@ describe("All Locales Verification", () => {
       expect(t("admin.markAsClosed")).toBeTruthy();
       expect(t("admin.ticketMarkedOpen")).toBeTruthy();
       expect(t("admin.ticketMarkedClosed")).toBeTruthy();
+      expect(t("admin.userId")).toBeTruthy();
     });
   });
 });

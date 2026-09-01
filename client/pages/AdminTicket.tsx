@@ -21,6 +21,12 @@ type Ticket = {
   type: string;
   status: string;
   created_at: string;
+  user_id?: string;
+  profiles?: {
+    user_id?: string;
+    username?: string;
+    avatar_url?: string;
+  };
 };
 
 type Message = {
@@ -30,6 +36,7 @@ type Message = {
   message: string;
   created_at: string;
   profiles?: {
+    user_id?: string;
     username: string;
     avatar_url: string;
   };
@@ -99,12 +106,39 @@ export default function AdminTicket() {
           });
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_tickets",
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          setTicket((prev) =>
+            prev ? { ...prev, ...payload.new } : prev,
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "support_tickets",
+          filter: `id=eq.${id}`,
+        },
+        () => {
+          navigate("/admin/support");
+        },
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [id]);
+
 
   const fetchTicketData = async () => {
     try {
@@ -168,7 +202,7 @@ export default function AdminTicket() {
       const { data: profile } = await supabase
         .from("profiles")
         .select("username, avatar_url")
-        .eq("id", session?.user?.id)
+        .eq("user_id", session?.user?.id)
         .single();
 
       const newMsg = {
@@ -272,6 +306,15 @@ export default function AdminTicket() {
               >
                 {ticket.status}
               </Badge>
+              {(ticket.profiles?.user_id || ticket.user_id) && (
+                <span
+                  className="text-xs font-mono text-muted-foreground"
+                  title={t("admin.userId", undefined, "User ID")}
+                >
+                  {t("admin.userId", undefined, "UID")}:{" "}
+                  {ticket.profiles?.user_id || ticket.user_id}
+                </span>
+              )}
             </div>
           </div>
           <Button
@@ -325,9 +368,20 @@ export default function AdminTicket() {
                           }`}
                         >
                           {!isMine && (
-                            <p className="text-xs font-semibold mb-1 opacity-75">
-                              {msg.profiles?.username || "User"}
-                            </p>
+                            <>
+                              <p className="text-xs font-semibold mb-0.5 opacity-75">
+                                {msg.profiles?.username || "User"}
+                              </p>
+                              {(msg.profiles?.user_id || msg.sender_id) && (
+                                <p
+                                  className="text-[10px] font-mono opacity-50 mb-1"
+                                  title={t("admin.userId", undefined, "User ID")}
+                                >
+                                  {t("admin.userId", undefined, "UID")}:{" "}
+                                  {msg.profiles?.user_id || msg.sender_id}
+                                </p>
+                              )}
+                            </>
                           )}
                           <p className="text-sm whitespace-pre-wrap">
                             {msg.message}

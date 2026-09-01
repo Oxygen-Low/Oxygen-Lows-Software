@@ -278,30 +278,205 @@ export class LocalQueryBuilder implements PromiseLike<any> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Real-time channel – SSE-backed implementation
+// ---------------------------------------------------------------------------
+
+/** Parse a Supabase-style filter string, e.g. "ticket_id=eq.abc". */
+function parseRealtimeFilter(
+  filter: string,
+): { field: string; op: string; value: string } | null {
+  const m = filter.match(/^([^=]+)=([^.]+)\.(.+)$/);
+  if (!m) return null;
+  return { field: m[1], op: m[2], value: m[3] };
+}
+
+function realtimeFilterMatches(filter: string, record: any): boolean {
+  const parsed = parseRealtimeFilter(filter);
+  if (!parsed) return true;
+  const rv = record?.[parsed.field];
+  switch (parsed.op) {
+    case "eq":
+      return String(rv ?? "") === parsed.value;
+    case "neq":
+      return String(rv ?? "") !== parsed.value;
+    default:
+      return true;
+  }
+}
+
+interface ChannelSubscription {
+  event: string; // "INSERT" | "UPDATE" | "DELETE" | "*" | "postgres_changes"
+  config: {
+    event?: string;
+    schema?: string;
+    table?: string;
+    filter?: string;
+  };
+  callback: (payload: { new: any; old: any; eventType: string }) => void;
+}
+
+/**
+ * Singleton manager for the shared EventSource connection.
+ * All LocalChannels multiplex over a single SSE stream per session.
+ */
+class RealtimeManager {
+  private eventSource: EventSource | null = null;
+  private currentToken: string | null = null;
+  private channels = new Set<LocalChannel>();
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Ensure the SSE connection is open for the given token. */
+  connect(token: string): void {
+    if (
+      this.eventSource &&
+      this.currentToken === token &&
+      this.eventSource.readyState !== EventSource.CLOSED
+    ) {
+      return;
+    }
+    this.close();
+    this.currentToken = token;
+    this.openConnection();
+  }
+
+  private openConnection(): void {
+    if (!this.currentToken || typeof EventSource === "undefined") return;
+    const url = `/api/realtime?token=${encodeURIComponent(this.currentToken)}`;
+    try {
+      this.eventSource = new EventSource(url);
+    } catch {
+      return;
+    }
+
+    this.eventSource.addEventListener(
+      "postgres_changes",
+      (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data);
+          for (const ch of this.channels) {
+            ch._dispatchEvent(data);
+          }
+        } catch {
+          // ignore parse errors
+        }
+      },
+    );
+
+    this.eventSource.onerror = () => {
+      if (this.eventSource?.readyState === EventSource.CLOSED) {
+        this.scheduleReconnect();
+      }
+    };
+  }
+
+  private close(): void {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.openConnection();
+    }, 3_000);
+  }
+
+  addChannel(ch: LocalChannel): void {
+    this.channels.add(ch);
+  }
+
+  removeChannel(ch: LocalChannel): void {
+    this.channels.delete(ch);
+  }
+}
+
+/** One shared connection manager per browser page. */
+const realtimeManager =
+  typeof window !== "undefined" ? new RealtimeManager() : null;
+
 export class LocalChannel {
   private name: string;
+  private subscriptions: ChannelSubscription[] = [];
 
   constructor(name: string) {
     this.name = name;
   }
 
-  on(_event: string, _config: any, _callback?: (payload: any) => void) {
+  on(
+    event: string,
+    config: ChannelSubscription["config"],
+    callback?: (payload: any) => void,
+  ) {
+    if (callback) {
+      this.subscriptions.push({ event, config, callback });
+    }
     return this;
   }
 
-  subscribe(callback?: (status: string) => void) {
-    if (callback) {
+  subscribe(statusCallback?: (status: string) => void) {
+    const session = getLocalSession();
+    const token = session?.access_token;
+
+    if (token && realtimeManager) {
+      realtimeManager.connect(token);
+      realtimeManager.addChannel(this);
+    }
+
+    if (statusCallback) {
       try {
-        callback("SUBSCRIBED");
+        statusCallback("SUBSCRIBED");
       } catch {}
     }
     return this;
   }
 
   async unsubscribe() {
+    realtimeManager?.removeChannel(this);
     return "ok";
   }
+
+  /** Called by RealtimeManager when a postgres_changes event arrives. */
+  _dispatchEvent(event: {
+    table: string;
+    event: string;
+    schema: string;
+    new: any;
+    old: any;
+  }): void {
+    for (const sub of this.subscriptions) {
+      if (!this._matchesConfig(sub.config, event)) continue;
+      try {
+        sub.callback({
+          new: event.new,
+          old: event.old,
+          eventType: event.event,
+        });
+      } catch {
+        // ignore callback errors
+      }
+    }
+  }
+
+  private _matchesConfig(
+    config: ChannelSubscription["config"],
+    event: { table: string; event: string; schema: string; new: any; old: any },
+  ): boolean {
+    const cfgEvent = config.event;
+    if (cfgEvent && cfgEvent !== "*" && cfgEvent !== event.event) return false;
+    if (config.table && config.table !== event.table) return false;
+    if (config.schema && config.schema !== event.schema) return false;
+    if (config.filter) {
+      const record = event.new ?? event.old ?? {};
+      if (!realtimeFilterMatches(config.filter, record)) return false;
+    }
+    return true;
+  }
 }
+
 
 async function executeRpc(name: string, args: any = {}, token?: string) {
   try {
@@ -379,9 +554,13 @@ export const db = {
     return new LocalChannel(name);
   },
 
-  removeChannel(_channel: any) {
+  removeChannel(channel: any) {
+    if (channel && typeof channel.unsubscribe === "function") {
+      return channel.unsubscribe();
+    }
     return Promise.resolve("ok");
   },
+
 };
 
 export const customClient = db;

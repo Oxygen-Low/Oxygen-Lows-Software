@@ -16,8 +16,16 @@ import { agentSearchRouter } from "./routes/agentSearch.ts";
 import { authRouter } from "./routes/auth.ts";
 import { dataRouter } from "./routes/data.ts";
 import { surveysRouter } from "./routes/surveys.ts";
+import { realtimeRouter } from "./routes/realtime.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
+import { broadcastChange } from "./lib/realtime.ts";
+import { setRealtimeBroadcast } from "./lib/dataStore.ts";
+
+// Wire up the real-time broadcast so every support table mutation notifies
+// connected SSE clients.
+setRealtimeBroadcast(broadcastChange);
+
 
 const app = new Hono();
 
@@ -1074,6 +1082,7 @@ app.route("/api/storage", storageRouter);
 app.route("/api/auth", authRouter);
 app.route("/api/data", dataRouter);
 app.route("/api/surveys", surveysRouter);
+app.route("/api/realtime", realtimeRouter);
 
 export function createServer() {
   return app;

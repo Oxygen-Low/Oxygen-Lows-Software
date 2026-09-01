@@ -280,8 +280,7 @@ export const ja = {
     llmAgentDesc:
       "プロジェクトを読み取り、編集し、構築する自律型AIコーディングエージェント。",
     surveysTitle: "アンケート",
-    surveysDesc:
-      "インタラクティブな折れ線グラフや統計を備えた、毎月の匿名ハードウェア、ブラウザ、ゲーム、コミュニティアンケート。",
+    surveysDesc: "インタラクティブなグラフと統計を備えた匿名コミュニティアンケート。",
     chatbotWebSearch: "ウェブ検索",
     chatbotWebSearchDesc: "回答前の詳細なエージェント型ウェブ調査",
     chatbotSearchedTheWeb: "ウェブを検索しました",
@@ -289,6 +288,9 @@ export const ja = {
     chatbotReasoning: "推論プロセス",
     chatbotReasoningDesc: "AIの思考プロセスを切り替える",
     chatbotReasoningProcess: "推論プロセス",
+    chatbotCopyReasoning: "推論をコピー",
+    chatbotReasoningCopied: "推論をクリップボードにコピーしました",
+    chatbotCopied: "コピー完了",
     agentSearchTitle: "エージェント検索",
     agentSearchDesc: "ウェブを調査し、回答を合成するAI搭載のエージェント検索。",
     agentSearchPlaceholder: "何を調べたいですか？",
@@ -337,16 +339,14 @@ export const ja = {
     vpnOffline: "オフライン",
     vpnPinging: "ping測定中...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc:
-      "DDoS攻撃、インジェクション攻撃、ボット、VPN、および悪意のあるトラフィックからウェブサイトやAPIを保護します。",
+    webDefenderDesc: "DDoS、ボット、悪意のあるトラフィックをブロックします。",
     webDefenderRealTime: "リアルタイム",
     webDefenderConnecting: "接続中...",
     passwordManagerTitle: "パスワードマネージャー",
     passwordManagerDesc:
       "AES-256ゼロ知識暗号化でパスワードを安全に保存・管理します。",
     gameLibraryTitle: "ゲームライブラリ",
-    gameLibraryDesc:
-      "プレイ時間の記録やフレンドのアクティビティとともに、インストールされているゲームをプラットフォームを横断して集約・管理・起動します。",
+    gameLibraryDesc: "すべてのプラットフォームでPCゲームを起動・管理します。",
   },
   gameLibrary: {
     // Title & Descriptions
@@ -720,6 +720,7 @@ export const ja = {
     supportTitle: "サポート",
     supportDesc: "ユーザーのサポートチケットを管理および返信します。",
     allTickets: "すべてのサポートチケット",
+    userId: "ユーザーID",
     hideClosed: "閉じたチケットを非表示",
     showClosed: "閉じたチケットを表示",
     filterAll: "すべて",

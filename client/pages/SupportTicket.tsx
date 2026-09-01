@@ -100,12 +100,39 @@ export default function SupportTicket() {
           });
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_tickets",
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          setTicket((prev) =>
+            prev ? { ...prev, ...payload.new } : prev,
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "support_tickets",
+          filter: `id=eq.${id}`,
+        },
+        () => {
+          navigate("/support");
+        },
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [id]);
+
 
   const fetchTicketData = async () => {
     try {

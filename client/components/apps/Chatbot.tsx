@@ -274,6 +274,31 @@ const ChatMessage = React.memo(
     const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
     let displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
     const [reasoningExpanded, setReasoningExpanded] = useState(false);
+    const [copiedReasoning, setCopiedReasoning] = useState(false);
+
+    const handleCopyReasoning = useCallback(
+      async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!m.reasoning) return;
+        try {
+          await navigator.clipboard.writeText(m.reasoning);
+          setCopiedReasoning(true);
+          toast.success(
+            t(
+              "apps.chatbotReasoningCopied",
+              undefined,
+              "Reasoning copied to clipboard",
+            ),
+          );
+          setTimeout(() => {
+            setCopiedReasoning(false);
+          }, 2000);
+        } catch (err) {
+          console.error("Failed to copy reasoning:", err);
+        }
+      },
+      [m.reasoning, t],
+    );
 
     if (m.role === "assistant" && displayContent.includes("<tool_call>")) {
       displayContent = displayContent.replace(
@@ -373,9 +398,17 @@ const ChatMessage = React.memo(
                   reasoningExpanded && "expanded",
                 )}
               >
-                <button
+                <div
                   onClick={() => setReasoningExpanded(!reasoningExpanded)}
-                  className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90"
+                  className="reasoning-header w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white/90 cursor-pointer select-none"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setReasoningExpanded(!reasoningExpanded);
+                    }
+                  }}
                 >
                   <span className="text-xs font-mono flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
@@ -385,15 +418,52 @@ const ChatMessage = React.memo(
                       "Reasoning Process",
                     )}
                   </span>
-                  <span
-                    className={cn(
-                      "material-symbols-outlined text-[18px] transition-transform duration-200 font-family-material",
-                      reasoningExpanded && "rotate-180",
-                    )}
-                  >
-                    expand_more
-                  </span>
-                </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyReasoning}
+                      className="copy-reasoning-btn p-1 px-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-mono"
+                      title={t(
+                        "apps.chatbotCopyReasoning",
+                        undefined,
+                        "Copy Reasoning",
+                      )}
+                      aria-label={t(
+                        "apps.chatbotCopyReasoning",
+                        undefined,
+                        "Copy Reasoning",
+                      )}
+                    >
+                      {copiedReasoning ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                          <span className="text-[11px] text-green-400">
+                            {t("apps.chatbotCopied", undefined, "Copied")}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span className="text-[11px]">
+                            {t(
+                              "apps.chatbotCopyReasoning",
+                              undefined,
+                              "Copy Reasoning",
+                            )}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                    <span
+                      className={cn(
+                        "material-symbols-outlined text-[18px] transition-transform duration-200 font-family-material",
+                        reasoningExpanded && "rotate-180",
+                      )}
+                    >
+                      expand_more
+                    </span>
+                  </div>
+                </div>
                 {reasoningExpanded && (
                   <div className="reasoning-content px-4 py-3 border-t border-white/10 text-sm text-slate-300 font-mono leading-relaxed bg-[#0F0F13]">
                     <ReactMarkdown

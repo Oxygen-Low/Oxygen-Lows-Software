@@ -4,6 +4,33 @@ import crypto from "node:crypto";
 
 export const DATA_DIR = path.join(process.cwd(), "Data");
 
+// ---------------------------------------------------------------------------
+// Real-time broadcast hook
+// ---------------------------------------------------------------------------
+
+/** Tables for which mutations are broadcast to SSE clients. */
+const REALTIME_TABLES = new Set(["support_tickets", "support_messages"]);
+
+type BroadcastFn = (event: {
+  table: string;
+  event: "INSERT" | "UPDATE" | "DELETE";
+  schema: "public";
+  new: any | null;
+  old: any | null;
+  targetUserId?: string;
+}) => void;
+
+let _broadcast: BroadcastFn | null = null;
+
+/**
+ * Wire up the real-time broadcast function. Call this once at server startup
+ * (e.g. in server/index.ts) to avoid a circular import between dataStore and
+ * the realtime hub.
+ */
+export function setRealtimeBroadcast(fn: BroadcastFn): void {
+  _broadcast = fn;
+}
+
 export interface DataFilter {
   field: string;
   operator:
@@ -537,7 +564,11 @@ export function getTableRows(table: string, userId?: string | number): any[] {
         [],
       );
       allTickets.push(
-        ...tickets.map((t) => ({ ...t, status: t.status || "Open" })),
+        ...tickets.map((t) => ({
+          ...t,
+          user_id: t.user_id || id,
+          status: t.status || "Open",
+        })),
       );
     }
     return allTickets;
@@ -854,8 +885,23 @@ export function insertTable(
   const updated = [...prepared, ...existing];
   saveTableRows(table, userIdStr, updated);
 
+  // Broadcast real-time events for support tables
+  if (_broadcast && REALTIME_TABLES.has(normTable)) {
+    for (const item of prepared) {
+      _broadcast({
+        table: normTable,
+        event: "INSERT",
+        schema: "public",
+        new: item,
+        old: null,
+        targetUserId: userIdStr,
+      });
+    }
+  }
+
   return Array.isArray(data) ? prepared : prepared[0];
 }
+
 
 /**
  * Update records matching filters.
@@ -904,8 +950,24 @@ export function updateTable(
     });
 
     saveTableRows(table, userIdStr, updated);
+
+    // Broadcast real-time events for support tables
+    if (_broadcast && REALTIME_TABLES.has(normTable)) {
+      for (const item of matched) {
+        _broadcast({
+          table: normTable,
+          event: "UPDATE",
+          schema: "public",
+          new: item,
+          old: null,
+          targetUserId: userIdStr,
+        });
+      }
+    }
+
     return matched;
   }
+
 
   // If no userId provided, update across all user directories (e.g. admin update)
   const userIds = getAllUserIds();
@@ -1010,6 +1072,20 @@ export function deleteTable(
 
     saveTableRows(table, userIdStr, remaining);
 
+    // Broadcast real-time DELETE events for support tables
+    if (_broadcast && REALTIME_TABLES.has(normTable)) {
+      for (const item of matched) {
+        _broadcast({
+          table: normTable,
+          event: "DELETE",
+          schema: "public",
+          new: null,
+          old: item,
+          targetUserId: userIdStr,
+        });
+      }
+    }
+
     if (normTable === "support_tickets" && matched.length > 0) {
       for (const t of matched) {
         if (t && t.id) {
@@ -1024,6 +1100,7 @@ export function deleteTable(
 
     return matched;
   }
+
 
   // If no userId provided, delete across all user directories (e.g. admin delete)
   const userIds = getAllUserIds();

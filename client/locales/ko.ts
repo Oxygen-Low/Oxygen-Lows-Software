@@ -276,8 +276,7 @@ export const ko = {
     llmAgentDesc:
       "프로젝트를 읽고, 편집하고, 빌드하는 자율적인 AI 코딩 에이전트.",
     surveysTitle: "설문조사",
-    surveysDesc:
-      "인터랙티브 꺾은선형 차트와 통계를 갖춘 매월 익명 하드웨어, 브라우저, 게임, 커뮤니티 설문조사.",
+    surveysDesc: "인터랙티브 차트와 통계를 갖춘 익명 커뮤니티 설문조사.",
     chatbotWebSearch: "웹 검색",
     chatbotWebSearchDesc: "답변 전 심층 에이전트 웹 조사",
     chatbotSearchedTheWeb: "웹 검색 완료",
@@ -285,6 +284,9 @@ export const ko = {
     chatbotReasoning: "추론 과정",
     chatbotReasoningDesc: "AI 사고 과정 전환",
     chatbotReasoningProcess: "추론 과정",
+    chatbotCopyReasoning: "추론 복사",
+    chatbotReasoningCopied: "추론이 클립보드에 복사되었습니다",
+    chatbotCopied: "복사됨",
     agentSearchTitle: "에이전트 검색",
     agentSearchDesc: "웹을 조사하고 답변을 합성하는 AI 기반 에이전트 검색.",
     agentSearchPlaceholder: "무엇을 조사하시겠습니까?",
@@ -334,16 +336,14 @@ export const ko = {
     vpnOffline: "오프라인",
     vpnPinging: "핑 측정 중...",
     webDefenderTitle: "웹 디펜더",
-    webDefenderDesc:
-      "DDoS, 인젝션 공격, 봇, VPN 및 악성 트래픽으로부터 웹사이트나 API를 보호합니다.",
+    webDefenderDesc: "DDoS, 봇, 악성 트래픽으로부터 사이트나 API를 보호합니다.",
     webDefenderRealTime: "실시간",
     webDefenderConnecting: "연결 중...",
     passwordManagerTitle: "비밀번호 관리자",
     passwordManagerDesc:
       "AES-256 제로 지식 암호화로 비밀번호를 안전하게 저장하고 관리합니다.",
     gameLibraryTitle: "게임 라이브러리",
-    gameLibraryDesc:
-      "플레이 시간 기록 및 친구 활동 현황과 함께 다양한 플랫폼의 로컬 설치 게임을 집계, 관리 및 실행합니다.",
+    gameLibraryDesc: "모든 플랫폼에서 PC 게임을 실행하고 관리합니다.",
   },
   gameLibrary: {
     // Title & Descriptions
@@ -709,6 +709,7 @@ export const ko = {
     supportTitle: "지원",
     supportDesc: "사용자 지원 티켓을 관리하고 응답합니다.",
     allTickets: "모든 지원 티켓",
+    userId: "사용자 ID",
     hideClosed: "닫힌 티켓 숨기기",
     showClosed: "닫힌 티켓 표시",
     filterAll: "전체",

@@ -56,9 +56,11 @@ adminSupportRouter.get("/tickets", async (c) => {
     });
 
     const ticketsWithProfiles = (tickets || []).map((t: any) => {
-      const profile = t.user_id ? getProfileByUserId(t.user_id) : null;
+      const userId = t.user_id;
+      const profile = userId ? getProfileByUserId(userId) : null;
       return {
         ...t,
+        user_id: userId || profile?.user_id || profile?.id,
         profiles: profile
           ? {
               user_id: profile.user_id || profile.id,
@@ -90,8 +92,9 @@ adminSupportRouter.get("/tickets/:id", async (c) => {
     }
 
     let profile = null;
-    if (ticket.user_id) {
-      const p = getProfileByUserId(ticket.user_id);
+    const userId = ticket.user_id;
+    if (userId) {
+      const p = getProfileByUserId(userId);
       if (p) {
         profile = {
           user_id: p.user_id || p.id,
@@ -101,7 +104,13 @@ adminSupportRouter.get("/tickets/:id", async (c) => {
       }
     }
 
-    return c.json({ ticket: { ...ticket, profiles: profile } });
+    return c.json({
+      ticket: {
+        ...ticket,
+        user_id: userId || profile?.user_id || profile?.id,
+        profiles: profile,
+      },
+    });
   } catch (error: any) {
     console.error("Error fetching specific ticket:", error);
     return c.json({ error: "Internal server error" }, 500);
@@ -119,9 +128,11 @@ adminSupportRouter.get("/tickets/:id/messages", async (c) => {
     });
 
     const messagesWithProfiles = (messages || []).map((m: any) => {
-      const p = m.sender_id ? getProfileByUserId(m.sender_id) : null;
+      const senderId = m.sender_id;
+      const p = senderId ? getProfileByUserId(senderId) : null;
       return {
         ...m,
+        sender_id: senderId,
         profiles: p
           ? {
               user_id: p.user_id || p.id,
