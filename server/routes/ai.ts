@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable, callRpc } from "../lib/dataStore.ts";
+import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "../../shared/websiteKnowledge.ts";
 
 export const aiRouter = new Hono();
 
@@ -219,9 +220,18 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   }));
   let finalMessages = [...processedMessages];
 
-  // Basic system prompt for edge (simplified, as file read isn't available)
-  const baseContent = "You are an AI assistant.";
-  finalMessages.unshift({ role: "system", content: baseContent });
+  const hasWebsiteKnowledge = finalMessages.some(
+    (m: any) =>
+      m.role === "system" &&
+      typeof m.content === "string" &&
+      m.content.includes("Oxygen Low's Software"),
+  );
+  if (!hasWebsiteKnowledge) {
+    finalMessages.unshift({
+      role: "system",
+      content: WEBSITE_KNOWLEDGE_SYSTEM_PROMPT,
+    });
+  }
 
   const fetchOptions: any = {
     method: "POST",

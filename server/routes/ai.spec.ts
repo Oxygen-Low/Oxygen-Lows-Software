@@ -5,6 +5,7 @@ import {
   resolveCustomProviderUrl,
 } from "../lib/safeAiUrl";
 import { parseSearchIntent, extractBearerToken, stripHtmlTags } from "./ai";
+import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "../../shared/websiteKnowledge.ts";
 import fs from "fs";
 import path from "path";
 
@@ -301,3 +302,40 @@ describe("stripHtmlTags (HTML sanitization)", () => {
     ).toBe("This is already clean text with numbers 123 and symbols!");
   });
 });
+
+describe("AI System Prompt Website Knowledge Base", () => {
+  it("should contain official platform name 'Oxygen Low\\'s Software'", () => {
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("Oxygen Low's Software");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("https://oxygenlow.com");
+  });
+
+  it("should contain comprehensive coverage of apps, games, storage and security", () => {
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/chatbot");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/base64-encoder");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/json-formatter");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/file-compressor");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/qrcode-generator");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/data-save");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/password-manager");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/webdefender");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/llm-agent");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/vpn");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/game-library");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/apps/surveys");
+
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/games/chess");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/games/minesweeper");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/games/solitaire");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/games/poker");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/games/sudoku");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/games/wordsearch");
+
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/storage");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/security");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/integrations");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/characters");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/customize");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/download");
+  });
+});
+

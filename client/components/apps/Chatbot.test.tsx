@@ -1075,4 +1075,89 @@ describe("ChatbotApp", () => {
       global.fetch = originalFetch;
     }
   });
+
+  it("injects Oxygen Low's Software website knowledge base into system instructions for chatbot queries", async () => {
+    const originalFetch = global.fetch;
+    const sentApiRequests: any[] = [];
+
+    global.fetch = vi.fn((url: any, options: any) => {
+      const urlStr = typeof url === "string" ? url : url.toString();
+      if (urlStr.includes("/api/ai/proxy")) {
+        if (options?.body && options.body.includes('"stream":false')) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                choices: [{ message: { content: "Website Info Chat" } }],
+              }),
+          });
+        }
+        const parsedBody = JSON.parse(options?.body || "{}");
+        sentApiRequests.push(parsedBody);
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                'data: {"choices":[{"delta":{"content":"Oxygen Low\'s Software features..."}}]}\n',
+              ),
+            );
+            controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+            controller.close();
+          },
+        });
+        return Promise.resolve({
+          ok: true,
+          body: stream,
+          headers: { get: () => null },
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+    }) as any;
+
+    try {
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, {
+        target: { value: "What can I do on OxygenLow.com?" },
+      });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      await waitFor(() => {
+        expect(sentApiRequests.length).toBeGreaterThan(0);
+        const reqWithSys = sentApiRequests.find((req) =>
+          req.messages?.some((m: any) => m.role === "system"),
+        );
+        expect(reqWithSys).toBeDefined();
+        const sysMsg = reqWithSys.messages.find(
+          (m: any) => m.role === "system",
+        );
+        expect(sysMsg).toBeDefined();
+        expect(sysMsg.content).toContain("Oxygen Low's Software");
+        expect(sysMsg.content).toContain("https://oxygenlow.com");
+        expect(sysMsg.content).toContain("/apps");
+        expect(sysMsg.content).toContain("/games");
+        expect(sysMsg.content).toContain("/storage");
+        expect(sysMsg.content).toContain("/security");
+        expect(sysMsg.content).toContain("Zero-Knowledge Encryption");
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
+

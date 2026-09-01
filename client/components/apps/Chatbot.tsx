@@ -28,6 +28,7 @@ import { db, supabase } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
+import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "@shared/websiteKnowledge";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1224,7 +1225,9 @@ export function ChatbotApp() {
 
   const getInjectedSystemPrompt = (): string => {
     let injected =
-      "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n";
+      "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n" +
+      WEBSITE_KNOWLEDGE_SYSTEM_PROMPT +
+      "\n\n";
     if (selectedLlmCharacter) {
       const char = availableCharacters.find(
         (c) => c.id === selectedLlmCharacter,
