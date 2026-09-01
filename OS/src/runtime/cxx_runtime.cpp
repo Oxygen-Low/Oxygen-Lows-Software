@@ -14,6 +14,16 @@ void* operator new[](size_t size) {
     return kmalloc(size);
 }
 
+void* operator new(size_t size, void* ptr) noexcept {
+    UNUSED(size);
+    return ptr;
+}
+
+void* operator new[](size_t size, void* ptr) noexcept {
+    UNUSED(size);
+    return ptr;
+}
+
 void operator delete(void* ptr) noexcept {
     kfree(ptr);
 }
@@ -30,6 +40,16 @@ void operator delete(void* ptr, size_t size) noexcept {
 void operator delete[](void* ptr, size_t size) noexcept {
     UNUSED(size);
     kfree(ptr);
+}
+
+void operator delete(void* ptr, void* place) noexcept {
+    UNUSED(ptr);
+    UNUSED(place);
+}
+
+void operator delete[](void* ptr, void* place) noexcept {
+    UNUSED(ptr);
+    UNUSED(place);
 }
 
 // ------------------------------------------------------------------------------
