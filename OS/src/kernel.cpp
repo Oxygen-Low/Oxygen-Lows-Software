@@ -40,7 +40,7 @@ static bool run_selftests(void) {
     serial_printf("[SELFTEST] 1. PMM Frame allocation and free: OK\n");
 
     // 2. VMM Virtual Paging Test
-    uint64_t test_vaddr = 0xFFFFFFFFB0000000ULL;
+    uint64_t test_vaddr = 0xFFFF800000000000ULL;
     uint64_t test_paddr = pmm_alloc_frame();
     if (!vmm_map_page(test_vaddr, test_paddr, PAGE_PRESENT | PAGE_WRITABLE)) {
         serial_printf("[SELFTEST] FAILED: VMM map page\n");
