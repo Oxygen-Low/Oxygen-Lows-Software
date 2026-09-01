@@ -6,7 +6,9 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { Clock, Info } from "lucide-react";
 
 type Ticket = {
   id: string;
@@ -15,6 +17,7 @@ type Ticket = {
   type: string;
   status: string;
   created_at: string;
+  closed_at?: string | null;
   user: {
     email: string;
   };
@@ -38,16 +41,34 @@ export default function AdminSupport() {
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hideClosed, setHideClosed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("admin_hide_closed_tickets");
+      return stored !== null ? JSON.parse(stored) : false;
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     if (session?.access_token) {
-      fetchTickets();
+      fetchTickets(hideClosed);
     }
-  }, [session]);
+  }, [session, hideClosed]);
 
-  const fetchTickets = async () => {
+  const handleToggleHideClosed = (checked: boolean) => {
+    setHideClosed(checked);
     try {
-      const response = await fetch("/api/admin/support/tickets", {
+      localStorage.setItem("admin_hide_closed_tickets", JSON.stringify(checked));
+    } catch {}
+  };
+
+  const fetchTickets = async (shouldHideClosed: boolean) => {
+    try {
+      const url = shouldHideClosed
+        ? "/api/admin/support/tickets?hideClosed=true"
+        : "/api/admin/support/tickets";
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${session?.access_token}`,
         },
@@ -62,7 +83,11 @@ export default function AdminSupport() {
       }
 
       const data = await response.json();
-      setTickets(data.tickets || []);
+      const normalized = (data.tickets || []).map((t: any) => ({
+        ...t,
+        status: t.status || "Open",
+      }));
+      setTickets(normalized);
     } catch (error: any) {
       toast({
         title: t("common.error", undefined, "Error fetching tickets"),
@@ -77,38 +102,73 @@ export default function AdminSupport() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate("/admin")}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-            title={t("common.back", undefined, "Back to Admin Panel")}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-5 h-5"
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate("/admin")}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              title={t("common.back", undefined, "Back to Admin Panel")}
             >
-              <path d="m12 19-7-7 7-7" />
-              <path d="M19 12H5" />
-            </svg>
-          </button>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {t("admin.allTickets", undefined, "Admin Support")}
-          </h1>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5"
+              >
+                <path d="m12 19-7-7 7-7" />
+                <path d="M19 12H5" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                {t("admin.allTickets", undefined, "Admin Support")}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("admin.supportDesc", undefined, "Manage and respond to user support tickets.")}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 bg-muted/40 p-2 px-3 rounded-lg border">
+            <Switch
+              id="hide-closed-switch"
+              checked={hideClosed}
+              onCheckedChange={handleToggleHideClosed}
+            />
+            <label
+              htmlFor="hide-closed-switch"
+              className="text-sm font-medium cursor-pointer select-none"
+            >
+              {t("admin.hideClosed", undefined, "Hide Closed Tickets")}
+            </label>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 text-xs text-muted-foreground bg-muted/20 p-3 rounded-md border">
+          <Info className="w-4 h-4 text-blue-500 shrink-0" />
+          <span>
+            {t(
+              "admin.closedAutoDeleteNotice",
+              undefined,
+              "Closed tickets are automatically deleted after 3 days to clear space in the tickets section.",
+            )}
+          </span>
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
             <CardTitle>
               {t("admin.allTickets", undefined, "All Support Tickets")}
             </CardTitle>
+            <div className="text-xs text-muted-foreground">
+              {tickets.length} {tickets.length === 1 ? "ticket" : "tickets"}
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -149,6 +209,15 @@ export default function AdminSupport() {
                             ticket.user?.email ||
                             "Unknown User"}
                         </span>
+                        {ticket.status === "Closed" && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center text-xs text-amber-600 dark:text-amber-400">
+                              <Clock className="w-3 h-3 mr-1 inline" />
+                              Auto-deletes in 3d
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -165,7 +234,7 @@ export default function AdminSupport() {
                       </Badge>
                       <Badge
                         variant={
-                          ticket.status === "Open" ? "default" : "outline"
+                          ticket.status === "Open" ? "default" : "secondary"
                         }
                       >
                         {ticket.status}

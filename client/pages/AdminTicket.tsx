@@ -113,9 +113,12 @@ export default function AdminTicket() {
       });
       if (!ticketsRes.ok) throw new Error("Failed to fetch ticket");
       const ticketsData = await ticketsRes.json();
-      const currentTicket = ticketsData.ticket;
-
-      if (!currentTicket) throw new Error("Ticket not found");
+      const rawTicket = ticketsData.ticket;
+      if (!rawTicket) throw new Error("Ticket not found");
+      const currentTicket = {
+        ...rawTicket,
+        status: rawTicket.status || "Open",
+      };
       setTicket(currentTicket);
 
       const messagesRes = await fetch(
@@ -202,7 +205,12 @@ export default function AdminTicket() {
       if (!response.ok) throw new Error("Failed to update status");
 
       setTicket({ ...ticket, status: newStatus });
-      toast({ title: `Ticket marked as ${newStatus}` });
+      toast({
+        title:
+          newStatus === "Closed"
+            ? t("admin.ticketMarkedClosed", undefined, "Ticket marked as Closed")
+            : t("admin.ticketMarkedOpen", undefined, "Ticket marked as Open"),
+      });
     } catch (error: any) {
       toast({
         title: t("common.error", undefined, "Error updating status"),
@@ -270,7 +278,9 @@ export default function AdminTicket() {
             variant={ticket.status === "Open" ? "destructive" : "default"}
             onClick={toggleStatus}
           >
-            Mark as {ticket.status === "Open" ? "Closed" : "Open"}
+            {ticket.status === "Open"
+              ? t("admin.markAsClosed", undefined, "Mark as Closed")
+              : t("admin.markAsOpen", undefined, "Mark as Open")}
           </Button>
         </div>
 

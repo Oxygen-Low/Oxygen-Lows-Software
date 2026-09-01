@@ -714,10 +714,16 @@ export const es = {
     typeOther: "Otro",
     noTickets: "No se encontraron tickets.",
     ticketCreated: "Ticket creado con éxito",
+    deleteTicket: "Eliminar ticket",
+    deleteTicketConfirm: "¿Estás seguro de que deseas eliminar este ticket?",
+    ticketDeleted: "Ticket eliminado con éxito",
   },
   supportTicket: {
     backToTickets: "Volver a los tickets",
     closeTicket: "Cerrar ticket",
+    deleteTicket: "Eliminar ticket",
+    deleteTicketConfirm:
+      "¿Estás seguro de que deseas eliminar este ticket de forma permanente?",
     ticketClosed: "Este ticket está cerrado.",
     writeReply: "Escribe una respuesta...",
     sendReply: "Enviar",
@@ -731,6 +737,17 @@ export const es = {
     supportDesc:
       "Gestiona y responde a los tickets de soporte de los usuarios.",
     allTickets: "Todos los tickets de soporte",
+    hideClosed: "Ocultar tickets cerrados",
+    showClosed: "Mostrar tickets cerrados",
+    filterAll: "Todos",
+    filterOpen: "Abiertos",
+    filterClosed: "Cerrados",
+    closedAutoDeleteNotice:
+      "Los tickets cerrados se eliminan automáticamente después de 3 días para liberar espacio en la sección de tickets.",
+    markAsOpen: "Marcar como abierto",
+    markAsClosed: "Marcar como cerrado",
+    ticketMarkedOpen: "Ticket marcado como abierto",
+    ticketMarkedClosed: "Ticket marcado como cerrado",
     verificationTitle: "Verificación de Recursos",
     verificationDesc:
       "Revisa, aprueba o deniega solicitudes de verificación de recursos públicos y multijugador.",

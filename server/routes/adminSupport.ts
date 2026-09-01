@@ -6,6 +6,7 @@ import {
   insertTable,
   updateTable,
   getProfileByUserId,
+  cleanupExpiredClosedTickets,
 } from "../lib/dataStore.ts";
 
 export const adminSupportRouter = new Hono();
@@ -36,9 +37,21 @@ adminSupportRouter.use("*", async (c, next) => {
 // Get all support tickets
 adminSupportRouter.get("/tickets", async (c) => {
   try {
+    cleanupExpiredClosedTickets();
+
+    const hideClosed = c.req.query("hideClosed") === "true";
+    const statusParam = c.req.query("status");
+
+    const filters: any[] = [];
+    if (hideClosed) {
+      filters.push({ field: "status", operator: "neq", value: "Closed" });
+    } else if (statusParam && (statusParam === "Open" || statusParam === "Closed")) {
+      filters.push({ field: "status", operator: "eq", value: statusParam });
+    }
+
     const tickets = queryTable({
       table: "support_tickets",
-      filters: [{ field: "status", operator: "neq", value: "Closed" }],
+      filters: filters.length > 0 ? filters : undefined,
       order: { column: "created_at", ascending: false },
     });
 
@@ -168,15 +181,21 @@ adminSupportRouter.patch("/tickets/:id/status", async (c) => {
   try {
     const id = c.req.param("id");
     const { status } = await c.req.json().catch(() => ({}));
-
     if (!status || !["Open", "Closed"].includes(status)) {
       return c.json({ error: "Invalid status" }, 400);
     }
 
+    const now = new Date().toISOString();
+    const updatePayload: Record<string, any> = {
+      status,
+      updated_at: now,
+      closed_at: status === "Closed" ? now : null,
+    };
+
     const updated = updateTable(
       "support_tickets",
       [{ field: "id", operator: "eq", value: id }],
-      { status, updated_at: new Date().toISOString() },
+      updatePayload,
     );
 
     return c.json({ ticket: updated && updated[0] });

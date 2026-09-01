@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Trash2 } from "lucide-react";
 
 type Ticket = {
   id: string;
@@ -53,6 +54,7 @@ export default function Support() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -74,7 +76,11 @@ export default function Support() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setTickets(data || []);
+      const normalized = (data || []).map((t: any) => ({
+        ...t,
+        status: t.status || "Open",
+      }));
+      setTickets(normalized);
     } catch (error: any) {
       toast({
         title: t("common.error", undefined, "Error fetching tickets"),
@@ -98,6 +104,7 @@ export default function Support() {
         description,
         priority,
         type,
+        status: "Open",
       });
 
       if (error) throw error;
@@ -123,6 +130,48 @@ export default function Support() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteTicket = async (ticketId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (
+      !confirm(
+        t(
+          "support.deleteTicketConfirm",
+          undefined,
+          "Are you sure you want to delete this ticket?",
+        ),
+      )
+    ) {
+      return;
+    }
+
+    setDeletingId(ticketId);
+    try {
+      const { error } = await supabase
+        .from("support_tickets")
+        .delete()
+        .eq("id", ticketId);
+
+      if (error) throw error;
+
+      toast({
+        title: t(
+          "support.ticketDeleted",
+          undefined,
+          "Ticket deleted successfully",
+        ),
+      });
+      setTickets((prev) => prev.filter((t) => t.id !== ticketId));
+    } catch (error: any) {
+      toast({
+        title: t("common.error", undefined, "Error deleting ticket"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -298,6 +347,17 @@ export default function Support() {
                       >
                         {ticket.status}
                       </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => handleDeleteTicket(ticket.id, e)}
+                        disabled={deletingId === ticket.id}
+                        title={t("support.deleteTicket", undefined, "Delete Ticket")}
+                        aria-label={t("support.deleteTicket", undefined, "Delete Ticket")}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}

@@ -536,7 +536,9 @@ export function getTableRows(table: string, userId?: string | number): any[] {
         path.join(DATA_DIR, id, "support", "tickets.json"),
         [],
       );
-      allTickets.push(...tickets);
+      allTickets.push(
+        ...tickets.map((t) => ({ ...t, status: t.status || "Open" })),
+      );
     }
     return allTickets;
   }
@@ -545,7 +547,11 @@ export function getTableRows(table: string, userId?: string | number): any[] {
   if (userIdStr) {
     const filePath = getTableFilePath(table, userIdStr);
     if (!filePath) return [];
-    return readJsonFile<any[]>(filePath, []);
+    const rows = readJsonFile<any[]>(filePath, []);
+    if (normTable === "support_tickets" && Array.isArray(rows)) {
+      return rows.map((t) => ({ ...t, status: t.status || "Open" }));
+    }
+    return rows;
   }
 
   // If no userId, aggregate across all users
@@ -827,6 +833,7 @@ export function insertTable(
     user_id: item.user_id || userIdStr,
     created_at: item.created_at || now,
     updated_at: item.updated_at || now,
+    ...(normTable === "support_tickets" ? { status: "Open" } : {}),
     ...item,
   }));
 
@@ -983,6 +990,7 @@ export function deleteTable(
   userId?: string | number,
   orFilters: string[] = [],
 ): any {
+  const normTable = table.toLowerCase();
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
     const userIdStr = String(userId);
     const existing = getTableRows(table, userIdStr);
@@ -1001,6 +1009,19 @@ export function deleteTable(
     });
 
     saveTableRows(table, userIdStr, remaining);
+
+    if (normTable === "support_tickets" && matched.length > 0) {
+      for (const t of matched) {
+        if (t && t.id) {
+          deleteTable(
+            "support_messages",
+            [{ field: "ticket_id", operator: "eq", value: t.id }],
+            userIdStr,
+          );
+        }
+      }
+    }
+
     return matched;
   }
 
@@ -1014,6 +1035,67 @@ export function deleteTable(
     }
   }
   return allMatched;
+}
+
+/**
+ * Permanently cleans up closed support tickets (and their messages) that have been closed for more than 3 days.
+ */
+export function cleanupExpiredClosedTickets(
+  maxAgeMs: number = 3 * 24 * 60 * 60 * 1000,
+): number {
+  const userIds = getAllUserIds();
+  const now = Date.now();
+  let totalCleaned = 0;
+
+  for (const userId of userIds) {
+    const ticketsPath = path.join(DATA_DIR, userId, "support", "tickets.json");
+    if (!fs.existsSync(ticketsPath)) continue;
+    const tickets = readJsonFile<any[]>(ticketsPath, []);
+    if (!Array.isArray(tickets) || tickets.length === 0) continue;
+
+    const expiredTicketIds = new Set<string>();
+    const activeTickets = tickets.filter((t) => {
+      if (t.status === "Closed") {
+        const closedTimestamp = t.closed_at
+          ? new Date(t.closed_at).getTime()
+          : t.updated_at
+            ? new Date(t.updated_at).getTime()
+            : t.created_at
+              ? new Date(t.created_at).getTime()
+              : 0;
+
+        if (closedTimestamp > 0 && now - closedTimestamp >= maxAgeMs) {
+          if (t.id) expiredTicketIds.add(String(t.id));
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (expiredTicketIds.size > 0) {
+      writeJsonFile(ticketsPath, activeTickets);
+      totalCleaned += expiredTicketIds.size;
+
+      // Clean up messages for the expired tickets
+      const messagesPath = path.join(
+        DATA_DIR,
+        userId,
+        "support",
+        "messages.json",
+      );
+      if (fs.existsSync(messagesPath)) {
+        const messages = readJsonFile<any[]>(messagesPath, []);
+        if (Array.isArray(messages)) {
+          const remainingMessages = messages.filter(
+            (m) => !expiredTicketIds.has(String(m.ticket_id)),
+          );
+          writeJsonFile(messagesPath, remainingMessages);
+        }
+      }
+    }
+  }
+
+  return totalCleaned;
 }
 
 /**

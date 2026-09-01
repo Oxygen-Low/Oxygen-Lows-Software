@@ -32,15 +32,41 @@ vi.mock("../lib/auth.ts", () => ({
 }));
 
 vi.mock("../lib/dataStore.ts", () => ({
+  cleanupExpiredClosedTickets: vi.fn(),
   queryTable: vi.fn((opts: any) => {
     if (opts.table === "support_tickets") {
+      let filtered = [...mockTickets];
       if (opts.filters?.some((f: any) => f.field === "id")) {
         const idFilter = opts.filters.find((f: any) => f.field === "id");
-        return mockTickets.filter(
+        filtered = filtered.filter(
           (t) => String(t.id) === String(idFilter.value),
         );
       }
-      return mockTickets;
+      if (
+        opts.filters?.some(
+          (f: any) => f.field === "status" && f.operator === "neq",
+        )
+      ) {
+        const statusFilter = opts.filters.find(
+          (f: any) => f.field === "status" && f.operator === "neq",
+        );
+        filtered = filtered.filter(
+          (t) => String(t.status) !== String(statusFilter.value),
+        );
+      }
+      if (
+        opts.filters?.some(
+          (f: any) => f.field === "status" && f.operator === "eq",
+        )
+      ) {
+        const statusFilter = opts.filters.find(
+          (f: any) => f.field === "status" && f.operator === "eq",
+        );
+        filtered = filtered.filter(
+          (t) => String(t.status) === String(statusFilter.value),
+        );
+      }
+      return filtered;
     }
     if (opts.table === "support_messages") {
       if (opts.filters?.some((f: any) => f.field === "ticket_id")) {
@@ -157,6 +183,27 @@ describe("Admin Support Routes", () => {
           profiles: { user_id: "user-2", username: "bob", avatar_url: "url2" },
         },
       ]);
+    });
+
+    it("should filter out closed tickets when hideClosed=true", async () => {
+      mockTickets = [
+        { id: 1, user_id: "user-1", status: "Open" },
+        { id: 2, user_id: "user-2", status: "Closed" },
+      ];
+      mockProfiles = {
+        "user-1": { user_id: "user-1", username: "alice", avatar_url: "url1" },
+        "user-2": { user_id: "user-2", username: "bob", avatar_url: "url2" },
+      };
+
+      const res = await app.request("/tickets?hideClosed=true", {
+        headers: { Authorization: "Bearer admin-token" },
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.tickets.length).toBe(1);
+      expect(data.tickets[0].id).toBe(1);
+      expect(data.tickets[0].status).toBe("Open");
     });
   });
 
@@ -317,7 +364,7 @@ describe("Admin Support Routes", () => {
       expect(data).toEqual({ error: "Invalid status" });
     });
 
-    it("should update status successfully", async () => {
+    it("should update status successfully and track closed_at", async () => {
       mockTickets = [{ id: 123, status: "Open" }];
 
       const res = await app.request("/tickets/123/status", {
@@ -332,6 +379,21 @@ describe("Admin Support Routes", () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.ticket.status).toBe("Closed");
+      expect(data.ticket.closed_at).toBeDefined();
+
+      const reopenRes = await app.request("/tickets/123/status", {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer admin-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "Open" }),
+      });
+
+      expect(reopenRes.status).toBe(200);
+      const reopenData = await reopenRes.json();
+      expect(reopenData.ticket.status).toBe("Open");
+      expect(reopenData.ticket.closed_at).toBeNull();
     });
   });
 });

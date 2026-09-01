@@ -16,6 +16,7 @@ import {
   deleteTable,
   callRpc,
   getActiveUserIds,
+  cleanupExpiredClosedTickets,
 } from "./dataStore.ts";
 
 describe("dataStore", () => {
@@ -535,5 +536,181 @@ describe("dataStore", () => {
       if (fs.existsSync(u1Dir)) fs.rmSync(u1Dir, { recursive: true, force: true });
       if (fs.existsSync(u2Dir)) fs.rmSync(u2Dir, { recursive: true, force: true });
     }
+  });
+
+  describe("Support Tickets Handling", () => {
+    it("should default support ticket status to Open when inserted without status", () => {
+      initUserFolder(testUserId, {
+        username: "ticketuser",
+        email: "ticket@example.com",
+        passwordHash: "h",
+        salt: "s",
+      });
+
+      const ticket = insertTable(
+        "support_tickets",
+        {
+          title: "Test Ticket",
+          description: "Help",
+          priority: "Medium",
+          type: "Bug Report",
+        },
+        testUserId,
+      );
+
+      expect(ticket.status).toBe("Open");
+
+      const rows = getTableRows("support_tickets", testUserId);
+      expect(rows[0].status).toBe("Open");
+    });
+
+    it("should cascade delete support messages when support ticket is deleted", () => {
+      initUserFolder(testUserId, {
+        username: "ticketuser2",
+        email: "ticket2@example.com",
+        passwordHash: "h",
+        salt: "s",
+      });
+
+      const ticket = insertTable(
+        "support_tickets",
+        {
+          id: "ticket-100",
+          title: "Deletable Ticket",
+          priority: "Low",
+          type: "Suggestion",
+        },
+        testUserId,
+      );
+
+      insertTable(
+        "support_messages",
+        {
+          id: "msg-100",
+          ticket_id: "ticket-100",
+          sender_id: testUserId,
+          message: "Hello support",
+        },
+        testUserId,
+      );
+
+      insertTable(
+        "support_messages",
+        {
+          id: "msg-200",
+          ticket_id: "ticket-other",
+          sender_id: testUserId,
+          message: "Other message",
+        },
+        testUserId,
+      );
+
+      expect(getTableRows("support_tickets", testUserId).length).toBe(1);
+      expect(getTableRows("support_messages", testUserId).length).toBe(2);
+
+      // Delete ticket-100
+      deleteTable(
+        "support_tickets",
+        [{ field: "id", operator: "eq", value: "ticket-100" }],
+        testUserId,
+      );
+
+      expect(getTableRows("support_tickets", testUserId).length).toBe(0);
+      const remainingMessages = getTableRows("support_messages", testUserId);
+      expect(remainingMessages.length).toBe(1);
+      expect(remainingMessages[0].id).toBe("msg-200");
+    });
+
+    it("should automatically purge closed tickets and messages after 3 days with cleanupExpiredClosedTickets", () => {
+      initUserFolder(testUserId, {
+        username: "ticketuser3",
+        email: "ticket3@example.com",
+        passwordHash: "h",
+        salt: "s",
+      });
+
+      const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString();
+      const oneDayAgo = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Expired closed ticket (closed 4 days ago)
+      insertTable(
+        "support_tickets",
+        {
+          id: "ticket-old-closed",
+          title: "Old Closed Ticket",
+          status: "Closed",
+          closed_at: fourDaysAgo,
+        },
+        testUserId,
+      );
+      insertTable(
+        "support_messages",
+        {
+          id: "msg-old-closed",
+          ticket_id: "ticket-old-closed",
+          sender_id: testUserId,
+          message: "Old msg",
+        },
+        testUserId,
+      );
+
+      // Recent closed ticket (closed 1 day ago)
+      insertTable(
+        "support_tickets",
+        {
+          id: "ticket-recent-closed",
+          title: "Recent Closed Ticket",
+          status: "Closed",
+          closed_at: oneDayAgo,
+        },
+        testUserId,
+      );
+      insertTable(
+        "support_messages",
+        {
+          id: "msg-recent-closed",
+          ticket_id: "ticket-recent-closed",
+          sender_id: testUserId,
+          message: "Recent msg",
+        },
+        testUserId,
+      );
+
+      // Active open ticket (created 5 days ago, but open)
+      insertTable(
+        "support_tickets",
+        {
+          id: "ticket-open",
+          title: "Open Ticket",
+          status: "Open",
+          created_at: fourDaysAgo,
+        },
+        testUserId,
+      );
+      insertTable(
+        "support_messages",
+        {
+          id: "msg-open",
+          ticket_id: "ticket-open",
+          sender_id: testUserId,
+          message: "Open msg",
+        },
+        testUserId,
+      );
+
+      // Run cleanup
+      const cleanedCount = cleanupExpiredClosedTickets();
+      expect(cleanedCount).toBe(1);
+
+      const remainingTickets = getTableRows("support_tickets", testUserId);
+      expect(remainingTickets.map((t) => t.id).sort()).toEqual(
+        ["ticket-open", "ticket-recent-closed"].sort(),
+      );
+
+      const remainingMessages = getTableRows("support_messages", testUserId);
+      expect(remainingMessages.map((m) => m.id).sort()).toEqual(
+        ["msg-open", "msg-recent-closed"].sort(),
+      );
+    });
   });
 });

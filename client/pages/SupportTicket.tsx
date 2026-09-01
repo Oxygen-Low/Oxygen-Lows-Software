@@ -136,7 +136,10 @@ export default function SupportTicket() {
         profiles: profiles?.find((p: any) => p.user_id === m.sender_id) || null,
       }));
 
-      setTicket(ticketRes.data);
+      const ticketData = ticketRes.data
+        ? { ...ticketRes.data, status: ticketRes.data.status || "Open" }
+        : null;
+      setTicket(ticketData);
       setMessages(messagesWithProfiles);
     } catch (error: any) {
       toast({
@@ -193,7 +196,13 @@ export default function SupportTicket() {
   const handleDeleteTicket = async () => {
     if (
       !id ||
-      !confirm("Are you sure you want to delete this ticket permanently?")
+      !confirm(
+        t(
+          "supportTicket.deleteTicketConfirm",
+          undefined,
+          "Are you sure you want to delete this ticket permanently?",
+        ),
+      )
     )
       return;
     setIsDeleting(true);
@@ -206,8 +215,11 @@ export default function SupportTicket() {
       if (error) throw error;
 
       toast({
-        title: "Ticket deleted",
-        description: "Your ticket has been deleted.",
+        title: t(
+          "support.ticketDeleted",
+          undefined,
+          "Ticket deleted successfully",
+        ),
       });
       navigate("/support");
     } catch (error: any) {
@@ -276,17 +288,15 @@ export default function SupportTicket() {
               </div>
             </div>
           </div>
-          {ticket.status === "Closed" && (
-            <Button
-              variant="destructive"
-              onClick={handleDeleteTicket}
-              disabled={isDeleting}
-            >
-              {isDeleting
-                ? t("common.loading", undefined, "Deleting...")
-                : t("supportTicket.closeTicket", undefined, "Delete Ticket")}
-            </Button>
-          )}
+          <Button
+            variant="destructive"
+            onClick={handleDeleteTicket}
+            disabled={isDeleting}
+          >
+            {isDeleting
+              ? t("common.loading", undefined, "Deleting...")
+              : t("supportTicket.deleteTicket", undefined, "Delete Ticket")}
+          </Button>
         </div>
 
         <Card className="flex-1 flex flex-col overflow-hidden">

@@ -140,6 +140,23 @@ describe("All Locales Verification", () => {
       expect(t("gameLibrary.desktopRequiredMessage")).toContain(
         "Oxygen Low's Software",
       );
+
+      // Test Support & Admin ticket keys
+      expect(t("support.deleteTicket")).toBeTruthy();
+      expect(t("support.deleteTicketConfirm")).toBeTruthy();
+      expect(t("support.ticketDeleted")).toBeTruthy();
+      expect(t("supportTicket.deleteTicket")).toBeTruthy();
+      expect(t("supportTicket.deleteTicketConfirm")).toBeTruthy();
+      expect(t("admin.hideClosed")).toBeTruthy();
+      expect(t("admin.showClosed")).toBeTruthy();
+      expect(t("admin.filterAll")).toBeTruthy();
+      expect(t("admin.filterOpen")).toBeTruthy();
+      expect(t("admin.filterClosed")).toBeTruthy();
+      expect(t("admin.closedAutoDeleteNotice")).toBeTruthy();
+      expect(t("admin.markAsOpen")).toBeTruthy();
+      expect(t("admin.markAsClosed")).toBeTruthy();
+      expect(t("admin.ticketMarkedOpen")).toBeTruthy();
+      expect(t("admin.ticketMarkedClosed")).toBeTruthy();
     });
   });
 });
