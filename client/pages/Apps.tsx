@@ -29,6 +29,7 @@ import {
   Globe,
   KeyRound,
   Gamepad2,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -43,6 +44,7 @@ import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
 import { DefenderApp } from "@/components/apps/WebDefender";
 import { PasswordManagerApp } from "@/components/apps/PasswordManager";
 import { GameLibraryApp } from "@/components/apps/GameLibrary";
+import { SurveysApp } from "@/components/apps/Surveys";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -267,6 +269,18 @@ const APPS: AppMetadata[] = [
     availability: "desktop-only",
     icon: <Gamepad2 className="w-8 h-8 text-cyan-500" />,
     component: GameLibraryApp,
+  },
+  {
+    id: "surveys",
+    nameKey: "apps.surveysTitle",
+    defaultName: "Surveys",
+    descKey: "apps.surveysDesc",
+    defaultDesc:
+      "Monthly anonymous hardware, browser, gaming, and community surveys with interactive line charts & statistics.",
+    categories: ["All", "Utility", "Social", "Development"],
+    availability: "web-and-desktop",
+    icon: <ClipboardList className="w-8 h-8 text-cyan-500" />,
+    component: SurveysApp,
   },
 ];
 

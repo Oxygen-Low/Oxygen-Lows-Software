@@ -90,6 +90,11 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     description: "Proxy and VPN configuration manager",
   },
   {
+    href: "/apps/surveys",
+    label: "Surveys",
+    description: "Community hardware, browser, and gaming surveys",
+  },
+  {
     href: "/games",
     label: "Games",
     description: "Classic single-player and multiplayer web games",
@@ -547,6 +552,39 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
       { href: "/terms", label: "Terms of Use" },
     ],
     softwareType: "Web Security & Firewall Middleware",
+  },
+  "/apps/surveys": {
+    path: "/apps/surveys",
+    title: "Surveys - Oxygen Low's Software",
+    description:
+      "Participate in monthly anonymous hardware, browser, gaming, and community surveys. Explore live aggregated results and benchmark statistics.",
+    canonicalPath: "/apps/surveys",
+    h1: "Community & Hardware Surveys",
+    h2: [
+      "Hardware Survey Benchmark",
+      "Browser & Gaming Trends",
+      "Anonymous Monthly Statistics",
+    ],
+    keywords: [
+      "surveys",
+      "hardware survey",
+      "gaming survey",
+      "browser survey",
+      "pc hardware statistics",
+      "developer benchmarks",
+    ],
+    ogType: "website",
+    breadcrumbs: [
+      { name: "Home", url: "/" },
+      { name: "Apps", url: "/apps" },
+      { name: "Surveys", url: "/apps/surveys" },
+    ],
+    internalLinks: [
+      { href: "/apps", label: "All Apps" },
+      { href: "/apps/game-library", label: "Game Library" },
+      { href: "/games", label: "Games" },
+    ],
+    softwareType: "Survey & Statistics Web Application",
   },
   "/apps/base64-encoder": {
     path: "/apps/base64-encoder",

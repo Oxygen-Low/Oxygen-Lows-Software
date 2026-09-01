@@ -64,6 +64,7 @@ const AdminTicket = lazyWithRetry(() => import("./pages/AdminTicket"));
 const AdminVerification = lazyWithRetry(
   () => import("./pages/AdminVerification"),
 );
+const AdminSurveys = lazyWithRetry(() => import("./pages/AdminSurveys"));
 const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
 const Terms = lazyWithRetry(() => import("./pages/Terms"));
@@ -256,7 +257,19 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
+                    <Route
+                      path="/admin/surveys"
+                      element={
+                        <ProtectedRoute>
+                          <AdminSurveys />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="/download" element={<Download />} />
+                    <Route
+                      path="/surveys"
+                      element={<Navigate to="/apps/surveys" replace />}
+                    />
                     <Route
                       path="/webdefender"
                       element={<Navigate to="/apps/webdefender" replace />}

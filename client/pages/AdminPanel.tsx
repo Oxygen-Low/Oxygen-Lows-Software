@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LifeBuoy, ShieldCheck } from "lucide-react";
+import { LifeBuoy, ShieldCheck, ClipboardList } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -44,6 +44,17 @@ export default function AdminPanel() {
       icon: ShieldCheck,
       href: "/admin/verification",
       color: "text-cyan-500",
+    },
+    {
+      title: t("admin.surveysTitle", undefined, "Surveys Management"),
+      description: t(
+        "admin.surveysDesc",
+        undefined,
+        "Create, configure, and monitor community and monthly surveys.",
+      ),
+      icon: ClipboardList,
+      href: "/admin/surveys",
+      color: "text-purple-500",
     },
   ];
 

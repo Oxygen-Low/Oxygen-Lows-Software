@@ -379,6 +379,102 @@ public partial class MainWindow : Window
                         SendWebMessage(new { id, success = false, error = ex.Message });
                     }
                 }
+                else if (cmd == "get_hardware_info")
+                {
+                    try
+                    {
+                        var hw = await Task.Run(() =>
+                        {
+                            string os = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+                            int cores = Environment.ProcessorCount;
+                            
+                            string cpuName = "";
+                            try
+                            {
+                                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+                                cpuName = key?.GetValue("ProcessorNameString")?.ToString()?.Trim() ?? "";
+                            }
+                            catch {}
+                            if (string.IsNullOrEmpty(cpuName))
+                            {
+                                cpuName = Environment.GetEnvironmentVariable("PROCESSOR_IDENTIFIER") ?? "Unknown CPU";
+                            }
+
+                            string cpuManufacturer = "Other";
+                            if (cpuName.Contains("AMD", StringComparison.OrdinalIgnoreCase) || cpuName.Contains("Ryzen", StringComparison.OrdinalIgnoreCase))
+                                cpuManufacturer = "AMD";
+                            else if (cpuName.Contains("Intel", StringComparison.OrdinalIgnoreCase) || cpuName.Contains("Core", StringComparison.OrdinalIgnoreCase))
+                                cpuManufacturer = "Intel";
+                            else if (cpuName.Contains("Apple", StringComparison.OrdinalIgnoreCase))
+                                cpuManufacturer = "Apple";
+                            else if (cpuName.Contains("Snapdragon", StringComparison.OrdinalIgnoreCase) || cpuName.Contains("Qualcomm", StringComparison.OrdinalIgnoreCase))
+                                cpuManufacturer = "Qualcomm";
+
+                            string gpuName = "";
+                            string gpuManufacturer = "Other";
+                            string motherboard = "";
+                            try
+                            {
+                                var psi = new ProcessStartInfo
+                                {
+                                    FileName = "powershell.exe",
+                                    Arguments = "-NoProfile -Command \"Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name; (Get-CimInstance Win32_BaseBoard).Manufacturer + ' ' + (Get-CimInstance Win32_BaseBoard).Product\"",
+                                    RedirectStandardOutput = true,
+                                    UseShellExecute = false,
+                                    CreateNoWindow = true
+                                };
+                                using var proc = Process.Start(psi);
+                                if (proc != null)
+                                {
+                                    string output = proc.StandardOutput.ReadToEnd();
+                                    proc.WaitForExit(3000);
+                                    var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                                    if (lines.Length > 0) gpuName = lines[0].Trim();
+                                    if (lines.Length > 1) motherboard = lines[1].Trim();
+                                }
+                            }
+                            catch {}
+
+                            if (gpuName.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase) || gpuName.Contains("GeForce", StringComparison.OrdinalIgnoreCase) || gpuName.Contains("RTX", StringComparison.OrdinalIgnoreCase) || gpuName.Contains("GTX", StringComparison.OrdinalIgnoreCase))
+                                gpuManufacturer = "NVIDIA";
+                            else if (gpuName.Contains("AMD", StringComparison.OrdinalIgnoreCase) || gpuName.Contains("Radeon", StringComparison.OrdinalIgnoreCase))
+                                gpuManufacturer = "AMD";
+                            else if (gpuName.Contains("Intel", StringComparison.OrdinalIgnoreCase) || gpuName.Contains("Arc", StringComparison.OrdinalIgnoreCase) || gpuName.Contains("Iris", StringComparison.OrdinalIgnoreCase) || gpuName.Contains("UHD", StringComparison.OrdinalIgnoreCase))
+                                gpuManufacturer = "Intel";
+
+                            long totalBytes = 0;
+                            long freeBytes = 0;
+                            try
+                            {
+                                var sysDrive = Path.GetPathRoot(Environment.SystemDirectory);
+                                var drive = new DriveInfo(sysDrive ?? "C:\\");
+                                totalBytes = drive.TotalSize;
+                                freeBytes = drive.TotalFreeSpace;
+                            }
+                            catch {}
+
+                            return new
+                            {
+                                os,
+                                cpuName,
+                                cpuManufacturer,
+                                cpuCores = cores.ToString(),
+                                gpuName,
+                                gpuManufacturer,
+                                motherboard,
+                                storageTotalBytes = totalBytes,
+                                storageFreeBytes = freeBytes,
+                                isDesktopNative = true
+                            };
+                        });
+
+                        SendWebMessage(new { id, success = true, data = hw });
+                    }
+                    catch (Exception ex)
+                    {
+                        SendWebMessage(new { id, success = false, error = ex.Message });
+                    }
+                }
                 else if (cmd == "is_admin")
                 {
                     bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
