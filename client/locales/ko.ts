@@ -810,6 +810,13 @@ export const ko = {
     downloads: "다운로드",
     size: "크기",
     uploader: "게시자",
+    publishAnonymously: "익명으로 게시",
+    publishAnonymouslyDesc:
+      "공개 목록에서 사용자 이름을 숨깁니다. 관리자는 검토 과정에서 사용자 이름을 계속 확인할 수 있습니다.",
+    anonymous: "익명",
+    anonymousSubmission: "익명 제출",
+    anonymousNotice:
+      "이 에셋은 익명으로 게시되도록 제출되었습니다. 제출자의 사용자 이름은 관리자에게만 표시됩니다.",
     unauthorizedEncrypted:
       "암호화된 캐릭터는 업로드할 수 없습니다. 먼저 잠금을 해제하세요.",
   },

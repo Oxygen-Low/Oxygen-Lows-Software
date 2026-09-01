@@ -132,6 +132,10 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
         }
 
         // Upsert into public_assets
+        const isAnonymous = Boolean(
+          verification.is_anonymous || verification.metadata?.is_anonymous,
+        );
+
         if (publicAssetId) {
           const updated = updateTable(
             "public_assets",
@@ -145,6 +149,7 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
               file_path: verification.original_file_path || "",
               file_size: verification.file_size || 0,
               mime_type: verification.mime_type || "",
+              is_anonymous: isAnonymous,
               updated_at: new Date().toISOString(),
             },
             verification.user_id,
@@ -163,6 +168,7 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
             file_path: verification.original_file_path || "",
             file_size: verification.file_size || 0,
             mime_type: verification.mime_type || "",
+            is_anonymous: isAnonymous,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -185,6 +191,9 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
           verification.asset_type === "universe" || Boolean(meta.is_universe);
         const isRace =
           verification.asset_type === "race" || Boolean(meta.is_race);
+        const isAnonymous = Boolean(
+          verification.is_anonymous || meta.is_anonymous,
+        );
         const payload: any = {
           uploader_id: verification.user_id,
           user_id: verification.user_id,
@@ -205,6 +214,7 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
           universe_id: meta.universe_id || null,
           stats_enabled: Boolean(meta.stats_enabled),
           stats: meta.stats || null,
+          is_anonymous: isAnonymous,
           updated_at: new Date().toISOString(),
         };
 

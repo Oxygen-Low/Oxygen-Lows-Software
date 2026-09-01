@@ -817,6 +817,13 @@ export const en = {
     downloads: "Downloads",
     size: "Size",
     uploader: "Uploaded by",
+    publishAnonymously: "Publish anonymously",
+    publishAnonymouslyDesc:
+      "Hide your username on public listings. Administrators will still see your username during the review process.",
+    anonymous: "Anonymous",
+    anonymousSubmission: "Anonymous Submission",
+    anonymousNotice:
+      "This asset was submitted to be published anonymously. The submitter username is visible only to administrators.",
     unauthorizedEncrypted:
       "Cannot upload an encrypted character. Please unlock first.",
   },

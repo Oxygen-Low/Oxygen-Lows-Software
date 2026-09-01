@@ -171,6 +171,7 @@ export function initUserFolder(
     passwordHash: string;
     salt: string;
     role?: string;
+    last_points_usage?: string | null;
   },
 ) {
   const userDir = path.join(DATA_DIR, userId);
@@ -219,6 +220,7 @@ export function initUserFolder(
     language: "English",
     additional_languages: [],
     avatar_url: null,
+    last_points_usage: userInitialData.last_points_usage || null,
     created_at: now,
     updated_at: now,
   };
@@ -254,6 +256,7 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "chatbot", "universes.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "races.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "character_likes.json"), []);
+  writeJsonFile(path.join(userDir, "chatbot", "public_characters.json"), []);
   writeJsonFile(path.join(userDir, "passwords", "passwords.json"), []);
   writeJsonFile(path.join(userDir, "vpn", "configs.json"), []);
   writeJsonFile(path.join(userDir, "integrations", "integrations.json"), []);
@@ -380,6 +383,8 @@ export function getTableFilePath(
         return path.join(userDir, "public_assets", "likes.json");
       case "public_character_likes":
         return path.join(userDir, "chatbot", "character_likes.json");
+      case "public_characters":
+        return path.join(userDir, "chatbot", "public_characters.json");
       case "defender_events":
         return path.join(userDir, "defender", "events.json");
       case "defender_apps":
@@ -472,19 +477,30 @@ export function getTableRows(table: string, userId?: string | number): any[] {
     const userIds = getAllUserIds();
     const allChars: any[] = [];
     for (const id of userIds) {
-      const chars = readJsonFile<any[]>(
-        path.join(DATA_DIR, id, "chatbot", "characters.json"),
-        [],
+      const pubPath = path.join(
+        DATA_DIR,
+        id,
+        "chatbot",
+        "public_characters.json",
       );
+      let chars: any[] = [];
+      if (fs.existsSync(pubPath)) {
+        chars = readJsonFile<any[]>(pubPath, []);
+      } else {
+        chars = readJsonFile<any[]>(
+          path.join(DATA_DIR, id, "chatbot", "characters.json"),
+          [],
+        ).filter((c) => c.is_public);
+      }
       const prof = getProfileByUserId(id);
       for (const char of chars) {
-        if (char.is_public) {
-          allChars.push({
-            ...char,
-            author_username: prof?.username || "Unknown",
-            author_avatar_url: prof?.avatar_url || null,
-          });
-        }
+        const isAnon = Boolean(char.is_anonymous);
+        allChars.push({
+          ...char,
+          is_anonymous: isAnon,
+          author_username: isAnon ? "Anonymous" : prof?.username || "Unknown",
+          author_avatar_url: isAnon ? null : prof?.avatar_url || null,
+        });
       }
     }
     return allChars;
@@ -500,10 +516,12 @@ export function getTableRows(table: string, userId?: string | number): any[] {
       );
       const prof = getProfileByUserId(id);
       for (const asset of assets) {
+        const isAnon = Boolean(asset.is_anonymous);
         allAssets.push({
           ...asset,
-          author_username: prof?.username || "Unknown",
-          author_avatar_url: prof?.avatar_url || null,
+          is_anonymous: isAnon,
+          author_username: isAnon ? "Anonymous" : prof?.username || "Unknown",
+          author_avatar_url: isAnon ? null : prof?.avatar_url || null,
         });
       }
     }
@@ -1023,35 +1041,16 @@ export function getActiveUserIds(): string[] {
   const activeIds: string[] = [];
 
   for (const id of allIds) {
-    const user = getUserById(id);
     const profile = getProfileByUserId(id);
-
-    let isActive = false;
-    if (user?.created_at) {
-      const createdAt = new Date(user.created_at).getTime();
-      if (!isNaN(createdAt) && createdAt >= twoDaysAgo) {
-        isActive = true;
-      }
-    }
-    if (!isActive && profile?.created_at) {
-      const createdAt = new Date(profile.created_at).getTime();
-      if (!isNaN(createdAt) && createdAt >= twoDaysAgo) {
-        isActive = true;
-      }
-    }
-    if (!isActive && profile?.last_points_usage) {
+    if (profile?.last_points_usage) {
       const lastUsage = new Date(profile.last_points_usage).getTime();
       if (!isNaN(lastUsage) && lastUsage >= twoDaysAgo) {
-        isActive = true;
+        activeIds.push(id);
       }
-    }
-
-    if (isActive) {
-      activeIds.push(id);
     }
   }
 
-  return activeIds.length > 0 ? activeIds : allIds;
+  return activeIds;
 }
 
 export function getPointsSpentToday(userId: string): number {
@@ -1066,13 +1065,24 @@ export function getPointsSpentToday(userId: string): number {
   return total;
 }
 
-export function getTotalPointsSpentToday(): number {
+export function getTotalPointsSpentToday(activeUserIds?: string[]): number {
+  const userFilter =
+    activeUserIds && activeUserIds.length > 0
+      ? new Set(activeUserIds.map(String))
+      : null;
   const transactions = getTableRows("points_transactions");
   const startToday = getStartOfTodayUtc();
+  const seen = new Set<string>();
   let total = 0;
   for (const tx of transactions) {
-    if (tx && tx.amount && new Date(tx.created_at).getTime() >= startToday) {
-      total += Number(tx.amount) || 0;
+    if (tx && tx.id && !seen.has(String(tx.id))) {
+      seen.add(String(tx.id));
+      if (userFilter && tx.user_id && !userFilter.has(String(tx.user_id))) {
+        continue;
+      }
+      if (tx.amount && new Date(tx.created_at).getTime() >= startToday) {
+        total += Number(tx.amount) || 0;
+      }
     }
   }
   return total;
@@ -1081,38 +1091,57 @@ export function getTotalPointsSpentToday(): number {
 export function getGiftsSentToday(userId: string): number {
   const gifts = getTableRows("point_gifts", userId);
   const startToday = getStartOfTodayUtc();
+  const seen = new Set<string>();
   let total = 0;
   for (const g of gifts) {
-    if (
-      g &&
-      String(g.sender_id) === String(userId) &&
-      g.amount &&
-      new Date(g.created_at).getTime() >= startToday
-    ) {
-      total += Number(g.amount) || 0;
+    if (g && g.id && !seen.has(String(g.id))) {
+      seen.add(String(g.id));
+      if (
+        String(g.sender_id) === String(userId) &&
+        g.amount &&
+        new Date(g.created_at).getTime() >= startToday
+      ) {
+        total += Number(g.amount) || 0;
+      }
     }
   }
   return total;
 }
 
-export function getGiftsReceivedToday(userId: string): number {
+export function getGiftsReceivedToday(
+  userId: string,
+  activeUserIds?: string[],
+): number {
+  const userFilter =
+    activeUserIds && activeUserIds.length > 0
+      ? new Set(activeUserIds.map(String))
+      : null;
   const allGifts = getTableRows("point_gifts");
   const startToday = getStartOfTodayUtc();
+  const seen = new Set<string>();
   let total = 0;
   for (const g of allGifts) {
-    if (
-      g &&
-      String(g.receiver_id) === String(userId) &&
-      g.amount &&
-      new Date(g.created_at).getTime() >= startToday
-    ) {
-      total += Number(g.amount) || 0;
+    if (g && g.id && !seen.has(String(g.id))) {
+      seen.add(String(g.id));
+      if (userFilter && g.sender_id && !userFilter.has(String(g.sender_id))) {
+        continue;
+      }
+      if (
+        String(g.receiver_id) === String(userId) &&
+        g.amount &&
+        new Date(g.created_at).getTime() >= startToday
+      ) {
+        total += Number(g.amount) || 0;
+      }
     }
   }
   return total;
 }
 
-export function getPointsStatus(userId?: string): {
+export function getPointsStatus(
+  userId?: string,
+  activeUserIdsOverride?: string[],
+): {
   available: number;
   given: number;
   points: number;
@@ -1129,18 +1158,29 @@ export function getPointsStatus(userId?: string): {
     };
   }
 
-  const activeUserIds = getActiveUserIds();
-  const activeSet = new Set(activeUserIds);
-  activeSet.add(String(userId));
+  const userIdStr = String(userId);
+  const profile = getProfileByUserId(userIdStr);
+  if (profile && !profile.last_points_usage) {
+    saveTableRows("profiles", userIdStr, [
+      { ...profile, last_points_usage: new Date().toISOString() },
+    ]);
+  }
+
+  const activeUserIds =
+    activeUserIdsOverride && activeUserIdsOverride.length > 0
+      ? activeUserIdsOverride
+      : getActiveUserIds();
+  const activeSet = new Set(activeUserIds.map(String));
+  activeSet.add(userIdStr);
   const activeCount = Math.max(1, activeSet.size);
 
   const baseQuota = Math.floor(DAILY_POINTS_POOL / activeCount);
 
-  const spentToday = getPointsSpentToday(userId);
-  const giftsSent = getGiftsSentToday(userId);
-  const giftsReceived = getGiftsReceivedToday(userId);
+  const spentToday = getPointsSpentToday(userIdStr);
+  const giftsSent = getGiftsSentToday(userIdStr);
+  const giftsReceived = getGiftsReceivedToday(userIdStr, activeUserIdsOverride);
 
-  const totalSpentToday = getTotalPointsSpentToday();
+  const totalSpentToday = getTotalPointsSpentToday(activeUserIdsOverride);
   const remainingGlobalPool = Math.max(0, DAILY_POINTS_POOL - totalSpentToday);
 
   // The given quota for this user today (base + gifts received - gifts sent)
@@ -1190,7 +1230,8 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       if (isNaN(amount) || amount <= 0) {
         return { success: false, error: "Invalid amount" };
       }
-      const status = getPointsStatus(userId);
+      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
+      const status = getPointsStatus(userId, activeOverride);
       if (status.available < amount) {
         return { success: false, error: "Insufficient points" };
       }
@@ -1211,7 +1252,7 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         ]);
       }
 
-      const updatedStatus = getPointsStatus(userId);
+      const updatedStatus = getPointsStatus(userId, activeOverride);
       const pref = getTableRows("user_preferences", userId)[0] || {};
       saveTableRows("user_preferences", userId, [
         { ...pref, points: updatedStatus.available },
@@ -1225,11 +1266,13 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       };
     }
     case "get_points_status": {
-      return getPointsStatus(userId);
+      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
+      return getPointsStatus(userId, activeOverride);
     }
     case "get_available_points": {
       const targetUser = args?.p_user_id || args?.user_id || userId;
-      return getPointsStatus(targetUser).available;
+      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
+      return getPointsStatus(targetUser, activeOverride).available;
     }
     case "give_points": {
       if (!userId) return { success: false, error: "Unauthorized" };
@@ -1264,7 +1307,8 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         return { success: false, error: "You can only give points to friends" };
       }
 
-      const status = getPointsStatus(userId);
+      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
+      const status = getPointsStatus(userId, activeOverride);
       if (status.available < amount) {
         return { success: false, error: "Insufficient points to give" };
       }
@@ -1280,7 +1324,7 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       insertTable("point_gifts", gift, userId);
       insertTable("point_gifts", gift, receiverId);
 
-      const updatedStatus = getPointsStatus(userId);
+      const updatedStatus = getPointsStatus(userId, activeOverride);
       return {
         success: true,
         available: updatedStatus.available,

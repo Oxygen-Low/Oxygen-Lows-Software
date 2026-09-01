@@ -29,12 +29,14 @@ import {
   XCircle,
   AlertTriangle,
   ExternalLink,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -88,6 +90,7 @@ interface PublicCharacter {
   item_type: "character" | "universe";
   stats_enabled?: boolean;
   stats?: any;
+  is_anonymous?: boolean;
 }
 
 interface PublicFileAsset {
@@ -107,6 +110,7 @@ interface PublicFileAsset {
   is_liked_by_user: boolean;
   public_url?: string;
   item_type: "file";
+  is_anonymous?: boolean;
 }
 
 interface LocalCharacter {
@@ -136,6 +140,7 @@ interface VerificationSubmission {
   created_at: string;
   reviewed_at: string | null;
   original_file_path: string | null;
+  is_anonymous?: boolean;
   metadata: any;
 }
 
@@ -172,6 +177,7 @@ export function PublicAssetsApp() {
   const [publishTitle, setPublishTitle] = useState("");
   const [publishDescription, setPublishDescription] = useState("");
   const [publishCategory, setPublishCategory] = useState("other");
+  const [publishAnonymous, setPublishAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Details Dialog State
@@ -215,11 +221,15 @@ export function PublicAssetsApp() {
         .from("public_asset_likes")
         .select("public_asset_id, user_id");
 
-      // Collect user IDs for profile lookup
+      // Collect user IDs for profile lookup (skip anonymous assets)
       const allUploaderIds = [
         ...new Set([
-          ...(pubCharsData || []).map((c: any) => c.uploader_id),
-          ...(pubFilesData || []).map((f: any) => f.uploader_id),
+          ...(pubCharsData || [])
+            .filter((c: any) => !c.is_anonymous)
+            .map((c: any) => c.uploader_id),
+          ...(pubFilesData || [])
+            .filter((f: any) => !f.is_anonymous)
+            .map((f: any) => f.uploader_id),
         ]),
       ].filter(Boolean);
 
@@ -239,12 +249,16 @@ export function PublicAssetsApp() {
             (l: any) => l.public_character_id === item.id,
           );
           const isLiked = likes.some((l: any) => l.user_id === session.user.id);
-          const profile = profilesData.find(
-            (p: any) => p.user_id === item.uploader_id,
-          );
+          const isAnon = Boolean(item.is_anonymous);
+          const profile = isAnon
+            ? null
+            : profilesData.find((p: any) => p.user_id === item.uploader_id);
           return {
             ...item,
-            author_username: profile?.username || "Unknown",
+            is_anonymous: isAnon,
+            author_username: isAnon
+              ? "Anonymous"
+              : profile?.username || item.author_username || "Unknown",
             likes_count: likes.length,
             is_liked_by_user: isLiked,
             item_type: item.is_universe ? "universe" : "character",
@@ -262,9 +276,10 @@ export function PublicAssetsApp() {
             (l: any) => l.public_asset_id === item.id,
           );
           const isLiked = likes.some((l: any) => l.user_id === session.user.id);
-          const profile = profilesData.find(
-            (p: any) => p.user_id === item.uploader_id,
-          );
+          const isAnon = Boolean(item.is_anonymous);
+          const profile = isAnon
+            ? null
+            : profilesData.find((p: any) => p.user_id === item.uploader_id);
 
           const cleanPath = (item.file_path || "").replace(/^\/+/, "");
           const { data: pubUrlData } = storage
@@ -273,7 +288,10 @@ export function PublicAssetsApp() {
 
           return {
             ...item,
-            author_username: profile?.username || "Unknown",
+            is_anonymous: isAnon,
+            author_username: isAnon
+              ? "Anonymous"
+              : profile?.username || item.author_username || "Unknown",
             likes_count: likes.length,
             is_liked_by_user: isLiked,
             public_url: pubUrlData?.publicUrl || "",
@@ -612,7 +630,11 @@ export function PublicAssetsApp() {
             title: char.display_name || char.name,
             description: char.short_description || "",
             original_id: char.id,
-            metadata: metadata,
+            is_anonymous: publishAnonymous,
+            metadata: {
+              ...metadata,
+              is_anonymous: publishAnonymous,
+            },
           }),
         });
 
@@ -630,6 +652,7 @@ export function PublicAssetsApp() {
           ),
         });
         setPublishDialogOpen(false);
+        setPublishAnonymous(false);
         fetchUserSubmissions();
       } catch (err: any) {
         toast({
@@ -662,10 +685,12 @@ export function PublicAssetsApp() {
             original_file_path: fullPath,
             file_size: file.metadata?.size || 0,
             mime_type: file.metadata?.mimetype || "application/octet-stream",
+            is_anonymous: publishAnonymous,
             metadata: {
               category: publishCategory,
               fileName: file.name,
               display_name: publishTitle || file.name,
+              is_anonymous: publishAnonymous,
             },
           }),
         });
@@ -684,6 +709,7 @@ export function PublicAssetsApp() {
           ),
         });
         setPublishDialogOpen(false);
+        setPublishAnonymous(false);
         fetchUserSubmissions();
       } catch (err: any) {
         toast({
@@ -1061,6 +1087,35 @@ export function PublicAssetsApp() {
                   </>
                 )}
 
+                {/* Anonymous Publishing Checkbox */}
+                <div className="flex items-start space-x-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                  <Checkbox
+                    id="publish-anonymous"
+                    checked={publishAnonymous}
+                    onCheckedChange={(c) => setPublishAnonymous(Boolean(c))}
+                    className="mt-0.5 border-slate-600 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
+                  />
+                  <div className="space-y-1 leading-none">
+                    <label
+                      htmlFor="publish-anonymous"
+                      className="text-sm font-medium text-slate-200 cursor-pointer"
+                    >
+                      {t(
+                        "publicAssets.publishAnonymously",
+                        undefined,
+                        "Publish anonymously",
+                      )}
+                    </label>
+                    <p className="text-xs text-slate-400">
+                      {t(
+                        "publicAssets.publishAnonymouslyDesc",
+                        undefined,
+                        "Hide your username on public listings. Administrators will still see your username during the review process.",
+                      )}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-lg text-xs text-cyan-300 flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
                   <span>
@@ -1168,6 +1223,21 @@ export function PublicAssetsApp() {
                                   "Public Asset",
                                 )}
                           </Badge>
+                          {Boolean(
+                            sub.is_anonymous || sub.metadata?.is_anonymous,
+                          ) && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs border-amber-800 bg-amber-950/60 text-amber-300 flex items-center gap-1"
+                            >
+                              <UserX className="w-3 h-3" />
+                              {t(
+                                "publicAssets.anonymous",
+                                undefined,
+                                "Anonymous",
+                              )}
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
@@ -1323,8 +1393,15 @@ export function PublicAssetsApp() {
               </div>
 
               <div className="p-4 pt-0 flex justify-between items-center text-xs text-slate-400">
-                <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/50">
-                  @{file.author_username}
+                <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/50 flex items-center gap-1">
+                  {file.is_anonymous ? (
+                    <>
+                      <UserX className="w-3 h-3 text-amber-400" />
+                      {t("publicAssets.anonymous", undefined, "Anonymous")}
+                    </>
+                  ) : (
+                    <>@{file.author_username}</>
+                  )}
                 </span>
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
@@ -1397,8 +1474,15 @@ export function PublicAssetsApp() {
                     {item.display_name || item.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
-                      @{item.author_username}
+                    <span className="text-xs text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50 flex items-center gap-1">
+                      {item.is_anonymous ? (
+                        <>
+                          <UserX className="w-3 h-3 text-amber-400" />
+                          {t("publicAssets.anonymous", undefined, "Anonymous")}
+                        </>
+                      ) : (
+                        <>@{item.author_username}</>
+                      )}
                     </span>
                     <span className="text-xs text-slate-400 flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
                       <Download className="w-3 h-3" /> {item.downloads}
@@ -1466,8 +1550,18 @@ export function PublicAssetsApp() {
                   <h2 className="text-3xl font-bold">
                     {selectedChar.display_name || selectedChar.name}
                   </h2>
-                  <p className="text-slate-300 mt-1">
-                    Uploaded by @{selectedChar.author_username}
+                  <p className="text-slate-300 mt-1 flex items-center gap-1.5">
+                    {selectedChar.is_anonymous ? (
+                      <>
+                        <UserX className="w-4 h-4 text-amber-400" />
+                        {t("publicAssets.uploader", undefined, "Uploaded by")}{" "}
+                        <span className="text-amber-300 font-medium">
+                          {t("publicAssets.anonymous", undefined, "Anonymous")}
+                        </span>
+                      </>
+                    ) : (
+                      <>Uploaded by @{selectedChar.author_username}</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -1702,9 +1796,19 @@ export function PublicAssetsApp() {
                   <h2 className="text-2xl font-bold">
                     {selectedFile.display_name || selectedFile.name}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Uploaded by @{selectedFile.author_username} •{" "}
-                    {formatSize(selectedFile.file_size)}
+                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                    {selectedFile.is_anonymous ? (
+                      <>
+                        <UserX className="w-3.5 h-3.5 text-amber-400" />
+                        {t("publicAssets.uploader", undefined, "Uploaded by")}{" "}
+                        <span className="text-amber-300 font-medium">
+                          {t("publicAssets.anonymous", undefined, "Anonymous")}
+                        </span>
+                      </>
+                    ) : (
+                      <>Uploaded by @{selectedFile.author_username}</>
+                    )}{" "}
+                    • {formatSize(selectedFile.file_size)}
                   </p>
                 </div>
               </div>

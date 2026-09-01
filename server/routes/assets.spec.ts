@@ -160,6 +160,28 @@ describe("Assets & Verification Routes", () => {
     expect(json.verification.title).toBe("My Song");
   });
 
+  it("submits anonymous verification and persists is_anonymous", async () => {
+    const res = await app.request("/verifications/submit", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer user-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        asset_type: "file",
+        target_type: "public_asset",
+        title: "Anon Asset",
+        original_file_path: "user-123/anon.png",
+        is_anonymous: true,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.verification.is_anonymous).toBe(true);
+  });
+
   it("deletes user's own verification request", async () => {
     mockVerifications = [
       {

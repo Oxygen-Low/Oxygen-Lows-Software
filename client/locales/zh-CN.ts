@@ -772,6 +772,13 @@ export const zhCN = {
     downloads: "下载",
     size: "大小",
     uploader: "上传者",
+    publishAnonymously: "匿名发布",
+    publishAnonymouslyDesc:
+      "在公开列表中隐藏您的用户名。管理员在审核过程中仍可看到您的用户名。",
+    anonymous: "匿名",
+    anonymousSubmission: "匿名提交",
+    anonymousNotice:
+      "此资产已提交为匿名发布。提交者用户名仅对管理员可见。",
     unauthorizedEncrypted: "无法上传加密角色。请先解锁。",
   },
   verification: {

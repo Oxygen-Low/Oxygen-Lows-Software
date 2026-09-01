@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -130,6 +131,7 @@ export default function Storage() {
   const [submitTitle, setSubmitTitle] = useState("");
   const [submitDesc, setSubmitDesc] = useState("");
   const [submitCategory, setSubmitCategory] = useState("other");
+  const [submitAnonymous, setSubmitAnonymous] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
 
   // Denial Reason Dialog State
@@ -446,6 +448,7 @@ export default function Storage() {
     setSubmittingAction(true);
     try {
       const fullPath = `${session.user.id}/${selectedFileForAction.name}`;
+      const isAnon = actionType === "publish" ? submitAnonymous : false;
       const res = await fetch("/api/assets/verifications/submit", {
         method: "POST",
         headers: {
@@ -463,10 +466,12 @@ export default function Storage() {
           mime_type:
             selectedFileForAction.metadata?.mimetype ||
             "application/octet-stream",
+          is_anonymous: isAnon,
           metadata: {
             category: submitCategory,
             fileName: selectedFileForAction.name,
             display_name: submitTitle || selectedFileForAction.name,
+            is_anonymous: isAnon,
           },
         }),
       });
@@ -485,6 +490,7 @@ export default function Storage() {
       );
       setSelectedFileForAction(null);
       setActionType(null);
+      setSubmitAnonymous(false);
       fetchCloudFiles();
     } catch (err: any) {
       toast.error(err.message);
@@ -1410,6 +1416,36 @@ export default function Storage() {
                 className="bg-slate-800 border-slate-700 text-white h-20"
               />
             </div>
+
+            {actionType === "publish" && (
+              <div className="flex items-start space-x-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                <Checkbox
+                  id="storage-publish-anonymous"
+                  checked={submitAnonymous}
+                  onCheckedChange={(c) => setSubmitAnonymous(Boolean(c))}
+                  className="mt-0.5 border-slate-600 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
+                />
+                <div className="space-y-1 leading-none">
+                  <label
+                    htmlFor="storage-publish-anonymous"
+                    className="text-xs font-semibold text-slate-200 cursor-pointer"
+                  >
+                    {t(
+                      "publicAssets.publishAnonymously",
+                      undefined,
+                      "Publish anonymously",
+                    )}
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    {t(
+                      "publicAssets.publishAnonymouslyDesc",
+                      undefined,
+                      "Hide your username on public listings. Administrators will still see your username during the review process.",
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

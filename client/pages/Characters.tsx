@@ -23,6 +23,7 @@ import type { GeneratedEntityResult } from "@/services/entityGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -149,6 +150,12 @@ export default function Characters() {
     null,
   );
   const [deletingVerifId, setDeletingVerifId] = useState<string | null>(null);
+
+  // Publish Dialog State
+  const [publishModalChar, setPublishModalChar] = useState<Character | null>(
+    null,
+  );
+  const [publishModalAnonymous, setPublishModalAnonymous] = useState(false);
 
   // AI Generation Modal State
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
@@ -521,6 +528,7 @@ export default function Characters() {
   const handleSubmitVerification = async (
     char: Character,
     targetType: "public_asset" | "public_usage",
+    isAnonymous = false,
   ) => {
     if (!session?.access_token) return;
 
@@ -557,6 +565,7 @@ export default function Characters() {
           description: char.short_description || "",
           original_id: char.id,
           public_character_id: pubChar?.id || null,
+          is_anonymous: targetType === "public_asset" ? isAnonymous : false,
           metadata: {
             name: char.name,
             display_name: char.display_name,
@@ -573,6 +582,7 @@ export default function Characters() {
             universe_id: char.universe_id || null,
             stats_enabled: Boolean(char.stats_enabled),
             stats: char.stats || null,
+            is_anonymous: targetType === "public_asset" ? isAnonymous : false,
           },
         }),
       });
@@ -1773,9 +1783,10 @@ export default function Characters() {
                                 variant="outline"
                                 size="sm"
                                 disabled={submittingVerifId === char.id}
-                                onClick={() =>
-                                  handleSubmitVerification(char, "public_asset")
-                                }
+                                onClick={() => {
+                                  setPublishModalChar(char);
+                                  setPublishModalAnonymous(false);
+                                }}
                                 className="flex-1 text-[11px] h-7 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
                               >
                                 {submittingVerifId === char.id ? (
@@ -1907,6 +1918,149 @@ export default function Characters() {
               className="bg-slate-800 hover:bg-slate-700 text-white"
             >
               {t("common.close", undefined, "Close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Publish Dialog */}
+      <Dialog
+        open={Boolean(publishModalChar)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPublishModalChar(null);
+            setPublishModalAnonymous(false);
+          }
+        }}
+      >
+        <DialogContent className="bg-slate-900 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle>
+              {t("publicAssets.publishAsset", undefined, "Publish Asset")}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {t(
+                "publicAssets.publishDesc",
+                undefined,
+                "Submit your character to be published on the Public Assets hub.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {publishModalChar && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/50 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-md bg-slate-700 overflow-hidden flex items-center justify-center shrink-0">
+                  {publishModalChar.image_url ? (
+                    <img
+                      src={publishModalChar.image_url}
+                      alt={publishModalChar.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : publishModalChar.is_universe ? (
+                    <Globe className="w-5 h-5 text-cyan-400" />
+                  ) : publishModalChar.is_race ? (
+                    <Users className="w-5 h-5 text-cyan-400" />
+                  ) : (
+                    <User className="w-5 h-5 text-cyan-400" />
+                  )}
+                </div>
+                <div className="overflow-hidden">
+                  <h4 className="font-semibold text-white truncate text-sm">
+                    {publishModalChar.display_name || publishModalChar.name}
+                  </h4>
+                  <p className="text-xs text-slate-400 capitalize">
+                    {publishModalChar.is_race
+                      ? "Race"
+                      : publishModalChar.is_universe
+                        ? "Universe"
+                        : "Character"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Anonymous Publishing Checkbox */}
+              <div className="flex items-start space-x-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                <Checkbox
+                  id="char-publish-anonymous"
+                  checked={publishModalAnonymous}
+                  onCheckedChange={(c) => setPublishModalAnonymous(Boolean(c))}
+                  className="mt-0.5 border-slate-600 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
+                />
+                <div className="space-y-1 leading-none">
+                  <label
+                    htmlFor="char-publish-anonymous"
+                    className="text-xs font-semibold text-slate-200 cursor-pointer"
+                  >
+                    {t(
+                      "publicAssets.publishAnonymously",
+                      undefined,
+                      "Publish anonymously",
+                    )}
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    {t(
+                      "publicAssets.publishAnonymouslyDesc",
+                      undefined,
+                      "Hide your username on public listings. Administrators will still see your username during the review process.",
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-lg text-xs text-cyan-300 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
+                <span>
+                  {t(
+                    "publicAssets.verificationNotice",
+                    undefined,
+                    "Submissions must be verified by an administrator before appearing publicly.",
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPublishModalChar(null);
+                setPublishModalAnonymous(false);
+              }}
+              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+            >
+              {t("common.cancel", undefined, "Cancel")}
+            </Button>
+            <Button
+              onClick={async () => {
+                if (publishModalChar) {
+                  const targetChar = publishModalChar;
+                  const isAnon = publishModalAnonymous;
+                  setPublishModalChar(null);
+                  setPublishModalAnonymous(false);
+                  await handleSubmitVerification(
+                    targetChar,
+                    "public_asset",
+                    isAnon,
+                  );
+                }
+              }}
+              disabled={
+                !publishModalChar || submittingVerifId === publishModalChar?.id
+              }
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            >
+              {submittingVerifId === publishModalChar?.id ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              {t(
+                "publicAssets.submitForVerification",
+                undefined,
+                "Submit for Review",
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,12 +8,14 @@ import {
   getUserById,
   getUserByUsernameOrEmail,
   getTableRows,
+  saveTableRows,
   queryTable,
   insertTable,
   updateTable,
   upsertTable,
   deleteTable,
   callRpc,
+  getActiveUserIds,
 } from "./dataStore.ts";
 
 describe("dataStore", () => {
@@ -466,62 +468,72 @@ describe("dataStore", () => {
   it("should correctly calculate dynamic points and split usage when a new account is created with >50% points remaining", () => {
     const user1Id = "901";
     const user2Id = "902";
+    const u1Dir = path.join(DATA_DIR, user1Id);
+    const u2Dir = path.join(DATA_DIR, user2Id);
+    if (fs.existsSync(u1Dir)) fs.rmSync(u1Dir, { recursive: true, force: true });
+    if (fs.existsSync(u2Dir)) fs.rmSync(u2Dir, { recursive: true, force: true });
 
-    // Initialize user 1
-    initUserFolder(user1Id, {
-      username: "split_user1",
-      email: "split1@example.com",
-      passwordHash: "hash1",
-      salt: "salt1",
-    });
+    try {
+      // Initialize user 1
+      initUserFolder(user1Id, {
+        username: "split_user1",
+        email: "split1@example.com",
+        passwordHash: "hash1",
+        salt: "salt1",
+      });
 
-    // User 1 alone: should have full 10,000 pool
-    const initialStatus1 = callRpc("get_points_status", {}, user1Id);
-    expect(initialStatus1.given).toBe(10000);
-    expect(initialStatus1.available).toBe(10000);
+      // User 1 alone: should have full 10,000 pool
+      const initialStatus1 = callRpc("get_points_status", { p_active_user_ids: [user1Id] }, user1Id);
+      expect(initialStatus1.given).toBe(10000);
+      expect(initialStatus1.available).toBe(10000);
 
-    // User 1 spends 2,000 points (8,000 remaining, which is > 50% remaining)
-    const spendRes1 = callRpc("spend_points", { p_amount: 2000 }, user1Id);
-    expect(spendRes1.success).toBe(true);
-    expect(spendRes1.available).toBe(8000);
-    expect(spendRes1.given).toBe(10000);
+      // User 1 spends 2,000 points (8,000 remaining, which is > 50% remaining)
+      const spendRes1 = callRpc("spend_points", { p_amount: 2000, p_active_user_ids: [user1Id] }, user1Id);
+      expect(spendRes1.success).toBe(true);
+      expect(spendRes1.available).toBe(8000);
+      expect(spendRes1.given).toBe(10000);
 
-    // Now a new account (User 2) is created
-    initUserFolder(user2Id, {
-      username: "split_user2",
-      email: "split2@example.com",
-      passwordHash: "hash2",
-      salt: "salt2",
-    });
+      // Now a new account (User 2) is created
+      initUserFolder(user2Id, {
+        username: "split_user2",
+        email: "split2@example.com",
+        passwordHash: "hash2",
+        salt: "salt2",
+        last_points_usage: new Date().toISOString(),
+      });
 
-    // Now active users count is 2 -> base share becomes 5,000 each
-    // User 1 had spent 2,000 points today -> user 1 available becomes 5,000 - 2,000 = 3,000
-    const updatedStatus1 = callRpc("get_points_status", {}, user1Id);
-    expect(updatedStatus1.given).toBe(5000);
-    expect(updatedStatus1.available).toBe(3000);
+      // Now active users count is 2 -> base share becomes 5,000 each
+      // User 1 had spent 2,000 points today -> user 1 available becomes 5,000 - 2,000 = 3,000
+      const updatedStatus1 = callRpc("get_points_status", { p_active_user_ids: [user1Id, user2Id] }, user1Id);
+      expect(updatedStatus1.given).toBe(5000);
+      expect(updatedStatus1.available).toBe(3000);
 
-    // User 2 (new account) -> user 2 available is 5,000 - 0 = 5,000
-    const initialStatus2 = callRpc("get_points_status", {}, user2Id);
-    expect(initialStatus2.given).toBe(5000);
-    expect(initialStatus2.available).toBe(5000);
+      // User 2 (new account) -> user 2 available is 5,000 - 0 = 5,000
+      const initialStatus2 = callRpc("get_points_status", { p_active_user_ids: [user1Id, user2Id] }, user2Id);
+      expect(initialStatus2.given).toBe(5000);
+      expect(initialStatus2.available).toBe(5000);
 
-    // Set up friendship between user1 and user2
-    saveTableRows("friendships", user1Id, [
-      { id: "f1", user_id: user1Id, friend_id: user2Id, status: "accepted" },
-    ]);
-    saveTableRows("friendships", user2Id, [
-      { id: "f1", user_id: user1Id, friend_id: user2Id, status: "accepted" },
-    ]);
+      // Set up friendship between user1 and user2
+      saveTableRows("friendships", user1Id, [
+        { id: "f1", user_id: user1Id, friend_id: user2Id, status: "accepted" },
+      ]);
+      saveTableRows("friendships", user2Id, [
+        { id: "f1", user_id: user1Id, friend_id: user2Id, status: "accepted" },
+      ]);
 
-    // User 1 gives 500 points to User 2
-    const giftRes = callRpc("give_points", { p_receiver_id: user2Id, p_amount: 500 }, user1Id);
-    expect(giftRes.success).toBe(true);
-    expect(giftRes.available).toBe(2500); // 3000 - 500
-    expect(giftRes.given).toBe(4500); // 5000 - 500
+      // User 1 gives 500 points to User 2
+      const giftRes = callRpc("give_points", { p_receiver_id: user2Id, p_amount: 500, p_active_user_ids: [user1Id, user2Id] }, user1Id);
+      expect(giftRes.success).toBe(true);
+      expect(giftRes.available).toBe(2500); // 3000 - 500
+      expect(giftRes.given).toBe(4500); // 5000 - 500
 
-    // User 2 receives the gift
-    const giftedStatus2 = callRpc("get_points_status", {}, user2Id);
-    expect(giftedStatus2.given).toBe(5500); // 5000 + 500
-    expect(giftedStatus2.available).toBe(5500); // 5000 + 500
+      // User 2 receives the gift
+      const giftedStatus2 = callRpc("get_points_status", { p_active_user_ids: [user1Id, user2Id] }, user2Id);
+      expect(giftedStatus2.given).toBe(5500); // 5000 + 500
+      expect(giftedStatus2.available).toBe(5500); // 5000 + 500
+    } finally {
+      if (fs.existsSync(u1Dir)) fs.rmSync(u1Dir, { recursive: true, force: true });
+      if (fs.existsSync(u2Dir)) fs.rmSync(u2Dir, { recursive: true, force: true });
+    }
   });
 });

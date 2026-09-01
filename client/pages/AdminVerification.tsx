@@ -19,6 +19,7 @@ import {
   Database,
   Globe,
   User,
+  UserX,
   Trash2,
   Loader2,
   Filter,
@@ -78,6 +79,7 @@ interface VerificationItem {
   mime_type: string | null;
   public_asset_id: string | null;
   public_character_id: string | null;
+  is_anonymous?: boolean;
   metadata: any;
   admin_notes: string | null;
   rejection_reason: string | null;
@@ -497,11 +499,44 @@ export default function AdminVerification() {
                                 ? "Public / Multiplayer"
                                 : "Public Hub"}
                             </Badge>
+                            {Boolean(
+                              item.is_anonymous || item.metadata?.is_anonymous,
+                            ) && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs border-amber-800 bg-amber-950/60 text-amber-300 flex items-center gap-1"
+                                title={t(
+                                  "publicAssets.anonymousNotice",
+                                  undefined,
+                                  "This asset was submitted to be published anonymously. The submitter username is visible only to administrators.",
+                                )}
+                              >
+                                <UserX className="w-3 h-3" />
+                                {t(
+                                  "publicAssets.anonymousSubmission",
+                                  undefined,
+                                  "Anonymous Submission",
+                                )}
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-slate-400 mt-0.5">
                             By @{item.profiles?.username || "Unknown"} (
                             {item.profiles?.email || item.user_id}) • Submitted{" "}
                             {new Date(item.created_at).toLocaleString()}
+                            {Boolean(
+                              item.is_anonymous || item.metadata?.is_anonymous,
+                            ) && (
+                              <span className="text-amber-400/90 ml-1 font-medium">
+                                (
+                                {t(
+                                  "publicAssets.publishAnonymously",
+                                  undefined,
+                                  "Publish anonymously",
+                                )}
+                                )
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>

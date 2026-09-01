@@ -840,6 +840,13 @@ export const es = {
     downloads: "Descargas",
     size: "Tamaño",
     uploader: "Subido por",
+    publishAnonymously: "Publicar de forma anónima",
+    publishAnonymouslyDesc:
+      "Oculta tu nombre de usuario en los listados públicos. Los administradores aún verán tu nombre de usuario durante el proceso de revisión.",
+    anonymous: "Anónimo",
+    anonymousSubmission: "Envío anónimo",
+    anonymousNotice:
+      "Este recurso se envió para ser publicado de forma anónima. El nombre de usuario del remitente solo es visible para los administradores.",
     unauthorizedEncrypted:
       "No se puede subir un personaje cifrado. Desbloquéalo primero.",
   },

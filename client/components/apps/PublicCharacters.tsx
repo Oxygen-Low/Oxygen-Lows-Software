@@ -16,6 +16,7 @@ import {
   Heart,
   Globe,
   User,
+  UserX,
   Users,
   Search,
   ArrowUpDown,
@@ -23,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +68,7 @@ interface PublicCharacter {
   is_liked_by_user: boolean;
   stats_enabled?: boolean;
   stats?: any;
+  is_anonymous?: boolean;
 }
 
 interface LocalCharacter {
@@ -104,6 +107,7 @@ export function PublicCharactersApp() {
   const [localCharacters, setLocalCharacters] = useState<LocalCharacter[]>([]);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedLocalCharId, setSelectedLocalCharId] = useState<string>("");
+  const [uploadAnonymous, setUploadAnonymous] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const [selectedItem, setSelectedItem] = useState<PublicCharacter | null>(
@@ -126,9 +130,13 @@ export function PublicCharactersApp() {
 
       if (pubError) throw pubError;
 
-      // Fetch profiles manually to avoid schema cache relationship issues
+      // Fetch profiles manually to avoid schema cache relationship issues (skip anonymous)
       const uploaderIds = [
-        ...new Set(pubData.map((p: any) => p.uploader_id)),
+        ...new Set(
+          (pubData || [])
+            .filter((p: any) => !p.is_anonymous)
+            .map((p: any) => p.uploader_id),
+        ),
       ].filter(Boolean);
       let profilesData: any[] = [];
       if (uploaderIds.length > 0) {
@@ -146,20 +154,24 @@ export function PublicCharactersApp() {
 
       if (likesError) throw likesError;
 
-      const itemsWithLikes = pubData.map((item: any) => {
+      const itemsWithLikes = (pubData || []).map((item: any) => {
         const itemLikes = likesData.filter(
           (l: any) => l.public_character_id === item.id,
         );
         const isLiked = itemLikes.some(
           (l: any) => l.user_id === session.user.id,
         );
-        const profile = profilesData?.find(
-          (p: any) => p.user_id === item.uploader_id,
-        );
+        const isAnon = Boolean(item.is_anonymous);
+        const profile = isAnon
+          ? null
+          : profilesData?.find((p: any) => p.user_id === item.uploader_id);
 
         return {
           ...item,
-          author_username: profile?.username || "Unknown",
+          is_anonymous: isAnon,
+          author_username: isAnon
+            ? "Anonymous"
+            : profile?.username || item.author_username || "Unknown",
           likes_count: itemLikes.length,
           is_liked_by_user: isLiked,
         };
@@ -400,63 +412,22 @@ export function PublicCharactersApp() {
   }, [items, activeTab, sortBy, searchQuery]);
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as any)}
-          className="w-full sm:w-[420px]"
-        >
-          <TabsList className="bg-slate-900 border border-slate-800 w-full grid grid-cols-3">
-            <TabsTrigger
-              value="characters"
-              className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400"
-            >
-              Characters
-            </TabsTrigger>
-            <TabsTrigger
-              value="races"
-              className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400"
-            >
-              Races
-            </TabsTrigger>
-            <TabsTrigger
-              value="universes"
-              className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400"
-            >
-              Universes
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+    <div className="space-y-6">
+      {/* Header and Controls */}
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <Globe className="w-6 h-6 text-cyan-400" />
+            Public Hub
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Browse and download community-created characters, universes, and
+            races.
+          </p>
+        </div>
 
-        <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-slate-900 border-slate-800 text-white"
-            />
-          </div>
-
-          <Select
-            value={sortBy}
-            onValueChange={(v) => setSortBy(v as SortOption)}
-          >
-            <SelectTrigger className="w-[180px] bg-slate-900 border-slate-800 text-white">
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="w-4 h-4" />
-                <SelectValue placeholder="Sort by" />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-800 text-white">
-              <SelectItem value="most_recent">Most Recent</SelectItem>
-              <SelectItem value="most_liked">Most Liked</SelectItem>
-              <SelectItem value="most_downloaded">Most Downloaded</SelectItem>
-            </SelectContent>
-          </Select>
-
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {/* Upload Button */}
           <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-cyan-600 hover:bg-cyan-700">
@@ -477,7 +448,7 @@ export function PublicCharactersApp() {
                   to publish for everyone to see and download.
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-4">
+              <div className="space-y-4 py-4">
                 <Select
                   value={selectedLocalCharId}
                   onValueChange={setSelectedLocalCharId}
@@ -514,6 +485,26 @@ export function PublicCharactersApp() {
                     )}
                   </SelectContent>
                 </Select>
+
+                <div className="flex items-start space-x-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                  <Checkbox
+                    id="upload-char-anonymous"
+                    checked={uploadAnonymous}
+                    onCheckedChange={(c) => setUploadAnonymous(Boolean(c))}
+                    className="mt-0.5 border-slate-600 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
+                  />
+                  <div className="space-y-1 leading-none">
+                    <label
+                      htmlFor="upload-char-anonymous"
+                      className="text-sm font-medium text-slate-200 cursor-pointer"
+                    >
+                      Publish anonymously
+                    </label>
+                    <p className="text-xs text-slate-400">
+                      Hide your username on public listings.
+                    </p>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -539,8 +530,71 @@ export function PublicCharactersApp() {
         </div>
       </div>
 
+      {/* Tabs and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+        <Tabs
+          value={activeTab}
+          onValueChange={(val: any) => setActiveTab(val)}
+          className="w-full sm:w-auto"
+        >
+          <TabsList className="bg-slate-800 text-slate-400">
+            <TabsTrigger
+              value="characters"
+              className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Characters
+            </TabsTrigger>
+            <TabsTrigger
+              value="universes"
+              className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+            >
+              <Globe className="w-4 h-4 mr-2" />
+              Universes
+            </TabsTrigger>
+            <TabsTrigger
+              value="races"
+              className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Races
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {/* Search Input */}
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+            />
+          </div>
+
+          {/* Sort dropdown */}
+          <Select
+            value={sortBy}
+            onValueChange={(val: SortOption) => setSortBy(val)}
+          >
+            <SelectTrigger className="w-36 bg-slate-800 border-slate-700 text-white">
+              <ArrowUpDown className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-700 text-white">
+              <SelectItem value="most_recent">Most Recent</SelectItem>
+              <SelectItem value="most_liked">Most Liked</SelectItem>
+              <SelectItem value="most_downloaded">Most Downloaded</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Main Grid View */}
       {loading ? (
-        <div className="flex justify-center py-20">
+        <div className="flex justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
         </div>
       ) : (
@@ -563,10 +617,10 @@ export function PublicCharactersApp() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-700">
-                    {item.is_race ? (
-                      <Users className="w-16 h-16" />
-                    ) : item.is_universe ? (
+                    {item.is_universe ? (
                       <Globe className="w-16 h-16" />
+                    ) : item.is_race ? (
+                      <Users className="w-16 h-16" />
                     ) : (
                       <User className="w-16 h-16" />
                     )}
@@ -591,8 +645,15 @@ export function PublicCharactersApp() {
                     {item.display_name || item.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
-                      @{item.author_username}
+                    <span className="text-xs text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50 flex items-center gap-1">
+                      {item.is_anonymous ? (
+                        <>
+                          <UserX className="w-3 h-3 text-amber-400" />
+                          Anonymous
+                        </>
+                      ) : (
+                        <>@{item.author_username}</>
+                      )}
                     </span>
                     <span className="text-xs text-slate-400 flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
                       <Download className="w-3 h-3" /> {item.downloads}
@@ -646,8 +707,18 @@ export function PublicCharactersApp() {
                   <h2 className="text-3xl font-bold">
                     {selectedItem.display_name || selectedItem.name}
                   </h2>
-                  <p className="text-slate-300 mt-1">
-                    Uploaded by @{selectedItem.author_username}
+                  <p className="text-slate-300 mt-1 flex items-center gap-1.5">
+                    {selectedItem.is_anonymous ? (
+                      <>
+                        <UserX className="w-4 h-4 text-amber-400" />
+                        Uploaded by{" "}
+                        <span className="text-amber-300 font-medium">
+                          Anonymous
+                        </span>
+                      </>
+                    ) : (
+                      <>Uploaded by @{selectedItem.author_username}</>
+                    )}
                   </p>
                 </div>
               </div>

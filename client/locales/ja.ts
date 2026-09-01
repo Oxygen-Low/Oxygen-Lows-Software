@@ -822,6 +822,13 @@ export const ja = {
     downloads: "ダウンロード数",
     size: "サイズ",
     uploader: "投稿者",
+    publishAnonymously: "匿名で公開する",
+    publishAnonymouslyDesc:
+      "公開リストでユーザー名を非表示にします。管理者は審査中にユーザー名を確認できます。",
+    anonymous: "匿名",
+    anonymousSubmission: "匿名の送信",
+    anonymousNotice:
+      "このアセットは匿名公開として送信されました。送信者のユーザー名は管理者のみに表示されます。",
     unauthorizedEncrypted:
       "暗号化されたキャラクターはアップロードできません。最初にロックを解除してください。",
   },

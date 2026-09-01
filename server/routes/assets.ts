@@ -67,6 +67,7 @@ assetsRouter.post("/verifications/submit", async (c) => {
       metadata = {},
       public_asset_id = null,
       public_character_id = null,
+      is_anonymous = false,
     } = body;
 
     if (
@@ -118,6 +119,7 @@ assetsRouter.post("/verifications/submit", async (c) => {
       mime_type,
       public_asset_id,
       public_character_id,
+      is_anonymous: Boolean(is_anonymous || metadata?.is_anonymous),
       metadata,
       rejection_reason: null,
       reviewed_by: null,

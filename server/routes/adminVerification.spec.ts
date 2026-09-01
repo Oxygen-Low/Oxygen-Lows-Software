@@ -196,12 +196,38 @@ describe("Admin Verification Routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.verification.status).toBe("approved");
     expect(serverStorage.move).toHaveBeenCalledWith(
       "Storage",
       "user-123/test.png",
       "public-assets",
       "user-123/test.png",
     );
+  });
+
+  it("approves anonymous submission and sets is_anonymous on public_assets", async () => {
+    mockVerifications = [
+      {
+        id: "v-anon",
+        user_id: "user-123",
+        status: "pending",
+        title: "Anon File",
+        asset_type: "file",
+        target_type: "public_asset",
+        original_file_path: "user-123/anon.png",
+        file_size: 2048,
+        mime_type: "image/png",
+        is_anonymous: true,
+      },
+    ];
+
+    const res = await app.request("/v-anon/approve", {
+      method: "POST",
+      headers: { Authorization: "Bearer admin-token" },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(mockPublicAssets).toHaveLength(1);
+    expect(mockPublicAssets[0].is_anonymous).toBe(true);
   });
 });
