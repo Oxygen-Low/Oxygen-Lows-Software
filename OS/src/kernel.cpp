@@ -188,6 +188,10 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
     // 10. Run In-Kernel Sanity & Diagnostics Test Suite
     run_selftests();
 
+    // Initial desktop presentation
+    desktop_update();
+    desktop_render();
+
     // 11. Enable Hardware Interrupts for Keyboard & Mouse & Timer
     sti();
 

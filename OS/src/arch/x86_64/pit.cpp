@@ -55,9 +55,12 @@ uint64_t pit_get_uptime_ms(void) {
 
 void pit_sleep_ms(uint64_t ms) {
     uint64_t start_ms = pit_get_uptime_ms();
+    uint64_t loops = 0;
     while ((pit_get_uptime_ms() - start_ms) < ms) {
-        // Wait for next timer interrupt
-        __asm__ volatile ("hlt");
+        __asm__ volatile ("pause");
+        if (++loops > 2000000ULL * (ms > 0 ? ms : 1)) {
+            break;
+        }
     }
 }
 

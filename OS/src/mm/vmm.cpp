@@ -8,7 +8,7 @@ namespace {
 alignas(4096) uint64_t g_kernel_pml4[512];
 alignas(4096) uint64_t g_kernel_pdpt_low[512];
 alignas(4096) uint64_t g_kernel_pdpt_high[512];
-alignas(4096) uint64_t g_kernel_pd[512];
+alignas(4096) uint64_t g_kernel_pd[4][512];
 
 uint64_t* get_or_create_table(uint64_t* parent_entry, uint64_t flags) {
     if (*parent_entry & PAGE_PRESENT) {
@@ -43,21 +43,25 @@ void vmm_init(void) {
         g_kernel_pml4[i] = 0;
         g_kernel_pdpt_low[i] = 0;
         g_kernel_pdpt_high[i] = 0;
-        g_kernel_pd[i] = 0;
+        for (size_t gb = 0; gb < 4; ++gb) {
+            g_kernel_pd[gb][i] = 0;
+        }
     }
 
-    // 1. Identity map lower 1GB using 512 x 2MB huge pages (PML4[0])
+    // 1. Identity map lower 4GB using 4 x 512 x 2MB huge pages (PML4[0])
     g_kernel_pml4[0] = ((uint64_t)&g_kernel_pdpt_low) | PAGE_PRESENT | PAGE_WRITABLE;
-    g_kernel_pdpt_low[0] = ((uint64_t)&g_kernel_pd) | PAGE_PRESENT | PAGE_WRITABLE;
 
-    for (size_t i = 0; i < 512; ++i) {
-        g_kernel_pd[i] = (i * 0x200000ULL) | PAGE_PRESENT | PAGE_WRITABLE | PAGE_HUGE_2MB;
+    for (size_t gb = 0; gb < 4; ++gb) {
+        g_kernel_pdpt_low[gb] = ((uint64_t)&g_kernel_pd[gb]) | PAGE_PRESENT | PAGE_WRITABLE;
+        for (size_t i = 0; i < 512; ++i) {
+            g_kernel_pd[gb][i] = ((gb * 0x40000000ULL) + (i * 0x200000ULL)) | PAGE_PRESENT | PAGE_WRITABLE | PAGE_HUGE_2MB;
+        }
     }
 
     // 2. Map higher-half kernel space (PML4[511], PDPT_HIGH[510]) to lower 1GB
     // Virtual 0xFFFFFFFF80000000 -> Physical 0x00000000
     g_kernel_pml4[511] = ((uint64_t)&g_kernel_pdpt_high) | PAGE_PRESENT | PAGE_WRITABLE;
-    g_kernel_pdpt_high[510] = ((uint64_t)&g_kernel_pd) | PAGE_PRESENT | PAGE_WRITABLE;
+    g_kernel_pdpt_high[510] = ((uint64_t)&g_kernel_pd[0]) | PAGE_PRESENT | PAGE_WRITABLE;
 
     // Load newly initialized PML4 into CR3
     write_cr3((uint64_t)&g_kernel_pml4);
