@@ -173,7 +173,9 @@ describe("dataStore", () => {
     });
 
     const pointsStatus = callRpc("get_points_status", {}, testUserId);
-    expect(pointsStatus.points).toBe(100);
+    expect(pointsStatus.points).toBeGreaterThan(0);
+    expect(pointsStatus.available).toBeGreaterThan(0);
+    expect(pointsStatus.given).toBeGreaterThan(0);
     expect(pointsStatus.daily_claim_available).toBe(true);
 
     const updatedPrefs = callRpc(
@@ -459,5 +461,67 @@ describe("dataStore", () => {
     expect(persisted.chatbot_default_model).toBe("deepseek/deepseek-r1");
     expect(persisted.research_agent_default_model).toBe("Fast");
     expect(persisted.research_summarizer_default_model).toBe("gemini-2.5-pro");
+  });
+
+  it("should correctly calculate dynamic points and split usage when a new account is created with >50% points remaining", () => {
+    const user1Id = "901";
+    const user2Id = "902";
+
+    // Initialize user 1
+    initUserFolder(user1Id, {
+      username: "split_user1",
+      email: "split1@example.com",
+      passwordHash: "hash1",
+      salt: "salt1",
+    });
+
+    // User 1 alone: should have full 10,000 pool
+    const initialStatus1 = callRpc("get_points_status", {}, user1Id);
+    expect(initialStatus1.given).toBe(10000);
+    expect(initialStatus1.available).toBe(10000);
+
+    // User 1 spends 2,000 points (8,000 remaining, which is > 50% remaining)
+    const spendRes1 = callRpc("spend_points", { p_amount: 2000 }, user1Id);
+    expect(spendRes1.success).toBe(true);
+    expect(spendRes1.available).toBe(8000);
+    expect(spendRes1.given).toBe(10000);
+
+    // Now a new account (User 2) is created
+    initUserFolder(user2Id, {
+      username: "split_user2",
+      email: "split2@example.com",
+      passwordHash: "hash2",
+      salt: "salt2",
+    });
+
+    // Now active users count is 2 -> base share becomes 5,000 each
+    // User 1 had spent 2,000 points today -> user 1 available becomes 5,000 - 2,000 = 3,000
+    const updatedStatus1 = callRpc("get_points_status", {}, user1Id);
+    expect(updatedStatus1.given).toBe(5000);
+    expect(updatedStatus1.available).toBe(3000);
+
+    // User 2 (new account) -> user 2 available is 5,000 - 0 = 5,000
+    const initialStatus2 = callRpc("get_points_status", {}, user2Id);
+    expect(initialStatus2.given).toBe(5000);
+    expect(initialStatus2.available).toBe(5000);
+
+    // Set up friendship between user1 and user2
+    saveTableRows("friendships", user1Id, [
+      { id: "f1", user_id: user1Id, friend_id: user2Id, status: "accepted" },
+    ]);
+    saveTableRows("friendships", user2Id, [
+      { id: "f1", user_id: user1Id, friend_id: user2Id, status: "accepted" },
+    ]);
+
+    // User 1 gives 500 points to User 2
+    const giftRes = callRpc("give_points", { p_receiver_id: user2Id, p_amount: 500 }, user1Id);
+    expect(giftRes.success).toBe(true);
+    expect(giftRes.available).toBe(2500); // 3000 - 500
+    expect(giftRes.given).toBe(4500); // 5000 - 500
+
+    // User 2 receives the gift
+    const giftedStatus2 = callRpc("get_points_status", {}, user2Id);
+    expect(giftedStatus2.given).toBe(5500); // 5000 + 500
+    expect(giftedStatus2.available).toBe(5500); // 5000 + 500
   });
 });

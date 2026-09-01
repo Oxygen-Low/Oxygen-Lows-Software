@@ -269,6 +269,8 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "games", "games.json"), []);
   writeJsonFile(path.join(userDir, "games", "playtime.json"), []);
   writeJsonFile(path.join(userDir, "games", "presence.json"), []);
+  writeJsonFile(path.join(userDir, "points", "transactions.json"), []);
+  writeJsonFile(path.join(userDir, "points", "gifts.json"), []);
 
   return userData;
 }
@@ -412,6 +414,14 @@ export function getTableFilePath(
       case "presence":
       case "presences":
         return path.join(userDir, "games", "presence.json");
+      case "points_transactions":
+      case "point_transactions":
+      case "user_points_transactions":
+        return path.join(userDir, "points", "transactions.json");
+      case "point_gifts":
+      case "user_point_gifts":
+      case "points_gifts":
+        return path.join(userDir, "points", "gifts.json");
       default:
         return null;
     }
@@ -989,6 +999,168 @@ export function deleteTable(
 }
 
 /**
+ * Dynamic Points System
+ */
+export const DAILY_POINTS_POOL = 10000;
+
+export function getStartOfTodayUtc(): number {
+  const now = new Date();
+  return Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+}
+
+export function getActiveUserIds(): string[] {
+  const allIds = getAllUserIds();
+  if (allIds.length === 0) return [];
+  const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
+  const activeIds: string[] = [];
+
+  for (const id of allIds) {
+    const user = getUserById(id);
+    const profile = getProfileByUserId(id);
+
+    let isActive = false;
+    if (user?.created_at) {
+      const createdAt = new Date(user.created_at).getTime();
+      if (!isNaN(createdAt) && createdAt >= twoDaysAgo) {
+        isActive = true;
+      }
+    }
+    if (!isActive && profile?.created_at) {
+      const createdAt = new Date(profile.created_at).getTime();
+      if (!isNaN(createdAt) && createdAt >= twoDaysAgo) {
+        isActive = true;
+      }
+    }
+    if (!isActive && profile?.last_points_usage) {
+      const lastUsage = new Date(profile.last_points_usage).getTime();
+      if (!isNaN(lastUsage) && lastUsage >= twoDaysAgo) {
+        isActive = true;
+      }
+    }
+
+    if (isActive) {
+      activeIds.push(id);
+    }
+  }
+
+  return activeIds.length > 0 ? activeIds : allIds;
+}
+
+export function getPointsSpentToday(userId: string): number {
+  const transactions = getTableRows("points_transactions", userId);
+  const startToday = getStartOfTodayUtc();
+  let total = 0;
+  for (const tx of transactions) {
+    if (tx && tx.amount && new Date(tx.created_at).getTime() >= startToday) {
+      total += Number(tx.amount) || 0;
+    }
+  }
+  return total;
+}
+
+export function getTotalPointsSpentToday(): number {
+  const transactions = getTableRows("points_transactions");
+  const startToday = getStartOfTodayUtc();
+  let total = 0;
+  for (const tx of transactions) {
+    if (tx && tx.amount && new Date(tx.created_at).getTime() >= startToday) {
+      total += Number(tx.amount) || 0;
+    }
+  }
+  return total;
+}
+
+export function getGiftsSentToday(userId: string): number {
+  const gifts = getTableRows("point_gifts", userId);
+  const startToday = getStartOfTodayUtc();
+  let total = 0;
+  for (const g of gifts) {
+    if (
+      g &&
+      String(g.sender_id) === String(userId) &&
+      g.amount &&
+      new Date(g.created_at).getTime() >= startToday
+    ) {
+      total += Number(g.amount) || 0;
+    }
+  }
+  return total;
+}
+
+export function getGiftsReceivedToday(userId: string): number {
+  const allGifts = getTableRows("point_gifts");
+  const startToday = getStartOfTodayUtc();
+  let total = 0;
+  for (const g of allGifts) {
+    if (
+      g &&
+      String(g.receiver_id) === String(userId) &&
+      g.amount &&
+      new Date(g.created_at).getTime() >= startToday
+    ) {
+      total += Number(g.amount) || 0;
+    }
+  }
+  return total;
+}
+
+export function getPointsStatus(userId?: string): {
+  available: number;
+  given: number;
+  points: number;
+  daily_claim_available: boolean;
+  streak_days: number;
+} {
+  if (!userId) {
+    return {
+      available: 0,
+      given: DAILY_POINTS_POOL,
+      points: 0,
+      daily_claim_available: true,
+      streak_days: 1,
+    };
+  }
+
+  const activeUserIds = getActiveUserIds();
+  const activeSet = new Set(activeUserIds);
+  activeSet.add(String(userId));
+  const activeCount = Math.max(1, activeSet.size);
+
+  const baseQuota = Math.floor(DAILY_POINTS_POOL / activeCount);
+
+  const spentToday = getPointsSpentToday(userId);
+  const giftsSent = getGiftsSentToday(userId);
+  const giftsReceived = getGiftsReceivedToday(userId);
+
+  const totalSpentToday = getTotalPointsSpentToday();
+  const remainingGlobalPool = Math.max(0, DAILY_POINTS_POOL - totalSpentToday);
+
+  // The given quota for this user today (base + gifts received - gifts sent)
+  const given = Math.max(0, baseQuota - giftsSent + giftsReceived);
+
+  // Available points: fair share minus user's spent points minus gifts sent plus gifts received
+  const availableBase = baseQuota - spentToday - giftsSent + giftsReceived;
+  // Clamped between 0 and remaining global pool
+  const available = Math.max(0, Math.min(availableBase, remainingGlobalPool));
+
+  return {
+    available,
+    given,
+    points: available,
+    daily_claim_available: true,
+    streak_days: 1,
+  };
+}
+
+/**
  * RPC Function handlers.
  */
 export function callRpc(name: string, param2?: any, param3?: any): any {
@@ -1015,26 +1187,113 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
     case "spend_points": {
       if (!userId) return { success: false, error: "Unauthorized" };
       const amount = Number(args?.p_amount ?? args?.amount ?? 0);
-      const pref = getTableRows("user_preferences", userId)[0] || {
-        points: 100,
-      };
-      const currentPoints = Number(pref.points ?? 100);
-      if (currentPoints < amount) {
+      if (isNaN(amount) || amount <= 0) {
+        return { success: false, error: "Invalid amount" };
+      }
+      const status = getPointsStatus(userId);
+      if (status.available < amount) {
         return { success: false, error: "Insufficient points" };
       }
-      const updated = { ...pref, points: currentPoints - amount };
-      saveTableRows("user_preferences", userId, [updated]);
-      return { success: true, points: updated.points };
+      const now = new Date().toISOString();
+      const tx = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        amount,
+        created_at: now,
+      };
+      insertTable("points_transactions", tx, userId);
+
+      // Update last_points_usage on profile
+      const profile = getProfileByUserId(userId);
+      if (profile) {
+        saveTableRows("profiles", userId, [
+          { ...profile, last_points_usage: now },
+        ]);
+      }
+
+      const updatedStatus = getPointsStatus(userId);
+      const pref = getTableRows("user_preferences", userId)[0] || {};
+      saveTableRows("user_preferences", userId, [
+        { ...pref, points: updatedStatus.available },
+      ]);
+
+      return {
+        success: true,
+        points: updatedStatus.points,
+        available: updatedStatus.available,
+        given: updatedStatus.given,
+      };
     }
     case "get_points_status": {
-      if (!userId) return { points: 0, daily_claim_available: true };
-      const user = getUserById(userId);
-      const prefs = getTableRows("user_preferences", userId)[0];
-      return {
-        points: prefs?.points ?? user?.points ?? 100,
-        daily_claim_available: true,
-        streak_days: 1,
+      return getPointsStatus(userId);
+    }
+    case "get_available_points": {
+      const targetUser = args?.p_user_id || args?.user_id || userId;
+      return getPointsStatus(targetUser).available;
+    }
+    case "give_points": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const receiverId = String(
+        args?.p_receiver_id ?? args?.receiver_id ?? "",
+      );
+      const amount = Number(args?.p_amount ?? args?.amount ?? 0);
+      if (!receiverId)
+        return { success: false, error: "Receiver ID is required" };
+      if (String(receiverId) === String(userId)) {
+        return { success: false, error: "Cannot give points to yourself" };
+      }
+      if (isNaN(amount) || amount <= 0) {
+        return { success: false, error: "Amount must be a positive integer" };
+      }
+
+      const receiverUser = getUserById(receiverId);
+      if (!receiverUser) {
+        return { success: false, error: "Receiver not found" };
+      }
+
+      const friendships = getTableRows("friendships", userId);
+      const isFriend = friendships.some(
+        (f) =>
+          f.status === "accepted" &&
+          ((String(f.user_id) === String(userId) &&
+            String(f.friend_id) === String(receiverId)) ||
+            (String(f.friend_id) === String(userId) &&
+              String(f.user_id) === String(receiverId))),
+      );
+      if (!isFriend) {
+        return { success: false, error: "You can only give points to friends" };
+      }
+
+      const status = getPointsStatus(userId);
+      if (status.available < amount) {
+        return { success: false, error: "Insufficient points to give" };
+      }
+
+      const now = new Date().toISOString();
+      const gift = {
+        id: crypto.randomUUID(),
+        sender_id: userId,
+        receiver_id: receiverId,
+        amount,
+        created_at: now,
       };
+      insertTable("point_gifts", gift, userId);
+      insertTable("point_gifts", gift, receiverId);
+
+      const updatedStatus = getPointsStatus(userId);
+      return {
+        success: true,
+        available: updatedStatus.available,
+        given: updatedStatus.given,
+      };
+    }
+    case "adjust_points": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const amount = Number(args?.p_amount ?? args?.amount ?? 0);
+      if (amount < 0) {
+        return callRpc("spend_points", { p_amount: Math.abs(amount) }, userId);
+      }
+      return { success: true };
     }
     case "upsert_user_preferences": {
       if (!userId) throw new Error("Unauthorized");

@@ -620,8 +620,12 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       const { data: statusData, error: statusErr } =
         await db.rpc("get_points_status");
       expect(statusErr).toBeNull();
-      expect(statusData.points).toBe(100);
+      expect(statusData.points).toBeGreaterThan(0);
+      expect(statusData.available).toBeGreaterThan(0);
+      expect(statusData.given).toBeGreaterThan(0);
       expect(statusData.daily_claim_available).toBe(true);
+
+      const initialPoints = statusData.points;
 
       // 2. Spend points
       const { data: spendData, error: spendErr } = await db.rpc(
@@ -630,12 +634,12 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       );
       expect(spendErr).toBeNull();
       expect(spendData.success).toBe(true);
-      expect(spendData.points).toBe(70);
+      expect(spendData.points).toBe(initialPoints - 30);
 
       // 3. Attempt spending more points than available
       const { data: overspendData, error: overspendErr } = await db.rpc(
         "spend_points",
-        { amount: 500 },
+        { amount: initialPoints + 10000 },
       );
       expect(overspendErr).toBeNull();
       expect(overspendData.success).toBe(false);

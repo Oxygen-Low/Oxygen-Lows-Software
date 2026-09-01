@@ -780,14 +780,22 @@ export function ChatbotApp() {
     }
   }, [session?.user?.id, selectedProvider, hordeModels, setSelection]);
 
-  useEffect(() => {
-    const fetchPoints = async () => {
-      if (!session?.user?.id) return;
+  const fetchPoints = useCallback(async () => {
+    if (!session?.user?.id) {
+      setPointsStatus(null);
+      return;
+    }
+    try {
       const { data } = await supabase.rpc("get_points_status");
       if (data) setPointsStatus(data as any);
-    };
+    } catch {
+      // ignore
+    }
+  }, [session?.user?.id]);
+
+  useEffect(() => {
     fetchPoints();
-  }, [session?.user?.id, messages]);
+  }, [fetchPoints, messages]);
 
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
@@ -2756,6 +2764,7 @@ export function ChatbotApp() {
                     onClick={() => {
                       if (!modelDropdownOpen) {
                         refreshModels?.();
+                        fetchPoints();
                       }
                       setModelDropdownOpen(!modelDropdownOpen);
                       setOptionsDropdownOpen(false);
@@ -2892,21 +2901,23 @@ export function ChatbotApp() {
                             <p className="text-[11px] text-slate-400 font-display font-medium">
                               Cloudflare
                             </p>
-                            {pointsStatus !== null && (
-                              <div className="flex flex-col items-end gap-1.5 mt-1 mr-1">
-                                <span className="text-[10px] font-mono text-cyan-400 font-medium">
-                                  {pointsStatus.available}/{pointsStatus.given}
-                                </span>
-                                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-cyan-400"
-                                    style={{
-                                      width: `${Math.max(0, Math.min(100, (pointsStatus.available / pointsStatus.given) * 100))}%`,
-                                    }}
-                                  />
+                            {pointsStatus !== null &&
+                              pointsStatus.available !== undefined &&
+                              pointsStatus.given !== undefined && (
+                                <div className="flex flex-col items-end gap-1.5 mt-1 mr-1">
+                                  <span className="text-[10px] font-mono text-cyan-400 font-medium">
+                                    {pointsStatus.available}/{pointsStatus.given}
+                                  </span>
+                                  <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-cyan-400 transition-all duration-300"
+                                      style={{
+                                        width: `${Math.max(0, Math.min(100, (pointsStatus.available / (pointsStatus.given || 1)) * 100))}%`,
+                                      }}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                           <div className="px-2 pl-3 border-l border-white/5 ml-3">
                             {cloudflareModels.map((m) => (

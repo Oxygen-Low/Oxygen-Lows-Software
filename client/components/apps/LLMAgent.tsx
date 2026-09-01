@@ -1258,7 +1258,9 @@ function ModelSelector({
         title={
           selectedProvider === "cloudflare" &&
           pointsStatus !== null &&
-          pointsStatus !== undefined
+          pointsStatus !== undefined &&
+          pointsStatus.available !== undefined &&
+          pointsStatus.given !== undefined
             ? `Points: ${pointsStatus.available}/${pointsStatus.given}`
             : undefined
         }
@@ -1267,7 +1269,9 @@ function ModelSelector({
         <span className="max-w-[160px] truncate text-xs">{label}</span>
         {selectedProvider === "cloudflare" &&
           pointsStatus !== null &&
-          pointsStatus !== undefined && (
+          pointsStatus !== undefined &&
+          pointsStatus.available !== undefined &&
+          pointsStatus.given !== undefined && (
             <span className="text-[10px] font-mono text-cyan-400 font-medium bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
               {pointsStatus.available}/{pointsStatus.given}
             </span>
@@ -1345,21 +1349,24 @@ function ModelSelector({
                     <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
                       Cloudflare Workers AI
                     </p>
-                    {pointsStatus !== null && pointsStatus !== undefined && (
-                      <div className="flex flex-col items-end gap-1 mr-1">
-                        <span className="text-[10px] font-mono text-cyan-400 font-medium">
-                          {pointsStatus.available}/{pointsStatus.given}
-                        </span>
-                        <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-cyan-400 transition-all duration-300"
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (pointsStatus.available / pointsStatus.given) * 100))}%`,
-                            }}
-                          />
+                    {pointsStatus !== null &&
+                      pointsStatus !== undefined &&
+                      pointsStatus.available !== undefined &&
+                      pointsStatus.given !== undefined && (
+                        <div className="flex flex-col items-end gap-1 mr-1">
+                          <span className="text-[10px] font-mono text-cyan-400 font-medium">
+                            {pointsStatus.available}/{pointsStatus.given}
+                          </span>
+                          <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-cyan-400 transition-all duration-300"
+                              style={{
+                                width: `${Math.max(0, Math.min(100, (pointsStatus.available / (pointsStatus.given || 1)) * 100))}%`,
+                              }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                   {cloudflareModels.map((m) => (
                     <button
