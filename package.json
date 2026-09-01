@@ -37,7 +37,7 @@
     "hono": "^4.13.3",
     "leaflet": "^1.9.4",
     "mime-types": "^3.0.2",
-    "music-metadata": "11.14.0",
+    "music-metadata": "11.15.0",
     "ping": "^1.0.0",
     "pokersolver": "^2.1.4",
     "qrcode.react": "^4.2.0",
