@@ -1,8 +1,8 @@
 export const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "horde") {
     const labels: Record<string, string> = {
-      Fast: "Fast - google/gemma-4-31b",
-      Smart: "Smart - koboldcpp/Behemoth-128B-v3b-Q4_K_M",
+      Fast: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+      Smart: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
     };
     return labels[modelId] || "AI Horde - " + modelId;
   }

@@ -64,7 +64,8 @@ vi.mock("@/lib/db", () => {
                   last_provider: "openai",
                   chatbot_default_model: "gpt-4o",
                   chatbot_default_provider: "openai",
-                  research_agent_default_model: "google/gemma-4-31b",
+                  research_agent_default_model:
+                    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
                   research_agent_default_provider: "horde",
                   research_summarizer_default_model:
                     "@cf/nvidia/nemotron-3-120b-a12b",
@@ -298,7 +299,7 @@ describe("useAiModels Hook", () => {
     await waitFor(() => {
       expect(result.current.chatbotDefaultModel).toBe("gpt-4o");
       expect(result.current.researchAgentDefaultModel).toBe(
-        "google/gemma-4-31b",
+        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
       );
       expect(result.current.researchSummarizerDefaultModel).toBe(
         "@cf/nvidia/nemotron-3-120b-a12b",

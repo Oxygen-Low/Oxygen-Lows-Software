@@ -17,8 +17,8 @@ const DEFAULT_MODELS = [
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
   TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
-  Fast: ["google/gemma-4-31b"],
-  Smart: ["koboldcpp/Behemoth-128B-v3b-Q4_K_M"],
+  Fast: ["koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M"],
+  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 
 export interface SearchIntent {

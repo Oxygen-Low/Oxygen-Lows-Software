@@ -230,7 +230,7 @@ export function AiGenerateDialog({
           {
             provider: "horde",
             model_id: "Fast",
-            name: "Fast - google/gemma-4-31b",
+            name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
           },
         ];
 

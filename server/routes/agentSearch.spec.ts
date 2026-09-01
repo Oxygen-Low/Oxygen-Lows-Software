@@ -67,7 +67,9 @@ describe("Agent Search Route", () => {
   });
 
   test("Exports HORDE_FAST_MODEL and CLOUDFLARE_SMART_MODEL constants", () => {
-    expect(HORDE_FAST_MODEL).toBe("google/gemma-4-31b");
+    expect(HORDE_FAST_MODEL).toBe(
+      "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+    );
     expect(CLOUDFLARE_SMART_MODEL).toBe("@cf/nvidia/nemotron-3-120b-a12b");
     expect(HORDE_URL).toBe("https://oai.stablehorde.net/v1/chat/completions");
   });
@@ -319,7 +321,7 @@ describe("Agent Search Route", () => {
     expect(capturedCfModel).toBe("@cf/meta/llama-3.1-8b-instruct-fast");
   });
 
-  test("Maps Horde 'Smart' model alias to koboldcpp/Behemoth-128B-v3b-Q4_K_M", async () => {
+  test("Maps Horde 'Smart' model alias to aphrodite/TheDrummer/Behemoth-X-123B-v2.1", async () => {
     let capturedHordeModel = "";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const urlStr = String(url);
@@ -327,36 +329,38 @@ describe("Agent Search Route", () => {
         const reqBody = JSON.parse((init?.body as string) || "{}");
         capturedHordeModel = reqBody.model;
         return new Response(
-          JSON.stringify({
-            choices: [{ message: { content: '{"action": "done"}' } }],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ error: "Not found" }), {
-        status: 404,
-      });
-    });
+           JSON.stringify({
+             choices: [{ message: { content: '{"action": "done"}' } }],
+           }),
+           { status: 200, headers: { "Content-Type": "application/json" } },
+         );
+       }
+       return new Response(JSON.stringify({ error: "Not found" }), {
+         status: 404,
+       });
+     });
 
-    const res = await app.request("/api/ai/agent-search", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${validToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query: "What is quantum computing?",
-        responseFormat: "summary",
-        researchOnly: true,
-        stream: false,
-        researchModel: "Smart",
-        researchProvider: "horde",
-      }),
-    });
+     const res = await app.request("/api/ai/agent-search", {
+       method: "POST",
+       headers: {
+         Authorization: `Bearer ${validToken}`,
+         "Content-Type": "application/json",
+       },
+       body: JSON.stringify({
+         query: "What is quantum computing?",
+         responseFormat: "summary",
+         researchOnly: true,
+         stream: false,
+         researchModel: "Smart",
+         researchProvider: "horde",
+       }),
+     });
 
-    expect(res.status).toBe(200);
-    expect(capturedHordeModel).toBe("koboldcpp/Behemoth-128B-v3b-Q4_K_M");
-  });
+     expect(res.status).toBe(200);
+     expect(capturedHordeModel).toBe(
+       "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+     );
+   });
 
   test("Fails with 400 when unconfigured third-party provider is selected", async () => {
     const res = await app.request("/api/ai/agent-search", {

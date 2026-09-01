@@ -6,13 +6,13 @@ import { queryTable, callRpc } from "../lib/dataStore.ts";
 export const agentSearchRouter = new Hono();
 
 export const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
-export const HORDE_FAST_MODEL = "google/gemma-4-31b";
+export const HORDE_FAST_MODEL = "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M";
 export const CLOUDFLARE_SMART_MODEL = "@cf/nvidia/nemotron-3-120b-a12b";
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
   TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
-  Fast: ["google/gemma-4-31b"],
-  Smart: ["koboldcpp/Behemoth-128B-v3b-Q4_K_M"],
+  Fast: ["koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M"],
+  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 
 export function resolveHordeModel(model: string): string {

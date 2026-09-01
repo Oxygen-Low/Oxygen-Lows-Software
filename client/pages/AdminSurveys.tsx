@@ -303,24 +303,24 @@ export default function AdminSurveys() {
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-8rem)] bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6">
+      <div className="min-h-[calc(100vh-8rem)] bg-card text-card-foreground rounded-xl shadow-sm border border-border p-6 sm:p-8 space-y-6">
         {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-6">
           <div className="space-y-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate("/admin")}
-              className="text-slate-500 hover:text-slate-900 dark:hover:text-white mb-1 -ml-2"
+              className="text-muted-foreground hover:text-foreground mb-1 -ml-2"
             >
               <ArrowLeft className="w-4 h-4 mr-1.5" />
               {t("admin.backToAdmin", undefined, "Back to Admin Panel")}
             </Button>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
-              <ClipboardList className="w-8 h-8 text-cyan-500" />
+            <h1 className="text-3xl font-extrabold text-foreground flex items-center gap-2.5">
+              <ClipboardList className="w-8 h-8 text-primary" />
               {t("admin.surveysTitle", undefined, "Surveys Management")}
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               {t("admin.surveysDesc", undefined, "Create, configure, and monitor community and monthly surveys.")}
             </p>
           </div>
@@ -331,7 +331,7 @@ export default function AdminSurveys() {
               size="sm"
               onClick={handlePurgeMonthly}
               disabled={purging}
-              className="border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              className="border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${purging ? "animate-spin" : ""}`} />
               {t("admin.purgeExpired", undefined, "Purge Monthly Data")}
@@ -339,40 +339,40 @@ export default function AdminSurveys() {
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
                   <Plus className="w-4 h-4 mr-2" />
                   {t("admin.createSurvey", undefined, "Create Survey")}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 text-white border-slate-800">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card text-card-foreground border-border">
                 <DialogHeader>
-                  <DialogTitle className="text-xl font-bold text-white">
+                  <DialogTitle className="text-xl font-bold text-foreground">
                     {t("admin.newSurveyTitle", undefined, "Create New Custom Survey")}
                   </DialogTitle>
-                  <DialogDescription className="text-slate-400">
-                    {t("admin.newSurveyDesc", undefined, "Configure questions and recurrence for this survey.")}
+                  <DialogDescription className="text-muted-foreground text-xs">
+                    {t("admin.newSurveyDesc", undefined, "Add a new survey to the community benchmarks.")}
                   </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleCreateSurvey} className="space-y-5 pt-3">
+                <form onSubmit={handleCreateSurvey} className="space-y-4 pt-2">
                   <div className="space-y-2">
-                    <Label className="text-slate-200">{t("admin.surveyTitleLabel", undefined, "Survey Title *")}</Label>
+                    <Label className="text-foreground">{t("admin.surveyTitleLabel", undefined, "Survey Title")}</Label>
                     <Input
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="e.g., Favorite IDE & Developer Tools"
-                      className="bg-slate-950 border-slate-700 text-white"
+                      placeholder="e.g., Programming Languages 2026"
+                      className="bg-background border-border text-foreground"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-slate-200">{t("admin.surveyDescLabel", undefined, "Description *")}</Label>
+                    <Label className="text-foreground">{t("admin.surveyDescLabel", undefined, "Description")}</Label>
                     <Textarea
                       value={newDescription}
                       onChange={(e) => setNewDescription(e.target.value)}
-                      placeholder="Briefly describe what this survey is about..."
-                      className="bg-slate-950 border-slate-700 text-white"
+                      placeholder="Briefly describe the survey..."
+                      className="bg-background border-border text-foreground"
                       rows={2}
                       required
                     />
@@ -380,33 +380,33 @@ export default function AdminSurveys() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-slate-200">{t("admin.categoryLabel", undefined, "Category")}</Label>
+                      <Label className="text-foreground">{t("admin.categoryLabel", undefined, "Category")}</Label>
                       <Select
                         value={newCategory}
                         onValueChange={(val: any) => setNewCategory(val)}
                       >
-                        <SelectTrigger className="bg-slate-950 border-slate-700 text-white">
+                        <SelectTrigger className="bg-background border-border text-foreground">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                          <SelectItem value="General">General</SelectItem>
-                          <SelectItem value="Fun">Fun</SelectItem>
-                          <SelectItem value="Development">Development</SelectItem>
+                        <SelectContent className="bg-card border-border text-card-foreground">
                           <SelectItem value="Hardware">Hardware</SelectItem>
+                          <SelectItem value="Fun">Fun & Gaming</SelectItem>
+                          <SelectItem value="Development">Development</SelectItem>
+                          <SelectItem value="General">General</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-slate-200">{t("admin.recurrenceLabel", undefined, "Recurrence")}</Label>
+                      <Label className="text-foreground">{t("admin.recurrenceLabel", undefined, "Recurrence")}</Label>
                       <Select
                         value={newRecurrence}
                         onValueChange={(val: any) => setNewRecurrence(val)}
                       >
-                        <SelectTrigger className="bg-slate-950 border-slate-700 text-white">
+                        <SelectTrigger className="bg-background border-border text-foreground">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                        <SelectContent className="bg-card border-border text-card-foreground">
                           <SelectItem value="monthly">Monthly (Resets each month)</SelectItem>
                           <SelectItem value="permanent">Permanent (One-time)</SelectItem>
                         </SelectContent>
@@ -415,9 +415,9 @@ export default function AdminSurveys() {
                   </div>
 
                   {/* Dynamic Questions Builder */}
-                  <div className="space-y-4 pt-2 border-t border-slate-800">
+                  <div className="space-y-4 pt-2 border-t border-border">
                     <div className="flex items-center justify-between">
-                      <Label className="text-base font-bold text-cyan-400">
+                      <Label className="text-base font-bold text-primary">
                         {t("admin.questionsSection", undefined, "Survey Questions")}
                       </Label>
                       <Button
@@ -425,7 +425,7 @@ export default function AdminSurveys() {
                         variant="outline"
                         size="sm"
                         onClick={handleAddQuestion}
-                        className="border-slate-700 text-xs"
+                        className="border-border text-xs"
                       >
                         <Plus className="w-3.5 h-3.5 mr-1" />
                         {t("admin.addQuestion", undefined, "Add Question")}
@@ -435,10 +435,10 @@ export default function AdminSurveys() {
                     {questions.map((q, qIdx) => (
                       <div
                         key={qIdx}
-                        className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3"
+                        className="p-4 rounded-xl bg-background/60 border border-border space-y-3"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-mono font-bold text-cyan-400">
+                          <span className="text-xs font-mono font-bold text-primary">
                             Question {qIdx + 1}
                           </span>
                           {questions.length > 1 && (
@@ -447,7 +447,7 @@ export default function AdminSurveys() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemoveQuestion(qIdx)}
-                              className="h-7 w-7 p-0 text-rose-400 hover:text-rose-300"
+                              className="h-7 w-7 p-0 text-rose-500 hover:text-rose-400"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -465,7 +465,7 @@ export default function AdminSurveys() {
                             });
                           }}
                           placeholder={`Enter question prompt...`}
-                          className="bg-slate-900 border-slate-700 text-white"
+                          className="bg-background border-border text-foreground"
                           required
                         />
 
@@ -480,10 +480,10 @@ export default function AdminSurveys() {
                               });
                             }}
                           >
-                            <SelectTrigger className="bg-slate-900 border-slate-700 text-white text-xs">
+                            <SelectTrigger className="bg-background border-border text-foreground text-xs">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                            <SelectContent className="bg-card border-border text-card-foreground">
                               <SelectItem value="single_choice">Single Choice</SelectItem>
                               <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                               <SelectItem value="rating">Rating (1-5)</SelectItem>
@@ -503,7 +503,7 @@ export default function AdminSurveys() {
                                 });
                               }}
                             />
-                            <Label className="text-xs text-slate-300">
+                            <Label className="text-xs text-muted-foreground">
                               {t("common.required", undefined, "Required")}
                             </Label>
                           </div>
@@ -511,8 +511,8 @@ export default function AdminSurveys() {
 
                         {/* Options Editor for Choice Questions */}
                         {(q.type === "single_choice" || q.type === "multiple_choice") && (
-                          <div className="space-y-2 pt-2 border-t border-slate-800/60">
-                            <Label className="text-xs text-slate-400">Options</Label>
+                          <div className="space-y-2 pt-2 border-t border-border">
+                            <Label className="text-xs text-muted-foreground">Options</Label>
                             {q.options.map((opt, optIdx) => (
                               <div key={optIdx} className="flex items-center gap-2">
                                 <Input
@@ -525,7 +525,7 @@ export default function AdminSurveys() {
                                       return copy;
                                     });
                                   }}
-                                  className="h-8 text-xs bg-slate-900 border-slate-700 text-white"
+                                  className="h-8 text-xs bg-background border-border text-foreground"
                                   placeholder={`Option ${optIdx + 1}`}
                                 />
                                 {q.options.length > 2 && (
@@ -534,7 +534,7 @@ export default function AdminSurveys() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleRemoveOption(qIdx, optIdx)}
-                                    className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-400"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </Button>
@@ -546,7 +546,7 @@ export default function AdminSurveys() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleAddOption(qIdx)}
-                              className="h-7 text-xs text-cyan-400 hover:text-cyan-300"
+                              className="h-7 text-xs text-primary hover:underline"
                             >
                               <Plus className="w-3 h-3 mr-1" />
                               Add Option
@@ -557,19 +557,19 @@ export default function AdminSurveys() {
                     ))}
                   </div>
 
-                  <DialogFooter className="pt-4 border-t border-slate-800">
+                  <DialogFooter className="pt-4 border-t border-border">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsCreateOpen(false)}
-                      className="border-slate-700 text-slate-300"
+                      className="border-border text-muted-foreground"
                     >
                       {t("common.cancel", undefined, "Cancel")}
                     </Button>
                     <Button
                       type="submit"
                       disabled={creating}
-                      className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
                     >
                       {creating ? t("common.loading", undefined, "Creating...") : t("common.create", undefined, "Create Survey")}
                     </Button>
@@ -583,15 +583,15 @@ export default function AdminSurveys() {
         {/* Survey Cards Table / Grid */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-slate-500 text-sm">{t("common.loading", undefined, "Loading surveys...")}</span>
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-muted-foreground text-sm">{t("common.loading", undefined, "Loading surveys...")}</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {surveys.map((survey) => (
               <Card
                 key={survey.id}
-                className="flex flex-col justify-between border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm"
+                className="flex flex-col justify-between border-border bg-card shadow-sm"
               >
                 <CardHeader className="space-y-3 pb-3">
                   <div className="flex items-center justify-between gap-2">
@@ -618,17 +618,17 @@ export default function AdminSurveys() {
                   </div>
 
                   <div>
-                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
+                    <CardTitle className="text-lg font-bold text-foreground">
                       {t(survey.titleKey, undefined, survey.defaultTitle)}
                     </CardTitle>
-                    <CardDescription className="text-slate-500 dark:text-slate-400 text-xs mt-1 line-clamp-2">
+                    <CardDescription className="text-muted-foreground text-xs mt-1 line-clamp-2">
                       {t(survey.descriptionKey, undefined, survey.defaultDescription)}
                     </CardDescription>
                   </div>
                 </CardHeader>
 
-                <CardFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                  <div className="text-xs text-slate-500">
+                <CardFooter className="pt-3 border-t border-border flex items-center justify-between gap-2">
+                  <div className="text-xs text-muted-foreground">
                     {survey.isPredefined
                       ? t("admin.predefined", undefined, "Predefined System Survey")
                       : t("admin.customSurvey", undefined, "Custom Admin Survey")}

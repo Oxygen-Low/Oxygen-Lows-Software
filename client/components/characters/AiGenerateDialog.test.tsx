@@ -28,7 +28,11 @@ const mockModels = [
     model_id: "@cf/google/gemma-4-26b-a4b-it",
     name: "Gemma 4 26B IT (Balanced)",
   },
-  { provider: "horde", model_id: "Fast", name: "Fast - google/gemma-4-31b" },
+  {
+    provider: "horde",
+    model_id: "Fast",
+    name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+  },
   {
     provider: "local-ollama",
     model_id: "llama3.2:latest",

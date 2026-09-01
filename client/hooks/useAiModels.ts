@@ -49,11 +49,15 @@ export const BUILTIN_MODELS: Model[] = [
     model_id: "@cf/meta/llama-3.1-8b-instruct-fast",
     name: "Llama 3.1 8B Instruct (Roleplay)",
   },
-  { provider: "horde", model_id: "Fast", name: "Fast - google/gemma-4-31b" },
+  {
+    provider: "horde",
+    model_id: "Fast",
+    name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+  },
   {
     provider: "horde",
     model_id: "Smart",
-    name: "Smart - koboldcpp/Behemoth-128B-v3b-Q4_K_M",
+    name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
   },
 ];
 
@@ -111,8 +115,14 @@ export const POPULAR_PRESETS: Record<
     },
   ],
   horde: [
-    { model_id: "Fast", name: "Fast - google/gemma-4-31b" },
-    { model_id: "Smart", name: "Smart - koboldcpp/Behemoth-128B-v3b-Q4_K_M" },
+    {
+      model_id: "Fast",
+      name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+    },
+    {
+      model_id: "Smart",
+      name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+    },
   ],
   "local-ollama": [
     { model_id: "llama3.2:latest", name: "Llama 3.2" },

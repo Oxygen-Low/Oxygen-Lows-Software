@@ -1125,7 +1125,7 @@ export default function Account() {
                         <SelectValue
                           placeholder={
                             researchAgentDefaultModel ||
-                            "Default: google/gemma-4-31b"
+                            "Default: koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M"
                           }
                         />
                       </SelectTrigger>

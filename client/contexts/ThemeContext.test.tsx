@@ -132,7 +132,12 @@ function TestThemeConsumer() {
       </button>
       <button
         data-testid="set-research-agent-default"
-        onClick={() => setResearchAgentDefault("google/gemma-4-31b", "horde")}
+        onClick={() =>
+          setResearchAgentDefault(
+            "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+            "horde",
+          )
+        }
       >
         Set Research Agent Default
       </button>
@@ -333,7 +338,8 @@ describe("ThemeContext & Provider", () => {
     await waitFor(() => {
       expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
         p_user_id: "test-user-id",
-        p_research_agent_default_model: "google/gemma-4-31b",
+        p_research_agent_default_model:
+          "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
         p_research_agent_default_provider: "horde",
       });
     });
