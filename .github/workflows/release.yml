@@ -7,6 +7,7 @@ on:
     paths:
       - "Desktop/**"
       - "Android/**"
+      - "OS/**"
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
@@ -153,9 +154,46 @@ jobs:
           path: Android/Output/OxygenLowsSoftware.apk
           if-no-files-found: error
 
+  build-os:
+    name: Build OS ISO
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install Toolchain & Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nasm gcc g++ xorriso grub-pc-bin grub-common mtools qemu-system-x86 python3
+
+      - name: Build Oxygen Low's Software Kernel & ISO
+        run: |
+          cd OS
+          make iso
+
+      - name: Run Automated Headless Verification
+        run: |
+          cd OS
+          python3 test_runner.py --iso OxygenLowsSoftware.iso --timeout 25.0
+
+      - name: Prepare OS Release Asset
+        run: |
+          mkdir -p OS/Output
+          cp OS/OxygenLowsSoftware.iso OS/Output/OxygenLowsSoftware.iso
+
+      - name: Upload OS Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: os-iso
+          path: OS/Output/OxygenLowsSoftware.iso
+          if-no-files-found: error
+
   publish-release:
     name: Create & Publish Release
-    needs: [version, build-desktop, build-android]
+    needs: [version, build-desktop, build-android, build-os]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -177,6 +215,12 @@ jobs:
           name: android-apk
           path: release_assets
 
+      - name: Download OS Artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: os-iso
+          path: release_assets
+
       - name: Create Release
         uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
         with:
@@ -189,5 +233,6 @@ jobs:
           files: |
             release_assets/OxygenLowsSoftware_Installer.exe
             release_assets/OxygenLowsSoftware.apk
+            release_assets/OxygenLowsSoftware.iso
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
