@@ -307,7 +307,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
           if (data?.signedUrl) {
             const style = document.createElement("style");
             style.id = "custom-font-style";
-            style.innerHTML = `
+            style.textContent = `
             @font-face {
               font-family: 'CustomUserFont';
               src: url('${data.signedUrl}');
