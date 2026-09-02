@@ -115,7 +115,6 @@ export interface UserPlaytimeRecord {
   last_played_at: string;
   created_at: string;
   updated_at: string;
-  [key: string]: any;
 }
 
 export interface UserPresenceRecord {
@@ -173,6 +172,12 @@ export function getNextUserId(): string {
     try {
       const items = fs.readdirSync(DATA_DIR, { withFileTypes: true });
       for (const item of items) {
+        const resolvedBase = path.resolve(DATA_DIR);
+        const resolvedTarget = path.resolve(DATA_DIR, item.name);
+        const relative = path.relative(resolvedBase, resolvedTarget);
+        if (relative.startsWith('..') || path.isAbsolute(relative)) {
+          continue;
+        }
         if (item.isDirectory() && /^\d+$/.test(item.name)) {
           const num = parseInt(item.name, 10);
           if (num >= nextId) {
@@ -201,8 +206,14 @@ export function initUserFolder(
     last_points_usage?: string | null;
   },
 ) {
+  const resolvedBase = path.resolve(DATA_DIR);
+  const resolvedTarget = path.resolve(DATA_DIR, userId);
+  const relative = path.relative(resolvedBase, resolvedTarget);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Invalid user ID');
+  }
   cachedUserIds = null;
-  const userDir = path.join(DATA_DIR, userId);
+  const userDir = resolvedTarget;
   ensureDir(userDir);
   ensureDir(path.join(userDir, "datastore"));
   ensureDir(path.join(userDir, "chatbot"));
@@ -316,9 +327,10 @@ export function getAllUserIds(): string[] {
     return cachedUserIds;
   }
   if (!fs.existsSync(DATA_DIR)) return [];
+  const resolvedDataDir = path.resolve(DATA_DIR);
   try {
     cachedUserIds = fs
-      .readdirSync(DATA_DIR, { withFileTypes: true })
+      .readdirSync(resolvedDataDir, { withFileTypes: true })
       .filter((d) => d.isDirectory() && /^\d+$/.test(d.name))
       .map((d) => d.name);
     lastCacheTime = now;
@@ -336,7 +348,13 @@ export function invalidateUserIdsCache(): void {
 export function getUserById(userId: string | number) {
   if (userId === undefined || userId === null || String(userId).trim() === "")
     return null;
-  const userPath = path.join(DATA_DIR, String(userId), "user.json");
+  const base = path.resolve(DATA_DIR);
+  const target = path.resolve(base, String(userId), "user.json");
+  const relative = path.relative(base, target);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    return null;
+  }
+  const userPath = target;
   const user = readJsonFile(userPath, null);
   if (user && String(userId) === "1" && user.role !== "admin") {
     user.role = "admin";
@@ -365,7 +383,11 @@ export function getProfileByUserId(userId: string | number) {
   if (userId === undefined || userId === null || String(userId).trim() === "")
     return null;
   const profilePath = path.join(DATA_DIR, String(userId), "profile.json");
-  return readJsonFile(profilePath, null);
+  const base = path.resolve(DATA_DIR);
+  const target = path.resolve(profilePath);
+  const rel = path.relative(base, target);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  return readJsonFile(target, null);
 }
 
 /**
@@ -380,99 +402,143 @@ export function getTableFilePath(
   // If userId is provided, map user-specific tables
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
     const userDir = path.join(DATA_DIR, String(userId));
+    let filePath: string | null = null;
     switch (normTable) {
       case "profiles":
-        return path.join(userDir, "profile.json");
+        filePath = path.join(userDir, "profile.json");
+        break;
       case "profile_pictures":
-        return path.join(userDir, "profile.json");
+        filePath = path.join(userDir, "profile.json");
+        break;
       case "user_preferences":
-        return path.join(userDir, "preferences.json");
+        filePath = path.join(userDir, "preferences.json");
+        break;
       case "data_saves":
-        return path.join(userDir, "datastore", "saves.json");
+        filePath = path.join(userDir, "datastore", "saves.json");
+        break;
       case "data_save_categories":
-        return path.join(userDir, "datastore", "categories.json");
+        filePath = path.join(userDir, "datastore", "categories.json");
+        break;
       case "chats":
-        return path.join(userDir, "chatbot", "chats.json");
+        filePath = path.join(userDir, "chatbot", "chats.json");
+        break;
       case "chat_messages":
-        return path.join(userDir, "chatbot", "messages.json");
+        filePath = path.join(userDir, "chatbot", "messages.json");
+        break;
       case "characters":
-        return path.join(userDir, "chatbot", "characters.json");
+        filePath = path.join(userDir, "chatbot", "characters.json");
+        break;
       case "universes":
-        return path.join(userDir, "chatbot", "universes.json");
+        filePath = path.join(userDir, "chatbot", "universes.json");
+        break;
       case "races":
-        return path.join(userDir, "chatbot", "races.json");
+        filePath = path.join(userDir, "chatbot", "races.json");
+        break;
       case "user_passwords":
-        return path.join(userDir, "passwords", "passwords.json");
+        filePath = path.join(userDir, "passwords", "passwords.json");
+        break;
       case "vpn_configs":
-        return path.join(userDir, "vpn", "configs.json");
+        filePath = path.join(userDir, "vpn", "configs.json");
+        break;
       case "user_integrations":
-        return path.join(userDir, "integrations", "integrations.json");
+        filePath = path.join(userDir, "integrations", "integrations.json");
+        break;
       case "support_tickets":
-        return path.join(userDir, "support", "tickets.json");
+        filePath = path.join(userDir, "support", "tickets.json");
+        break;
       case "support_messages":
-        return path.join(userDir, "support", "messages.json");
+        filePath = path.join(userDir, "support", "messages.json");
+        break;
       case "friendships":
       case "friends":
-        return path.join(userDir, "friends", "friends.json");
+        filePath = path.join(userDir, "friends", "friends.json");
+        break;
       case "follows":
-        return path.join(userDir, "friends", "follows.json");
+        filePath = path.join(userDir, "friends", "follows.json");
+        break;
       case "blocks":
-        return path.join(userDir, "friends", "blocks.json");
+        filePath = path.join(userDir, "friends", "blocks.json");
+        break;
       case "public_assets":
-        return path.join(userDir, "public_assets", "assets.json");
+        filePath = path.join(userDir, "public_assets", "assets.json");
+        break;
       case "asset_verifications":
-        return path.join(userDir, "public_assets", "verifications.json");
+        filePath = path.join(userDir, "public_assets", "verifications.json");
+        break;
       case "public_asset_likes":
-        return path.join(userDir, "public_assets", "likes.json");
+        filePath = path.join(userDir, "public_assets", "likes.json");
+        break;
       case "public_character_likes":
-        return path.join(userDir, "chatbot", "character_likes.json");
+        filePath = path.join(userDir, "chatbot", "character_likes.json");
+        break;
       case "public_characters":
-        return path.join(userDir, "chatbot", "public_characters.json");
+        filePath = path.join(userDir, "chatbot", "public_characters.json");
+        break;
       case "defender_events":
-        return path.join(userDir, "defender", "events.json");
+        filePath = path.join(userDir, "defender", "events.json");
+        break;
       case "defender_apps":
-        return path.join(userDir, "defender", "apps.json");
+        filePath = path.join(userDir, "defender", "apps.json");
+        break;
       case "defender_config":
-        return path.join(userDir, "defender", "config.json");
+        filePath = path.join(userDir, "defender", "config.json");
+        break;
       case "defender_routes":
-        return path.join(userDir, "defender", "routes.json");
+        filePath = path.join(userDir, "defender", "routes.json");
+        break;
       case "defender_outbound":
-        return path.join(userDir, "defender", "outbound.json");
+        filePath = path.join(userDir, "defender", "outbound.json");
+        break;
       case "defender_threat_actors":
-        return path.join(userDir, "defender", "threat_actors.json");
+        filePath = path.join(userDir, "defender", "threat_actors.json");
+        break;
       case "defender_ip_blocks":
-        return path.join(userDir, "defender", "ip_blocks.json");
+        filePath = path.join(userDir, "defender", "ip_blocks.json");
+        break;
       case "defender_vpn":
-        return path.join(userDir, "defender", "vpn.json");
+        filePath = path.join(userDir, "defender", "vpn.json");
+        break;
       case "user_models":
-        return path.join(userDir, "models", "models.json");
+        filePath = path.join(userDir, "models", "models.json");
+        break;
       case "user_games":
       case "games":
       case "game_library":
       case "installed_games":
       case "custom_games":
-        return path.join(userDir, "games", "games.json");
+        filePath = path.join(userDir, "games", "games.json");
+        break;
       case "user_playtime":
       case "game_playtime":
       case "playtime":
       case "playtimes":
-        return path.join(userDir, "games", "playtime.json");
+        filePath = path.join(userDir, "games", "playtime.json");
+        break;
       case "user_presence":
       case "game_presence":
       case "presence":
       case "presences":
-        return path.join(userDir, "games", "presence.json");
+        filePath = path.join(userDir, "games", "presence.json");
+        break;
       case "points_transactions":
       case "point_transactions":
       case "user_points_transactions":
-        return path.join(userDir, "points", "transactions.json");
+        filePath = path.join(userDir, "points", "transactions.json");
+        break;
       case "point_gifts":
       case "user_point_gifts":
       case "points_gifts":
-        return path.join(userDir, "points", "gifts.json");
+        filePath = path.join(userDir, "points", "gifts.json");
+        break;
       default:
         return null;
     }
+    if (filePath === null) return null;
+    const base = path.resolve(DATA_DIR);
+    const target = path.resolve(filePath);
+    const rel = path.relative(base, target);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+    return target;
   }
 
   return null;
@@ -553,8 +619,14 @@ export function getTableRows(table: string, userId?: string | number): any[] {
     const userIds = getAllUserIds();
     const allAssets: any[] = [];
     for (const id of userIds) {
+      const base = path.resolve(DATA_DIR);
+      const target = path.resolve(base, id, "public_assets", "assets.json");
+      const relative = path.relative(base, target);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        continue;
+      }
       const assets = readJsonFile<any[]>(
-        path.join(DATA_DIR, id, "public_assets", "assets.json"),
+        target,
         [],
       );
       const prof = getProfileByUserId(id);
@@ -707,7 +779,7 @@ function splitTopLevel(str: string): string[] {
   let depth = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str[i];
-    if (char === "(") depth++;
+    if (char === "(" || char === "[" || char === "{") depth++;
     else if (char === ")") depth--;
     else if (char === "," && depth === 0) {
       result.push(current.trim());
@@ -1628,6 +1700,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       }
 
       const allMergedGames = Array.from(existingMap.values());
+      if (typeof userId === 'string' && (userId.includes('..') || userId.startsWith('/'))) {
+        return { success: false, error: "Invalid request" };
+      }
       saveTableRows("user_games", userId, allMergedGames);
       return {
         success: true,
@@ -1656,6 +1731,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         args?.p_game_id ??
         `custom_${crypto.randomUUID()}`;
 
+      if (userId.includes("..") || path.isAbsolute(userId)) {
+        return { success: false, error: "Invalid input" };
+      }
       const existingGames = getTableRows(
         "user_games",
         userId,
