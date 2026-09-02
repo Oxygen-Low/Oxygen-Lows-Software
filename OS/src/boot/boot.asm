@@ -31,7 +31,7 @@ tag_info_req_end:
 align 8
 tag_fb_start:
     dw 5                                    ; Type = 5 (framebuffer)
-    dw 0                                    ; Flags = 0
+    dw 1                                    ; Flags = 1 (optional fallback)
     dd 20                                   ; Size = 20 bytes
     dd 1024                                 ; Preferred width
     dd 768                                  ; Preferred height

@@ -115,6 +115,8 @@ static bool run_selftests(void) {
     return true;
 }
 
+#include "gui/vga_text.h"
+
 extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
     UNUSED(magic);
 
@@ -149,74 +151,94 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
     vfs_init();
 
     // 7. Linear Framebuffer & 2D Graphics Engine
-    fb_init(multiboot_info_addr);
-    gfx_init(fb_get_config());
-    cursor_init();
+    bool has_fb = fb_init(multiboot_info_addr);
+    if (has_fb) {
+        gfx_init(fb_get_config());
+        cursor_init();
 
-    // 8. Window Manager & Desktop Shell
-    wm_init();
-    desktop_init();
+        // 8. Window Manager & Desktop Shell
+        wm_init();
+        desktop_init();
 
-    // 9. Launch 5 Desktop Applications
-    auto* term_app = new TerminalApp();
-    wm_create_window("Terminal - Oxygen Low's Software",
-                      40, 40, 640, 400,
-                      WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, term_app);
+        // 9. Launch 5 Desktop Applications
+        auto* term_app = new TerminalApp();
+        wm_create_window("Terminal - Oxygen Low's Software",
+                          40, 40, 640, 400,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, term_app);
 
-    auto* sysinfo_app = new SysInfoApp();
-    wm_create_window("System Information - Oxygen Low's Software",
-                      460, 80, 500, 380,
-                      WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, sysinfo_app);
+        auto* sysinfo_app = new SysInfoApp();
+        wm_create_window("System Information - Oxygen Low's Software",
+                          460, 80, 500, 380,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, sysinfo_app);
 
-    auto* notepad_app = new NotepadApp();
-    wm_create_window("Notepad - Oxygen Low's Software",
-                      100, 120, 560, 420,
-                      WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, notepad_app);
+        auto* notepad_app = new NotepadApp();
+        wm_create_window("Notepad - Oxygen Low's Software",
+                          100, 120, 560, 420,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, notepad_app);
 
-    auto* calc_app = new CalculatorApp();
-    wm_create_window("Calculator - Oxygen Low's Software",
-                      700, 160, 280, 360,
-                      WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, calc_app);
+        auto* calc_app = new CalculatorApp();
+        wm_create_window("Calculator - Oxygen Low's Software",
+                          700, 160, 280, 360,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, calc_app);
 
-    auto* explorer_app = new ExplorerApp();
-    wm_create_window("File Explorer - Oxygen Low's Software",
-                      180, 200, 620, 420,
-                      WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, explorer_app);
+        auto* explorer_app = new ExplorerApp();
+        wm_create_window("File Explorer - Oxygen Low's Software",
+                          180, 200, 620, 420,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, explorer_app);
 
-    serial_printf("[APPS] 5 desktop applications loaded\n");
+        serial_printf("[APPS] 5 desktop applications loaded\n");
+    }
 
     // 10. Run In-Kernel Sanity & Diagnostics Test Suite
     run_selftests();
 
-    // Initial desktop presentation
-    desktop_update();
-    desktop_render();
+    // Initial presentation
+    if (has_fb) {
+        desktop_update();
+        desktop_render();
+    } else {
+        vga_text_render_desktop();
+    }
 
     // 11. Enable Hardware Interrupts for Keyboard & Mouse & Timer
     sti();
 
     // 12. Main Desktop Event & Compositor Loop
+    uint64_t last_clock_tick = 0;
     while (true) {
         // Poll and dispatch keyboard events
         while (keyboard_has_key()) {
             KeyEvent key = keyboard_get_key();
             if (key.pressed) {
-                desktop_handle_key(key.scancode, key.ascii);
+                if (has_fb) {
+                    desktop_handle_key(key.scancode, key.ascii);
+                } else {
+                    vga_text_handle_key(key.scancode, key.ascii);
+                }
             }
         }
 
-        // Poll and dispatch mouse events
-        MouseState ms = mouse_get_state();
-        uint8_t btn_mask = (ms.left_button ? 1 : 0) |
-                           (ms.right_button ? 2 : 0) |
-                           (ms.middle_button ? 4 : 0);
-        desktop_handle_mouse(ms.x, ms.y, btn_mask);
+        if (has_fb) {
+            // Poll and dispatch mouse events
+            MouseState ms = mouse_get_state();
+            uint8_t btn_mask = (ms.left_button ? 1 : 0) |
+                               (ms.right_button ? 2 : 0) |
+                               (ms.middle_button ? 4 : 0);
+            desktop_handle_mouse(ms.x, ms.y, btn_mask);
 
-        // Update real-time clock & applications
-        desktop_update();
+            // Update real-time clock & applications
+            desktop_update();
 
-        // Render desktop, windows, taskbar, start menu, and cursor
-        desktop_render();
+            // Render desktop, windows, taskbar, start menu, and cursor
+            desktop_render();
+        } else {
+            // Periodic clock update for VGA text mode
+            uint64_t cur_tick = pit_get_ticks();
+            if (cur_tick - last_clock_tick >= 1000) {
+                last_clock_tick = cur_tick;
+                vga_text_render_desktop();
+            }
+        }
 
         // Sleep to throttle loop ~60 FPS
         pit_sleep_ms(16);
