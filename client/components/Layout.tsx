@@ -328,13 +328,13 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => navigate("/auth")}
+              <Link
+                to="/auth"
                 className={`${styles["sign-out-button"]} flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border transition duration-200 text-xs sm:text-sm font-medium hover:bg-white/5`}
               >
                 <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>{t("nav.signIn", undefined, "Sign In")}</span>
-              </button>
+              </Link>
             )}
           </div>
         </div>
@@ -393,16 +393,14 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => {
-                  setSidebarOpen(false);
-                  navigate("/auth");
-                }}
+              <Link
+                to="/auth"
+                onClick={() => setSidebarOpen(false)}
                 className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition-colors"
               >
                 <User className="w-3.5 h-3.5" />{" "}
                 {t("nav.signInRegister", undefined, "Sign In / Register")}
-              </button>
+              </Link>
             )}
           </div>
 
