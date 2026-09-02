@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Coins, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Hand as PokerHand } from "pokersolver";
+import { toast } from "sonner";
 
 type Phase = "pre-flop" | "flop" | "turn" | "river" | "showdown" | "game-over";
 type Action = "fold" | "check" | "call" | "raise";
@@ -179,6 +180,7 @@ export function PokerApp() {
     } catch (e) {
       console.error(e);
       setMessage("Error evaluating hands");
+      toast.error("An error occurred while evaluating hands.");
     }
     setPot(0);
     setTurn("player");
