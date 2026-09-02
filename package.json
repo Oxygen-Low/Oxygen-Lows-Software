@@ -4,7 +4,6 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
     "dev:client": "vite",
     "dev:server": "tsx watch server/serve.ts",
     "dev": "pnpm dev:client & pnpm dev:server",
