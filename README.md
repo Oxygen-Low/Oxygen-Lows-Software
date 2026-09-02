@@ -8,7 +8,8 @@ All user data is stored securely on the cloud, allowing you to access your conte
 
 You can access the official web application at https://oxygenlow.com
 
-> [NOTE] This project was originally designed as a self-hostable website, but it has now migrated to a cloud-hosted model and is no longer intended for self-hosting.
+> [NOTE]
+> This project was originally designed as a self-hostable website, but it has now migrated to a cloud-hosted model and is no longer intended for self-hosting.
 
 ## Features
 
