@@ -204,6 +204,7 @@ export function VPNApp() {
       })
       .catch((err) => {
         console.error("Home geocode error via IPC", err);
+        toast.error("Failed to determine home location. Defaulting to coordinates [20, 0].");
         setHomeLocation([20, 0]);
         setAgentLocation([20, 0]);
       });
