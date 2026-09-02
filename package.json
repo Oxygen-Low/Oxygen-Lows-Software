@@ -4,7 +4,6 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
     "dev:client": "vite",
     "dev:server": "tsx watch server/serve.ts",
     "dev": "pnpm dev:client & pnpm dev:server",
@@ -153,6 +152,7 @@
   },
   "pnpm": {
     "overrides": {
+      "body-parser>raw-body": "4.0.0",
       "dompurify@<=3.4.13": "3.4.13"
     }
   }
