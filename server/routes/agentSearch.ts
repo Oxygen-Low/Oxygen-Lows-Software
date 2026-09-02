@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable, callRpc } from "../lib/dataStore.ts";
+import { validateAiUrl } from "../lib/safeAiUrl.ts";
 
 export const agentSearchRouter = new Hono();
 
@@ -123,47 +124,6 @@ function normalizeUrl(input: unknown): string | null {
   return clean;
 }
 
-function isSafeUrl(urlString: string): boolean {
-  const cleanUrl = normalizeUrl(urlString);
-  if (!cleanUrl) return false;
-
-  try {
-    const url = new URL(cleanUrl);
-    if (url.protocol !== "https:") return false;
-
-    const host = url.hostname.toLowerCase();
-    if (
-      host === "localhost" ||
-      host === "metadata.google.internal" ||
-      host === "127.0.0.1" ||
-      host === "::1" ||
-      host === "[::1]"
-    ) {
-      return false;
-    }
-
-    const ipMatch = host.match(/^(\d+)\.(\d+)\.(\d+)$/);
-    if (ipMatch) {
-      const parts = ipMatch.slice(1).map(Number);
-      if (parts[0] === 127) return false;
-      if (parts[0] === 10) return false;
-      if (parts[0] === 192 && parts[1] === 168) return false;
-      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
-      if (
-        parts[0] === 169 &&
-        parts[1] === 254 &&
-        parts[2] === 169 &&
-        parts[3] === 254
-      )
-        return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const SEARCH_TOOLS = [
   {
     type: "function" as const,
@@ -261,9 +221,16 @@ async function performWebSearch(query: string) {
 
 async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
   const cleanUrl = normalizeUrl(rawUrl);
-  if (!cleanUrl || !isSafeUrl(cleanUrl)) {
+  if (!cleanUrl) {
+    return "Error: Invalid URL.";
+  }
+
+  try {
+    await validateAiUrl(cleanUrl);
+  } catch (err: any) {
     return "Error: Invalid or blocked URL. Cannot fetch localhost or internal IPs.";
   }
+
   try {
     const res = await fetch(cleanUrl, {
       headers: BROWSER_HEADERS,
