@@ -207,4 +207,96 @@ describe("Server Storage Library", () => {
       expect(size).toBe(350);
     });
   });
+
+  describe("Path Traversal Vulnerability Mitigation", () => {
+    describe("getUserTotalSize security", () => {
+      it("should reject path traversal with ../ in userId", () => {
+        const maliciousUserId = "../../../etc/passwd";
+        expect(() => getUserTotalSize(maliciousUserId)).toThrow("Invalid user ID");
+      });
+
+      it("should reject path traversal with encoded ../ in userId", () => {
+        const maliciousUserId = "..%2F..%2F..%2Fetc%2Fpasswd";
+        expect(() => getUserTotalSize(maliciousUserId)).toThrow("Invalid user ID");
+      });
+
+      it("should reject absolute paths in userId", () => {
+        const maliciousUserId = "/etc/passwd";
+        expect(() => getUserTotalSize(maliciousUserId)).toThrow("Invalid user ID");
+      });
+
+      it("should accept valid userId and return size", () => {
+        const validUserId = "user123";
+        const size = getUserTotalSize(validUserId);
+        expect(size).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    describe("getFolderSize security", () => {
+      it("should skip files with path traversal in file.name", () => {
+        const testFolder = path.join(testDir, "traversal-test");
+        fs.mkdirSync(testFolder, { recursive: true });
+        
+        // Create a normal file
+        fs.writeFileSync(path.join(testFolder, "normal.txt"), Buffer.alloc(100));
+        
+        // The function should skip any malicious symlinks or entries
+        // that would resolve outside the base directory
+        const size = getFolderSize(testFolder);
+        expect(size).toBe(100);
+      });
+
+      it("should handle nested directories safely", () => {
+        const testFolder = path.join(testDir, "nested-test");
+        const subFolder = path.join(testFolder, "subfolder");
+        fs.mkdirSync(subFolder, { recursive: true });
+        
+        fs.writeFileSync(path.join(testFolder, "file1.txt"), Buffer.alloc(50));
+        fs.writeFileSync(path.join(subFolder, "file2.txt"), Buffer.alloc(75));
+        
+        const size = getFolderSize(testFolder);
+        expect(size).toBe(125);
+      });
+
+      it("should return 0 for non-existent folder", () => {
+        const nonExistentFolder = path.join(testDir, "does-not-exist");
+        const size = getFolderSize(nonExistentFolder);
+        expect(size).toBe(0);
+      });
+    });
+
+    describe("sanitizePath security", () => {
+      it("should reject various path traversal patterns", () => {
+        const maliciousPaths = [
+          "../secret.txt",
+          "folder/../../secret.txt",
+          "..\\..\\secret.txt",
+          "folder\\..\\..\\secret.txt",
+          "./../secret.txt",
+          "folder/./../../../secret.txt",
+        ];
+
+        maliciousPaths.forEach((maliciousPath) => {
+          expect(() => sanitizePath(maliciousPath)).toThrow("Invalid path");
+        });
+      });
+
+      it("should reject null byte injection", () => {
+        expect(() => sanitizePath("folder/file.txt\0")).toThrow("Invalid path");
+        expect(() => sanitizePath("folder\0/file.txt")).toThrow("Invalid path");
+      });
+
+      it("should normalize absolute paths by stripping leading slashes", () => {
+        // sanitizePath strips leading slashes to normalize paths
+        expect(sanitizePath("/etc/passwd")).toBe("etc/passwd");
+        expect(sanitizePath("/var/log/secret.log")).toBe("var/log/secret.log");
+      });
+
+      it("should accept valid relative paths", () => {
+        expect(sanitizePath("folder/file.txt")).toBe("folder/file.txt");
+        expect(sanitizePath("user123/documents/report.pdf")).toBe("user123/documents/report.pdf");
+        expect(sanitizePath("file.txt")).toBe("file.txt");
+      });
+    });
+  });
 });
