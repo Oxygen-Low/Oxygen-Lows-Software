@@ -67,7 +67,12 @@ export function getFolderSize(folderPath: string): number {
   try {
     const files = fs.readdirSync(folderPath, { withFileTypes: true });
     for (const file of files) {
-      const filePath = path.join(folderPath, file.name);
+      const base = path.resolve(folderPath);
+      const filePath = path.resolve(base, file.name);
+      const relative = path.relative(base, filePath);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        continue;
+      }
       if (file.isDirectory()) {
         size += getFolderSize(filePath);
       } else {
@@ -82,10 +87,20 @@ export function getFolderSize(folderPath: string): number {
 
 export function getUserTotalSize(userId: string): number {
   if (!userId) return 0;
-  const sizeStorage = getFolderSize(path.join(STORAGE_DIR, "Storage", userId));
-  const sizePublic = getFolderSize(
-    path.join(STORAGE_DIR, "public-assets", userId),
-  );
+  const baseStorage = path.resolve(STORAGE_DIR, "Storage");
+  const targetStorage = path.resolve(baseStorage, userId);
+  const relativeStorage = path.relative(baseStorage, targetStorage);
+  if (relativeStorage.startsWith('..') || path.isAbsolute(relativeStorage)) {
+    throw new Error('Invalid user ID');
+  }
+  const basePublic = path.resolve(STORAGE_DIR, "public-assets");
+  const targetPublic = path.resolve(basePublic, userId);
+  const relativePublic = path.relative(basePublic, targetPublic);
+  if (relativePublic.startsWith('..') || path.isAbsolute(relativePublic)) {
+    throw new Error('Invalid user ID');
+  }
+  const sizeStorage = getFolderSize(targetStorage);
+  const sizePublic = getFolderSize(targetPublic);
   return sizeStorage + sizePublic;
 }
 
