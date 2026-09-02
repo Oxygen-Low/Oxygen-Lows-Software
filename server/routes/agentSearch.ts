@@ -291,34 +291,44 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
             `${u.origin}/w/api.php?action=parse&page=${encodeURIComponent(title)}&format=json&prop=text&origin=*`,
           ];
 
-          for (const endpoint of apiEndpoints) {
-            try {
-              const apiRes = await fetch(endpoint, {
-                headers: {
-                  "User-Agent": BROWSER_HEADERS["User-Agent"],
-                  Accept: "application/json,text/html,*/*",
-                },
-                signal: AbortSignal.timeout(4000),
-              });
-              if (apiRes.ok) {
-                const data = await apiRes.json();
-                if (data?.parse?.text?.["*"]) {
-                  const parsedText = stripHtmlTags(data.parse.text["*"]);
-                  if (parsedText.length > 50)
-                    return parsedText.substring(0, maxChars);
-                }
-                const pages = data?.query?.pages || {};
-                for (const k in pages) {
-                  if (pages[k]?.extract) {
-                    return stripHtmlTags(pages[k].extract).substring(
-                      0,
-                      maxChars,
-                    );
+          try {
+            const wikiContent = await Promise.any(
+              apiEndpoints.map(async (endpoint) => {
+                const apiRes = await fetch(endpoint, {
+                  headers: {
+                    "User-Agent": BROWSER_HEADERS["User-Agent"],
+                    Accept: "application/json,text/html,*/*",
+                  },
+                  signal: AbortSignal.timeout(4000),
+                });
+
+                if (apiRes.ok) {
+                  const data = await apiRes.json();
+                  if (data?.parse?.text?.["*"]) {
+                    const parsedText = stripHtmlTags(data.parse.text["*"]);
+                    if (parsedText.length > 50)
+                      return parsedText.substring(0, maxChars);
+                  }
+
+                  const pages = data?.query?.pages || {};
+                  for (const k in pages) {
+                    if (pages[k]?.extract) {
+                      return stripHtmlTags(pages[k].extract).substring(
+                        0,
+                        maxChars,
+                      );
+                    }
                   }
                 }
-              }
-            } catch {}
-          }
+
+                throw new Error("No valid extract found from this endpoint");
+              })
+            );
+
+            if (wikiContent) {
+              return wikiContent;
+            }
+          } catch {}
         }
       } catch {}
     }
