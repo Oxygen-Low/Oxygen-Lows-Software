@@ -201,6 +201,7 @@ export function initUserFolder(
     last_points_usage?: string | null;
   },
 ) {
+  cachedUserIds = null;
   const userDir = path.join(DATA_DIR, userId);
   ensureDir(userDir);
   ensureDir(path.join(userDir, "datastore"));
@@ -305,16 +306,31 @@ export function initUserFolder(
   return userData;
 }
 
+let cachedUserIds: string[] | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL = 30000; // 30 seconds
+
 export function getAllUserIds(): string[] {
+  const now = Date.now();
+  if (cachedUserIds !== null && now - lastCacheTime < CACHE_TTL) {
+    return cachedUserIds;
+  }
   if (!fs.existsSync(DATA_DIR)) return [];
   try {
-    return fs
+    cachedUserIds = fs
       .readdirSync(DATA_DIR, { withFileTypes: true })
       .filter((d) => d.isDirectory() && /^\d+$/.test(d.name))
       .map((d) => d.name);
+    lastCacheTime = now;
+    return cachedUserIds;
   } catch {
     return [];
   }
+}
+
+export function invalidateUserIdsCache(): void {
+  cachedUserIds = null;
+  lastCacheTime = 0;
 }
 
 export function getUserById(userId: string | number) {
@@ -902,7 +918,6 @@ export function insertTable(
   return Array.isArray(data) ? prepared : prepared[0];
 }
 
-
 /**
  * Update records matching filters.
  */
@@ -967,7 +982,6 @@ export function updateTable(
 
     return matched;
   }
-
 
   // If no userId provided, update across all user directories (e.g. admin update)
   const userIds = getAllUserIds();
@@ -1100,7 +1114,6 @@ export function deleteTable(
 
     return matched;
   }
-
 
   // If no userId provided, delete across all user directories (e.g. admin delete)
   const userIds = getAllUserIds();
@@ -1435,9 +1448,7 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
     }
     case "give_points": {
       if (!userId) return { success: false, error: "Unauthorized" };
-      const receiverId = String(
-        args?.p_receiver_id ?? args?.receiver_id ?? "",
-      );
+      const receiverId = String(args?.p_receiver_id ?? args?.receiver_id ?? "");
       const amount = Number(args?.p_amount ?? args?.amount ?? 0);
       if (!receiverId)
         return { success: false, error: "Receiver ID is required" };
