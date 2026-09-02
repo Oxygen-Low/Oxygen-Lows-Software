@@ -21,7 +21,7 @@ You can access the official web application at https://oxygenlow.com
 A work in progress operating system is under development.
 
 > [!CAUTION]
-> The operating system may cause damage to hardware or data loss because it is heavily work in progress.
+> The operating system may cause damage to hardware or data loss as it is heavily work in progress.
 
 > [!TIP]
 > Use a virtual machine to run the operating system.
