@@ -1934,6 +1934,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       const THREE_MINUTES_MS = 3 * 60 * 1000;
       const nowMs = Date.now();
 
+      const PLATFORM_PREFIX_REGEX = /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i;
+      const cleanTargetGameId = targetGameId ? String(targetGameId).replace(PLATFORM_PREFIX_REGEX, "") : "";
+
       for (const friendId of friendIds) {
         const pref = readJsonFile<UserPreferencesRecord>(
           path.join(DATA_DIR, friendId, "preferences.json"),
@@ -1959,45 +1962,60 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
           ? friendPresenceList[0]
           : friendPresenceList;
 
-        const matchingGame = friendGames.find((g) => {
-          if (targetGameId) {
-            if (g.game_id === targetGameId || g.id === targetGameId)
-              return true;
-            const cleanTarget = String(targetGameId).replace(
-              /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i,
-              "",
-            );
-            const cleanGame = String(g.game_id || g.id).replace(
-              /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i,
-              "",
-            );
-            if (cleanTarget && cleanTarget === cleanGame) return true;
+        let matchingGame;
+        if (targetGameId) {
+          const gamesById = new Map<string, UserGameRecord>();
+          for (const g of friendGames) {
+            if (g.game_id) gamesById.set(g.game_id, g);
+            if (g.id) gamesById.set(g.id, g);
           }
-          if (targetGameTitle && g.title?.toLowerCase() === targetGameTitle)
-            return true;
-          return false;
-        });
+          matchingGame = gamesById.get(targetGameId);
 
-        const matchingPlaytime = friendPlaytimes.find((p) => {
-          if (targetGameId) {
-            if (p.game_id === targetGameId) return true;
-            const cleanTarget = String(targetGameId).replace(
-              /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i,
-              "",
-            );
-            const cleanPt = String(p.game_id).replace(
-              /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i,
-              "",
-            );
-            if (cleanTarget && cleanTarget === cleanPt) return true;
+          if (!matchingGame && cleanTargetGameId) {
+            const gamesByCleanId = new Map<string, UserGameRecord>();
+            for (const g of friendGames) {
+              const cleanGame = String(g.game_id || g.id).replace(PLATFORM_PREFIX_REGEX, "");
+              if (cleanGame) gamesByCleanId.set(cleanGame, g);
+            }
+            matchingGame = gamesByCleanId.get(cleanTargetGameId);
           }
-          if (
-            targetGameTitle &&
-            p.game_title?.toLowerCase() === targetGameTitle
-          )
-            return true;
-          return false;
-        });
+        }
+
+        if (!matchingGame && targetGameTitle) {
+          const gamesByTitle = new Map<string, UserGameRecord>();
+          for (const g of friendGames) {
+            if (g.title) gamesByTitle.set(g.title.toLowerCase(), g);
+          }
+          matchingGame = gamesByTitle.get(targetGameTitle);
+        }
+
+        let matchingPlaytime;
+        if (targetGameId) {
+          const playtimesById = new Map<string, UserPlaytimeRecord>();
+          for (const p of friendPlaytimes) {
+            if (p.game_id) playtimesById.set(p.game_id, p);
+          }
+          matchingPlaytime = playtimesById.get(targetGameId);
+
+          if (!matchingPlaytime && cleanTargetGameId) {
+            const playtimesByCleanId = new Map<string, UserPlaytimeRecord>();
+            for (const p of friendPlaytimes) {
+              if (p.game_id) {
+                const cleanPt = String(p.game_id).replace(PLATFORM_PREFIX_REGEX, "");
+                if (cleanPt) playtimesByCleanId.set(cleanPt, p);
+              }
+            }
+            matchingPlaytime = playtimesByCleanId.get(cleanTargetGameId);
+          }
+        }
+
+        if (!matchingPlaytime && targetGameTitle) {
+          const playtimesByTitle = new Map<string, UserPlaytimeRecord>();
+          for (const p of friendPlaytimes) {
+            if (p.game_title) playtimesByTitle.set(p.game_title.toLowerCase(), p);
+          }
+          matchingPlaytime = playtimesByTitle.get(targetGameTitle);
+        }
 
         let isPlaying = false;
         let isPlayingThisGame = false;
