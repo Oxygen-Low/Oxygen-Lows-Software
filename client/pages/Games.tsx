@@ -387,12 +387,12 @@ export default function Games() {
                 <p className="text-slate-400 mb-6 sm:mb-8 max-w-md text-xs sm:text-sm">
                   {activeApp.description}
                 </p>
-                <button
-                  onClick={() => navigate("/auth")}
-                  className="px-6 py-2.5 sm:px-8 sm:py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors text-sm"
+                <Link
+                  to="/auth"
+                  className="px-6 py-2.5 sm:px-8 sm:py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors text-sm text-center"
                 >
                   {t("apps.signInToContinue", undefined, "Sign In to Continue")}
-                </button>
+                </Link>
               </div>
             )}
             <div

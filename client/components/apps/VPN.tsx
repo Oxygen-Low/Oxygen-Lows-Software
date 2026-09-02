@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { db, supabase } from "@/lib/db";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -1760,10 +1760,12 @@ export function VPNApp() {
                   <Button
                     variant="link"
                     size="sm"
-                    onClick={() => navigate("/auth")}
+                    asChild
                     className="text-cyan-400 hover:text-cyan-300 p-0 h-auto font-semibold mt-1 text-xs"
                   >
-                    {t("apps.vpnSignInPrompt", undefined, "Sign In")} &rarr;
+                    <Link to="/auth">
+                      {t("apps.vpnSignInPrompt", undefined, "Sign In")} &rarr;
+                    </Link>
                   </Button>
                 </div>
               </div>

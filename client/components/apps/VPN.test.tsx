@@ -64,7 +64,7 @@ describe("VPNApp Unauthenticated Direct Connection", () => {
     expect(
       screen.getAllByText(/connect directly without saving/i).length,
     ).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("button", { name: /Sign In/i })).toBeDefined();
+    expect(screen.getByRole("link", { name: /Sign In/i })).toBeDefined();
     expect(
       screen.getByPlaceholderText(/e\.g\. Temporary Connection/i),
     ).toBeDefined();
