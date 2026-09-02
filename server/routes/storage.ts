@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import fs from "fs";
+import { promises as fsPromises } from "fs";
 import path from "path";
 import {
   serverStorage,
@@ -176,10 +177,10 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
     }
 
     const tmpDir = path.join(STORAGE_DIR, ".tmp", safeUploadId);
-    fs.mkdirSync(tmpDir, { recursive: true });
+    await fsPromises.mkdir(tmpDir, { recursive: true });
 
     const chunkPath = path.join(tmpDir, `chunk_${chunkIndex}`);
-    fs.writeFileSync(chunkPath, buffer);
+    await fsPromises.writeFile(chunkPath, buffer);
 
     // If this is the last chunk
     if (chunkIndex === totalChunks - 1) {
@@ -187,13 +188,16 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
       const assembledChunks: Buffer[] = [];
       for (let i = 0; i < totalChunks; i++) {
         const p = path.join(tmpDir, `chunk_${i}`);
-        if (!fs.existsSync(p)) {
+        try {
+          await fsPromises.access(p);
+          const chunkData = await fsPromises.readFile(p);
+          assembledChunks.push(chunkData);
+        } catch {
           return c.json({
             data: { chunkIndex, status: "pending" },
             error: null,
           });
         }
-        assembledChunks.push(fs.readFileSync(p));
       }
 
       const completeBuffer = Buffer.concat(assembledChunks);
@@ -205,7 +209,7 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
 
       // Clean up tmp files
       try {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        await fsPromises.rm(tmpDir, { recursive: true, force: true });
       } catch {}
 
       if (error) {
