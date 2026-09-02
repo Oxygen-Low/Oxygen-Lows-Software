@@ -522,7 +522,7 @@ Here is the requested character:
 \`\`\`
 Hope this helps!`;
 
-      const parsed = extractJsonPayload<any>(rawMarkdown);
+      const parsed = extractJsonPayload(rawMarkdown) as any;
       expect(parsed.name).toBe("Aria Stark");
       expect(parsed.display_name).toBe("Faceless Girl");
     });
@@ -541,7 +541,7 @@ Sure! I designed a great character for you:
 }
 Let me know if you want any modifications!`;
 
-      const parsed = extractJsonPayload<any>(rawText);
+      const parsed = extractJsonPayload(rawText) as any;
       expect(parsed.name).toBe("Boba Fett");
       expect(parsed.appearance).toContain("Mandalorian");
     });

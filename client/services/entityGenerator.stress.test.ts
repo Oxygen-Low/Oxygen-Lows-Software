@@ -232,7 +232,7 @@ describe("entityGenerator Adversarial & Stress Test Suite", () => {
       ];
 
       for (let i = 0; i < variations.length; i++) {
-        const parsed = extractJsonPayload<any>(variations[i]);
+        const parsed = extractJsonPayload(variations[i]) as any;
         expect(parsed.name).toBe(`Variant ${i + 1}`);
       }
     });
@@ -255,7 +255,7 @@ describe("entityGenerator Adversarial & Stress Test Suite", () => {
         I hope you find this character suitable for your adventure! Let me know if you need any adjustments.
       `;
 
-      const parsed = extractJsonPayload<any>(noisyText);
+      const parsed = extractJsonPayload(noisyText) as any;
       expect(parsed.name).toBe("Kira Vex");
       expect(parsed.display_name).toBe("Ghost");
       expect(parsed.appearance).toContain("Obsidian armor");
@@ -927,7 +927,7 @@ describe("entityGenerator Adversarial & Stress Test Suite", () => {
         }
       `;
 
-      const parsed = extractJsonPayload<any>(rawWithEscapes);
+      const parsed = extractJsonPayload(rawWithEscapes) as any;
       expect(parsed.name).toBe('Line1\nLine2 "Quote" AB');
       expect(parsed.display_name).toBe("Test \t Tab");
       expect(parsed.short_description).toBe("Slash \\ test");

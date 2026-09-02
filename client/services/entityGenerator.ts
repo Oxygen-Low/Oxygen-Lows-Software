@@ -66,7 +66,7 @@ export interface GeneratedEntityResult {
  * Resilient JSON Extraction Algorithm
  * Extracts valid JSON payloads from markdown codeblocks, conversational preambles, and outermost braces.
  */
-export function extractJsonPayload<T = any>(raw: string): T {
+export function extractJsonPayload(raw: string): unknown {
   if (!raw || typeof raw !== "string") {
     throw new Error("Empty response received from generator");
   }
@@ -572,7 +572,11 @@ export async function executeEntityGeneration(
     signal,
   );
 
-  const parsed = extractJsonPayload<any>(rawContent);
+  const parsedRaw = extractJsonPayload(rawContent);
+  if (!parsedRaw || typeof parsedRaw !== "object") {
+    throw new Error("Invalid response format received from generator");
+  }
+  const parsed = parsedRaw as Record<string, any>;
 
   onProgress?.("completed", "Generation complete!");
 

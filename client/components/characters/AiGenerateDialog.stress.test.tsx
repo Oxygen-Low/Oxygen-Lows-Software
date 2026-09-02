@@ -578,13 +578,13 @@ describe("AiGenerateDialog & Characters — Adversarial Stress Suite", () => {
 \`\`\`
 I hope this meets your expectations!`;
 
-      const parsed = extractJsonPayload(rawWithPreamble);
+      const parsed = extractJsonPayload(rawWithPreamble) as any;
       expect(parsed.name).toBe("Kaelen");
       expect(parsed.display_name).toBe("Shadow Weaver");
 
       // Test raw without codeblock
       const rawBraces = `Some text before {"name": "Lyra", "display_name": "Star Pilot", "short_description": "Fast"} some text after`;
-      const parsedBraces = extractJsonPayload(rawBraces);
+      const parsedBraces = extractJsonPayload(rawBraces) as any;
       expect(parsedBraces.name).toBe("Lyra");
     });
   });
