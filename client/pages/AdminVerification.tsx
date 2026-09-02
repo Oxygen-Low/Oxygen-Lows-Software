@@ -162,6 +162,9 @@ export default function AdminVerification() {
       await Promise.all(
         list.map(async (item: VerificationItem) => {
           if (item.asset_type === "file" && item.original_file_path) {
+            if (item.original_file_path.includes('..')) {
+              throw new Error('Invalid file path');
+            }
             const { data: urlData } = await storage
               .from("Storage")
               .createSignedUrl(item.original_file_path, 3600)
