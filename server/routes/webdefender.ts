@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { rateLimiter } from "../lib/rateLimiter.ts";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import {
   getTableRows,
@@ -96,7 +96,12 @@ async function requireApiKey(c: Context, next: Next) {
 
   // Check local data store
   const allApps = getTableRows("defender_apps");
-  const localApp = allApps.find((a: any) => a.api_key_hash === hash);
+  const localApp = allApps.find((a: any) => {
+    if (!a.api_key_hash) return false;
+    const actual = createHash('sha256').update(hash).digest();
+    const expected = createHash('sha256').update(a.api_key_hash).digest();
+    return timingSafeEqual(actual, expected);
+  });
 
   if (!localApp) {
     return c.json({ error: "Invalid API key" }, 401);
