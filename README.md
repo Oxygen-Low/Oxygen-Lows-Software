@@ -8,10 +8,15 @@ All user data is stored securely on the cloud, allowing you to access your conte
 
 You can access the official web application at https://oxygenlow.com
 
-_Note: This project was originally designed as a self-hostable website, but it has now migrated to a cloud-hosted model and is no longer intended for self-hosting._
+> [!NOTE] This project was originally designed as a self-hostable website, but it has now migrated to a cloud-hosted model and is no longer intended for self-hosting.
 
 ## Features
 
 - **Cloud Storage:** You get 500MB of image, document, and audio storage on the cloud at no cost.
 - **Cross-Platform:** Access your data anywhere via the web app or the desktop client.
 - **Tools & Apps:** Various built-in applications and tools are provided out of the box.
+
+> [!IMPORTANT]  
+> Do not use the official Docker container.
+> The Docker container has been discontinued.
+> I lost my Docker credentials so I'm unable to manually delete it.
