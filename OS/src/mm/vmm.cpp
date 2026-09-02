@@ -54,7 +54,13 @@ void vmm_init(void) {
     for (size_t gb = 0; gb < 4; ++gb) {
         g_kernel_pdpt_low[gb] = ((uint64_t)&g_kernel_pd[gb]) | PAGE_PRESENT | PAGE_WRITABLE;
         for (size_t i = 0; i < 512; ++i) {
-            g_kernel_pd[gb][i] = ((gb * 0x40000000ULL) + (i * 0x200000ULL)) | PAGE_PRESENT | PAGE_WRITABLE | PAGE_HUGE_2MB;
+            uint64_t flags = PAGE_PRESENT | PAGE_WRITABLE | PAGE_HUGE_2MB;
+            // Mark 2-4GB range (MMIO/VRAM) as uncacheable (PCD)
+            // VirtualBox, VMware, and bare-metal VRAM lives in this range
+            if (gb >= 2) {
+                flags |= PAGE_CACHE_DISABLE;
+            }
+            g_kernel_pd[gb][i] = ((gb * 0x40000000ULL) + (i * 0x200000ULL)) | flags;
         }
     }
 

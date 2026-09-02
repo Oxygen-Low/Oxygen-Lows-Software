@@ -42,7 +42,19 @@ bool fb_init(uint64_t multiboot_info_addr) {
 
         if (tag->type == MULTIBOOT2_TAG_TYPE_FRAMEBUFFER) {
             auto* fb_tag = reinterpret_cast<const Multiboot2FramebufferTag*>(tag);
-            if (fb_tag->framebuffer_width > 0 && fb_tag->framebuffer_height > 0) {
+            serial_printf("[FB] Multiboot2 framebuffer tag: type=%u, %ux%u @ %ubpp, addr=0x%p\n",
+                          fb_tag->framebuffer_type,
+                          fb_tag->framebuffer_width, fb_tag->framebuffer_height,
+                          fb_tag->framebuffer_bpp,
+                          reinterpret_cast<void*>((uintptr_t)fb_tag->framebuffer_addr));
+
+            if (fb_tag->framebuffer_type == MULTIBOOT2_FRAMEBUFFER_TYPE_EGA_TEXT) {
+                serial_printf("[FB] WARNING: GRUB provided EGA text mode, not linear framebuffer!\n");
+                serial_printf("[FB] Ensure grub.cfg has 'set gfxpayload=keep' and 'insmod all_video'\n");
+            }
+
+            if (fb_tag->framebuffer_width > 0 && fb_tag->framebuffer_height > 0 &&
+                fb_tag->framebuffer_type == MULTIBOOT2_FRAMEBUFFER_TYPE_RGB) {
                 g_fb_config.phys_addr = fb_tag->framebuffer_addr;
                 g_fb_config.pitch = fb_tag->framebuffer_pitch;
                 g_fb_config.width = fb_tag->framebuffer_width;
@@ -64,13 +76,13 @@ bool fb_init(uint64_t multiboot_info_addr) {
 
     g_fb_config.virt_addr = reinterpret_cast<uint32_t*>(g_fb_config.phys_addr);
 
-    // Map physical framebuffer in VMM
+    // Map physical framebuffer pages with PCD (cache-disable) for MMIO safety
     size_t fb_total_bytes = static_cast<size_t>(g_fb_config.pitch) * g_fb_config.height;
     for (size_t offset = 0; offset < fb_total_bytes; offset += 4096) {
         vmm_map_page(
             g_fb_config.phys_addr + offset,
             g_fb_config.phys_addr + offset,
-            PAGE_PRESENT | PAGE_WRITABLE
+            PAGE_PRESENT | PAGE_WRITABLE | PAGE_CACHE_DISABLE
         );
     }
 
@@ -140,6 +152,9 @@ void fb_swap_buffers(void) {
             dst_row[x] = src_row[x];
         }
     }
+
+    // Ensure all VRAM writes are committed to hardware (critical for VirtualBox)
+    __asm__ volatile ("mfence" ::: "memory");
 }
 
 void fb_swap_rect(int32_t x, int32_t y, int32_t w, int32_t h) {

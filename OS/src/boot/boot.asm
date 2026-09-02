@@ -160,7 +160,7 @@ enable_sse:
     ret
 
 setup_page_tables:
-    ; PML4[0] -> pdpt_table (Identity map lower 1GB)
+    ; PML4[0] -> pdpt_table (Identity map lower 4GB)
     mov eax, pdpt_table
     or eax, 0x03                            ; Present | Writable
     mov [pml4_table], eax
@@ -170,27 +170,54 @@ setup_page_tables:
     or eax, 0x03
     mov [pml4_table + 511 * 8], eax
 
-    ; PDPT[0] -> pd_table (0 to 1GB)
-    mov eax, pd_table
+    ; PDPT[0] -> pd_table_0 (0 to 1GB)
+    mov eax, pd_table_0
     or eax, 0x03
     mov [pdpt_table], eax
 
-    ; PDPT_HIGH[510] -> pd_table (Maps top 2GB virtual space to lower 1GB physical)
-    mov eax, pd_table
+    ; PDPT[1] -> pd_table_1 (1 to 2GB)
+    mov eax, pd_table_1
+    or eax, 0x03
+    mov [pdpt_table + 8], eax
+
+    ; PDPT[2] -> pd_table_2 (2 to 3GB)
+    mov eax, pd_table_2
+    or eax, 0x03
+    mov [pdpt_table + 16], eax
+
+    ; PDPT[3] -> pd_table_3 (3 to 4GB)
+    mov eax, pd_table_3
+    or eax, 0x03
+    mov [pdpt_table + 24], eax
+
+    ; PDPT_HIGH[510] -> pd_table_0 (Higher-half maps to lower 1GB physical)
+    mov eax, pd_table_0
     or eax, 0x03
     mov [pdpt_high + 510 * 8], eax
 
-    ; Map 512 entries in pd_table as 2MB huge pages (covering 0 to 1GB)
+    ; Fill all 2048 PD entries (4 tables x 512) with 2MB huge pages
+    ; pd_table_0..3 are contiguous in BSS, so iterate from pd_table_0
+    ; Entry physical address = ecx * 2MB = ecx << 21
+    ; Flags: 0x83 = Present | Writable | Huge (2MB)
+    ; For ecx >= 1024 (phys >= 2GB, MMIO/VRAM region), add PCD (bit 4)
+    ; PCD flag: 0x93 = Present | Writable | PCD | Huge
+    mov edi, pd_table_0
     mov ecx, 0
-.map_pd_entries:
-    mov eax, 0x200000                       ; 2MB
-    mul ecx                                 ; EAX = ecx * 2MB
-    or eax, 0x83                            ; Present | Writable | Huge (2MB)
-    mov [pd_table + ecx * 8], eax
-    mov dword [pd_table + ecx * 8 + 4], 0   ; Upper 32 bits = 0
+.map_all_pd:
+    mov eax, ecx
+    shl eax, 21                             ; EAX = ecx * 2MB (physical base)
+    cmp ecx, 1024                           ; 1024 * 2MB = 2GB boundary
+    jb .map_normal
+    or eax, 0x93                            ; Present | Writable | PCD | Huge (MMIO)
+    jmp .map_store
+.map_normal:
+    or eax, 0x83                            ; Present | Writable | Huge (RAM)
+.map_store:
+    mov [edi + ecx * 8], eax
+    mov dword [edi + ecx * 8 + 4], 0        ; Upper 32 bits = 0
     inc ecx
-    cmp ecx, 512
-    jne .map_pd_entries
+    cmp ecx, 2048                           ; 4 * 512 = 2048 total entries
+    jne .map_all_pd
     ret
 
 ; Fatal error halt routines (writes error character to VGA memory 0xB8000)
@@ -270,7 +297,13 @@ pdpt_table:
     resb 4096
 pdpt_high:
     resb 4096
-pd_table:
+pd_table_0:
+    resb 4096
+pd_table_1:
+    resb 4096
+pd_table_2:
+    resb 4096
+pd_table_3:
     resb 4096
 
 align 16
