@@ -19,7 +19,9 @@ function getSecretKey(): string {
     fs.writeFileSync(secretPath, newSecret, "utf-8");
     return newSecret;
   } catch (err) {
-    throw new Error("Failed to read or generate AUTH_SECRET. Please set the AUTH_SECRET environment variable or ensure file system permissions.", { cause: err });
+    const error = new Error("Failed to read or generate AUTH_SECRET. Please set the AUTH_SECRET environment variable or ensure file system permissions.");
+    (error as any).cause = err;
+    throw error;
   }
 }
 
