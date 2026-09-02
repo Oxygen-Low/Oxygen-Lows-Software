@@ -507,10 +507,35 @@ export function PublicAssetsApp() {
     }
   };
 
+  const buildValidatedUrl = (baseUrl: string): string => {
+    try {
+      // Minimal path validation
+      if (baseUrl.includes('/../') || /\/%2e%2e\//i.test(baseUrl)) {
+        throw new Error('Invalid path');
+      }
+      
+      const url = new URL(baseUrl);
+      
+      // Protocol + host checks
+      const allowedDomains = ['supabase.co'];
+      if (!allowedDomains.includes(url.hostname.split('.').slice(-2).join('.'))) {
+        throw new Error('Invalid host');
+      }
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        throw new Error('Invalid protocol');
+      }
+      
+      return url.href;
+    } catch {
+      throw new Error('Invalid URL');
+    }
+  };
+
   const handleSaveFileToStorage = async (item: PublicFileAsset) => {
     if (!session?.user?.id) return;
     try {
-      const response = await fetch(item.public_url || "");
+      const validatedUrl = buildValidatedUrl(item.public_url || "");
+      const response = await fetch(validatedUrl);
       if (!response.ok)
         throw new Error("Failed to download file from public hub");
       const blob = await response.blob();
