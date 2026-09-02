@@ -155,6 +155,24 @@ export function buildRaceBriefPrompt(
 /**
  * Character Generator Prompt Builder with Anti-Verbatim Rule
  */
+export interface CharacterSchema {
+  name: string;
+  display_name: string;
+  short_description: string;
+  appearance: string;
+  personality: string;
+  backstory: string;
+  hidden_description: string;
+  stats?: {
+    str: number;
+    dex: number;
+    con: number;
+    int: number;
+    wis: number;
+    cha: number;
+  };
+}
+
 export function buildCharacterGenerationPrompt(params: {
   prompt: string;
   universeSummary?: string;
@@ -162,7 +180,7 @@ export function buildCharacterGenerationPrompt(params: {
   researchFindings?: string;
   include_stats?: boolean;
 }): { system: string; user: string } {
-  const schema: any = {
+  const schema: CharacterSchema = {
     name: "Full character name",
     display_name: "Title or moniker",
     short_description: "1-2 sentence hook summarizing who they are",
