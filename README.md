@@ -17,6 +17,14 @@ You can access the official web application at https://oxygenlow.com
 > I lost my Docker credentials so I'm unable to manually delete it.
 > The container may contain multiple vulnerabilities and is heavily outdated.
 
+## Operating System
+A work in progress operating system is under development.
+
+> [!CAUTION]
+> The operating system may cause damage to hardware or data loss because it is heavily work in progress.
+
+> [!TIP]
+> Use a virtual machine to run the operating system.
 
 ## Features
 
