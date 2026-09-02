@@ -7,6 +7,7 @@ import {
   initUserFolder,
   getUserById,
   getUserByUsernameOrEmail,
+  getProfileByUserId,
   getTableRows,
   saveTableRows,
   queryTable,
@@ -536,6 +537,101 @@ describe("dataStore", () => {
       if (fs.existsSync(u1Dir)) fs.rmSync(u1Dir, { recursive: true, force: true });
       if (fs.existsSync(u2Dir)) fs.rmSync(u2Dir, { recursive: true, force: true });
     }
+  });
+
+  describe("Path Traversal Security", () => {
+    it("should reject path traversal attempts with .. in initUserFolder", () => {
+      expect(() => {
+        initUserFolder("../../../etc/passwd", {
+          username: "attacker",
+          email: "attacker@example.com",
+          passwordHash: "hash",
+          salt: "salt",
+        });
+      }).toThrow("Invalid user ID");
+    });
+
+    it("should reject absolute paths in initUserFolder", () => {
+      expect(() => {
+        initUserFolder("/etc/passwd", {
+          username: "attacker",
+          email: "attacker@example.com",
+          passwordHash: "hash",
+          salt: "salt",
+        });
+      }).toThrow("Invalid user ID");
+    });
+
+    it("should reject path traversal attempts in getUserById", () => {
+      const result = getUserById("../../etc/passwd");
+      expect(result).toBeNull();
+    });
+
+    it("should reject absolute paths in getUserById", () => {
+      const result = getUserById("/etc/passwd");
+      expect(result).toBeNull();
+    });
+
+    it("should reject path traversal attempts in getProfileByUserId", () => {
+      const result = getProfileByUserId("../../../etc/passwd");
+      expect(result).toBeNull();
+    });
+
+    it("should reject path traversal in callRpc sync_user_games", () => {
+      initUserFolder(testUserId, {
+        username: "securityuser",
+        email: "security@example.com",
+        passwordHash: "hash",
+        salt: "salt",
+      });
+
+      const result = callRpc(
+        "sync_user_games",
+        {
+          p_games: [{ id: "game1", title: "Test Game" }],
+        },
+        "../../../etc/passwd",
+      );
+
+      expect(result).toBeDefined();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Invalid request");
+    });
+
+    it("should reject path traversal in callRpc add_custom_game", () => {
+      initUserFolder(testUserId, {
+        username: "securityuser2",
+        email: "security2@example.com",
+        passwordHash: "hash",
+        salt: "salt",
+      });
+
+      const result = callRpc(
+        "add_custom_game",
+        {
+          p_user_id: "../../etc/passwd",
+          p_game_id: "custom_game",
+          p_title: "Malicious Game",
+        },
+        "../../etc/passwd",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Invalid input");
+    });
+
+    it("should allow valid numeric user IDs", () => {
+      initUserFolder(testUserId, {
+        username: "validuser",
+        email: "valid@example.com",
+        passwordHash: "hash",
+        salt: "salt",
+      });
+
+      const user = getUserById(testUserId);
+      expect(user).not.toBeNull();
+      expect(user?.username).toBe("validuser");
+    });
   });
 
   describe("Support Tickets Handling", () => {
