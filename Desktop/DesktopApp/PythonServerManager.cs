@@ -315,16 +315,11 @@ public class PythonServerManager
             pipExecutable = pythonExecutable;
         }
 
-        var pipArgs = pipExecutable == pythonExecutable
-            ? $"-m pip install -r \"{reqFile}\" --disable-pip-version-check"
-            : $"install -r \"{reqFile}\" --disable-pip-version-check";
-
         var pipProcess = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = pipExecutable,
-                Arguments = pipArgs,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -332,6 +327,23 @@ public class PythonServerManager
                 RedirectStandardError = true
             }
         };
+
+        if (pipExecutable == pythonExecutable)
+        {
+            pipProcess.StartInfo.ArgumentList.Add("-m");
+            pipProcess.StartInfo.ArgumentList.Add("pip");
+            pipProcess.StartInfo.ArgumentList.Add("install");
+            pipProcess.StartInfo.ArgumentList.Add("-r");
+            pipProcess.StartInfo.ArgumentList.Add(reqFile);
+            pipProcess.StartInfo.ArgumentList.Add("--disable-pip-version-check");
+        }
+        else
+        {
+            pipProcess.StartInfo.ArgumentList.Add("install");
+            pipProcess.StartInfo.ArgumentList.Add("-r");
+            pipProcess.StartInfo.ArgumentList.Add(reqFile);
+            pipProcess.StartInfo.ArgumentList.Add("--disable-pip-version-check");
+        }
 
         pipProcess.Start();
         await pipProcess.WaitForExitAsync();
