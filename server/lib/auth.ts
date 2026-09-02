@@ -18,8 +18,8 @@ function getSecretKey(): string {
     const newSecret = crypto.randomBytes(32).toString("hex");
     fs.writeFileSync(secretPath, newSecret, "utf-8");
     return newSecret;
-  } catch {
-    return "oxygen-lows-software-default-secret-auth-key-2026";
+  } catch (err) {
+    throw new Error("Failed to read or generate AUTH_SECRET. Please set the AUTH_SECRET environment variable or ensure file system permissions.", { cause: err });
   }
 }
 
