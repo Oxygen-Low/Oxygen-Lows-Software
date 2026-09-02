@@ -71,3 +71,5 @@ venv/
 ENV/
 env/
 /.agents
+
+package-lock.json
