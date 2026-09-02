@@ -34,7 +34,7 @@
     "diff": "^9.0.0",
     "diff2html": "^3.4.56",
     "dotenv": "^17.4.2",
-    "hono": "^4.13.3",
+    "hono": "^4.13.5",
     "leaflet": "^1.9.4",
     "mime-types": "^3.0.2",
     "music-metadata": "11.15.0",

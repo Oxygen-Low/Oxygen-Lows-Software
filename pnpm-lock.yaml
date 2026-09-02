@@ -32,13 +32,13 @@ importers:
         version: 0.12.2
       '@hono/node-server':
         specifier: ^2.1.1
-        version: 2.1.1(hono@4.13.3)
+        version: 2.1.1(hono@4.13.5)
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@oxygenlow/webdefender':
         specifier: ^0.2.2
-        version: 0.2.2(express@5.2.1)(hono@4.13.3)
+        version: 0.2.2(express@5.2.1)(hono@4.13.5)
       '@types/leaflet':
         specifier: ^1.9.22
         version: 1.9.22
@@ -67,8 +67,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       hono:
-        specifier: ^4.13.3
-        version: 4.13.3
+        specifier: ^4.13.5
+        version: 4.13.5
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -365,8 +365,8 @@ importers:
         specifier: '>=4.0.0'
         version: 5.2.1
       hono:
-        specifier: '>=4.0.0'
-        version: 4.13.2
+        specifier: '>=4.13.5'
+        version: 4.13.5
     devDependencies:
       '@types/node':
         specifier: ^26.2.0
@@ -2733,12 +2733,8 @@ packages:
   hls.js@1.7.0:
     resolution: {integrity: sha512-NnQpT6Z//+2IB2qovSUbKbrlXY1MOpi0JynZ9L2NNOuTJiNCyMSQj9k2laEj1v7CxU/Hb8oTWR98eT3mVpPQVQ==}
 
-  hono@4.13.2:
-    resolution: {integrity: sha512-JydRilDRkYBQMt9qR9U92mXxmbGqsqSn/IKOrh4e7/gEbn+0zSr8igTu0obwJoNGN4sez28DIql7FBHWydoJpA==}
-    engines: {node: '>=16.9.0'}
-
-  hono@4.13.3:
-    resolution: {integrity: sha512-r8AO2mYHoLxSHkgafNeC/BXyb2vWRxD3jem4Ts+ptav8oTG5FIRifAjuJEmZI4bSvvc2ns0GxmIYiZnHqN3mMw==}
+  hono@4.13.5:
+    resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@6.0.0:
@@ -4299,9 +4295,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hono/node-server@2.1.1(hono@4.13.3)':
+  '@hono/node-server@2.1.1(hono@4.13.5)':
     dependencies:
-      hono: 4.13.3
+      hono: 4.13.5
 
   '@hookform/resolvers@5.9.1(@standard-schema/spec@1.1.0)(react-hook-form@7.85.0(react@19.2.8))(zod@4.4.3)':
     dependencies:
@@ -4357,10 +4353,10 @@ snapshots:
 
   '@oxc-project/types@0.147.0': {}
 
-  '@oxygenlow/webdefender@0.2.2(express@5.2.1)(hono@4.13.3)':
+  '@oxygenlow/webdefender@0.2.2(express@5.2.1)(hono@4.13.5)':
     optionalDependencies:
       express: 5.2.1
-      hono: 4.13.3
+      hono: 4.13.5
 
   '@paralleldrive/cuid2@2.3.1':
     dependencies:
@@ -6200,9 +6196,7 @@ snapshots:
 
   hls.js@1.7.0: {}
 
-  hono@4.13.2: {}
-
-  hono@4.13.3: {}
+  hono@4.13.5: {}
 
   html-encoding-sniffer@6.0.0(@noble/hashes@1.8.0):
     dependencies:
