@@ -300,6 +300,10 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
             path = `${sessionUserId}/${path}`;
           }
 
+          if (path.includes('..')) {
+            throw new Error('Invalid path');
+          }
+
           const { data } = await storage
             .from("Storage")
             .createSignedUrl(path, 3600);
