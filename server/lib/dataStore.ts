@@ -175,7 +175,7 @@ export function getNextUserId(): string {
         const resolvedBase = path.resolve(DATA_DIR);
         const resolvedTarget = path.resolve(DATA_DIR, item.name);
         const relative = path.relative(resolvedBase, resolvedTarget);
-        if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        if (relative.startsWith("..") || path.isAbsolute(relative)) {
           continue;
         }
         if (item.isDirectory() && /^\d+$/.test(item.name)) {
@@ -209,8 +209,8 @@ export function initUserFolder(
   const resolvedBase = path.resolve(DATA_DIR);
   const resolvedTarget = path.resolve(DATA_DIR, userId);
   const relative = path.relative(resolvedBase, resolvedTarget);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error('Invalid user ID');
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Invalid user ID");
   }
   cachedUserIds = null;
   const userDir = resolvedTarget;
@@ -351,7 +351,7 @@ export function getUserById(userId: string | number) {
   const base = path.resolve(DATA_DIR);
   const target = path.resolve(base, String(userId), "user.json");
   const relative = path.relative(base, target);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return null;
   }
   const userPath = target;
@@ -379,15 +379,33 @@ export function getUserByUsernameOrEmail(identifier: string) {
   return null;
 }
 
+const profileCache = new Map<string, { data: any; timestamp: number }>();
+const PROFILE_CACHE_TTL = 30000; // 30 seconds
+
 export function getProfileByUserId(userId: string | number) {
   if (userId === undefined || userId === null || String(userId).trim() === "")
     return null;
-  const profilePath = path.join(DATA_DIR, String(userId), "profile.json");
+  const userIdStr = String(userId);
+  const now = Date.now();
+
+  const cached = profileCache.get(userIdStr);
+  if (cached && now - cached.timestamp < PROFILE_CACHE_TTL) {
+    return cached.data;
+  }
+
+  const profilePath = path.join(DATA_DIR, userIdStr, "profile.json");
   const base = path.resolve(DATA_DIR);
   const target = path.resolve(profilePath);
   const rel = path.relative(base, target);
-  if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
-  return readJsonFile(target, null);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
+
+  const data = readJsonFile(target, null);
+  profileCache.set(userIdStr, { data, timestamp: now });
+  return data;
+}
+
+export function invalidateProfileCache(userId: string | number) {
+  profileCache.delete(String(userId));
 }
 
 /**
@@ -537,7 +555,7 @@ export function getTableFilePath(
     const base = path.resolve(DATA_DIR);
     const target = path.resolve(filePath);
     const rel = path.relative(base, target);
-    if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+    if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
     return target;
   }
 
@@ -622,13 +640,10 @@ export function getTableRows(table: string, userId?: string | number): any[] {
       const base = path.resolve(DATA_DIR);
       const target = path.resolve(base, id, "public_assets", "assets.json");
       const relative = path.relative(base, target);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      if (relative.startsWith("..") || path.isAbsolute(relative)) {
         continue;
       }
-      const assets = readJsonFile<any[]>(
-        target,
-        [],
-      );
+      const assets = readJsonFile<any[]>(target, []);
       const prof = getProfileByUserId(id);
       for (const asset of assets) {
         const isAnon = Boolean(asset.is_anonymous);
@@ -704,6 +719,7 @@ export function saveTableRows(
     const profilePath = path.join(DATA_DIR, userIdStr, "profile.json");
     const existing = readJsonFile(profilePath, {});
     writeJsonFile(profilePath, { ...existing, ...(rows[0] || {}) });
+    invalidateProfileCache(userIdStr);
     return;
   }
 
@@ -1700,7 +1716,10 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       }
 
       const allMergedGames = Array.from(existingMap.values());
-      if (typeof userId === 'string' && (userId.includes('..') || userId.startsWith('/'))) {
+      if (
+        typeof userId === "string" &&
+        (userId.includes("..") || userId.startsWith("/"))
+      ) {
         return { success: false, error: "Invalid request" };
       }
       saveTableRows("user_games", userId, allMergedGames);
@@ -2013,7 +2032,9 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       const nowMs = Date.now();
 
       const PLATFORM_PREFIX_REGEX = /^(steam_|epic_|gog_|ea_|xbox_|ubisoft_)/i;
-      const cleanTargetGameId = targetGameId ? String(targetGameId).replace(PLATFORM_PREFIX_REGEX, "") : "";
+      const cleanTargetGameId = targetGameId
+        ? String(targetGameId).replace(PLATFORM_PREFIX_REGEX, "")
+        : "";
 
       for (const friendId of friendIds) {
         const pref = readJsonFile<UserPreferencesRecord>(
@@ -2052,7 +2073,10 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
           if (!matchingGame && cleanTargetGameId) {
             const gamesByCleanId = new Map<string, UserGameRecord>();
             for (const g of friendGames) {
-              const cleanGame = String(g.game_id || g.id).replace(PLATFORM_PREFIX_REGEX, "");
+              const cleanGame = String(g.game_id || g.id).replace(
+                PLATFORM_PREFIX_REGEX,
+                "",
+              );
               if (cleanGame) gamesByCleanId.set(cleanGame, g);
             }
             matchingGame = gamesByCleanId.get(cleanTargetGameId);
@@ -2079,7 +2103,10 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
             const playtimesByCleanId = new Map<string, UserPlaytimeRecord>();
             for (const p of friendPlaytimes) {
               if (p.game_id) {
-                const cleanPt = String(p.game_id).replace(PLATFORM_PREFIX_REGEX, "");
+                const cleanPt = String(p.game_id).replace(
+                  PLATFORM_PREFIX_REGEX,
+                  "",
+                );
                 if (cleanPt) playtimesByCleanId.set(cleanPt, p);
               }
             }
@@ -2090,7 +2117,8 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         if (!matchingPlaytime && targetGameTitle) {
           const playtimesByTitle = new Map<string, UserPlaytimeRecord>();
           for (const p of friendPlaytimes) {
-            if (p.game_title) playtimesByTitle.set(p.game_title.toLowerCase(), p);
+            if (p.game_title)
+              playtimesByTitle.set(p.game_title.toLowerCase(), p);
           }
           matchingPlaytime = playtimesByTitle.get(targetGameTitle);
         }
