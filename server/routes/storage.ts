@@ -184,7 +184,7 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
     // If this is the last chunk
     if (chunkIndex === totalChunks - 1) {
       // Check if all chunks from 0 to totalChunks - 1 exist
-      const assembledChunks: Buffer[] = [];
+      const readPromises: Promise<Buffer>[] = [];
       for (let i = 0; i < totalChunks; i++) {
         const p = path.join(tmpDir, `chunk_${i}`);
         if (!fs.existsSync(p)) {
@@ -193,9 +193,10 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
             error: null,
           });
         }
-        assembledChunks.push(fs.readFileSync(p));
+        readPromises.push(fs.promises.readFile(p));
       }
 
+      const assembledChunks = await Promise.all(readPromises);
       const completeBuffer = Buffer.concat(assembledChunks);
       const { data, error } = await serverStorage.upload(
         bucket,
