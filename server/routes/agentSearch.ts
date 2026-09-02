@@ -812,9 +812,9 @@ agentSearchRouter.post(
       } catch {}
 
       // Prepare multimodal user images for vision
-      const userImages: string[] = [];
+      let userImages: string[] = [];
       if (images) {
-        for (const img of images) {
+        const imagePromises = images.map(async (img: any) => {
           if (img.data.startsWith("https://")) {
             try {
               const imgRes = await fetch(img.data, {
@@ -822,14 +822,17 @@ agentSearchRouter.post(
               });
               if (imgRes.ok) {
                 const buf = await imgRes.arrayBuffer();
-                const b64 = Buffer.from(buf).toString("base64");
-                userImages.push(b64);
+                return Buffer.from(buf).toString("base64");
               }
             } catch {}
+            return null;
           } else {
-            userImages.push(img.data);
+            return img.data;
           }
-        }
+        });
+
+        const results = await Promise.all(imagePromises);
+        userImages = results.filter((res): res is string => res !== null);
       }
 
       const allSearches: any[] = [];
