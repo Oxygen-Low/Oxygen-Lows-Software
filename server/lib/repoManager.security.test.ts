@@ -137,7 +137,7 @@ describe("RepoManager Path Traversal Security", () => {
       expect(validateId("12345678-1234-1234-1234-123456789abcd")).toBe(false); // too long
       expect(validateId("12345678-1234-1234-1234-123456789ab")).toBe(false); // too short
       expect(validateId("12345678_1234_1234_1234_123456789abc")).toBe(false); // wrong separator
-      expect(validateId("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")).toBe(false); // invalid chars
+      expect(validateId("gggggggg-gggg-gggg-gggg-gggggggggggg")).toBe(false); // invalid chars
     });
   });
 
