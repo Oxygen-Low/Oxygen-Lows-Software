@@ -324,7 +324,7 @@ export function DefenderApp() {
       const data = await res.json();
       setApps(data || []);
     } catch (err) {
-      console.error(err);
+      console.error("[WebDefender] Failed to load apps:", err);
       toast.error("Failed to load apps.");
     } finally {
       setIsLoading(false);
@@ -362,7 +362,7 @@ export function DefenderApp() {
       loadApps();
       toast.success("App created successfully.");
     } catch (err) {
-      console.error(err);
+      console.error("[WebDefender] Failed to create app:", err);
       toast.error("Failed to create app.");
     }
   };
@@ -379,7 +379,7 @@ export function DefenderApp() {
       setDeleteConfirmText("");
       loadApps();
     } catch (err) {
-      console.error(err);
+      console.error("[WebDefender] Failed to delete app:", err);
       toast.error("Failed to delete app.");
     } finally {
       setIsDeleting(false);
@@ -763,7 +763,7 @@ function AppDashboard({
           : outboundData.outbounds || [],
       );
     } catch (err) {
-      console.error(err);
+      console.error("[WebDefender] Failed to load app data:", err);
       toast.error("Failed to load app data.");
     } finally {
       setIsLoading(false);
