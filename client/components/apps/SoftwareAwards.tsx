@@ -80,9 +80,10 @@ export function SoftwareAwardsApp() {
         signal: controller.signal,
       });
       const data = await res.json();
-      if (data.awards) {
-        setAwards(data.awards);
+      if (!res.ok || !Array.isArray(data.awards)) {
+        throw new Error("Invalid response");
       }
+      setAwards(data.awards);
     } catch (err: any) {
       if (err.name !== "AbortError") {
         toast.error(t("awards.fetchError", undefined, "Failed to fetch awards."));

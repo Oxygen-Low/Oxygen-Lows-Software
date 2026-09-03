@@ -49,7 +49,15 @@ export function getCurrentMonthKey(date: Date = new Date()): string {
 }
 
 export function getAwardPeriodKey(award: SoftwareAward): string {
-  return getCurrentMonthKey(new Date(award.created_at));
+  const now = new Date();
+  const created = new Date(award.created_at);
+  const diffTime = Math.abs(now.getTime() - created.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 3 && getCurrentMonthKey(now) !== getCurrentMonthKey(created)) {
+    return getCurrentMonthKey(created);
+  }
+  return getCurrentMonthKey(now);
 }
 
 const AWARDS_FILE = path.join(AWARDS_DIR, "awards.json");
