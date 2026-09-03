@@ -5,11 +5,12 @@ import { SoftwareAwardsApp } from "./SoftwareAwards";
 import { BrowserRouter } from "react-router-dom";
 import React from "react";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({
+  useAuth: vi.fn(() => ({
     session: { access_token: "test-token" },
-  }),
+  })),
 }));
 
 const mockAwards = [
@@ -126,7 +127,7 @@ describe("SoftwareAwardsApp", () => {
       });
     });
 
-    const { unmount } = render(
+    const { rerender } = render(
       <LanguageProvider>
         <BrowserRouter>
           <SoftwareAwardsApp />
@@ -137,10 +138,12 @@ describe("SoftwareAwardsApp", () => {
     // Initial effect fired fetch 1.
     expect(fetchCount).toBe(1);
 
-    // Unmount and re-render to trigger fetch 2.
-    unmount();
+    // Change mock token to trigger a re-render and fetch 2.
+    (useAuth as any).mockReturnValue({
+      session: { access_token: "test-token-2" },
+    });
 
-    render(
+    rerender(
       <LanguageProvider>
         <BrowserRouter>
           <SoftwareAwardsApp />

@@ -237,7 +237,11 @@ softwareAwardsRouter.patch("/admin/:id", async (c) => {
     if (body.description) award.description = String(body.description).trim();
     if (body.rewardName) award.rewardName = String(body.rewardName).trim();
 
-    if (Array.isArray(body.options)) {
+    if (body.options !== undefined) {
+      if (!Array.isArray(body.options)) {
+        return c.json({ error: "Options must be an array" }, 400);
+      }
+
       const results = calculateAwardResults(id);
       if (results && results.totalVotes > 0) {
         return c.json({ error: "Cannot modify options while award has votes" }, 400);
