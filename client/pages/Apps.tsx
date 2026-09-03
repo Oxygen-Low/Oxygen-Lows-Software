@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
+import { FileConverterApp } from "@/components/apps/FileConverter";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { PublicAssetsApp } from "@/components/apps/PublicAssets";
 import { DataSaveApp } from "@/components/apps/DataSave";
@@ -168,6 +169,17 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileCompressorApp,
+  },
+  {
+    id: "file-converter",
+    nameKey: "apps.fileConverterTitle",
+    defaultName: "File Converter",
+    descKey: "apps.fileConverterDesc",
+    defaultDesc: "Convert Images, Audio, and Video files locally in your browser.",
+    categories: ["All", "Utility"],
+    availability: "web-and-desktop",
+    icon: <Box className="w-8 h-8 text-cyan-500" />,
+    component: FileConverterApp,
   },
   {
     id: "public-assets",
