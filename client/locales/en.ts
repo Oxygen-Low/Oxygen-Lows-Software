@@ -338,7 +338,8 @@ export const en = {
     vpnOffline: "Offline",
     vpnPinging: "Pinging...",
     webDefenderTitle: "Web Defender",
-    webDefenderDesc: "Block DDoS, bots, and malicious traffic from your site or API.",
+    webDefenderDesc:
+      "Block DDoS, bots, and malicious traffic from your site or API.",
     webDefenderRealTime: "Real-Time",
     webDefenderConnecting: "Connecting...",
     passwordManagerTitle: "Password Manager",
@@ -561,7 +562,8 @@ export const en = {
     addFromStorage: "Add from Storage",
     selectAudioFromStorage: "Select Audio from Storage",
     clearPlaylist: "Clear Playlist",
-    clearPlaylistConfirm: "Are you sure you want to clear your entire playlist?",
+    clearPlaylistConfirm:
+      "Are you sure you want to clear your entire playlist?",
     clearPlaylistSuccess: "Playlist cleared",
     moveUp: "Move Up",
     moveDown: "Move Down",

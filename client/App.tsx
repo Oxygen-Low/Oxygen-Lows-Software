@@ -65,6 +65,7 @@ const AdminVerification = lazyWithRetry(
   () => import("./pages/AdminVerification"),
 );
 const AdminSurveys = lazyWithRetry(() => import("./pages/AdminSurveys"));
+const AdminAwards = lazyWithRetry(() => import("./pages/AdminAwards"));
 const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
 const Terms = lazyWithRetry(() => import("./pages/Terms"));
@@ -134,6 +135,14 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <Storage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/awards"
+                      element={
+                        <ProtectedRoute>
+                          <AdminAwards />
                         </ProtectedRoute>
                       }
                     />

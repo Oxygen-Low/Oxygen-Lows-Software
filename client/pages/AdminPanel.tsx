@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LifeBuoy, ShieldCheck, ClipboardList } from "lucide-react";
+import { LifeBuoy, ShieldCheck, ClipboardList, Trophy } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -55,6 +55,17 @@ export default function AdminPanel() {
       icon: ClipboardList,
       href: "/admin/surveys",
       color: "text-purple-500",
+    },
+    {
+      title: t("admin.awardsTitle", undefined, "Awards Management"),
+      description: t(
+        "admin.awardsDesc",
+        undefined,
+        "Create, configure, and monitor software awards.",
+      ),
+      icon: Trophy,
+      href: "/admin/awards",
+      color: "text-yellow-500",
     },
   ];
 

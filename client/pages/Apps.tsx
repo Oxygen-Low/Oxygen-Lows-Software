@@ -30,6 +30,7 @@ import {
   KeyRound,
   Gamepad2,
   ClipboardList,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -46,6 +47,7 @@ import { DefenderApp } from "@/components/apps/WebDefender";
 import { PasswordManagerApp } from "@/components/apps/PasswordManager";
 import { GameLibraryApp } from "@/components/apps/GameLibrary";
 import { SurveysApp } from "@/components/apps/Surveys";
+import { SoftwareAwardsApp } from "@/components/apps/SoftwareAwards";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -175,7 +177,8 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.fileConverterTitle",
     defaultName: "File Converter",
     descKey: "apps.fileConverterDesc",
-    defaultDesc: "Convert Images, Audio, and Video files locally in your browser.",
+    defaultDesc:
+      "Convert Images, Audio, and Video files locally in your browser.",
     categories: ["All", "Utility"],
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
@@ -293,6 +296,19 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <ClipboardList className="w-8 h-8 text-cyan-500" />,
     component: SurveysApp,
+  },
+  {
+    id: "software-awards",
+    nameKey: "apps.softwareAwardsTitle",
+    defaultName: "Software Awards",
+    descKey: "apps.softwareAwardsDesc",
+    defaultDesc:
+      "Vote for your favorite software and see the community's top choices in our monthly awards.",
+    categories: ["All", "Social", "Utility"],
+    availability: "web-and-desktop",
+    icon: <Trophy className="w-8 h-8 text-cyan-500" />,
+    component: SoftwareAwardsApp,
+    authRequired: true,
   },
 ];
 
