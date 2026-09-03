@@ -11,12 +11,6 @@ You can access the official web application at https://oxygenlow.com
 > [!NOTE]  
 > This project was originally designed as a self-hostable website, but it has now migrated to a cloud-hosted model and is no longer intended for self-hosting.
 
-> [!WARNING]
-> Do not use the official Docker container.
-> The Docker container has been discontinued.
-> I lost my Docker credentials so I'm unable to manually delete it.
-> The container may contain multiple vulnerabilities and is heavily outdated.
-
 ## Operating System
 A work in progress operating system is under development.
 
