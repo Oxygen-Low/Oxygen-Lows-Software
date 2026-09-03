@@ -84,4 +84,84 @@ describe("SoftwareAwardsApp", () => {
       );
     });
   });
+
+  it("resolves overlapping requests in reverse order while preserving only the latest result", async () => {
+    let resolve1: any;
+    const fetchDeferred1 = new Promise((r) => { resolve1 = r; });
+
+    let resolve2: any;
+    const fetchDeferred2 = new Promise((r) => { resolve2 = r; });
+
+    let fetchCount = 0;
+    (global.fetch as any).mockImplementation((url: string, init?: RequestInit) => {
+      if (url === "/api/software-awards") {
+        fetchCount++;
+        const currentCount = fetchCount;
+        if (currentCount === 1) {
+          return fetchDeferred1.then(() => {
+            if (init?.signal?.aborted) {
+              return Promise.reject(new DOMException("Aborted", "AbortError"));
+            }
+            return {
+              ok: true,
+              json: () => Promise.resolve({ awards: [{ ...mockAwards[0], title: "First Request Award" }] }),
+            };
+          });
+        }
+        if (currentCount === 2) {
+          return fetchDeferred2.then(() => {
+            if (init?.signal?.aborted) {
+              return Promise.reject(new DOMException("Aborted", "AbortError"));
+            }
+            return {
+              ok: true,
+              json: () => Promise.resolve({ awards: [{ ...mockAwards[0], title: "Second Request Award" }] }),
+            };
+          });
+        }
+      }
+      return Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Not found" }),
+      });
+    });
+
+    const { unmount } = render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <SoftwareAwardsApp />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    // Initial effect fired fetch 1.
+    expect(fetchCount).toBe(1);
+
+    // Unmount and re-render to trigger fetch 2.
+    unmount();
+
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <SoftwareAwardsApp />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+
+    expect(fetchCount).toBe(2);
+
+    // Resolve in reverse order: request 2, then request 1
+    resolve2(undefined);
+    await waitFor(() => {
+      expect(screen.queryByText("Second Request Award")).not.toBeNull();
+    });
+
+    resolve1(undefined);
+
+    // Wait to ensure request 1 didn't overwrite request 2
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(screen.queryByText("First Request Award")).toBeNull();
+    expect(screen.queryByText("Second Request Award")).not.toBeNull();
+  });
 });

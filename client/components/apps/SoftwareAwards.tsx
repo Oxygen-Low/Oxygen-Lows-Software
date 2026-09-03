@@ -62,27 +62,45 @@ export function SoftwareAwardsApp() {
   const [submitting, setSubmitting] = useState(false);
   const [resultsData, setResultsData] = useState<AwardResult | null>(null);
 
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
   const fetchAwards = async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     try {
       const res = await fetch("/api/software-awards", {
         headers: {
           Authorization: `Bearer ${session?.access_token || ""}`,
         },
+        signal: controller.signal,
       });
       const data = await res.json();
       if (data.awards) {
         setAwards(data.awards);
       }
-    } catch (err) {
-      toast.error(t("awards.fetchError", undefined, "Failed to fetch awards."));
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        toast.error(t("awards.fetchError", undefined, "Failed to fetch awards."));
+      }
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     fetchAwards();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [session?.access_token]);
 
   const handleVote = async (awardId: string) => {
@@ -125,13 +143,22 @@ export function SoftwareAwardsApp() {
     }
   };
 
+  const resultsAbortControllerRef = React.useRef<AbortController | null>(null);
+
   const fetchResults = async (awardId: string) => {
+    if (resultsAbortControllerRef.current) {
+      resultsAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    resultsAbortControllerRef.current = controller;
+
     setLoading(true);
     try {
       const res = await fetch(`/api/software-awards/${awardId}/results`, {
         headers: {
           Authorization: `Bearer ${session?.access_token || ""}`,
         },
+        signal: controller.signal,
       });
       const data = await res.json();
       if (res.ok && data.results) {
@@ -142,12 +169,16 @@ export function SoftwareAwardsApp() {
             t("awards.resultsError", undefined, "Failed to fetch results."),
         );
       }
-    } catch (err) {
-      toast.error(
-        t("awards.resultsError", undefined, "Failed to fetch results."),
-      );
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        toast.error(
+          t("awards.resultsError", undefined, "Failed to fetch results."),
+        );
+      }
     } finally {
-      setLoading(false);
+      if (resultsAbortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   };
 

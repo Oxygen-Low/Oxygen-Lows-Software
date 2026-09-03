@@ -20,9 +20,6 @@ async function getAuthenticatedUser(c: any) {
   let token = authHeader?.toLowerCase().startsWith("bearer ")
     ? authHeader.slice(7).trim()
     : null;
-  if (!token) {
-    token = c.req.query("token") || null;
-  }
   if (!token) return null;
   return await resolveUserFromToken(token);
 }
@@ -49,6 +46,7 @@ softwareAwardsRouter.get("/", async (c) => {
       };
     });
 
+    c.header("Cache-Control", "no-store");
     return c.json({
       awards: awardsWithStatus,
       currentMonthKey,
@@ -139,6 +137,39 @@ softwareAwardsRouter.get("/:id/results", async (c) => {
   }
 });
 
+function normalizeAwardOptions(options: any[]) {
+  const normalized = [];
+  const seen = new Set();
+
+  for (const opt of options) {
+    let value = "";
+    let defaultLabel = "";
+
+    if (typeof opt === "string") {
+      value = opt.trim();
+      defaultLabel = opt.trim();
+    } else if (opt && typeof opt === "object") {
+      value = (opt.value || opt.label || "").trim();
+      defaultLabel = (opt.defaultLabel || opt.label || opt.value || "").trim();
+    } else {
+      throw new Error("Options must be objects or strings");
+    }
+
+    if (!value || !defaultLabel) {
+      throw new Error("Option value and label cannot be empty");
+    }
+
+    if (seen.has(value)) {
+      throw new Error("Option values must be unique");
+    }
+
+    seen.add(value);
+    normalized.push({ value, defaultLabel });
+  }
+
+  return normalized;
+}
+
 // Admin endpoints
 softwareAwardsRouter.post("/admin/create", async (c) => {
   try {
@@ -163,20 +194,20 @@ softwareAwardsRouter.post("/admin/create", async (c) => {
       );
     }
 
+    let normalizedOptions;
+    try {
+      normalizedOptions = normalizeAwardOptions(options);
+    } catch (err: any) {
+      return c.json({ error: err.message }, 400);
+    }
+
     const awardId = `award-${crypto.randomBytes(6).toString("hex")}`;
     const newAward = {
       id: awardId,
       title: title.trim(),
       description: description.trim(),
       rewardName: rewardName.trim(),
-      options: options.map((opt: any) =>
-        typeof opt === "string"
-          ? { value: opt, defaultLabel: opt }
-          : {
-              value: opt.value || opt.label,
-              defaultLabel: opt.defaultLabel || opt.label || opt.value,
-            },
-      ),
+      options: normalizedOptions,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -205,7 +236,19 @@ softwareAwardsRouter.patch("/admin/:id", async (c) => {
     if (body.title) award.title = String(body.title).trim();
     if (body.description) award.description = String(body.description).trim();
     if (body.rewardName) award.rewardName = String(body.rewardName).trim();
-    if (Array.isArray(body.options)) award.options = body.options;
+
+    if (Array.isArray(body.options)) {
+      const results = calculateAwardResults(id);
+      if (results && results.totalVotes > 0) {
+        return c.json({ error: "Cannot modify options while award has votes" }, 400);
+      }
+
+      try {
+        award.options = normalizeAwardOptions(body.options);
+      } catch (err: any) {
+        return c.json({ error: err.message }, 400);
+      }
+    }
 
     saveAward(award);
     return c.json({ success: true, award });

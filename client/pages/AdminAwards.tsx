@@ -71,8 +71,12 @@ export default function AdminAwards() {
         },
       });
       const data = await res.json();
-      if (data.awards) {
+      if (res.ok && data.awards && Array.isArray(data.awards)) {
         setAwards(data.awards);
+      } else {
+        toast.error(
+          t("admin.awardsFetchError", undefined, "Failed to fetch awards list."),
+        );
       }
     } catch (err) {
       toast.error(
@@ -420,6 +424,7 @@ export default function AdminAwards() {
                       size="sm"
                       onClick={() => handleDeleteAward(award.id)}
                       className="h-8 w-8 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                      aria-label={t("admin.deleteAward", undefined, "Delete Award")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
