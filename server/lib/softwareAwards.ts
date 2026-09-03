@@ -48,18 +48,24 @@ export function getCurrentMonthKey(date: Date = new Date()): string {
   return `${year}-${month}`;
 }
 
+export function getAwardPeriodKey(award: SoftwareAward): string {
+  return getCurrentMonthKey(new Date(award.created_at));
+}
+
 const AWARDS_FILE = path.join(AWARDS_DIR, "awards.json");
 const VOTES_FILE = path.join(AWARDS_DIR, "votes.json");
 const SUBMISSIONS_FILE = path.join(AWARDS_DIR, "submissions.json");
 
 function readJson<T>(filePath: string, fallback: T): T {
   try {
-    if (!fs.existsSync(filePath)) return fallback;
     const content = fs.readFileSync(filePath, "utf-8").trim();
     if (!content) return fallback;
     return JSON.parse(content) as T;
-  } catch {
-    return fallback;
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      return fallback;
+    }
+    throw err;
   }
 }
 
@@ -146,7 +152,8 @@ export function deleteAward(id: string): boolean {
 export function hasUserVoted(userId: string, awardId: string): boolean {
   ensureAwardsDir();
   const submissions = readJson<AwardSubmission[]>(SUBMISSIONS_FILE, []);
-  const currentMonthKey = getCurrentMonthKey();
+  const award = getAwardById(awardId);
+  const currentMonthKey = award ? getAwardPeriodKey(award) : getCurrentMonthKey();
 
   return submissions.some(
     (s) =>
@@ -182,7 +189,7 @@ export function submitVote(params: {
     };
   }
 
-  const currentMonthKey = getCurrentMonthKey();
+  const currentMonthKey = getAwardPeriodKey(award);
   const now = new Date().toISOString();
 
   const vote: AwardVote = {
@@ -222,15 +229,17 @@ export interface AwardResult {
 
 export function calculateAwardResults(
   awardId: string,
-  monthKey: string = getCurrentMonthKey(),
+  monthKey?: string,
 ): AwardResult | null {
   ensureAwardsDir();
   const award = getAwardById(awardId);
   if (!award) return null;
 
+  const activePeriodKey = monthKey || getAwardPeriodKey(award);
+
   const allVotes = readJson<AwardVote[]>(VOTES_FILE, []);
   const votes = allVotes.filter(
-    (v) => v.award_id === awardId && v.month_key === monthKey,
+    (v) => v.award_id === awardId && v.month_key === activePeriodKey,
   );
 
   const totalVotes = votes.length;
@@ -271,7 +280,7 @@ export function calculateAwardResults(
 
   return {
     awardId,
-    monthKey,
+    monthKey: activePeriodKey,
     totalVotes,
     winner,
     distribution,

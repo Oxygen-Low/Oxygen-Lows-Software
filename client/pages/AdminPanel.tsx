@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { LifeBuoy, ShieldCheck, ClipboardList, Trophy } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -89,27 +89,27 @@ export default function AdminPanel() {
           {apps.map((app) => {
             const Icon = app.icon;
             return (
-              <Card
-                key={app.href}
-                className="cursor-pointer hover:shadow-md transition-shadow border-slate-200 bg-white"
-                onClick={() => navigate(app.href)}
-              >
-                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                  <div className={`p-3 rounded-lg bg-slate-50 ${app.color}`}>
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl text-slate-900">
-                      {app.title}
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-slate-600 text-sm">
-                    {app.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
+              <Link to={app.href} key={app.href} className="block">
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-shadow border-slate-200 bg-white h-full"
+                >
+                  <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                    <div className={`p-3 rounded-lg bg-slate-50 ${app.color}`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl text-slate-900">
+                        {app.title}
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-slate-600 text-sm">
+                      {app.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              </Link>
             );
           })}
         </div>
