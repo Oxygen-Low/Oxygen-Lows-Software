@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   FileBox,
   Settings2,
@@ -50,11 +50,16 @@ const loadFfmpeg = async (): Promise<FFmpeg> => {
   }
 
   ffmpegLoadPromise = (async () => {
-    const instance = new FFmpeg();
-    instance.on("log", ({ message }) => console.log(message));
-    await instance.load();
-    ffmpegInstance = instance;
-    return instance;
+    try {
+      const instance = new FFmpeg();
+      instance.on("log", ({ message }) => console.log(message));
+      await instance.load();
+      ffmpegInstance = instance;
+      return instance;
+    } catch (err) {
+      ffmpegLoadPromise = null;
+      throw err;
+    }
   })();
 
   return ffmpegLoadPromise;
@@ -79,6 +84,14 @@ export function FileConverterApp() {
     null,
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (convertedUrl) {
+        URL.revokeObjectURL(convertedUrl);
+      }
+    };
+  }, [convertedUrl]);
 
   const getAvailableFormats = (type: "image" | "audio" | "video" | null) => {
     if (!type) return [];
@@ -121,7 +134,7 @@ export function FileConverterApp() {
       setIsConverting(true);
       toast.loading("Downloading file from storage...");
 
-      const res = await storage.download("files", storageFile.name);
+      const res = await storage.download("Storage", storageFile.name);
       if (res.error) throw res.error;
 
       const blob = res.data;
@@ -172,12 +185,16 @@ export function FileConverterApp() {
     setConvertedBlob(null);
     toast.loading(`Converting to ${targetFormat.toUpperCase()}...`);
 
+    let ffmpegRef: FFmpeg | null = null;
+    const progressCallback = ({ progress }: { progress: number }) => {
+      setProgress(Math.round(progress * 100));
+    };
+
     try {
       const ffmpeg = await loadFfmpeg();
+      ffmpegRef = ffmpeg;
 
-      ffmpeg.on("progress", ({ progress }) => {
-        setProgress(Math.round(progress * 100));
-      });
+      ffmpeg.on("progress", progressCallback);
 
       const inputName = `input.${file.name.split(".").pop()}`;
       const outputName = `output.${targetFormat}`;
@@ -212,6 +229,10 @@ export function FileConverterApp() {
       );
       const url = URL.createObjectURL(convertedBlob);
 
+      if (convertedUrl) {
+        URL.revokeObjectURL(convertedUrl);
+      }
+
       setConvertedBlob(convertedBlob);
       setConvertedUrl(url);
 
@@ -221,20 +242,27 @@ export function FileConverterApp() {
         const newFilename =
           storagePath.replace(/\.[^/.]+$/, "") + `.${targetFormat}`;
 
-        // Only remove old if extension changed
-        if (storagePath !== newFilename) {
-          await storage.remove("files", [storagePath]);
-        }
-
         const uploadRes = await storage.upload(
-          "files",
+          "Storage",
           newFilename,
           convertedBlob,
         );
+
         if (uploadRes.error) {
           toast.dismiss();
           toast.error("Failed to save converted file to storage");
+
+          if (convertedUrl) {
+            URL.revokeObjectURL(convertedUrl);
+          }
+          setConvertedUrl(null);
+          setConvertedBlob(null);
         } else {
+          // Only remove old if extension changed
+          if (storagePath !== newFilename) {
+            await storage.remove("Storage", [storagePath]);
+          }
+
           toast.dismiss();
           toast.success("File converted and saved to storage!");
           setStoragePath(newFilename);
@@ -248,6 +276,9 @@ export function FileConverterApp() {
       toast.dismiss();
       toast.error("An error occurred during conversion.");
     } finally {
+      if (ffmpegRef) {
+        ffmpegRef.off("progress", progressCallback);
+      }
       setIsConverting(false);
       setProgress(0);
     }
@@ -265,6 +296,9 @@ export function FileConverterApp() {
   };
 
   const clearFile = () => {
+    if (convertedUrl) {
+      URL.revokeObjectURL(convertedUrl);
+    }
     setFile(null);
     setStoragePath(null);
     setFileType(null);
@@ -310,14 +344,13 @@ export function FileConverterApp() {
               </TabsList>
 
               <TabsContent value="local">
-                <div
-                  className="border-2 border-dashed border-slate-700 rounded-xl p-12 text-center hover:bg-slate-800/50 transition-colors cursor-pointer group"
-                  onClick={() => fileInputRef.current?.click()}
+                <label
+                  className="block border-2 border-dashed border-slate-700 rounded-xl p-12 text-center hover:bg-slate-800/50 transition-colors cursor-pointer group"
                 >
                   <input
                     ref={fileInputRef}
                     type="file"
-                    className="hidden"
+                    className="sr-only"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
                         handleFileSelect(e.target.files[0]);
@@ -333,7 +366,7 @@ export function FileConverterApp() {
                   <p className="text-sm text-slate-400">
                     Supports Images, Audio, and Video files
                   </p>
-                </div>
+                </label>
               </TabsContent>
 
               {session ? (
@@ -390,7 +423,10 @@ export function FileConverterApp() {
               {!convertedUrl && (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300">
+                    <label
+                      htmlFor="target-format"
+                      className="text-sm font-medium text-slate-300"
+                    >
                       Target Format
                     </label>
                     <Select
@@ -398,7 +434,7 @@ export function FileConverterApp() {
                       onValueChange={setTargetFormat}
                       disabled={isConverting}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger id="target-format" className="w-full">
                         <SelectValue placeholder="Select format" />
                       </SelectTrigger>
                       <SelectContent>
