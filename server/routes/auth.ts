@@ -50,6 +50,11 @@ authRouter.post("/register", async (c) => {
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
 
+    // Disallow impersonation of admin by adding a hyphen
+    if (cleanUsername.toLowerCase() === "oxygen-low") {
+      return c.json({ error: "Username is already taken" }, 400);
+    }
+
     // Check for existing username or email
     const existing =
       getUserByUsernameOrEmail(cleanUsername) ||

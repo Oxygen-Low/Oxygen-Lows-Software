@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import Layout from "@/components/Layout";
@@ -63,6 +63,10 @@ export default function UserProfile() {
 
   useEffect(() => {
     if (!username) return;
+    if (username.toLowerCase() === "oxygen-low") {
+      navigate("/users/oxygenlow", { replace: true });
+      return;
+    }
     fetchProfile();
   }, [username, currentUser]);
 
@@ -318,6 +322,10 @@ export default function UserProfile() {
       setActionLoading(false);
     }
   };
+
+  if (username?.toLowerCase() === "oxygen-low") {
+    return <Navigate to="/users/oxygenlow" replace />;
+  }
 
   return (
     <Layout>

@@ -223,6 +223,21 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       expect(json.error).toMatch(/username is already taken/i);
     });
 
+    it("should reject registration with username oxygen-low to prevent admin impersonation", async () => {
+      const res = await app.request("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "Oxygen-Low",
+          email: "impersonator@example.com",
+          password: "Password123!",
+        }),
+      });
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toMatch(/username is already taken/i);
+    });
+
     it("should prevent duplicate email registration (case-insensitive)", async () => {
       const res = await app.request("/api/auth/register", {
         method: "POST",
@@ -1046,6 +1061,16 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         const fullPath = path.join(process.cwd(), file);
         expect(fs.existsSync(fullPath)).toBe(false);
       }
+    });
+
+    it("should redirect /users/oxygen-low to /users/oxygenlow to prevent impersonation", async () => {
+      const res = await app.request("/users/oxygen-low");
+      expect(res.status).toBe(301);
+      expect(res.headers.get("location")).toBe("/users/oxygenlow");
+
+      const resCase = await app.request("/users/Oxygen-Low");
+      expect(resCase.status).toBe(301);
+      expect(resCase.headers.get("location")).toBe("/users/oxygenlow");
     });
   });
 });

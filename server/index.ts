@@ -219,6 +219,21 @@ app.use("*", async (c, next) => {
 app.get("/health", (c) => c.text("OK"));
 app.get("/api/ping", (c) => c.json({ message: "ping" }));
 
+app.get("/users/:username", (c, next) => {
+  const username = c.req.param("username");
+  if (username && username.toLowerCase() === "oxygen-low") {
+    return c.redirect("/users/oxygenlow", 301);
+  }
+  return next();
+});
+app.get("/users/:username/*", (c, next) => {
+  const username = c.req.param("username");
+  if (username && username.toLowerCase() === "oxygen-low") {
+    return c.redirect("/users/oxygenlow", 301);
+  }
+  return next();
+});
+
 app.get("/sitemap.xml", (c) => {
   const host = c.req.header("host") || "oxygenlow.com";
   const protocol = (c.req.header("x-forwarded-proto") || "https")

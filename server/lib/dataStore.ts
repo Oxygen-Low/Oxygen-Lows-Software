@@ -1036,6 +1036,17 @@ export function updateTable(
         normTable === "user_preferences"
           ? normalizeUserPreferences(data || {})
           : data || {};
+      if (normTable === "profiles") {
+        const user = getUserById(userIdStr);
+        if (user && user.username) {
+          patchData.username = user.username;
+        } else if (
+          patchData.username &&
+          patchData.username.toLowerCase() === "oxygen-low"
+        ) {
+          delete patchData.username;
+        }
+      }
       const updated = { ...existing, ...patchData, updated_at: now };
       saveTableRows(table, userIdStr, [updated]);
       return [updated];
@@ -1112,6 +1123,17 @@ export function upsertTable(
       normTable === "user_preferences"
         ? normalizeUserPreferences(items[0] || {})
         : items[0] || {};
+    if (normTable === "profiles") {
+      const user = getUserById(userIdStr);
+      if (user && user.username) {
+        patchData.username = user.username;
+      } else if (
+        patchData.username &&
+        patchData.username.toLowerCase() === "oxygen-low"
+      ) {
+        delete patchData.username;
+      }
+    }
     const updated = { ...existing, ...patchData, updated_at: now };
     saveTableRows(table, userIdStr, [updated]);
     return Array.isArray(data) ? [updated] : updated;

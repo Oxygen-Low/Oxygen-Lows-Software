@@ -208,6 +208,10 @@ const App = () => (
                       }
                     />
                     <Route
+                      path="/users/oxygen-low"
+                      element={<Navigate to="/users/oxygenlow" replace />}
+                    />
+                    <Route
                       path="/users/:username"
                       element={
                         <ProtectedRoute>

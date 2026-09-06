@@ -149,4 +149,22 @@ describe("UserProfile Component", () => {
       ).not.toBeNull();
     });
   });
+
+  it("redirects /users/oxygen-low to /users/oxygenlow to prevent admin impersonation", async () => {
+    render(
+      <MemoryRouter initialEntries={["/users/oxygen-low"]}>
+        <Routes>
+          <Route path="/users/:username" element={<UserProfile />} />
+          <Route
+            path="/users/oxygenlow"
+            element={<div>Redirected to Admin Profile</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Redirected to Admin Profile")).toBeDefined();
+    });
+  });
 });
