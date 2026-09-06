@@ -48,6 +48,7 @@ export const es = {
     characters: "Personajes",
     changelogs: "Registros de cambios",
     support: "Soporte",
+    notifications: "Notificaciones",
     legal: "Legal",
     admin: "Admin",
     downloadApp: "Descargar aplicación de escritorio",
@@ -752,6 +753,9 @@ export const es = {
     title: "Panel de control de administración",
     subtitle:
       "Selecciona una aplicación para gestionar los recursos del sistema.",
+    notificationsTitle: "Notificaciones",
+    notificationsDesc:
+      "Transmita anuncios del sistema y envíe notificaciones dirigidas a usuarios.",
     supportTitle: "Soporte",
     supportDesc:
       "Gestiona y responde a los tickets de soporte de los usuarios.",
@@ -1722,5 +1726,79 @@ export const es = {
     gameLibrary: "Biblioteca de juegos",
     threeDBackground: "Fondo 3D",
     imageStudio: "Image Studio",
+    notifications: "Notificaciones",
+    adminNotifications: "Notificaciones de Administración",
+  },
+  notifications: {
+    title: "Notificaciones",
+    subtitle:
+      "Manténgase al día con los anuncios de la plataforma y las alertas de su cuenta.",
+    unreadBadge: "nuevas",
+    markAllRead: "Marcar todas como leídas",
+    adminCenter: "Gestionar notificaciones",
+    filterAll: "Todas",
+    filterUnread: "No leídas",
+    filterAnnouncements: "Anuncios",
+    noUnread: "No hay notificaciones sin leer",
+    emptyTitle: "Sin notificaciones aún",
+    allCaughtUp:
+      "¡Has leído todas tus notificaciones! Revisa la pestaña 'Todas' para ver actualizaciones anteriores.",
+    emptyDesc:
+      "Estás completamente al día. Aquí aparecerán anuncios importantes y notificaciones de cuenta.",
+    justNow: "Hace un momento",
+    ago: "hace",
+    globalBadge: "Anuncio global",
+    directBadge: "Mensaje directo",
+    unread: "No leído",
+    viewLink: "Abrir enlace",
+    viewDetails: "Ver detalles",
+    markAsRead: "Marcar como leído",
+    markAsUnread: "Marcar como no leído",
+    dismiss: "Descartar",
+    types: {
+      announcement: "Anuncio",
+      info: "Información",
+      warning: "Advertencia",
+      success: "Éxito",
+      alert: "Alerta urgente",
+    },
+  },
+  adminNotifications: {
+    title: "Centro de Notificaciones",
+    subtitle:
+      "Redacte, envíe y gestione anuncios globales y alertas de usuarios.",
+    composeTitle: "Redactar notificación",
+    composeDesc:
+      "Envíe un anuncio instantáneo a todos los usuarios o una alerta directa.",
+    fields: {
+      title: "Título",
+      message: "Mensaje",
+      type: "Tipo de notificación",
+      audience: "Público objetivo",
+      recipient: "Nombre de usuario o ID del destinatario",
+      actionUrl: "URL de acción (opcional)",
+    },
+    placeholders: {
+      title: "p. ej., Actualización importante de la plataforma v2.4",
+      message: "Escriba su anuncio o mensaje de alerta aquí...",
+      recipient: "Ingrese nombre de usuario o ID...",
+    },
+    allUsers: "Todos los usuarios",
+    specificUser: "Usuario específico",
+    sendButton: "Transmitir notificación",
+    broadcasting: "Transmitiendo...",
+    historyTitle: "Historial de transmisiones de notificaciones",
+    historyDesc:
+      "Todos los anuncios activos y alertas directas enviadas por administradores.",
+    total: "en total",
+    noHistory: "No se han enviado notificaciones todavía.",
+    delete: "Revocar / Eliminar notificación",
+    sendSuccess: "¡Transmisión de notificación enviada con éxito!",
+    deleteSuccess: "Notificación eliminada",
+    errors: {
+      titleRequired: "El título es obligatorio",
+      messageRequired: "El cuerpo del mensaje es obligatorio",
+      userRequired: "El nombre de usuario del destinatario es obligatorio",
+    },
   },
 } as const;

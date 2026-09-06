@@ -5,9 +5,11 @@ export interface LocalSession {
     id: string;
     email: string;
     username: string;
+    role?: string;
     user_metadata?: {
       username?: string;
       full_name?: string;
+      role?: string;
       [key: string]: any;
     };
   };

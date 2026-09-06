@@ -27,9 +27,11 @@ import {
   X,
   ExternalLink,
   Download as DownloadIcon,
+  Bell,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface LayoutProps {
   children: ReactNode;
@@ -59,6 +61,13 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Games",
     href: "/games",
     icon: Gamepad2,
+  },
+  {
+    key: "notifications",
+    labelKey: "nav.notifications",
+    defaultLabel: "Notifications",
+    href: "/notifications",
+    icon: Bell,
   },
   {
     key: "storage",
@@ -141,6 +150,7 @@ const MOBILE_MENU_BUTTON_CLASSES =
 
 export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -309,6 +319,21 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Header Notification Bell */}
+            <Link
+              to="/notifications"
+              className="relative p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0 flex items-center justify-center"
+              title={t("nav.notifications", undefined, "Notifications")}
+              aria-label={t("nav.notifications", undefined, "Notifications")}
+            >
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-slate-200" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm ring-1 ring-background">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Link>
+
             {session ? (
               <>
                 <span
@@ -430,10 +455,17 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                   key={item.href}
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`${styles["nav-link"]} flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-lg font-medium text-sm`}
+                  className={`${styles["nav-link"]} flex items-center justify-between px-3.5 py-2.5 sm:py-3 rounded-lg font-medium text-sm`}
                 >
-                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/80" />
-                  {item.label}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/80 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  {item.key === "notifications" && unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[11px] font-bold shrink-0">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

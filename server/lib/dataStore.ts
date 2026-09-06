@@ -9,7 +9,12 @@ export const DATA_DIR = path.join(process.cwd(), "Data");
 // ---------------------------------------------------------------------------
 
 /** Tables for which mutations are broadcast to SSE clients. */
-const REALTIME_TABLES = new Set(["support_tickets", "support_messages"]);
+const REALTIME_TABLES = new Set([
+  "support_tickets",
+  "support_messages",
+  "notifications",
+  "user_notification_state",
+]);
 
 type BroadcastFn = (event: {
   table: string;

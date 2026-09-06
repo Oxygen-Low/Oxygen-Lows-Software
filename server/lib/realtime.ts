@@ -25,7 +25,11 @@ export interface RealtimeChangeEvent {
 type RealtimeListener = (event: RealtimeChangeEvent) => void;
 
 /** Tables for which admins should receive all events. */
-const ADMIN_TABLES = new Set(["support_tickets", "support_messages"]);
+const ADMIN_TABLES = new Set([
+  "support_tickets",
+  "support_messages",
+  "notifications",
+]);
 
 /** Per-user listener sets. */
 const userListeners = new Map<string, Set<RealtimeListener>>();
@@ -72,11 +76,33 @@ export function unsubscribeAdmin(listener: RealtimeListener): void {
 /**
  * Broadcast a data-change event to all matching SSE connections.
  *
+ * - If `table === "notifications"` and `!targetUserId`, broadcasts to all connected users and admins.
  * - Always notifies the owner's per-user listeners (if `targetUserId` is set).
- * - Always notifies all admin listeners for support-related tables.
+ * - Always notifies all admin listeners for support-related and admin tables.
  */
 export function broadcastChange(event: RealtimeChangeEvent): void {
   const table = event.table.toLowerCase();
+
+  // Broadcast global notifications to all connected users and admins
+  if (table === "notifications" && !event.targetUserId) {
+    for (const [, set] of userListeners) {
+      for (const listener of set) {
+        try {
+          listener(event);
+        } catch {
+          // ignore individual listener errors
+        }
+      }
+    }
+    for (const listener of adminListeners) {
+      try {
+        listener(event);
+      } catch {
+        // ignore individual listener errors
+      }
+    }
+    return;
+  }
 
   // Notify the record owner
   if (event.targetUserId) {

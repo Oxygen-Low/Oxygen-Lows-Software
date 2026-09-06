@@ -82,9 +82,11 @@ authRouter.post("/register", async (c) => {
         id: user.id,
         email: user.email,
         username: user.username,
+        role: user.role,
         user_metadata: {
           username: user.username,
           full_name: user.username,
+          role: user.role,
         },
       },
     };
@@ -130,9 +132,11 @@ authRouter.post("/login", async (c) => {
         id: user.id,
         email: user.email,
         username: user.username,
+        role: String(user.id) === "1" ? "admin" : user.role || "user",
         user_metadata: {
           username: user.username,
           full_name: user.username,
+          role: String(user.id) === "1" ? "admin" : user.role || "user",
         },
       },
     };

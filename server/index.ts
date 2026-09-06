@@ -18,6 +18,8 @@ import { dataRouter } from "./routes/data.ts";
 import { surveysRouter } from "./routes/surveys.ts";
 import { realtimeRouter } from "./routes/realtime.ts";
 import { softwareAwardsRouter } from "./routes/softwareAwards.ts";
+import { notificationsRouter } from "./routes/notifications.ts";
+import { adminNotificationsRouter } from "./routes/adminNotifications.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
 import { broadcastChange } from "./lib/realtime.ts";
@@ -1084,6 +1086,8 @@ app.route("/api/data", dataRouter);
 app.route("/api/surveys", surveysRouter);
 app.route("/api/realtime", realtimeRouter);
 app.route("/api/software-awards", softwareAwardsRouter);
+app.route("/api/notifications", notificationsRouter);
+app.route("/api/admin/notifications", adminNotificationsRouter);
 
 export function createServer() {
   return app;

@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
-import { LifeBuoy, ShieldCheck, ClipboardList, Trophy } from "lucide-react";
+import { LifeBuoy, ShieldCheck, ClipboardList, Trophy, Bell } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -23,6 +23,17 @@ export default function AdminPanel() {
   });
 
   const apps = [
+    {
+      title: t("admin.notificationsTitle", undefined, "Notifications"),
+      description: t(
+        "admin.notificationsDesc",
+        undefined,
+        "Broadcast system announcements and send targeted user notifications.",
+      ),
+      icon: Bell,
+      href: "/admin/notifications",
+      color: "text-rose-500",
+    },
     {
       title: t("admin.supportTitle", undefined, "Support"),
       description: t(

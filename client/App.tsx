@@ -67,6 +67,10 @@ const AdminVerification = lazyWithRetry(
 const AdminSurveys = lazyWithRetry(() => import("./pages/AdminSurveys"));
 const AdminAwards = lazyWithRetry(() => import("./pages/AdminAwards"));
 const AdminPanel = lazyWithRetry(() => import("./pages/AdminPanel"));
+const Notifications = lazyWithRetry(() => import("./pages/Notifications"));
+const AdminNotifications = lazyWithRetry(
+  () => import("./pages/AdminNotifications"),
+);
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
 const Terms = lazyWithRetry(() => import("./pages/Terms"));
 const Eula = lazyWithRetry(() => import("./pages/Eula"));
@@ -275,6 +279,15 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
+                    <Route
+                      path="/admin/notifications"
+                      element={
+                        <ProtectedRoute>
+                          <AdminNotifications />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route path="/notifications" element={<Notifications />} />
                     <Route path="/download" element={<Download />} />
                     <Route
                       path="/surveys"
