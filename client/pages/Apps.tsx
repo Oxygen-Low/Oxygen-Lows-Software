@@ -31,6 +31,7 @@ import {
   Gamepad2,
   ClipboardList,
   Trophy,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
@@ -48,6 +49,7 @@ import { PasswordManagerApp } from "@/components/apps/PasswordManager";
 import { GameLibraryApp } from "@/components/apps/GameLibrary";
 import { SurveysApp } from "@/components/apps/Surveys";
 import { SoftwareAwardsApp } from "@/components/apps/SoftwareAwards";
+import { ImageStudioApp } from "@/components/apps/ImageStudio";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -308,6 +310,19 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Trophy className="w-8 h-8 text-cyan-500" />,
     component: SoftwareAwardsApp,
+    authRequired: true,
+  },
+  {
+    id: "image-studio",
+    nameKey: "apps.imageStudioTitle",
+    defaultName: "Image Studio",
+    descKey: "apps.imageStudioDesc",
+    defaultDesc:
+      "Design custom graphics and compose images using your own uploaded assets, custom fonts, and rich shapes.",
+    categories: ["All", "Utility"],
+    availability: "web-and-desktop",
+    icon: <Palette className="w-8 h-8 text-cyan-500" />,
+    component: ImageStudioApp,
     authRequired: true,
   },
 ];

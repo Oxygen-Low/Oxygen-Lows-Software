@@ -160,4 +160,111 @@ describe("All Locales Verification", () => {
       expect(t("admin.userId")).toBeTruthy();
     });
   });
+
+  it("should verify 3D Background translation symmetry across all 6 locales", () => {
+    const testKeys = [
+      "apps.threeDBackgroundTitle",
+      "apps.threeDBackgroundDesc",
+      "titles.threeDBackground",
+      "nav.threeDBackground",
+      "customize.background3DTitle",
+      "customize.background3DDesc",
+      "customize.enable3DBackground",
+      "customize.activeRoom",
+      "customize.noRoomSelected",
+      "customize.graphicsQuality",
+      "customize.qualityLow",
+      "customize.qualityMedium",
+      "customize.qualityHigh",
+      "customize.windSimulation",
+      "customize.windSpeed",
+      "customize.openStudio",
+      "threeDBackground.title",
+      "threeDBackground.orbitMode",
+      "threeDBackground.flyMode",
+      "threeDBackground.translate",
+      "threeDBackground.rotate",
+      "threeDBackground.scale",
+      "threeDBackground.snapToGrid",
+      "threeDBackground.floorAlign",
+      "threeDBackground.duplicate",
+      "threeDBackground.delete",
+      "threeDBackground.undo",
+      "threeDBackground.redo",
+      "threeDBackground.templateCozyBedroomTitle",
+      "threeDBackground.templateModernStudioTitle",
+      "threeDBackground.templateNatureGardenTitle",
+      "threeDBackground.uploadGlb",
+      "threeDBackground.uploadPoster",
+      "threeDBackground.presetDay",
+      "threeDBackground.presetSunset",
+      "threeDBackground.presetNight",
+      "threeDBackground.presetStudio",
+      "threeDBackground.saveRoom",
+      "threeDBackground.loadRoom",
+      "threeDBackground.exportJson",
+      "threeDBackground.importJson",
+      "threeDBackground.setAsBackground",
+    ];
+
+    allLocales.forEach(({ code, dict }) => {
+      const t = createTranslator(dict, en);
+      testKeys.forEach((key) => {
+        const translated = t(key);
+        expect(
+          translated,
+          `Key "${key}" in locale "${code}" should not be empty`,
+        ).toBeTruthy();
+        expect(typeof translated).toBe("string");
+      });
+    });
+  });
 });
+
+// ============================================================================
+// Compile-Time Adversarial Leaf Key Parity Verification (All 6 Locales)
+// ============================================================================
+type ExactKeys<A, B> = [keyof A] extends [keyof B]
+  ? [keyof B] extends [keyof A]
+    ? true
+    : false
+  : false;
+
+type AssertTrue<T extends true> = T;
+
+// 1. Nav leaf keys exact parity across all 6 locales
+type _AssertEsNav = AssertTrue<ExactKeys<typeof en.nav, typeof es.nav>>;
+type _AssertJaNav = AssertTrue<ExactKeys<typeof en.nav, typeof ja.nav>>;
+type _AssertKoNav = AssertTrue<ExactKeys<typeof en.nav, typeof ko.nav>>;
+type _AssertRuNav = AssertTrue<ExactKeys<typeof en.nav, typeof ru.nav>>;
+type _AssertZhNav = AssertTrue<ExactKeys<typeof en.nav, typeof zhCN.nav>>;
+
+// 2. Titles leaf keys exact parity across all 6 locales
+type _AssertEsTitles = AssertTrue<ExactKeys<typeof en.titles, typeof es.titles>>;
+type _AssertJaTitles = AssertTrue<ExactKeys<typeof en.titles, typeof ja.titles>>;
+type _AssertKoTitles = AssertTrue<ExactKeys<typeof en.titles, typeof ko.titles>>;
+type _AssertRuTitles = AssertTrue<ExactKeys<typeof en.titles, typeof ru.titles>>;
+type _AssertZhTitles = AssertTrue<ExactKeys<typeof en.titles, typeof zhCN.titles>>;
+
+// 3. Customize leaf keys exact parity across all 6 locales
+type _AssertEsCustomize = AssertTrue<ExactKeys<typeof en.customize, typeof es.customize>>;
+type _AssertJaCustomize = AssertTrue<ExactKeys<typeof en.customize, typeof ja.customize>>;
+type _AssertKoCustomize = AssertTrue<ExactKeys<typeof en.customize, typeof ko.customize>>;
+type _AssertRuCustomize = AssertTrue<ExactKeys<typeof en.customize, typeof ru.customize>>;
+type _AssertZhCustomize = AssertTrue<ExactKeys<typeof en.customize, typeof zhCN.customize>>;
+
+// 4. Apps leaf keys exact parity across all 6 locales
+type _AssertEsApps = AssertTrue<ExactKeys<typeof en.apps, typeof es.apps>>;
+type _AssertJaApps = AssertTrue<ExactKeys<typeof en.apps, typeof ja.apps>>;
+type _AssertKoApps = AssertTrue<ExactKeys<typeof en.apps, typeof ko.apps>>;
+type _AssertRuApps = AssertTrue<ExactKeys<typeof en.apps, typeof ru.apps>>;
+type _AssertZhApps = AssertTrue<ExactKeys<typeof en.apps, typeof zhCN.apps>>;
+
+// 5. threeDBackground leaf keys exact parity across all 6 locales
+type _AssertEsThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof es.threeDBackground>>;
+type _AssertJaThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof ja.threeDBackground>>;
+type _AssertKoThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof ko.threeDBackground>>;
+type _AssertRuThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof ru.threeDBackground>>;
+type _AssertZhThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof zhCN.threeDBackground>>;
+
+
