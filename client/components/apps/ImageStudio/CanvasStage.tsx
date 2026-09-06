@@ -8,6 +8,7 @@ import {
   CanvasProject,
   CanvasLayer,
   ImageLayer,
+  TextLayer,
 } from "./types";
 import { drawBackground, drawLayer } from "./canvasUtils";
 
@@ -67,6 +68,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   }>({});
 
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
   const [, setRerenderTrigger] = useState(0);
 
   const selectedLayer = project.layers.find(
@@ -89,12 +91,14 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
     // Draw all layers in bottom-to-top order
     project.layers.forEach((layer) => {
+      if (layer.id === project.selectedLayerId && isEditingText) return;
+
       drawLayer(ctx, layer, () => {
         // Trigger re-render once an image has loaded
         setRerenderTrigger((prev) => prev + 1);
       });
     });
-  }, [project]);
+  }, [project, isEditingText]);
 
   useEffect(() => {
     render();
@@ -155,6 +159,10 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   // Start drag / click
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+      return;
+    }
+
     // If middle click or space pressed, start panning
     if (e.button === 1 || isSpacePressed) {
       e.preventDefault();
@@ -181,6 +189,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     });
 
     if (hitLayer) {
+      if (hitLayer.id !== project.selectedLayerId) {
+        setIsEditingText(false);
+      }
       onSelectLayer(hitLayer.id);
       if (!hitLayer.isLocked) {
         setDragMode("move");
@@ -195,6 +206,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       }
     } else {
       // Clicked on empty canvas / background
+      setIsEditingText(false);
       onSelectLayer(null);
     }
   };
@@ -328,6 +340,12 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     setSnapGuides({});
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (selectedLayer?.type === "text" && !selectedLayer.isLocked) {
+      setIsEditingText(true);
+    }
+  };
+
   // Cursor style
   let cursorClass = "cursor-default";
   if (isSpacePressed || dragMode === "pan") {
@@ -343,6 +361,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onDoubleClick={handleDoubleClick}
       style={{
         backgroundImage:
           "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)",
@@ -402,11 +421,54 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
               className={`absolute inset-0 border-2 ${
                 selectedLayer.isLocked
                   ? "border-amber-500/80 border-dashed"
-                  : "border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                  : isEditingText
+                    ? "border-transparent"
+                    : "border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.4)]"
               }`}
             />
 
-            {!selectedLayer.isLocked && (
+            {selectedLayer.type === "text" && isEditingText && (
+              <div
+                className="absolute inset-0 pointer-events-auto bg-transparent outline-none overflow-hidden"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: (selectedLayer as TextLayer).textAlign === "center" ? "center" : (selectedLayer as TextLayer).textAlign === "right" ? "flex-end" : "flex-start",
+                }}
+              >
+                <textarea
+                  className="bg-transparent outline-none resize-none overflow-hidden m-0 p-0 whitespace-pre"
+                  style={{
+                    fontFamily: (selectedLayer as TextLayer).fontFamily || "sans-serif",
+                    fontSize: `${(selectedLayer as TextLayer).fontSize}px`,
+                    fontWeight: (selectedLayer as TextLayer).fontWeight || "normal",
+                    fontStyle: (selectedLayer as TextLayer).fontStyle || "normal",
+                    color: (selectedLayer as TextLayer).color || "#ffffff",
+                    textAlign: (selectedLayer as TextLayer).textAlign || "left",
+                    lineHeight: (selectedLayer as TextLayer).lineHeight || 1.2,
+                    letterSpacing: `${(selectedLayer as TextLayer).letterSpacing || 0}px`,
+                    textDecoration: (selectedLayer as TextLayer).underline ? "underline" : "none",
+                    WebkitTextStroke: (selectedLayer as TextLayer).strokeWidth && (selectedLayer as TextLayer).strokeColor
+                      ? `${(selectedLayer as TextLayer).strokeWidth}px ${(selectedLayer as TextLayer).strokeColor}`
+                      : undefined,
+                    textShadow: (selectedLayer as TextLayer).shadowColor && (selectedLayer as TextLayer).shadowBlur
+                      ? `${(selectedLayer as TextLayer).shadowOffsetX || 0}px ${(selectedLayer as TextLayer).shadowOffsetY || 0}px ${(selectedLayer as TextLayer).shadowBlur}px ${(selectedLayer as TextLayer).shadowColor}`
+                      : undefined,
+                    opacity: selectedLayer.opacity ?? 1,
+                    width: "100%",
+                    height: "100%",
+                  }}
+                  value={(selectedLayer as TextLayer).text}
+                  onChange={(e) => onUpdateLayer(selectedLayer.id, { text: e.target.value })}
+                  onBlur={() => setIsEditingText(false)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onKeyUp={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+              </div>
+            )}
+
+            {!selectedLayer.isLocked && !isEditingText && (
               <>
                 {/* Rotation Handle Line and Dot */}
                 <div
