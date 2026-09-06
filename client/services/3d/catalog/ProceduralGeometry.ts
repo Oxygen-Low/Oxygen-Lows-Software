@@ -1221,7 +1221,8 @@ export function createBirdbathMesh(customProps?: CustomProps): THREE.Group {
  * 31. Procedural Garden Tree
  */
 export function createProceduralTreeMesh(customProps?: CustomProps): THREE.Group {
-  return TreeFactory.createProceduralTree("oak", customProps);
+  const group = TreeFactory.createProceduralTree("oak", customProps);
+  return alignToBottomCenter(group);
 }
 
 // ============================================================================

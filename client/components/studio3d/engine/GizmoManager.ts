@@ -42,6 +42,30 @@ function generateUUID(): string {
   });
 }
 
+function isEditableElement(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) return false;
+  if (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  ) {
+    return true;
+  }
+  let curr: HTMLElement | null = target;
+  while (curr && curr !== document.body && curr !== document.documentElement) {
+    if (
+      curr.isContentEditable ||
+      curr.contentEditable === "true" ||
+      curr.getAttribute?.("contenteditable") === "true" ||
+      curr.getAttribute?.("contenteditable") === ""
+    ) {
+      return true;
+    }
+    curr = curr.parentElement;
+  }
+  return false;
+}
+
 export class GizmoManager {
   // Mode & Snapping properties (Authoritative Harness & E2E API)
   private _activeMode: TransformGizmoMode = "translate";
@@ -657,14 +681,7 @@ export class GizmoManager {
   };
 
   private onKeyDown = (event: KeyboardEvent): void => {
-    const target = event.target as HTMLElement | null;
-    if (
-      target &&
-      (target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable)
-    ) {
+    if (isEditableElement(event.target)) {
       return; // Form input guard: never fire hotkeys when typing
     }
 

@@ -136,7 +136,7 @@ function buildFoliageGeometry(clusters: FoliageCluster[], detail = 1): THREE.Buf
   const baseIcosa = new THREE.IcosahedronGeometry(1.0, detail);
   const basePos = baseIcosa.getAttribute("position");
   const baseNorm = baseIcosa.getAttribute("normal");
-  const baseIdx = baseIcosa.getIndex()!;
+  const baseIdx = baseIcosa.getIndex();
 
   const positions: number[] = [];
   const normals: number[] = [];
@@ -176,8 +176,14 @@ function buildFoliageGeometry(clusters: FoliageCluster[], detail = 1): THREE.Buf
       vertexOffset++;
     }
 
-    for (let j = 0; j < baseIdx.count; j++) {
-      indices.push(clusterStartIdx + baseIdx.getX(j));
+    if (baseIdx) {
+      for (let j = 0; j < baseIdx.count; j++) {
+        indices.push(clusterStartIdx + baseIdx.getX(j));
+      }
+    } else {
+      for (let j = 0; j < basePos.count; j++) {
+        indices.push(clusterStartIdx + j);
+      }
     }
   }
 

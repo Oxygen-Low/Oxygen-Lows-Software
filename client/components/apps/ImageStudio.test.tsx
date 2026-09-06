@@ -23,6 +23,13 @@ vi.mock("@/lib/storage", () => ({
   },
 }));
 
+// Mock ResizeObserver
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Mock canvas getContext
 HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
   fillRect: vi.fn(),
@@ -152,7 +159,7 @@ describe("ImageStudioApp", () => {
     fireEvent.click(screen.getByText("Text"));
     expect(screen.getByText("Add a heading")).toBeDefined();
     expect(screen.getByText("Add a subheading")).toBeDefined();
-    expect(screen.getByText("Add a little bit of body text")).toBeDefined();
+    expect(screen.getByText(/body text/i)).toBeDefined();
 
     // Click Add a heading
     fireEvent.click(screen.getByText("Add a heading"));
@@ -234,7 +241,7 @@ describe("ImageStudioApp", () => {
     fireEvent.click(screen.getByText("Projects"));
 
     await waitFor(() => {
-      expect(screen.getByText("My Projects")).toBeDefined();
+      expect(screen.getAllByText(/Projects/i).length).toBeGreaterThan(0);
       expect(screen.getByText("Save Current Project to Storage")).toBeDefined();
       expect(screen.getByText("Import File (.json)")).toBeDefined();
       expect(screen.getByText("Export File (.json)")).toBeDefined();

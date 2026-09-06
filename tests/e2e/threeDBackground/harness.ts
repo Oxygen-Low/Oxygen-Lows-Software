@@ -17,6 +17,8 @@ import {
   getLocaleDictionary,
 } from "../../../client/locales/index.ts";
 
+export { getLocaleDictionary, en };
+
 // ============================================================================
 // 1. Core Types & Zod Schemas (Interface Contracts from PROJECT.md)
 // ============================================================================
@@ -655,13 +657,16 @@ export class RoomStorageService {
   }
 
   public listRooms(): { id: string; name: string; updatedAt: string; objectCount: number }[] {
-    const rawIndex = this.storage.getItem(RoomStorageService.INDEX_KEY);
-    if (!rawIndex) {
-      // Seed default templates if completely empty
-      this.seedTemplates();
-      return this.listRooms();
-    }
     try {
+      const rawIndex = this.storage.getItem(RoomStorageService.INDEX_KEY);
+      if (!rawIndex) {
+        // Seed default templates if completely empty
+        this.seedTemplates();
+        const recheck = this.storage.getItem(RoomStorageService.INDEX_KEY);
+        if (!recheck) return [];
+        const parsed = JSON.parse(recheck);
+        return Array.isArray(parsed) ? parsed : [];
+      }
       const parsed = JSON.parse(rawIndex);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
@@ -794,7 +799,11 @@ export class RoomStorageService {
   public seedTemplates(): void {
     const index: { id: string; name: string; updatedAt: string; objectCount: number }[] = [];
     for (const template of PRESET_ROOM_TEMPLATES) {
-      this.storage.setItem(`${RoomStorageService.ROOM_PREFIX}${template.id}`, JSON.stringify(template));
+      const key = `${RoomStorageService.ROOM_PREFIX}${template.id}`;
+      const existing = this.storage.getItem(key);
+      if (!existing) {
+        this.storage.setItem(key, JSON.stringify(template));
+      }
       index.push({
         id: template.id,
         name: template.name,
@@ -919,7 +928,7 @@ export class GLTFLoaderPipeline {
   public static validateJsonHeader(jsonString: string): boolean {
     try {
       const parsed = JSON.parse(jsonString);
-      return parsed && parsed.asset && typeof parsed.asset.version === "string";
+      return Boolean(parsed && parsed.asset && typeof parsed.asset.version === "string");
     } catch {
       return false;
     }

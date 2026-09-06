@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Studio3DStress.test.ts
  * Empirical Stress Test Suite for 3D Studio Editor Engine, Controls, and Gizmo Manager.
@@ -300,7 +301,7 @@ describe("Milestone 4 Empirical Stress Tests: Engine, Controls & Gizmo Manager",
 
       // We empirically verify with numerical forward / backward difference quotients:
       // v(t) = (pos(t + dt) - pos(t)) / dt
-      const dt = 1e-6;
+      const dt = 1e-7;
 
       // 1. Boundary t = 0: Forward difference
       const state0 = CameraController.interpolateHermite(bStart, bEnd, 0.0);
@@ -740,12 +741,15 @@ describe("Milestone 4 Empirical Stress Tests: Engine, Controls & Gizmo Manager",
 
         beforeEach(() => {
           formEl = create();
-          document.body.appendChild(formEl);
+          if (!document.body.contains(formEl)) {
+            document.body.appendChild(formEl);
+          }
         });
 
         afterEach(() => {
-          if (formEl.parentNode) {
-            formEl.parentNode.removeChild(formEl);
+          const root = formEl.parentElement && formEl.parentElement !== document.body ? formEl.parentElement : formEl;
+          if (root.parentNode) {
+            root.parentNode.removeChild(root);
           }
         });
 

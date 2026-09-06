@@ -29,6 +29,30 @@ export interface BookmarkTransition {
   onComplete?: (bookmark: CameraBookmark) => void;
 }
 
+function isEditableElement(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) return false;
+  if (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  ) {
+    return true;
+  }
+  let curr: HTMLElement | null = target;
+  while (curr && curr !== document.body && curr !== document.documentElement) {
+    if (
+      curr.isContentEditable ||
+      curr.contentEditable === "true" ||
+      curr.getAttribute?.("contenteditable") === "true" ||
+      curr.getAttribute?.("contenteditable") === ""
+    ) {
+      return true;
+    }
+    curr = curr.parentElement;
+  }
+  return false;
+}
+
 export class CameraController {
   public readonly camera: THREE.PerspectiveCamera;
   public readonly domElement: HTMLElement;
@@ -199,14 +223,7 @@ export class CameraController {
   // --- Fly Camera Key & Mouse Input ---
 
   private handleKeyDown(e: KeyboardEvent): void {
-    const target = e.target as HTMLElement | null;
-    if (
-      target &&
-      (target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable)
-    ) {
+    if (isEditableElement(e.target)) {
       return;
     }
 

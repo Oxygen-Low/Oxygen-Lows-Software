@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Studio3D.test.ts
  * Unit tests for Oxygen Low's Software 3D Studio Editor application:

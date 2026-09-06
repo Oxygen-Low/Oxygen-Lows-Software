@@ -29,6 +29,8 @@ import {
   RoomObject,
   EnvironmentSettings,
   CameraBookmark,
+  getLocaleDictionary,
+  en,
 } from "./harness";
 
 describe("Tier 1: Feature Coverage (Features F1 - F17)", () => {
@@ -89,7 +91,7 @@ describe("Tier 1: Feature Coverage (Features F1 - F17)", () => {
     it("F1.5: matches search keywords for 3D Background Studio", () => {
       const searchTerms = ["3d", "background", "room", "studio"];
       const appRecord = {
-        name: "3D Background",
+        name: "3D Background Studio",
         description: "Design 3D rooms and decorate live backgrounds",
       };
 

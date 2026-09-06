@@ -11,7 +11,7 @@
     "build:server": "esbuild server/serve.ts --bundle --platform=node --format=esm --packages=external --outdir=dist/server",
     "build": "npm run build:client && npm run build:server",
     "start": "cross-env NODE_ENV=production node dist/server/serve.js",
-    "test": "vitest --run",
+    "test": "vitest --run --maxWorkers=4",
     "format.fix": "prettier --write .",
     "typecheck": "tsc"
   },
