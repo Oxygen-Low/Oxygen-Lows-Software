@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- A05: CSP meta tag – defence-in-depth fallback (server header takes precedence) -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' blob: data: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:11434 http://127.0.0.1:1234 http://127.0.0.1:5001 http://127.0.0.1:5000 http://localhost:11434 http://localhost:1234 http://localhost:5001 http://localhost:5000 https://unpkg.com https://cdn.jsdelivr.net https://oai.stablehorde.net https://stablehorde.net https://api.cloudflare.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.x.ai; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
+    />
+    <meta
+      name="description"
+      content="Oxygen Low's Software is a modern suite of web tools, AI utilities, privacy-focused applications, and encrypted cloud storage solutions."
+    />
+    <title>Oxygen Low's Software - Modern Apps, Tools & Cloud Storage</title>
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="/icons/icon-512x512.png"
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="canonical" href="https://oxygenlow.com/" />
+    <meta property="og:site_name" content="Oxygen Low's Software" />
+    <meta
+      property="og:title"
+      content="Oxygen Low's Software - Modern Apps, Tools & Cloud Storage"
+    />
+    <meta
+      property="og:description"
+      content="Oxygen Low's Software is a modern suite of web tools, AI utilities, privacy-focused applications, and encrypted cloud storage solutions."
+    />
+    <meta property="og:url" content="https://oxygenlow.com/" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:image"
+      content="https://oxygenlow.com/icons/icon-512x512.png"
+    />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Oxygen Low's Software - Modern Apps, Tools & Cloud Storage"
+    />
+    <meta
+      name="twitter:description"
+      content="Oxygen Low's Software is a modern suite of web tools, AI utilities, privacy-focused applications, and encrypted cloud storage solutions."
+    />
+    <meta
+      name="twitter:image"
+      content="https://oxygenlow.com/icons/icon-512x512.png"
+    />
+    <meta
+      name="keywords"
+      content="software, web apps, ai tools, cloud storage, privacy, file compressor, chatbot, web defender"
+    />
+    <!-- RFC 8288 / RFC 9727 Discovery Links -->
+    <link
+      rel="api-catalog"
+      href="/.well-known/api-catalog"
+      type="application/linkset+json"
+    />
+    <link
+      rel="service-desc"
+      href="/api/openapi.json"
+      type="application/vnd.oai.openapi+json;version=3.0"
+    />
+    <link rel="service-doc" href="/api/docs" type="text/html" />
+    <link rel="describedby" href="/llms.txt" type="text/plain" />
+    <link rel="describedby" href="/auth.md" type="text/markdown" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500&amp;family=JetBrains+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Indie+Flower&amp;family=Zilla+Slab:wght@400;700&amp;family=VT323&amp;family=Cabin+Sketch:wght@400;700&amp;family=Londrina+Sketch&amp;display=swap"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500&amp;family=JetBrains+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Indie+Flower&amp;family=Zilla+Slab:wght@400;700&amp;family=VT323&amp;family=Cabin+Sketch:wght@400;700&amp;family=Londrina+Sketch&amp;display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500&amp;family=JetBrains+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet"
+      />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Indie+Flower&amp;family=Zilla+Slab:wght@400;700&amp;family=VT323&amp;family=Cabin+Sketch:wght@400;700&amp;family=Londrina+Sketch&amp;display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
+    <style>
+      body {
+        margin: 0;
+        background-color: hsl(218, 21%, 7%);
+      }
+      .initial-loader {
+        display: flex;
+        height: 100vh;
+        align-items: center;
+        justify-content: center;
+      }
+      .initial-spinner {
+        height: 2rem;
+        width: 2rem;
+        border-radius: 9999px;
+        border: 4px solid hsl(186, 100%, 50%);
+        border-top-color: transparent;
+        animation: initial-spin 1s linear infinite;
+      }
+      @keyframes initial-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-07-XhklH.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-hePW80VL.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-charts-B6vAqtNe.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-radix-X2VDm9gE.js">
+    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-BhD9cc8N.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-UM0Q4Skp.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-COfn--Jt.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-BUwhM2dG.css">
+  </head>
+
+  <body>
+    <div id="root">
+      <div class="initial-loader">
+        <div class="initial-spinner"></div>
+      </div>
+      <header class="sr-only">
+        <h1>Oxygen Low's Software</h1>
+        <p>
+          Oxygen Low's Software is a modern suite of web tools, AI utilities,
+          privacy-focused applications, and encrypted cloud storage solutions.
+        </p>
+      </header>
+      <nav aria-label="Site Navigation" class="sr-only">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/apps">Apps</a></li>
+          <li><a href="/apps/chatbot">Chatbot</a></li>
+          <li><a href="/apps/file-compressor">File Compressor</a></li>
+          <li><a href="/apps/public-characters">Public Characters</a></li>
+          <li><a href="/apps/data-save">Data Save</a></li>
+          <li><a href="/apps/qrcode-generator">QR Code Generator</a></li>
+          <li><a href="/apps/llm-agent">LLM Agent</a></li>
+          <li><a href="/apps/agent-search">Agent Search</a></li>
+          <li><a href="/apps/webdefender">Web Defender</a></li>
+          <li><a href="/apps/base64-encoder">Base64 Encoder</a></li>
+          <li><a href="/apps/json-formatter">JSON Formatter</a></li>
+          <li><a href="/apps/vpn">VPN</a></li>
+          <li><a href="/games">Games</a></li>
+          <li><a href="/games/chess">Chess</a></li>
+          <li><a href="/games/minesweeper">Minesweeper</a></li>
+          <li><a href="/games/solitaire">Solitaire</a></li>
+          <li><a href="/games/poker">Poker</a></li>
+          <li><a href="/games/sudoku">Sudoku</a></li>
+          <li><a href="/games/wordsearch">Word Search</a></li>
+          <li><a href="/download">Download</a></li>
+          <li><a href="/changelogs">Changelogs</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/terms">Terms of Use</a></li>
+          <li><a href="/eula">EULA</a></li>
+          <li><a href="/dmca">DMCA Policy</a></li>
+          <li><a href="/acceptable-use">Acceptable Use Policy</a></li>
+          <li><a href="/legal">Legal</a></li>
+          <li><a href="/license">License</a></li>
+          <li><a href="/support">Support</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <noscript>
+      <div
+        style="
+          padding: 2rem;
+          color: #f3f4f6;
+          background-color: #0b0f19;
+          font-family: sans-serif;
+          text-align: center;
+        "
+      >
+        <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem">
+          Oxygen Low's Software
+        </h2>
+        <p style="color: #9ca3af; margin-bottom: 1.5rem">
+          JavaScript is required to run the interactive web application. Please
+          enable JavaScript or browse our platform sections below:
+        </p>
+        <nav
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+          "
+        >
+          <a href="/apps" style="color: #38bdf8; text-decoration: none">Apps</a>
+          <a href="/games" style="color: #38bdf8; text-decoration: none"
+            >Games</a
+          >
+          <a href="/download" style="color: #38bdf8; text-decoration: none"
+            >Download</a
+          >
+          <a href="/changelogs" style="color: #38bdf8; text-decoration: none"
+            >Changelogs</a
+          >
+          <a href="/privacy" style="color: #38bdf8; text-decoration: none"
+            >Privacy Policy</a
+          >
+          <a href="/terms" style="color: #38bdf8; text-decoration: none"
+            >Terms of Use</a
+          >
+          <a href="/legal" style="color: #38bdf8; text-decoration: none"
+            >Legal</a
+          >
+        </nav>
+      </div>
+    </noscript>
+
+  </body>
+</html>
