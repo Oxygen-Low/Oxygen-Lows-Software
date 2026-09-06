@@ -54,7 +54,6 @@ const Integrations = lazyWithRetry(() => import("./pages/Integrations"));
 const Storage = lazyWithRetry(() => import("./pages/Storage"));
 const Customize = lazyWithRetry(() => import("./pages/Customize"));
 const Characters = lazyWithRetry(() => import("./pages/Characters"));
-const Changelogs = lazyWithRetry(() => import("./pages/Changelogs"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
 const Support = lazyWithRetry(() => import("./pages/Support"));
@@ -196,14 +195,6 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <Characters />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/changelogs"
-                      element={
-                        <ProtectedRoute>
-                          <Changelogs />
                         </ProtectedRoute>
                       }
                     />

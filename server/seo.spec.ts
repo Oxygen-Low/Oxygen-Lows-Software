@@ -24,7 +24,6 @@ const AUDITED_URLS = [
   "/games/sudoku",
   "/games/wordsearch",
   "/download",
-  "/changelogs",
   "/auth",
   "/privacy",
   "/terms",

@@ -135,11 +135,6 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     description: "Download desktop and Android apps",
   },
   {
-    href: "/changelogs",
-    label: "Changelogs",
-    description: "Software release history and updates",
-  },
-  {
     href: "/auth",
     label: "Sign In / Register",
     description: "Sign in or register for an account",
@@ -987,33 +982,6 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
     ],
     internalLinks: [
       { href: "/apps", label: "Web Apps" },
-      { href: "/changelogs", label: "Release Notes" },
-      { href: "/support", label: "Support" },
-    ],
-  },
-  "/changelogs": {
-    path: "/changelogs",
-    title: "Changelogs - Oxygen Low's Software",
-    description:
-      "Stay up to date with new features, updates, improvements, and releases across Oxygen Low's Software.",
-    canonicalPath: "/changelogs",
-    h1: "Changelogs & Release Notes",
-    h2: ["Latest Updates", "Feature Additions", "Performance & Bug Fixes"],
-    keywords: [
-      "changelogs",
-      "release notes",
-      "software updates",
-      "version history",
-      "patch notes",
-    ],
-    ogType: "website",
-    breadcrumbs: [
-      { name: "Home", url: "/" },
-      { name: "Changelogs", url: "/changelogs" },
-    ],
-    internalLinks: [
-      { href: "/apps", label: "Apps" },
-      { href: "/download", label: "Download App" },
       { href: "/support", label: "Support" },
     ],
   },

@@ -8,7 +8,6 @@ import { adminSupportRouter } from "./routes/adminSupport.ts";
 import { adminVerificationRouter } from "./routes/adminVerification.ts";
 import { assetsRouter } from "./routes/assets.ts";
 import { aiRouter } from "./routes/ai.ts";
-import { changelogsRouter } from "./routes/changelogs.ts";
 import { vpnRouter } from "./routes/vpn.ts";
 import { defenderRouter } from "./routes/webdefender.ts";
 import { storageRouter } from "./routes/storage.ts";
@@ -370,12 +369,6 @@ app.get("/sitemap.xml", (c) => {
       lastmod: today,
     },
     {
-      loc: `${baseUrl}/changelogs`,
-      changefreq: "weekly",
-      priority: "0.7",
-      lastmod: today,
-    },
-    {
       loc: `${baseUrl}/auth`,
       changefreq: "monthly",
       priority: "0.7",
@@ -641,21 +634,6 @@ app.get("/.well-known/api-catalog", (c) => {
           },
         ],
       },
-      {
-        anchor: `${baseUrl}/api/changelogs`,
-        "service-desc": [
-          {
-            href: `${baseUrl}/api/openapi.json#/paths/~1api~1changelogs`,
-            type: "application/vnd.oai.openapi+json;version=3.0",
-          },
-        ],
-        "service-doc": [
-          {
-            href: `${baseUrl}/api/docs#changelogs`,
-            type: "text/html",
-          },
-        ],
-      },
     ],
   };
 
@@ -701,7 +679,7 @@ app.get("/api/openapi.json", (c) => {
       title: "Oxygen Low's Software API",
       version: "1.0.0",
       description:
-        "API services for Oxygen Low's Software platform, including AI agents, changelogs, VPN, support, and authentication metadata.",
+        "API services for Oxygen Low's Software platform, including AI agents, VPN, support, and authentication metadata.",
       contact: {
         name: "Oxygen Low's Software Support",
         url: `${baseUrl}/legal`,
@@ -775,17 +753,6 @@ app.get("/api/openapi.json", (c) => {
           responses: {
             "200": {
               description: "AI response",
-            },
-          },
-        },
-      },
-      "/api/changelogs": {
-        get: {
-          summary: "Changelogs",
-          description: "Retrieve public changelog updates.",
-          responses: {
-            "200": {
-              description: "List of changelog entries",
             },
           },
         },
@@ -1038,14 +1005,6 @@ app.get("/api/docs", (c) => {
 
     <div class="endpoint">
       <div class="endpoint-header">
-        <span class="method get">GET</span>
-        <span class="path">/api/changelogs</span>
-      </div>
-      <div class="desc">Retrieves software changelogs and platform release history.</div>
-    </div>
-
-    <div class="endpoint">
-      <div class="endpoint-header">
         <span class="method post">POST</span>
         <span class="path">/agent/auth</span>
       </div>
@@ -1091,7 +1050,6 @@ app.route("/api/admin/verifications", adminVerificationRouter);
 app.route("/api/assets", assetsRouter);
 app.route("/api/ai", aiRouter);
 app.route("/api/ai/agent-search", agentSearchRouter);
-app.route("/api/changelogs", changelogsRouter);
 app.route("/api/vpn", vpnRouter);
 app.route("/api/webdefender", defenderRouter);
 app.route("/api/defender", defenderRouter);

@@ -18,7 +18,6 @@ import {
   Palette,
   Contact,
   LifeBuoy,
-  GitCommit,
   Gamepad2,
   Scale,
   ShieldCheck,
@@ -117,13 +116,6 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Characters",
     href: "/characters",
     icon: Contact,
-  },
-  {
-    key: "changelogs",
-    labelKey: "nav.changelogs",
-    defaultLabel: "Changelogs",
-    href: "/changelogs",
-    icon: GitCommit,
   },
   {
     key: "support",

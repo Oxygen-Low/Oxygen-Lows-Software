@@ -47,7 +47,6 @@ export const en = {
     customize: "Customize",
     threeDBackground: "3D Background",
     characters: "Characters",
-    changelogs: "Changelogs",
     support: "Support",
     notifications: "Notifications",
     legal: "Legal",
@@ -688,11 +687,6 @@ export const en = {
       summarizingRace: "Analyzing race traits and formulating brief...",
       researchingLore: "Researching lore archetypes and concepts...",
     },
-  },
-  changelogs: {
-    title: "Changelogs",
-    subtitle: "Recent updates, features, and fixes across the platform",
-    errorLoading: "Error Loading Changelogs",
   },
   support: {
     title: "Support Tickets",
@@ -1674,7 +1668,6 @@ export const en = {
     integrations: "Integrations",
     customize: "Customize",
     characters: "Characters",
-    changelogs: "Changelogs",
     support: "Support",
     supportTicket: "Support Ticket",
     admin: "Admin Panel",

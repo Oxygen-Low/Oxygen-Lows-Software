@@ -46,7 +46,6 @@ export const es = {
     customize: "Personalizar",
     threeDBackground: "Fondo 3D",
     characters: "Personajes",
-    changelogs: "Registros de cambios",
     support: "Soporte",
     notifications: "Notificaciones",
     legal: "Legal",
@@ -704,12 +703,6 @@ export const es = {
         "Analizando los rasgos de la raza y formulando el informe...",
       researchingLore: "Investigando arquetipos y conceptos...",
     },
-  },
-  changelogs: {
-    title: "Registros de cambios",
-    subtitle:
-      "Actualizaciones recientes, funciones y correcciones en la plataforma",
-    errorLoading: "Error al cargar los registros de cambios",
   },
   support: {
     title: "Tickets de soporte",
@@ -1701,7 +1694,6 @@ export const es = {
     integrations: "Integraciones",
     customize: "Personalizar",
     characters: "Personajes",
-    changelogs: "Registro de cambios",
     support: "Soporte",
     supportTicket: "Ticket de soporte",
     admin: "Panel de administración",

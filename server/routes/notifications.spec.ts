@@ -110,7 +110,7 @@ describe("Notifications API Routes", () => {
           message: "The system will undergo brief maintenance at midnight.",
           type: "warning",
           target_type: "all",
-          action_url: "/changelogs",
+          action_url: "/download",
         }),
       });
       expect(res.status).toBe(201);
@@ -119,7 +119,7 @@ describe("Notifications API Routes", () => {
       expect(data.notification.title).toBe("System Maintenance Notice");
       expect(data.notification.type).toBe("warning");
       expect(data.notification.target_type).toBe("all");
-      expect(data.notification.action_url).toBe("/changelogs");
+      expect(data.notification.action_url).toBe("/download");
 
       // Verify it appears in user notifications
       const userRes = await app.request("/api/notifications");

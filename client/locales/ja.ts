@@ -46,7 +46,6 @@ export const ja = {
     customize: "カスタマイズ",
     threeDBackground: "3D背景",
     characters: "キャラクター",
-    changelogs: "変更履歴",
     support: "サポート",
     notifications: "通知",
     legal: "法的情報",
@@ -691,11 +690,6 @@ export const ja = {
       summarizingRace: "種族の特徴を分析し、要約を作成中...",
       researchingLore: "アーキタイプと概念を調査中...",
     },
-  },
-  changelogs: {
-    title: "変更履歴",
-    subtitle: "プラットフォーム全体の最近のアップデート、機能、修正",
-    errorLoading: "変更履歴の読み込みエラー",
   },
   support: {
     title: "サポートチケット",
@@ -1680,7 +1674,6 @@ export const ja = {
     integrations: "統合",
     customize: "カスタマイズ",
     characters: "キャラクター",
-    changelogs: "更新履歴",
     support: "サポート",
     supportTicket: "サポートチケット",
     admin: "管理パネル",

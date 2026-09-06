@@ -46,7 +46,6 @@ export const ru = {
     customize: "Кастомизация",
     threeDBackground: "3D-фон",
     characters: "Персонажи",
-    changelogs: "Список изменений",
     support: "Поддержка",
     notifications: "Уведомления",
     legal: "Правовая информация",
@@ -696,11 +695,6 @@ export const ru = {
         "Анализ особенностей расы и составление краткого описания...",
       researchingLore: "Исследование архетипов и концепций...",
     },
-  },
-  changelogs: {
-    title: "Список изменений",
-    subtitle: "Последние обновления, функции и исправления платформы",
-    errorLoading: "Ошибка при загрузке списка изменений",
   },
   support: {
     title: "Тикеты поддержки",
@@ -1684,7 +1678,6 @@ export const ru = {
     integrations: "Интеграции",
     customize: "Настройка",
     characters: "Персонажи",
-    changelogs: "Журнал изменений",
     support: "Поддержка",
     supportTicket: "Тикет поддержки",
     admin: "Панель администратора",

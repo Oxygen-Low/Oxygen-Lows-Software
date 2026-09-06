@@ -88,9 +88,8 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
 ### 10. Downloads & Desktop Apps (/download)
 - Native Windows desktop application and Android client downloads.
 
-### 11. Support & Transparency (/support, /changelogs, /legal)
+### 11. Support & Transparency (/support, /legal)
 - In-app support ticket submission and admin chat system.
-- Detailed changelogs and release notes.
 - Transparent legal, Privacy Policy, Terms of Service, EULA, DMCA, and Acceptable Use policies.
 `.trim();
 

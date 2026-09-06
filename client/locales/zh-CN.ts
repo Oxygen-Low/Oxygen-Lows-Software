@@ -45,7 +45,6 @@ export const zhCN = {
     customize: "个性化",
     threeDBackground: "3D背景",
     characters: "角色",
-    changelogs: "更新日志",
     support: "支持",
     notifications: "通知",
     legal: "法律",
@@ -648,11 +647,6 @@ export const zhCN = {
       summarizingRace: "正在分析种族特质并生成设计简报...",
       researchingLore: "正在调研设定原型与概念...",
     },
-  },
-  changelogs: {
-    title: "更新日志",
-    subtitle: "平台近期的更新、新功能和修复",
-    errorLoading: "加载更新日志出错",
   },
   support: {
     title: "工单",
@@ -1597,7 +1591,6 @@ export const zhCN = {
     integrations: "集成",
     customize: "个性化",
     characters: "角色",
-    changelogs: "更新日志",
     support: "支持",
     supportTicket: "工单",
     admin: "管理面板",

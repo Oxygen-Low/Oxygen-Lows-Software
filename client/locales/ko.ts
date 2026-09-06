@@ -46,7 +46,6 @@ export const ko = {
     customize: "커스터마이즈",
     threeDBackground: "3D 배경",
     characters: "캐릭터",
-    changelogs: "변경 로그",
     support: "지원",
     notifications: "알림",
     legal: "법률",
@@ -680,11 +679,6 @@ export const ko = {
       summarizingRace: "종족 특성을 분석하고 브리프를 작성하는 중...",
       researchingLore: "원형 및 설정을 조사하는 중...",
     },
-  },
-  changelogs: {
-    title: "변경 로그",
-    subtitle: "플랫폼 전반의 최근 업데이트, 기능 및 수정 사항",
-    errorLoading: "변경 로그를 불러오는 중 오류 발생",
   },
   support: {
     title: "지원 티켓",
@@ -1659,7 +1653,6 @@ export const ko = {
     integrations: "연동",
     customize: "사용자 설정",
     characters: "캐릭터",
-    changelogs: "변경 로그",
     support: "고객지원",
     supportTicket: "지원 티켓",
     admin: "관리자 패널",
