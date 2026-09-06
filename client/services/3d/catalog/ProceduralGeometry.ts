@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { CustomProps } from "@/types/threeDBackground";
 import { PosterFactory } from "../assets/PosterFactory";
+import { TreeFactory } from "../nature/TreeFactory";
 
 /**
  * Parses a hex color string safely with a fallback default color.
@@ -1220,34 +1221,7 @@ export function createBirdbathMesh(customProps?: CustomProps): THREE.Group {
  * 31. Procedural Garden Tree
  */
 export function createProceduralTreeMesh(customProps?: CustomProps): THREE.Group {
-  const group = new THREE.Group();
-  const trunkColor = parseColor(customProps?.colorTint, 0x451a03);
-
-  // Trunk (Child 0)
-  const trunkGeom = new THREE.CylinderGeometry(0.18, 0.32, 2.2, 12);
-  const trunkMat = new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.9 });
-  const trunk = new THREE.Mesh(trunkGeom, trunkMat);
-  trunk.position.set(0, 1.1, 0);
-  group.add(trunk);
-
-  // Clustered canopy foliage volumes
-  const foliageColor = parseColor(customProps?.colorTint, 0x15803d);
-  const foliageMat = new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.7, flatShading: true });
-  const foliageClusters = [
-    [0, 2.6, 0, 1.2],
-    [-0.6, 2.3, 0.4, 0.9],
-    [0.6, 2.4, -0.4, 0.95],
-    [0.3, 3.2, 0.2, 0.8],
-  ];
-  for (const [cx, cy, cz, cr] of foliageClusters) {
-    const fGeom = new THREE.DodecahedronGeometry(cr, 1);
-    const fMesh = new THREE.Mesh(fGeom, foliageMat);
-    fMesh.position.set(cx, cy, cz);
-    group.add(fMesh);
-  }
-
-  configureShadows(group);
-  return alignToBottomCenter(group);
+  return TreeFactory.createProceduralTree("oak", customProps);
 }
 
 // ============================================================================

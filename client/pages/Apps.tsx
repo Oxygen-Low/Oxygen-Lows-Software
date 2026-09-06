@@ -50,6 +50,7 @@ import { GameLibraryApp } from "@/components/apps/GameLibrary";
 import { SurveysApp } from "@/components/apps/Surveys";
 import { SoftwareAwardsApp } from "@/components/apps/SoftwareAwards";
 import { ImageStudioApp } from "@/components/apps/ImageStudio";
+import { ThreeDStudioApp } from "@/components/studio3d/ThreeDStudioApp";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -325,6 +326,17 @@ const APPS: AppMetadata[] = [
     component: ImageStudioApp,
     authRequired: true,
   },
+  {
+    id: "3d-background",
+    nameKey: "apps.threeDBackgroundTitle",
+    defaultName: "3D Background",
+    descKey: "apps.threeDBackgroundDesc",
+    defaultDesc: "Design 3D rooms and set them as your live application background",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Box className="w-8 h-8 text-cyan-500" />,
+    component: ThreeDStudioApp,
+  },
 ];
 
 export default function Apps() {
@@ -358,8 +370,23 @@ export default function Apps() {
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
 
-  const { appId } = useParams<{ appId: string }>();
+  const { appId: paramAppId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
+
+  const activeAppId = useMemo(() => {
+    if (paramAppId) return paramAppId;
+    if (
+      location.pathname === "/apps/3d-background" ||
+      location.pathname.startsWith("/apps/3d-background")
+    ) {
+      return "3d-background";
+    }
+    if (location.pathname.startsWith("/apps/")) {
+      const seg = location.pathname.slice(6).split("/")[0];
+      if (seg) return seg;
+    }
+    return undefined;
+  }, [paramAppId, location.pathname]);
 
   const localizedApps = useMemo(() => {
     return APPS.map((app) => ({
@@ -370,8 +397,8 @@ export default function Apps() {
   }, [t]);
 
   const activeApp = useMemo(
-    () => localizedApps.find((a) => a.id === appId) || null,
-    [appId, localizedApps],
+    () => localizedApps.find((a) => a.id === activeAppId) || null,
+    [activeAppId, localizedApps],
   );
 
   usePageTitle(
@@ -484,7 +511,9 @@ export default function Apps() {
       activeApp.id === "chatbot" ||
       activeApp.id === "llm-agent" ||
       activeApp.id === "vpn" ||
-      activeApp.id === "game-library";
+      activeApp.id === "game-library" ||
+      activeApp.id === "image-studio" ||
+      activeApp.id === "3d-background";
 
     return (
       <Layout fullWidth={isFullWidthApp}>

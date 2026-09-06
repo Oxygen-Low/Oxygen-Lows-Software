@@ -1163,11 +1163,40 @@ export const DEFAULT_ROOM_TEMPLATES: RoomDocument[] = [
   BLANK_CANVAS_TEMPLATE,
 ];
 
+export const TEMPLATE_ALIASES: Record<string, string> = {
+  "cozy-bedroom": COZY_BEDROOM_TEMPLATE.id,
+  "template-cozy-bedroom": COZY_BEDROOM_TEMPLATE.id,
+  "cozy_bedroom": COZY_BEDROOM_TEMPLATE.id,
+  "bedroom": COZY_BEDROOM_TEMPLATE.id,
+  "modern-studio": MODERN_STUDIO_TEMPLATE.id,
+  "template-modern-studio": MODERN_STUDIO_TEMPLATE.id,
+  "modern_studio": MODERN_STUDIO_TEMPLATE.id,
+  "studio": MODERN_STUDIO_TEMPLATE.id,
+  "nature-garden": NATURE_GARDEN_TEMPLATE.id,
+  "template-nature-garden": NATURE_GARDEN_TEMPLATE.id,
+  "nature_garden": NATURE_GARDEN_TEMPLATE.id,
+  "garden": NATURE_GARDEN_TEMPLATE.id,
+  "blank-canvas": BLANK_CANVAS_TEMPLATE.id,
+  "template-blank-canvas": BLANK_CANVAS_TEMPLATE.id,
+  "blank_canvas": BLANK_CANVAS_TEMPLATE.id,
+  "blank": BLANK_CANVAS_TEMPLATE.id,
+};
+
 /**
- * Retrieves a static template definition by its ID.
+ * Resolves a template alias or ID to its canonical UUID.
+ */
+export function resolveTemplateId(templateId: string): string {
+  if (!templateId) return BLANK_CANVAS_TEMPLATE.id;
+  const normalized = templateId.toLowerCase().trim();
+  return TEMPLATE_ALIASES[normalized] || templateId;
+}
+
+/**
+ * Retrieves a static template definition by its ID or alias.
  */
 export function getRoomTemplateById(templateId: string): RoomDocument | undefined {
-  return DEFAULT_ROOM_TEMPLATES.find((t) => t.id === templateId);
+  const resolved = resolveTemplateId(templateId);
+  return DEFAULT_ROOM_TEMPLATES.find((t) => t.id === resolved || t.id === templateId);
 }
 
 /**

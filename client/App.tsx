@@ -128,6 +128,7 @@ const App = () => (
                     <Route path="/" element={<Apps />} />
                     <Route path="/apps" element={<Apps />} />
                     <Route path="/apps/:appId" element={<Apps />} />
+                    <Route path="/apps/3d-background" element={<Apps />} />
                     <Route path="/games" element={<Games />} />
                     <Route path="/games/:appId" element={<Games />} />
                     <Route
