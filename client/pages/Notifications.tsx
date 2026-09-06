@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Shield,
   Trash2,
   Inbox,
   Clock,
@@ -49,10 +48,6 @@ export default function Notifications() {
 
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "announcements">("all");
 
-  const isAdmin =
-    session?.user?.role === "admin" ||
-    (session?.user as any)?.user_metadata?.role === "admin" ||
-    String(session?.user?.id) === "1";
 
   const filteredNotifications = useMemo(() => {
     if (activeFilter === "unread") {
@@ -169,18 +164,6 @@ export default function Notifications() {
                 <CheckCheck className="w-4 h-4 text-cyan-400" />
                 <span>{t("notifications.markAllRead", undefined, "Mark all as read")}</span>
               </Button>
-            )}
-
-            {isAdmin && (
-              <Link to="/admin/notifications">
-                <Button
-                  size="sm"
-                  className="gap-1.5 text-xs sm:text-sm h-9 bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-sm"
-                >
-                  <Shield className="w-4 h-4" />
-                  <span>{t("notifications.adminCenter", undefined, "Manage Notifications")}</span>
-                </Button>
-              </Link>
             )}
           </div>
         </div>

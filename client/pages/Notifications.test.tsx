@@ -128,4 +128,15 @@ describe("Notifications Page", () => {
 
     expect(mockMarkAllAsRead).toHaveBeenCalled();
   });
+
+  it("does not render the manage notifications button or admin link", () => {
+    render(
+      <MemoryRouter>
+        <Notifications />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Manage Notifications")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Manage Notifications/i })).toBeNull();
+  });
 });
