@@ -1,10 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   isPrivateIP,
   validateAiUrl,
   resolveCustomProviderUrl,
 } from "../lib/safeAiUrl";
-import { parseSearchIntent, extractBearerToken, stripHtmlTags } from "./ai";
+import {
+  parseSearchIntent,
+  extractBearerToken,
+  stripHtmlTags,
+  aiRouter,
+} from "./ai";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "../../shared/websiteKnowledge.ts";
 import fs from "fs";
 import path from "path";
@@ -338,4 +343,128 @@ describe("AI System Prompt Website Knowledge Base", () => {
     expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/download");
   });
 });
+
+describe("aiRouter Horde proxy continuation", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  function createMockSseResponse(chunks: string[], status = 200) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
+      status,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }
+
+  it("should stream Horde completions and continue automatically across length cutoffs", async () => {
+    const round1 = [
+      `data: {"choices":[{"delta":{"content":"First part of message... "},"finish_reason":null}]}\n\n`,
+      `data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\n`,
+      `data: [DONE]\n\n`,
+    ];
+    const round2 = [
+      `data: {"choices":[{"delta":{"content":"Second part of message."},"finish_reason":null}]}\n\n`,
+      `data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n`,
+      `data: [DONE]\n\n`,
+    ];
+
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(createMockSseResponse(round1))
+      .mockResolvedValueOnce(createMockSseResponse(round2));
+
+    const res = await aiRouter.request("/proxy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "10.0.1.1",
+      },
+      body: JSON.stringify({
+        provider: "horde",
+        model: "Fast",
+        messages: [{ role: "user", content: "Tell me a long answer" }],
+        stream: true,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let text = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value);
+    }
+
+    expect(text).toContain("First part of message... ");
+    expect(text).toContain("Second part of message.");
+    expect(text).toContain("[DONE]");
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("should accumulate non-streaming Horde completions across length cutoffs", async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [
+            {
+              message: { role: "assistant", content: "Beginning part " },
+              finish_reason: "length",
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [
+            {
+              message: { role: "assistant", content: "ending part." },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+      });
+
+    const res = await aiRouter.request("/proxy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "10.0.1.2",
+      },
+      body: JSON.stringify({
+        provider: "horde",
+        model: "Fast",
+        messages: [{ role: "user", content: "Non-stream prompt" }],
+        stream: false,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.choices[0].message.content).toBe("Beginning part ending part.");
+    expect(data.choices[0].finish_reason).toBe("stop");
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
 

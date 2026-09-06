@@ -3,6 +3,10 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable, callRpc } from "../lib/dataStore.ts";
 import { validateAiUrl } from "../lib/safeAiUrl.ts";
+import {
+  streamHordeWithContinuation,
+  fetchHordeNonStreamWithContinuation,
+} from "../lib/hordeContinuation.ts";
 
 export const agentSearchRouter = new Hono();
 
@@ -481,17 +485,44 @@ async function callModelProvider({
   };
 
   if (provider === "horde" || provider.includes("horde")) {
-    targetUrl = HORDE_URL;
     const actualModel = resolveHordeModel(model);
-    requestBody = {
+    const hordeRequestBody = {
       model: actualModel,
       messages,
       tools,
       temperature: 0.2,
       max_tokens: tools ? 200 : 2048,
     };
-    headers["Authorization"] =
-      `Bearer ${hordeApiKey || apiKey || "0000000000"}`;
+    const hordeHeaders = {
+      ...headers,
+      Authorization: `Bearer ${hordeApiKey || apiKey || "0000000000"}`,
+    };
+
+    let res: Response;
+    if (stream) {
+      res = await streamHordeWithContinuation({
+        targetUrl: HORDE_URL,
+        fetchHeaders: hordeHeaders,
+        requestBody: hordeRequestBody,
+        signal,
+      });
+    } else {
+      res = await fetchHordeNonStreamWithContinuation({
+        targetUrl: HORDE_URL,
+        fetchHeaders: hordeHeaders,
+        requestBody: hordeRequestBody,
+        signal,
+      });
+    }
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(
+        `AI provider (${provider}) error: HTTP ${res.status}${errText ? ` - ${errText.slice(0, 100)}` : ""}`,
+      );
+    }
+
+    return res;
   } else if (provider === "cloudflare") {
     if (!cloudflareId || !cloudflareToken) {
       throw new Error("Cloudflare AI is temporarily unavailable.");

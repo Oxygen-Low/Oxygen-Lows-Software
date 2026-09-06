@@ -421,4 +421,86 @@ describe("Agent Search Route", () => {
     expect(text).toContain("Connecting to research agent...");
     expect(text).not.toContain("Connecting to fast research agent...");
   });
+
+  test("Agent search synthesis with Horde automatically continues when finish_reason is length", async () => {
+    let hordeCallCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init?: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes("html.duckduckgo.com")) {
+        return new Response('<a class="result__snippet" href="https://example.com">Sample search result</a>', {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      if (urlStr.includes("stablehorde.net")) {
+        hordeCallCount++;
+        const reqBody = init?.body ? JSON.parse(init.body) : {};
+        if (reqBody.tools) {
+          // Research tool action round -> done
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"action": "done"}' }, finish_reason: "stop" }],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        // Synthesis call
+        if (hordeCallCount === 2) {
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: { role: "assistant", content: "Comprehensive report part 1... " },
+                  finish_reason: "length",
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        } else {
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: { role: "assistant", content: "concluding part of report." },
+                  finish_reason: "stop",
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+      }
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+      });
+    });
+
+    const res = await app.request("/api/ai/agent-search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${validToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "Test horde continuation synthesis",
+        responseFormat: "summary",
+        researchOnly: false,
+        stream: false,
+        researchModel: "Fast",
+        researchProvider: "horde",
+        summarizerModel: "Smart",
+        summarizerProvider: "horde",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.result).toBe(
+      "Comprehensive report part 1... concluding part of report.",
+    );
+    // 1 tool call + 2 synthesis calls = 3 horde calls
+    expect(hordeCallCount).toBe(3);
+  });
 });

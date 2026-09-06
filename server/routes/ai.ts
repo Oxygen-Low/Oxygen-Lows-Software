@@ -3,6 +3,10 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable, callRpc } from "../lib/dataStore.ts";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "../../shared/websiteKnowledge.ts";
+import {
+  streamHordeWithContinuation,
+  fetchHordeNonStreamWithContinuation,
+} from "../lib/hordeContinuation.ts";
 
 export const aiRouter = new Hono();
 
@@ -299,15 +303,63 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "horde") {
-      targetUrl = "https://oai.stablehorde.net/v1/chat/completions";
       const actualModel = HORDE_MODELS_MAP[model]?.[0] || model;
-      requestBody = {
+      const hordeHeaders: Record<string, string> = {
+        Authorization: `Bearer ${integration?.api_key || "0000000000"}`,
+      };
+      const hordeRequestBody = {
         ...requestBody,
         model: actualModel,
         messages: finalMessages,
       };
-      fetchOptions.headers["Authorization"] =
-        `Bearer ${integration?.api_key || "0000000000"}`;
+
+      if (stream) {
+        const hordeResponse = await streamHordeWithContinuation({
+          targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+          fetchHeaders: hordeHeaders,
+          requestBody: hordeRequestBody,
+          signal: c.req.raw.signal,
+        });
+
+        if (!hordeResponse.ok) {
+          const status = hordeResponse.status;
+          let userMessage = "The AI provider returned an error.";
+          if (status === 401 || status === 403)
+            userMessage = "Invalid or expired API key for this provider.";
+          else if (status === 429)
+            userMessage = "Rate limit exceeded. Please try again later.";
+          else if (status === 503 || status === 502)
+            userMessage = "The AI provider is temporarily unavailable.";
+          return c.json({ error: userMessage }, status as any);
+        }
+
+        c.header("Content-Type", "text/event-stream");
+        c.header("Cache-Control", "no-cache");
+        c.header("Connection", "keep-alive");
+        return c.body(hordeResponse.body as any);
+      } else {
+        const hordeResponse = await fetchHordeNonStreamWithContinuation({
+          targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+          fetchHeaders: hordeHeaders,
+          requestBody: hordeRequestBody,
+          signal: c.req.raw.signal,
+        });
+
+        if (!hordeResponse.ok) {
+          const status = hordeResponse.status;
+          let userMessage = "The AI provider returned an error.";
+          if (status === 401 || status === 403)
+            userMessage = "Invalid or expired API key for this provider.";
+          else if (status === 429)
+            userMessage = "Rate limit exceeded. Please try again later.";
+          else if (status === 503 || status === 502)
+            userMessage = "The AI provider is temporarily unavailable.";
+          return c.json({ error: userMessage }, status as any);
+        }
+
+        const data = await hordeResponse.json();
+        return c.json(data);
+      }
     } else if (provider === "cloudflare") {
       if (!user) return c.json({ error: "Authentication required" }, 401);
 
