@@ -1042,9 +1042,18 @@ export const ja = {
     cannotDisablePasswordsWithRecords:
       "パスワードが保存されている間は暗号化を無効にできません。まず、すべてのパスワードを削除してください。",
     masterKeyRequiredToChange:
-      "保護対象データカテゴリを有効化または無効化するには、アクティブなマスターキーが必要です。",
+      "現在のセッションはロックされています。暗号化設定を変更するには、上記でパスワードを入力してロックを解除してください。",
     masterKeyRequiredNotice:
-      "保護対象データカテゴリの暗号化設定を変更するには、アクティブなマスターキーが必要です。これらの設定を変更するには、上記でマスターキーを生成またはロック解除してください。",
+      "現在のセッションはロックされています。暗号化設定を変更するには、上記でパスワードを入力してください。",
+    passwordEncryptionTitle: "ゼロ知識パスワード暗号化",
+    passwordEncryptionDesc:
+      "個人データは、パスワードから直接導出されたクライアント側の AES-256 暗号化によって保護されます。パスワードと平文データがサーバーに送信されることはありません。",
+    activeSessionProtected: "アクティブセッション保護中",
+    encryptionActiveDesc:
+      "ゼロ知識暗号化が有効です。データはパスワードから導出された 256 ビット AES キーを使用してメモリ内で暗号化および復号されます。",
+    lockSession: "セッションをロック",
+    sessionLockedToast: "セッションがロックされ、暗号化キーがメモリから消去されました",
+    masterKeyRequiredToMigrate: "以前のマスターキーを入力またはアップロードしてください",
     rotateKeyConfirm:
       "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
     keyRotatedToast:
@@ -1055,7 +1064,7 @@ export const ja = {
     unlockWithPasswordDesc:
       "アカウントパスワードを入力してゼロ知識 AES-256 暗号化キーを導出し、データをロック解除します。",
     enterAccountPassword: "アカウントパスワードを入力...",
-    unlockWithPasswordBtn: "パスワードでロック解除",
+    unlockWithPasswordBtn: "セッションをロック解除",
     unlockSuccessToast: "復号キーが導出され、セッションが解除されました",
     invalidPasswordError: "パスワードが無効であるか、キー導出に失敗しました",
     changePasswordTitle: "パスワードの変更",

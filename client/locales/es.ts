@@ -1057,9 +1057,18 @@ export const es = {
     cannotDisablePasswordsWithRecords:
       "No se puede deshabilitar el cifrado mientras haya contraseñas almacenadas. Por favor, elimina primero todas las contraseñas.",
     masterKeyRequiredToChange:
-      "Se requiere una clave maestra activa para habilitar o deshabilitar categorías de datos protegidas.",
+      "Tu sesión está bloqueada actualmente. Desbloquea tu sesión con tu contraseña arriba para cambiar la configuración de cifrado.",
     masterKeyRequiredNotice:
-      "Se requiere una clave maestra activa para cambiar la configuración de las categorías de datos protegidas. Genera o desbloquea una clave maestra arriba para modificar estos ajustes.",
+      "Tu sesión está bloqueada actualmente. Introduce tu contraseña arriba para modificar la configuración de cifrado.",
+    passwordEncryptionTitle: "Cifrado de Contraseña de Conocimiento Cero",
+    passwordEncryptionDesc:
+      "Tus datos privados están protegidos con cifrado AES-256 en el lado del cliente derivado directamente de tu contraseña. Tu contraseña y datos en texto plano nunca tocan el servidor.",
+    activeSessionProtected: "Sesión Activa Protegida",
+    encryptionActiveDesc:
+      "El cifrado de conocimiento cero está activo. Tus datos se cifran y descifran en memoria mediante tu clave AES de 256 bits derivada de tu contraseña.",
+    lockSession: "Bloquear Sesión",
+    sessionLockedToast: "Sesión bloqueada y clave de cifrado eliminada de la memoria",
+    masterKeyRequiredToMigrate: "Por favor, introduce o sube tu clave maestra anterior",
     rotateKeyConfirm:
       "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
     keyRotatedToast:
@@ -1070,7 +1079,7 @@ export const es = {
     unlockWithPasswordDesc:
       "Introduce la contraseña de tu cuenta para derivar tu clave de cifrado AES-256 de conocimiento cero y desbloquear tus datos.",
     enterAccountPassword: "Introduce la contraseña de tu cuenta...",
-    unlockWithPasswordBtn: "Desbloquear con Contraseña",
+    unlockWithPasswordBtn: "Desbloquear Sesión",
     unlockSuccessToast: "Clave de descifrado derivada y sesión desbloqueada",
     invalidPasswordError: "Contraseña no válida o fallo en la derivación de clave",
     changePasswordTitle: "Cambiar Contraseña",

@@ -1024,9 +1024,18 @@ export const ko = {
     cannotDisablePasswordsWithRecords:
       "비밀번호가 저장되어 있는 동안에는 암호화를 비활성화할 수 없습니다. 먼저 모든 비밀번호를 삭제하십시오.",
     masterKeyRequiredToChange:
-      "보호 대상 데이터 범주를 활성화하거나 비활성화하려면 활성 마스터 키가 필요합니다.",
+      "현재 세션이 잠겨 있습니다. 암호화 설정을 변경하려면 위에서 비밀번호로 세션을 잠금 해제하세요.",
     masterKeyRequiredNotice:
-      "보호 대상 데이터 범주 암호화 설정을 변경하려면 활성 마스터 키가 필요합니다. 설정을 변경하려면 위에서 마스터 키를 생성하거나 잠금을 해제하세요.",
+      "현재 세션이 잠겨 있습니다. 암호화 설정을 변경하려면 위에서 비밀번호를 입력하세요.",
+    passwordEncryptionTitle: "영지식 비밀번호 암호화",
+    passwordEncryptionDesc:
+      "개인 데이터는 비밀번호에서 직접 파생된 클라이언트 측 AES-256 암호화로 보호됩니다. 비밀번호와 일반 텍스트 데이터는 서버에 전송되지 않습니다.",
+    activeSessionProtected: "활성 세션 보호됨",
+    encryptionActiveDesc:
+      "영지식 암호화가 활성화되어 있습니다. 데이터는 비밀번호에서 파생된 256비트 AES 키를 사용하여 메모리에서 암호화 및 복호화됩니다.",
+    lockSession: "세션 잠금",
+    sessionLockedToast: "세션이 잠겼으며 메모리에서 암호화 키가 삭제되었습니다",
+    masterKeyRequiredToMigrate: "이전 마스터 키를 입력하거나 업로드하세요",
     rotateKeyConfirm:
       "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
     keyRotatedToast:
@@ -1037,7 +1046,7 @@ export const ko = {
     unlockWithPasswordDesc:
       "계정 비밀번호를 입력하여 영지식 AES-256 암호화 키를 파생하고 데이터를 잠금 해제합니다.",
     enterAccountPassword: "계정 비밀번호 입력...",
-    unlockWithPasswordBtn: "비밀번호로 잠금 해제",
+    unlockWithPasswordBtn: "세션 잠금 해제",
     unlockSuccessToast: "복호화 키 파생 완료 및 세션 잠금 해제됨",
     invalidPasswordError: "비밀번호가 올바르지 않거나 키 파생에 실패했습니다",
     changePasswordTitle: "비밀번호 변경",

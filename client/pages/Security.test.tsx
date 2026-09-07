@@ -13,16 +13,33 @@ import { useAuth } from "@/hooks/useAuth";
 import { clearActiveMasterKey } from "@/lib/crypto";
 
 // Mock db
+let mockIntegrationsCount = 0;
+let mockPasswordsCount = 0;
+
 vi.mock("@/lib/db", () => {
   const queryBuilder: any = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
+    select: vi.fn().mockImplementation((_cols: string, opts?: any) => {
+      if (opts?.count === "exact" && opts?.head === true) {
+        return Promise.resolve({
+          count: mockIntegrationsCount || mockPasswordsCount,
+          error: null,
+        });
+      }
+      return queryBuilder;
+    }),
+    eq: vi.fn().mockImplementation(() => queryBuilder),
     in: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
-    then: vi.fn((resolve: any) => resolve({ data: [], error: null })),
+    then: vi.fn((resolve: any) =>
+      resolve({
+        count: mockIntegrationsCount || mockPasswordsCount,
+        data: [],
+        error: null,
+      }),
+    ),
   };
   const mockClient = {
     auth: {
@@ -62,8 +79,11 @@ describe("Security Page Component", () => {
     localStorage.clear();
     sessionStorage.clear();
     clearActiveMasterKey();
+    mockIntegrationsCount = 0;
+    mockPasswordsCount = 0;
     (useAuth as any).mockReturnValue({
       session: { user: { id: "u", email: "user@test.com" } },
+      changePassword: vi.fn().mockResolvedValue({ success: true }),
     });
 
     // Mock clipboard API
@@ -78,29 +98,38 @@ describe("Security Page Component", () => {
     cleanup();
   });
 
-  it("renders Security page with header and AES-256 master key card", () => {
+  it("renders Security page with header and Zero-Knowledge Password Encryption card in locked state", () => {
     renderWithRouter();
     expect(screen.getByText("Security & Data Encryption")).toBeDefined();
-    expect(screen.getByText("AES-256 Masterkey")).toBeDefined();
-    expect(document.getElementById("generate-masterkey-btn")).toBeDefined();
-    expect(screen.getByText("No Masterkey Set")).toBeDefined();
+    expect(screen.getByText("Zero-Knowledge Password Encryption")).toBeDefined();
+    expect(screen.getByText("Session Locked")).toBeDefined();
+    expect(document.getElementById("unlock-password-input")).toBeDefined();
+    expect(document.getElementById("unlock-with-password-btn")).toBeDefined();
+
+    // Obsolete masterkey elements must NOT exist
+    expect(document.getElementById("generate-masterkey-btn")).toBeNull();
+    expect(screen.queryByText("AES-256 Masterkey")).toBeNull();
+    expect(screen.queryByText("No Masterkey Set")).toBeNull();
+    expect(screen.queryByText("Key Format")).toBeNull();
     expect(screen.queryByText("Show QR Code")).toBeNull();
+    expect(screen.queryByText("Download key")).toBeNull();
   });
 
-  it("renders encryption toggles for Characters, Data Save, Chatbot, and Integrations", () => {
+  it("renders encryption toggles for Characters, Data Save, Chatbot, Integrations, and Password Vault", () => {
     renderWithRouter();
     expect(screen.getByText("Protected Data Categories")).toBeDefined();
     expect(screen.getByText("Characters and Universes")).toBeDefined();
     expect(screen.getByText("Data Save Entries")).toBeDefined();
     expect(screen.getByText("Chatbot Chats")).toBeDefined();
     expect(screen.getByText("API Keys & Integrations")).toBeDefined();
+    expect(screen.getByText("Password Vault")).toBeDefined();
   });
 
-  it("disables category toggles and displays requirement notice when no masterkey is set", () => {
+  it("disables category toggles and displays requirement notice when session is locked", () => {
     renderWithRouter();
     expect(
       screen.getByText(
-        "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
+        "Your session is currently locked. Enter your password above to modify encryption settings.",
       ),
     ).toBeDefined();
 
@@ -116,27 +145,65 @@ describe("Security Page Component", () => {
     const integrationsToggle = document.getElementById(
       "toggle-integrations",
     ) as HTMLButtonElement;
+    const passwordsToggle = document.getElementById(
+      "toggle-passwords",
+    ) as HTMLButtonElement;
 
     expect(charactersToggle.disabled).toBe(true);
     expect(dataSaveToggle.disabled).toBe(true);
     expect(chatbotToggle.disabled).toBe(true);
     expect(integrationsToggle.disabled).toBe(true);
+    expect(passwordsToggle.disabled).toBe(true);
 
     fireEvent.click(charactersToggle);
     expect(localStorage.getItem("oxygen_encrypt_characters")).toBeNull();
   });
 
-  it("allows toggling encryption and saves to localStorage", async () => {
+  it("allows unlocking session with account password and shows active encryption state", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
+    const passwordInput = document.getElementById(
+      "unlock-password-input",
+    ) as HTMLInputElement;
+    expect(passwordInput).toBeDefined();
+
+    fireEvent.change(passwordInput, { target: { value: "MySecurePass123!" } });
+
+    const unlockBtn = document.getElementById(
+      "unlock-with-password-btn",
     ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
+    fireEvent.click(unlockBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Encryption Active")).toBeDefined();
+      expect(screen.getByText("Active Session Protected")).toBeDefined();
+      expect(screen.getByText("AES-256-GCM")).toBeDefined();
+      expect(screen.getByText("PBKDF2 (200k iterations)")).toBeDefined();
+      expect(screen.getByText("Zero-Knowledge")).toBeDefined();
+      expect(document.getElementById("change-password-btn")).toBeDefined();
+      expect(document.getElementById("migrate-masterkey-btn")).toBeDefined();
+      expect(document.getElementById("lock-session-btn")).toBeDefined();
+      expect(sessionStorage.getItem("oxygen_active_master_key")).not.toBeNull();
+    });
+  });
+
+  it("allows toggling encryption and saves to localStorage when unlocked", async () => {
+    renderWithRouter();
+
+    // Unlock session first
+    const passwordInput = document.getElementById(
+      "unlock-password-input",
+    ) as HTMLInputElement;
+    fireEvent.change(passwordInput, { target: { value: "MySecurePass123!" } });
+    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Encryption Active")).toBeDefined();
+    });
 
     const charactersToggle = document.getElementById(
       "toggle-characters",
     ) as HTMLButtonElement;
-    expect(charactersToggle).toBeDefined();
+    expect(charactersToggle.disabled).toBe(false);
 
     fireEvent.click(charactersToggle);
     await waitFor(() => {
@@ -149,12 +216,18 @@ describe("Security Page Component", () => {
     });
   });
 
-  it("allows toggling encryption for Data Save, Chatbot, and Integrations", async () => {
+  it("allows toggling encryption for Data Save, Chatbot, Integrations, and Passwords", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
+
+    // Unlock session
+    fireEvent.change(document.getElementById("unlock-password-input")!, {
+      target: { value: "MySecurePass123!" },
+    });
+    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Encryption Active")).toBeDefined();
+    });
 
     const dataSaveToggle = document.getElementById(
       "toggle-datasave",
@@ -164,6 +237,9 @@ describe("Security Page Component", () => {
     ) as HTMLButtonElement;
     const integrationsToggle = document.getElementById(
       "toggle-integrations",
+    ) as HTMLButtonElement;
+    const passwordsToggle = document.getElementById(
+      "toggle-passwords",
     ) as HTMLButtonElement;
 
     fireEvent.click(dataSaveToggle);
@@ -180,148 +256,51 @@ describe("Security Page Component", () => {
     await waitFor(() => {
       expect(localStorage.getItem("oxygen_encrypt_integrations")).toBe("true");
     });
-  });
 
-  it("generates a 256-bit key when clicking Generate Masterkey and displays actions without QR code", async () => {
-    renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
-
+    fireEvent.click(passwordsToggle);
     await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
-      expect(screen.getByText("Copy to Clipboard")).toBeDefined();
-      expect(screen.getByText("Download key")).toBeDefined();
-      expect(screen.getByText("Lock / Clear Key")).toBeDefined();
-      expect(screen.queryByText("Show QR Code")).toBeNull();
-      expect(screen.queryByText("Hide QR Code")).toBeNull();
+      expect(localStorage.getItem("oxygen_encrypt_passwords")).toBe("true");
     });
   });
 
-  it("copies generated master key to clipboard", async () => {
+  it("locks session and clears key on Lock Session click", async () => {
     renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
+
+    // Unlock session
+    fireEvent.change(document.getElementById("unlock-password-input")!, {
+      target: { value: "MySecurePass123!" },
+    });
+    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
 
     await waitFor(() => {
-      expect(screen.getByText("Copy to Clipboard")).toBeDefined();
+      expect(screen.getByText("Encryption Active")).toBeDefined();
     });
 
-    const copyBtn = screen.getByText("Copy to Clipboard");
-    fireEvent.click(copyBtn);
-
-    expect(navigator.clipboard.writeText).toHaveBeenCalled();
-  });
-
-  it("has key format hidden by default and allows toggling to switch format between Hex, Base64, Base58 and Words", async () => {
-    renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
+    fireEvent.click(document.getElementById("lock-session-btn")!);
 
     await waitFor(() => {
-      expect(screen.getByText("Key Format")).toBeDefined();
-    });
-
-    // Key format options should be hidden by default
-    expect(screen.queryByText("Base64 (44 chars)")).toBeNull();
-    expect(screen.queryByText("Base58")).toBeNull();
-
-    // Toggle format options visible
-    const toggleFormatBtn = screen.getByText("Key Format");
-    fireEvent.click(toggleFormatBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText("Base64 (44 chars)")).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText("Base64 (44 chars)"));
-    fireEvent.click(screen.getByText("Base58"));
-    fireEvent.click(screen.getByText("Passphrase Words"));
-    fireEvent.click(screen.getByText("Hex (64 chars)"));
-
-    // Toggle format options hidden
-    const hideFormatBtn = screen.getByText("Hide Key Format");
-    fireEvent.click(hideFormatBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText("Base64 (44 chars)")).toBeNull();
-    });
-  });
-
-  it("allows unlocking / activating an existing master key", async () => {
-    renderWithRouter();
-    const testKeyHex =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    const input = screen.getByPlaceholderText(
-      "Paste 64-char Hex or 256-bit Base64 masterkey...",
-    ) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: testKeyHex } });
-
-    const unlockBtn = screen.getByText("Unlock / Activate Key");
-    fireEvent.click(unlockBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
-      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(
-        testKeyHex,
-      );
-    });
-  });
-
-  it("shows error for invalid key during manual activation", async () => {
-    renderWithRouter();
-    const input = screen.getByPlaceholderText(
-      "Paste 64-char Hex or 256-bit Base64 masterkey...",
-    ) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "invalid-key" } });
-
-    const unlockBtn = screen.getByText("Unlock / Activate Key");
-    fireEvent.click(unlockBtn);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
-        ),
-      ).toBeDefined();
-    });
-  });
-
-  it("clears / locks active master key on Lock / Clear Key click", async () => {
-    renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText("Lock / Clear Key")).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText("Lock / Clear Key"));
-
-    await waitFor(() => {
-      expect(screen.getByText("No Masterkey Set")).toBeDefined();
+      expect(screen.getByText("Session Locked")).toBeDefined();
       expect(sessionStorage.getItem("oxygen_active_master_key")).toBeNull();
+      const charactersToggle = document.getElementById(
+        "toggle-characters",
+      ) as HTMLButtonElement;
+      expect(charactersToggle.disabled).toBe(true);
     });
   });
 
-  it("shows returnTo banner when redirected with returnTo query param and masterkey active", async () => {
+  it("shows returnTo banner when redirected with returnTo query param and session is unlocked", async () => {
     renderWithRouter(["/security?returnTo=%2Fcharacters"]);
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
+
+    // Unlock session
+    fireEvent.change(document.getElementById("unlock-password-input")!, {
+      target: { value: "MySecurePass123!" },
+    });
+    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
 
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Masterkey active. You can now return to your previous page:",
+          "Encryption active. You can now return to your previous page:",
         ),
       ).toBeDefined();
       expect(screen.getByText("/characters")).toBeDefined();
@@ -329,104 +308,7 @@ describe("Security Page Component", () => {
     });
   });
 
-  it("allows activating masterkey by uploading a .key file", async () => {
-    renderWithRouter();
-    const testKeyHex =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    const fileContent = `===========================================================\n Oxygen Low's Software - AES-256 Masterkey Backup\n===========================================================\n\n[HEXADECIMAL MASTERKEY - 64 CHARACTERS]\n${testKeyHex}\n`;
-
-    const file = new File([fileContent], "oxygen-masterkey.key", {
-      type: "text/plain",
-    });
-    const fileInput = document.getElementById(
-      "key-file-upload-input",
-    ) as HTMLInputElement;
-    expect(fileInput).toBeDefined();
-
-    fireEvent.change(fileInput, { target: { files: [file] } });
-
-    await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
-      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(
-        testKeyHex,
-      );
-    });
-  });
-
-  it("allows activating masterkey by dropping a .key file", async () => {
-    renderWithRouter();
-    const testKeyHex =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    const file = new File([testKeyHex], "masterkey.key", {
-      type: "text/plain",
-    });
-
-    const dropContainer = screen.getByTestId("key-drop-zone");
-
-    fireEvent.dragOver(dropContainer);
-    fireEvent.drop(dropContainer, {
-      dataTransfer: {
-        files: [file],
-      },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
-      expect(sessionStorage.getItem("oxygen_active_master_key")).toBe(
-        testKeyHex,
-      );
-    });
-  });
-
-  it("shows error when uploading an invalid file", async () => {
-    renderWithRouter();
-    const file = new File(["not a valid masterkey"], "invalid.key", {
-      type: "text/plain",
-    });
-    const fileInput = document.getElementById(
-      "key-file-upload-input",
-    ) as HTMLInputElement;
-
-    fireEvent.change(fileInput, { target: { files: [file] } });
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          "No valid 256-bit AES masterkey found in the provided .key file.",
-        ),
-      ).toBeDefined();
-    });
-  });
-
-  it("does not render removed architecture section", () => {
-    renderWithRouter();
-    expect(
-      screen.queryByText("Zero-Knowledge & Privacy Architecture"),
-    ).toBeNull();
-    expect(screen.queryByText("Custom AI Provider API Keys")).toBeNull();
-  });
-
-  it("allows unlocking with account password", async () => {
-    renderWithRouter();
-    expect(screen.getAllByText("Unlock with Password").length).toBeGreaterThanOrEqual(1);
-    const passwordInput = document.getElementById(
-      "unlock-password-input",
-    ) as HTMLInputElement;
-    expect(passwordInput).toBeDefined();
-
-    fireEvent.change(passwordInput, { target: { value: "MySecurePass123!" } });
-
-    const unlockBtn = document.getElementById(
-      "unlock-with-password-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(unlockBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
-    });
-  });
-
-  it("opens change password dialog and calls changePassword", async () => {
+  it("opens Change Password dialog and calls useAuth().changePassword", async () => {
     const mockChangePassword = vi.fn().mockResolvedValue({ success: true });
     (useAuth as any).mockReturnValue({
       session: { user: { id: "u", email: "user@test.com" } },
@@ -434,20 +316,18 @@ describe("Security Page Component", () => {
     });
 
     renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
+
+    // Unlock session
+    fireEvent.change(document.getElementById("unlock-password-input")!, {
+      target: { value: "MySecurePass123!" },
+    });
+    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
 
     await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
+      expect(screen.getByText("Encryption Active")).toBeDefined();
     });
 
-    const changePasswordBtn = document.getElementById(
-      "change-password-btn",
-    ) as HTMLButtonElement;
-    expect(changePasswordBtn).toBeDefined();
-    fireEvent.click(changePasswordBtn);
+    fireEvent.click(document.getElementById("change-password-btn")!);
 
     await waitFor(() => {
       expect(document.getElementById("current-password-input")).toBeDefined();
@@ -476,22 +356,76 @@ describe("Security Page Component", () => {
     });
   });
 
-  it("opens migrate from masterkey dialog and completes migration", async () => {
-    renderWithRouter();
-    const generateBtn = document.getElementById(
-      "generate-masterkey-btn",
-    ) as HTMLButtonElement;
-    fireEvent.click(generateBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
+  it("validates password mismatch and length in Change Password dialog", async () => {
+    const mockChangePassword = vi.fn().mockResolvedValue({ success: true });
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "u", email: "user@test.com" } },
+      changePassword: mockChangePassword,
     });
 
-    const migrateBtn = document.getElementById(
-      "migrate-masterkey-btn",
+    renderWithRouter();
+
+    // Unlock session
+    fireEvent.change(document.getElementById("unlock-password-input")!, {
+      target: { value: "MySecurePass123!" },
+    });
+    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Encryption Active")).toBeDefined();
+    });
+
+    fireEvent.click(document.getElementById("change-password-btn")!);
+
+    await waitFor(() => {
+      expect(document.getElementById("current-password-input")).toBeDefined();
+    });
+
+    // Test password too short
+    fireEvent.change(document.getElementById("current-password-input")!, {
+      target: { value: "OldPass123!" },
+    });
+    fireEvent.change(document.getElementById("new-password-input")!, {
+      target: { value: "123" },
+    });
+    fireEvent.change(document.getElementById("confirm-new-password-input")!, {
+      target: { value: "123" },
+    });
+
+    fireEvent.click(document.getElementById("submit-change-password-btn")!);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Password must be at least 6 characters long"),
+      ).toBeDefined();
+      expect(mockChangePassword).not.toHaveBeenCalled();
+    });
+
+    // Test password mismatch
+    fireEvent.change(document.getElementById("new-password-input")!, {
+      target: { value: "Password123!" },
+    });
+    fireEvent.change(document.getElementById("confirm-new-password-input")!, {
+      target: { value: "DifferentPassword123!" },
+    });
+
+    fireEvent.click(document.getElementById("submit-change-password-btn")!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Passwords do not match")).toBeDefined();
+      expect(mockChangePassword).not.toHaveBeenCalled();
+    });
+  });
+
+  it("opens Migrate from Masterkey dialog and completes migration", async () => {
+    renderWithRouter();
+
+    // Open from locked state helper button
+    const inactiveMigrateBtn = document.getElementById(
+      "inactive-migrate-btn",
     ) as HTMLButtonElement;
-    expect(migrateBtn).toBeDefined();
-    fireEvent.click(migrateBtn);
+    expect(inactiveMigrateBtn).toBeDefined();
+    fireEvent.click(inactiveMigrateBtn);
 
     await waitFor(() => {
       expect(document.getElementById("migrate-old-key-input")).toBeDefined();
@@ -512,7 +446,109 @@ describe("Security Page Component", () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Masterkey Active")).toBeDefined();
+      expect(screen.getByText("Encryption Active")).toBeDefined();
     });
+  });
+
+  it("allows uploading .key file in Migrate from Masterkey dialog", async () => {
+    renderWithRouter();
+
+    const inactiveMigrateBtn = document.getElementById(
+      "inactive-migrate-btn",
+    ) as HTMLButtonElement;
+    fireEvent.click(inactiveMigrateBtn);
+
+    await waitFor(() => {
+      expect(document.getElementById("migrate-old-key-input")).toBeDefined();
+    });
+
+    const testKeyHex =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const fileContent = `===========================================================\n Oxygen Low's Software - AES-256 Masterkey Backup\n===========================================================\n\n[HEXADECIMAL MASTERKEY - 64 CHARACTERS]\n${testKeyHex}\n`;
+
+    const file = new File([fileContent], "oxygen-masterkey.key", {
+      type: "text/plain",
+    });
+    const fileInput = document.getElementById(
+      "migrate-key-file-upload-input",
+    ) as HTMLInputElement;
+    expect(fileInput).toBeDefined();
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      const oldKeyInput = document.getElementById(
+        "migrate-old-key-input",
+      ) as HTMLInputElement;
+      expect(oldKeyInput.value).toBe(testKeyHex);
+    });
+  });
+
+  it("shows error when invalid masterkey format is submitted in migration dialog", async () => {
+    renderWithRouter();
+
+    const inactiveMigrateBtn = document.getElementById(
+      "inactive-migrate-btn",
+    ) as HTMLButtonElement;
+    fireEvent.click(inactiveMigrateBtn);
+
+    await waitFor(() => {
+      expect(document.getElementById("migrate-old-key-input")).toBeDefined();
+    });
+
+    fireEvent.change(document.getElementById("migrate-old-key-input")!, {
+      target: { value: "invalid-key-text" },
+    });
+    fireEvent.change(document.getElementById("migrate-password-input")!, {
+      target: { value: "Password123!" },
+    });
+
+    fireEvent.click(document.getElementById("submit-migrate-masterkey-btn")!);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
+        ),
+      ).toBeDefined();
+    });
+  });
+
+  it("prevents disabling integrations encryption when stored integrations exist in database", async () => {
+    renderWithRouter();
+
+    // Unlock session first
+    fireEvent.change(document.getElementById("unlock-password-input")!, {
+      target: { value: "MySecurePass123!" },
+    });
+    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Encryption Active")).toBeDefined();
+    });
+
+    // Set integration active in localStorage
+    localStorage.setItem("oxygen_encrypt_integrations", "true");
+    // Re-render to pick up state or set mock
+    mockIntegrationsCount = 2;
+
+    const integrationsToggle = document.getElementById(
+      "toggle-integrations",
+    ) as HTMLButtonElement;
+
+    fireEvent.click(integrationsToggle);
+
+    await waitFor(() => {
+      // Should not have disabled integrations in localStorage
+      expect(localStorage.getItem("oxygen_encrypt_integrations")).toBe("true");
+    });
+  });
+
+  it("does not render removed architecture section", () => {
+    renderWithRouter();
+    expect(
+      screen.queryByText("Zero-Knowledge & Privacy Architecture"),
+    ).toBeNull();
+    expect(screen.queryByText("Custom AI Provider API Keys")).toBeNull();
   });
 });

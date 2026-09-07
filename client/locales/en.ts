@@ -959,12 +959,21 @@ export const en = {
   security: {
     title: "Security & Data Encryption",
     subtitle:
-      "Manage your 256-bit AES masterkey and enable zero-knowledge encryption for your private data.",
-    masterKeyTitle: "AES-256 Masterkey",
+      "Manage zero-knowledge password encryption and protect your private data.",
+    passwordEncryptionTitle: "Zero-Knowledge Password Encryption",
+    passwordEncryptionDesc:
+      "Your private data is secured with client-side AES-256 encryption derived directly from your password. Your password and plaintext data never touch the server.",
+    masterKeyTitle: "Zero-Knowledge Password Encryption",
     masterKeyDesc:
-      "Your masterkey encrypts your private data on your device before it is stored in the cloud. Nobody else can read your data without this key.",
-    keyActiveBadge: "Masterkey Active",
-    keyNotSetBadge: "No Masterkey Set",
+      "Your private data is secured with client-side AES-256 encryption derived directly from your password. Your password and plaintext data never touch the server.",
+    keyActiveBadge: "Encryption Active",
+    keyNotSetBadge: "Session Locked",
+    activeSessionProtected: "Active Session Protected",
+    encryptionActiveDesc:
+      "Zero-knowledge encryption is active. Your data is encrypted and decrypted in memory using your password-derived 256-bit AES key.",
+    lockSession: "Lock Session",
+    sessionLockedToast:
+      "Session locked and encryption key cleared from memory",
     generateButton: "Generate Masterkey",
     copyKey: "Copy to Clipboard",
     copied: "Copied!",
@@ -973,14 +982,17 @@ export const en = {
     keyDownloadedToast: "Masterkey saved to file",
     maskKey: "Hide key",
     revealKey: "Reveal key",
-    clearKey: "Lock / Clear Key",
-    keyClearedToast: "Masterkey cleared from session",
+    clearKey: "Lock Session",
+    keyClearedToast:
+      "Session locked and encryption key cleared from memory",
     importKeyTitle: "Use Existing Masterkey",
     importKeyPlaceholder: "Paste 64-char Hex or 256-bit Base64 masterkey...",
     activateKeyButton: "Unlock / Activate Key",
     keyActivatedToast: "Masterkey activated successfully",
     invalidKeyError:
       "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
+    masterKeyRequiredToMigrate:
+      "Please enter or upload your previous masterkey",
     keyFormat: "Key Format",
     showKeyFormat: "Key Format",
     hideKeyFormat: "Hide Key Format",
@@ -989,10 +1001,10 @@ export const en = {
     formatBase58: "Base58",
     formatWords: "Passphrase Words",
     clientSideNotice:
-      "Zero-Knowledge: Your masterkey is held only in your browser session and is never sent to any server.",
+      "Zero-Knowledge: Your encryption key is derived only in your browser session and is never sent to any server.",
     encryptionSettingsTitle: "Protected Data Categories",
     encryptionSettingsDesc:
-      "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your masterkey before storage.",
+      "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your password key before storage.",
     charactersUniverses: "Characters and Universes",
     charactersUniversesDesc:
       "Encrypt character bios, appearances, personalities, private notes, and universe lore.",
@@ -1024,7 +1036,7 @@ export const en = {
     quickUnlockPlaceholder: "Paste 64-char Hex or Base64 masterkey...",
     quickUnlockButton: "Unlock & Decrypt",
     returnToPrompt:
-      "Masterkey active. You can now return to your previous page:",
+      "Encryption active. You can now return to your previous page:",
     returnToButton: "Return to Page",
     uploadKeyFile: "Upload .key File",
     dropKeyHere: "Drop .key file here or click to browse",
@@ -1036,9 +1048,9 @@ export const en = {
     readKeyFileError: "Failed to read .key file.",
     autoLockedToast: "Masterkey locked due to 30 minutes of inactivity.",
     masterKeyRequiredToChange:
-      "An active masterkey is required to enable or disable protected data categories.",
+      "Your session is currently locked. Unlock your session with your password to change encryption settings.",
     masterKeyRequiredNotice:
-      "An active masterkey is required to change protected data category encryption settings. Generate or unlock a masterkey above to modify these settings.",
+      "Your session is currently locked. Enter your password above to modify encryption settings.",
     rotateKeyConfirm:
       "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
     keyRotatedToast:

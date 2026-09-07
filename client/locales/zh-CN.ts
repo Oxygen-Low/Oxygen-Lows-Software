@@ -970,9 +970,17 @@ export const zhCN = {
     passwordsDesc: "加密个人密码管理器中存储的密码、URL 和备注。",
     cannotDisablePasswordsWithRecords:
       "存在已存储的密码时无法禁用加密。请先删除所有密码。",
-    masterKeyRequiredToChange: "启用或禁用受保护数据分类需要激活的主密钥。",
-    masterKeyRequiredNotice:
-      "更改受保护数据分类的加密设置需要激活的主密钥。请在上方生成或解锁主密钥以修改这些设置。",
+    masterKeyRequiredToChange: "当前会话已锁定。请在上方输入密码解锁会话以修改加密设置。",
+    masterKeyRequiredNotice: "当前会话已锁定。请在上方输入密码以修改加密设置。",
+    passwordEncryptionTitle: "零知识密码加密",
+    passwordEncryptionDesc:
+      "您的私有数据通过直接由您的账户密码派生的客户端 AES-256 加密进行保护。您的密码与明文数据绝不接触服务器。",
+    activeSessionProtected: "当前会话已受保护",
+    encryptionActiveDesc:
+      "零知识加密处于激活状态。您的数据在内存中使用由密码派生的 256 位 AES 密钥进行加密和解密。",
+    lockSession: "锁定会话",
+    sessionLockedToast: "会话已锁定，加密密钥已从内存中清除",
+    masterKeyRequiredToMigrate: "请输入或上传先前的超级密钥",
     rotateKeyConfirm:
       "Are you sure you want to rotate your masterkey? This will decrypt all your data and re-encrypt it with a new key. Do not close the window until it's finished.",
     keyRotatedToast:
@@ -983,7 +991,7 @@ export const zhCN = {
     unlockWithPasswordDesc:
       "输入您的账户密码以派生零知识 AES-256 加密密钥并解锁数据。",
     enterAccountPassword: "输入您的账户密码...",
-    unlockWithPasswordBtn: "使用密码解锁",
+    unlockWithPasswordBtn: "解锁会话",
     unlockSuccessToast: "解密密钥派生成功，会话已解锁",
     invalidPasswordError: "密码无效或密钥派生失败",
     changePasswordTitle: "修改密码",
