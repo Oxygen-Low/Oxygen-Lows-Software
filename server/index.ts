@@ -22,11 +22,17 @@ import { adminNotificationsRouter } from "./routes/adminNotifications.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
 import { broadcastChange } from "./lib/realtime.ts";
-import { setRealtimeBroadcast } from "./lib/dataStore.ts";
+import {
+  setRealtimeBroadcast,
+  wipeServerPasswordsAndMigrateSchema,
+} from "./lib/dataStore.ts";
 
 // Wire up the real-time broadcast so every support table mutation notifies
 // connected SSE clients.
 setRealtimeBroadcast(broadcastChange);
+
+// Wipes any legacy password_hash and salt fields from server-stored user records
+wipeServerPasswordsAndMigrateSchema();
 
 const app = new Hono();
 

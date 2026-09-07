@@ -92,6 +92,17 @@ export const ru = {
     validEmailRequired: "Требуется действительный адрес электронной почты",
     passwordLength: "Пароль должен содержать не менее 6 символов",
     passwordMismatch: "Пароли не совпадают",
+    securityUpgradeTitle: "Обновление безопасности и перенос пароля",
+    securityUpgradeDesc:
+      "Пароли никогда не хранятся на сервере. Задайте новый пароль для защиты аккаунта. Если ранее у вас были зашифрованные данные, вы можете указать предыдущий мастер-ключ для их переноса.",
+    account: "Аккаунт",
+    newPassword: "Новый пароль",
+    confirmNewPassword: "Подтвердите новый пароль",
+    previousMasterKeyOptional: "Предыдущий мастер-ключ (необязательно)",
+    uploadKeyFile: "Загрузить файл .key",
+    previousMasterKeyPlaceholder:
+      "Вставьте 64-значный шестнадцатеричный или Base64 мастер-ключ...",
+    migrateButton: "Завершить перенос и войти",
   },
   migration: {
     title: "Перенос на аккаунт сайта",
@@ -1042,7 +1053,30 @@ export const ru = {
     keyRotatedToast:
       "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
-    rotateKeyButton: "Rotate Masterkey",
+    rotateKeyButton: "Сменить мастер-ключ",
+    unlockWithPasswordTitle: "Разблокировать паролем",
+    unlockWithPasswordDesc:
+      "Введите пароль аккаунта, чтобы получить ключ шифрования AES-256 с нулевым разглашением и разблокировать данные.",
+    enterAccountPassword: "Введите пароль от аккаунта...",
+    unlockWithPasswordBtn: "Разблокировать паролем",
+    unlockSuccessToast: "Ключ расшифрования получен, сессия разблокирована",
+    invalidPasswordError: "Неверный пароль или ошибка получения ключа",
+    changePasswordTitle: "Сменить пароль",
+    changePasswordDesc:
+      "Обновите пароль аккаунта и повторно зашифруйте данные новым ключом на основе пароля.",
+    currentPassword: "Текущий пароль",
+    newPassword: "Новый пароль",
+    confirmNewPassword: "Подтвердите новый пароль",
+    changePasswordBtn: "Сменить пароль",
+    passwordChangedToast: "Пароль изменен, данные успешно перешифрованы!",
+    migrateFromMasterKeyTitle: "Перенос данных со старого мастер-ключа",
+    migrateFromMasterKeyDesc:
+      "Если у вас есть данные, зашифрованные автономным мастер-ключом, перешифруйте их с помощью текущего пароля аккаунта.",
+    previousMasterKeyLabel: "Предыдущий 256-битный мастер-ключ",
+    accountPasswordLabel: "Пароль вашего аккаунта",
+    runMigrationBtn: "Перенести данные на пароль",
+    migrationCompleteToast: "Данные успешно перенесены на ключ пароля!",
+    migrateFromMasterKeyButton: "Перенос с мастер-ключа",
   },
   integrations: {
     title: "Интеграции и API-ключи",

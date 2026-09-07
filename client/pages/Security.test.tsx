@@ -405,4 +405,114 @@ describe("Security Page Component", () => {
     ).toBeNull();
     expect(screen.queryByText("Custom AI Provider API Keys")).toBeNull();
   });
+
+  it("allows unlocking with account password", async () => {
+    renderWithRouter();
+    expect(screen.getAllByText("Unlock with Password").length).toBeGreaterThanOrEqual(1);
+    const passwordInput = document.getElementById(
+      "unlock-password-input",
+    ) as HTMLInputElement;
+    expect(passwordInput).toBeDefined();
+
+    fireEvent.change(passwordInput, { target: { value: "MySecurePass123!" } });
+
+    const unlockBtn = document.getElementById(
+      "unlock-with-password-btn",
+    ) as HTMLButtonElement;
+    fireEvent.click(unlockBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+    });
+  });
+
+  it("opens change password dialog and calls changePassword", async () => {
+    const mockChangePassword = vi.fn().mockResolvedValue({ success: true });
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "u", email: "user@test.com" } },
+      changePassword: mockChangePassword,
+    });
+
+    renderWithRouter();
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+    });
+
+    const changePasswordBtn = document.getElementById(
+      "change-password-btn",
+    ) as HTMLButtonElement;
+    expect(changePasswordBtn).toBeDefined();
+    fireEvent.click(changePasswordBtn);
+
+    await waitFor(() => {
+      expect(document.getElementById("current-password-input")).toBeDefined();
+    });
+
+    fireEvent.change(document.getElementById("current-password-input")!, {
+      target: { value: "OldPassword123!" },
+    });
+    fireEvent.change(document.getElementById("new-password-input")!, {
+      target: { value: "NewPassword123!" },
+    });
+    fireEvent.change(document.getElementById("confirm-new-password-input")!, {
+      target: { value: "NewPassword123!" },
+    });
+
+    const submitBtn = document.getElementById(
+      "submit-change-password-btn",
+    ) as HTMLButtonElement;
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockChangePassword).toHaveBeenCalledWith(
+        "OldPassword123!",
+        "NewPassword123!",
+      );
+    });
+  });
+
+  it("opens migrate from masterkey dialog and completes migration", async () => {
+    renderWithRouter();
+    const generateBtn = document.getElementById(
+      "generate-masterkey-btn",
+    ) as HTMLButtonElement;
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+    });
+
+    const migrateBtn = document.getElementById(
+      "migrate-masterkey-btn",
+    ) as HTMLButtonElement;
+    expect(migrateBtn).toBeDefined();
+    fireEvent.click(migrateBtn);
+
+    await waitFor(() => {
+      expect(document.getElementById("migrate-old-key-input")).toBeDefined();
+    });
+
+    const testOldKeyHex =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    fireEvent.change(document.getElementById("migrate-old-key-input")!, {
+      target: { value: testOldKeyHex },
+    });
+    fireEvent.change(document.getElementById("migrate-password-input")!, {
+      target: { value: "NewPassword123!" },
+    });
+
+    const submitBtn = document.getElementById(
+      "submit-migrate-masterkey-btn",
+    ) as HTMLButtonElement;
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Masterkey Active")).toBeDefined();
+    });
+  });
 });

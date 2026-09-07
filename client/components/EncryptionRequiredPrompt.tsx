@@ -26,6 +26,7 @@ import {
   parseMasterKeyString,
   parseKeyFileContent,
   setActiveMasterKey,
+  deriveEncryptionKeyFromPassword,
   type EncryptionCategory,
 } from "@/lib/crypto";
 
@@ -132,22 +133,17 @@ export function EncryptionRequiredPrompt({
     }
   };
 
-  const handleQuickUnlock = useCallback(() => {
+  const handleQuickUnlock = useCallback(async () => {
     const trimmed = inputKey.trim();
     if (!trimmed) return;
-    if (!isValidMasterKeyString(trimmed)) {
-      const errMsg = t(
-        "security.invalidKeyError",
-        undefined,
-        "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
-      );
-      setError(errMsg);
-      toast.error(errMsg);
-      return;
-    }
 
     try {
-      const bytes = parseMasterKeyString(trimmed);
+      let bytes: Uint8Array;
+      if (isValidMasterKeyString(trimmed)) {
+        bytes = parseMasterKeyString(trimmed);
+      } else {
+        bytes = await deriveEncryptionKeyFromPassword(trimmed);
+      }
       setActiveMasterKey(bytes);
       setError(null);
       setInputKey("");
@@ -155,14 +151,14 @@ export function EncryptionRequiredPrompt({
         t(
           "security.keyActivatedToast",
           undefined,
-          "Masterkey activated successfully",
+          "Encryption key activated successfully",
         ),
       );
       if (onUnlocked) {
         onUnlocked();
       }
     } catch (err: any) {
-      const errMsg = err?.message || "Invalid masterkey";
+      const errMsg = err?.message || "Invalid password or masterkey";
       setError(errMsg);
       toast.error(errMsg);
     }

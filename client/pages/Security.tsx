@@ -39,6 +39,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { db, supabase } from "@/lib/db";
 import {
@@ -58,6 +66,8 @@ import {
   onAutoLock,
   migrateCategoryEncryption,
   rotateMasterKey,
+  deriveEncryptionKeyFromPassword,
+  migrateMasterKeyDataToPassword,
   type EncryptionCategory,
 } from "@/lib/crypto";
 
@@ -72,7 +82,9 @@ const STORAGE_KEYS = {
 };
 
 export default function Security() {
-  const { session } = useAuth();
+  const auth = useAuth();
+  const session = auth?.session;
+  const changePassword = auth?.changePassword;
   const { t } = useTranslation();
   usePageTitle(t("titles.security", undefined, "Security"), {
     description: t(
@@ -146,6 +158,217 @@ export default function Security() {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isRotatingKey, setIsRotatingKey] = useState<boolean>(false);
+
+  // Unlock with password state
+  const [unlockPassword, setUnlockPassword] = useState<string>("");
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [isUnlockingPassword, setIsUnlockingPassword] =
+    useState<boolean>(false);
+
+  // Change password dialog state
+  const [showChangePasswordDialog, setShowChangePasswordDialog] =
+    useState<boolean>(false);
+  const [currentPassword, setCurrentPassword] = useState<string>("");
+  const [newPassword, setNewPassword] = useState<string>("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
+  const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
+  const [changePasswordError, setChangePasswordError] = useState<
+    string | null
+  >(null);
+
+  // Migrate from masterkey dialog state
+  const [showMigrateDialog, setShowMigrateDialog] = useState<boolean>(false);
+  const [migrateOldKey, setMigrateOldKey] = useState<string>("");
+  const [migratePassword, setMigratePassword] = useState<string>("");
+  const [isMigratingFromKey, setIsMigratingFromKey] = useState<boolean>(false);
+  const [migrateError, setMigrateError] = useState<string | null>(null);
+  const migrateFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUnlockWithPassword = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!unlockPassword.trim()) return;
+    setIsUnlockingPassword(true);
+    setUnlockError(null);
+    try {
+      const userSalt = (
+        session?.user?.email ||
+        session?.user?.username ||
+        session?.user?.id ||
+        "default"
+      ).toLowerCase();
+      const derivedKey = await deriveEncryptionKeyFromPassword(
+        unlockPassword,
+        userSalt,
+      );
+      setKeyBytes(derivedKey);
+      setActiveMasterKey(derivedKey);
+      setUnlockPassword("");
+      toast.success(
+        t(
+          "security.unlockSuccessToast",
+          undefined,
+          "Decryption key derived and session unlocked",
+        ),
+      );
+    } catch (err: any) {
+      console.error("Failed to unlock with password:", err);
+      const msg =
+        err?.message ||
+        t(
+          "security.invalidPasswordError",
+          undefined,
+          "Failed to unlock with password.",
+        );
+      setUnlockError(msg);
+      toast.error(msg);
+    } finally {
+      setIsUnlockingPassword(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePasswordError(null);
+    if (!currentPassword) {
+      setChangePasswordError(
+        t("auth.passwordRequired", undefined, "Password is required"),
+      );
+      return;
+    }
+    if (newPassword.length < 6) {
+      setChangePasswordError(
+        t(
+          "auth.passwordLength",
+          undefined,
+          "Password must be at least 6 characters long",
+        ),
+      );
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setChangePasswordError(
+        t("auth.passwordMismatch", undefined, "Passwords do not match"),
+      );
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      if (changePassword) {
+        await changePassword(currentPassword, newPassword);
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setShowChangePasswordDialog(false);
+      toast.success(
+        t(
+          "security.passwordChangedToast",
+          undefined,
+          "Password changed and data re-encrypted successfully!",
+        ),
+      );
+    } catch (err: any) {
+      console.error("Change password error:", err);
+      setChangePasswordError(err?.message || "Failed to change password");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleMigrateFromMasterKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMigrateError(null);
+    const cleanKey = migrateOldKey.trim();
+    if (!cleanKey) {
+      setMigrateError("Please enter or upload your previous masterkey");
+      return;
+    }
+    let oldBytes: Uint8Array;
+    try {
+      if (isValidMasterKeyString(cleanKey)) {
+        oldBytes = parseMasterKeyString(cleanKey);
+      } else {
+        oldBytes = parseKeyFileContent(cleanKey);
+      }
+    } catch (err: any) {
+      setMigrateError(
+        t(
+          "security.invalidKeyError",
+          undefined,
+          "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
+        ),
+      );
+      return;
+    }
+
+    if (!migratePassword) {
+      setMigrateError(
+        t("auth.passwordRequired", undefined, "Password is required"),
+      );
+      return;
+    }
+
+    setIsMigratingFromKey(true);
+    try {
+      const userEmail =
+        session?.user?.email ||
+        session?.user?.username ||
+        session?.user?.id ||
+        "";
+      const result = await migrateMasterKeyDataToPassword({
+        oldKeyBytes: oldBytes,
+        password: migratePassword,
+        saltStr: userEmail,
+        userId: session?.user?.id,
+      });
+
+      const newKey = await deriveEncryptionKeyFromPassword(
+        migratePassword,
+        userEmail,
+      );
+      setActiveMasterKey(newKey);
+      setKeyBytes(newKey);
+
+      setMigrateOldKey("");
+      setMigratePassword("");
+      setShowMigrateDialog(false);
+      toast.success(
+        t(
+          "security.migrationCompleteToast",
+          { count: result.updatedCount },
+          `Data migrated to password successfully! ${result.updatedCount} records re-encrypted.`,
+        ),
+      );
+    } catch (err: any) {
+      console.error("Masterkey to password migration error:", err);
+      setMigrateError(err?.message || "Migration failed");
+    } finally {
+      setIsMigratingFromKey(false);
+    }
+  };
+
+  const handleMigrateFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsedBytes = parseKeyFileContent(text);
+      setMigrateOldKey(bytesToHex(parsedBytes));
+      setMigrateError(null);
+    } catch (err: any) {
+      setMigrateError(
+        err?.message ||
+          t(
+            "security.invalidKeyFileError",
+            undefined,
+            "No valid 256-bit masterkey found in the uploaded file.",
+          ),
+      );
+    }
+    if (e.target) e.target.value = "";
+  };
 
   const handleRotateKey = async () => {
     if (!keyBytes) return;
@@ -789,6 +1012,38 @@ export default function Security() {
                   </Button>
 
                   <Button
+                    id="change-password-btn"
+                    onClick={() => setShowChangePasswordDialog(true)}
+                    variant="outline"
+                    className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
+                  >
+                    <Lock className="w-4 h-4 text-cyan-400" />
+                    <span>
+                      {t(
+                        "security.changePasswordTitle",
+                        undefined,
+                        "Change Password",
+                      )}
+                    </span>
+                  </Button>
+
+                  <Button
+                    id="migrate-masterkey-btn"
+                    onClick={() => setShowMigrateDialog(true)}
+                    variant="outline"
+                    className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
+                  >
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <span>
+                      {t(
+                        "security.migrateFromMasterKeyButton",
+                        undefined,
+                        "Migrate from Masterkey",
+                      )}
+                    </span>
+                  </Button>
+
+                  <Button
                     onClick={handleRotateKey}
                     disabled={isRotatingKey}
                     variant="outline"
@@ -901,8 +1156,80 @@ export default function Security() {
                 </div>
               </div>
             ) : (
-              /* Inactive Key View - Options to Generate or Import */
+              /* Inactive Key View - Options to Unlock with Password, Generate, or Import */
               <div className="space-y-6">
+                {/* Primary Option: Unlock with Account Password */}
+                <div className="p-5 sm:p-6 rounded-xl border border-cyan-500/40 bg-cyan-950/20 backdrop-blur-sm space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-white font-semibold text-base">
+                        <Lock className="w-5 h-5 text-cyan-400" />
+                        <span>
+                          {t(
+                            "security.unlockWithPasswordTitle",
+                            undefined,
+                            "Unlock with Password",
+                          )}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                        {t(
+                          "security.unlockWithPasswordDesc",
+                          undefined,
+                          "Enter your account password to derive your zero-knowledge AES-256 encryption key and unlock your data.",
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <form
+                    onSubmit={handleUnlockWithPassword}
+                    className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
+                  >
+                    <div className="relative flex-1">
+                      <Input
+                        id="unlock-password-input"
+                        type="password"
+                        placeholder={t(
+                          "security.enterAccountPassword",
+                          undefined,
+                          "Enter your account password...",
+                        )}
+                        value={unlockPassword}
+                        onChange={(e) => {
+                          setUnlockPassword(e.target.value);
+                          if (unlockError) setUnlockError(null);
+                        }}
+                        className="bg-slate-900/90 border-slate-800 text-xs text-white placeholder:text-slate-500 focus:border-cyan-500 focus:ring-cyan-500"
+                      />
+                    </div>
+                    <Button
+                      id="unlock-with-password-btn"
+                      type="submit"
+                      disabled={!unlockPassword.trim() || isUnlockingPassword}
+                      className="gap-2 text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white shrink-0"
+                    >
+                      {isUnlockingPassword ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Unlock className="w-4 h-4" />
+                      )}
+                      <span>
+                        {t(
+                          "security.unlockWithPasswordBtn",
+                          undefined,
+                          "Unlock with Password",
+                        )}
+                      </span>
+                    </Button>
+                  </form>
+                  {unlockError && (
+                    <p className="text-xs text-rose-400 leading-tight font-medium">
+                      {unlockError}
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Option 1: Generate New Key */}
                   <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-4 flex flex-col justify-between hover:border-slate-700 transition-all">
@@ -1487,6 +1814,267 @@ export default function Security() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Dialog 1: Change Password */}
+        <Dialog
+          open={showChangePasswordDialog}
+          onOpenChange={setShowChangePasswordDialog}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <Lock className="w-5 h-5 text-cyan-400" />
+                {t(
+                  "security.changePasswordTitle",
+                  undefined,
+                  "Change Password",
+                )}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.changePasswordDesc",
+                  undefined,
+                  "Update your account password and re-encrypt all stored data with your new password-derived key.",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleChangePassword} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="current-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.currentPassword",
+                    undefined,
+                    "Current Password",
+                  )}
+                </Label>
+                <Input
+                  id="current-password-input"
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="new-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t("security.newPassword", undefined, "New Password")}
+                </Label>
+                <Input
+                  id="new-password-input"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="confirm-new-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.confirmNewPassword",
+                    undefined,
+                    "Confirm New Password",
+                  )}
+                </Label>
+                <Input
+                  id="confirm-new-password-input"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              {changePasswordError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {changePasswordError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowChangePasswordDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-change-password-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={isChangingPassword}
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium gap-2"
+                >
+                  {isChangingPassword ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t(
+                      "security.changePasswordBtn",
+                      undefined,
+                      "Change Password",
+                    )}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog 2: Migrate from Masterkey */}
+        <Dialog
+          open={showMigrateDialog}
+          onOpenChange={setShowMigrateDialog}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+                {t(
+                  "security.migrateFromMasterKeyTitle",
+                  undefined,
+                  "Migrate Data from Previous Masterkey",
+                )}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.migrateFromMasterKeyDesc",
+                  undefined,
+                  "If you have encrypted data from an earlier version that used a standalone masterkey, re-encrypt it to use your current account password.",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleMigrateFromMasterKey} className="space-y-4 py-2">
+              <input
+                type="file"
+                ref={migrateFileInputRef}
+                onChange={handleMigrateFileChange}
+                accept=".key,.txt"
+                className="hidden"
+                id="migrate-key-file-upload-input"
+              />
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="migrate-old-key-input"
+                    className="text-xs font-medium text-slate-300"
+                  >
+                    {t(
+                      "security.previousMasterKeyLabel",
+                      undefined,
+                      "Previous 256-bit Masterkey",
+                    )}
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => migrateFileInputRef.current?.click()}
+                    className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>
+                      {t("auth.uploadKeyFile", undefined, "Upload .key File")}
+                    </span>
+                  </button>
+                </div>
+                <Input
+                  id="migrate-old-key-input"
+                  type="password"
+                  required
+                  value={migrateOldKey}
+                  onChange={(e) => setMigrateOldKey(e.target.value)}
+                  placeholder="Paste 64-char Hex/Base64 masterkey..."
+                  className="bg-slate-950 border-slate-800 text-xs font-mono text-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="migrate-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.accountPasswordLabel",
+                    undefined,
+                    "Your Account Password",
+                  )}
+                </Label>
+                <Input
+                  id="migrate-password-input"
+                  type="password"
+                  required
+                  value={migratePassword}
+                  onChange={(e) => setMigratePassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              {migrateError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {migrateError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMigrateDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-migrate-masterkey-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={isMigratingFromKey}
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium gap-2"
+                >
+                  {isMigratingFromKey ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t(
+                      "security.runMigrationBtn",
+                      undefined,
+                      "Migrate Data to Password",
+                    )}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

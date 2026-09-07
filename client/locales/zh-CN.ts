@@ -91,6 +91,17 @@ export const zhCN = {
     validEmailRequired: "请输入有效的电子邮箱地址",
     passwordLength: "密码长度至少为6个字符",
     passwordMismatch: "两次输入的密码不一致",
+    securityUpgradeTitle: "安全升级与密码迁移",
+    securityUpgradeDesc:
+      "服务器永不存储密码。设置您的新密码以保护您的账户安全。如果您之前有加密数据，您可以选择提供先前的主密钥进行迁移。",
+    account: "账户",
+    newPassword: "新密码",
+    confirmNewPassword: "确认新密码",
+    previousMasterKeyOptional: "先前的超级密钥（可选）",
+    uploadKeyFile: "上传 .key 密钥文件",
+    previousMasterKeyPlaceholder:
+      "粘贴 64 位十六进制/Base64 主密钥（如果之前拥有）...",
+    migrateButton: "完成迁移并登录",
   },
   migration: {
     title: "迁移至网站本地账户",
@@ -967,7 +978,30 @@ export const zhCN = {
     keyRotatedToast:
       "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
-    rotateKeyButton: "Rotate Masterkey",
+    rotateKeyButton: "轮换主密钥",
+    unlockWithPasswordTitle: "使用密码解锁",
+    unlockWithPasswordDesc:
+      "输入您的账户密码以派生零知识 AES-256 加密密钥并解锁数据。",
+    enterAccountPassword: "输入您的账户密码...",
+    unlockWithPasswordBtn: "使用密码解锁",
+    unlockSuccessToast: "解密密钥派生成功，会话已解锁",
+    invalidPasswordError: "密码无效或密钥派生失败",
+    changePasswordTitle: "修改密码",
+    changePasswordDesc:
+      "更新您的账户密码并使用基于新密码派生的密钥重新加密所有存储数据。",
+    currentPassword: "当前密码",
+    newPassword: "新密码",
+    confirmNewPassword: "确认新密码",
+    changePasswordBtn: "修改密码",
+    passwordChangedToast: "密码修改成功，数据已重新加密！",
+    migrateFromMasterKeyTitle: "从先前的主密钥迁移数据",
+    migrateFromMasterKeyDesc:
+      "如果您拥有使用独立主密钥的旧版本加密数据，可重新加密为使用当前账户密码保护。",
+    previousMasterKeyLabel: "先前的 256 位主密钥",
+    accountPasswordLabel: "您的账户密码",
+    runMigrationBtn: "迁移数据至密码加密",
+    migrationCompleteToast: "数据已成功迁移至密码密钥！",
+    migrateFromMasterKeyButton: "从主密钥迁移",
   },
   integrations: {
     title: "集成与 API 密钥",

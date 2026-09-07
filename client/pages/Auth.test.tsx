@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import Auth from "./Auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -122,5 +122,49 @@ describe("Auth Component", () => {
 
     expect(screen.getByText("Language")).toBeDefined();
     expect(screen.getByText("English")).toBeDefined();
+  });
+
+  it("should show migration form when signIn indicates needsMigration", async () => {
+    const mockSignIn = vi.fn().mockResolvedValue({
+      needsMigration: true,
+      user: { username: "legacyuser", email: "legacy@example.com" },
+    });
+
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: mockSignIn,
+      signUp: vi.fn(),
+      migrateAccount: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const inputs = document.querySelectorAll("input");
+    // inputs[0] is keyFileInput (hidden), inputs[1] is login, inputs[2] is password
+    const textInputs = Array.from(inputs).filter((i) => i.type !== "file");
+    fireEvent.change(textInputs[0], { target: { value: "legacyuser" } });
+    fireEvent.change(textInputs[1], { target: { value: "oldpassword" } });
+
+    const form = document.querySelector("form")!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Security Upgrade & Password Migration"),
+      ).toBeDefined();
+      expect(
+        screen.getByText("Complete Migration & Sign In"),
+      ).toBeDefined();
+      expect(
+        screen.getByText(/Previous Masterkey \(Optional\)/i),
+      ).toBeDefined();
+    });
   });
 });

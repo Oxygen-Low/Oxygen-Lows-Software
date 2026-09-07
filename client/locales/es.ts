@@ -92,6 +92,17 @@ export const es = {
     validEmailRequired: "Se requiere un correo electrónico válido",
     passwordLength: "La contraseña debe tener al menos 6 caracteres",
     passwordMismatch: "Las contraseñas no coinciden",
+    securityUpgradeTitle: "Actualización de Seguridad y Migración de Contraseña",
+    securityUpgradeDesc:
+      "Las contraseñas nunca se almacenan en el servidor. Establece tu nueva contraseña para proteger tu cuenta. Si tenías datos cifrados anteriormente, puedes proporcionar opcionalmente tu clave maestra anterior para migrarlos.",
+    account: "Cuenta",
+    newPassword: "Nueva Contraseña",
+    confirmNewPassword: "Confirmar Nueva Contraseña",
+    previousMasterKeyOptional: "Clave Maestra Anterior (Opcional)",
+    uploadKeyFile: "Subir archivo .key",
+    previousMasterKeyPlaceholder:
+      "Pega la clave maestra Hexadecimal de 64 caracteres/Base64...",
+    migrateButton: "Completar Migración e Iniciar Sesión",
   },
   migration: {
     title: "Migrar a Cuenta del Sitio Web",
@@ -1054,7 +1065,30 @@ export const es = {
     keyRotatedToast:
       "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
-    rotateKeyButton: "Rotate Masterkey",
+    rotateKeyButton: "Rotar Clave Maestra",
+    unlockWithPasswordTitle: "Desbloquear con Contraseña",
+    unlockWithPasswordDesc:
+      "Introduce la contraseña de tu cuenta para derivar tu clave de cifrado AES-256 de conocimiento cero y desbloquear tus datos.",
+    enterAccountPassword: "Introduce la contraseña de tu cuenta...",
+    unlockWithPasswordBtn: "Desbloquear con Contraseña",
+    unlockSuccessToast: "Clave de descifrado derivada y sesión desbloqueada",
+    invalidPasswordError: "Contraseña no válida o fallo en la derivación de clave",
+    changePasswordTitle: "Cambiar Contraseña",
+    changePasswordDesc:
+      "Actualiza la contraseña de tu cuenta y vuelve a cifrar todos los datos almacenados con la clave derivada de tu nueva contraseña.",
+    currentPassword: "Contraseña Actual",
+    newPassword: "Nueva Contraseña",
+    confirmNewPassword: "Confirmar Nueva Contraseña",
+    changePasswordBtn: "Cambiar Contraseña",
+    passwordChangedToast: "¡Contraseña cambiada y datos recifrados con éxito!",
+    migrateFromMasterKeyTitle: "Migrar Datos de Clave Maestra Anterior",
+    migrateFromMasterKeyDesc:
+      "Si tienes datos cifrados de una versión anterior que usaba una clave maestra independiente, vuelve a cifrarlos para usar la contraseña actual de tu cuenta.",
+    previousMasterKeyLabel: "Clave Maestra Anterior de 256 bits",
+    accountPasswordLabel: "Contraseña de tu Cuenta",
+    runMigrationBtn: "Migrar Datos a Contraseña",
+    migrationCompleteToast: "¡Datos migrados con éxito a tu clave de contraseña!",
+    migrateFromMasterKeyButton: "Migrar desde Clave Maestra",
   },
   integrations: {
     title: "Integraciones y Claves API",

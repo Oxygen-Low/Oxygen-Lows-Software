@@ -205,8 +205,10 @@ export function initUserFolder(
   userInitialData: {
     username: string;
     email: string;
-    passwordHash: string;
-    salt: string;
+    passwordHash?: string;
+    salt?: string;
+    authVerifier?: string;
+    authSalt?: string;
     role?: string;
     last_points_usage?: string | null;
   },
@@ -240,12 +242,15 @@ export function initUserFolder(
   const now = new Date().toISOString();
   const role =
     userInitialData.role || (String(userId) === "1" ? "admin" : "user");
+  const authVerifier =
+    userInitialData.authVerifier || userInitialData.passwordHash || null;
+  const authSalt = userInitialData.authSalt || userInitialData.salt || null;
   const userData = {
     id: userId,
     username: userInitialData.username,
     email: userInitialData.email,
-    password_hash: userInitialData.passwordHash,
-    salt: userInitialData.salt,
+    auth_verifier: authVerifier,
+    auth_salt: authSalt,
     role,
     points: 100,
     custom_models: [],
@@ -320,6 +325,71 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "points", "gifts.json"), []);
 
   return userData;
+}
+
+/**
+ * Update a user's client-derived auth verifier and salt, ensuring raw passwords are never stored.
+ */
+export function updateUserAuthVerifier(
+  userId: string | number,
+  authVerifier: string,
+  authSalt: string,
+) {
+  const userPath = path.join(DATA_DIR, String(userId), "user.json");
+  if (!fs.existsSync(userPath)) return null;
+  const user = readJsonFile<Record<string, any>>(userPath, null);
+  if (!user) return null;
+  delete user.password_hash;
+  delete user.salt;
+  user.auth_verifier = authVerifier;
+  user.auth_salt = authSalt;
+  user.updated_at = new Date().toISOString();
+  writeJsonFile(userPath, user);
+  return user;
+}
+
+/**
+ * Wipes all legacy password_hash and salt fields from server-stored user files,
+ * ensuring passwords are never stored on the server.
+ */
+export function wipeServerPasswordsAndMigrateSchema(): {
+  migratedCount: number;
+  wipedCount: number;
+} {
+  if (!fs.existsSync(DATA_DIR)) return { migratedCount: 0, wipedCount: 0 };
+  const userIds = getAllUserIds();
+  let migratedCount = 0;
+  let wipedCount = 0;
+
+  for (const id of userIds) {
+    const userPath = path.join(DATA_DIR, id, "user.json");
+    if (fs.existsSync(userPath)) {
+      const user = readJsonFile<Record<string, any>>(userPath, null);
+      if (user) {
+        let changed = false;
+        if ("password_hash" in user || "salt" in user) {
+          delete user.password_hash;
+          delete user.salt;
+          wipedCount++;
+          changed = true;
+        }
+        if (!("auth_verifier" in user)) {
+          user.auth_verifier = null;
+          changed = true;
+        }
+        if (!("auth_salt" in user)) {
+          user.auth_salt = null;
+          changed = true;
+        }
+        if (changed) {
+          writeJsonFile(userPath, user);
+          migratedCount++;
+        }
+      }
+    }
+  }
+
+  return { migratedCount, wipedCount };
 }
 
 let cachedUserIds: string[] | null = null;

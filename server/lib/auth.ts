@@ -29,27 +29,31 @@ export function generateSalt(): string {
   return crypto.randomBytes(16).toString("hex");
 }
 
-export function hashPassword(password: string, salt: string): string {
+export function hashAuthVerifier(authToken: string, salt: string): string {
   return crypto
-    .pbkdf2Sync(password, salt, 100000, 64, "sha512")
+    .pbkdf2Sync(authToken, salt, 100000, 64, "sha512")
     .toString("hex");
 }
 
-export function verifyPassword(
-  password: string,
-  storedHash: string,
+export function verifyAuthToken(
+  authToken: string,
+  storedVerifier: string,
   salt: string,
 ): boolean {
   try {
-    const hash = hashPassword(password, salt);
+    const hash = hashAuthVerifier(authToken, salt);
     const hashBuf = Buffer.from(hash, "hex");
-    const storedBuf = Buffer.from(storedHash, "hex");
+    const storedBuf = Buffer.from(storedVerifier, "hex");
     if (hashBuf.length !== storedBuf.length) return false;
     return crypto.timingSafeEqual(hashBuf, storedBuf);
   } catch {
     return false;
   }
 }
+
+// Aliases for backward compatibility
+export const hashPassword = hashAuthVerifier;
+export const verifyPassword = verifyAuthToken;
 
 export interface TokenPayload {
   userId: string;
@@ -126,6 +130,10 @@ export async function resolveUserFromToken(token: string) {
   if (localPayload) {
     const user = getUserById(localPayload.userId);
     if (user) {
+      // If user credentials were wiped (explicitly null) and account has not migrated, invalidate session
+      if (user.auth_verifier === null) {
+        return null;
+      }
       const role =
         String(user.id) === "1" || String(localPayload.userId) === "1"
           ? "admin"

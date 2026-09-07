@@ -92,6 +92,17 @@ export const ko = {
     validEmailRequired: "유효한 이메일 주소가 필요합니다",
     passwordLength: "비밀번호는 최소 6자 이상이어야 합니다",
     passwordMismatch: "비밀번호가 일치하지 않습니다",
+    securityUpgradeTitle: "보안 업그레이드 및 비밀번호 마이그레이션",
+    securityUpgradeDesc:
+      "비밀번호는 서버에 저장되지 않습니다. 계정을 보호하기 위해 새 비밀번호를 설정하세요. 이전에 암호화된 데이터가 있는 경우 이전 마스터 키를 제공하여 마이그레이션할 수 있습니다.",
+    account: "계정",
+    newPassword: "새 비밀번호",
+    confirmNewPassword: "새 비밀번호 확인",
+    previousMasterKeyOptional: "이전 마스터 키 (선택 사항)",
+    uploadKeyFile: ".key 파일 업로드",
+    previousMasterKeyPlaceholder:
+      "이전에 사용하던 64자 Hex/Base64 마스터 키 입력...",
+    migrateButton: "마이그레이션 완료 및 로그인",
   },
   migration: {
     title: "웹사이트 계정으로 이전",
@@ -1021,7 +1032,30 @@ export const ko = {
     keyRotatedToast:
       "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
-    rotateKeyButton: "Rotate Masterkey",
+    rotateKeyButton: "마스터 키 교체",
+    unlockWithPasswordTitle: "비밀번호로 잠금 해제",
+    unlockWithPasswordDesc:
+      "계정 비밀번호를 입력하여 영지식 AES-256 암호화 키를 파생하고 데이터를 잠금 해제합니다.",
+    enterAccountPassword: "계정 비밀번호 입력...",
+    unlockWithPasswordBtn: "비밀번호로 잠금 해제",
+    unlockSuccessToast: "복호화 키 파생 완료 및 세션 잠금 해제됨",
+    invalidPasswordError: "비밀번호가 올바르지 않거나 키 파생에 실패했습니다",
+    changePasswordTitle: "비밀번호 변경",
+    changePasswordDesc:
+      "계정 비밀번호를 변경하고 새 비밀번호 파생 키로 모든 저장 데이터를 다시 암호화합니다.",
+    currentPassword: "현재 비밀번호",
+    newPassword: "새 비밀번호",
+    confirmNewPassword: "새 비밀번호 확인",
+    changePasswordBtn: "비밀번호 변경",
+    passwordChangedToast: "비밀번호가 변경되었으며 데이터가 재암호화되었습니다!",
+    migrateFromMasterKeyTitle: "이전 마스터 키에서 데이터 마이그레이션",
+    migrateFromMasterKeyDesc:
+      "이전 버전에서 독립 실행형 마스터 키로 암호화된 데이터가 있는 경우, 현재 계정 비밀번호를 사용하도록 재암호화합니다.",
+    previousMasterKeyLabel: "이전 256비트 마스터 키",
+    accountPasswordLabel: "계정 비밀번호",
+    runMigrationBtn: "비밀번호 키로 데이터 마이그레이션",
+    migrationCompleteToast: "비밀번호 키로 데이터가 성공적으로 마이그레이션되었습니다!",
+    migrateFromMasterKeyButton: "마스터 키에서 마이그레이션",
   },
   integrations: {
     title: "통합 및 API 키",

@@ -92,6 +92,17 @@ export const en = {
     validEmailRequired: "A valid email address is required",
     passwordLength: "Password must be at least 6 characters long",
     passwordMismatch: "Passwords do not match",
+    securityUpgradeTitle: "Security Upgrade & Password Migration",
+    securityUpgradeDesc:
+      "Passwords are never stored on the server. Set your new password to secure your account. If you previously had encrypted data, you can optionally provide your previous masterkey to migrate it.",
+    account: "Account",
+    newPassword: "New Password",
+    confirmNewPassword: "Confirm New Password",
+    previousMasterKeyOptional: "Previous Masterkey (Optional)",
+    uploadKeyFile: "Upload .key File",
+    previousMasterKeyPlaceholder:
+      "Paste 64-char Hex/Base64 masterkey (if you had one)...",
+    migrateButton: "Complete Migration & Sign In",
   },
   migration: {
     title: "Migrate to Website Account",
@@ -1034,6 +1045,31 @@ export const en = {
       "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
     rotateKeyButton: "Rotate Masterkey",
+    unlockWithPasswordTitle: "Unlock with Password",
+    unlockWithPasswordDesc:
+      "Enter your account password to derive your zero-knowledge AES-256 encryption key and unlock your data.",
+    enterAccountPassword: "Enter your account password...",
+    unlockWithPasswordBtn: "Unlock with Password",
+    unlockSuccessToast: "Decryption key derived and session unlocked",
+    invalidPasswordError: "Invalid password or key derivation failed",
+    changePasswordTitle: "Change Password",
+    changePasswordDesc:
+      "Update your account password and re-encrypt all stored data with your new password-derived key.",
+    currentPassword: "Current Password",
+    newPassword: "New Password",
+    confirmNewPassword: "Confirm New Password",
+    changePasswordBtn: "Change Password",
+    passwordChangedToast:
+      "Password changed and data re-encrypted successfully!",
+    migrateFromMasterKeyTitle: "Migrate Data from Previous Masterkey",
+    migrateFromMasterKeyDesc:
+      "If you have encrypted data from an earlier version that used a standalone masterkey, re-encrypt it to use your current account password.",
+    previousMasterKeyLabel: "Previous 256-bit Masterkey",
+    accountPasswordLabel: "Your Account Password",
+    runMigrationBtn: "Migrate Data to Password",
+    migrationCompleteToast:
+      "Data successfully migrated to your password key!",
+    migrateFromMasterKeyButton: "Migrate from Masterkey",
   },
   integrations: {
     title: "Integrations & API Keys",

@@ -134,6 +134,26 @@ describe("resolveUserFromToken", () => {
     expect(getUserById).toHaveBeenCalledWith("42");
   });
 
+  it("should return null if user auth_verifier is null (wiped/unmigrated account)", async () => {
+    const tokenUser = {
+      id: "42",
+      username: "testuser",
+      email: "test@example.com",
+    };
+    const token = generateToken(tokenUser);
+
+    vi.mocked(getUserById).mockReturnValue({
+      id: "42",
+      username: "testuser",
+      email: "test@example.com",
+      auth_verifier: null,
+      role: "user",
+    });
+
+    const result = await resolveUserFromToken(token);
+    expect(result).toBeNull();
+  });
+
   it("should assign admin role if user id is 1", async () => {
     const tokenUser = {
       id: "1",

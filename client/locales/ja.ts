@@ -92,6 +92,17 @@ export const ja = {
     validEmailRequired: "有効なメールアドレスが必要です",
     passwordLength: "パスワードは6文字以上である必要があります",
     passwordMismatch: "パスワードが一致しません",
+    securityUpgradeTitle: "セキュリティのアップグレードとパスワード移行",
+    securityUpgradeDesc:
+      "パスワードがサーバーに保存されることはありません。アカウントを保護するために新しいパスワードを設定してください。以前に暗号化されたデータがある場合は、以前のマスターキーを提供して移行できます。",
+    account: "アカウント",
+    newPassword: "新しいパスワード",
+    confirmNewPassword: "新しいパスワードの確認",
+    previousMasterKeyOptional: "以前のマスターキー（任意）",
+    uploadKeyFile: ".key ファイルをアップロード",
+    previousMasterKeyPlaceholder:
+      "以前使用していた64文字のHex/Base64マスターキーを入力...",
+    migrateButton: "移行を完了してサインイン",
   },
   migration: {
     title: "ウェブサイトアカウントへ移行",
@@ -1039,7 +1050,30 @@ export const ja = {
     keyRotatedToast:
       "Masterkey rotated successfully! {{count}} records re-encrypted.",
     keyRotateFailed: "Failed to rotate masterkey.",
-    rotateKeyButton: "Rotate Masterkey",
+    rotateKeyButton: "マスターキーのローテーション",
+    unlockWithPasswordTitle: "パスワードでロック解除",
+    unlockWithPasswordDesc:
+      "アカウントパスワードを入力してゼロ知識 AES-256 暗号化キーを導出し、データをロック解除します。",
+    enterAccountPassword: "アカウントパスワードを入力...",
+    unlockWithPasswordBtn: "パスワードでロック解除",
+    unlockSuccessToast: "復号キーが導出され、セッションが解除されました",
+    invalidPasswordError: "パスワードが無効であるか、キー導出に失敗しました",
+    changePasswordTitle: "パスワードの変更",
+    changePasswordDesc:
+      "アカウントパスワードを更新し、新しいパスワード導出キーですべてのデータを再暗号化します。",
+    currentPassword: "現在のパスワード",
+    newPassword: "新しいパスワード",
+    confirmNewPassword: "新しいパスワードの確認",
+    changePasswordBtn: "パスワードを変更",
+    passwordChangedToast: "パスワードが変更され、データが再暗号化されました！",
+    migrateFromMasterKeyTitle: "以前のマスターキーからデータを移行",
+    migrateFromMasterKeyDesc:
+      "以前のバージョンでスタンドアロンのマスターキーを使用していた暗号化データがある場合、現在のアカウントパスワードを使用するように再暗号化します。",
+    previousMasterKeyLabel: "以前の256ビットマスターキー",
+    accountPasswordLabel: "アカウントパスワード",
+    runMigrationBtn: "パスワードキーにデータを移行",
+    migrationCompleteToast: "パスワードキーへのデータ移行が完了しました！",
+    migrateFromMasterKeyButton: "マスターキーから移行",
   },
   integrations: {
     title: "連携とAPIキー",

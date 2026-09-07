@@ -1873,3 +1873,114 @@ export async function rotateMasterKey({
 
   return { updatedCount };
 }
+
+/**
+ * Derive a 256-bit (32-byte) AES encryption key from a user password using PBKDF2 with SHA-256.
+ */
+export async function deriveEncryptionKeyFromPassword(
+  password: string,
+  saltStr?: string,
+): Promise<Uint8Array> {
+  const cryptoObj = getCrypto();
+  const encoder = new TextEncoder();
+  const passwordBytes = encoder.encode(password);
+  const salt = encoder.encode(saltStr || "oxygen_lows_software_encryption_salt_v1");
+
+  const baseKey = await cryptoObj.subtle.importKey(
+    "raw",
+    passwordBytes,
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits", "deriveKey"],
+  );
+
+  const derivedKeyBuffer = await cryptoObj.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 200000,
+      hash: "SHA-256",
+    },
+    baseKey,
+    256,
+  );
+
+  return new Uint8Array(derivedKeyBuffer);
+}
+
+/**
+ * Derive a zero-knowledge authentication token from a user password and login/email.
+ * This token is sent to the server for authentication; the raw password is never sent.
+ */
+export async function deriveAuthTokenFromPassword(
+  password: string,
+  emailOrLogin: string,
+): Promise<string> {
+  const cryptoObj = getCrypto();
+  const encoder = new TextEncoder();
+  const passwordBytes = encoder.encode(password);
+  const cleanSalt =
+    (emailOrLogin || "").trim().toLowerCase() + ":oxygen_auth_salt_v1";
+  const salt = encoder.encode(cleanSalt);
+
+  const baseKey = await cryptoObj.subtle.importKey(
+    "raw",
+    passwordBytes,
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"],
+  );
+
+  const derivedBits = await cryptoObj.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    baseKey,
+    256,
+  );
+
+  return bytesToHex(new Uint8Array(derivedBits));
+}
+
+export interface MigrateMasterKeyToPasswordOptions {
+  oldKeyBytes: Uint8Array;
+  password: string;
+  saltStr?: string;
+  userId?: string;
+  client?: any;
+}
+
+/**
+ * Migrate all user data from a previous masterkey to a new password-derived key:
+ * 1. Derives the new 256-bit AES key from the user's password.
+ * 2. Decrypts all data across enabled categories using the old masterkey.
+ * 3. Re-encrypts all data with the new password-derived key.
+ * 4. Activates the new key in memory and session.
+ */
+export async function migrateMasterKeyDataToPassword({
+  oldKeyBytes,
+  password,
+  saltStr,
+  userId,
+  client,
+}: MigrateMasterKeyToPasswordOptions): Promise<{
+  updatedCount: number;
+  newKeyBytes: Uint8Array;
+}> {
+  const newKeyBytes = await deriveEncryptionKeyFromPassword(password, saltStr);
+  const result = await rotateMasterKey({
+    oldKeyBytes,
+    newKeyBytes,
+    userId,
+    client,
+  });
+
+  setActiveMasterKey(newKeyBytes);
+  return {
+    updatedCount: result.updatedCount,
+    newKeyBytes,
+  };
+}

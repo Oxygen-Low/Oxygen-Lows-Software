@@ -5,11 +5,12 @@ import {
   getUserById,
   getUserByUsernameOrEmail,
   getProfileByUserId,
+  updateUserAuthVerifier,
 } from "../lib/dataStore.ts";
 import {
   generateSalt,
-  hashPassword,
-  verifyPassword,
+  hashAuthVerifier,
+  verifyAuthToken,
   generateToken,
   resolveUserFromToken,
   localAuthMiddleware,
@@ -18,12 +19,12 @@ import {
 export const authRouter = new Hono();
 
 /**
- * Register a new local account
+ * Register a new local account using client-derived zero-knowledge auth token
  */
 authRouter.post("/register", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { username, email, password } = body;
+    const { username, email, authToken, password } = body;
 
     if (
       !username ||
@@ -40,7 +41,12 @@ authRouter.post("/register", async (c) => {
       return c.json({ error: "A valid email address is required" }, 400);
     }
 
-    if (!password || typeof password !== "string" || password.length < 6) {
+    const tokenInput = authToken || password;
+    if (
+      !tokenInput ||
+      typeof tokenInput !== "string" ||
+      tokenInput.length < 6
+    ) {
       return c.json(
         { error: "Password must be at least 6 characters long" },
         400,
@@ -67,15 +73,15 @@ authRouter.post("/register", async (c) => {
     }
 
     const userId = getNextUserId();
-    const salt = generateSalt();
-    const passwordHash = hashPassword(password, salt);
+    const authSalt = generateSalt();
+    const authVerifier = hashAuthVerifier(tokenInput, authSalt);
     const role = String(userId) === "1" ? "admin" : "user";
 
     const user = initUserFolder(userId, {
       username: cleanUsername,
       email: cleanEmail,
-      passwordHash,
-      salt,
+      authVerifier,
+      authSalt,
       role,
     });
 
@@ -113,10 +119,10 @@ authRouter.post("/register", async (c) => {
 authRouter.post("/login", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { login, password } = body;
+    const { login, authToken, password } = body;
 
-    if (!login || !password) {
-      return c.json({ error: "Username/email and password are required" }, 400);
+    if (!login) {
+      return c.json({ error: "Username or email is required" }, 400);
     }
 
     const user = getUserByUsernameOrEmail(login);
@@ -124,7 +130,24 @@ authRouter.post("/login", async (c) => {
       return c.json({ error: "Invalid username or password" }, 400);
     }
 
-    const valid = verifyPassword(password, user.password_hash, user.salt);
+    // Check if account has wiped credentials and needs migration
+    if (!user.auth_verifier) {
+      return c.json({
+        needsMigration: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      });
+    }
+
+    const tokenInput = authToken || password;
+    if (!tokenInput) {
+      return c.json({ error: "Username/email and password are required" }, 400);
+    }
+
+    const valid = verifyAuthToken(tokenInput, user.auth_verifier, user.auth_salt);
     if (!valid) {
       return c.json({ error: "Invalid username or password" }, 400);
     }
@@ -154,6 +177,109 @@ authRouter.post("/login", async (c) => {
     });
   } catch (err: any) {
     return c.json({ error: err.message || "Login failed" }, 500);
+  }
+});
+
+/**
+ * Migrate account credentials: sets new zero-knowledge auth verifier
+ */
+authRouter.post("/migrate-account", async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const { login, authToken, password } = body;
+    const tokenInput = authToken || password;
+
+    if (!login || !tokenInput) {
+      return c.json(
+        { error: "Username/email and new password are required" },
+        400,
+      );
+    }
+
+    const user = getUserByUsernameOrEmail(login);
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    const authSalt = generateSalt();
+    const authVerifier = hashAuthVerifier(tokenInput, authSalt);
+    const updated = updateUserAuthVerifier(user.id, authVerifier, authSalt);
+    if (!updated) {
+      return c.json({ error: "Failed to update user credentials" }, 500);
+    }
+
+    const token = generateToken({
+      id: String(updated.id),
+      username: String(updated.username),
+      email: String(updated.email),
+      role: updated.role,
+    });
+    const session = {
+      access_token: token,
+      token_type: "bearer",
+      user: {
+        id: updated.id,
+        email: updated.email,
+        username: updated.username,
+        role: String(updated.id) === "1" ? "admin" : updated.role || "user",
+        user_metadata: {
+          username: updated.username,
+          full_name: updated.username,
+          role: String(updated.id) === "1" ? "admin" : updated.role || "user",
+        },
+      },
+    };
+
+    return c.json({
+      user: session.user,
+      token,
+      session,
+      error: null,
+    });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Migration failed" }, 500);
+  }
+});
+
+/**
+ * Change password for authenticated users
+ */
+authRouter.post("/change-password", localAuthMiddleware, async (c: any) => {
+  try {
+    const user = c.get("user");
+    const body = await c.req.json().catch(() => ({}));
+    const { currentAuthToken, newAuthToken } = body;
+
+    if (!currentAuthToken || !newAuthToken) {
+      return c.json(
+        { error: "Current and new passwords are required" },
+        400,
+      );
+    }
+
+    const dbUser = getUserById(user.id);
+    if (!dbUser) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    if (dbUser.auth_verifier) {
+      const valid = verifyAuthToken(
+        currentAuthToken,
+        dbUser.auth_verifier,
+        dbUser.auth_salt,
+      );
+      if (!valid) {
+        return c.json({ error: "Current password is incorrect" }, 400);
+      }
+    }
+
+    const authSalt = generateSalt();
+    const authVerifier = hashAuthVerifier(newAuthToken, authSalt);
+    updateUserAuthVerifier(user.id, authVerifier, authSalt);
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to change password" }, 500);
   }
 });
 

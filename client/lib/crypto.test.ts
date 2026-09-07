@@ -46,6 +46,9 @@ import {
   encryptPasswordData,
   decryptPasswordData,
   migrateCategoryEncryption,
+  deriveEncryptionKeyFromPassword,
+  deriveAuthTokenFromPassword,
+  migrateMasterKeyDataToPassword,
 } from "./crypto";
 
 describe("Crypto Utilities (AES-256)", () => {
@@ -635,6 +638,78 @@ describe("Crypto Utilities (AES-256)", () => {
       });
 
       expect(result.updatedCount).toBe(1);
+    });
+  });
+
+  describe("Password-Derived Zero-Knowledge Encryption", () => {
+    it("should derive a 256-bit AES key from a password", async () => {
+      const password = "mySuperSecretPassword123!";
+      const key1 = await deriveEncryptionKeyFromPassword(password, "test@example.com");
+      const key2 = await deriveEncryptionKeyFromPassword(password, "test@example.com");
+
+      expect(key1).toHaveLength(32);
+      expect(key2).toHaveLength(32);
+      expect(bytesToHex(key1)).toBe(bytesToHex(key2));
+
+      // Different password or salt produces different key
+      const keyDiff = await deriveEncryptionKeyFromPassword("differentPassword", "test@example.com");
+      expect(bytesToHex(key1)).not.toBe(bytesToHex(keyDiff));
+
+      // Encrypt and decrypt with derived key
+      const plaintext = "Zero-Knowledge Secret Data";
+      const ciphertext = await encryptAes256Gcm(plaintext, key1);
+      const decrypted = await decryptAes256Gcm(ciphertext, key2);
+      expect(decrypted).toBe(plaintext);
+    });
+
+    it("should derive a zero-knowledge auth token from password", async () => {
+      const password = "securePassword123!";
+      const email = "user@example.com";
+      const token1 = await deriveAuthTokenFromPassword(password, email);
+      const token2 = await deriveAuthTokenFromPassword(password, email);
+
+      expect(token1).toHaveLength(64); // 32 bytes hex
+      expect(token1).toBe(token2);
+
+      const tokenDifferent = await deriveAuthTokenFromPassword("wrongPassword", email);
+      expect(token1).not.toBe(tokenDifferent);
+    });
+
+    it("should migrate masterkey data to password-derived key", async () => {
+      const oldKey = generateAes256Key();
+      const password = "newVaultPassword999!";
+      const email = "migrate@example.com";
+
+      const encChar = await encryptCharacterData(
+        { name: "Hero", short_description: "A brave knight" },
+        oldKey,
+      );
+
+      const mockDb = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          then: vi.fn((resolve: any) =>
+            resolve({ data: [encChar], error: null }),
+          ),
+        }),
+      };
+
+      // Set category enabled
+      setCategoryEncryptionEnabled("characters", true);
+
+      const result = await migrateMasterKeyDataToPassword({
+        oldKeyBytes: oldKey,
+        password,
+        saltStr: email,
+        userId: "u123",
+        client: mockDb as any,
+      });
+
+      expect(result.updatedCount).toBe(1);
+      expect(result.newKeyBytes).toHaveLength(32);
+      expect(getActiveMasterKey()).toEqual(result.newKeyBytes);
     });
   });
 });
