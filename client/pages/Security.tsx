@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -10,14 +10,12 @@ import {
   Check,
   Lock,
   Unlock,
-  Sparkles,
   Info,
   Database,
   Users,
   Bot,
   CheckCircle2,
   ArrowLeft,
-  Upload,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,10 +41,6 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/db";
 import {
-  bytesToHex,
-  isValidMasterKeyString,
-  parseMasterKeyString,
-  parseKeyFileContent,
   getActiveMasterKey,
   setActiveMasterKey,
   clearActiveMasterKey,
@@ -54,7 +48,6 @@ import {
   onAutoLock,
   migrateCategoryEncryption,
   deriveEncryptionKeyFromPassword,
-  migrateMasterKeyDataToPassword,
   type EncryptionCategory,
 } from "@/lib/crypto";
 
@@ -151,14 +144,6 @@ export default function Security() {
   const [changePasswordError, setChangePasswordError] = useState<
     string | null
   >(null);
-
-  // Migrate from masterkey dialog state
-  const [showMigrateDialog, setShowMigrateDialog] = useState<boolean>(false);
-  const [migrateOldKey, setMigrateOldKey] = useState<string>("");
-  const [migratePassword, setMigratePassword] = useState<string>("");
-  const [isMigratingFromKey, setIsMigratingFromKey] = useState<boolean>(false);
-  const [migrateError, setMigrateError] = useState<string | null>(null);
-  const migrateFileInputRef = useRef<HTMLInputElement>(null);
 
   // Keep session storage synced
   useEffect(() => {
@@ -279,115 +264,6 @@ export default function Security() {
     } finally {
       setIsChangingPassword(false);
     }
-  };
-
-  const handleMigrateFromMasterKey = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMigrateError(null);
-    const cleanKey = migrateOldKey.trim();
-    if (!cleanKey) {
-      setMigrateError(
-        t(
-          "security.masterKeyRequiredToMigrate",
-          undefined,
-          "Please enter or upload your previous masterkey",
-        ),
-      );
-      return;
-    }
-    let oldBytes: Uint8Array;
-    try {
-      if (isValidMasterKeyString(cleanKey)) {
-        oldBytes = parseMasterKeyString(cleanKey);
-      } else {
-        oldBytes = parseKeyFileContent(cleanKey);
-      }
-    } catch (err: any) {
-      setMigrateError(
-        t(
-          "security.invalidKeyError",
-          undefined,
-          "Invalid masterkey format. Must be a 256-bit key (64 hex characters or Base64).",
-        ),
-      );
-      return;
-    }
-
-    if (!migratePassword) {
-      setMigrateError(
-        t("auth.passwordRequired", undefined, "Password is required"),
-      );
-      return;
-    }
-
-    setIsMigratingFromKey(true);
-    try {
-      const userEmail =
-        session?.user?.email ||
-        session?.user?.username ||
-        session?.user?.id ||
-        "";
-      const result = await migrateMasterKeyDataToPassword({
-        oldKeyBytes: oldBytes,
-        password: migratePassword,
-        saltStr: userEmail,
-        userId: session?.user?.id,
-      });
-
-      const newKey = await deriveEncryptionKeyFromPassword(
-        migratePassword,
-        userEmail,
-      );
-      setActiveMasterKey(newKey);
-      setKeyBytes(newKey);
-
-      setMigrateOldKey("");
-      setMigratePassword("");
-      setShowMigrateDialog(false);
-      toast.success(
-        t(
-          "security.migrationCompleteToast",
-          { count: result.updatedCount },
-          `Data migrated to password successfully! ${result.updatedCount} records re-encrypted.`,
-        ),
-      );
-    } catch (err: any) {
-      console.error("Masterkey to password migration error:", err);
-      setMigrateError(err?.message || "Migration failed");
-    } finally {
-      setIsMigratingFromKey(false);
-    }
-  };
-
-  const handleMigrateFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsedBytes = parseKeyFileContent(text);
-      setMigrateOldKey(bytesToHex(parsedBytes));
-      setMigrateError(null);
-      toast.success(
-        t(
-          "security.keyFileUploadedToast",
-          undefined,
-          "Previous masterkey loaded from file",
-        ),
-      );
-    } catch (err: any) {
-      const errMsg =
-        err?.message ||
-        t(
-          "security.invalidKeyFileError",
-          undefined,
-          "No valid 256-bit masterkey found in the uploaded file.",
-        );
-      setMigrateError(errMsg);
-      toast.error(errMsg);
-    }
-    if (e.target) e.target.value = "";
   };
 
   const handleToggleCategory = async (
@@ -610,41 +486,7 @@ export default function Security() {
           <CardContent className="space-y-6">
             {keyBytes ? (
               /* Active Encryption View */
-              <div className="space-y-5">
-                <div className="p-4 sm:p-5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 backdrop-blur-sm space-y-3">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">
-                        {t(
-                          "security.activeSessionProtected",
-                          undefined,
-                          "Active Session Protected",
-                        )}
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {t(
-                          "security.encryptionActiveDesc",
-                          undefined,
-                          "Zero-knowledge encryption is active. Your data is encrypted and decrypted in memory using your password-derived 256-bit AES key.",
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-emerald-500/20 text-[11px] font-mono text-emerald-300">
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-900/40 border border-emerald-500/30">
-                      AES-256-GCM
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-900/40 border border-emerald-500/30">
-                      PBKDF2 (200k iterations)
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-900/40 border border-emerald-500/30">
-                      Zero-Knowledge
-                    </span>
-                  </div>
-                </div>
-
+              <div className="space-y-4">
                 {/* Actions Toolbar */}
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
@@ -658,22 +500,6 @@ export default function Security() {
                         "security.changePasswordTitle",
                         undefined,
                         "Change Password",
-                      )}
-                    </span>
-                  </Button>
-
-                  <Button
-                    id="migrate-masterkey-btn"
-                    onClick={() => setShowMigrateDialog(true)}
-                    variant="outline"
-                    className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white"
-                  >
-                    <Sparkles className="w-4 h-4 text-cyan-400" />
-                    <span>
-                      {t(
-                        "security.migrateFromMasterKeyButton",
-                        undefined,
-                        "Migrate from Masterkey",
                       )}
                     </span>
                   </Button>
@@ -761,32 +587,6 @@ export default function Security() {
                       {unlockError}
                     </p>
                   )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-950/40 text-xs text-slate-400 gap-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>
-                      {t(
-                        "security.migrateFromMasterKeyDesc",
-                        undefined,
-                        "If you have encrypted data from an earlier version that used a standalone masterkey, re-encrypt it to use your current account password.",
-                      )}
-                    </span>
-                  </div>
-                  <Button
-                    id="inactive-migrate-btn"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowMigrateDialog(true)}
-                    className="border-slate-800 bg-slate-900 hover:bg-slate-800 text-xs text-slate-200 shrink-0"
-                  >
-                    {t(
-                      "security.migrateFromMasterKeyButton",
-                      undefined,
-                      "Migrate from Masterkey",
-                    )}
-                  </Button>
                 </div>
               </div>
             )}
@@ -1351,137 +1151,6 @@ export default function Security() {
                       "security.changePasswordBtn",
                       undefined,
                       "Change Password",
-                    )}
-                  </span>
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialog 2: Migrate from Masterkey */}
-        <Dialog
-          open={showMigrateDialog}
-          onOpenChange={setShowMigrateDialog}
-        >
-          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-white">
-                <Sparkles className="w-5 h-5 text-cyan-400" />
-                {t(
-                  "security.migrateFromMasterKeyTitle",
-                  undefined,
-                  "Migrate Data from Previous Masterkey",
-                )}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-slate-400">
-                {t(
-                  "security.migrateFromMasterKeyDesc",
-                  undefined,
-                  "If you have encrypted data from an earlier version that used a standalone masterkey, re-encrypt it to use your current account password.",
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleMigrateFromMasterKey} className="space-y-4 py-2">
-              <input
-                type="file"
-                ref={migrateFileInputRef}
-                onChange={handleMigrateFileChange}
-                accept=".key,.txt"
-                className="hidden"
-                id="migrate-key-file-upload-input"
-              />
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="migrate-old-key-input"
-                    className="text-xs font-medium text-slate-300"
-                  >
-                    {t(
-                      "security.previousMasterKeyLabel",
-                      undefined,
-                      "Previous 256-bit Masterkey",
-                    )}
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => migrateFileInputRef.current?.click()}
-                    className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline"
-                  >
-                    <Upload className="w-3 h-3" />
-                    <span>
-                      {t("auth.uploadKeyFile", undefined, "Upload .key File")}
-                    </span>
-                  </button>
-                </div>
-                <Input
-                  id="migrate-old-key-input"
-                  type="password"
-                  required
-                  value={migrateOldKey}
-                  onChange={(e) => setMigrateOldKey(e.target.value)}
-                  placeholder="Paste 64-char Hex/Base64 masterkey..."
-                  className="bg-slate-950 border-slate-800 text-xs font-mono text-white"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="migrate-password-input"
-                  className="text-xs font-medium text-slate-300"
-                >
-                  {t(
-                    "security.accountPasswordLabel",
-                    undefined,
-                    "Your Account Password",
-                  )}
-                </Label>
-                <Input
-                  id="migrate-password-input"
-                  type="password"
-                  required
-                  value={migratePassword}
-                  onChange={(e) => setMigratePassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="bg-slate-950 border-slate-800 text-xs text-white"
-                />
-              </div>
-
-              {migrateError && (
-                <p className="text-xs text-rose-400 font-medium">
-                  {migrateError}
-                </p>
-              )}
-
-              <DialogFooter className="pt-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowMigrateDialog(false)}
-                  className="border-slate-800 text-slate-400 hover:text-white"
-                >
-                  {t("common.cancel", undefined, "Cancel")}
-                </Button>
-                <Button
-                  id="submit-migrate-masterkey-btn"
-                  type="submit"
-                  size="sm"
-                  disabled={isMigratingFromKey}
-                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium gap-2"
-                >
-                  {isMigratingFromKey ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                  <span>
-                    {t(
-                      "security.runMigrationBtn",
-                      undefined,
-                      "Migrate Data to Password",
                     )}
                   </span>
                 </Button>
