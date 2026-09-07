@@ -116,6 +116,12 @@ describe("Security Page Component", () => {
     expect(screen.queryByText("Active Session Protected")).toBeNull();
     expect(screen.queryByText("Migrate from Masterkey")).toBeNull();
     expect(document.getElementById("inactive-migrate-btn")).toBeNull();
+    expect(document.getElementById("lock-session-btn")).toBeNull();
+    expect(
+      screen.queryByText(
+        "Zero-Knowledge: Your encryption key is derived only in your browser session and is never sent to any server.",
+      ),
+    ).toBeNull();
   });
 
   it("renders encryption toggles for Characters, Data Save, Chatbot, Integrations, and Password Vault", () => {
@@ -179,12 +185,17 @@ describe("Security Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Encryption Active")).toBeDefined();
       expect(document.getElementById("change-password-btn")).toBeDefined();
-      expect(document.getElementById("lock-session-btn")).toBeDefined();
       expect(sessionStorage.getItem("oxygen_active_master_key")).not.toBeNull();
-      // Ensure Active Session Protected and Migrate from Masterkey are not present
+      // Ensure removed buttons and banners are not present
+      expect(document.getElementById("lock-session-btn")).toBeNull();
       expect(screen.queryByText("Active Session Protected")).toBeNull();
       expect(document.getElementById("migrate-masterkey-btn")).toBeNull();
       expect(screen.queryByText("Migrate from Masterkey")).toBeNull();
+      expect(
+        screen.queryByText(
+          "Zero-Knowledge: Your encryption key is derived only in your browser session and is never sent to any server.",
+        ),
+      ).toBeNull();
     });
   });
 
@@ -262,31 +273,6 @@ describe("Security Page Component", () => {
     fireEvent.click(passwordsToggle);
     await waitFor(() => {
       expect(localStorage.getItem("oxygen_encrypt_passwords")).toBe("true");
-    });
-  });
-
-  it("locks session and clears key on Lock Session click", async () => {
-    renderWithRouter();
-
-    // Unlock session
-    fireEvent.change(document.getElementById("unlock-password-input")!, {
-      target: { value: "MySecurePass123!" },
-    });
-    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
-
-    await waitFor(() => {
-      expect(screen.getByText("Encryption Active")).toBeDefined();
-    });
-
-    fireEvent.click(document.getElementById("lock-session-btn")!);
-
-    await waitFor(() => {
-      expect(screen.getByText("Session Locked")).toBeDefined();
-      expect(sessionStorage.getItem("oxygen_active_master_key")).toBeNull();
-      const charactersToggle = document.getElementById(
-        "toggle-characters",
-      ) as HTMLButtonElement;
-      expect(charactersToggle.disabled).toBe(true);
     });
   });
 
@@ -448,11 +434,17 @@ describe("Security Page Component", () => {
     });
   });
 
-  it("does not render removed architecture section", () => {
+  it("does not render removed architecture section, lock session button, or client side notice", () => {
     renderWithRouter();
     expect(
       screen.queryByText("Zero-Knowledge & Privacy Architecture"),
     ).toBeNull();
     expect(screen.queryByText("Custom AI Provider API Keys")).toBeNull();
+    expect(document.getElementById("lock-session-btn")).toBeNull();
+    expect(
+      screen.queryByText(
+        "Zero-Knowledge: Your encryption key is derived only in your browser session and is never sent to any server.",
+      ),
+    ).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -43,8 +43,6 @@ import { supabase } from "@/lib/db";
 import {
   getActiveMasterKey,
   setActiveMasterKey,
-  clearActiveMasterKey,
-  zeroizeBytes,
   onAutoLock,
   migrateCategoryEncryption,
   deriveEncryptionKeyFromPassword,
@@ -201,21 +199,6 @@ export default function Security() {
       setIsUnlockingPassword(false);
     }
   };
-
-  const handleLockSession = useCallback(() => {
-    if (keyBytes) {
-      zeroizeBytes(keyBytes);
-    }
-    setKeyBytes(null);
-    clearActiveMasterKey();
-    toast.info(
-      t(
-        "security.sessionLockedToast",
-        undefined,
-        "Session locked and encryption key cleared from memory",
-      ),
-    );
-  }, [keyBytes, t]);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -503,18 +486,6 @@ export default function Security() {
                       )}
                     </span>
                   </Button>
-
-                  <Button
-                    id="lock-session-btn"
-                    onClick={handleLockSession}
-                    variant="outline"
-                    className="gap-2 border-rose-500/30 bg-rose-950/20 hover:bg-rose-900/30 text-rose-300 hover:text-rose-200 ml-auto text-xs"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>
-                      {t("security.lockSession", undefined, "Lock Session")}
-                    </span>
-                  </Button>
                 </div>
               </div>
             ) : (
@@ -590,18 +561,6 @@ export default function Security() {
                 </div>
               </div>
             )}
-
-            {/* Zero-Knowledge Security Notice */}
-            <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400">
-              <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-              <span>
-                {t(
-                  "security.clientSideNotice",
-                  undefined,
-                  "Zero-Knowledge: Your encryption key is derived only in your browser session and is never sent to any server.",
-                )}
-              </span>
-            </div>
           </CardContent>
         </Card>
 
