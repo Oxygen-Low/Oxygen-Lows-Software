@@ -219,6 +219,65 @@ describe("All Locales Verification", () => {
       });
     });
   });
+
+  it("should verify Game Library cloud sync and saves translation symmetry across all 6 locales", () => {
+    const testKeys = [
+      "gameLibrary.supportedGamesButton",
+      "gameLibrary.supportedGamesTitle",
+      "gameLibrary.supportedGamesSubtitle",
+      "gameLibrary.globalSyncSwitches",
+      "gameLibrary.statusDetected",
+      "gameLibrary.statusInstalled",
+      "gameLibrary.statusPathResolved",
+      "gameLibrary.statusCustomPath",
+      "gameLibrary.statusPausedConflict",
+      "gameLibrary.customPathsTitle",
+      "gameLibrary.categoryData",
+      "gameLibrary.categorySaves",
+      "gameLibrary.categoryModLists",
+      "gameLibrary.categoryCustomMods",
+      "gameLibrary.categoryIdeologies",
+      "gameLibrary.categoryXenotypes",
+      "gameLibrary.categorySubmarines",
+      "gameLibrary.gameRainWorld",
+      "gameLibrary.gameRimWorld",
+      "gameLibrary.gameLibraryOfRuina",
+      "gameLibrary.gameLobotomyCorporation",
+      "gameLibrary.gameOstranauts",
+      "gameLibrary.gameBarotrauma",
+      "gameLibrary.gameKenshi",
+      "gameLibrary.gameSpaceHaven",
+      "gameLibrary.savesAndModsTab",
+      "gameLibrary.savesAndModsTitle",
+      "gameLibrary.syncNow",
+      "gameLibrary.conflictAlertTitle",
+      "gameLibrary.resolveConflict",
+      "gameLibrary.snapshotsTitle",
+      "gameLibrary.retentionAutoSync",
+      "gameLibrary.retentionPermanent",
+      "gameLibrary.customModManager",
+      "gameLibrary.packageAndSyncMod",
+      "gameLibrary.conflictModalTitle",
+      "gameLibrary.localVersionTitle",
+      "gameLibrary.cloudVersionTitle",
+      "gameLibrary.keepLocal",
+      "gameLibrary.keepCloud",
+      "gameLibrary.keepBoth",
+      "gameLibrary.customModDlcProtected",
+    ];
+
+    allLocales.forEach(({ code, dict }) => {
+      const t = createTranslator(dict, en);
+      testKeys.forEach((key) => {
+        const translated = t(key);
+        expect(
+          translated,
+          `Key "${key}" in locale "${code}" should not be empty`,
+        ).toBeTruthy();
+        expect(typeof translated).toBe("string");
+      });
+    });
+  });
 });
 
 // ============================================================================
@@ -266,5 +325,13 @@ type _AssertJaThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof j
 type _AssertKoThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof ko.threeDBackground>>;
 type _AssertRuThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof ru.threeDBackground>>;
 type _AssertZhThreeD = AssertTrue<ExactKeys<typeof en.threeDBackground, typeof zhCN.threeDBackground>>;
+
+// 6. gameLibrary leaf keys exact parity across all 6 locales
+type _AssertEsGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof es.gameLibrary>>;
+type _AssertJaGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof ja.gameLibrary>>;
+type _AssertKoGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof ko.gameLibrary>>;
+type _AssertRuGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof ru.gameLibrary>>;
+type _AssertZhGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof zhCN.gameLibrary>>;
+
 
 

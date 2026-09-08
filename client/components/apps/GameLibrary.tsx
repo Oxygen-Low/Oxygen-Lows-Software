@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Gamepad2,
@@ -21,6 +21,7 @@ import {
   ArrowUpDown,
   Monitor,
   Flame,
+  FolderSync,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,18 @@ import {
   type InstalledGame,
   type RunningGameSession,
 } from "@/lib/desktopBridge";
+import { SupportedGamesModal } from "./game-library/SupportedGamesModal";
+import { GameSavesAndModsTab } from "./game-library/GameSavesAndModsTab";
+import { ConflictResolverModal } from "./game-library/ConflictResolverModal";
+import {
+  getSupportedGame,
+  isSupportedGame,
+} from "@/lib/supportedGames";
+import {
+  gameSyncService,
+  type GameSyncEvent,
+} from "@/lib/gameSyncService";
+import type { GameConflictRecord } from "../../../server/lib/dataStore";
 
 export type PlatformFilter =
   "all" | "steam" | "epic" | "ea" | "xbox" | "gog" | "ubisoft" | "custom";
@@ -216,6 +229,57 @@ export function GameLibrary() {
 
   // Image load error fallback cache
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+
+  // Milestone 4: Cloud Sync, Supported Games & Conflict Resolver states
+  const [isSupportedGamesModalOpen, setIsSupportedGamesModalOpen] =
+    useState(false);
+  const [activeDetailsTab, setActiveDetailsTab] = useState<
+    "overview" | "saves_mods"
+  >("overview");
+  const [activeConflict, setActiveConflict] =
+    useState<GameConflictRecord | null>(null);
+  const [activeConflictsList, setActiveConflictsList] = useState<
+    Record<string, GameConflictRecord>
+  >({});
+
+  const pendingInitialTabRef = useRef<"overview" | "saves_mods" | null>(null);
+
+  // Reset details tab to overview whenever selected game changes, unless an initial tab was requested
+  useEffect(() => {
+    if (pendingInitialTabRef.current) {
+      setActiveDetailsTab(pendingInitialTabRef.current);
+      pendingInitialTabRef.current = null;
+    } else {
+      setActiveDetailsTab("overview");
+    }
+  }, [selectedGame?.id]);
+
+  // Subscribe to gameSyncService events (conflicts, sync events)
+  useEffect(() => {
+    gameSyncService.initialize();
+    const unsubscribe = gameSyncService.subscribe((event: GameSyncEvent) => {
+      if (event.type === "conflict_detected") {
+        setActiveConflict(event.conflict);
+        setActiveConflictsList((prev) => ({
+          ...prev,
+          [event.gameId]: event.conflict,
+        }));
+      } else if (event.type === "conflict_resolved") {
+        setActiveConflictsList((prev) => {
+          const next = { ...prev };
+          delete next[event.gameId];
+          return next;
+        });
+        if (activeConflict?.id === event.conflictId) {
+          setActiveConflict(null);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [activeConflict?.id]);
+
+  const hasAnyActiveConflict = Object.keys(activeConflictsList).length > 0;
 
   // 1. Initial Load: Fetch Server Games & Playtimes
   const loadServerGamesAndPlaytimes = useCallback(async () => {
@@ -764,6 +828,24 @@ export function GameLibrary() {
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 shrink-0">
             <Button
+              onClick={() => setIsSupportedGamesModalOpen(true)}
+              variant="outline"
+              size="sm"
+              className="border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs h-9 gap-1.5"
+              data-testid="supported-games-btn"
+            >
+              <FolderSync className="w-3.5 h-3.5 text-cyan-400" />
+              {t(
+                "gameLibrary.supportedGamesButton",
+                undefined,
+                "Supported Games",
+              )}
+              {hasAnyActiveConflict && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              )}
+            </Button>
+
+            <Button
               onClick={handleScanGames}
               disabled={isScanning}
               variant="outline"
@@ -1065,7 +1147,10 @@ export function GameLibrary() {
             return (
               <Card
                 key={game.id}
-                onClick={() => setSelectedGame(game)}
+                onClick={() => {
+                  pendingInitialTabRef.current = null;
+                  setSelectedGame(game);
+                }}
                 className="group relative overflow-hidden bg-slate-900/60 hover:bg-slate-900 border-slate-800 hover:border-cyan-500/40 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-lg hover:shadow-cyan-500/5"
               >
                 {/* Artwork Banner / Header */}
@@ -1213,7 +1298,10 @@ export function GameLibrary() {
               return (
                 <div
                   key={game.id}
-                  onClick={() => setSelectedGame(game)}
+                  onClick={() => {
+                    pendingInitialTabRef.current = null;
+                    setSelectedGame(game);
+                  }}
                   className="flex items-center justify-between p-3 sm:px-4 hover:bg-slate-800/50 transition cursor-pointer gap-4 group"
                 >
                   {/* Left: Thumbnail & Title */}
@@ -1308,7 +1396,10 @@ export function GameLibrary() {
       <Dialog
         open={!!selectedGame}
         onOpenChange={(open) => {
-          if (!open) setSelectedGame(null);
+          if (!open) {
+            setSelectedGame(null);
+            pendingInitialTabRef.current = null;
+          }
         }}
       >
         <DialogContent className="max-w-2xl bg-slate-900 border-slate-800 text-slate-200 p-0 overflow-hidden shadow-2xl">
@@ -1408,8 +1499,52 @@ export function GameLibrary() {
                 </div>
               </div>
 
-              {/* Modal Body Info & Friends */}
-              <div className="p-5 space-y-6 max-h-[60vh] overflow-y-auto">
+              {/* Tab Switcher Bar */}
+              <div
+                className="flex border-b border-slate-800 px-5 bg-slate-950/60"
+                data-testid="game-details-tab-bar"
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveDetailsTab("overview")}
+                  className={cn(
+                    "px-4 py-2.5 text-xs font-medium border-b-2 transition-colors",
+                    activeDetailsTab === "overview"
+                      ? "border-cyan-500 text-cyan-400"
+                      : "border-transparent text-slate-400 hover:text-slate-200",
+                  )}
+                  data-testid="tab-btn-overview"
+                >
+                  {t("gameLibrary.tabOverview", undefined, "Overview")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDetailsTab("saves_mods")}
+                  className={cn(
+                    "px-4 py-2.5 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5",
+                    activeDetailsTab === "saves_mods"
+                      ? "border-cyan-500 text-cyan-400"
+                      : "border-transparent text-slate-400 hover:text-slate-200",
+                  )}
+                  data-testid="tab-btn-saves-mods"
+                >
+                  <FolderSync className="w-3.5 h-3.5" />
+                  {t("gameLibrary.savesAndModsTab", undefined, "Saves & Mods")}
+                  {(isSupportedGame(selectedGame.id) ||
+                    isSupportedGame(selectedGame.title)) && (
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-1 py-0 bg-cyan-950/60 border-cyan-700/60 text-cyan-300 font-mono"
+                    >
+                      Cloud
+                    </Badge>
+                  )}
+                </button>
+              </div>
+
+              {activeDetailsTab === "overview" ? (
+                /* Modal Body Info & Friends */
+                <div className="p-5 space-y-6 max-h-[60vh] overflow-y-auto">
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3">
@@ -1566,13 +1701,32 @@ export function GameLibrary() {
                   )}
                 </div>
               </div>
+              ) : (
+                <GameSavesAndModsTab
+                  game={selectedGame}
+                  supportedDef={
+                    getSupportedGame(selectedGame.id) ||
+                    getSupportedGame(selectedGame.title)
+                  }
+                  onOpenConflictResolver={(conflict) =>
+                    setActiveConflict(conflict)
+                  }
+                  onOpenSupportedGamesDirectory={() => {
+                    setSelectedGame(null);
+                    setIsSupportedGamesModalOpen(true);
+                  }}
+                />
+              )}
 
               {/* Modal Footer */}
               <DialogFooter className="p-4 bg-slate-950/60 border-t border-slate-800 flex items-center justify-end">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSelectedGame(null)}
+                  onClick={() => {
+                    setSelectedGame(null);
+                    pendingInitialTabRef.current = null;
+                  }}
                   className="border-slate-700 bg-slate-800/50 hover:bg-slate-800 text-slate-300 text-xs"
                 >
                   {t("common.close", undefined, "Close")}
@@ -1700,6 +1854,39 @@ export function GameLibrary() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Supported Games Modal ─────────────────────────────────────────── */}
+      <SupportedGamesModal
+        open={isSupportedGamesModalOpen}
+        onOpenChange={setIsSupportedGamesModalOpen}
+        installedGames={games}
+        onOpenGameDetails={(game, initialTab) => {
+          const targetTab = initialTab || "saves_mods";
+          if (selectedGame?.id === game.id) {
+            setActiveDetailsTab(targetTab);
+            pendingInitialTabRef.current = null;
+          } else {
+            pendingInitialTabRef.current = targetTab;
+            setSelectedGame(game);
+            setActiveDetailsTab(targetTab);
+          }
+          setIsSupportedGamesModalOpen(false);
+        }}
+        onOpenConflictResolver={(conflict) => {
+          setActiveConflict(conflict);
+        }}
+      />
+
+      {/* ─── Side-by-Side Conflict Resolver Modal ──────────────────────────── */}
+      <ConflictResolverModal
+        open={!!activeConflict}
+        conflict={activeConflict}
+        onClose={() => setActiveConflict(null)}
+        onResolved={() => {
+          setActiveConflict(null);
+          loadServerGamesAndPlaytimes();
+        }}
+      />
     </div>
   );
 }

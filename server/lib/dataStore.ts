@@ -134,6 +134,104 @@ export interface UserPresenceRecord {
   [key: string]: any;
 }
 
+// ---------------------------------------------------------------------------
+// Game Sync, Snapshots, and Conflict Data Models
+// ---------------------------------------------------------------------------
+
+export type GameDataCategory =
+  | "saves"
+  | "mod_lists"
+  | "custom_mods"
+  | "ideologies"
+  | "xenotypes"
+  | "submarines"
+  | "data";
+
+export const VALID_GAME_DATA_CATEGORIES: readonly GameDataCategory[] = [
+  "saves",
+  "mod_lists",
+  "custom_mods",
+  "ideologies",
+  "xenotypes",
+  "submarines",
+  "data",
+] as const;
+
+export interface GameSyncConfigRecord {
+  id: string; // Typically matches game_id (e.g. rain_world, rimworld)
+  user_id: string;
+  game_id: string;
+  enabled: boolean;
+  categories: Record<string, boolean>;
+  custom_paths?: {
+    install_path?: string;
+    save_path?: string;
+    mods_path?: string;
+    config_path?: string;
+    [key: string]: string | undefined;
+  };
+  last_synced_at?: string | null;
+  sync_status?: "idle" | "syncing" | "paused_conflict" | "error";
+  created_at: string;
+  updated_at: string;
+  [key: string]: any;
+}
+
+export interface GameSnapshotRecord {
+  id: string; // Unique snapshot UUID
+  user_id: string;
+  game_id: string;
+  category: GameDataCategory;
+  name: string;
+  is_manual: boolean; // true = permanent manual snapshot; false = auto-synced version
+  expires_at: string | null; // ISO timestamp (createdAt + 24h) if !is_manual, null if is_manual
+  storage_path?: string; // e.g. Storage/<userId>/games/<gameId>/snapshots/<filename>.zip
+  content_hash: string; // SHA-256 content checksum
+  file_size: number; // File size in bytes
+  item_count: number; // Number of files or mods in snapshot
+  summary?: {
+    files?: Array<{ path: string; size: number; hash: string }>;
+    mods?: Array<{ id: string; name: string; version?: string; enabled?: boolean }>;
+    save_info?: { colony_name?: string; ingame_date?: string; difficulty?: string; [key: string]: any };
+    description?: string;
+    [key: string]: any;
+  };
+  is_archived?: boolean;
+  archive_reason?:
+    | "conflict_alternate_local"
+    | "conflict_alternate_cloud"
+    | "manual_archive";
+  created_at: string;
+  updated_at: string;
+  [key: string]: any;
+}
+
+export interface GameConflictVersion {
+  timestamp: string;
+  content_hash: string;
+  file_size: number;
+  item_count: number;
+  summary?: any;
+  snapshot_id?: string;
+  storage_temp_path?: string;
+  [key: string]: any;
+}
+
+export interface GameConflictRecord {
+  id: string; // Unique conflict UUID
+  user_id: string;
+  game_id: string;
+  category: GameDataCategory | string;
+  status: "active" | "resolved";
+  local_version: GameConflictVersion;
+  cloud_version: GameConflictVersion;
+  resolution?: "keep_local" | "keep_cloud" | "keep_both";
+  resolved_at?: string | null;
+  created_at: string;
+  updated_at?: string;
+  [key: string]: any;
+}
+
 // Ensure Data directory exists
 function ensureDir(dirPath: string) {
   if (!fs.existsSync(dirPath)) {
@@ -158,7 +256,25 @@ function writeJsonFile(filePath: string, data: any) {
   ensureDir(path.dirname(filePath));
   const tempPath = `${filePath}.${Date.now()}.${Math.random().toString(36).substring(2, 8)}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), "utf-8");
-  fs.renameSync(tempPath, filePath);
+  let renamed = false;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      fs.renameSync(tempPath, filePath);
+      renamed = true;
+      break;
+    } catch (err: any) {
+      if (attempt === 4 || !["EPERM", "ENOENT", "EBUSY"].includes(err?.code)) {
+        // Fallback to direct write if rename fails
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+        try { fs.unlinkSync(tempPath); } catch {}
+        renamed = true;
+        break;
+      }
+      // Brief synchronous spin/sleep
+      const start = Date.now();
+      while (Date.now() - start < 15) {}
+    }
+  }
 }
 
 /**
@@ -237,6 +353,7 @@ export function initUserFolder(
 
   // Also ensure upload directories exist
   ensureDir(path.join(process.cwd(), "uploads", "Storage", userId));
+  ensureDir(path.join(process.cwd(), "uploads", "Storage", userId, "games"));
   ensureDir(path.join(process.cwd(), "uploads", "public-assets", userId));
 
   const now = new Date().toISOString();
@@ -321,6 +438,9 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "games", "games.json"), []);
   writeJsonFile(path.join(userDir, "games", "playtime.json"), []);
   writeJsonFile(path.join(userDir, "games", "presence.json"), []);
+  writeJsonFile(path.join(userDir, "games", "sync_config.json"), []);
+  writeJsonFile(path.join(userDir, "games", "snapshots.json"), []);
+  writeJsonFile(path.join(userDir, "games", "conflicts.json"), []);
   writeJsonFile(path.join(userDir, "points", "transactions.json"), []);
   writeJsonFile(path.join(userDir, "points", "gifts.json"), []);
 
@@ -613,6 +733,24 @@ export function getTableFilePath(
       case "presences":
         filePath = path.join(userDir, "games", "presence.json");
         break;
+      case "game_sync_configs":
+      case "game_sync_config":
+      case "game_sync_settings":
+      case "game_sync_preferences":
+        filePath = path.join(userDir, "games", "sync_config.json");
+        break;
+      case "game_snapshots":
+      case "game_snapshot":
+      case "game_sync_snapshots":
+      case "game_sync_items":
+      case "game_saves_snapshots":
+        filePath = path.join(userDir, "games", "snapshots.json");
+        break;
+      case "game_conflicts":
+      case "game_conflict":
+      case "game_sync_conflicts":
+        filePath = path.join(userDir, "games", "conflicts.json");
+        break;
       case "points_transactions":
       case "point_transactions":
       case "user_points_transactions":
@@ -637,15 +775,48 @@ export function getTableFilePath(
   return null;
 }
 
+const PRIVATE_GAME_TABLES = new Set([
+  "game_sync_configs",
+  "game_sync_config",
+  "game_sync_settings",
+  "game_sync_preferences",
+  "game_snapshots",
+  "game_snapshot",
+  "game_sync_snapshots",
+  "game_sync_items",
+  "game_saves_snapshots",
+  "game_conflicts",
+  "game_conflict",
+  "game_sync_conflicts",
+  "user_games",
+  "games",
+  "game_library",
+  "installed_games",
+  "custom_games",
+  "user_playtime",
+  "game_playtime",
+  "playtime",
+  "playtimes",
+  "user_presence",
+  "game_presence",
+  "presence",
+  "presences",
+]);
+
 /**
  * Reads all rows from a table across either a specific user or all users.
  */
 export function getTableRows(table: string, userId?: string | number): any[] {
-  const normTable = table.toLowerCase();
+  const normTable = table.trim().toLowerCase();
   const userIdStr =
     userId !== undefined && userId !== null && String(userId).trim() !== ""
       ? String(userId)
       : undefined;
+
+  // Private game tables require explicit userId; never aggregate across all users
+  if (!userIdStr && PRIVATE_GAME_TABLES.has(normTable)) {
+    return [];
+  }
 
   // If table is a single object file (profile / preferences)
   if (normTable === "profiles" || normTable === "profile_pictures") {
@@ -1558,6 +1729,85 @@ export function getPointsStatus(
 }
 
 /**
+ * Prunes expired auto-sync game snapshots across a specific user or all users.
+ * Permanent manual snapshots (is_manual: true or expires_at: null) are never pruned.
+ */
+export function pruneExpiredGameSnapshots(userId?: string | number): {
+  prunedCount: number;
+  freedBytes: number;
+} {
+  const targetUserIds =
+    userId !== undefined && userId !== null && String(userId).trim() !== ""
+      ? [String(userId)]
+      : getAllUserIds();
+
+  const nowMs = Date.now();
+  let prunedCount = 0;
+  let freedBytes = 0;
+
+  for (const uid of targetUserIds) {
+    const snapshots = getTableRows("game_snapshots", uid) as GameSnapshotRecord[];
+    if (!snapshots || snapshots.length === 0) continue;
+
+    const activeSnapshots: GameSnapshotRecord[] = [];
+    let modified = false;
+
+    for (const snap of snapshots) {
+      // Manual snapshots are permanent and never expire
+      if (snap.is_manual || !snap.expires_at) {
+        activeSnapshots.push(snap);
+        continue;
+      }
+
+      const expMs = new Date(snap.expires_at).getTime();
+      if (!isNaN(expMs) && expMs <= nowMs) {
+        prunedCount++;
+        freedBytes += Number(snap.file_size) || 0;
+        modified = true;
+
+        // Clean up physical file if present
+        if (snap.storage_path) {
+          try {
+            const userUploadsBase = path.resolve(
+              process.cwd(),
+              "uploads",
+              "Storage",
+              String(uid),
+            );
+            const absPath = path.resolve(
+              process.cwd(),
+              "uploads",
+              snap.storage_path,
+            );
+            const rel = path.relative(userUploadsBase, absPath);
+            if (
+              rel !== "" &&
+              !rel.startsWith("..") &&
+              !path.isAbsolute(rel) &&
+              fs.existsSync(absPath) &&
+              fs.statSync(absPath).isFile()
+            ) {
+              fs.unlinkSync(absPath);
+            }
+          } catch (err) {
+            console.error("Failed to delete expired snapshot file:", err);
+          }
+        }
+        continue;
+      }
+
+      activeSnapshots.push(snap);
+    }
+
+    if (modified) {
+      saveTableRows("game_snapshots", uid, activeSnapshots);
+    }
+  }
+
+  return { prunedCount, freedBytes };
+}
+
+/**
  * RPC Function handlers.
  */
 export function callRpc(name: string, param2?: any, param3?: any): any {
@@ -2407,6 +2657,394 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       }
 
       return activities;
+    }
+
+    // -----------------------------------------------------------------------
+    // Game Cloud Sync, Snapshots, and Conflict RPCs
+    // -----------------------------------------------------------------------
+    case "get_game_sync_configs": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const gameId = args?.game_id ?? args?.p_game_id ?? args?.id;
+      const configs = getTableRows("game_sync_configs", userId) as GameSyncConfigRecord[];
+      if (gameId) {
+        const found = configs.find((c) => c.game_id === gameId || c.id === gameId);
+        return { success: true, config: found || null };
+      }
+      return { success: true, configs };
+    }
+
+    case "upsert_game_sync_config": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const gameId = String(args?.game_id ?? args?.p_game_id ?? args?.id ?? "").trim();
+      if (!gameId) return { success: false, error: "game_id is required" };
+      if (gameId.includes("..") || path.isAbsolute(gameId)) {
+        return { success: false, error: "Invalid game_id" };
+      }
+
+      const now = new Date().toISOString();
+      const configs = getTableRows("game_sync_configs", userId) as GameSyncConfigRecord[];
+      const existingIdx = configs.findIndex((c) => c.game_id === gameId || c.id === gameId);
+
+      let updatedRecord: GameSyncConfigRecord;
+      if (existingIdx >= 0) {
+        const prev = configs[existingIdx];
+        updatedRecord = {
+          ...prev,
+          enabled: typeof args.enabled === "boolean" ? args.enabled : prev.enabled,
+          categories: args.categories
+            ? { ...(prev.categories || {}), ...args.categories }
+            : prev.categories,
+          custom_paths: args.custom_paths
+            ? { ...(prev.custom_paths || {}), ...args.custom_paths }
+            : prev.custom_paths,
+          last_synced_at: args.last_synced_at !== undefined ? args.last_synced_at : prev.last_synced_at,
+          sync_status: args.sync_status ?? prev.sync_status ?? "idle",
+          updated_at: now,
+        };
+        configs[existingIdx] = updatedRecord;
+      } else {
+        updatedRecord = {
+          id: gameId,
+          user_id: userId,
+          game_id: gameId,
+          enabled: typeof args.enabled === "boolean" ? args.enabled : true,
+          categories: args.categories || {},
+          custom_paths: args.custom_paths || {},
+          last_synced_at: args.last_synced_at || null,
+          sync_status: args.sync_status || "idle",
+          created_at: now,
+          updated_at: now,
+        };
+        configs.push(updatedRecord);
+      }
+
+      saveTableRows("game_sync_configs", userId, configs);
+      return { success: true, config: updatedRecord };
+    }
+
+    case "get_game_snapshots": {
+      if (!userId) return { success: false, error: "Unauthorized", snapshots: [] };
+      const includeExpired = Boolean(args?.include_expired);
+      if (!includeExpired) {
+        pruneExpiredGameSnapshots(userId);
+      }
+
+      const gameId = args?.game_id ?? args?.p_game_id;
+      const category = args?.category ?? args?.p_category;
+      const includeArchived = Boolean(args?.include_archived);
+
+      let snapshots = getTableRows("game_snapshots", userId) as GameSnapshotRecord[];
+
+      if (gameId) {
+        snapshots = snapshots.filter((s) => s.game_id === gameId);
+      }
+      if (category) {
+        snapshots = snapshots.filter((s) => s.category === category);
+      }
+      if (!includeArchived) {
+        snapshots = snapshots.filter((s) => !s.is_archived);
+      }
+
+      snapshots.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return { success: true, count: snapshots.length, snapshots };
+    }
+
+    case "create_game_snapshot": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const gameId = String(args?.game_id ?? args?.p_game_id ?? "").trim();
+      const category = String(args?.category ?? args?.p_category ?? "").trim();
+      if (!gameId || !category) {
+        return { success: false, error: "game_id and category are required" };
+      }
+
+      if (gameId.includes("..") || path.isAbsolute(gameId)) {
+        return { success: false, error: "Invalid game_id" };
+      }
+
+      if (!VALID_GAME_DATA_CATEGORIES.includes(category as GameDataCategory)) {
+        return { success: false, error: "Invalid category" };
+      }
+
+      let validatedStoragePath: string | undefined = undefined;
+      if (args?.storage_path !== undefined && args?.storage_path !== null) {
+        const sp = String(args.storage_path).trim();
+        if (sp) {
+          if (sp.includes("..") || path.isAbsolute(sp)) {
+            return {
+              success: false,
+              error: "Invalid storage_path: path traversal detected",
+            };
+          }
+          const userStorageBase = path.resolve(
+            process.cwd(),
+            "uploads",
+            "Storage",
+            String(userId),
+          );
+          const resolvedPath = path.resolve(process.cwd(), "uploads", sp);
+          const rel = path.relative(userStorageBase, resolvedPath);
+          if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+            return {
+              success: false,
+              error: "Invalid storage_path: path traversal detected",
+            };
+          }
+          validatedStoragePath = sp;
+        }
+      }
+
+      const isManual = Boolean(args?.is_manual);
+      const now = new Date().toISOString();
+      let expiresAt: string | null = null;
+
+      if (isManual) {
+        expiresAt = null;
+      } else if (args?.expires_at) {
+        expiresAt = args.expires_at;
+      } else if (category === "mod_lists") {
+        // 24-hour expiration for auto-synced mod lists
+        const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+        expiresAt = new Date(Date.now() + TWENTY_FOUR_HOURS_MS).toISOString();
+      }
+
+      const defaultName = isManual
+        ? `Manual Snapshot ${now.replace(/T/, " ").slice(0, 19)}`
+        : `Auto-sync ${now.replace(/T/, " ").slice(0, 19)}`;
+
+      const snapshot: GameSnapshotRecord = {
+        id: args?.id || crypto.randomUUID(),
+        user_id: userId,
+        game_id: gameId,
+        category: category as GameDataCategory,
+        name: (args?.name || defaultName).trim(),
+        is_manual: isManual,
+        expires_at: expiresAt,
+        storage_path: validatedStoragePath,
+        content_hash: String(args?.content_hash || "").trim(),
+        file_size: Number(args?.file_size) || 0,
+        item_count: Number(args?.item_count) || 1,
+        summary: args?.summary || {},
+        is_archived: Boolean(args?.is_archived),
+        archive_reason: args?.archive_reason || undefined,
+        created_at: now,
+        updated_at: now,
+      };
+
+      const snapshots = getTableRows("game_snapshots", userId) as GameSnapshotRecord[];
+      snapshots.push(snapshot);
+      saveTableRows("game_snapshots", userId, snapshots);
+
+      // Update last_synced_at on game_sync_configs if present
+      const configs = getTableRows("game_sync_configs", userId) as GameSyncConfigRecord[];
+      const cfg = configs.find((c) => c.game_id === gameId);
+      if (cfg) {
+        cfg.last_synced_at = now;
+        cfg.sync_status = "idle";
+        cfg.updated_at = now;
+        saveTableRows("game_sync_configs", userId, configs);
+      }
+
+      return { success: true, snapshot };
+    }
+
+    case "restore_game_snapshot": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const snapshotId = String(args?.snapshot_id ?? args?.id ?? args?.p_snapshot_id ?? "").trim();
+      if (!snapshotId) return { success: false, error: "snapshot_id is required" };
+
+      const snapshots = getTableRows("game_snapshots", userId) as GameSnapshotRecord[];
+      const snap = snapshots.find((s) => s.id === snapshotId);
+      if (!snap) return { success: false, error: "Snapshot not found" };
+
+      return {
+        success: true,
+        snapshot: snap,
+        restore_target: {
+          game_id: snap.game_id,
+          category: snap.category,
+          content_hash: snap.content_hash,
+          file_size: snap.file_size,
+          item_count: snap.item_count,
+          storage_path: snap.storage_path,
+          summary: snap.summary,
+        },
+      };
+    }
+
+    case "delete_game_snapshot": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const snapshotId = String(args?.snapshot_id ?? args?.id ?? args?.p_snapshot_id ?? "").trim();
+      if (!snapshotId) return { success: false, error: "snapshot_id is required" };
+
+      const snapshots = getTableRows("game_snapshots", userId) as GameSnapshotRecord[];
+      const idx = snapshots.findIndex((s) => s.id === snapshotId);
+      if (idx === -1) return { success: false, error: "Snapshot not found" };
+
+      const [removed] = snapshots.splice(idx, 1);
+      saveTableRows("game_snapshots", userId, snapshots);
+
+      if (removed.storage_path) {
+        try {
+          const userStorageBase = path.resolve(
+            process.cwd(),
+            "uploads",
+            "Storage",
+            String(userId),
+          );
+          const fullPath = path.resolve(
+            process.cwd(),
+            "uploads",
+            removed.storage_path,
+          );
+          const rel = path.relative(userStorageBase, fullPath);
+          if (
+            rel !== "" &&
+            !rel.startsWith("..") &&
+            !path.isAbsolute(rel) &&
+            fs.existsSync(fullPath) &&
+            fs.statSync(fullPath).isFile()
+          ) {
+            fs.unlinkSync(fullPath);
+          }
+        } catch {}
+      }
+
+      return { success: true, deleted_id: snapshotId };
+    }
+
+    case "promote_game_snapshot": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const snapshotId = String(args?.snapshot_id ?? args?.id ?? args?.p_snapshot_id ?? "").trim();
+      if (!snapshotId) return { success: false, error: "snapshot_id is required" };
+
+      const snapshots = getTableRows("game_snapshots", userId) as GameSnapshotRecord[];
+      const snap = snapshots.find((s) => s.id === snapshotId);
+      if (!snap) return { success: false, error: "Snapshot not found" };
+
+      snap.is_manual = true;
+      snap.expires_at = null;
+      if (args?.name) {
+        snap.name = String(args.name).trim();
+      }
+      snap.updated_at = new Date().toISOString();
+
+      saveTableRows("game_snapshots", userId, snapshots);
+      return { success: true, snapshot: snap };
+    }
+
+    case "get_game_conflicts": {
+      if (!userId) return { success: false, error: "Unauthorized", conflicts: [] };
+      const gameId = args?.game_id ?? args?.p_game_id;
+      const status = args?.status || "active";
+
+      let conflicts = getTableRows("game_conflicts", userId) as GameConflictRecord[];
+      if (status !== "all") {
+        conflicts = conflicts.filter((c) => c.status === status);
+      }
+      if (gameId) {
+        conflicts = conflicts.filter((c) => c.game_id === gameId);
+      }
+
+      conflicts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return { success: true, count: conflicts.length, conflicts };
+    }
+
+    case "resolve_game_conflict": {
+      if (!userId) return { success: false, error: "Unauthorized" };
+      const conflictId = String(args?.conflict_id ?? args?.id ?? args?.p_conflict_id ?? "").trim();
+      const resolution = String(args?.resolution ?? args?.p_resolution ?? "").trim();
+
+      if (!conflictId) return { success: false, error: "conflict_id is required" };
+      if (!["keep_local", "keep_cloud", "keep_both"].includes(resolution)) {
+        return {
+          success: false,
+          error: 'Invalid resolution. Must be "keep_local", "keep_cloud", or "keep_both"',
+        };
+      }
+
+      const conflicts = getTableRows("game_conflicts", userId) as GameConflictRecord[];
+      const conflict = conflicts.find((c) => c.id === conflictId);
+      if (!conflict) return { success: false, error: "Conflict not found" };
+      if (conflict.status === "resolved") {
+        return { success: false, error: "Conflict is already resolved" };
+      }
+
+      const now = new Date().toISOString();
+      let activeSnapshot: GameSnapshotRecord | null = null;
+      let archivedSnapshot: GameSnapshotRecord | null = null;
+
+      const snapshots = getTableRows("game_snapshots", userId) as GameSnapshotRecord[];
+
+      if (resolution === "keep_local") {
+        // Local version wins and becomes the new active cloud snapshot
+        activeSnapshot = {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          game_id: conflict.game_id,
+          category: conflict.category as any,
+          name: args?.archive_name || `Resolved (Local) ${now.replace(/T/, " ").slice(0, 19)}`,
+          is_manual: true,
+          expires_at: null,
+          storage_path: conflict.local_version.storage_temp_path,
+          content_hash: conflict.local_version.content_hash,
+          file_size: conflict.local_version.file_size,
+          item_count: conflict.local_version.item_count,
+          summary: conflict.local_version.summary,
+          created_at: now,
+          updated_at: now,
+        };
+        snapshots.push(activeSnapshot);
+      } else if (resolution === "keep_cloud") {
+        // Cloud version wins
+        activeSnapshot = snapshots.find((s) => s.id === conflict.cloud_version.snapshot_id) || null;
+      } else if (resolution === "keep_both") {
+        // Keep both: Archive local version safely as backup, cloud version stays active
+        archivedSnapshot = {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          game_id: conflict.game_id,
+          category: conflict.category as any,
+          name: args?.archive_name || `Backup (Local Conflict) ${now.replace(/T/, " ").slice(0, 19)}`,
+          is_manual: true,
+          expires_at: null,
+          storage_path: conflict.local_version.storage_temp_path,
+          content_hash: conflict.local_version.content_hash,
+          file_size: conflict.local_version.file_size,
+          item_count: conflict.local_version.item_count,
+          summary: conflict.local_version.summary,
+          is_archived: true,
+          archive_reason: "conflict_alternate_local",
+          created_at: now,
+          updated_at: now,
+        };
+        snapshots.push(archivedSnapshot);
+        activeSnapshot = snapshots.find((s) => s.id === conflict.cloud_version.snapshot_id) || null;
+      }
+
+      saveTableRows("game_snapshots", userId, snapshots);
+
+      // Mark conflict as resolved
+      conflict.status = "resolved";
+      conflict.resolution = resolution as any;
+      conflict.resolved_at = now;
+      saveTableRows("game_conflicts", userId, conflicts);
+
+      // Resume normal sync in game_sync_configs
+      const configs = getTableRows("game_sync_configs", userId) as GameSyncConfigRecord[];
+      const cfg = configs.find((c) => c.game_id === conflict.game_id);
+      if (cfg && cfg.sync_status === "paused_conflict") {
+        cfg.sync_status = "idle";
+        cfg.updated_at = now;
+        saveTableRows("game_sync_configs", userId, configs);
+      }
+
+      return {
+        success: true,
+        resolution,
+        conflict,
+        active_snapshot: activeSnapshot,
+        archived_snapshot: archivedSnapshot,
+      };
     }
     default:
       return null;

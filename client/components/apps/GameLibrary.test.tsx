@@ -182,6 +182,142 @@ vi.mock("@/lib/db", () => {
           error: null,
         });
       }
+      if (name === "get_game_sync_configs") {
+        return Promise.resolve({
+          data: {
+            success: true,
+            configs: [
+              {
+                id: "rimworld",
+                game_id: "rimworld",
+                enabled: true,
+                categories: { saves: true, mod_lists: true, custom_mods: true },
+                created_at: "2026-09-08T10:00:00Z",
+                updated_at: "2026-09-08T10:00:00Z",
+              },
+            ],
+          },
+          error: null,
+        });
+      }
+      if (name === "upsert_game_sync_config") {
+        return Promise.resolve({
+          data: {
+            success: true,
+            config: {
+              id: args.game_id,
+              game_id: args.game_id,
+              enabled: args.enabled !== undefined ? args.enabled : true,
+              categories: args.categories || {},
+              custom_paths: args.custom_paths || {},
+              created_at: "2026-09-08T10:00:00Z",
+              updated_at: "2026-09-08T10:00:00Z",
+            },
+          },
+          error: null,
+        });
+      }
+      if (name === "get_game_snapshots") {
+        return Promise.resolve({
+          data: {
+            success: true,
+            count: 2,
+            snapshots: [
+              {
+                id: "snap_auto_1",
+                game_id: "rimworld",
+                category: "mod_lists",
+                name: "Auto-Sync Mod List",
+                is_manual: false,
+                expires_at: new Date(Date.now() + 86400000).toISOString(),
+                content_hash: "hash_auto_1234567890",
+                file_size: 4096,
+                item_count: 15,
+                created_at: "2026-09-08T12:00:00Z",
+                updated_at: "2026-09-08T12:00:00Z",
+              },
+              {
+                id: "snap_manual_1",
+                game_id: "rimworld",
+                category: "saves",
+                name: "Year 5 Colony Save",
+                is_manual: true,
+                expires_at: null,
+                content_hash: "hash_manual_0987654321",
+                file_size: 1048576,
+                item_count: 1,
+                created_at: "2026-09-08T11:00:00Z",
+                updated_at: "2026-09-08T11:00:00Z",
+              },
+            ],
+          },
+          error: null,
+        });
+      }
+      if (name === "create_game_snapshot") {
+        return Promise.resolve({
+          data: {
+            success: true,
+            snapshot: {
+              id: "snap_new_manual",
+              game_id: args.game_id,
+              category: args.category,
+              name: args.name,
+              is_manual: true,
+              expires_at: null,
+              content_hash: args.content_hash || "mock_hash",
+              file_size: args.file_size || 1024,
+              item_count: args.item_count || 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          },
+          error: null,
+        });
+      }
+      if (name === "promote_game_snapshot") {
+        return Promise.resolve({
+          data: {
+            success: true,
+            snapshot: {
+              id: args.snapshot_id,
+              is_manual: true,
+              expires_at: null,
+            },
+          },
+          error: null,
+        });
+      }
+      if (name === "restore_game_snapshot" || name === "delete_game_snapshot") {
+        return Promise.resolve({
+          data: { success: true },
+          error: null,
+        });
+      }
+      if (name === "get_game_conflicts") {
+        return Promise.resolve({
+          data: {
+            success: true,
+            conflicts: [],
+          },
+          error: null,
+        });
+      }
+      if (name === "resolve_game_conflict") {
+        return Promise.resolve({
+          data: {
+            success: true,
+            resolution: args.resolution,
+            conflict: {
+              id: args.conflict_id,
+              game_id: "rimworld",
+              category: "saves",
+              status: "resolved",
+            },
+          },
+          error: null,
+        });
+      }
       return Promise.resolve({ data: null, error: null });
     }),
   };
@@ -537,6 +673,102 @@ describe("GameLibrary Component", () => {
 
       unmount();
       expect(mockUnsubscribe).toHaveBeenCalled();
+    });
+  });
+
+  describe("Milestone 4: Cloud Sync & Supported Games UI Integration", () => {
+    it("renders 'Supported Games' button in header and opens modal with all 8 games", async () => {
+      render(
+        <MemoryRouter>
+          <GameLibrary />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("supported-games-btn")).toBeDefined();
+      });
+
+      // Click Supported Games button
+      fireEvent.click(screen.getByTestId("supported-games-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("supported-games-modal")).toBeDefined();
+        // Verify recognized games are listed
+        expect(screen.getByText("Rain World")).toBeDefined();
+        expect(screen.getByText("RimWorld")).toBeDefined();
+        expect(screen.getByText("Library Of Ruina")).toBeDefined();
+        expect(screen.getByText("Lobotomy Corporation")).toBeDefined();
+        expect(screen.getByText("Ostranauts")).toBeDefined();
+        expect(screen.getByText("Barotrauma")).toBeDefined();
+        expect(screen.getByText("Kenshi")).toBeDefined();
+        expect(screen.getByText("Space Haven")).toBeDefined();
+      });
+    });
+
+    it("allows toggling global sync switches in Supported Games modal", async () => {
+      render(
+        <MemoryRouter>
+          <GameLibrary />
+        </MemoryRouter>,
+      );
+
+      fireEvent.click(screen.getByTestId("supported-games-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("enable-all-btn")).toBeDefined();
+        expect(screen.getByTestId("disable-all-btn")).toBeDefined();
+      });
+
+      // Click Disable All
+      fireEvent.click(screen.getByTestId("disable-all-btn"));
+      await waitFor(() => {
+        expect(db.rpc).toHaveBeenCalledWith("upsert_game_sync_config", expect.objectContaining({
+          enabled: false,
+        }));
+      });
+
+      // Click Enable All
+      fireEvent.click(screen.getByTestId("enable-all-btn"));
+      await waitFor(() => {
+        expect(db.rpc).toHaveBeenCalledWith("upsert_game_sync_config", expect.objectContaining({
+          enabled: true,
+        }));
+      });
+    });
+
+    it("allows switching to Saves & Mods tab in Game Details dialog", async () => {
+      render(
+        <MemoryRouter>
+          <GameLibrary />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Cyberpunk 2077")).toBeDefined();
+      });
+
+      // Open details dialog
+      fireEvent.click(screen.getByText("Cyberpunk 2077"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("game-details-tab-bar")).toBeDefined();
+        expect(screen.getByTestId("tab-btn-overview")).toBeDefined();
+        expect(screen.getByTestId("tab-btn-saves-mods")).toBeDefined();
+      });
+
+      // Switch to Saves & Mods tab
+      fireEvent.click(screen.getByTestId("tab-btn-saves-mods"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("unsupported-game-view")).toBeDefined();
+      });
+
+      // Switch back to Overview
+      fireEvent.click(screen.getByTestId("tab-btn-overview"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Friends with this Game")).toBeDefined();
+      });
     });
   });
 });
