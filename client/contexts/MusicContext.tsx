@@ -268,16 +268,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // Heartbeat: update the stored timestamp every second so it stays fresh
+  // Heartbeat: update the stored timestamp every second so it stays fresh.
+  // Use audioRef.current.paused as the ground truth to avoid a race where
+  // the interval fires after pause() writes isPlaying:false but before React
+  // re-renders and clears this interval (which would overwrite the saved state).
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
-      if (isPlayingRef.current) saveExitState(true);
+      const actuallyPlaying =
+        isPlayingRef.current && audioRef.current?.paused === false;
+      if (actuallyPlaying) saveExitState(true);
     }, 1000);
     return () => clearInterval(interval);
   }, [isPlaying, saveExitState]);
 
-  // Save on unload/hide
+  // Save on unload/hide. Use the audio element's paused property as the
+  // ground truth so that a paused-then-exit flow never saves isPlaying:true.
   useEffect(() => {
     const onExit = (e?: Event) => {
       if (
@@ -285,7 +291,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         document.visibilityState !== "hidden"
       )
         return;
-      saveExitState(isPlayingRef.current);
+      const actuallyPlaying =
+        isPlayingRef.current && audioRef.current?.paused === false;
+      saveExitState(actuallyPlaying);
     };
     window.addEventListener("beforeunload", onExit);
     window.addEventListener("pagehide", onExit);
