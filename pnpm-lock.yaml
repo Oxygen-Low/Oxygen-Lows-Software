@@ -32,13 +32,13 @@ importers:
         version: 0.12.2
       '@hono/node-server':
         specifier: ^2.1.1
-        version: 2.1.1(hono@4.13.5)
+        version: 2.1.1(hono@4.13.7)
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@oxygenlow/webdefender':
         specifier: ^0.2.2
-        version: 0.2.2(express@5.2.1)(hono@4.13.5)
+        version: 0.2.2(express@5.2.1)(hono@4.13.7)
       '@types/leaflet':
         specifier: ^1.9.22
         version: 1.9.22
@@ -70,8 +70,8 @@ importers:
         specifier: ^0.8.2
         version: 0.8.3
       hono:
-        specifier: ^4.13.5
-        version: 4.13.5
+        specifier: ^4.13.7
+        version: 4.13.7
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -2722,6 +2722,10 @@ packages:
     resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
     engines: {node: '>=16.9.0'}
 
+  hono@4.13.7:
+    resolution: {integrity: sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ==}
+    engines: {node: '>=16.9.0'}
+
   html-encoding-sniffer@6.0.0:
     resolution: {integrity: sha512-CV9TW3Y3f8/wT0BRFc1/KAVQ3TUHiXmaAb6VW9vtiMFf7SLoMd1PdAc4W3KFOFETBJUb90KatHqlsZMWV+R9Gg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
@@ -4273,9 +4277,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hono/node-server@2.1.1(hono@4.13.5)':
+  '@hono/node-server@2.1.1(hono@4.13.7)':
     dependencies:
-      hono: 4.13.5
+      hono: 4.13.7
 
   '@hookform/resolvers@5.9.1(@standard-schema/spec@1.1.0)(react-hook-form@7.87.0(react@19.2.8))(zod@4.4.3)':
     dependencies:
@@ -4331,10 +4335,10 @@ snapshots:
 
   '@oxc-project/types@0.147.0': {}
 
-  '@oxygenlow/webdefender@0.2.2(express@5.2.1)(hono@4.13.5)':
+  '@oxygenlow/webdefender@0.2.2(express@5.2.1)(hono@4.13.7)':
     optionalDependencies:
       express: 5.2.1
-      hono: 4.13.5
+      hono: 4.13.7
 
   '@paralleldrive/cuid2@2.3.1':
     dependencies:
@@ -6143,6 +6147,8 @@ snapshots:
   hls.js@1.7.0: {}
 
   hono@4.13.5: {}
+
+  hono@4.13.7: {}
 
   html-encoding-sniffer@6.0.0(@noble/hashes@1.8.0):
     dependencies:
