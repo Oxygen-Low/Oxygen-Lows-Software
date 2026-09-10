@@ -16,6 +16,7 @@ vi.mock("@/lib/desktopBridge", () => ({
   getGameIcon: vi.fn(async () => ({ iconDataUrl: "" })),
   getRunningGames: vi.fn(async () => ({ runningGames: [] })),
   setupGameBridgeListeners: vi.fn(() => () => {}),
+  addPushEventListener: vi.fn(() => () => {}),
 }));
 
 afterEach(() => {
