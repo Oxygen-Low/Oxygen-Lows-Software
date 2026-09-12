@@ -43,7 +43,6 @@ import { supabase } from "@/lib/db";
 import {
   getActiveMasterKey,
   setActiveMasterKey,
-  onAutoLock,
   migrateCategoryEncryption,
   deriveEncryptionKeyFromPassword,
   type EncryptionCategory,
@@ -147,16 +146,6 @@ export default function Security() {
   useEffect(() => {
     setActiveMasterKey(keyBytes);
   }, [keyBytes]);
-
-  // Listen for auto-lock timeout
-  useEffect(() => {
-    const unsubscribe = onAutoLock(() => {
-      setKeyBytes(null);
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, []);
 
   const handleUnlockWithPassword = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();

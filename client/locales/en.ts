@@ -1167,7 +1167,7 @@ export const en = {
     formatBase58: "Base58",
     formatWords: "Passphrase Words",
     clientSideNotice:
-      "Zero-Knowledge: Your encryption key is derived only in your browser session and is never sent to any server.",
+      "Zero-Knowledge: Your encryption key is derived from your password in your browser and is never sent to any server.",
     encryptionSettingsTitle: "Protected Data Categories",
     encryptionSettingsDesc:
       "Toggle client-side AES-256 encryption for each data category. When enabled, data is encrypted with your password key before storage.",
@@ -1196,8 +1196,10 @@ export const en = {
     settingsSavedToast: "Encryption settings updated",
     encryptionPromptTitle: "Decryption Required",
     encryptionPromptDesc:
-      "This section is encrypted with your 256-bit AES masterkey. Please enter or unlock your key to decrypt and access your data.",
-    goToSecurityButton: "Go to Security to Unlock",
+      "This section is encrypted. Enter your account password below to unlock your data for this session.",
+    goToSecurityButton: "Go to Security",
+    inlineUnlockTitle: "Unlock Encryption",
+    inlineUnlockBtn: "Unlock & Decrypt",
     quickUnlockTitle: "Quick Unlock on this Page",
     quickUnlockPlaceholder: "Paste 64-char Hex or Base64 masterkey...",
     quickUnlockButton: "Unlock & Decrypt",
@@ -1212,7 +1214,6 @@ export const en = {
     invalidKeyFileError:
       "No valid 256-bit masterkey found in the uploaded file.",
     readKeyFileError: "Failed to read .key file.",
-    autoLockedToast: "Masterkey locked due to 30 minutes of inactivity.",
     masterKeyRequiredToChange:
       "Your session is currently locked. Unlock your session with your password to change encryption settings.",
     masterKeyRequiredNotice:
@@ -1225,7 +1226,7 @@ export const en = {
     rotateKeyButton: "Rotate Masterkey",
     unlockWithPasswordTitle: "Unlock with Password",
     unlockWithPasswordDesc:
-      "Enter your account password to derive your zero-knowledge AES-256 encryption key and unlock your data.",
+      "Enter your account password to unlock your encrypted data for this session.",
     enterAccountPassword: "Enter your account password...",
     unlockWithPasswordBtn: "Unlock with Password",
     unlockSuccessToast: "Decryption key derived and session unlocked",

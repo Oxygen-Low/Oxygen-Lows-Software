@@ -79,33 +79,6 @@ const Legal = lazyWithRetry(() => import("./pages/Legal"));
 const License = lazyWithRetry(() => import("./pages/License"));
 const Download = lazyWithRetry(() => import("./pages/Download"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { useEffect } from "react";
-import { initAutoLockListener, onAutoLock } from "@/lib/crypto";
-import { useTranslation } from "@/contexts/LanguageContext";
-import { toast } from "sonner";
-
-function AutoLockWatcher() {
-  const { t } = useTranslation();
-
-  useEffect(() => {
-    const cleanup = initAutoLockListener();
-    const unsubscribe = onAutoLock(() => {
-      toast.info(
-        t(
-          "security.autoLockedToast",
-          undefined,
-          "Masterkey locked due to 30 minutes of inactivity.",
-        ),
-      );
-    });
-    return () => {
-      cleanup();
-      unsubscribe();
-    };
-  }, [t]);
-
-  return null;
-}
 
 const queryClient = new QueryClient();
 
@@ -113,7 +86,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <LanguageProvider>
-        <AutoLockWatcher />
         <ThemeProvider>
           <BrowserRouter>
             <MusicProvider>

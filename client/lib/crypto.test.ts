@@ -14,13 +14,6 @@ import {
   importAes256GcmCryptoKey,
   getActiveCryptoKey,
   zeroizeBytes,
-  AUTO_LOCK_TIMEOUT_MS,
-  AUTO_LOCK_LAST_ACTIVITY_KEY,
-  recordUserActivity,
-  getLastUserActivity,
-  setLastUserActivityForTesting,
-  checkAutoLockExpiry,
-  onAutoLock,
   getActiveMasterKey,
   setActiveMasterKey,
   clearActiveMasterKey,
@@ -96,52 +89,6 @@ describe("Crypto Utilities (AES-256)", () => {
     expect(key.some((b) => b !== 0)).toBe(true);
     zeroizeBytes(key);
     expect(key.every((b) => b === 0)).toBe(true);
-  });
-
-  describe("Inactivity Auto-Lock (30 minutes)", () => {
-    it("should define AUTO_LOCK_TIMEOUT_MS as 30 minutes", () => {
-      expect(AUTO_LOCK_TIMEOUT_MS).toBe(30 * 60 * 1000);
-      expect(AUTO_LOCK_TIMEOUT_MS).toBe(1800000);
-    });
-
-    it("should update and get last user activity", () => {
-      const before = Date.now();
-      recordUserActivity();
-      const last = getLastUserActivity();
-      expect(last).toBeGreaterThanOrEqual(before);
-    });
-
-    it("should auto-lock when inactive for more than 30 minutes", () => {
-      const key = generateAes256Key();
-      setActiveMasterKey(key);
-      expect(getActiveMasterKey()).toEqual(key);
-
-      // Simulate inactivity older than 30 minutes
-      const expiredTime = Date.now() - (AUTO_LOCK_TIMEOUT_MS + 5000);
-      setLastUserActivityForTesting(expiredTime);
-
-      let autoLockFired = false;
-      const unsubscribe = onAutoLock(() => {
-        autoLockFired = true;
-      });
-
-      const didLock = checkAutoLockExpiry();
-      expect(didLock).toBe(true);
-      expect(getActiveMasterKey()).toBeNull();
-      expect(autoLockFired).toBe(true);
-      unsubscribe();
-    });
-
-    it("should not auto-lock when active within 30 minutes", () => {
-      const key = generateAes256Key();
-      setActiveMasterKey(key);
-      recordUserActivity();
-
-      const didLock = checkAutoLockExpiry();
-      expect(didLock).toBe(false);
-      expect(getActiveMasterKey()).toEqual(key);
-      clearActiveMasterKey();
-    });
   });
   it("should generate 32 bytes (256 bits) for AES-256 key", () => {
     const key = generateAes256Key();

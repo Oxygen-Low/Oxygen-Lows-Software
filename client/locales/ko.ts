@@ -1144,7 +1144,7 @@ export const ko = {
     formatBase58: "Base58",
     formatWords: "암호문구 단어",
     clientSideNotice:
-      "영지식(Zero-Knowledge): 마스터 키는 브라우저 세션에만 유지되며 서버로 전송되지 않습니다.",
+      "영지식(Zero-Knowledge): 암호화 키는 브라우저에서 비밀번호로부터 파생되며 서버로 전송되지 않습니다.",
     encryptionSettingsTitle: "보호 대상 데이터 범주",
     encryptionSettingsDesc:
       "각 데이터 범주에 대해 클라이언트 측 AES-256 암호화를 토글합니다. 활성화하면 저장 전에 마스터 키로 암호화됩니다.",
@@ -1162,8 +1162,10 @@ export const ko = {
     settingsSavedToast: "암호화 설정이 업데이트되었습니다",
     encryptionPromptTitle: "복호화 필요",
     encryptionPromptDesc:
-      "이 섹션은 256비트 AES 마스터 키로 암호화되어 있습니다. 데이터에 접근하려면 마스터 키를 입력하여 잠금을 해제하세요.",
-    goToSecurityButton: "보안 페이지로 이동하여 잠금 해제",
+      "이 섹션은 암호화되어 있습니다. 이 세션에서 데이터를 잠금 해제하려면 아래에 계정 비밀번호를 입력하세요.",
+    goToSecurityButton: "보안 페이지로 이동",
+    inlineUnlockTitle: "암호화 잠금 해제",
+    inlineUnlockBtn: "잠금 해제 및 복호화",
     quickUnlockTitle: "이 페이지에서 빠른 잠금 해제",
     quickUnlockPlaceholder: "64자 16진수 또는 Base64 마스터 키 붙여넣기...",
     quickUnlockButton: "잠금 해제 및 복호화",
@@ -1178,7 +1180,6 @@ export const ko = {
     invalidKeyFileError:
       "업로드된 파일에서 유효한 256비트 마스터 키를 찾을 수 없습니다.",
     readKeyFileError: ".key 파일을 읽지 못했습니다.",
-    autoLockedToast: "30분 동안 활동이 없어 마스터 키가 잠겼습니다.",
     integrations: "API 키 및 통합",
     integrationsDesc:
       "저장된 API 키, LLM 자격 증명 및 MCP 액세스 토큰을 암호화합니다.",
@@ -1210,7 +1211,7 @@ export const ko = {
     rotateKeyButton: "마스터 키 교체",
     unlockWithPasswordTitle: "비밀번호로 잠금 해제",
     unlockWithPasswordDesc:
-      "계정 비밀번호를 입력하여 영지식 AES-256 암호화 키를 파생하고 데이터를 잠금 해제합니다.",
+      "계정 비밀번호를 입력하여 이 세션에서 암호화된 데이터를 잠금 해제합니다.",
     enterAccountPassword: "계정 비밀번호 입력...",
     unlockWithPasswordBtn: "세션 잠금 해제",
     unlockSuccessToast: "복호화 키 파생 완료 및 세션 잠금 해제됨",

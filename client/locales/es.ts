@@ -1176,7 +1176,7 @@ export const es = {
     formatBase58: "Base58",
     formatWords: "Palabras de Paso",
     clientSideNotice:
-      "Conocimiento Cero: Tu clave maestra se almacena únicamente en la sesión de tu navegador y nunca se envía a ningún servidor.",
+      "Conocimiento Cero: Tu clave de cifrado se deriva de tu contraseña en tu navegador y nunca se envía a ningún servidor.",
     encryptionSettingsTitle: "Categorías de Datos Protegidas",
     encryptionSettingsDesc:
       "Activa el cifrado AES-256 en el cliente para cada categoría. Cuando está habilitado, los datos se cifran con tu clave antes de guardarse.",
@@ -1195,8 +1195,10 @@ export const es = {
     settingsSavedToast: "Configuración de cifrado actualizada",
     encryptionPromptTitle: "Descifrado Requerido",
     encryptionPromptDesc:
-      "Esta sección está cifrada con tu clave maestra AES-256. Desbloquea tu clave para descifrar y acceder a tus datos.",
-    goToSecurityButton: "Ir a Seguridad para Desbloquear",
+      "Esta sección está cifrada. Introduce la contraseña de tu cuenta a continuación para desbloquear tus datos en esta sesión.",
+    goToSecurityButton: "Ir a Seguridad",
+    inlineUnlockTitle: "Desbloquear Cifrado",
+    inlineUnlockBtn: "Desbloquear y Descifrar",
     quickUnlockTitle: "Desbloqueo rápido en esta página",
     quickUnlockPlaceholder: "Pega la clave Hex de 64 car. o Base64...",
     quickUnlockButton: "Desbloquear y Descifrar",
@@ -1210,8 +1212,6 @@ export const es = {
     invalidKeyFileError:
       "No se encontró una clave maestra de 256 bits válida en el archivo subido.",
     readKeyFileError: "Error al leer el archivo .key.",
-    autoLockedToast:
-      "Clave maestra bloqueada debido a 30 minutos de inactividad.",
     integrations: "Claves API e Integraciones",
     integrationsDesc:
       "Cifra las claves API almacenadas, credenciales de LLM y tokens de acceso de MCP.",
@@ -1243,7 +1243,7 @@ export const es = {
     rotateKeyButton: "Rotar Clave Maestra",
     unlockWithPasswordTitle: "Desbloquear con Contraseña",
     unlockWithPasswordDesc:
-      "Introduce la contraseña de tu cuenta para derivar tu clave de cifrado AES-256 de conocimiento cero y desbloquear tus datos.",
+      "Introduce la contraseña de tu cuenta para desbloquear tus datos cifrados en esta sesión.",
     enterAccountPassword: "Introduce la contraseña de tu cuenta...",
     unlockWithPasswordBtn: "Desbloquear Sesión",
     unlockSuccessToast: "Clave de descifrado derivada y sesión desbloqueada",

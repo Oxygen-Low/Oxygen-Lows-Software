@@ -1098,7 +1098,7 @@ export const zhCN = {
     formatBase58: "Base58",
     formatWords: "助记密语单词",
     clientSideNotice:
-      "零知识保护：您的主密钥仅保存在浏览器当前会话中，绝不会发送至任何服务器。",
+      "零知识保护：您的加密密钥在浏览器中由密码派生，绝不会发送至任何服务器。",
     encryptionSettingsTitle: "受保护数据分类",
     encryptionSettingsDesc:
       "切换各数据类别的客户端 AES-256 加密。启用后，数据在保存前将使用主密钥加密。",
@@ -1114,8 +1114,10 @@ export const zhCN = {
     settingsSavedToast: "加密设置已更新",
     encryptionPromptTitle: "需要解密",
     encryptionPromptDesc:
-      "此部分已使用 256 位 AES 主密钥加密。请输入或解锁您的主密钥以解密并访问数据。",
-    goToSecurityButton: "前往安全页面解锁",
+      "此部分已加密。请在下方输入账户密码，以解锁本次会话中的数据。",
+    goToSecurityButton: "前往安全页面",
+    inlineUnlockTitle: "解锁加密",
+    inlineUnlockBtn: "解锁并解密",
     quickUnlockTitle: "在此页面快速解锁",
     quickUnlockPlaceholder: "粘贴 64 位十六进制或 Base64 主密钥...",
     quickUnlockButton: "解锁并解密",
@@ -1127,7 +1129,6 @@ export const zhCN = {
     keyFileUploadedToast: "主密钥已从文件中加载并激活",
     invalidKeyFileError: "在上传的文件中未找到有效的256位主密钥。",
     readKeyFileError: "读取 .key 文件失败。",
-    autoLockedToast: "由于 30 分钟无操作，主密钥已锁定。",
     integrations: "API 密钥与集成",
     integrationsDesc: "加密存储的 API 密钥、LLM 凭据和 MCP 访问令牌。",
     cannotDisableIntegrationsWithKeys:
@@ -1155,7 +1156,7 @@ export const zhCN = {
     rotateKeyButton: "轮换主密钥",
     unlockWithPasswordTitle: "使用密码解锁",
     unlockWithPasswordDesc:
-      "输入您的账户密码以派生零知识 AES-256 加密密钥并解锁数据。",
+      "输入您的账户密码以解锁本次会话中的加密数据。",
     enterAccountPassword: "输入您的账户密码...",
     unlockWithPasswordBtn: "解锁会话",
     unlockSuccessToast: "解密密钥派生成功，会话已解锁",

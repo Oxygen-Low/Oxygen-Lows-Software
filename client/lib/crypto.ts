@@ -576,168 +576,7 @@ let cachedCryptoKey: CryptoKey | null = null;
 let cachedCryptoKeyHex: string | null = null;
 const inMemoryLocalStorage: Record<string, string> = {};
 
-export const AUTO_LOCK_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-export const AUTO_LOCK_LAST_ACTIVITY_KEY = "oxygen_master_key_last_active";
-export const AUTO_LOCK_EVENT = "oxygen:masterkey:autolock";
 
-let inMemoryLastActivity: number = Date.now();
-
-/**
- * Record user activity to keep the masterkey active.
- */
-export function recordUserActivity(): void {
-  inMemoryLastActivity = Date.now();
-  try {
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.setItem(
-        AUTO_LOCK_LAST_ACTIVITY_KEY,
-        String(inMemoryLastActivity),
-      );
-    }
-  } catch {}
-}
-
-/**
- * Get the timestamp of the last recorded user activity.
- */
-export function getLastUserActivity(): number {
-  try {
-    if (typeof sessionStorage !== "undefined") {
-      const stored = sessionStorage.getItem(AUTO_LOCK_LAST_ACTIVITY_KEY);
-      if (stored) {
-        const parsed = parseInt(stored, 10);
-        if (!isNaN(parsed)) {
-          return Math.max(parsed, inMemoryLastActivity);
-        }
-      }
-    }
-  } catch {}
-  return inMemoryLastActivity;
-}
-
-/**
- * Helper to explicitly set the last activity timestamp for unit testing.
- */
-export function setLastUserActivityForTesting(timestamp: number): void {
-  inMemoryLastActivity = timestamp;
-  try {
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.setItem(AUTO_LOCK_LAST_ACTIVITY_KEY, String(timestamp));
-    }
-  } catch {}
-}
-
-const autoLockListeners: Set<() => void> = new Set();
-
-/**
- * Check if the active masterkey has expired due to 30 minutes of inactivity.
- * Automatically clears the key and dispatches an event if expired.
- */
-export function checkAutoLockExpiry(): boolean {
-  const hasKey =
-    inMemoryKeyBytes !== null ||
-    inMemoryMasterKeyHex !== null ||
-    (typeof sessionStorage !== "undefined" &&
-      sessionStorage.getItem(ACTIVE_MASTER_KEY_STORAGE_KEY) !== null);
-
-  if (!hasKey) return false;
-
-  const now = Date.now();
-  const lastActive = getLastUserActivity();
-
-  if (now - lastActive > AUTO_LOCK_TIMEOUT_MS) {
-    clearActiveMasterKey();
-    autoLockListeners.forEach((cb) => {
-      try {
-        cb();
-      } catch (err) {
-        console.error("Error in autoLock listener callback:", err);
-      }
-    });
-    if (
-      typeof window !== "undefined" &&
-      typeof window.dispatchEvent === "function"
-    ) {
-      try {
-        window.dispatchEvent(new CustomEvent(AUTO_LOCK_EVENT));
-      } catch {}
-    }
-    return true;
-  }
-  return false;
-}
-
-/**
- * Subscribe to the masterkey auto-lock event.
- */
-export function onAutoLock(callback: () => void): () => void {
-  autoLockListeners.add(callback);
-
-  let domHandler: (() => void) | null = null;
-  if (
-    typeof window !== "undefined" &&
-    typeof window.addEventListener === "function"
-  ) {
-    domHandler = () => callback();
-    window.addEventListener(AUTO_LOCK_EVENT, domHandler);
-  }
-
-  return () => {
-    autoLockListeners.delete(callback);
-    if (
-      domHandler &&
-      typeof window !== "undefined" &&
-      typeof window.removeEventListener === "function"
-    ) {
-      window.removeEventListener(AUTO_LOCK_EVENT, domHandler);
-    }
-  };
-}
-
-let autoLockListenerInitialized = false;
-let autoLockCleanup: (() => void) | null = null;
-
-/**
- * Initialize global event listeners to detect user activity and auto-lock after 30 minutes.
- */
-export function initAutoLockListener(): () => void {
-  if (typeof window === "undefined") return () => {};
-  if (autoLockListenerInitialized && autoLockCleanup) {
-    return autoLockCleanup;
-  }
-
-  let lastThrottle = 0;
-  const handleActivity = () => {
-    const now = Date.now();
-    // Throttle activity recording to once every 2 seconds
-    if (now - lastThrottle > 2000) {
-      lastThrottle = now;
-      recordUserActivity();
-    }
-  };
-
-  const events = ["mousedown", "keydown", "touchstart", "scroll", "mousemove"];
-  events.forEach((evt) => {
-    window.addEventListener(evt, handleActivity, { passive: true });
-  });
-
-  // Periodic check every 15 seconds
-  const intervalId = setInterval(() => {
-    checkAutoLockExpiry();
-  }, 15000);
-
-  autoLockListenerInitialized = true;
-  autoLockCleanup = () => {
-    events.forEach((evt) => {
-      window.removeEventListener(evt, handleActivity);
-    });
-    clearInterval(intervalId);
-    autoLockListenerInitialized = false;
-    autoLockCleanup = null;
-  };
-
-  return autoLockCleanup;
-}
 
 /**
  * Securely zeroize a Uint8Array buffer in memory.
@@ -789,7 +628,6 @@ export async function getActiveCryptoKey(): Promise<CryptoKey | null> {
  * Retrieve the active master key from session storage (or in-memory fallback), if set.
  */
 export function getActiveMasterKey(): Uint8Array | null {
-  checkAutoLockExpiry();
   try {
     if (typeof sessionStorage !== "undefined") {
       const storedHex = sessionStorage.getItem(ACTIVE_MASTER_KEY_STORAGE_KEY);
@@ -823,7 +661,6 @@ export function setActiveMasterKey(key: Uint8Array | string | null): void {
     try {
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.removeItem(ACTIVE_MASTER_KEY_STORAGE_KEY);
-        sessionStorage.removeItem(AUTO_LOCK_LAST_ACTIVITY_KEY);
       }
     } catch {}
     return;
@@ -839,7 +676,6 @@ export function setActiveMasterKey(key: Uint8Array | string | null): void {
   const hex = bytesToHex(bytes);
   inMemoryKeyBytes = new Uint8Array(bytes);
   inMemoryMasterKeyHex = hex;
-  recordUserActivity();
 
   try {
     if (typeof sessionStorage !== "undefined") {
@@ -862,7 +698,6 @@ export function clearActiveMasterKey(): void {
   try {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem(ACTIVE_MASTER_KEY_STORAGE_KEY);
-      sessionStorage.removeItem(AUTO_LOCK_LAST_ACTIVITY_KEY);
     }
   } catch {}
 }

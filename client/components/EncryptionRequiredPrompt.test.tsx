@@ -10,10 +10,9 @@ import {
 import { MemoryRouter } from "react-router-dom";
 import { EncryptionRequiredPrompt } from "./EncryptionRequiredPrompt";
 import {
-  generateAes256Key,
-  bytesToHex,
   getActiveMasterKey,
   clearActiveMasterKey,
+  deriveEncryptionKeyFromPassword,
 } from "@/lib/crypto";
 
 const mockedNavigate = vi.fn();
@@ -24,6 +23,19 @@ vi.mock("react-router-dom", async () => {
     useNavigate: () => mockedNavigate,
   };
 });
+
+// Mock useAuth to return a test session with an email for salt derivation
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({
+    session: {
+      user: {
+        email: "test@example.com",
+        username: "testuser",
+        id: "test-id-123",
+      },
+    },
+  }),
+}));
 
 describe("EncryptionRequiredPrompt Component", () => {
   beforeEach(() => {
@@ -51,7 +63,7 @@ describe("EncryptionRequiredPrompt Component", () => {
     expect(screen.getByText("My Characters")).toBeDefined();
     expect(screen.getByText("AES-256-GCM")).toBeDefined();
     expect(screen.getByText("Zero-Knowledge")).toBeDefined();
-    expect(screen.getByText("Go to Security to Unlock")).toBeDefined();
+    expect(screen.getByText("Go to Security")).toBeDefined();
   });
 
   it("navigates to security page with returnTo parameter on button click", () => {
@@ -64,7 +76,7 @@ describe("EncryptionRequiredPrompt Component", () => {
       </MemoryRouter>,
     );
 
-    const btn = screen.getByText("Go to Security to Unlock");
+    const btn = screen.getByText("Go to Security");
     fireEvent.click(btn);
 
     expect(mockedNavigate).toHaveBeenCalledWith(
@@ -72,45 +84,25 @@ describe("EncryptionRequiredPrompt Component", () => {
     );
   });
 
-  it("supports inline quick unlock and invokes onUnlocked callback", async () => {
-    const onUnlockedMock = vi.fn();
-    const testKey = generateAes256Key();
-    const testKeyHex = bytesToHex(testKey);
-
+  it("renders the password input and Unlock & Decrypt button", () => {
     render(
       <MemoryRouter>
         <EncryptionRequiredPrompt
           category="chatbot"
           returnTo="/apps?app=chatbot"
-          onUnlocked={onUnlockedMock}
         />
       </MemoryRouter>,
     );
 
-    // Click toggle for quick unlock
-    const quickUnlockToggle = screen.getByText("Quick Unlock on this Page");
-    fireEvent.click(quickUnlockToggle);
-
-    const input = screen.getByPlaceholderText(
-      "Paste 64-char Hex or Base64 masterkey...",
-    ) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: testKeyHex } });
-
-    const unlockBtn = screen.getByText("Unlock & Decrypt");
-    fireEvent.click(unlockBtn);
-
-    await waitFor(() => {
-      expect(getActiveMasterKey()).toEqual(testKey);
-      expect(onUnlockedMock).toHaveBeenCalled();
-    });
+    expect(
+      screen.getByPlaceholderText("Enter your account password..."),
+    ).toBeDefined();
+    expect(screen.getByText("Unlock & Decrypt")).toBeDefined();
+    expect(screen.getByText("Unlock Encryption")).toBeDefined();
   });
 
-  it("supports unlocking by uploading a .key file", async () => {
+  it("unlocks with correct password and calls onUnlocked callback", async () => {
     const onUnlockedMock = vi.fn();
-    const testKey = generateAes256Key();
-    const testKeyHex = bytesToHex(testKey);
-    const fileContent = `===========================================================\n Oxygen Low's Software - AES-256 Masterkey Backup\n===========================================================\n\n[HEXADECIMAL MASTERKEY - 64 CHARACTERS]\n${testKeyHex}\n`;
-    const file = new File([fileContent], "backup.key", { type: "text/plain" });
 
     render(
       <MemoryRouter>
@@ -122,48 +114,36 @@ describe("EncryptionRequiredPrompt Component", () => {
       </MemoryRouter>,
     );
 
-    const fileInput = document.getElementById(
-      "prompt-upload-key-input",
+    // Type the test password
+    const input = screen.getByPlaceholderText(
+      "Enter your account password...",
     ) as HTMLInputElement;
-    expect(fileInput).toBeDefined();
+    fireEvent.change(input, { target: { value: "my-test-password" } });
 
-    fireEvent.change(fileInput, { target: { files: [file] } });
+    const unlockBtn = screen.getByText("Unlock & Decrypt");
+    fireEvent.click(unlockBtn);
+
+    // Derive what the expected key should be using the same salt the component uses
+    const expectedKey = await deriveEncryptionKeyFromPassword(
+      "my-test-password",
+      "test@example.com",
+    );
 
     await waitFor(() => {
-      expect(getActiveMasterKey()).toEqual(testKey);
+      expect(getActiveMasterKey()).toEqual(expectedKey);
       expect(onUnlockedMock).toHaveBeenCalled();
     });
   });
 
-  it("supports unlocking by dropping a .key file onto the prompt card", async () => {
-    const onUnlockedMock = vi.fn();
-    const testKey = generateAes256Key();
-    const testKeyHex = bytesToHex(testKey);
-    const file = new File([testKeyHex], "masterkey.key", {
-      type: "text/plain",
-    });
-
+  it("shows zero-knowledge footer notice", () => {
     render(
       <MemoryRouter>
-        <EncryptionRequiredPrompt
-          category="data_save"
-          returnTo="/apps?app=datasave"
-          onUnlocked={onUnlockedMock}
-        />
+        <EncryptionRequiredPrompt category="passwords" returnTo="/passwords" />
       </MemoryRouter>,
     );
 
-    const promptContainer = screen.getByTestId("encryption-required-prompt");
-    fireEvent.dragOver(promptContainer);
-    fireEvent.drop(promptContainer, {
-      dataTransfer: {
-        files: [file],
-      },
-    });
-
-    await waitFor(() => {
-      expect(getActiveMasterKey()).toEqual(testKey);
-      expect(onUnlockedMock).toHaveBeenCalled();
-    });
+    expect(
+      screen.getByText(/Your encryption key is derived from your password/i),
+    ).toBeDefined();
   });
 });

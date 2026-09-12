@@ -1158,7 +1158,7 @@ export const ja = {
     formatBase58: "Base58",
     formatWords: "パスフレーズ単語",
     clientSideNotice:
-      "ゼロ知識（Zero-Knowledge）：マスターキーはブラウザセッション内のみに保持され、サーバーに送信されることはありません。",
+      "ゼロ知識（Zero-Knowledge）：暗号化キーはブラウザ内でパスワードから生成され、サーバーに送信されることはありません。",
     encryptionSettingsTitle: "保護対象データカテゴリ",
     encryptionSettingsDesc:
       "各データカテゴリのクライアント側AES-256暗号化を切り替えます。有効にすると保存前にマスターキーで暗号化されます。",
@@ -1177,8 +1177,10 @@ export const ja = {
     settingsSavedToast: "暗号化設定を更新しました",
     encryptionPromptTitle: "復号化が必要です",
     encryptionPromptDesc:
-      "このセクションは256ビットAESマスターキーで暗号化されています。データにアクセスするにはキーを入力してロックを解除してください。",
-    goToSecurityButton: "セキュリティページに移動してロック解除",
+      "このセクションは暗号化されています。このセッションでデータをロック解除するには、以下にアカウントパスワードを入力してください。",
+    goToSecurityButton: "セキュリティページへ移動",
+    inlineUnlockTitle: "暗号化をロック解除",
+    inlineUnlockBtn: "ロック解除＆復号化",
     quickUnlockTitle: "このページでクイック解除",
     quickUnlockPlaceholder:
       "64文字の16進数またはBase64マスターキーを貼り付け...",
@@ -1195,8 +1197,6 @@ export const ja = {
     invalidKeyFileError:
       "アップロードされたファイルに有効な256ビットのマスターキーが見つかりませんでした。",
     readKeyFileError: ".key ファイルの読み込みに失敗しました。",
-    autoLockedToast:
-      "30分間操作がなかったため、マスターキーがロックされました。",
     integrations: "APIキーと連携",
     integrationsDesc:
       "保存されたAPIキー、LLM認証情報、およびMCPアクセストークンを暗号化します。",
@@ -1228,7 +1228,7 @@ export const ja = {
     rotateKeyButton: "マスターキーのローテーション",
     unlockWithPasswordTitle: "パスワードでロック解除",
     unlockWithPasswordDesc:
-      "アカウントパスワードを入力してゼロ知識 AES-256 暗号化キーを導出し、データをロック解除します。",
+      "アカウントパスワードを入力して、このセッションの暗号化されたデータをロック解除します。",
     enterAccountPassword: "アカウントパスワードを入力...",
     unlockWithPasswordBtn: "セッションをロック解除",
     unlockSuccessToast: "復号キーが導出され、セッションが解除されました",

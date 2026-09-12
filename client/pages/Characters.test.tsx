@@ -235,7 +235,7 @@ describe("Characters Component", () => {
     );
 
     expect(screen.getByText("Decryption Required")).toBeDefined();
-    expect(screen.getByText("Go to Security to Unlock")).toBeDefined();
+    expect(screen.getByText("Go to Security")).toBeDefined();
 
     setCategoryEncryptionEnabled("characters", false);
   });
