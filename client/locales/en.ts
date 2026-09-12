@@ -354,6 +354,20 @@ export const en = {
       "Block DDoS, bots, and malicious traffic from your site or API.",
     webDefenderRealTime: "Real-Time",
     webDefenderConnecting: "Connecting...",
+    webDefenderAbuseTitle: "AbuseIPDB",
+    webDefenderAbuseDesc:
+      "Check blocked IPs against AbuseIPDB and automatically add confirmed abusive IPs to this app's block list.",
+    webDefenderAbuseKey: "AbuseIPDB API key",
+    webDefenderAbuseKeyPlaceholder: "Enter your AbuseIPDB API key",
+    webDefenderSaveKey: "Save key",
+    webDefenderSavingKey: "Saving...",
+    webDefenderAbuseKeySaved: "AbuseIPDB API key saved",
+    webDefenderAbuseKeySaveFailed: "Failed to save AbuseIPDB API key",
+    webDefenderAbuseKeyConfigured:
+      "An AbuseIPDB key is configured. Enter a new key to replace it, or leave blank and save to remove it.",
+    webDefenderAutoBlock: "Auto-block AbuseIPDB threats",
+    webDefenderAutoBlockDesc:
+      "When enabled, blocked IPs are checked once every seven days. IPs with an AbuseIPDB abuse score above zero are added to the block list.",
     passwordManagerTitle: "Password Manager",
     passwordManagerDesc:
       "Securely store and manage passwords with AES-256 zero-knowledge encryption.",

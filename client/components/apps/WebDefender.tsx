@@ -226,6 +226,7 @@ type App = {
   block_mode_enabled_at: string | null;
   first_request_at: string | null;
   created_at: string;
+  abuseipdb_configured?: boolean;
   defender_config?: any;
 };
 
@@ -250,6 +251,7 @@ type AppConfig = {
   block_http_exploit: boolean;
   block_botnets: boolean;
   events_limit: number;
+  auto_block_abuseipdb: boolean;
 };
 
 type Route = {
@@ -1843,6 +1845,7 @@ const defaultDefenderConfig: AppConfig = {
   block_http_exploit: true,
   block_botnets: true,
   events_limit: 50,
+  auto_block_abuseipdb: false,
 };
 
 export function getAppConfig(defenderConfig: any): AppConfig {
@@ -1872,6 +1875,7 @@ export function SettingsTab({
   onUpdate: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<AppConfig>(() =>
     getAppConfig(app.defender_config),
   );
@@ -1883,6 +1887,8 @@ export function SettingsTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [newIpInput, setNewIpInput] = useState("");
+  const [abuseIpDbKey, setAbuseIpDbKey] = useState("");
+  const [isSavingAbuseIpDbKey, setIsSavingAbuseIpDbKey] = useState(false);
 
   const lastSavedLimitRef = useRef<number>(
     getAppConfig(app.defender_config).events_limit ?? 50,
@@ -1904,6 +1910,23 @@ export function SettingsTab({
     updateConfig({
       block_ips: (config.block_ips || []).filter((ip) => ip !== ipToRemove),
     });
+  };
+
+  const handleSaveAbuseIpDbKey = async () => {
+    setIsSavingAbuseIpDbKey(true);
+    try {
+      await authFetch(`/api/webdefender/apps/${app.id}/abuseipdb`, {
+        method: "PUT",
+        body: JSON.stringify({ apiKey: abuseIpDbKey.trim() || null }),
+      });
+      setAbuseIpDbKey("");
+      toast.success(t("apps.webDefenderAbuseKeySaved", undefined, "AbuseIPDB API key saved"));
+      onUpdate();
+    } catch (err) {
+      toast.error(t("apps.webDefenderAbuseKeySaveFailed", undefined, "Failed to save AbuseIPDB API key"));
+    } finally {
+      setIsSavingAbuseIpDbKey(false);
+    }
   };
 
   useEffect(() => {
@@ -1986,6 +2009,31 @@ export function SettingsTab({
 
   return (
     <div className="space-y-8 max-w-4xl">
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>{t("apps.webDefenderAbuseTitle", undefined, "AbuseIPDB")}</CardTitle>
+          <CardDescription>{t("apps.webDefenderAbuseDesc", undefined, "Check blocked IPs against AbuseIPDB and automatically add confirmed abusive IPs to this app's block list.")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-white">{t("apps.webDefenderAbuseKey", undefined, "AbuseIPDB API key")}</Label>
+            <div className="flex gap-2">
+              <Input type="password" value={abuseIpDbKey} onChange={(e) => setAbuseIpDbKey(e.target.value)} placeholder={app.abuseipdb_configured ? "••••••••••••••••" : t("apps.webDefenderAbuseKeyPlaceholder", undefined, "Enter your AbuseIPDB API key")} className="bg-slate-950 border-slate-700 font-mono" autoComplete="off" />
+              <Button onClick={handleSaveAbuseIpDbKey} disabled={isSavingAbuseIpDbKey}>{isSavingAbuseIpDbKey ? t("apps.webDefenderSavingKey", undefined, "Saving...") : t("apps.webDefenderSaveKey", undefined, "Save key")}</Button>
+            </div>
+            {app.abuseipdb_configured && <p className="text-xs text-emerald-400">{t("apps.webDefenderAbuseKeyConfigured", undefined, "An AbuseIPDB key is configured. Enter a new key to replace it, or leave blank and save to remove it.")}</p>}
+          </div>
+          <Separator className="bg-slate-800" />
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base text-white">{t("apps.webDefenderAutoBlock", undefined, "Auto-block AbuseIPDB threats")}</Label>
+              <p className="text-sm text-slate-400">{t("apps.webDefenderAutoBlockDesc", undefined, "When enabled, blocked IPs are checked once every seven days. IPs with an AbuseIPDB abuse score above zero are added to the block list.")}</p>
+            </div>
+            <Switch checked={config.auto_block_abuseipdb} disabled={!app.abuseipdb_configured} onCheckedChange={(c) => updateConfig({ auto_block_abuseipdb: c })} />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="bg-slate-900 border-slate-800">
         <CardHeader>
           <CardTitle>API Key</CardTitle>

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import {
   getTableRows,
@@ -79,6 +80,92 @@ export async function broadcastConfigUpdate(appId: string) {
 // Helper to hash API keys
 function hashApiKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
+}
+
+const ABUSEIPDB_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function publicDefenderApp(app: any) {
+  const {
+    api_key: _apiKey,
+    api_key_hash: _apiKeyHash,
+    abuseipdb_api_key: _abuseIpDbKey,
+    ...safeApp
+  } = app;
+  return {
+    ...safeApp,
+    abuseipdb_configured: Boolean(_abuseIpDbKey),
+  };
+}
+
+async function checkAbuseIpDbAndMaybeBlock(app: any, ip: unknown, config: any) {
+  if (!config.auto_block_abuseipdb || !app.abuseipdb_api_key || typeof ip !== "string") return;
+  const cleanIp = ip.trim();
+  if (!cleanIp || !isIP(cleanIp)) return;
+
+  const now = Date.now();
+  const records = getTableRows("defender_ip_blocks", app.user_id);
+  const previous = records.find(
+    (record: any) => record.app_id === app.id && record.ip === cleanIp,
+  );
+  if (previous?.checked_at && now - new Date(previous.checked_at).getTime() < ABUSEIPDB_CACHE_TTL_MS) return;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(
+      `https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(cleanIp)}&maxAgeInDays=90`,
+      {
+        headers: {
+          Accept: "application/json",
+          Key: app.abuseipdb_api_key,
+        },
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) {
+      console.warn(`[Defender] AbuseIPDB check failed (${response.status}) for ${cleanIp}`);
+      return;
+    }
+    const payload: any = await response.json();
+    const abuseConfidenceScore = Number(payload?.data?.abuseConfidenceScore || 0);
+    const checkedAt = new Date().toISOString();
+    const updatedRecord = {
+      ...(previous || { id: randomUUID(), app_id: app.id, user_id: app.user_id, ip: cleanIp }),
+      checked_at: checkedAt,
+      abuse_confidence_score: abuseConfidenceScore,
+      auto_blocked: abuseConfidenceScore > 0,
+    };
+    if (previous) {
+      updateTable(
+        "defender_ip_blocks",
+        [{ field: "id", operator: "eq", value: previous.id }],
+        updatedRecord,
+        app.user_id,
+      );
+    } else {
+      insertTable("defender_ip_blocks", updatedRecord, app.user_id);
+    }
+
+    if (abuseConfidenceScore > 0) {
+      const currentConfig = getTableRows("defender_config", app.user_id).find(
+        (cfg: any) => cfg.app_id === app.id,
+      ) || { app_id: app.id, user_id: app.user_id, block_ips: [] };
+      const blockIps = Array.isArray(currentConfig.block_ips) ? currentConfig.block_ips : [];
+      if (!blockIps.some((blockedIp: string) => blockedIp.trim().toLowerCase() === cleanIp.toLowerCase())) {
+        upsertTable(
+          "defender_config",
+          { ...currentConfig, block_ips: [...blockIps, cleanIp] },
+          app.user_id,
+          "app_id",
+        );
+        broadcastConfigUpdate(app.id).catch(() => {});
+      }
+    }
+  } catch (error) {
+    console.warn(`[Defender] AbuseIPDB check error for ${cleanIp}:`, error);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // Middleware for NPM package API Key auth
@@ -314,6 +401,9 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
   const config = Array.isArray(app.defender_config)
     ? app.defender_config[0] || {}
     : app.defender_config || {};
+  if (body.blocked) {
+    await checkAbuseIpDbAndMaybeBlock(app, body.ip, config);
+  }
   const maxEvents = Math.min(1000, Math.max(1, config.events_limit || 50));
 
   const appEvents = existingEvents
@@ -377,7 +467,7 @@ defenderRouter.get("/apps", uiLimiter, requireAuth, async (c) => {
     (a: any, b: any) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
-  return c.json(apps);
+  return c.json(apps.map(publicDefenderApp));
 });
 
 // 6. POST /apps - Create new protected app
@@ -400,6 +490,7 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     api_key_hash: apiKeyHash,
     api_key_prefix: apiKeyPrefix,
     api_key: rawKey,
+    abuseipdb_api_key: null,
     block_mode_enabled: false,
     block_mode_enabled_at: null,
     first_request_at: null,
@@ -432,6 +523,7 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     ddos_protection: true,
     ddos_threshold_rpm: 1000,
     events_limit: 50,
+    auto_block_abuseipdb: false,
     created_at: now,
   };
 
@@ -439,7 +531,7 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
 
   return c.json(
     {
-      ...newApp,
+      ...publicDefenderApp(newApp),
       apiKey: rawKey,
     },
     201,
@@ -476,6 +568,11 @@ defenderRouter.delete("/apps/:id", uiLimiter, requireAuth, async (c) => {
     [{ field: "app_id", operator: "eq", value: id }],
     user.id,
   );
+  deleteTable(
+    "defender_ip_blocks",
+    [{ field: "app_id", operator: "eq", value: id }],
+    user.id,
+  );
 
   return c.body(null, 204);
 });
@@ -492,7 +589,7 @@ defenderRouter.get("/apps/:id", uiLimiter, requireAuth, async (c) => {
     const configs = getTableRows("defender_config", user.id);
     const config = configs.find((cfg: any) => cfg.app_id === id) || null;
     return c.json({
-      ...app,
+      ...publicDefenderApp(app),
       defender_config: config ? [config] : [],
     });
   }
@@ -559,6 +656,7 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "ddos_protection",
     "ddos_threshold_rpm",
     "events_limit",
+    "auto_block_abuseipdb",
   ];
 
   const updatePayload: Record<string, any> = { app_id: id, user_id: user.id };
@@ -595,6 +693,45 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
 
   broadcastConfigUpdate(id).catch(() => {});
   return c.json(result[0] || updatePayload);
+});
+
+// 10b. PUT /apps/:id/abuseipdb - Set or clear the per-app AbuseIPDB key
+defenderRouter.put("/apps/:id/abuseipdb", uiLimiter, requireAuth, async (c) => {
+  const user = c.get("user" as any);
+  const id = c.req.param("id");
+  const { apiKey } = await c.req.json().catch(() => ({}));
+  const app = getTableRows("defender_apps", user.id).find((item: any) => item.id === id);
+  if (!app) return c.json({ error: "App not found" }, 404);
+  if (apiKey !== null && apiKey !== undefined && (typeof apiKey !== "string" || apiKey.trim().length < 10)) {
+    return c.json({ error: "A valid AbuseIPDB API key is required" }, 400);
+  }
+  const key = typeof apiKey === "string" ? apiKey.trim() : null;
+  const updated = updateTable(
+    "defender_apps",
+    [{ field: "id", operator: "eq", value: id }],
+    { abuseipdb_api_key: key },
+    user.id,
+  );
+  if (!key) {
+    const configs = getTableRows("defender_config", user.id);
+    const config = configs.find((item: any) => item.app_id === id);
+    if (config?.auto_block_abuseipdb) {
+      upsertTable(
+        "defender_config",
+        { ...config, auto_block_abuseipdb: false },
+        user.id,
+        "app_id",
+      );
+      broadcastConfigUpdate(id).catch(() => {});
+    }
+  }
+  // A changed key must not inherit the previous provider's seven-day cache.
+  deleteTable(
+    "defender_ip_blocks",
+    [{ field: "app_id", operator: "eq", value: id }],
+    user.id,
+  );
+  return c.json(publicDefenderApp(updated[0] || { ...app, abuseipdb_api_key: key }));
 });
 
 // 11. GET /apps/:id/routes - List routes for app
