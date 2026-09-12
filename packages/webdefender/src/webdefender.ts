@@ -15,6 +15,7 @@ import { discoverRoutes } from "./routeDiscovery.js";
 import { scanRequest } from "./scanner/injection.js";
 import { detectBot } from "./scanner/bots.js";
 import { getCountryCode } from "./scanner/geo.js";
+import { detectSensitivePath } from "./scanner/sensitivePaths.js";
 
 export interface IncomingRequest {
   ip: string;
@@ -122,6 +123,7 @@ export class DefenderClient {
       blockShellInjection: cfg.block_shell_injection ?? true,
       blockPathTraversal: cfg.block_path_traversal ?? true,
       blockSsrf: cfg.block_ssrf ?? true,
+      blockSensitivePaths: cfg.block_sensitive_paths ?? true,
       blockTor: cfg.block_tor ?? true,
       blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
@@ -578,6 +580,17 @@ export class DefenderClient {
           );
           break;
         }
+      }
+    }
+
+    // 5b. Sensitive Path Probe Detection
+    if (!isBlocked && this.appConfig.blockSensitivePaths) {
+      const sensitiveMatch = detectSensitivePath(path);
+      if (sensitiveMatch) {
+        fail(
+          "sensitive_path",
+          `Sensitive path probe detected: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`,
+        );
       }
     }
 

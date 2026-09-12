@@ -23,6 +23,7 @@ export type EventType =
   | "shell_injection"
   | "path_traversal"
   | "ssrf"
+  | "sensitive_path"
   | "tor"
   | "vpn"
   | "country_block"
@@ -53,6 +54,7 @@ export interface AppConfig {
   blockShellInjection: boolean;
   blockPathTraversal: boolean;
   blockSsrf: boolean;
+  blockSensitivePaths: boolean;
   blockTor: boolean;
   blockVpn: boolean;
   blockCountries: string[];
