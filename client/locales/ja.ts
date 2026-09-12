@@ -365,6 +365,9 @@ export const ja = {
     webDefenderAbuseKeyConfigured: "AbuseIPDBキーが設定されています。置き換えるには新しいキーを入力し、削除するには空欄で保存してください。",
     webDefenderAutoBlock: "AbuseIPDBの脅威を自動ブロック",
     webDefenderAutoBlockDesc: "有効にすると、ブロックしたIPを7日に1回確認します。AbuseIPDBの悪用スコアが0を超えるIPをブロックリストに追加します。",
+    webDefenderBannedIps: "禁止されたIP",
+    webDefenderBannedIpsDesc: "Oxygen Low's Software の管理者が管理するプラットフォーム全体のIP禁止を適用します。",
+    webDefenderBannedIpsView: "公開ディレクトリで有効な禁止とその理由を確認します。",
     passwordManagerTitle: "パスワードマネージャー",
     passwordManagerDesc:
       "AES-256ゼロ知識暗号化でパスワードを安全に保存・管理します。",

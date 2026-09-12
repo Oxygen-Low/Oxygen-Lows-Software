@@ -19,6 +19,7 @@ import { realtimeRouter } from "./routes/realtime.ts";
 import { softwareAwardsRouter } from "./routes/softwareAwards.ts";
 import { notificationsRouter } from "./routes/notifications.ts";
 import { adminNotificationsRouter } from "./routes/adminNotifications.ts";
+import { adminWebdefenderRouter } from "./routes/adminWebdefender.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
 import { broadcastChange } from "./lib/realtime.ts";
@@ -1067,6 +1068,7 @@ app.route("/api/realtime", realtimeRouter);
 app.route("/api/software-awards", softwareAwardsRouter);
 app.route("/api/notifications", notificationsRouter);
 app.route("/api/admin/notifications", adminNotificationsRouter);
+app.route("/api/admin/webdefender", adminWebdefenderRouter);
 
 export function createServer() {
   return app;

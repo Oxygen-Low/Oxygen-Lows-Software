@@ -59,6 +59,9 @@ export interface AppConfig {
   blockVpn: boolean;
   blockCountries: string[];
   blockIps: string[];
+  /** Platform-wide administrator bans enabled for this protected app. */
+  blockAdminBannedIps: boolean;
+  adminBannedIps: { ip: string; reason: string; bannedAt: string }[];
   blockAdBots: boolean;
   blockAiAssistants: boolean;
   blockAiScrapers: boolean;

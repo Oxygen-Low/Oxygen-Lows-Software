@@ -128,6 +128,14 @@ export class DefenderClient {
       blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
       blockIps: cfg.block_ips ?? [],
+      blockAdminBannedIps: cfg.block_admin_banned_ips ?? true,
+      adminBannedIps: Array.isArray(raw.admin_banned_ips)
+        ? raw.admin_banned_ips.map((ban: any) => ({
+            ip: ban.ip,
+            reason: ban.reason,
+            bannedAt: ban.banned_at,
+          }))
+        : [],
       blockAdBots: cfg.block_ad_bots ?? false,
       blockAiAssistants: cfg.block_ai_assistants ?? false,
       blockAiScrapers: cfg.block_ai_scrapers ?? true,
@@ -441,7 +449,22 @@ export class DefenderClient {
       isBlocked = true;
     };
 
-    // 0. Individual IP Check
+    // 0. Platform-wide administrator IP bans
+    if (
+      !isBlocked &&
+      this.appConfig.blockAdminBannedIps &&
+      this.appConfig.adminBannedIps.length > 0
+    ) {
+      const cleanIp = (ip || "").trim().toLowerCase();
+      const ban = this.appConfig.adminBannedIps.find(
+        (item) => (item.ip || "").trim().toLowerCase() === cleanIp,
+      );
+      if (ban) {
+        fail("ip_block", `Administrator-banned IP: ${ban.reason}`);
+      }
+    }
+
+    // 1. Individual IP Check
     if (
       !isBlocked &&
       this.appConfig.blockIps &&

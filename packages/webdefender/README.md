@@ -108,15 +108,16 @@ When initialized, the middleware fetches its configuration from the central API 
 
 On every incoming request, it executes the following pipeline:
 
-1. **Individual IP Check**: Verifies if the request IP is in your blocked IP list.
-2. **IP Geo Check**: Verifies if the request originates from a blocked country.
-3. **TOR Check**: Checks if the IP is a known TOR exit node.
-4. **VPN Check**: Checks if the IP is a known commercial VPN exit node / server.
-5. **Known Threat Actor Check**: Cross-references with real-time threat intelligence feeds.
-6. **Bot Detection**: Scans the User-Agent string against known bot signatures.
-7. **Injection Scanning**: Analyzes the request method, path, query parameters, headers, and body for SQLi, Shell Injection, Path Traversal, and SSRF patterns.
-8. **DDoS Protection**: Enforces global API rate limits.
-9. **Route Rate Limiting**: Applies route-specific token-bucket rate limiting based on central configuration.
+1. **Administrator Banned IP Check**: Enforces active platform-wide bans when the dashboard's **Banned IPs** option is enabled (the default).
+2. **Individual IP Check**: Verifies if the request IP is in your blocked IP list.
+3. **IP Geo Check**: Verifies if the request originates from a blocked country.
+4. **TOR Check**: Checks if the IP is a known TOR exit node.
+5. **VPN Check**: Checks if the IP is a known commercial VPN exit node / server.
+6. **Known Threat Actor Check**: Cross-references with real-time threat intelligence feeds.
+7. **Bot Detection**: Scans the User-Agent string against known bot signatures.
+8. **Injection Scanning**: Analyzes the request method, path, query parameters, headers, and body for SQLi, Shell Injection, Path Traversal, and SSRF patterns.
+9. **DDoS Protection**: Enforces global API rate limits.
+10. **Route Rate Limiting**: Applies route-specific token-bucket rate limiting based on central configuration.
 
 ## License
 

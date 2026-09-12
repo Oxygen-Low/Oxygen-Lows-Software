@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
-import { LifeBuoy, ShieldCheck, ClipboardList, Trophy, Bell } from "lucide-react";
+import { LifeBuoy, ShieldCheck, ClipboardList, Trophy, Bell, ShieldBan } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -23,6 +23,13 @@ export default function AdminPanel() {
   });
 
   const apps = [
+    {
+      title: "Banned IPs",
+      description: "Manage platform-wide Web Defender IP bans and their public reasons.",
+      icon: ShieldBan,
+      href: "/admin/webdefender/banned-ips",
+      color: "text-rose-500",
+    },
     {
       title: t("admin.notificationsTitle", undefined, "Notifications"),
       description: t(

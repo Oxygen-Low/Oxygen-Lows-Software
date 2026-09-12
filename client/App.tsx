@@ -70,6 +70,8 @@ const Notifications = lazyWithRetry(() => import("./pages/Notifications"));
 const AdminNotifications = lazyWithRetry(
   () => import("./pages/AdminNotifications"),
 );
+const AdminBannedIps = lazyWithRetry(() => import("./pages/AdminBannedIps"));
+const BannedIps = lazyWithRetry(() => import("./pages/BannedIps"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
 const Terms = lazyWithRetry(() => import("./pages/Terms"));
 const Eula = lazyWithRetry(() => import("./pages/Eula"));
@@ -104,6 +106,7 @@ const App = () => (
                     <Route path="/apps" element={<Apps />} />
                     <Route path="/apps/:appId" element={<Apps />} />
                     <Route path="/apps/3d-background" element={<Apps />} />
+                    <Route path="/webdefender/banned-ips" element={<BannedIps />} />
                     <Route path="/games" element={<Games />} />
                     <Route path="/games/:appId" element={<Games />} />
                     <Route
@@ -253,6 +256,10 @@ const App = () => (
                           <AdminNotifications />
                         </ProtectedRoute>
                       }
+                    />
+                    <Route
+                      path="/admin/webdefender/banned-ips"
+                      element={<ProtectedRoute><AdminBannedIps /></ProtectedRoute>}
                     />
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/download" element={<Download />} />

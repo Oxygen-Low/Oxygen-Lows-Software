@@ -13,6 +13,10 @@ import {
   deleteTable,
 } from "../lib/dataStore.ts";
 import type { Context, Next } from "hono";
+import {
+  getActiveDefenderBannedIps,
+  publicDefenderBannedIp,
+} from "../lib/defenderBannedIps.ts";
 
 export const defenderRouter = new Hono<{
   Variables: { defenderApp: any; user: any; userId: string };
@@ -63,6 +67,9 @@ export async function broadcastConfigUpdate(appId: string) {
       block_mode_enabled: app.block_mode_enabled,
       config,
       routes,
+      admin_banned_ips: config.block_admin_banned_ips !== false
+        ? getActiveDefenderBannedIps().map(publicDefenderBannedIp)
+        : [],
     };
 
     for (const listener of listeners) {
@@ -80,6 +87,25 @@ export async function broadcastConfigUpdate(appId: string) {
 // Helper to hash API keys
 function hashApiKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
+}
+
+/** Refresh every connected SDK after a platform-wide ban changes. */
+export async function broadcastAllDefenderConfigUpdates() {
+  const appIds = getTableRows("defender_apps").map((app: any) => app.id);
+  await Promise.all(appIds.map((appId: string) => broadcastConfigUpdate(appId)));
+}
+
+function packageConfigPayload(app: any, config: any, routes: any[]) {
+  return {
+    id: app.id,
+    name: app.name,
+    block_mode_enabled: app.block_mode_enabled,
+    config,
+    routes,
+    admin_banned_ips: config.block_admin_banned_ips !== false
+      ? getActiveDefenderBannedIps().map(publicDefenderBannedIp)
+      : [],
+  };
 }
 
 const ABUSEIPDB_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -259,13 +285,13 @@ defenderRouter.post("/verify", packageLimiter, requireApiKey, async (c) => {
     ? app.defender_config[0] || {}
     : app.defender_config || {};
 
-  return c.json({
-    id: app.id,
-    name: app.name,
-    block_mode_enabled: app.block_mode_enabled,
-    config: config,
-    routes: app.defender_routes || [],
-  });
+  return c.json(packageConfigPayload(app, config, app.defender_routes || []));
+});
+
+// Public directory API. It deliberately exposes only active, public-safe fields.
+defenderRouter.get("/banned-ips", async (c) => {
+  const bannedIps = getActiveDefenderBannedIps().map(publicDefenderBannedIp);
+  return c.json({ banned_ips: bannedIps, total: bannedIps.length });
 });
 
 // 1b. GET /config-stream - Real-time SSE stream of app config updates for SDK
@@ -291,13 +317,11 @@ defenderRouter.get("/config-stream", requireApiKey, async (c) => {
 
     await stream.writeSSE({
       event: "config",
-      data: JSON.stringify({
-        id: app.id,
-        name: appName,
-        block_mode_enabled: blockModeEnabled,
-        config: freshConfig,
-        routes: freshRoutes,
-      }),
+      data: JSON.stringify(packageConfigPayload(
+        { id: app.id, name: appName, block_mode_enabled: blockModeEnabled },
+        freshConfig,
+        freshRoutes,
+      )),
     });
 
     const listener = async (payload: any) => {
@@ -511,6 +535,7 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     block_vpn: true,
     block_countries: [],
     block_ips: [],
+    block_admin_banned_ips: true,
     block_ad_bots: false,
     block_ai_assistants: false,
     block_ai_scrapers: true,
@@ -644,6 +669,7 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "block_vpn",
     "block_countries",
     "block_ips",
+    "block_admin_banned_ips",
     "block_ad_bots",
     "block_ai_assistants",
     "block_ai_scrapers",

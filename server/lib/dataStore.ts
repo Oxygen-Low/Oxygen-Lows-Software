@@ -708,6 +708,9 @@ export function getTableFilePath(
       case "defender_ip_blocks":
         filePath = path.join(userDir, "defender", "ip_blocks.json");
         break;
+      case "defender_banned_ips":
+        filePath = path.join(userDir, "defender", "banned_ips.json");
+        break;
       case "defender_vpn":
         filePath = path.join(userDir, "defender", "vpn.json");
         break;

@@ -368,6 +368,9 @@ export const en = {
     webDefenderAutoBlock: "Auto-block AbuseIPDB threats",
     webDefenderAutoBlockDesc:
       "When enabled, blocked IPs are checked once every seven days. IPs with an AbuseIPDB abuse score above zero are added to the block list.",
+    webDefenderBannedIps: "Banned IPs",
+    webDefenderBannedIpsDesc: "Enforce platform-wide IP bans managed by Oxygen Low's Software administrators.",
+    webDefenderBannedIpsView: "View active bans and their reasons in the public directory.",
     passwordManagerTitle: "Password Manager",
     passwordManagerDesc:
       "Securely store and manage passwords with AES-256 zero-knowledge encryption.",

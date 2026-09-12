@@ -241,6 +241,7 @@ type AppConfig = {
   ddos_threshold_rpm: number;
   block_countries: string[];
   block_ips: string[];
+  block_admin_banned_ips: boolean;
   block_ad_bots: boolean;
   block_ai_assistants: boolean;
   block_ai_scrapers: boolean;
@@ -1835,6 +1836,7 @@ const defaultDefenderConfig: AppConfig = {
   ddos_threshold_rpm: 1000,
   block_countries: [],
   block_ips: [],
+  block_admin_banned_ips: true,
   block_ad_bots: false,
   block_ai_assistants: false,
   block_ai_scrapers: true,
@@ -2009,6 +2011,28 @@ export function SettingsTab({
 
   return (
     <div className="space-y-8 max-w-4xl">
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>{t("apps.webDefenderBannedIps", undefined, "Banned IPs")}</CardTitle>
+          <CardDescription>
+            {t("apps.webDefenderBannedIpsDesc", undefined, "Enforce platform-wide IP bans managed by Oxygen Low's Software administrators.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div className="text-sm text-slate-400">
+            {t("apps.webDefenderBannedIpsView", undefined, "View active bans and their reasons in the public directory.")}
+            <a href="/webdefender/banned-ips" className="ml-2 text-cyan-400 hover:text-cyan-300 underline">
+              {t("apps.webDefenderBannedIps", undefined, "Banned IPs")}
+            </a>
+          </div>
+          <Switch
+            checked={config.block_admin_banned_ips}
+            onCheckedChange={(checked) => updateConfig({ block_admin_banned_ips: checked })}
+            aria-label="Enforce administrator banned IPs"
+          />
+        </CardContent>
+      </Card>
+
       <Card className="bg-slate-900 border-slate-800">
         <CardHeader>
           <CardTitle>{t("apps.webDefenderAbuseTitle", undefined, "AbuseIPDB")}</CardTitle>

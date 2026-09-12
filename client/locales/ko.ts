@@ -362,6 +362,9 @@ export const ko = {
     webDefenderAbuseKeyConfigured: "AbuseIPDB 키가 설정되어 있습니다. 교체하려면 새 키를 입력하고, 삭제하려면 비워 둔 채 저장하세요.",
     webDefenderAutoBlock: "AbuseIPDB 위협 자동 차단",
     webDefenderAutoBlockDesc: "활성화하면 차단된 IP를 7일에 한 번 확인합니다. AbuseIPDB 악용 점수가 0보다 큰 IP는 차단 목록에 추가됩니다.",
+    webDefenderBannedIps: "차단된 IP",
+    webDefenderBannedIpsDesc: "Oxygen Low's Software 관리자가 관리하는 플랫폼 전체 IP 차단을 적용합니다.",
+    webDefenderBannedIpsView: "공개 디렉터리에서 활성 차단과 사유를 확인하세요.",
     passwordManagerTitle: "비밀번호 관리자",
     passwordManagerDesc:
       "AES-256 제로 지식 암호화로 비밀번호를 안전하게 저장하고 관리합니다.",
