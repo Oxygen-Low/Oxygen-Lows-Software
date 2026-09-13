@@ -1,28 +1,16 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
-import { DATA_DIR, getUserById } from "./dataStore.ts";
+import { getUserById } from "./dataStore.ts";
+
+let _inMemorySecretKey: string | null = null;
 
 function getSecretKey(): string {
   if (process.env.AUTH_SECRET) {
     return process.env.AUTH_SECRET;
   }
-  const secretPath = path.join(DATA_DIR, "secret.key");
-  try {
-    if (fs.existsSync(secretPath)) {
-      return fs.readFileSync(secretPath, "utf-8").trim();
-    }
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    const newSecret = crypto.randomBytes(32).toString("hex");
-    fs.writeFileSync(secretPath, newSecret, "utf-8");
-    return newSecret;
-  } catch (err) {
-    const error = new Error("Failed to read or generate AUTH_SECRET. Please set the AUTH_SECRET environment variable or ensure file system permissions.");
-    (error as any).cause = err;
-    throw error;
+  if (!_inMemorySecretKey) {
+    _inMemorySecretKey = crypto.randomBytes(32).toString("hex");
   }
+  return _inMemorySecretKey;
 }
 
 export function generateSalt(): string {
