@@ -368,8 +368,8 @@ importers:
         specifier: '>=4.0.0'
         version: 5.2.1
       hono:
-        specifier: '>=4.13.5'
-        version: 4.13.5
+        specifier: '>=4.13.7'
+        version: 4.13.7
     devDependencies:
       '@types/node':
         specifier: ^26.5.1
@@ -2717,10 +2717,6 @@ packages:
 
   hls.js@1.7.0:
     resolution: {integrity: sha512-NnQpT6Z//+2IB2qovSUbKbrlXY1MOpi0JynZ9L2NNOuTJiNCyMSQj9k2laEj1v7CxU/Hb8oTWR98eT3mVpPQVQ==}
-
-  hono@4.13.5:
-    resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
-    engines: {node: '>=16.9.0'}
 
   hono@4.13.7:
     resolution: {integrity: sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ==}
@@ -6145,8 +6141,6 @@ snapshots:
   highlightjs-vue@1.0.0: {}
 
   hls.js@1.7.0: {}
-
-  hono@4.13.5: {}
 
   hono@4.13.7: {}
 
