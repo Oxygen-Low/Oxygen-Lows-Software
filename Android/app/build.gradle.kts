@@ -64,3 +64,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 }
+
+configurations.configureEach {
+    if (name == "compileClasspath" || name == "runtimeClasspath"
+            || name.endsWith("CompileClasspath") || name.endsWith("RuntimeClasspath")) {
+        resolutionStrategy.activateDependencyLocking()
+    }
+}
