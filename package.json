@@ -50,7 +50,7 @@
     "remark-gfm": "^4.0.1",
     "sudoku-gen": "^1.0.2",
     "ws": "^8.21.3",
-    "zod": "^4.4.3"
+    "zod": "^4.6.1"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.9.1",
