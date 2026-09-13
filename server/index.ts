@@ -20,6 +20,10 @@ import { softwareAwardsRouter } from "./routes/softwareAwards.ts";
 import { notificationsRouter } from "./routes/notifications.ts";
 import { adminNotificationsRouter } from "./routes/adminNotifications.ts";
 import { adminWebdefenderRouter } from "./routes/adminWebdefender.ts";
+import {
+  getActiveDefenderBannedIps,
+  publicDefenderBannedIp,
+} from "./lib/defenderBannedIps.ts";
 import { createDefender } from "@oxygenlow/webdefender/hono";
 import { getSeoMetadata, ALL_INTERNAL_NAV_LINKS } from "../shared/seo.ts";
 import { broadcastChange } from "./lib/realtime.ts";
@@ -45,6 +49,9 @@ app.use("*", async (c, next) => {
   if (
     c.req.path.startsWith("/api/webdefender") ||
     c.req.path.startsWith("/api/defender") ||
+    c.req.path.startsWith("/api/banned-ips") ||
+    c.req.path.startsWith("/api/admin/banned-ips") ||
+    c.req.path.startsWith("/api/admin/webdefender") ||
     c.req.path.startsWith("/api/storage") ||
     c.req.path.startsWith("/api/auth") ||
     c.req.path.startsWith("/api/data") ||
@@ -1069,6 +1076,12 @@ app.route("/api/software-awards", softwareAwardsRouter);
 app.route("/api/notifications", notificationsRouter);
 app.route("/api/admin/notifications", adminNotificationsRouter);
 app.route("/api/admin/webdefender", adminWebdefenderRouter);
+app.route("/api/admin/banned-ips", adminWebdefenderRouter);
+
+app.get("/api/banned-ips", async (c) => {
+  const bannedIps = getActiveDefenderBannedIps().map(publicDefenderBannedIp);
+  return c.json({ banned_ips: bannedIps, total: bannedIps.length });
+});
 
 export function createServer() {
   return app;

@@ -106,6 +106,7 @@ const App = () => (
                     <Route path="/apps" element={<Apps />} />
                     <Route path="/apps/:appId" element={<Apps />} />
                     <Route path="/apps/3d-background" element={<Apps />} />
+                    <Route path="/banned-ips" element={<BannedIps />} />
                     <Route path="/webdefender/banned-ips" element={<BannedIps />} />
                     <Route path="/games" element={<Games />} />
                     <Route path="/games/:appId" element={<Games />} />
@@ -256,6 +257,10 @@ const App = () => (
                           <AdminNotifications />
                         </ProtectedRoute>
                       }
+                    />
+                    <Route
+                      path="/admin/banned-ips"
+                      element={<ProtectedRoute><AdminBannedIps /></ProtectedRoute>}
                     />
                     <Route
                       path="/admin/webdefender/banned-ips"

@@ -24,8 +24,12 @@ export default function AdminPanel() {
 
   const apps = [
     {
-      title: "Banned IPs",
-      description: "Manage platform-wide Web Defender IP bans and their public reasons.",
+      title: t("admin.bannedIpsTitle", undefined, "Banned IPs"),
+      description: t(
+        "admin.bannedIpsDesc",
+        undefined,
+        "Manage platform-wide Web Defender IP bans and their public reasons.",
+      ),
       icon: ShieldBan,
       href: "/admin/webdefender/banned-ips",
       color: "text-rose-500",
