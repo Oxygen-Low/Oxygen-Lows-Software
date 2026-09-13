@@ -400,6 +400,27 @@ export const ko = {
     imageGenDownloaded: "다운로드가 시작되었습니다!",
     imageGenOpeningStudio: "Image Studio에서 여는 중...",
     imageGenModelLabel: "생성 모델",
+    imageGenModel_quality: "고화질 (Quality)",
+    imageGenModel_quality_desc:
+      "최고의 디테일과 선명도를 갖춘 고해상도 사실적 체크포인트.",
+    imageGenModel_pixel_art: "픽셀 아트 (Pixel Art)",
+    imageGenModel_pixel_art_desc:
+      "레트로 16비트 픽셀 그래픽과 감성적인 아케이드 게임 스타일.",
+    imageGenModel_fast: "빠른 생성 (Fast)",
+    imageGenModel_fast_desc:
+      "신속한 미리보기와 속도에 최적화된 가벼운 빠른 생성.",
+    imageGenModel_anime: "애니메이션 (Anime)",
+    imageGenModel_anime_desc:
+      "깔끔한 선화와 감각적인 채색이 돋보이는 생생한 스튜디오 애니메이션 스타일.",
+    imageGenModel_realistic: "실사 (Realistic)",
+    imageGenModel_realistic_desc:
+      "자연스러운 깊이감과 조명을 갖춘 사실적인 35mm 사진 스타일.",
+    imageGenModel_cartoon: "카툰 (Cartoon)",
+    imageGenModel_cartoon_desc:
+      "경쾌한 캐릭터 디자인, 풍부한 표정, 선명한 색감의 만화 스타일.",
+    imageGenModel_simplistic: "심플 (simplistic)",
+    imageGenModel_simplistic_desc:
+      "간결한 형태, 평면 색상, 정돈된 라인의 미니멀 디자인.",
     imageGenPromptLabel: "프롬프트",
     imageGenPromptPlaceholder:
       "생성하고 싶은 이미지를 상세하게 설명하세요...",

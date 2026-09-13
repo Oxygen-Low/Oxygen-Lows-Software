@@ -9,75 +9,124 @@ export const imageGenRouter = new Hono();
 
 const imageLimiter = rateLimiter(20, 60_000, "image_gen");
 
-export const HORDE_SFW_CURATED = [
+export interface CuratedModelPreset {
+  id: string;
+  name: string;
+  description: string;
+  baseHordeModel: string;
+  stylePrompt: string;
+  negativePromptAdditions: string;
+  defaultSteps: number;
+  maxSteps: number;
+  aspectRatios: string[];
+}
+
+export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
-    provider: "horde",
-    id: "SDXL 1.0",
-    name: "SDXL 1.0 (Horde)",
-    description: "Community Stable Diffusion XL photorealistic checkpoint",
-    free: true,
+    id: "quality",
+    name: "Quality",
+    description: "High-resolution photorealistic checkpoint with maximum detail and clarity",
+    baseHordeModel: "SDXL 1.0",
+    stylePrompt: "masterpiece, ultra detailed, sharp focus, 8k resolution, high fidelity",
+    negativePromptAdditions: "blurry, low quality, artifacts, distorted, noisy",
+    defaultSteps: 25,
     maxSteps: 30,
-    defaultSteps: 20,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
   },
   {
-    provider: "horde",
-    id: "stable_diffusion",
-    name: "Stable Diffusion 1.5 (Horde)",
-    description: "Verified SFW general-purpose diffusion model",
-    free: true,
-    maxSteps: 30,
+    id: "pixel_art",
+    name: "Pixel Art",
+    description: "Retro 16-bit pixel graphic and nostalgic arcade game aesthetic",
+    baseHordeModel: "stable_diffusion",
+    stylePrompt: "pixel art, 16-bit pixel graphic, detailed pixelated style, retro game sprite aesthetic",
+    negativePromptAdditions: "photorealistic, 3D render, realistic photo, smooth gradients, vector, blurry",
     defaultSteps: 20,
-    aspectRatios: ["1:1", "4:3", "3:4"],
+    maxSteps: 30,
+    aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
   },
   {
-    provider: "horde",
-    id: "Deliberate",
-    name: "Deliberate 2.0 (Horde)",
-    description: "Exceptional detail for digital art, 3D renders, and illustrations",
-    free: true,
-    maxSteps: 30,
+    id: "fast",
+    name: "Fast",
+    description: "Rapid lightweight generation optimized for quick previews and speed",
+    baseHordeModel: "stable_diffusion",
+    stylePrompt: "",
+    negativePromptAdditions: "blurry, low quality",
+    defaultSteps: 15,
+    maxSteps: 25,
+    aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+  },
+  {
+    id: "anime",
+    name: "Anime",
+    description: "Vibrant studio anime artwork with clean lines and stylized shading",
+    baseHordeModel: "DreamShaper",
+    stylePrompt: "anime artwork, anime key visual, studio anime aesthetic, vibrant anime colors, clean lineart",
+    negativePromptAdditions: "photorealistic, real photo, 3D CGI, deformed, disfigured",
     defaultSteps: 20,
+    maxSteps: 30,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
   },
   {
-    provider: "horde",
-    id: "DreamShaper",
-    name: "DreamShaper (Horde)",
-    description: "Popular artistic model for fantasy, concept art, and portraits",
-    free: true,
+    id: "realistic",
+    name: "Realistic",
+    description: "Authentic 35mm photographic realism with natural depth and lighting",
+    baseHordeModel: "ICBINP - I Can't Believe It's Not Photography",
+    stylePrompt: "photorealistic, 35mm photography, realistic lighting, highly detailed photograph, RAW photo",
+    negativePromptAdditions: "drawing, painting, illustration, cartoon, anime, 3d render, CGI, unrealistic",
+    defaultSteps: 25,
     maxSteps: 30,
-    defaultSteps: 20,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
   },
   {
-    provider: "horde",
-    id: "ICBINP - I Can't Believe It's Not Photography",
-    name: "ICBINP Photo (Horde)",
-    description: "Specialized photographic realism checkpoint",
-    free: true,
-    maxSteps: 30,
+    id: "cartoon",
+    name: "Cartoon",
+    description: "Playful character designs, expressive shapes, and bold cartoon colors",
+    baseHordeModel: "Deliberate",
+    stylePrompt: "cartoon illustration, vibrant cartoon style, expressive stylized character, 2D animation art",
+    negativePromptAdditions: "photorealistic, real life photo, 3D render, dark, gritty",
     defaultSteps: 20,
+    maxSteps: 30,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
   },
   {
-    provider: "horde",
-    id: "AlbedoBase XL",
-    name: "AlbedoBase XL (Horde)",
-    description: "Clean generalist XL model with high visual fidelity",
-    free: true,
-    maxSteps: 30,
+    id: "simplistic",
+    name: "simplistic",
+    description: "Clean minimalist design with simple shapes, flat colors, and elegant lines",
+    baseHordeModel: "stable_diffusion",
+    stylePrompt: "simplistic minimalist illustration, flat art style, clean simple shapes, minimalist design, elegant minimalism",
+    negativePromptAdditions: "cluttered, busy, complex background, hyperdetailed, photorealistic, chaotic",
     defaultSteps: 20,
-    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    maxSteps: 30,
+    aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
   },
 ];
 
-const NSFW_MODEL_REGEX =
-  /(nsfw|hentai|furry|erotic|porn|lewd|waifu|nude|sex|xxx|boob|r18|uncensored|spicy|yiff)/i;
+export const HORDE_SFW_CURATED = IMAGE_GENERATOR_PRESETS.map((p) => ({
+  provider: "horde" as const,
+  id: p.id,
+  name: p.name,
+  description: p.description,
+  free: true,
+  maxSteps: p.maxSteps,
+  defaultSteps: p.defaultSteps,
+  aspectRatios: p.aspectRatios,
+}));
 
 // GET /api/ai/image/models
 imageGenRouter.get("/models", imageLimiter, async (c) => {
-  let hordeModels = [...HORDE_SFW_CURATED];
+  let hordeModels = IMAGE_GENERATOR_PRESETS.map((p) => ({
+    provider: "horde" as const,
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    free: true,
+    maxSteps: p.maxSteps,
+    defaultSteps: p.defaultSteps,
+    aspectRatios: p.aspectRatios,
+    workers: 0,
+    queued: 0,
+    eta: 0,
+  }));
 
   try {
     const controller = new AbortController();
@@ -99,39 +148,23 @@ imageGenRouter.get("/models", imageLimiter, async (c) => {
         if (m.name) statusByName.set(m.name, m);
       }
 
-      // Enrich curated list with live availability
-      hordeModels = hordeModels.map((curated) => {
-        const live = statusByName.get(curated.id);
+      // Enrich the 7 presets with live availability from their underlying Horde models
+      hordeModels = IMAGE_GENERATOR_PRESETS.map((preset) => {
+        const live = statusByName.get(preset.baseHordeModel);
         return {
-          ...curated,
+          provider: "horde" as const,
+          id: preset.id,
+          name: preset.name,
+          description: preset.description,
+          free: true,
+          maxSteps: preset.maxSteps,
+          defaultSteps: preset.defaultSteps,
+          aspectRatios: preset.aspectRatios,
           workers: live ? live.count || 0 : 0,
           queued: live ? live.queued || 0 : 0,
           eta: live ? live.eta || 0 : 0,
         };
       });
-
-      // Optionally discover additional high-worker active SFW models
-      for (const [name, info] of statusByName.entries()) {
-        if (
-          !hordeModels.some((m) => m.id === name) &&
-          !NSFW_MODEL_REGEX.test(name) &&
-          (info.count || 0) >= 3
-        ) {
-          hordeModels.push({
-            provider: "horde",
-            id: name,
-            name: `${name} (Horde)`,
-            description: `Community worker model (${info.count} active workers)`,
-            free: true,
-            maxSteps: 30,
-            defaultSteps: 20,
-            aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
-            workers: info.count || 0,
-            queued: info.queued || 0,
-            eta: info.eta || 0,
-          } as any);
-        }
-      }
     }
   } catch (err) {
     // Graceful fallback to static curated list
@@ -209,17 +242,47 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
       }
     }
 
-    const selectedModel = model || "SDXL 1.0";
-    const fullPrompt = negative_prompt
-      ? `${prompt} ### ${negative_prompt}`
-      : prompt;
+    const requestedModel = String(model || "quality").trim();
+    const matchedPreset = IMAGE_GENERATOR_PRESETS.find(
+      (p) =>
+        p.id.toLowerCase() === requestedModel.toLowerCase() ||
+        p.name.toLowerCase() === requestedModel.toLowerCase(),
+    );
+
+    const baseHordeModel = matchedPreset ? matchedPreset.baseHordeModel : requestedModel;
+    const responseModelName = matchedPreset ? matchedPreset.name : requestedModel;
+
+    // Enhance prompt with preset style if applicable
+    let enhancedPrompt = prompt;
+    if (
+      matchedPreset?.stylePrompt &&
+      !prompt.toLowerCase().includes(matchedPreset.stylePrompt.toLowerCase())
+    ) {
+      enhancedPrompt = `${prompt}, ${matchedPreset.stylePrompt}`;
+    }
+
+    // Enhance negative prompt with preset exclusions if applicable
+    let enhancedNegativePrompt = negative_prompt;
+    if (matchedPreset?.negativePromptAdditions) {
+      if (enhancedNegativePrompt) {
+        enhancedNegativePrompt = `${enhancedNegativePrompt}, ${matchedPreset.negativePromptAdditions}`;
+      } else {
+        enhancedNegativePrompt = matchedPreset.negativePromptAdditions;
+      }
+    }
+
+    const fullPrompt = enhancedNegativePrompt
+      ? `${enhancedPrompt} ### ${enhancedNegativePrompt}`
+      : enhancedPrompt;
+
+    const maxStepsAllowed = matchedPreset ? matchedPreset.maxSteps : 30;
 
     const hordePayload = {
       prompt: fullPrompt,
       params: {
         sampler_name: "k_euler",
         cfg_scale: guidance,
-        steps: Math.min(steps, 30),
+        steps: Math.min(steps, maxStepsAllowed),
         width,
         height,
         seed: seed !== undefined ? String(seed) : undefined,
@@ -227,7 +290,7 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
       },
       nsfw: false,
       censor_nsfw: true,
-      models: [selectedModel],
+      models: [baseHordeModel],
     };
 
     try {
@@ -261,7 +324,7 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
         id: data.id,
         kudos: data.kudos,
         provider: "horde",
-        model: selectedModel,
+        model: responseModelName,
       });
     } catch (err: any) {
       console.error("AI Horde Submit Error:", err);

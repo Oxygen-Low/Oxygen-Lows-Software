@@ -25,7 +25,7 @@ export function useImageGeneration() {
 
   // Model selection state
   const [selectedProvider, setSelectedProvider] = useState<"horde">("horde");
-  const [selectedModel, setSelectedModel] = useState<string>("SDXL 1.0");
+  const [selectedModel, setSelectedModel] = useState<string>("quality");
 
   // Generation options
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("1:1");

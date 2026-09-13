@@ -381,6 +381,27 @@ export const zhCN = {
     imageGenDownloaded: "已开始下载！",
     imageGenOpeningStudio: "正在 Image Studio 中打开...",
     imageGenModelLabel: "生成模型",
+    imageGenModel_quality: "高画质 (Quality)",
+    imageGenModel_quality_desc:
+      "具有极致细节和清晰度的高分辨率逼真画质模型。",
+    imageGenModel_pixel_art: "像素风 (Pixel Art)",
+    imageGenModel_pixel_art_desc:
+      "复古 16 位像素图形与经典街机游戏复古美学。",
+    imageGenModel_fast: "极速 (Fast)",
+    imageGenModel_fast_desc:
+      "轻量快速生成，专为快速预览和速度优化。",
+    imageGenModel_anime: "动漫 (Anime)",
+    imageGenModel_anime_desc:
+      "线条明快、光影细腻的生动工作室日漫风格。",
+    imageGenModel_realistic: "写实摄影 (Realistic)",
+    imageGenModel_realistic_desc:
+      "具有自然景深与真实光感的 35mm 胶片逼真写实风格。",
+    imageGenModel_cartoon: "卡通 (Cartoon)",
+    imageGenModel_cartoon_desc:
+      "生动活泼的角色设计、丰富表现力与鲜亮动画色彩。",
+    imageGenModel_simplistic: "极简 (simplistic)",
+    imageGenModel_simplistic_desc:
+      "简单造型、扁平色块与纯粹线条构成的简约清爽风格。",
     imageGenPromptLabel: "提示词",
     imageGenPromptPlaceholder: "详细描述您想要生成的图像内容...",
     imageGenNegativePromptToggle: "反向提示词（可选）",

@@ -128,7 +128,12 @@ export async function generateImage(
   // For SDXL or FLUX, scale up to 1024 base if square
   let targetWidth = dims.width;
   let targetHeight = dims.height;
-  if (model.includes("flux") || model.includes("xl") || model.includes("XL")) {
+  if (
+    model.includes("flux") ||
+    model.includes("xl") ||
+    model.includes("XL") ||
+    model.toLowerCase() === "quality"
+  ) {
     if (aspectRatio === "1:1") {
       targetWidth = 1024;
       targetHeight = 1024;

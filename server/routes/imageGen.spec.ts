@@ -35,18 +35,33 @@ describe("Image Generation Router", () => {
       expect(data.cloudflare).toBeUndefined();
 
       expect(data.horde).toBeDefined();
-      expect(data.horde.length).toBeGreaterThan(0);
+      expect(data.horde.length).toBe(7);
 
-      // Verify NSFW models are excluded from discovered models
+      const ids = data.horde.map((m: any) => m.id);
+      expect(ids).toEqual([
+        "quality",
+        "pixel_art",
+        "fast",
+        "anime",
+        "realistic",
+        "cartoon",
+        "simplistic",
+      ]);
+
+      // Verify NSFW models are excluded and cannot be injected
       const nsfwFound = data.horde.some((m: any) =>
         /nsfw|explicit/i.test(m.id || m.name),
       );
       expect(nsfwFound).toBe(false);
 
-      // Verify enriched worker counts
-      const sdxl = data.horde.find((m: any) => m.id === "SDXL 1.0");
-      expect(sdxl).toBeDefined();
-      expect(sdxl.workers).toBe(12);
+      // Verify enriched worker counts for presets from base models
+      const quality = data.horde.find((m: any) => m.id === "quality");
+      expect(quality).toBeDefined();
+      expect(quality.workers).toBe(12);
+
+      const cartoon = data.horde.find((m: any) => m.id === "cartoon");
+      expect(cartoon).toBeDefined();
+      expect(cartoon.workers).toBe(5);
     });
   });
 
@@ -114,7 +129,7 @@ describe("Image Generation Router", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider: "horde",
-          model: "SDXL 1.0",
+          model: "quality",
           prompt: "a majestic golden retriever playing in autumn leaves",
           negative_prompt: "blurry, low quality",
         }),
@@ -125,8 +140,9 @@ describe("Image Generation Router", () => {
       expect(data.success).toBe(true);
       expect(data.async).toBe(true);
       expect(data.id).toBe("mock-horde-job-123");
+      expect(data.model).toBe("Quality");
 
-      // Verify SFW flags were passed in fetch payload
+      // Verify SFW flags and preset injection were passed in fetch payload
       const calls = (global.fetch as any).mock.calls;
       const hordeCall = calls.find((c: any[]) =>
         c[0].includes("stablehorde.net/api/v2/generate/async"),
@@ -135,7 +151,46 @@ describe("Image Generation Router", () => {
       const payload = JSON.parse(hordeCall[1].body);
       expect(payload.nsfw).toBe(false);
       expect(payload.censor_nsfw).toBe(true);
+      // Resolved underlying model
+      expect(payload.models).toEqual(["SDXL 1.0"]);
+      // Enhanced prompt with quality style
+      expect(payload.prompt).toContain("masterpiece, ultra detailed");
       expect(payload.prompt).toContain("### blurry, low quality");
+    });
+
+    it("translates preset ID into base model and injects positive/negative style tags", async () => {
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("stablehorde.net/api/v2/generate/async")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ id: "mock-pixel-art-123", kudos: 0 }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      });
+
+      const res = await app.request("/api/ai/image/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "horde",
+          model: "pixel_art",
+          prompt: "a knight standing in a dungeon",
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.model).toBe("Pixel Art");
+
+      const calls = (global.fetch as any).mock.calls;
+      const hordeCall = calls.find((c: any[]) =>
+        c[0].includes("stablehorde.net/api/v2/generate/async"),
+      );
+      const payload = JSON.parse(hordeCall[1].body);
+      expect(payload.models).toEqual(["stable_diffusion"]);
+      expect(payload.prompt).toContain("pixel art, 16-bit pixel graphic");
+      expect(payload.prompt).toContain("### photorealistic, 3D render");
     });
   });
 

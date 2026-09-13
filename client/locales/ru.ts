@@ -406,6 +406,27 @@ export const ru = {
     imageGenDownloaded: "Загрузка началась!",
     imageGenOpeningStudio: "Открытие в Image Studio...",
     imageGenModelLabel: "Модель генерации",
+    imageGenModel_quality: "Качество (Quality)",
+    imageGenModel_quality_desc:
+      "Фотореалистичный чекпоинт высокого разрешения с максимальной детализацией и четкостью.",
+    imageGenModel_pixel_art: "Пиксель-арт (Pixel Art)",
+    imageGenModel_pixel_art_desc:
+      "Ретро 16-битная пиксельная графика в ностальгическом аркадном стиле.",
+    imageGenModel_fast: "Быстрая (Fast)",
+    imageGenModel_fast_desc:
+      "Легкая и сверхбыстрая генерация для мгновенных превью.",
+    imageGenModel_anime: "Аниме (Anime)",
+    imageGenModel_anime_desc:
+      "Яркий стиль студийного аниме с четкими линиями и стилизованными тенями.",
+    imageGenModel_realistic: "Реализм (Realistic)",
+    imageGenModel_realistic_desc:
+      "Аутентичный фотореализм 35-мм съемки с естественным освещением и глубиной.",
+    imageGenModel_cartoon: "Мультяшный (Cartoon)",
+    imageGenModel_cartoon_desc:
+      "Выразительные персонажи, живые формы и яркие цвета анимации.",
+    imageGenModel_simplistic: "Минимализм (simplistic)",
+    imageGenModel_simplistic_desc:
+      "Чистый минималистичный дизайн с простыми формами, плоскими цветами и элегантными линиями.",
     imageGenPromptLabel: "Запрос (Промпт)",
     imageGenPromptPlaceholder:
       "Подробно опишите изображение, которое хотите получить...",

@@ -403,6 +403,27 @@ export const ja = {
     imageGenDownloaded: "ダウンロードを開始しました！",
     imageGenOpeningStudio: "Image Studioで開いています...",
     imageGenModelLabel: "生成モデル",
+    imageGenModel_quality: "高品質",
+    imageGenModel_quality_desc:
+      "最高のディテールと明瞭さを備えた高解像度フォトリアリスティックチェックポイント。",
+    imageGenModel_pixel_art: "ドット絵 (Pixel Art)",
+    imageGenModel_pixel_art_desc:
+      "レトロな16ビットピクセルグラフィックと懐かしいアーケードゲームの美学。",
+    imageGenModel_fast: "高速",
+    imageGenModel_fast_desc:
+      "迅速なプレビューと速度に最適化された軽量高速生成。",
+    imageGenModel_anime: "アニメ",
+    imageGenModel_anime_desc:
+      "クリーンな線画とスタイリッシュな陰影を持つ鮮やかなスタジオアニメ調アート。",
+    imageGenModel_realistic: "写実的 (Realistic)",
+    imageGenModel_realistic_desc:
+      "自然な奥行きとライティングを備えた本物の35mmフィルムのような写実性。",
+    imageGenModel_cartoon: "カートゥーン",
+    imageGenModel_cartoon_desc:
+      "表情豊かなキャラクターデザインと鮮やかなアニメーションカラー。",
+    imageGenModel_simplistic: "シンプル (simplistic)",
+    imageGenModel_simplistic_desc:
+      "シンプルな形状、フラットカラー、洗練されたラインによるミニマルなデザイン。",
     imageGenPromptLabel: "プロンプト",
     imageGenPromptPlaceholder:
       "生成したい画像の詳細を記述してください...",

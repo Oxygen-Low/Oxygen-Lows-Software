@@ -23,16 +23,29 @@ vi.mock("@/services/imageGen", async (importOriginal) => {
       horde: [
         {
           provider: "horde",
-          id: "SDXL 1.0",
-          name: "SDXL 1.0 (Horde)",
-          description: "Community photorealistic checkpoint",
+          id: "quality",
+          name: "Quality",
+          description: "High-resolution photorealistic checkpoint with maximum detail and clarity.",
           free: true,
           maxSteps: 30,
-          defaultSteps: 20,
+          defaultSteps: 25,
           aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
           workers: 8,
           queued: 1,
           eta: 12,
+        },
+        {
+          provider: "horde",
+          id: "pixel_art",
+          name: "Pixel Art",
+          description: "Retro 16-bit pixel graphic and nostalgic arcade game aesthetic.",
+          free: true,
+          maxSteps: 30,
+          defaultSteps: 20,
+          aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+          workers: 5,
+          queued: 0,
+          eta: 8,
         },
       ],
     }),
@@ -89,9 +102,9 @@ describe("ImageGeneratorApp", () => {
     expect(screen.getByText("AI Image Generator")).toBeDefined();
     expect(screen.getByText("AI Horde (SFW)")).toBeDefined();
 
-    // Model dropdown options load AI Horde models
+    // Model dropdown options load curated models
     await waitFor(() => {
-      expect(screen.getByText(/SDXL 1\.0 \(Horde\)/)).toBeDefined();
+      expect(screen.getByText(/Quality/)).toBeDefined();
     });
   });
 
@@ -100,7 +113,7 @@ describe("ImageGeneratorApp", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText(/SDXL 1\.0 \(Horde\)/)).toBeDefined();
+      expect(screen.getByText(/Quality/)).toBeDefined();
     });
   });
 

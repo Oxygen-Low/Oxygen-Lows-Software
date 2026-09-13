@@ -406,6 +406,27 @@ export const en = {
     imageGenDownloaded: "Download started!",
     imageGenOpeningStudio: "Opening in Image Studio...",
     imageGenModelLabel: "Generation Model",
+    imageGenModel_quality: "Quality",
+    imageGenModel_quality_desc:
+      "High-resolution photorealistic checkpoint with maximum detail and clarity.",
+    imageGenModel_pixel_art: "Pixel Art",
+    imageGenModel_pixel_art_desc:
+      "Retro 16-bit pixel graphic and nostalgic arcade game aesthetic.",
+    imageGenModel_fast: "Fast",
+    imageGenModel_fast_desc:
+      "Rapid lightweight generation optimized for quick previews and speed.",
+    imageGenModel_anime: "Anime",
+    imageGenModel_anime_desc:
+      "Vibrant studio anime artwork with clean lines and stylized shading.",
+    imageGenModel_realistic: "Realistic",
+    imageGenModel_realistic_desc:
+      "Authentic 35mm photographic realism with natural depth and lighting.",
+    imageGenModel_cartoon: "Cartoon",
+    imageGenModel_cartoon_desc:
+      "Playful character designs, expressive shapes, and bold cartoon colors.",
+    imageGenModel_simplistic: "simplistic",
+    imageGenModel_simplistic_desc:
+      "Clean minimalist design with simple shapes, flat colors, and elegant lines.",
     imageGenPromptLabel: "Prompt",
     imageGenPromptPlaceholder:
       "Describe the image you want to generate in detail...",

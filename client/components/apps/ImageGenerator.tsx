@@ -214,14 +214,19 @@ export function ImageGeneratorApp() {
                 >
                   {currentModelList.map((m) => (
                     <option key={m.id} value={m.id} className="bg-[#1a1a22] text-white">
-                      {m.name} {m.eta && m.eta > 0 ? `(~${m.eta}s ETA)` : ""}
+                      {t(`apps.imageGenModel_${m.id}`, undefined, m.name)}{" "}
+                      {m.eta && m.eta > 0 ? `(~${m.eta}s ETA)` : ""}
                     </option>
                   ))}
                 </select>
 
                 {currentModelObj?.description && (
                   <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                    {currentModelObj.description}
+                    {t(
+                      `apps.imageGenModel_${currentModelObj.id}_desc`,
+                      undefined,
+                      currentModelObj.description,
+                    )}
                   </p>
                 )}
               </div>
