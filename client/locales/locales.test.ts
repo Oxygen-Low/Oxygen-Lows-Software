@@ -333,5 +333,12 @@ type _AssertKoGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof k
 type _AssertRuGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof ru.gameLibrary>>;
 type _AssertZhGameLibrary = AssertTrue<ExactKeys<typeof en.gameLibrary, typeof zhCN.gameLibrary>>;
 
+// 7. threatLookup leaf keys exact parity across all 6 locales
+type _AssertEsThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof es.threatLookup>>;
+type _AssertJaThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof ja.threatLookup>>;
+type _AssertKoThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof ko.threatLookup>>;
+type _AssertRuThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof ru.threatLookup>>;
+type _AssertZhThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof zhCN.threatLookup>>;
+
 
 

@@ -110,6 +110,9 @@ export class VpnDetector {
     this.refresh();
     // Refresh every hour
     this.intervalId = setInterval(() => this.refresh(), 3600000);
+    if (this.intervalId && typeof this.intervalId === "object" && "unref" in this.intervalId) {
+      (this.intervalId as any).unref();
+    }
   }
 
   private parseLines(text: string): { ips: Set<string>; cidrs: CidrBlock[] } {

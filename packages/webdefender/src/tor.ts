@@ -11,6 +11,9 @@ export class TorDetector {
     this.refresh();
     // Refresh every hour
     this.intervalId = setInterval(() => this.refresh(), 3600000);
+    if (this.intervalId && typeof this.intervalId === "object" && "unref" in this.intervalId) {
+      (this.intervalId as any).unref();
+    }
   }
 
   async refresh(): Promise<void> {
@@ -49,6 +52,12 @@ export class TorDetector {
   isTorExitNode(ip: string): boolean {
     if (!ip) return false;
     return this.exitNodes.has(ip);
+  }
+
+  addExitNode(ip: string): void {
+    if (ip) {
+      this.exitNodes.add(ip.trim());
+    }
   }
 
   destroy(): void {

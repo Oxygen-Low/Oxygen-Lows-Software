@@ -1,6 +1,7 @@
 export { DefenderClient } from "./webdefender.js";
 export { ThreatActorDetector } from "./threatActors.js";
 export { VpnDetector } from "./vpn.js";
+export { TorDetector } from "./tor.js";
 export { createExpressMiddleware } from "./middleware.js";
 export type {
   DefenderConfig,

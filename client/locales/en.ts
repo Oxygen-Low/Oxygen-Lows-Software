@@ -2079,6 +2079,28 @@ export const en = {
     bannedOn: "Banned",
     loadError: "Unable to load banned IPs",
   },
+  threatLookup: {
+    title: "Threat Intelligence Lookup",
+    subtitle: "Check any IP address against active platform bans, known threat actors, TOR exit nodes, and VPN networks.",
+    inputPlaceholder: "Enter IPv4 or IPv6 address (e.g., 1.1.1.1)",
+    checkButton: "Check Threat Status",
+    checking: "Checking...",
+    cleanIp: "Clean IP - No Threats Detected",
+    knownThreat: "Known Threat Detected",
+    torExitNode: "TOR Exit Node",
+    vpnNetwork: "VPN Network",
+    notTor: "Not a TOR Exit Node",
+    notVpn: "Not a Known VPN",
+    reason: "Reason",
+    category: "Category",
+    bannedStatus: "Platform Ban",
+    threatActorStatus: "Threat Actor",
+    banned: "Banned",
+    notBanned: "Not Banned",
+    errorRequired: "IP address is required",
+    errorInvalid: "Please enter a valid IPv4 or IPv6 address",
+    errorGeneric: "Failed to evaluate IP threat status. Please try again.",
+  },
 } as const;
 
 export type TranslationSchema = typeof en;

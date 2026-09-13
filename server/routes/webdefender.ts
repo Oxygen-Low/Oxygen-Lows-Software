@@ -17,6 +17,13 @@ import {
   getActiveDefenderBannedIps,
   publicDefenderBannedIp,
 } from "../lib/defenderBannedIps.ts";
+import { TorDetector } from "../../packages/webdefender/src/tor.ts";
+import { VpnDetector } from "../../packages/webdefender/src/vpn.ts";
+import { ThreatActorDetector } from "../../packages/webdefender/src/threatActors.ts";
+
+export const torDetector = new TorDetector();
+export const vpnDetector = new VpnDetector();
+export const threatActorDetector = new ThreatActorDetector();
 
 export const defenderRouter = new Hono<{
   Variables: { defenderApp: any; user: any; userId: string };
@@ -265,6 +272,7 @@ async function requireAuth(c: Context, next: Next) {
 // Rate limiters
 const packageLimiter = rateLimiter(60, 60000, "def_pkg");
 const eventLimiter = rateLimiter(200, 60000, "def_evt");
+const knownThreatsLimiter = rateLimiter(5000, 60000, "def_threats");
 
 // 1. POST /verify - Verify API key and return app config
 defenderRouter.post("/verify", packageLimiter, requireApiKey, async (c) => {
@@ -292,6 +300,81 @@ defenderRouter.post("/verify", packageLimiter, requireApiKey, async (c) => {
 defenderRouter.get("/banned-ips", async (c) => {
   const bannedIps = getActiveDefenderBannedIps().map(publicDefenderBannedIp);
   return c.json({ banned_ips: bannedIps, total: bannedIps.length });
+});
+
+export async function evaluateIpThreat(ip: string) {
+  const cleanIp = (ip || "").trim().toLowerCase();
+
+  // 1. Check administrator-banned IPs
+  const activeBans = getActiveDefenderBannedIps();
+  const banMatch = activeBans.find(
+    (item) => (item.ip || "").trim().toLowerCase() === cleanIp,
+  );
+  const isBanned = !!banMatch;
+  const bannedReason = banMatch ? banMatch.reason : null;
+
+  // 2. Check Threat Actor detector
+  const threatActorMatch = threatActorDetector.checkThreatActor(cleanIp);
+  const isThreatActor = !!threatActorMatch;
+  const threatCategory = threatActorMatch ? threatActorMatch.category : null;
+
+  // 3. Known threat is true if banned OR recognized threat actor
+  const isKnownThreat = isBanned || isThreatActor;
+
+  // 4. Check TOR exit node
+  const isTor = torDetector.isTorExitNode(cleanIp);
+
+  // 5. Check VPN network
+  const isVpn = vpnDetector.isVpn(cleanIp);
+
+  return {
+    ip: cleanIp,
+    is_known_threat: isKnownThreat,
+    is_tor: isTor,
+    is_vpn: isVpn,
+    details: {
+      banned: isBanned,
+      banned_reason: bannedReason,
+      threat_actor: isThreatActor,
+      threat_category: threatCategory,
+    },
+  };
+}
+
+// Public Known Threats API - Evaluates IP against banned IPs, threat actors, TOR exit nodes, and VPN networks
+defenderRouter.get("/known-threats", knownThreatsLimiter, async (c) => {
+  const ipParam = c.req.query("ip");
+  if (ipParam === undefined || ipParam === null || ipParam.trim() === "") {
+    return c.json({ error: "IP address is required" }, 400);
+  }
+  const cleanIp = ipParam.trim();
+  if (!isIP(cleanIp)) {
+    return c.json({ error: "Invalid IP address format" }, 400);
+  }
+  const result = await evaluateIpThreat(cleanIp);
+  return c.json(result);
+});
+
+defenderRouter.post("/known-threats", knownThreatsLimiter, async (c) => {
+  let ip: string | undefined;
+  try {
+    const body = await c.req.json();
+    ip = body?.ip;
+  } catch {
+    return c.json({ error: "IP address is required" }, 400);
+  }
+
+  if (typeof ip !== "string" || ip.trim() === "") {
+    return c.json({ error: "IP address is required" }, 400);
+  }
+
+  const cleanIp = ip.trim();
+  if (!isIP(cleanIp)) {
+    return c.json({ error: "Invalid IP address format" }, 400);
+  }
+
+  const result = await evaluateIpThreat(cleanIp);
+  return c.json(result);
 });
 
 // 1b. GET /config-stream - Real-time SSE stream of app config updates for SDK

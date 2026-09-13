@@ -92,6 +92,7 @@ import {
 } from "recharts";
 
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { ThreatLookupCard } from "./ThreatLookupCard";
 export { CountryFlag };
 
 function getCountryFlag(countryCode: string): string {
@@ -404,6 +405,8 @@ export function DefenderApp() {
             traffic.
           </p>
         </div>
+
+        <ThreatLookupCard />
 
         {isLoading ? (
           <div className="flex justify-center py-12">
