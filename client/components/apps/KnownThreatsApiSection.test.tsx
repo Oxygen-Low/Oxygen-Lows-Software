@@ -31,7 +31,6 @@ describe("KnownThreatsApiSection", () => {
     render(<KnownThreatsApiSection />);
     expect(screen.getByText("Known Threats API")).toBeDefined();
     expect(screen.getAllByText(/oxygenlow\.com\/api\/webdefender\/known-threats/i).length).toBeGreaterThan(0);
-    expect(screen.getByText("5,000 req/min · No Auth Required")).toBeDefined();
   });
 
   it("renders tabs and switches between cURL, JavaScript, and Python snippets", async () => {

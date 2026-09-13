@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Zap } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export function KnownThreatsApiSection() {
@@ -72,28 +72,22 @@ print(res.json())`;
 
   return (
     <div className="mt-12">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-xl font-semibold text-white">
-              {t("threatLookup.apiTitle", undefined, "Known Threats API")}
-            </h3>
-            <Badge variant="outline" className="text-cyan-400 border-cyan-500/30 bg-cyan-500/10">
-              REST API
-            </Badge>
-          </div>
-          <p className="text-slate-400 text-sm mt-1">
-            {t(
-              "threatLookup.apiSubtitle",
-              undefined,
-              "Query IP threat intelligence programmatically without an API key (up to 5,000 req/min).",
-            )}
-          </p>
+      <div className="mb-6">
+        <div className="flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-white">
+            {t("threatLookup.apiTitle", undefined, "Known Threats API")}
+          </h3>
+          <Badge variant="outline" className="text-cyan-400 border-cyan-500/30 bg-cyan-500/10">
+            REST API
+          </Badge>
         </div>
-        <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 w-fit shrink-0">
-          <Zap className="w-3 h-3 mr-1" />
-          {t("threatLookup.apiRateLimit", undefined, "5,000 req/min · No Auth Required")}
-        </Badge>
+        <p className="text-slate-400 text-sm mt-1">
+          {t(
+            "threatLookup.apiSubtitle",
+            undefined,
+            "Query IP threat intelligence programmatically without an API key (up to 5,000 req/min).",
+          )}
+        </p>
       </div>
 
       <Card className="bg-slate-900 border-slate-800 overflow-hidden">

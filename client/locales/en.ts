@@ -2102,7 +2102,6 @@ export const en = {
     errorGeneric: "Failed to evaluate IP threat status. Please try again.",
     apiTitle: "Known Threats API",
     apiSubtitle: "Query IP threat intelligence programmatically without an API key (up to 5,000 req/min).",
-    apiRateLimit: "5,000 req/min · No Auth Required",
     apiEndpoints: "Endpoints",
     apiResponseExample: "Example Response",
   },

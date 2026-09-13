@@ -2120,7 +2120,6 @@ export const es = {
     errorGeneric: "No se pudo evaluar el estado de amenaza de la IP. Intente de nuevo.",
     apiTitle: "API de Amenazas Conocidas",
     apiSubtitle: "Consulte la inteligencia de amenazas de IP de forma programada sin clave de API (hasta 5,000 sol/min).",
-    apiRateLimit: "5,000 sol/min · Sin autenticación",
     apiEndpoints: "Puntos de conexión",
     apiResponseExample: "Respuesta de ejemplo",
   },
