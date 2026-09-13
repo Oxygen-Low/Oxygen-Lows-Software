@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
-const LAST_UPDATED = "17 August 2026";
+const LAST_UPDATED = "13 September 2026";
 const CONTACT_EMAIL = "support@oxygenlow.com";
 const OPERATOR = "Oxygen Low's Software";
 const SITE_URL = "https://oxygenlow.com";
@@ -169,14 +169,18 @@ export default function Privacy() {
 
             <div>
               <p className="font-semibold text-foreground">
-                2.4 Authentication Data
+                2.4 Authentication &amp; OAuth Data
               </p>
               <P>
-                We use native, local authentication and session management to
-                handle account creation, login, and session tokens. Your account
-                stores your username, email address, and securely hashed
-                password (using PBKDF2 cryptography). All authentication and
-                session validation operate directly through our native service.
+                We use native authentication and session management to handle
+                account creation, login, and session tokens. Your account stores
+                your username, email address, and securely hashed password
+                (using PBKDF2 cryptography). If you choose to link your account
+                with Google OAuth, we also store your Google user identifier
+                and verified Google email address. All authentication and session
+                validation operate directly through our native service. See
+                Section 5 for our full Google API Services &amp; OAuth User Data
+                Policy.
               </P>
             </div>
 
@@ -371,6 +375,11 @@ export default function Privacy() {
                     "AI prompts you submit",
                   ],
                   [
+                    "Google (OAuth 2.0)",
+                    "Account authentication & identity linking",
+                    "Google account ID, email address, profile verification token",
+                  ],
+                  [
                     "xAI (Grok)",
                     "AI response generation",
                     "AI prompts you submit",
@@ -458,8 +467,162 @@ export default function Privacy() {
           </P>
         </Section>
 
+        {/* Google OAuth & User Data */}
+        <Section
+          id="google-oauth"
+          title="5. Google API Services & OAuth User Data"
+          index={5}
+        >
+          <P>
+            {OPERATOR} provides optional sign-in integration through Google
+            OAuth 2.0. This allows existing account holders to connect their
+            Google account to facilitate single sign-on authentication.
+          </P>
+
+          <div className="space-y-4">
+            <div>
+              <p className="font-semibold text-foreground">
+                5.1 Google User Data We Collect
+              </p>
+              <P>
+                When you initiate the Google OAuth account-linking flow, we
+                request access to the following standard OpenID Connect scopes:
+              </P>
+              <Ul
+                items={[
+                  <>
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-foreground">
+                      openid
+                    </code>
+                    : To verify your identity using the OpenID Connect standard.
+                  </>,
+                  <>
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-foreground">
+                      https://www.googleapis.com/auth/userinfo.email
+                    </code>
+                    : To obtain and verify your Google account email address.
+                  </>,
+                  <>
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-foreground">
+                      https://www.googleapis.com/auth/userinfo.profile
+                    </code>
+                    : To obtain your unique Google subject identifier (account
+                    ID) and basic public profile details.
+                  </>,
+                ]}
+              />
+            </div>
+
+            <div>
+              <p className="font-semibold text-foreground">
+                5.2 How We Use Google User Data
+              </p>
+              <P>
+                We use the Google user data we receive strictly for identity
+                verification and account association:
+              </P>
+              <Ul
+                items={[
+                  "To securely link your verified Google identity to your existing account in Settings > Security > OAuth.",
+                  "To authenticate you and grant access to your account when you click 'Sign in with Google' on the login page.",
+                ]}
+              />
+              <P>
+                <strong>No Automatic Account Registration:</strong> Google OAuth
+                cannot be used to create or register new accounts automatically.
+                Google sign-in is only available to users who already hold an
+                existing {OPERATOR} account and have explicitly linked their
+                Google account from within their account settings.
+              </P>
+            </div>
+
+            <div>
+              <p className="font-semibold text-foreground">
+                5.3 Data Storage &amp; Security
+              </p>
+              <P>
+                We store only your Google user ID (<code>sub</code>), your
+                verified Google email address, and the timestamp of when the
+                account was linked in our database. We do not store or retain
+                Google OAuth access tokens or refresh tokens after the
+                authentication process completes. All communication with Google
+                OAuth endpoints is conducted using encrypted HTTPS/TLS
+                connections.
+              </P>
+            </div>
+
+            <div>
+              <p className="font-semibold text-foreground">
+                5.4 Google API Services User Data Policy Compliance (Limited Use)
+              </p>
+              <P>
+                {OPERATOR}&apos;s use and transfer to any other app of
+                information received from Google APIs will adhere to the{" "}
+                <a
+                  href="https://developers.google.com/terms/api-services-user-data-policy"
+                  className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Google API Services User Data Policy
+                </a>
+                , including the Limited Use requirements:
+              </P>
+              <Ul
+                items={[
+                  "We do not sell, rent, or lease your Google user data to any third parties.",
+                  "We do not use or transfer your Google user data to serve advertisements, including personalized, retargeted, or interest-based ads.",
+                  "We do not use your Google user data to train, retrain, or fine-tune generalized artificial intelligence (AI) and/or machine learning (ML) models.",
+                  "We do not allow humans to read your Google user data unless: (1) we have obtained your affirmative agreement for specific data; (2) it is necessary for security purposes (such as investigating abuse or a bug); (3) it is required to comply with applicable laws; or (4) the data is aggregated and anonymized for internal operations.",
+                ]}
+              />
+            </div>
+
+            <div>
+              <p className="font-semibold text-foreground">
+                5.5 Managing, Unlinking &amp; Data Deletion
+              </p>
+              <P>
+                You have full control over your linked Google account and can
+                disconnect it at any time:
+              </P>
+              <Ul
+                items={[
+                  <>
+                    <strong>In-App Unlinking:</strong> You can unlink your Google
+                    account at any time by going to{" "}
+                    <strong>Settings &rarr; Security &rarr; OAuth</strong> and
+                    clicking <em>Unlink</em>. This immediately and permanently
+                    deletes your Google ID and email associations from our active
+                    database.
+                  </>,
+                  <>
+                    <strong>Google Account Permissions:</strong> You can revoke{" "}
+                    {OPERATOR}&apos;s access to your Google account at any time
+                    via your{" "}
+                    <a
+                      href="https://myaccount.google.com/permissions"
+                      className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Google Account Third-Party Permissions
+                    </a>{" "}
+                    page.
+                  </>,
+                  <>
+                    <strong>Full Account Deletion:</strong> If you delete your{" "}
+                    {OPERATOR} account, all associated credentials and OAuth
+                    records are permanently removed.
+                  </>,
+                ]}
+              />
+            </div>
+          </div>
+        </Section>
+
         {/* Retention */}
-        <Section id="retention" title="5. Data Retention" index={5}>
+        <Section id="retention" title="6. Data Retention" index={6}>
           <P>
             We retain your personal data for as long as your account is active.
             When you delete your account (via a support ticket of type "Account
@@ -477,8 +640,8 @@ export default function Privacy() {
         {/* GDPR rights */}
         <Section
           id="gdpr-rights"
-          title="6. Your Rights Under UK &amp; EU GDPR"
-          index={6}
+          title="7. Your Rights Under UK &amp; EU GDPR"
+          index={7}
         >
           <P>
             If you are located in the United Kingdom or EEA, you have the
@@ -544,8 +707,8 @@ export default function Privacy() {
         {/* CCPA rights */}
         <Section
           id="ccpa-rights"
-          title="7. Your Rights Under CCPA / CPRA (California)"
-          index={7}
+          title="8. Your Rights Under CCPA / CPRA (California)"
+          index={8}
         >
           <P>
             If you are a California resident, you have the following rights
@@ -591,7 +754,7 @@ export default function Privacy() {
         </Section>
 
         {/* Cookies */}
-        <Section id="cookies" title="8. Cookies & Local Storage" index={8}>
+        <Section id="cookies" title="9. Cookies & Local Storage" index={9}>
           <P>
             We use only <strong>strictly necessary session mechanisms</strong>{" "}
             to maintain your authenticated session. These session tokens are
@@ -606,7 +769,7 @@ export default function Privacy() {
         </Section>
 
         {/* Children */}
-        <Section id="children" title="9. Children's Privacy" index={9}>
+        <Section id="children" title="10. Children's Privacy" index={10}>
           <P>
             The Service is not directed at children under the age of 13. In the
             UK, pursuant to the Data Protection Act 2018 (Section 9) and UK GDPR
@@ -628,7 +791,7 @@ export default function Privacy() {
         </Section>
 
         {/* Changes */}
-        <Section id="changes" title="10. Changes to This Policy" index={10}>
+        <Section id="changes" title="11. Changes to This Policy" index={11}>
           <P>
             We may update this Privacy Policy from time to time. When we do, we
             will revise the "Last updated" date at the top of this page. If the
@@ -640,7 +803,7 @@ export default function Privacy() {
         </Section>
 
         {/* Contact */}
-        <Section id="contact" title="11. Contact Us" index={11}>
+        <Section id="contact" title="12. Contact Us" index={12}>
           <P>
             If you have any questions, concerns, or requests regarding this
             Privacy Policy or our data practices, please reach out to us:
