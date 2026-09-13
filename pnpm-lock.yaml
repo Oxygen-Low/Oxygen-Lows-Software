@@ -109,8 +109,8 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       sudoku-gen:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^1.0.3
+        version: 1.0.3
       ws:
         specifier: ^8.21.3
         version: 8.21.3
@@ -3646,8 +3646,8 @@ packages:
   style-to-object@1.0.14:
     resolution: {integrity: sha512-LIN7rULI0jBscWQYaSswptyderlarFkjQ+t79nzty8tcIAceVomEVlLzH5VP4Cmsv6MtKhs7qaAiwlcp+Mgaxw==}
 
-  sudoku-gen@1.0.2:
-    resolution: {integrity: sha512-zQFQNbar9qGpbteAH7CQShGoR5lk7r4KYlt0Wsvts1eVMzLb2EZUovzc7gAmoHp+HmXGYadmqCyyXoY7QVEyhA==}
+  sudoku-gen@1.0.3:
+    resolution: {integrity: sha512-eYRVf4MPEk9DSyA6H0/F1Jc3xH+EY5SiSL6LYom2JcTDTEIJ9Nt8KShbClHlnJgqrUC4vH9syGCFp3R+7xG/mg==}
 
   superagent@10.3.0:
     resolution: {integrity: sha512-B+4Ik7ROgVKrQsXTV0Jwp2u+PXYLSlqtDAhYnkkD+zn3yg8s/zjA2MeGayPoY/KICrbitwneDHrjSotxKL+0XQ==}
@@ -7275,7 +7275,7 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.7
 
-  sudoku-gen@1.0.2: {}
+  sudoku-gen@1.0.3: {}
 
   superagent@10.3.0:
     dependencies:
