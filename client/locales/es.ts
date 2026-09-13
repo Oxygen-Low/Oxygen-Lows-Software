@@ -68,8 +68,11 @@ export const es = {
     welcomeBack: "¡Bienvenido de nuevo!",
     language: "Idioma",
     signInGoogle: "Iniciar sesión con Google",
+    signInGithub: "Iniciar sesión con GitHub",
     oauthNotLinkedError:
       "No hay ninguna cuenta vinculada a esta cuenta de Google. Inicia sesión con tus credenciales y vincula Google en Seguridad -> OAuth.",
+    githubNotLinkedError:
+      "No hay ninguna cuenta vinculada a esta cuenta de GitHub. Inicia sesión con tus credenciales y vincula GitHub en Seguridad -> OAuth.",
     unlockAfterOAuthTitle: "Desbloquear cifrado de conocimiento cero",
     unlockAfterOAuthDesc:
       "Introduce tu contraseña para derivar tu clave de cifrado de conocimiento cero, o continúa con la sesión bloqueada.",
@@ -77,6 +80,7 @@ export const es = {
     skipUnlock: "Omitir por ahora",
     orSignInWith: "O iniciar sesión con",
     googleNotConfigured: "Google OAuth no está configurado en este servidor",
+    githubNotConfigured: "GitHub OAuth no está configurado en este servidor",
     agreeNotice: "Al iniciar sesión, aceptas nuestra",
     and: "y",
     privacyPolicy: "Política de privacidad",
@@ -1334,18 +1338,33 @@ export const es = {
     googleProvider: "Google",
     linkGoogle: "Vincular cuenta de Google",
     unlinkGoogle: "Desvincular Google",
+    githubProvider: "GitHub",
+    linkGithub: "Vincular cuenta de GitHub",
+    unlinkGithub: "Desvincular GitHub",
+    githubDesc:
+      "Conecta tu cuenta de GitHub para habilitar el inicio de sesión de GitHub en tu perfil.",
     linkedAs: "Vinculado como {email}",
     notLinked: "No vinculado",
     linkPasswordPrompt:
       "Introduce la contraseña de tu cuenta para verificar tu identidad antes de vincular Google:",
     unlinkPasswordPrompt:
       "Introduce la contraseña de tu cuenta para confirmar la desvinculación de Google:",
+    linkGithubPasswordPrompt:
+      "Introduce la contraseña de tu cuenta para verificar tu identidad antes de vincular GitHub:",
+    unlinkGithubPasswordPrompt:
+      "Introduce la contraseña de tu cuenta para confirmar la desvinculación de GitHub:",
     oauthAlreadyLinked:
       "Esta cuenta de Google ya está vinculada a otra cuenta.",
+    githubAlreadyLinked:
+      "Esta cuenta de GitHub ya está vinculada a otra cuenta.",
     oauthLinkedSuccess: "Cuenta de Google vinculada correctamente.",
+    githubLinkedSuccess: "Cuenta de GitHub vinculada correctamente.",
     oauthUnlinkedSuccess: "Cuenta de Google desvinculada correctamente.",
+    githubUnlinkedSuccess: "Cuenta de GitHub desvinculada correctamente.",
     oauthFailed: "La autenticación de Google se canceló o falló.",
+    githubOauthFailed: "La autenticación de GitHub se canceló o falló.",
     googleNotConfigured: "Google OAuth no está configurado en este servidor.",
+    githubNotConfigured: "GitHub OAuth no está configurado en este servidor.",
   },
   integrations: {
     title: "Integraciones y Claves API",

@@ -184,16 +184,21 @@ describe("Auth Component", () => {
       </MemoryRouter>,
     );
 
-    // In signin mode: Google button is present
+    // In signin mode: Google and GitHub buttons are present
     const googleBtn = document.getElementById("sign-in-with-google-btn");
     expect(googleBtn).toBeDefined();
     expect(screen.getByText("Sign in with Google")).toBeDefined();
 
-    // Switch to signup mode: Google button must NOT be present
+    const githubBtn = document.getElementById("sign-in-with-github-btn");
+    expect(githubBtn).toBeDefined();
+    expect(screen.getByText("Sign in with GitHub")).toBeDefined();
+
+    // Switch to signup mode: OAuth buttons must NOT be present
     const signUpTab = screen.getByRole("button", { name: "Create Account" });
     fireEvent.click(signUpTab);
 
     expect(document.getElementById("sign-in-with-google-btn")).toBeNull();
+    expect(document.getElementById("sign-in-with-github-btn")).toBeNull();
   });
 
   it("should display error message when oauth_not_linked error is in URL query parameters", async () => {
@@ -217,6 +222,54 @@ describe("Auth Component", () => {
         screen.getByText(
           "No account is linked to this Google account. Please log in with your credentials and link Google under Security -> OAuth.",
         ),
+      ).toBeDefined();
+    });
+  });
+
+  it("should display error message when oauth_not_linked error for github is in URL query parameters", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth?error=oauth_not_linked&provider=github"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No account is linked to this GitHub account. Please log in with your credentials and link GitHub under Security -> OAuth.",
+        ),
+      ).toBeDefined();
+    });
+  });
+
+  it("should display error message when oauth_unconfigured error for github is in URL query parameters", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth?error=oauth_unconfigured&provider=github"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("GitHub OAuth is not configured on this server"),
       ).toBeDefined();
     });
   });

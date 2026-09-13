@@ -352,15 +352,37 @@ function getGoogleRedirectUri(c: any): string {
   return `${protocol}://${host}/api/auth/oauth/google/callback`;
 }
 
+function getGithubRedirectUri(c: any): string {
+  if (process.env.GITHUB_REDIRECT_URI) {
+    return process.env.GITHUB_REDIRECT_URI;
+  }
+  const host =
+    c.req.header("x-forwarded-host") ||
+    c.req.header("host") ||
+    "localhost:3000";
+  const protoHeader =
+    c.req.header("x-forwarded-proto") ||
+    (host.startsWith("localhost") || host.startsWith("127.0.0.1")
+      ? "http"
+      : "https");
+  const protocol = protoHeader.split(",")[0].trim();
+  return `${protocol}://${host}/api/auth/oauth/github/callback`;
+}
+
 /**
  * Get OAuth configuration status
  */
 authRouter.get("/oauth/config", (c) => {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const githubClientId = process.env.GITHUB_CLIENT_ID;
+  const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
   return c.json({
     google: {
       enabled: Boolean(googleClientId && googleClientSecret),
+    },
+    github: {
+      enabled: Boolean(githubClientId && githubClientSecret),
     },
   });
 });
@@ -623,6 +645,298 @@ authRouter.post(
     } catch (err: any) {
       return c.json(
         { error: err.message || "Failed to unlink Google account" },
+        500,
+      );
+    }
+  },
+);
+
+/**
+ * Initiate linking of a GitHub account (requires authentication and password verification)
+ */
+authRouter.post(
+  "/oauth/github/init-link",
+  localAuthMiddleware,
+  async (c: any) => {
+    try {
+      const user = c.get("user");
+      const body = await c.req.json().catch(() => ({}));
+      const { password, authToken } = body;
+
+      const tokenInput = authToken || password;
+      if (!tokenInput) {
+        return c.json(
+          { error: "Password is required to link an external account" },
+          400,
+        );
+      }
+
+      const dbUser = getUserById(user.id);
+      if (!dbUser) {
+        return c.json({ error: "User not found" }, 404);
+      }
+
+      if (dbUser.auth_verifier) {
+        const valid = verifyAuthToken(
+          tokenInput,
+          dbUser.auth_verifier,
+          dbUser.auth_salt,
+        );
+        if (!valid) {
+          return c.json({ error: "Incorrect password" }, 400);
+        }
+      }
+
+      const clientId = process.env.GITHUB_CLIENT_ID;
+      if (!clientId) {
+        return c.json(
+          { error: "GitHub OAuth is not configured on the server" },
+          500,
+        );
+      }
+
+      const state = generateOAuthState({
+        action: "link",
+        userId: String(user.id),
+      });
+
+      const redirectUri = getGithubRedirectUri(c);
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: "read:user user:email",
+        state,
+      });
+
+      const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+      return c.json({ url: authUrl });
+    } catch (err: any) {
+      return c.json(
+        { error: err.message || "Failed to initialize GitHub linking" },
+        500,
+      );
+    }
+  },
+);
+
+/**
+ * Start GitHub OAuth sign-in flow
+ */
+authRouter.get("/oauth/github/login", (c) => {
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  if (!clientId) {
+    return c.redirect(
+      "/auth?error=" +
+        encodeURIComponent("GitHub OAuth is not configured on the server"),
+    );
+  }
+
+  const returnTo = c.req.query("returnTo") || "/apps";
+  const state = generateOAuthState({
+    action: "login",
+    returnTo,
+  });
+
+  const redirectUri = getGithubRedirectUri(c);
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: "read:user user:email",
+    state,
+  });
+
+  return c.redirect(
+    `https://github.com/login/oauth/authorize?${params.toString()}`,
+  );
+});
+
+/**
+ * GitHub OAuth Callback
+ */
+authRouter.get("/oauth/github/callback", async (c) => {
+  const code = c.req.query("code");
+  const stateParam = c.req.query("state");
+  const errorParam = c.req.query("error");
+
+  const state = stateParam ? verifyOAuthState(stateParam) : null;
+
+  if (errorParam) {
+    if (state?.action === "link") {
+      return c.redirect("/security?error=oauth_failed&provider=github");
+    }
+    return c.redirect(
+      `/auth?error=${encodeURIComponent(errorParam)}&provider=github`,
+    );
+  }
+
+  if (!code || !stateParam || !state) {
+    return c.redirect("/auth?error=invalid_or_expired_state&provider=github");
+  }
+
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    if (state.action === "link") {
+      return c.redirect("/security?error=oauth_unconfigured&provider=github");
+    }
+    return c.redirect("/auth?error=oauth_unconfigured&provider=github");
+  }
+
+  try {
+    const redirectUri = getGithubRedirectUri(c);
+    const tokenRes = await fetch(
+      "https://github.com/login/oauth/access_token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+          redirect_uri: redirectUri,
+        }),
+      },
+    );
+
+    const tokenJson: any = await tokenRes.json();
+    if (!tokenRes.ok || !tokenJson.access_token) {
+      if (state.action === "link") {
+        return c.redirect("/security?error=oauth_token_failed&provider=github");
+      }
+      return c.redirect("/auth?error=oauth_token_failed&provider=github");
+    }
+
+    const userRes = await fetch("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${tokenJson.access_token}`,
+        "User-Agent": "Oxygen-Lows-Software",
+        Accept: "application/vnd.github+json",
+      },
+    });
+    const githubUser: any = await userRes.json();
+    if (!userRes.ok || !githubUser.id) {
+      if (state.action === "link") {
+        return c.redirect("/security?error=oauth_user_failed&provider=github");
+      }
+      return c.redirect("/auth?error=oauth_user_failed&provider=github");
+    }
+
+    const githubId = String(githubUser.id);
+    let githubEmail = String(githubUser.email || "");
+
+    if (!githubEmail) {
+      try {
+        const emailsRes = await fetch("https://api.github.com/user/emails", {
+          headers: {
+            Authorization: `Bearer ${tokenJson.access_token}`,
+            "User-Agent": "Oxygen-Lows-Software",
+            Accept: "application/vnd.github+json",
+          },
+        });
+        if (emailsRes.ok) {
+          const emailsJson: any = await emailsRes.json();
+          if (Array.isArray(emailsJson) && emailsJson.length > 0) {
+            const primary =
+              emailsJson.find((e: any) => e.primary && e.verified) ||
+              emailsJson.find((e: any) => e.verified) ||
+              emailsJson[0];
+            githubEmail = primary?.email ? String(primary.email) : "";
+          }
+        }
+      } catch {}
+    }
+
+    if (!githubEmail && githubUser.login) {
+      githubEmail = `${githubUser.login}@users.noreply.github.com`;
+    }
+
+    if (state.action === "link") {
+      const targetUserId = state.userId;
+      if (!targetUserId) {
+        return c.redirect("/security?error=invalid_user&provider=github");
+      }
+
+      const existingUser = getUserByOAuthProvider("github", githubId);
+      if (existingUser && String(existingUser.id) !== String(targetUserId)) {
+        return c.redirect("/security?error=oauth_already_linked&provider=github");
+      }
+
+      linkUserOAuth(targetUserId, "github", {
+        id: githubId,
+        email: githubEmail,
+      });
+
+      return c.redirect("/security?oauth=linked&provider=github");
+    }
+
+    if (state.action === "login") {
+      const linkedUser = getUserByOAuthProvider("github", githubId);
+      if (!linkedUser) {
+        return c.redirect("/auth?error=oauth_not_linked&provider=github");
+      }
+
+      const token = generateToken(linkedUser);
+      const returnTo = state.returnTo || "/apps";
+      return c.redirect(
+        `/auth?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
+      );
+    }
+
+    return c.redirect("/auth");
+  } catch (err: any) {
+    if (state.action === "link") {
+      return c.redirect("/security?error=oauth_exception&provider=github");
+    }
+    return c.redirect(
+      `/auth?error=${encodeURIComponent(err.message || "oauth_exception")}&provider=github`,
+    );
+  }
+});
+
+/**
+ * Unlink GitHub account (requires authentication and password verification)
+ */
+authRouter.post(
+  "/oauth/github/unlink",
+  localAuthMiddleware,
+  async (c: any) => {
+    try {
+      const user = c.get("user");
+      const body = await c.req.json().catch(() => ({}));
+      const { password, authToken } = body;
+
+      const tokenInput = authToken || password;
+      if (!tokenInput) {
+        return c.json(
+          { error: "Password is required to unlink an external account" },
+          400,
+        );
+      }
+
+      const dbUser = getUserById(user.id);
+      if (!dbUser) {
+        return c.json({ error: "User not found" }, 404);
+      }
+
+      if (dbUser.auth_verifier) {
+        const valid = verifyAuthToken(
+          tokenInput,
+          dbUser.auth_verifier,
+          dbUser.auth_salt,
+        );
+        if (!valid) {
+          return c.json({ error: "Incorrect password" }, 400);
+        }
+      }
+
+      unlinkUserOAuth(user.id, "github");
+      return c.json({ success: true });
+    } catch (err: any) {
+      return c.json(
+        { error: err.message || "Failed to unlink GitHub account" },
         500,
       );
     }

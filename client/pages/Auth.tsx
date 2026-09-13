@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
+import { GithubIcon } from "@/components/ui/GithubIcon";
 import { setLocalSession } from "@/lib/localSession";
 import {
   isValidMasterKeyString,
@@ -70,6 +71,7 @@ export default function Auth() {
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [googleOAuthConfigured, setGoogleOAuthConfigured] = useState(true);
+  const [githubOAuthConfigured, setGithubOAuthConfigured] = useState(true);
 
   const requestedReturnTo = new URLSearchParams(location.search).get(
     "returnTo",
@@ -82,6 +84,9 @@ export default function Auth() {
       .then((data) => {
         if (data?.google) {
           setGoogleOAuthConfigured(Boolean(data.google.enabled));
+        }
+        if (data?.github) {
+          setGithubOAuthConfigured(Boolean(data.github.enabled));
         }
       })
       .catch(() => {});
@@ -98,22 +103,36 @@ export default function Auth() {
     const queryParams = new URLSearchParams(location.search);
     const queryError =
       queryParams.get("error_description") || queryParams.get("error");
+    const queryProvider = queryParams.get("provider");
+    const isGithub = queryProvider === "github";
     if (queryError) {
       if (queryError === "oauth_not_linked") {
         setError(
-          t(
-            "auth.oauthNotLinkedError",
-            undefined,
-            "No account is linked to this Google account. Please log in with your credentials and link Google under Security -> OAuth.",
-          ),
+          isGithub
+            ? t(
+                "auth.githubNotLinkedError",
+                undefined,
+                "No account is linked to this GitHub account. Please log in with your credentials and link GitHub under Security -> OAuth.",
+              )
+            : t(
+                "auth.oauthNotLinkedError",
+                undefined,
+                "No account is linked to this Google account. Please log in with your credentials and link Google under Security -> OAuth.",
+              ),
         );
       } else if (queryError === "oauth_unconfigured") {
         setError(
-          t(
-            "auth.googleNotConfigured",
-            undefined,
-            "Google OAuth is not configured on this server",
-          ),
+          isGithub
+            ? t(
+                "auth.githubNotConfigured",
+                undefined,
+                "GitHub OAuth is not configured on this server",
+              )
+            : t(
+                "auth.googleNotConfigured",
+                undefined,
+                "Google OAuth is not configured on this server",
+              ),
         );
       } else {
         setError(queryError);
@@ -769,7 +788,7 @@ export default function Auth() {
             </button>
           </form>
 
-          {mode === "signin" && googleOAuthConfigured && (
+          {mode === "signin" && (googleOAuthConfigured || githubOAuthConfigured) && (
             <div className="mt-4">
               <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
@@ -782,16 +801,33 @@ export default function Auth() {
                 </div>
               </div>
 
-              <a
-                id="sign-in-with-google-btn"
-                href={`/api/auth/oauth/google/login?returnTo=${encodeURIComponent(returnTo)}`}
-                className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
-              >
-                <GoogleIcon className="w-4 h-4" />
-                <span>
-                  {t("auth.signInGoogle", undefined, "Sign in with Google")}
-                </span>
-              </a>
+              <div className="space-y-2.5">
+                {googleOAuthConfigured && (
+                  <a
+                    id="sign-in-with-google-btn"
+                    href={`/api/auth/oauth/google/login?returnTo=${encodeURIComponent(returnTo)}`}
+                    className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
+                  >
+                    <GoogleIcon className="w-4 h-4" />
+                    <span>
+                      {t("auth.signInGoogle", undefined, "Sign in with Google")}
+                    </span>
+                  </a>
+                )}
+
+                {githubOAuthConfigured && (
+                  <a
+                    id="sign-in-with-github-btn"
+                    href={`/api/auth/oauth/github/login?returnTo=${encodeURIComponent(returnTo)}`}
+                    className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
+                  >
+                    <GithubIcon className="w-4 h-4" />
+                    <span>
+                      {t("auth.signInGithub", undefined, "Sign in with GitHub")}
+                    </span>
+                  </a>
+                )}
+              </div>
             </div>
           )}
           </>

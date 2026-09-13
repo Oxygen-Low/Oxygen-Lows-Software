@@ -67,6 +67,19 @@ export const zhCN = {
     welcomeBack: "欢迎回来！",
     language: "语言",
     signInGoogle: "使用Google登录",
+    signInGithub: "使用GitHub登录",
+    oauthNotLinkedError:
+      "没有与此 Google 帐号关联的用户。请使用凭据登录并在“安全 -> OAuth”下关联 Google。",
+    githubNotLinkedError:
+      "没有与此 GitHub 帐号关联的用户。请使用凭据登录并在“安全 -> OAuth”下关联 GitHub。",
+    unlockAfterOAuthTitle: "解锁零知识加密",
+    unlockAfterOAuthDesc:
+      "输入您的密码以派生您的零知识加密密钥，或继续保持会话锁定。",
+    unlockAndContinue: "解锁并继续",
+    skipUnlock: "暂且跳过",
+    orSignInWith: "或使用以下方式登录",
+    googleNotConfigured: "此服务器上未配置 Google OAuth",
+    githubNotConfigured: "此服务器上未配置 GitHub OAuth",
     agreeNotice: "登录即表示您同意我们的",
     and: "和",
     privacyPolicy: "隐私政策",
@@ -1235,18 +1248,33 @@ notificationsTitle: "通知",
     googleProvider: "Google",
     linkGoogle: "关联 Google 帐号",
     unlinkGoogle: "取消关联 Google",
+    githubProvider: "GitHub",
+    linkGithub: "关联 GitHub 帐号",
+    unlinkGithub: "取消关联 GitHub",
+    githubDesc:
+      "关联您的 GitHub 帐号以启用个人资料的 GitHub 登录。",
     linkedAs: "已关联为 {email}",
     notLinked: "未关联",
     linkPasswordPrompt:
       "在关联 Google 之前输入您的账户密码以验证您的身份：",
     unlinkPasswordPrompt:
       "输入您的账户密码以确认取消关联 Google 帐号：",
+    linkGithubPasswordPrompt:
+      "在关联 GitHub 之前输入您的账户密码以验证您的身份：",
+    unlinkGithubPasswordPrompt:
+      "输入您的账户密码以确认取消关联 GitHub 帐号：",
     oauthAlreadyLinked:
       "此 Google 帐号已关联到另一个用户账户。",
+    githubAlreadyLinked:
+      "此 GitHub 帐号已关联到另一个用户账户。",
     oauthLinkedSuccess: "Google 帐号关联成功。",
+    githubLinkedSuccess: "GitHub 帐号关联成功。",
     oauthUnlinkedSuccess: "Google 帐号取消关联成功。",
+    githubUnlinkedSuccess: "GitHub 帐号取消关联成功。",
     oauthFailed: "Google 身份验证已取消或失败。",
+    githubOauthFailed: "GitHub 身份验证已取消或失败。",
     googleNotConfigured: "此服务器上未配置 Google OAuth。",
+    githubNotConfigured: "此服务器上未配置 GitHub OAuth。",
   },
   integrations: {
     title: "集成与 API 密钥",

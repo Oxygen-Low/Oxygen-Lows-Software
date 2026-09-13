@@ -304,6 +304,62 @@ export const useAuth = () => {
     return { success: true };
   };
 
+  const initLinkGithub = async (password: string) => {
+    if (!session?.user) throw new Error("Not authenticated");
+    setError(null);
+    const userEmail = session.user.email || session.user.username;
+    const authToken = await deriveAuthTokenFromPassword(password, userEmail);
+
+    const res = await fetch("/api/auth/oauth/github/init-link", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ authToken, password }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      throw new Error(json.error || "Failed to initialize GitHub link");
+    }
+    return json.url;
+  };
+
+  const unlinkGithub = async (password: string) => {
+    if (!session?.user) throw new Error("Not authenticated");
+    setError(null);
+    const userEmail = session.user.email || session.user.username;
+    const authToken = await deriveAuthTokenFromPassword(password, userEmail);
+
+    const res = await fetch("/api/auth/oauth/github/unlink", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ authToken, password }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      throw new Error(json.error || "Failed to unlink GitHub account");
+    }
+
+    try {
+      const sessRes = await fetch("/api/auth/session", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const sessJson = await sessRes.json();
+      if (sessJson?.session) {
+        setLocalSession(sessJson.session);
+        setSession(sessJson.session);
+      }
+    } catch {}
+
+    return { success: true };
+  };
+
   return {
     session,
     loading,
@@ -315,6 +371,8 @@ export const useAuth = () => {
     unlockSessionWithPassword,
     initLinkGoogle,
     unlinkGoogle,
+    initLinkGithub,
+    unlinkGithub,
     signOut,
   };
 };

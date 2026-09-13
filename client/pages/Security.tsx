@@ -21,6 +21,7 @@ import {
   Unlink,
 } from "lucide-react";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
+import { GithubIcon } from "@/components/ui/GithubIcon";
 import { toast } from "sonner";
 import {
   Card,
@@ -148,12 +149,24 @@ export default function Security() {
   // OAuth State
   const [googleOAuthConfigured, setGoogleOAuthConfigured] =
     useState<boolean>(true);
+  const [githubOAuthConfigured, setGithubOAuthConfigured] =
+    useState<boolean>(true);
   const [linkedGoogle, setLinkedGoogle] = useState<{
     linked: boolean;
     email?: string;
     linked_at?: string;
   } | null>(() => {
     const raw = session?.user?.oauth?.google;
+    return raw?.id || raw?.linked
+      ? { linked: true, email: raw.email, linked_at: raw.linked_at }
+      : null;
+  });
+  const [linkedGithub, setLinkedGithub] = useState<{
+    linked: boolean;
+    email?: string;
+    linked_at?: string;
+  } | null>(() => {
+    const raw = session?.user?.oauth?.github;
     return raw?.id || raw?.linked
       ? { linked: true, email: raw.email, linked_at: raw.linked_at }
       : null;
@@ -170,12 +183,26 @@ export default function Security() {
   const [isProcessingGoogleOAuth, setIsProcessingGoogleOAuth] =
     useState<boolean>(false);
 
+  const [showLinkGithubDialog, setShowLinkGithubDialog] =
+    useState<boolean>(false);
+  const [showUnlinkGithubDialog, setShowUnlinkGithubDialog] =
+    useState<boolean>(false);
+  const [githubReauthPassword, setGithubReauthPassword] = useState<string>("");
+  const [githubReauthError, setGithubReauthError] = useState<string | null>(
+    null,
+  );
+  const [isProcessingGithubOAuth, setIsProcessingGithubOAuth] =
+    useState<boolean>(false);
+
   useEffect(() => {
     fetch("/api/auth/oauth/config")
       .then((res) => res.json())
       .then((data) => {
         if (data?.google) {
           setGoogleOAuthConfigured(Boolean(data.google.enabled));
+        }
+        if (data?.github) {
+          setGithubOAuthConfigured(Boolean(data.github.enabled));
         }
       })
       .catch(() => {});
@@ -195,37 +222,68 @@ export default function Security() {
           } else {
             setLinkedGoogle(null);
           }
+
+          if (data?.user?.oauth?.github) {
+            setLinkedGithub({
+              linked: true,
+              email: data.user.oauth.github.email,
+              linked_at: data.user.oauth.github.linked_at,
+            });
+          } else {
+            setLinkedGithub(null);
+          }
         })
         .catch(() => {});
     }
 
     const oauthParam = searchParams.get("oauth");
     const errorParam = searchParams.get("error");
+    const providerParam = searchParams.get("provider");
+    const isGithub = providerParam === "github";
+
     if (oauthParam === "linked") {
       toast.success(
-        t(
-          "security.oauthLinkedSuccess",
-          undefined,
-          "Google account successfully linked.",
-        ),
+        isGithub
+          ? t(
+              "security.githubLinkedSuccess",
+              undefined,
+              "GitHub account successfully linked.",
+            )
+          : t(
+              "security.oauthLinkedSuccess",
+              undefined,
+              "Google account successfully linked.",
+            ),
       );
       navigate("/security", { replace: true });
     } else if (errorParam === "oauth_already_linked") {
       toast.error(
-        t(
-          "security.oauthAlreadyLinked",
-          undefined,
-          "This Google account is already linked to another account.",
-        ),
+        isGithub
+          ? t(
+              "security.githubAlreadyLinked",
+              undefined,
+              "This GitHub account is already linked to another account.",
+            )
+          : t(
+              "security.oauthAlreadyLinked",
+              undefined,
+              "This Google account is already linked to another account.",
+            ),
       );
       navigate("/security", { replace: true });
     } else if (errorParam) {
       toast.error(
-        t(
-          "security.oauthFailed",
-          undefined,
-          "Google authentication was cancelled or failed.",
-        ),
+        isGithub
+          ? t(
+              "security.githubOauthFailed",
+              undefined,
+              "GitHub authentication was cancelled or failed.",
+            )
+          : t(
+              "security.oauthFailed",
+              undefined,
+              "Google authentication was cancelled or failed.",
+            ),
       );
       navigate("/security", { replace: true });
     }
@@ -272,6 +330,50 @@ export default function Security() {
       setGoogleReauthError(err.message || "Failed to unlink Google account");
     } finally {
       setIsProcessingGoogleOAuth(false);
+    }
+  };
+
+  const handleInitiateLinkGithub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!githubReauthPassword) return;
+    setIsProcessingGithubOAuth(true);
+    setGithubReauthError(null);
+    try {
+      if (!auth?.initLinkGithub) {
+        throw new Error("Authentication method not available");
+      }
+      const authUrl = await auth.initLinkGithub(githubReauthPassword);
+      window.location.href = authUrl;
+    } catch (err: any) {
+      setGithubReauthError(err.message || "Failed to initiate GitHub link");
+      setIsProcessingGithubOAuth(false);
+    }
+  };
+
+  const handleUnlinkGithub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!githubReauthPassword) return;
+    setIsProcessingGithubOAuth(true);
+    setGithubReauthError(null);
+    try {
+      if (!auth?.unlinkGithub) {
+        throw new Error("Authentication method not available");
+      }
+      await auth.unlinkGithub(githubReauthPassword);
+      setLinkedGithub(null);
+      setShowUnlinkGithubDialog(false);
+      setGithubReauthPassword("");
+      toast.success(
+        t(
+          "security.githubUnlinkedSuccess",
+          undefined,
+          "GitHub account successfully unlinked.",
+        ),
+      );
+    } catch (err: any) {
+      setGithubReauthError(err.message || "Failed to unlink GitHub account");
+    } finally {
+      setIsProcessingGithubOAuth(false);
     }
   };
 
@@ -1228,6 +1330,105 @@ export default function Security() {
                 )}
               </div>
             </div>
+
+            {/* GitHub Provider */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-950/90 hover:border-slate-700/80 transition-all gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 shrink-0 mt-0.5 sm:mt-0 flex items-center justify-center">
+                  <GithubIcon className="w-5 h-5 text-white" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm sm:text-base font-semibold text-white">
+                      {t("security.githubProvider", undefined, "GitHub")}
+                    </span>
+                    {linkedGithub?.linked ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      >
+                        {t(
+                          "security.encryptionEnabled",
+                          undefined,
+                          "Linked",
+                        )}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700"
+                      >
+                        {t("security.notLinked", undefined, "Not Linked")}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                    {linkedGithub?.linked && linkedGithub.email
+                      ? t(
+                          "security.linkedAs",
+                          { email: linkedGithub.email },
+                          `Linked as ${linkedGithub.email}`,
+                        )
+                      : t(
+                          "security.githubDesc",
+                          undefined,
+                          "Connect your GitHub account to enable GitHub sign-in for your profile.",
+                        )}
+                  </p>
+                  {!githubOAuthConfigured && (
+                    <p className="text-[11px] text-amber-400/90">
+                      {t(
+                        "security.githubNotConfigured",
+                        undefined,
+                        "GitHub OAuth is not configured on this server.",
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end sm:pl-4 gap-2">
+                {linkedGithub?.linked ? (
+                  <Button
+                    id="unlink-github-btn"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setGithubReauthPassword("");
+                      setGithubReauthError(null);
+                      setShowUnlinkGithubDialog(true);
+                    }}
+                    className="border-rose-900/50 bg-rose-950/20 text-rose-400 hover:bg-rose-900/40 hover:text-rose-200 text-xs gap-1.5"
+                  >
+                    <Unlink className="w-3.5 h-3.5" />
+                    <span>
+                      {t("security.unlinkGithub", undefined, "Unlink GitHub")}
+                    </span>
+                  </Button>
+                ) : (
+                  <Button
+                    id="link-github-btn"
+                    size="sm"
+                    disabled={!githubOAuthConfigured}
+                    onClick={() => {
+                      setGithubReauthPassword("");
+                      setGithubReauthError(null);
+                      setShowLinkGithubDialog(true);
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs gap-2"
+                  >
+                    <GithubIcon className="w-3.5 h-3.5" />
+                    <span>
+                      {t(
+                        "security.linkGithub",
+                        undefined,
+                        "Link GitHub Account",
+                      )}
+                    </span>
+                  </Button>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -1534,6 +1735,187 @@ export default function Security() {
                       "security.unlinkGoogle",
                       undefined,
                       "Unlink Google",
+                    )}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog 4: Link GitHub Account */}
+        <Dialog
+          open={showLinkGithubDialog}
+          onOpenChange={(open) => {
+            if (!isProcessingGithubOAuth) setShowLinkGithubDialog(open);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <GithubIcon className="w-5 h-5" />
+                {t("security.linkGithub", undefined, "Link GitHub Account")}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.linkGithubPasswordPrompt",
+                  undefined,
+                  "Enter your account password to verify your identity before linking GitHub:",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={handleInitiateLinkGithub}
+              className="space-y-4 py-2"
+            >
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="link-github-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.currentPassword",
+                    undefined,
+                    "Current Password",
+                  )}
+                </Label>
+                <Input
+                  id="link-github-password-input"
+                  type="password"
+                  required
+                  value={githubReauthPassword}
+                  onChange={(e) => setGithubReauthPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              {githubReauthError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {githubReauthError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isProcessingGithubOAuth}
+                  onClick={() => setShowLinkGithubDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-link-github-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    isProcessingGithubOAuth || !githubReauthPassword.trim()
+                  }
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium gap-2"
+                >
+                  {isProcessingGithubOAuth ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <GithubIcon className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t(
+                      "security.linkGithub",
+                      undefined,
+                      "Link GitHub Account",
+                    )}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog 5: Unlink GitHub Account */}
+        <Dialog
+          open={showUnlinkGithubDialog}
+          onOpenChange={(open) => {
+            if (!isProcessingGithubOAuth) setShowUnlinkGithubDialog(open);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-rose-400">
+                <Unlink className="w-5 h-5 text-rose-400" />
+                {t("security.unlinkGithub", undefined, "Unlink GitHub")}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.unlinkGithubPasswordPrompt",
+                  undefined,
+                  "Enter your account password to confirm unlinking your GitHub account:",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleUnlinkGithub} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="unlink-github-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.currentPassword",
+                    undefined,
+                    "Current Password",
+                  )}
+                </Label>
+                <Input
+                  id="unlink-github-password-input"
+                  type="password"
+                  required
+                  value={githubReauthPassword}
+                  onChange={(e) => setGithubReauthPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              {githubReauthError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {githubReauthError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isProcessingGithubOAuth}
+                  onClick={() => setShowUnlinkGithubDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-unlink-github-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    isProcessingGithubOAuth || !githubReauthPassword.trim()
+                  }
+                  className="bg-rose-600 hover:bg-rose-500 text-white font-medium gap-2"
+                >
+                  {isProcessingGithubOAuth ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Unlink className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t(
+                      "security.unlinkGithub",
+                      undefined,
+                      "Unlink GitHub",
                     )}
                   </span>
                 </Button>

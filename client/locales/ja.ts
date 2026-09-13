@@ -68,8 +68,11 @@ export const ja = {
     welcomeBack: "お帰りなさい！",
     language: "言語",
     signInGoogle: "Googleでサインイン",
+    signInGithub: "GitHubでサインイン",
     oauthNotLinkedError:
       "このGoogleアカウントにリンクされているアカウントはありません。認証情報でログインし、セキュリティ -> OAuth でGoogleをリンクしてください。",
+    githubNotLinkedError:
+      "このGitHubアカウントにリンクされているアカウントはありません。認証情報でログインし、セキュリティ -> OAuth でGitHubをリンクしてください。",
     unlockAfterOAuthTitle: "ゼロ知識暗号化のロック解除",
     unlockAfterOAuthDesc:
       "パスワードを入力してゼロ知識暗号化キーを導出するか、セッションをロックしたまま続行してください。",
@@ -77,6 +80,7 @@ export const ja = {
     skipUnlock: "今はスキップ",
     orSignInWith: "または次でサインイン",
     googleNotConfigured: "このサーバーではGoogle OAuthが設定されていません",
+    githubNotConfigured: "このサーバーではGitHub OAuthが設定されていません",
     agreeNotice: "サインインすることで、以下の事項に同意したことになります：",
     and: "および",
     privacyPolicy: "プライバシーポリシー",
@@ -1319,18 +1323,33 @@ notificationsTitle: "通知",
     googleProvider: "Google",
     linkGoogle: "Googleアカウントをリンク",
     unlinkGoogle: "Googleのリンクを解除",
+    githubProvider: "GitHub",
+    linkGithub: "GitHubアカウントをリンク",
+    unlinkGithub: "GitHubのリンクを解除",
+    githubDesc:
+      "GitHubアカウントを接続して、プロフィールのGitHubサインインを有効にします。",
     linkedAs: "{email} としてリンク中",
     notLinked: "未リンク",
     linkPasswordPrompt:
       "Googleをリンクする前に本人確認のためアカウントパスワードを入力してください：",
     unlinkPasswordPrompt:
       "Googleアカウントのリンク解除を確認するためアカウントパスワードを入力してください：",
+    linkGithubPasswordPrompt:
+      "GitHubをリンクする前に本人確認のためアカウントパスワードを入力してください：",
+    unlinkGithubPasswordPrompt:
+      "GitHubアカウントのリンク解除を確認するためアカウントパスワードを入力してください：",
     oauthAlreadyLinked:
       "このGoogleアカウントは既に別のアカウントにリンクされています。",
+    githubAlreadyLinked:
+      "このGitHubアカウントは既に別のアカウントにリンクされています。",
     oauthLinkedSuccess: "Googleアカウントが正常にリンクされました。",
+    githubLinkedSuccess: "GitHubアカウントが正常にリンクされました。",
     oauthUnlinkedSuccess:
       "Googleアカウントのリンクが正常に解除されました。",
+    githubUnlinkedSuccess:
+      "GitHubアカウントのリンクが正常に解除されました。",
     oauthFailed: "Google認証がキャンセルされたか失敗しました。",
+    githubOauthFailed: "GitHub認証がキャンセルされたか失敗しました。",
     googleNotConfigured:
       "このサーバーではGoogle OAuthが設定されていません。",
   },

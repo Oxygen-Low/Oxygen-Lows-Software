@@ -68,8 +68,11 @@ export const ru = {
     welcomeBack: "С возвращением!",
     language: "Язык",
     signInGoogle: "Войти через Google",
+    signInGithub: "Войти через GitHub",
     oauthNotLinkedError:
       "С этой учетной записью Google не связано ни одного аккаунта. Пожалуйста, войдите со своими учетными данными и привяжите Google в разделе Безопасность -> OAuth.",
+    githubNotLinkedError:
+      "С этой учетной записью GitHub не связано ни одного аккаунта. Пожалуйста, войдите со своими учетными данными и привяжите GitHub в разделе Безопасность -> OAuth.",
     unlockAfterOAuthTitle: "Разблокировать шифрование с нулевым разглашением",
     unlockAfterOAuthDesc:
       "Введите пароль для получения ключа шифрования с нулевым разглашением или продолжите с заблокированной сессией.",
@@ -77,6 +80,7 @@ export const ru = {
     skipUnlock: "Пропустить",
     orSignInWith: "Или войти через",
     googleNotConfigured: "Google OAuth не настроен на этом сервере",
+    githubNotConfigured: "GitHub OAuth не настроен на этом сервере",
     agreeNotice: "Выполняя вход, вы соглашаетесь с нашими",
     and: "и",
     privacyPolicy: "Политикой конфиденциальности",
@@ -1317,6 +1321,39 @@ notificationsTitle: "Уведомления",
     runMigrationBtn: "Перенести данные на пароль",
     migrationCompleteToast: "Данные успешно перенесены на ключ пароля!",
     migrateFromMasterKeyButton: "Перенос с мастер-ключа",
+    oauthTitle: "OAuth",
+    oauthDesc:
+      "Управление внешними учетными записями, привязанными к вашему профилю для единого входа.",
+    googleProvider: "Google",
+    linkGoogle: "Привязать аккаунт Google",
+    unlinkGoogle: "Отвязать Google",
+    githubProvider: "GitHub",
+    linkGithub: "Привязать аккаунт GitHub",
+    unlinkGithub: "Отвязать GitHub",
+    githubDesc:
+      "Подключите свой аккаунт GitHub, чтобы включить вход через GitHub для вашего профиля.",
+    linkedAs: "Привязано как {email}",
+    notLinked: "Не привязано",
+    linkPasswordPrompt:
+      "Введите пароль своей учетной записи для подтверждения личности перед привязкой Google:",
+    unlinkPasswordPrompt:
+      "Введите пароль своей учетной записи, чтобы подтвердить отвязку аккаунта Google:",
+    linkGithubPasswordPrompt:
+      "Введите пароль своей учетной записи для подтверждения личности перед привязкой GitHub:",
+    unlinkGithubPasswordPrompt:
+      "Введите пароль своей учетной записи, чтобы подтвердить отвязку аккаунта GitHub:",
+    oauthAlreadyLinked:
+      "Этот аккаунт Google уже привязан к другой учетной записи.",
+    githubAlreadyLinked:
+      "Этот аккаунт GitHub уже привязан к другой учетной записи.",
+    oauthLinkedSuccess: "Аккаунт Google успешно привязан.",
+    githubLinkedSuccess: "Аккаунт GitHub успешно привязан.",
+    oauthUnlinkedSuccess: "Аккаунт Google успешно отвязан.",
+    githubUnlinkedSuccess: "Аккаунт GitHub успешно отвязан.",
+    oauthFailed: "Аутентификация Google была отменена или не удалась.",
+    githubOauthFailed: "Аутентификация GitHub была отменена или не удалась.",
+    googleNotConfigured: "Google OAuth не настроен на этом сервере.",
+    githubNotConfigured: "GitHub OAuth не настроен на этом сервере.",
   },
   integrations: {
     title: "Интеграции и API-ключи",

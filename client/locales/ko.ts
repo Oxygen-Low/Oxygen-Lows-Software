@@ -68,8 +68,11 @@ export const ko = {
     welcomeBack: "다시 오신 것을 환영합니다!",
     language: "언어",
     signInGoogle: "Google로 로그인",
+    signInGithub: "GitHub로 로그인",
     oauthNotLinkedError:
       "이 Google 계정에 연결된 계정이 없습니다. 사용자 정보로 로그인한 후 보안 -> OAuth에서 Google을 연결하세요.",
+    githubNotLinkedError:
+      "이 GitHub 계정에 연결된 계정이 없습니다. 사용자 정보로 로그인한 후 보안 -> OAuth에서 GitHub를 연결하세요.",
     unlockAfterOAuthTitle: "영지식 암호화 잠금 해제",
     unlockAfterOAuthDesc:
       "비밀번호를 입력하여 영지식 암호화 키를 파생하거나 세션이 잠긴 상태로 계속 진행하세요.",
@@ -77,6 +80,7 @@ export const ko = {
     skipUnlock: "지금은 건너뛰기",
     orSignInWith: "또는 다음으로 로그인",
     googleNotConfigured: "이 서버에 Google OAuth가 구성되지 않았습니다",
+    githubNotConfigured: "이 서버에 GitHub OAuth가 구성되지 않았습니다",
     agreeNotice: "로그인하면 다음에 동의하게 됩니다:",
     and: "및",
     privacyPolicy: "개인정보처리방침",
@@ -1296,6 +1300,39 @@ notificationsTitle: "알림",
     runMigrationBtn: "비밀번호 키로 데이터 마이그레이션",
     migrationCompleteToast: "비밀번호 키로 데이터가 성공적으로 마이그레이션되었습니다!",
     migrateFromMasterKeyButton: "마스터 키에서 마이그레이션",
+    oauthTitle: "OAuth",
+    oauthDesc:
+      "단일 로그인을 위해 프로필에 연결된 외부 계정을 관리합니다.",
+    googleProvider: "Google",
+    linkGoogle: "Google 계정 연결",
+    unlinkGoogle: "Google 연결 해제",
+    githubProvider: "GitHub",
+    linkGithub: "GitHub 계정 연결",
+    unlinkGithub: "GitHub 연결 해제",
+    githubDesc:
+      "GitHub 계정을 연결하여 프로필에서 GitHub 로그인을 활성화하세요.",
+    linkedAs: "{email}로 연결됨",
+    notLinked: "연결되지 않음",
+    linkPasswordPrompt:
+      "Google을 연결하기 전에 본인 확인을 위해 계정 비밀번호를 입력하세요:",
+    unlinkPasswordPrompt:
+      "Google 계정의 연결 해제를 확인하려면 계정 비밀번호를 입력하세요:",
+    linkGithubPasswordPrompt:
+      "GitHub를 연결하기 전에 본인 확인을 위해 계정 비밀번호를 입력하세요:",
+    unlinkGithubPasswordPrompt:
+      "GitHub 계정의 연결 해제를 확인하려면 계정 비밀번호를 입력하세요:",
+    oauthAlreadyLinked:
+      "이 Google 계정은 이미 다른 계정에 연결되어 있습니다.",
+    githubAlreadyLinked:
+      "이 GitHub 계정은 이미 다른 계정에 연결되어 있습니다.",
+    oauthLinkedSuccess: "Google 계정이 성공적으로 연결되었습니다.",
+    githubLinkedSuccess: "GitHub 계정이 성공적으로 연결되었습니다.",
+    oauthUnlinkedSuccess: "Google 계정 연결이 성공적으로 해제되었습니다.",
+    githubUnlinkedSuccess: "GitHub 계정 연결이 성공적으로 해제되었습니다.",
+    oauthFailed: "Google 인증이 취소되었거나 실패했습니다.",
+    githubOauthFailed: "GitHub 인증이 취소되었거나 실패했습니다.",
+    googleNotConfigured: "이 서버에 Google OAuth가 구성되지 않았습니다.",
+    githubNotConfigured: "이 서버에 GitHub OAuth가 구성되지 않았습니다.",
   },
   integrations: {
     title: "통합 및 API 키",

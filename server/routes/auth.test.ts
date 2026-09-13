@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { authRouter } from "./auth.ts";
 
@@ -374,6 +374,268 @@ describe("authRouter", () => {
         });
         const postUnlinkJson = await postUnlinkSess.json();
         expect(postUnlinkJson.user.oauth?.google).toBeUndefined();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe("GitHub OAuth", () => {
+    const origClientId = process.env.GITHUB_CLIENT_ID;
+    const origClientSecret = process.env.GITHUB_CLIENT_SECRET;
+    let userToken: string;
+    let testUserId: string;
+    let oauthSuffix: string;
+
+    beforeEach(async () => {
+      process.env.GITHUB_CLIENT_ID = "mock-github-client-id";
+      process.env.GITHUB_CLIENT_SECRET = "mock-github-client-secret";
+      oauthSuffix = Math.random().toString(36).substring(2, 8);
+
+      // Register test user
+      const regRes = await app.request("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: `ghuser_${oauthSuffix}`,
+          email: `ghuser_${oauthSuffix}@example.com`,
+          password: "testPassword123!",
+        }),
+      });
+      const regJson = await regRes.json();
+      userToken = regJson.token;
+      testUserId = regJson.user.id;
+    });
+
+    afterEach(() => {
+      if (origClientId !== undefined) {
+        process.env.GITHUB_CLIENT_ID = origClientId;
+      } else {
+        delete process.env.GITHUB_CLIENT_ID;
+      }
+      if (origClientSecret !== undefined) {
+        process.env.GITHUB_CLIENT_SECRET = origClientSecret;
+      } else {
+        delete process.env.GITHUB_CLIENT_SECRET;
+      }
+    });
+
+    it("should return GitHub config status correctly", async () => {
+      const res1 = await app.request("/api/auth/oauth/config");
+      expect(res1.status).toBe(200);
+      const json1 = await res1.json();
+      expect(json1.github.enabled).toBe(true);
+
+      delete process.env.GITHUB_CLIENT_ID;
+      const res2 = await app.request("/api/auth/oauth/config");
+      const json2 = await res2.json();
+      expect(json2.github.enabled).toBe(false);
+      process.env.GITHUB_CLIENT_ID = "mock-github-client-id";
+    });
+
+    it("should require password re-auth to initiate GitHub linking", async () => {
+      // Missing password
+      const res1 = await app.request("/api/auth/oauth/github/init-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({}),
+      });
+      expect(res1.status).toBe(400);
+
+      // Wrong password
+      const res2 = await app.request("/api/auth/oauth/github/init-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ password: "wrongPassword" }),
+      });
+      expect(res2.status).toBe(400);
+
+      // Correct password
+      const res3 = await app.request("/api/auth/oauth/github/init-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ password: "testPassword123!" }),
+      });
+      expect(res3.status).toBe(200);
+      const json3 = await res3.json();
+      expect(json3.url).toBeDefined();
+      expect(json3.url).toContain("github.com/login/oauth/authorize");
+      expect(json3.url).toContain("client_id=mock-github-client-id");
+      expect(json3.url).toContain("state=");
+    });
+
+    it("should initiate GitHub login redirect", async () => {
+      const res = await app.request("/api/auth/oauth/github/login?returnTo=/apps");
+      expect(res.status).toBe(302);
+      const loc = res.headers.get("location");
+      expect(loc).toBeDefined();
+      expect(loc).toContain("github.com/login/oauth/authorize");
+      expect(loc).toContain("client_id=mock-github-client-id");
+    });
+
+    it("should link GitHub account on valid callback, fetch primary email, and reject collision", async () => {
+      const { generateOAuthState } = await import("../lib/auth.ts");
+      const githubId = `99${oauthSuffix}`;
+      const githubEmail = `test_${oauthSuffix}@github.com`;
+
+      // Mock fetch for GitHub token, user, and emails
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("github.com/login/oauth/access_token")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ access_token: "mock-github-access-token" }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        if (url.includes("api.github.com/user/emails")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify([
+                { email: "secondary@example.com", primary: false, verified: true },
+                { email: githubEmail, primary: true, verified: true },
+              ]),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        if (url.includes("api.github.com/user")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ id: githubId, login: `gh_${oauthSuffix}`, email: null }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        return originalFetch(url);
+      });
+
+      try {
+        const linkState = generateOAuthState({
+          action: "link",
+          userId: testUserId,
+        });
+
+        // 1. Link to test user
+        const linkRes = await app.request(
+          `/api/auth/oauth/github/callback?code=mock-code&state=${linkState}`,
+        );
+        expect(linkRes.status).toBe(302);
+        expect(linkRes.headers.get("location")).toBe("/security?oauth=linked&provider=github");
+
+        // Verify session returns linked oauth
+        const sessRes = await app.request("/api/auth/session", {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        const sessJson = await sessRes.json();
+        expect(sessJson.user.oauth?.github?.linked).toBe(true);
+        expect(sessJson.user.oauth?.github?.email).toBe(githubEmail);
+
+        // 2. Collision test: Another user tries to link the same GitHub account
+        const otherSuffix = oauthSuffix + "_2";
+        const otherRegRes = await app.request("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: `otherghuser_${otherSuffix}`,
+            email: `otherghuser_${otherSuffix}@example.com`,
+            password: "password123",
+          }),
+        });
+        const otherRegJson = await otherRegRes.json();
+        const otherState = generateOAuthState({
+          action: "link",
+          userId: otherRegJson.user.id,
+        });
+
+        const collisionRes = await app.request(
+          `/api/auth/oauth/github/callback?code=mock-code&state=${otherState}`,
+        );
+        expect(collisionRes.status).toBe(302);
+        expect(collisionRes.headers.get("location")).toBe(
+          "/security?error=oauth_already_linked&provider=github",
+        );
+
+        // 3. Login test for linked account
+        const loginState = generateOAuthState({
+          action: "login",
+          returnTo: "/apps",
+        });
+        const loginRes = await app.request(
+          `/api/auth/oauth/github/callback?code=mock-code&state=${loginState}`,
+        );
+        expect(loginRes.status).toBe(302);
+        const loginLoc = loginRes.headers.get("location") || "";
+        expect(loginLoc).toContain("/auth?oauth_token=");
+        expect(loginLoc).toContain("requires_unlock=true");
+
+        // 4. Login test for unlinked account
+        const unlinkedId = `unlinked_${oauthSuffix}`;
+        globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("github.com/login/oauth/access_token")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ access_token: "mock-github-token" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          if (url.includes("api.github.com/user")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ id: unlinkedId, login: "unlinked", email: "unlinked@github.com" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          return originalFetch(url);
+        });
+
+        const unlinkedLoginRes = await app.request(
+          `/api/auth/oauth/github/callback?code=mock-code&state=${loginState}`,
+        );
+        expect(unlinkedLoginRes.status).toBe(302);
+        expect(unlinkedLoginRes.headers.get("location")).toBe(
+          "/auth?error=oauth_not_linked&provider=github",
+        );
+
+        // 5. Unlink with password re-auth
+        const unlinkWrong = await app.request("/api/auth/oauth/github/unlink", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ password: "wrong" }),
+        });
+        expect(unlinkWrong.status).toBe(400);
+
+        const unlinkOk = await app.request("/api/auth/oauth/github/unlink", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ password: "testPassword123!" }),
+        });
+        expect(unlinkOk.status).toBe(200);
+
+        // Verify unlinked
+        const postUnlinkSess = await app.request("/api/auth/session", {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        const postUnlinkJson = await postUnlinkSess.json();
+        expect(postUnlinkJson.user.oauth?.github).toBeUndefined();
       } finally {
         globalThis.fetch = originalFetch;
       }

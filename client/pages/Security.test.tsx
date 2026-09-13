@@ -464,7 +464,8 @@ describe("Security Page Component", () => {
     // Verify OAuth section
     expect(screen.getByText("OAuth")).toBeDefined();
     expect(screen.getByText("Google")).toBeDefined();
-    expect(screen.getByText("Not Linked")).toBeDefined();
+    expect(screen.getByText("GitHub")).toBeDefined();
+    expect(screen.getAllByText("Not Linked").length).toBe(2);
 
     const linkBtn = document.getElementById("link-google-btn")!;
     expect(linkBtn).toBeDefined();
@@ -528,6 +529,88 @@ describe("Security Page Component", () => {
 
     await waitFor(() => {
       expect(mockUnlink).toHaveBeenCalledWith("mypassword");
+    });
+  });
+
+  it("renders GitHub OAuth section and handles link dialog", async () => {
+    const mockInitLinkGithub = vi.fn().mockResolvedValue("https://github.com/login/oauth/authorize");
+    const mockUnlinkGithub = vi.fn().mockResolvedValue({ success: true });
+
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "u", email: "user@test.com" } },
+      changePassword: vi.fn(),
+      initLinkGoogle: vi.fn(),
+      unlinkGoogle: vi.fn(),
+      initLinkGithub: mockInitLinkGithub,
+      unlinkGithub: mockUnlinkGithub,
+    });
+
+    renderWithRouter();
+
+    expect(screen.getByText("GitHub")).toBeDefined();
+    const linkBtn = document.getElementById("link-github-btn")!;
+    expect(linkBtn).toBeDefined();
+
+    // Click link -> opens password prompt dialog
+    fireEvent.click(linkBtn);
+    expect(
+      screen.getByText(
+        "Enter your account password to verify your identity before linking GitHub:",
+      ),
+    ).toBeDefined();
+
+    const passInput = document.getElementById(
+      "link-github-password-input",
+    ) as HTMLInputElement;
+    fireEvent.change(passInput, { target: { value: "mypassword" } });
+
+    const submitLink = document.getElementById("submit-link-github-btn")!;
+    fireEvent.click(submitLink);
+
+    await waitFor(() => {
+      expect(mockInitLinkGithub).toHaveBeenCalledWith("mypassword");
+    });
+  });
+
+  it("renders linked GitHub account and handles unlinking dialog", async () => {
+    const mockUnlinkGithub = vi.fn().mockResolvedValue({ success: true });
+
+    (useAuth as any).mockReturnValue({
+      session: {
+        user: {
+          id: "u",
+          email: "user@test.com",
+          oauth: { github: { id: "gh1", email: "ghuser@github.com", linked: true } },
+        },
+      },
+      changePassword: vi.fn(),
+      unlinkGoogle: vi.fn(),
+      unlinkGithub: mockUnlinkGithub,
+    });
+
+    renderWithRouter();
+
+    expect(screen.getByText("Linked as ghuser@github.com")).toBeDefined();
+    const unlinkBtn = document.getElementById("unlink-github-btn")!;
+    expect(unlinkBtn).toBeDefined();
+
+    fireEvent.click(unlinkBtn);
+    expect(
+      screen.getByText(
+        "Enter your account password to confirm unlinking your GitHub account:",
+      ),
+    ).toBeDefined();
+
+    const passInput = document.getElementById(
+      "unlink-github-password-input",
+    ) as HTMLInputElement;
+    fireEvent.change(passInput, { target: { value: "mypassword" } });
+
+    const submitUnlink = document.getElementById("submit-unlink-github-btn")!;
+    fireEvent.click(submitUnlink);
+
+    await waitFor(() => {
+      expect(mockUnlinkGithub).toHaveBeenCalledWith("mypassword");
     });
   });
 });
