@@ -48,7 +48,7 @@
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.1",
-    "sudoku-gen": "^1.0.2",
+    "sudoku-gen": "^1.0.3",
     "ws": "^8.21.3",
     "zod": "^4.4.3"
   },
