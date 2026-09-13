@@ -15,3 +15,7 @@
 ## Hono Routing
 
 -- NEVER add a root route (e.g., `app.get("/")`) in `server/index.ts`. This intercepts the request and prevents the Vite SPA from loading in production. The root route is already correctly handled by a fallback in `server/serve.ts`.
+
+## Pnpm
+
+-- Use pnpm for dependency installation, testing, building, etc. Don't use npm, bun, etc unless required.
