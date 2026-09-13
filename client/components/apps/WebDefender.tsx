@@ -93,6 +93,7 @@ import {
 
 import { CountryFlag } from "@/components/ui/CountryFlag";
 import { ThreatLookupCard } from "./ThreatLookupCard";
+import { KnownThreatsApiSection } from "./KnownThreatsApiSection";
 export { CountryFlag };
 
 function getCountryFlag(countryCode: string): string {
@@ -704,6 +705,8 @@ export const config = {
             </CardContent>
           </Card>
         </div>
+
+        <KnownThreatsApiSection />
       </div>
     );
   }

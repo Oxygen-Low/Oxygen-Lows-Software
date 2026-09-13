@@ -2100,6 +2100,11 @@ export const en = {
     errorRequired: "IP address is required",
     errorInvalid: "Please enter a valid IPv4 or IPv6 address",
     errorGeneric: "Failed to evaluate IP threat status. Please try again.",
+    apiTitle: "Known Threats API",
+    apiSubtitle: "Query IP threat intelligence programmatically without an API key (up to 5,000 req/min).",
+    apiRateLimit: "5,000 req/min · No Auth Required",
+    apiEndpoints: "Endpoints",
+    apiResponseExample: "Example Response",
   },
 } as const;
 
