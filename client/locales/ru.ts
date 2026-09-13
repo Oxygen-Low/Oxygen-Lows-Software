@@ -368,8 +368,8 @@ export const ru = {
     webDefenderAbuseKeyConfigured: "Ключ AbuseIPDB настроен. Введите новый, чтобы заменить его, или оставьте поле пустым и сохраните для удаления.",
     webDefenderAutoBlock: "Автоблокировка угроз AbuseIPDB",
     webDefenderAutoBlockDesc: "При включении заблокированные IP проверяются раз в семь дней. IP с оценкой AbuseIPDB выше нуля добавляются в список блокировки.",
-    webDefenderBannedIps: "Заблокированные IP",
-    webDefenderBannedIpsDesc: "Применять общеплатформенные блокировки IP, которыми управляют администраторы Oxygen Low's Software.",
+    webDefenderBannedIps: "Блокировка IP известных угроз",
+    webDefenderBannedIpsDesc: "Блокировать известные вредоносные IP-адреса.",
     webDefenderBannedIpsView: "Просматривайте активные блокировки и их причины в публичном каталоге.",
     passwordManagerTitle: "Менеджер паролей",
     passwordManagerDesc:

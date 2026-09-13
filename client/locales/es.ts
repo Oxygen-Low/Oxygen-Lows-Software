@@ -372,8 +372,8 @@ export const es = {
     webDefenderAbuseKeyConfigured: "Hay una clave de AbuseIPDB configurada. Introduce una nueva para reemplazarla o déjalo vacío y guarda para eliminarla.",
     webDefenderAutoBlock: "Bloqueo automático de amenazas de AbuseIPDB",
     webDefenderAutoBlockDesc: "Al activarlo, las IP bloqueadas se comprueban una vez cada siete días. Las IP con una puntuación de abuso de AbuseIPDB superior a cero se añaden a la lista de bloqueo.",
-    webDefenderBannedIps: "IP prohibidas",
-    webDefenderBannedIpsDesc: "Aplica prohibiciones de IP globales gestionadas por los administradores de Oxygen Low's Software.",
+    webDefenderBannedIps: "Bloqueo de IP de amenazas conocidas",
+    webDefenderBannedIpsDesc: "Bloquea direcciones IP maliciosas conocidas.",
     webDefenderBannedIpsView: "Consulta las prohibiciones activas y sus motivos en el directorio público.",
     passwordManagerTitle: "Gestor de Contraseñas",
     passwordManagerDesc:

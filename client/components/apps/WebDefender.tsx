@@ -2013,16 +2013,16 @@ export function SettingsTab({
     <div className="space-y-8 max-w-4xl">
       <Card className="bg-slate-900 border-slate-800">
         <CardHeader>
-          <CardTitle>{t("apps.webDefenderBannedIps", undefined, "Banned IPs")}</CardTitle>
+          <CardTitle>{t("apps.webDefenderBannedIps", undefined, "Known Threat IP Bans")}</CardTitle>
           <CardDescription>
-            {t("apps.webDefenderBannedIpsDesc", undefined, "Enforce platform-wide IP bans managed by Oxygen Low's Software administrators.")}
+            {t("apps.webDefenderBannedIpsDesc", undefined, "Block known malicious IP addresses")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
           <div className="text-sm text-slate-400">
             {t("apps.webDefenderBannedIpsView", undefined, "View active bans and their reasons in the public directory.")}
             <a href="/webdefender/banned-ips" className="ml-2 text-cyan-400 hover:text-cyan-300 underline">
-              {t("apps.webDefenderBannedIps", undefined, "Banned IPs")}
+              {t("titles.bannedIps", undefined, "Banned IPs")}
             </a>
           </div>
           <Switch

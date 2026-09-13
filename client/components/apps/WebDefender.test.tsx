@@ -338,4 +338,24 @@ describe("Defender SettingsTab Total Events Limit", () => {
       }),
     );
   });
+
+  it("renders Known Threat IP Bans title and description", () => {
+    const authFetch = vi.fn().mockResolvedValue({ ok: true });
+    const onUpdate = vi.fn();
+    const onDelete = vi.fn();
+
+    const { getByText } = render(
+      <SettingsTab
+        app={mockApp}
+        authFetch={authFetch}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />,
+    );
+
+    expect(getByText("Known Threat IP Bans")).toBeDefined();
+    expect(getByText("Block known malicious IP addresses")).toBeDefined();
+    expect(getByText("Banned IPs")).toBeDefined();
+  });
 });
+
