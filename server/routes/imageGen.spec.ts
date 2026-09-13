@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { imageGenRouter, CLOUDFLARE_IMAGE_MODELS, HORDE_SFW_CURATED } from "./imageGen.ts";
+import { imageGenRouter, HORDE_SFW_CURATED } from "./imageGen.ts";
 
 describe("Image Generation Router", () => {
   let app: Hono;
@@ -12,7 +12,7 @@ describe("Image Generation Router", () => {
   });
 
   describe("GET /api/ai/image/models", () => {
-    it("returns available Cloudflare models and curated Horde SFW models", async () => {
+    it("returns available curated Horde SFW models", async () => {
       // Mock stablehorde models status fetch
       global.fetch = vi.fn().mockImplementation((url: string) => {
         if (url.includes("stablehorde.net/api/v2/status/models")) {
@@ -32,9 +32,7 @@ describe("Image Generation Router", () => {
       expect(res.status).toBe(200);
 
       const data = await res.json();
-      expect(data.cloudflare).toBeDefined();
-      expect(data.cloudflare.length).toBeGreaterThan(0);
-      expect(data.cloudflare[0].id).toBe("@cf/black-forest-labs/flux-1-schnell");
+      expect(data.cloudflare).toBeUndefined();
 
       expect(data.horde).toBeDefined();
       expect(data.horde.length).toBeGreaterThan(0);
@@ -84,7 +82,7 @@ describe("Image Generation Router", () => {
       expect(data.error).toContain("Invalid provider");
     });
 
-    it("requires authentication for Cloudflare models", async () => {
+    it("rejects cloudflare provider with 400 error", async () => {
       const res = await app.request("/api/ai/image/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,9 +93,9 @@ describe("Image Generation Router", () => {
         }),
       });
 
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.error).toContain("Authentication is required");
+      expect(data.error).toContain("Invalid provider");
     });
 
     it("allows unauthenticated generation requests for AI Horde models", async () => {

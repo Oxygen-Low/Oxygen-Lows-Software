@@ -17,7 +17,6 @@ import {
 import {
   agentSearchRouter,
   HORDE_FAST_MODEL,
-  CLOUDFLARE_SMART_MODEL,
   HORDE_URL,
 } from "../routes/agentSearch.ts";
 import { generateToken } from "./auth.ts";
@@ -322,7 +321,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       expect(p.research_agent_default_model).toBe("claude-3-7-sonnet");
       expect(p.research_agent_default_provider).toBe("anthropic");
       expect(p.research_summarizer_default_model).toBe(
-        "@cf/nvidia/nemotron-3-120b-a12b",
+        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
       );
 
       // Step 3: Update research_summarizer_default_model only
@@ -526,25 +525,29 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       const user = getUserById(uid);
       const token = generateToken(user);
 
-      process.env.CLOUDFLARE_ID = "cf_test_id";
-      process.env.CLOUDFLARE_TOKEN = "cf_test_token";
-
-      let capturedCfModel = "";
+      let capturedSummarizerModel = "";
+      let callCount = 0;
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
         const urlStr = String(url);
         if (urlStr.includes("stablehorde.net")) {
+          callCount++;
+          const body = JSON.parse((init?.body as string) || "{}");
+          if (callCount % 2 === 0) {
+            capturedSummarizerModel = body.model;
+          }
           return new Response(
             JSON.stringify({
-              choices: [{ message: { content: '{"action": "done"}' } }],
+              choices: [
+                {
+                  message: {
+                    content:
+                      callCount % 2 !== 0
+                        ? '{"action": "done"}'
+                        : "Summary output",
+                  },
+                },
+              ],
             }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        if (urlStr.includes("api.cloudflare.com")) {
-          const body = JSON.parse((init?.body as string) || "{}");
-          capturedCfModel = body.model;
-          return new Response(
-            JSON.stringify({ result: { content: "Summary output" } }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -561,16 +564,16 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
           query: "Summarizer tier test",
           responseFormat: "summary",
           stream: false,
-          summarizerModel: "@cf/meta/llama-3.3-70b-instruct",
+          summarizerModel: "custom-summarizer-tier-1",
         }),
       });
-      expect(capturedCfModel).toBe("@cf/meta/llama-3.3-70b-instruct");
+      expect(capturedSummarizerModel).toBe("custom-summarizer-tier-1");
 
       // Tier 2: User preference
       callRpc(
         "upsert_user_preferences",
         {
-          p_research_summarizer_default_model: "@cf/qwen/qwen2.5-72b-instruct",
+          p_research_summarizer_default_model: "custom-summarizer-tier-2",
         },
         uid,
       );
@@ -583,14 +586,14 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
           stream: false,
         }),
       });
-      expect(capturedCfModel).toBe("@cf/qwen/qwen2.5-72b-instruct");
+      expect(capturedSummarizerModel).toBe("custom-summarizer-tier-2");
 
       // Tier 3: Legacy preference field
       callRpc(
         "upsert_user_preferences",
         {
           p_research_summarizer_default_model: "",
-          research_summarizer_model_id: "@cf/mistral/mistral-7b-instruct-v0.2",
+          research_summarizer_model_id: "custom-summarizer-tier-3",
         },
         uid,
       );
@@ -603,7 +606,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
           stream: false,
         }),
       });
-      expect(capturedCfModel).toBe("@cf/mistral/mistral-7b-instruct-v0.2");
+      expect(capturedSummarizerModel).toBe("custom-summarizer-tier-3");
 
       // Tier 4: System default
       callRpc(
@@ -623,7 +626,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
           stream: false,
         }),
       });
-      expect(capturedCfModel).toBe(CLOUDFLARE_SMART_MODEL);
+      expect(capturedSummarizerModel).toBe(HORDE_FAST_MODEL);
     });
 
     it("handles non-string researchModel types (numbers, objects, booleans, null) gracefully without throwing", async () => {

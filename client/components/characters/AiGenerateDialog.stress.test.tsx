@@ -20,19 +20,14 @@ vi.mock("@/contexts/LanguageContext", () => ({
 
 const mockModels = [
   {
-    provider: "cloudflare",
-    model_id: "@cf/nvidia/nemotron-3-120b-a12b",
-    name: "Nemotron 3 120B (Smart)",
-  },
-  {
-    provider: "cloudflare",
-    model_id: "@cf/google/gemma-4-26b-a4b-it",
-    name: "Gemma 4 26B IT (Balanced)",
-  },
-  {
     provider: "horde",
     model_id: "Fast",
     name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+  },
+  {
+    provider: "horde",
+    model_id: "Smart",
+    name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
   },
   {
     provider: "local-ollama",
@@ -45,8 +40,8 @@ const mockModels = [
 vi.mock("@/hooks/useAiModels", () => ({
   useAiModels: () => ({
     models: mockModels,
-    selectedModel: "@cf/nvidia/nemotron-3-120b-a12b",
-    selectedProvider: "cloudflare",
+    selectedModel: "Fast",
+    selectedProvider: "horde",
     setSelectedModel: vi.fn(),
     setSelectedProvider: vi.fn(),
   }),

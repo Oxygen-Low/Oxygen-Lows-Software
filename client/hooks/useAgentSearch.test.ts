@@ -49,7 +49,7 @@ describe("useAgentSearch Hook", () => {
       researchAgentDefaultModel: "my-custom-research-model",
       researchAgentDefaultProvider: "openrouter",
       researchSummarizerDefaultModel: "my-custom-summarizer-model",
-      researchSummarizerDefaultProvider: "cloudflare",
+      researchSummarizerDefaultProvider: "horde",
     };
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>
@@ -75,7 +75,7 @@ describe("useAgentSearch Hook", () => {
     expect(body.researchModel).toBe("my-custom-research-model");
     expect(body.researchProvider).toBe("openrouter");
     expect(body.summarizerModel).toBe("my-custom-summarizer-model");
-    expect(body.summarizerProvider).toBe("cloudflare");
+    expect(body.summarizerProvider).toBe("horde");
   });
 
   it("allows explicit search options to override theme defaults", async () => {
@@ -83,7 +83,7 @@ describe("useAgentSearch Hook", () => {
       researchAgentDefaultModel: "default-research-model",
       researchAgentDefaultProvider: "openrouter",
       researchSummarizerDefaultModel: "default-summarizer-model",
-      researchSummarizerDefaultProvider: "cloudflare",
+      researchSummarizerDefaultProvider: "horde",
     };
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>

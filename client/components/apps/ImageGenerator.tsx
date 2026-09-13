@@ -151,8 +151,7 @@ export function ImageGeneratorApp() {
     }
   };
 
-  const currentModelList =
-    selectedProvider === "cloudflare" ? models.cloudflare : models.horde;
+  const currentModelList = models.horde;
   const currentModelObj = currentModelList.find((m) => m.id === selectedModel);
 
   return (
@@ -170,92 +169,20 @@ export function ImageGeneratorApp() {
             {t(
               "apps.imageGeneratorDesc",
               undefined,
-              "Generate high-quality visuals using Cloudflare free image models and AI Horde SFW community workers.",
+              "Generate high-quality visuals using AI Horde SFW community workers.",
             )}
           </p>
         </div>
 
-        {/* Provider Toggle */}
-        <div className="flex items-center gap-1.5 p-1 bg-white/5 border border-white/10 rounded-xl shrink-0 self-start sm:self-center">
-          <button
-            onClick={() => {
-              setSelectedProvider("cloudflare");
-              if (models.cloudflare.length > 0) {
-                setSelectedModel(models.cloudflare[0].id);
-              }
-            }}
-            className={cn(
-              "px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5",
-              selectedProvider === "cloudflare"
-                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25"
-                : "text-slate-300 hover:text-white hover:bg-white/5",
-            )}
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="text-xs px-2.5 py-1 border-primary/40 text-primary bg-primary/10 font-mono"
           >
-            <span>Cloudflare AI</span>
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] px-1 py-0 border-current font-mono",
-                selectedProvider === "cloudflare" ? "text-white" : "text-cyan-400",
-              )}
-            >
-              Free
-            </Badge>
-          </button>
-
-          <button
-            onClick={() => {
-              setSelectedProvider("horde");
-              if (models.horde.length > 0) {
-                setSelectedModel(models.horde[0].id);
-              }
-            }}
-            className={cn(
-              "px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5",
-              selectedProvider === "horde"
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "text-slate-300 hover:text-white hover:bg-white/5",
-            )}
-          >
-            <span>AI Horde</span>
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] px-1 py-0 border-current font-mono",
-                selectedProvider === "horde" ? "text-white" : "text-primary",
-              )}
-            >
-              SFW
-            </Badge>
-          </button>
+            AI Horde (SFW)
+          </Badge>
         </div>
       </div>
-
-      {/* Auth Note for Cloudflare if guest */}
-      {selectedProvider === "cloudflare" && !isAuthenticated && (
-        <div className="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-xl flex items-center justify-between text-xs text-cyan-200">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-cyan-400 text-lg">
-              info
-            </span>
-            <span>
-              {t(
-                "apps.imageGenCloudflareLoginPrompt",
-                undefined,
-                "Cloudflare models require being signed in. Or switch to AI Horde for free guest access.",
-              )}
-            </span>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs h-7 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20"
-            onClick={() => navigate("/auth")}
-          >
-            {t("auth.signIn", undefined, "Sign In")}
-          </Button>
-        </div>
-      )}
 
       {/* Main App Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -556,17 +483,11 @@ export function ImageGeneratorApp() {
                         t("apps.imageGenCreating", undefined, "Crafting your image...")}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
-                      {selectedProvider === "horde"
-                        ? t(
-                            "apps.imageGenHordeWaiting",
-                            undefined,
-                            "AI Horde distributes tasks across community GPUs. Please hold on.",
-                          )
-                        : t(
-                            "apps.imageGenCloudflareWaiting",
-                            undefined,
-                            "Cloudflare Workers AI is synthesizing pixels...",
-                          )}
+                      {t(
+                        "apps.imageGenHordeWaiting",
+                        undefined,
+                        "AI Horde distributes tasks across community GPUs. Please hold on.",
+                      )}
                     </p>
                   </div>
 
@@ -608,9 +529,7 @@ export function ImageGeneratorApp() {
                           variant="secondary"
                           className="bg-black/60 text-white text-[10px] backdrop-blur-md border border-white/10 font-mono"
                         >
-                          {currentImage.provider === "cloudflare"
-                            ? "Cloudflare"
-                            : "AI Horde"}
+                          AI Horde
                         </Badge>
 
                         <button

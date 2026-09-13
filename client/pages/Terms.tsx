@@ -311,7 +311,7 @@ export default function Terms() {
         >
           <P>
             The Service integrates with third-party services (including OpenAI,
-            Anthropic, Google, Cloudflare, GitHub, and others listed in our
+            Anthropic, Google, GitHub, and others listed in our
             Privacy Policy). Your use of those services is governed by their
             respective terms and privacy policies. We are not responsible for
             the availability, accuracy, or practices of any third-party service.

@@ -1,56 +1,13 @@
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
-import { queryTable, callRpc } from "../lib/dataStore.ts";
+import { queryTable } from "../lib/dataStore.ts";
 import { serverStorage } from "../lib/storage.ts";
 import { extractBearerToken, stripHtmlTags } from "./ai.ts";
 
 export const imageGenRouter = new Hono();
 
 const imageLimiter = rateLimiter(20, 60_000, "image_gen");
-
-export const CLOUDFLARE_IMAGE_MODELS = [
-  {
-    provider: "cloudflare",
-    id: "@cf/black-forest-labs/flux-1-schnell",
-    name: "FLUX.1 Schnell",
-    description: "Ultra-fast state-of-the-art 4-step generation by Black Forest Labs",
-    free: true,
-    maxSteps: 4,
-    defaultSteps: 4,
-    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
-  },
-  {
-    provider: "cloudflare",
-    id: "@cf/stabilityai/stable-diffusion-xl-base-1.0",
-    name: "Stable Diffusion XL Base",
-    description: "High-resolution 1024x1024 photorealistic text-to-image model",
-    free: true,
-    maxSteps: 20,
-    defaultSteps: 20,
-    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
-  },
-  {
-    provider: "cloudflare",
-    id: "@cf/bytedance/stable-diffusion-xl-lightning",
-    name: "SDXL Lightning",
-    description: "Distilled fast SDXL model for swift high-fidelity results",
-    free: true,
-    maxSteps: 8,
-    defaultSteps: 4,
-    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
-  },
-  {
-    provider: "cloudflare",
-    id: "@cf/runwayml/stable-diffusion-v1-5",
-    name: "Stable Diffusion 1.5",
-    description: "Classic 512x512 versatile diffusion checkpoint",
-    free: true,
-    maxSteps: 25,
-    defaultSteps: 20,
-    aspectRatios: ["1:1", "4:3", "3:4"],
-  },
-];
 
 export const HORDE_SFW_CURATED = [
   {
@@ -181,31 +138,9 @@ imageGenRouter.get("/models", imageLimiter, async (c) => {
   }
 
   return c.json({
-    cloudflare: CLOUDFLARE_IMAGE_MODELS,
     horde: hordeModels,
   });
 });
-
-// Helper to get Cloudflare credentials
-function getCloudflareCredentials(c: any) {
-  const rawEnv = (c.env || {}) as any;
-  let cloudflareId = "";
-  let cloudflareToken = "";
-
-  for (const [key, value] of Object.entries(rawEnv)) {
-    const cleanKey = key.trim().toLowerCase();
-    if (cleanKey === "cloudflare_id") cloudflareId = (value as string).trim();
-    if (cleanKey === "cloudflare_token")
-      cloudflareToken = (value as string).trim();
-  }
-
-  const procEnv = typeof process !== "undefined" ? process.env : ({} as any);
-  if (!cloudflareId) cloudflareId = (procEnv.CLOUDFLARE_ID || "").trim();
-  if (!cloudflareToken)
-    cloudflareToken = (procEnv.CLOUDFLARE_TOKEN || "").trim();
-
-  return { cloudflareId, cloudflareToken };
-}
 
 // POST /api/ai/image/generate
 imageGenRouter.post("/generate", imageLimiter, async (c) => {
@@ -228,8 +163,8 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
     seed: rawSeed,
   } = body || {};
 
-  if (!provider || (provider !== "cloudflare" && provider !== "horde")) {
-    return c.json({ error: "Invalid provider. Must be cloudflare or horde" }, 400);
+  if (!provider || provider !== "horde") {
+    return c.json({ error: "Invalid provider. Must be horde" }, 400);
   }
 
   const prompt = stripHtmlTags(rawPrompt || "").trim();
@@ -258,115 +193,6 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
   let user: any = null;
   if (token && token !== "undefined" && token !== "null") {
     user = await resolveUserFromToken(token);
-  }
-
-  if (provider === "cloudflare") {
-    if (!user) {
-      return c.json(
-        { error: "Authentication is required to use Cloudflare image models." },
-        401,
-      );
-    }
-
-    // Deduct nominal points (15 points per image generation)
-    const POINT_COST = 15;
-    const rpcRes = callRpc("spend_points", { p_amount: POINT_COST }, user.id);
-    if (!rpcRes || !rpcRes.success) {
-      return c.json(
-        {
-          error:
-            "Insufficient points to generate image with Cloudflare. Earn or recharge points to continue.",
-        },
-        402,
-      );
-    }
-
-    const { cloudflareId, cloudflareToken } = getCloudflareCredentials(c);
-    if (!cloudflareId || !cloudflareToken) {
-      return c.json(
-        {
-          error:
-            "Cloudflare AI is temporarily unavailable. Please try an AI Horde model.",
-        },
-        500,
-      );
-    }
-
-    const selectedModel =
-      model || "@cf/black-forest-labs/flux-1-schnell";
-    const targetUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareId}/ai/run/${selectedModel}`;
-
-    const cfBody: any = { prompt };
-    if (selectedModel.includes("flux")) {
-      cfBody.num_steps = Math.min(steps, 4);
-    } else {
-      cfBody.num_steps = Math.min(steps, 25);
-      if (negative_prompt) cfBody.negative_prompt = negative_prompt;
-      if (guidance) cfBody.guidance = guidance;
-      if (width) cfBody.width = width;
-      if (height) cfBody.height = height;
-      if (seed !== undefined) cfBody.seed = seed;
-    }
-
-    try {
-      const response = await fetch(targetUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${cloudflareToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(cfBody),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Cloudflare Image Gen Error:", response.status, errorText);
-        return c.json(
-          {
-            error:
-              "Failed to generate image via Cloudflare. Please try again or switch model.",
-          },
-          response.status as any,
-        );
-      }
-
-      const contentType = response.headers.get("content-type") || "";
-      if (contentType.includes("application/json")) {
-        const json: any = await response.json();
-        if (json.result?.image) {
-          return c.json({
-            success: true,
-            provider: "cloudflare",
-            model: selectedModel,
-            image: `data:image/png;base64,${json.result.image}`,
-            seed,
-          });
-        }
-        if (json.errors && json.errors.length > 0) {
-          return c.json(
-            { error: json.errors[0]?.message || "Cloudflare generation error" },
-            500,
-          );
-        }
-      }
-
-      // Binary response (PNG/JPEG)
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      const mime = contentType.includes("jpeg") ? "image/jpeg" : "image/png";
-      const dataUrl = `data:${mime};base64,${base64}`;
-
-      return c.json({
-        success: true,
-        provider: "cloudflare",
-        model: selectedModel,
-        image: dataUrl,
-        seed,
-      });
-    } catch (err: any) {
-      console.error("Cloudflare Fetch Error:", err);
-      return c.json({ error: "Connection to Cloudflare AI failed." }, 500);
-    }
   }
 
   if (provider === "horde") {

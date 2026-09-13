@@ -1,7 +1,7 @@
 import { getLocalSession } from "@/lib/localSession";
 
 export interface ImageModelInfo {
-  provider: "cloudflare" | "horde";
+  provider: "horde";
   id: string;
   name: string;
   description: string;
@@ -15,14 +15,13 @@ export interface ImageModelInfo {
 }
 
 export interface ImageModelsResponse {
-  cloudflare: ImageModelInfo[];
   horde: ImageModelInfo[];
 }
 
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 
 export interface GenerateImageParams {
-  provider: "cloudflare" | "horde";
+  provider?: "horde";
   model: string;
   prompt: string;
   negative_prompt?: string;
@@ -48,7 +47,7 @@ export interface GeneratedImageResult {
   url: string;
   prompt: string;
   negative_prompt?: string;
-  provider: "cloudflare" | "horde";
+  provider: "horde";
   model: string;
   modelName?: string;
   seed?: string | number;
@@ -114,7 +113,7 @@ export async function generateImage(
   onProgress?: (p: GenerateProgress) => void,
 ): Promise<GeneratedImageResult> {
   const {
-    provider,
+    provider = "horde",
     model,
     prompt,
     negative_prompt,
@@ -258,27 +257,6 @@ export async function generateImage(
     }
 
     throw new Error("Generation timed out. Please try again.");
-  }
-
-  // Synchronous response (Cloudflare)
-  if (data.success && data.image) {
-    onProgress?.({
-      phase: "completed",
-      progressPercent: 100,
-      message: "Image generated successfully!",
-    });
-
-    return {
-      id: `cf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      url: data.image,
-      prompt,
-      negative_prompt,
-      provider: "cloudflare",
-      model,
-      seed: data.seed,
-      timestamp: Date.now(),
-      aspectRatio,
-    };
   }
 
   throw new Error("Unexpected generation response format");

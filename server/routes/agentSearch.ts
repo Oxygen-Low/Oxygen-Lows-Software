@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
-import { queryTable, callRpc } from "../lib/dataStore.ts";
+import { queryTable } from "../lib/dataStore.ts";
 import { validateAiUrl } from "../lib/safeAiUrl.ts";
 import {
   streamHordeWithContinuation,
@@ -12,7 +12,6 @@ export const agentSearchRouter = new Hono();
 
 export const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
 export const HORDE_FAST_MODEL = "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M";
-export const CLOUDFLARE_SMART_MODEL = "@cf/nvidia/nemotron-3-120b-a12b";
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
   TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
@@ -340,7 +339,7 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
   if (!data) return null;
   const msg = data.result || data.choices?.[0]?.message;
 
-  // 1. Check standard OpenAI / Cloudflare tool_calls
+  // 1. Check standard OpenAI tool_calls
   const toolCalls = msg?.tool_calls || data.tool_calls;
   if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
     const tc = toolCalls[0];
@@ -435,8 +434,6 @@ async function callModelProvider({
   stream = false,
   tools,
   userId,
-  cloudflareId,
-  cloudflareToken,
   hordeApiKey,
   signal,
 }: {
@@ -446,8 +443,6 @@ async function callModelProvider({
   stream?: boolean;
   tools?: any[];
   userId?: string;
-  cloudflareId?: string;
-  cloudflareToken?: string;
   hordeApiKey?: string;
   signal?: AbortSignal;
 }): Promise<Response> {
@@ -470,8 +465,7 @@ async function callModelProvider({
   if (
     !apiKey &&
     provider !== "horde" &&
-    !provider.includes("horde") &&
-    provider !== "cloudflare"
+    !provider.includes("horde")
   ) {
     throw new Error(
       `Provider '${provider}' is not configured. Please configure an API key in Integrations.`,
@@ -523,18 +517,6 @@ async function callModelProvider({
     }
 
     return res;
-  } else if (provider === "cloudflare") {
-    if (!cloudflareId || !cloudflareToken) {
-      throw new Error("Cloudflare AI is temporarily unavailable.");
-    }
-    targetUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareId}/ai/v1/chat/completions`;
-    requestBody = {
-      model,
-      messages,
-      stream,
-      tools,
-    };
-    headers["Authorization"] = `Bearer ${cloudflareToken}`;
   } else if (provider === "openai") {
     targetUrl = "https://api.openai.com/v1/chat/completions";
     requestBody = { ...requestBody, model, messages };
@@ -693,62 +675,65 @@ agentSearchRouter.post(
         }
       } catch {}
 
-      const effectiveResearchModel =
-        (typeof researchModel === "string" && researchModel.trim()) ||
-        userPrefs.research_agent_default_model ||
-        userPrefs.research_agent_model_id ||
-        HORDE_FAST_MODEL;
-
+      const reqResearchProvider =
+        typeof researchProvider === "string" &&
+        researchProvider.trim() &&
+        researchProvider.trim() !== "cloudflare"
+          ? researchProvider.trim()
+          : null;
+      const prefResearchProvider =
+        (userPrefs.research_agent_default_provider &&
+          userPrefs.research_agent_default_provider !== "cloudflare" &&
+          userPrefs.research_agent_default_provider) ||
+        (userPrefs.research_agent_provider &&
+          userPrefs.research_agent_provider !== "cloudflare" &&
+          userPrefs.research_agent_provider) ||
+        null;
       const effectiveResearchProvider =
-        (typeof researchProvider === "string" && researchProvider.trim()) ||
-        userPrefs.research_agent_default_provider ||
-        userPrefs.research_agent_provider ||
-        "horde";
+        reqResearchProvider || prefResearchProvider || "horde";
 
-      const effectiveSummarizerModel =
-        (typeof summarizerModel === "string" && summarizerModel.trim()) ||
-        userPrefs.research_summarizer_default_model ||
-        userPrefs.research_summarizer_model_id ||
-        CLOUDFLARE_SMART_MODEL;
+      const reqResearchModel =
+        typeof researchModel === "string" &&
+        researchModel.trim() &&
+        !researchModel.startsWith("@cf/")
+          ? researchModel.trim()
+          : null;
+      const prefResearchModel =
+        (userPrefs.research_agent_default_model &&
+          !userPrefs.research_agent_default_model.startsWith("@cf/") &&
+          userPrefs.research_agent_default_model) ||
+        (userPrefs.research_agent_model_id &&
+          !userPrefs.research_agent_model_id.startsWith("@cf/") &&
+          userPrefs.research_agent_model_id) ||
+        null;
+      const effectiveResearchModel =
+        reqResearchModel || prefResearchModel || HORDE_FAST_MODEL;
 
-      const effectiveSummarizerProvider =
+      const rawSummarizerProvider =
         (typeof summarizerProvider === "string" && summarizerProvider.trim()) ||
         userPrefs.research_summarizer_default_provider ||
-        userPrefs.research_summarizer_provider ||
-        "cloudflare";
+        userPrefs.research_summarizer_provider;
 
-      // Read Cloudflare credentials for smart summary/conclusion (only needed if synthesizing)
-      const rawEnv = (c.env || {}) as any;
-      let cloudflareId = "";
-      let cloudflareToken = "";
-      for (const [key, value] of Object.entries(rawEnv)) {
-        const cleanKey = key.trim().toLowerCase();
-        if (cleanKey === "cloudflare_id")
-          cloudflareId = (value as string).trim();
-        if (cleanKey === "cloudflare_token")
-          cloudflareToken = (value as string).trim();
-      }
-      const procEnv =
-        typeof process !== "undefined" ? process.env : ({} as any);
-      if (!cloudflareId) cloudflareId = (procEnv.CLOUDFLARE_ID || "").trim();
-      if (!cloudflareToken)
-        cloudflareToken = (procEnv.CLOUDFLARE_TOKEN || "").trim();
+      const effectiveSummarizerProvider =
+        rawSummarizerProvider && rawSummarizerProvider !== "cloudflare"
+          ? rawSummarizerProvider
+          : effectiveResearchProvider;
 
-      if (
-        (effectiveResearchProvider === "cloudflare" ||
-          (!researchOnly && effectiveSummarizerProvider === "cloudflare")) &&
-        (!cloudflareId || !cloudflareToken)
-      ) {
-        return c.json(
-          { error: "Agent search is temporarily unavailable" },
-          500,
-        );
-      }
+      const rawSummarizerModel =
+        (typeof summarizerModel === "string" && summarizerModel.trim()) ||
+        userPrefs.research_summarizer_default_model ||
+        userPrefs.research_summarizer_model_id;
+
+      const effectiveSummarizerModel =
+        rawSummarizerModel &&
+        !rawSummarizerModel.startsWith("@cf/") &&
+        rawSummarizerProvider !== "cloudflare"
+          ? rawSummarizerModel
+          : effectiveResearchModel;
 
       if (
         effectiveResearchProvider !== "horde" &&
-        !effectiveResearchProvider.includes("horde") &&
-        effectiveResearchProvider !== "cloudflare"
+        !effectiveResearchProvider.includes("horde")
       ) {
         let intg = null;
         try {
@@ -778,8 +763,7 @@ agentSearchRouter.post(
       if (
         !researchOnly &&
         effectiveSummarizerProvider !== "horde" &&
-        !effectiveSummarizerProvider.includes("horde") &&
-        effectiveSummarizerProvider !== "cloudflare"
+        !effectiveSummarizerProvider.includes("horde")
       ) {
         let intg = null;
         try {
@@ -975,8 +959,6 @@ Guidelines:
               messages: researchMessages,
               tools: SEARCH_TOOLS,
               userId: user.id,
-              cloudflareId,
-              cloudflareToken,
               hordeApiKey,
               signal: AbortSignal.timeout(10000),
             });
@@ -1078,8 +1060,6 @@ Guidelines:
             messages: synthMsgs,
             stream: false,
             userId: user.id,
-            cloudflareId,
-            cloudflareToken,
             hordeApiKey,
             signal: AbortSignal.timeout(60000),
           });
@@ -1110,27 +1090,10 @@ Guidelines:
           finalResult = synthData.response;
         }
 
-        let p_amount = 0;
-        if (effectiveSummarizerProvider === "cloudflare") {
-          const usage = synthData.usage || {};
-          const synthInputTokens =
-            usage.prompt_tokens ||
-            Math.floor(JSON.stringify(synthMsgs).length / 4);
-          const synthOutputTokens =
-            usage.completion_tokens || Math.floor(finalResult.length / 4);
-          const totalTokens = synthInputTokens + synthOutputTokens;
-          p_amount = Math.max(10, Math.floor(totalTokens / 10));
-
-          const rpcRes = callRpc("spend_points", { p_amount }, user.id);
-          if (!rpcRes || !rpcRes.success) {
-            console.error("Agent search points deduction failed", rpcRes);
-          }
-        }
-
         return c.json({
           result: finalResult,
           searches: allSearches,
-          totalPointsUsed: p_amount,
+          totalPointsUsed: 0,
         });
       }
 
@@ -1190,8 +1153,6 @@ Guidelines:
                 messages: researchMessages,
                 tools: SEARCH_TOOLS,
                 userId: user.id,
-                cloudflareId,
-                cloudflareToken,
                 hordeApiKey,
                 signal: AbortSignal.timeout(10000),
               });
@@ -1383,8 +1344,6 @@ Guidelines:
               messages: synthMsgs,
               stream: true,
               userId: user.id,
-              cloudflareId,
-              cloudflareToken,
               hordeApiKey,
               signal: AbortSignal.timeout(60000),
             });
@@ -1438,27 +1397,12 @@ Guidelines:
             }
           }
 
-          let p_amount = 0;
-          if (effectiveSummarizerProvider === "cloudflare") {
-            const synthInputTokens = Math.floor(
-              JSON.stringify(synthMsgs).length / 4,
-            );
-            const synthOutputTokens = Math.floor(finalContent.length / 4);
-            const estimatedTokens = synthInputTokens + synthOutputTokens;
-            p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
-
-            const rpcRes = callRpc("spend_points", { p_amount }, user.id);
-            if (!rpcRes || !rpcRes.success) {
-              console.error("Agent search points deduction failed", rpcRes);
-            }
-          }
-
           await write(
             sseJson({
               type: "result",
               content: finalContent,
               searches: allSearches,
-              totalPointsUsed: p_amount,
+              totalPointsUsed: 0,
             }),
           );
           await write(sseEvent("[DONE]"));

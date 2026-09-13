@@ -211,7 +211,7 @@ export const en = {
       "All available models grouped by provider, including detected local endpoints and custom registrations.",
     localModelsGroup: "Local Models (Ollama / LM Studio / KoboldCPP)",
     cloudModelsGroup: "Cloud Providers",
-    builtInModelsGroup: "Built-in Cloud Services (Cloudflare & AI Horde)",
+    builtInModelsGroup: "Built-in Cloud Services (AI Horde)",
     configured: "Configured",
     notConfigured: "API Key Required",
     goToIntegrations: "Integrations",
@@ -397,16 +397,14 @@ export const en = {
       "Design custom graphics and compose images using your own uploaded assets, custom fonts, and rich shapes.",
     imageGeneratorTitle: "AI Image Generator",
     imageGeneratorDesc:
-      "Generate high-quality visuals using Cloudflare free image models and AI Horde SFW community workers.",
+      "Generate high-quality visuals using AI Horde SFW community workers.",
     chatbotImageGen: "Image Generation",
-    chatbotImageGenDesc: "Generate AI images with Cloudflare & AI Horde",
+    chatbotImageGenDesc: "Generate AI images with AI Horde",
     imageGenSuccess: "Image generated successfully!",
     imageGenCopied: "Image copied to clipboard!",
     imageGenLinkCopied: "Image link copied!",
     imageGenDownloaded: "Download started!",
     imageGenOpeningStudio: "Opening in Image Studio...",
-    imageGenCloudflareLoginPrompt:
-      "Cloudflare models require being signed in. Or switch to AI Horde for free guest access.",
     imageGenModelLabel: "Generation Model",
     imageGenPromptLabel: "Prompt",
     imageGenPromptPlaceholder:
@@ -423,8 +421,6 @@ export const en = {
     imageGenCreating: "Crafting your image...",
     imageGenHordeWaiting:
       "AI Horde distributes tasks across community GPUs. Please hold on.",
-    imageGenCloudflareWaiting:
-      "Cloudflare Workers AI is synthesizing pixels...",
     imageGenOpenInStudio: "Open in Image Studio",
     imageGenSavedStorage: "Saved to Storage",
     imageGenReadyTitle: "Ready to Imagine",

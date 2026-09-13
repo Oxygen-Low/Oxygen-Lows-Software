@@ -199,7 +199,7 @@ export default function AcceptableUse() {
                   "Attempting to manipulate, jailbreak, or otherwise bypass the safety guidelines or content filters of any AI model or provider integrated with the Service.",
                   "Generating synthetic media (deepfakes, voice clones, etc.) designed to deceive, defraud, or defame any person.",
                   "Using AI outputs as the sole basis for making decisions that could have significant legal, medical, financial, or safety consequences without appropriate human oversight.",
-                  "Violating the usage policies of any third-party AI provider whose services are integrated with the platform (OpenAI, Anthropic, Google, xAI, Cloudflare, OpenRouter, Stable Horde).",
+                  "Violating the usage policies of any third-party AI provider whose services are integrated with the platform (OpenAI, Anthropic, Google, xAI, OpenRouter, Stable Horde).",
                 ]}
               />
             </div>

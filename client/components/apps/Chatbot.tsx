@@ -872,31 +872,23 @@ export function ChatbotApp() {
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
   const [isImageGenEnabled, setIsImageGenEnabled] = useState(false);
-  const [chatImageProvider, setChatImageProvider] = useState<"cloudflare" | "horde">(
-    session?.user?.id ? "cloudflare" : "horde",
-  );
-  const [chatImageModel, setChatImageModel] = useState<string>(
-    "@cf/black-forest-labs/flux-1-schnell",
-  );
+  const [chatImageProvider, setChatImageProvider] = useState<"horde">("horde");
+  const [chatImageModel, setChatImageModel] = useState<string>("SDXL 1.0");
   const [chatImageModels, setChatImageModels] = useState<{
-    cloudflare: ImageModelInfo[];
     horde: ImageModelInfo[];
-  }>({ cloudflare: [], horde: [] });
+  }>({ horde: [] });
   const [imageModelDropdownOpen, setImageModelDropdownOpen] = useState(false);
 
   useEffect(() => {
-    if (isImageGenEnabled && chatImageModels.cloudflare.length === 0) {
+    if (isImageGenEnabled && chatImageModels.horde.length === 0) {
       fetchImageModels()
         .then((data) => {
           setChatImageModels(data);
-          if (!session?.user?.id) {
-            setChatImageProvider("horde");
-            if (data.horde.length > 0) setChatImageModel(data.horde[0].id);
-          }
+          if (data.horde.length > 0) setChatImageModel(data.horde[0].id);
         })
         .catch((e) => console.error("Failed loading image models in chatbot", e));
     }
-  }, [isImageGenEnabled, chatImageModels.cloudflare.length, session?.user?.id]);
+  }, [isImageGenEnabled, chatImageModels.horde.length]);
 
   const [optionsDropdownOpen, setOptionsDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -985,13 +977,11 @@ export function ChatbotApp() {
   const {
     hordeModels,
     localModels,
-    cloudflareModels,
     customModels,
     otherModels,
   } = useMemo(() => {
     const horde: Model[] = [];
     const local: Model[] = [];
-    const cloudflare: Model[] = [];
     const custom: Model[] = [];
     const other: Model[] = [];
     let hasOpenRouter = false;
@@ -1001,8 +991,6 @@ export function ChatbotApp() {
         horde.push(m);
       } else if (m.provider.startsWith("local-")) {
         local.push(m);
-      } else if (m.provider === "cloudflare") {
-        cloudflare.push(m);
       } else if (m.provider === "custom") {
         custom.push(m);
       } else if (m.provider === "openrouter") {
@@ -1012,7 +1000,7 @@ export function ChatbotApp() {
         )) {
           other.push(m);
         }
-      } else {
+      } else if (m.provider !== "cloudflare") {
         other.push(m);
       }
     }
@@ -1025,14 +1013,12 @@ export function ChatbotApp() {
     return {
       hordeModels: horde,
       localModels: local,
-      cloudflareModels: cloudflare,
       customModels: finalCustom,
       otherModels: session?.user?.id ? other : [],
     };
   }, [models, session?.user?.id]);
   const hasHordeModels = hordeModels.length > 0;
   const hasLocalModels = localModels.length > 0;
-  const hasCloudflareModels = cloudflareModels.length > 0;
   const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
 
   useEffect(() => {
@@ -1442,7 +1428,6 @@ export function ChatbotApp() {
                 "koboldcpp",
                 "kobold",
                 "horde",
-                "cloudflare",
               ].includes(provider) ||
               provider.startsWith("local-")
             ) {
@@ -2160,11 +2145,8 @@ export function ChatbotApp() {
         );
 
         const modelDisplayName =
-          chatImageProvider === "cloudflare"
-            ? chatImageModels.cloudflare.find((m) => m.id === chatImageModel)?.name ||
-              "FLUX.1 Schnell"
-            : chatImageModels.horde.find((m) => m.id === chatImageModel)?.name ||
-              "SDXL 1.0 (Horde)";
+          chatImageModels.horde.find((m) => m.id === chatImageModel)?.name ||
+          "SDXL 1.0 (Horde)";
 
         let insertData: any = {
           parent_id: userMsgData.id,
@@ -3084,7 +3066,7 @@ export function ChatbotApp() {
                               {t(
                                 "apps.chatbotImageGenDesc",
                                 undefined,
-                                "Generate AI images with Cloudflare & AI Horde",
+                                "Generate AI images with AI Horde",
                               )}
                             </span>
                           </div>
@@ -3202,13 +3184,9 @@ export function ChatbotApp() {
                     >
                       <ImagePlus className="w-3.5 h-3.5 text-cyan-400" />
                       <span className="truncate max-w-[130px]">
-                        {chatImageProvider === "cloudflare"
-                          ? chatImageModels.cloudflare.find(
-                              (m) => m.id === chatImageModel,
-                            )?.name || "FLUX.1 Schnell"
-                          : chatImageModels.horde.find(
-                              (m) => m.id === chatImageModel,
-                            )?.name || "SDXL 1.0 (Horde)"}
+                        {chatImageModels.horde.find(
+                          (m) => m.id === chatImageModel,
+                        )?.name || "SDXL 1.0 (Horde)"}
                       </span>
                       <span className="material-symbols-outlined text-[16px] font-family-material">
                         expand_more
@@ -3226,47 +3204,7 @@ export function ChatbotApp() {
                       )}
                     >
                       <div className="max-h-[300px] overflow-y-auto no-scrollbar p-2 space-y-2">
-                        <div className="px-2 pt-1 pb-0.5 flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-bold text-slate-400">
-                            Cloudflare Free
-                          </span>
-                          {!session?.user?.id && (
-                            <span className="text-[10px] text-amber-400">
-                              Login required
-                            </span>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          {chatImageModels.cloudflare.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              disabled={!session?.user?.id}
-                              onClick={() => {
-                                setChatImageProvider("cloudflare");
-                                setChatImageModel(m.id);
-                                setImageModelDropdownOpen(false);
-                              }}
-                              className={cn(
-                                "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between",
-                                chatImageProvider === "cloudflare" &&
-                                  chatImageModel === m.id
-                                  ? "bg-cyan-500/20 text-cyan-300 font-medium"
-                                  : "text-slate-300 hover:bg-white/5",
-                                !session?.user?.id &&
-                                  "opacity-50 cursor-not-allowed",
-                              )}
-                            >
-                              <span>{m.name}</span>
-                              {chatImageProvider === "cloudflare" &&
-                                chatImageModel === m.id && (
-                                  <Check className="w-3.5 h-3.5 text-cyan-400" />
-                                )}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="border-t border-white/5 pt-1.5 px-2 pb-0.5">
+                        <div className="px-2 pt-1 pb-0.5">
                           <span className="text-[10px] uppercase font-bold text-slate-400">
                             AI Horde SFW (Free)
                           </span>
@@ -3437,76 +3375,6 @@ export function ChatbotApp() {
                                 </div>
                                 <div className="text-[11px] text-slate-400 truncate w-full capitalize">
                                   {m.provider.replace("local-", "")}
-                                </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {hasCloudflareModels && (
-                        <>
-                          <div className="px-3 pb-1 pt-3 flex justify-between items-center">
-                            <p className="text-[11px] text-slate-400 font-display font-medium">
-                              Cloudflare
-                            </p>
-                            {pointsStatus !== null &&
-                              pointsStatus.available !== undefined &&
-                              pointsStatus.given !== undefined && (
-                                <div className="flex flex-col items-end gap-1.5 mt-1 mr-1">
-                                  <span className="text-[10px] font-mono text-cyan-400 font-medium">
-                                    {pointsStatus.available}/{pointsStatus.given}
-                                  </span>
-                                  <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-cyan-400 transition-all duration-300"
-                                      style={{
-                                        width: `${Math.max(0, Math.min(100, (pointsStatus.available / (pointsStatus.given || 1)) * 100))}%`,
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                          </div>
-                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
-                            {cloudflareModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  if (!session?.user?.id) {
-                                    toast.error(
-                                      "Sign In to access better models.",
-                                    );
-                                    return;
-                                  }
-                                  setSelection(m.model_id, m.provider);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
-                                    ? "bg-white/5"
-                                    : "",
-                                )}
-                              >
-                                <div className="text-sm text-white font-medium">
-                                  {
-                                    formatModelLabel(
-                                      m.provider,
-                                      m.model_id,
-                                    ).split(" - ")[0]
-                                  }
-                                </div>
-                                <div className="text-[11px] text-slate-400 truncate w-full pr-4">
-                                  {formatModelLabel(
-                                    m.provider,
-                                    m.model_id,
-                                  ).split(" - ")[1] || ""}
                                 </div>
                                 {selectedModel === m.model_id &&
                                   selectedProvider === m.provider && (

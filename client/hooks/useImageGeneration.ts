@@ -18,25 +18,20 @@ export function useImageGeneration() {
   const isAuthenticated = !!session?.user;
 
   const [models, setModels] = useState<ImageModelsResponse>({
-    cloudflare: [],
     horde: [],
   });
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
 
   // Model selection state
-  const [selectedProvider, setSelectedProvider] = useState<"cloudflare" | "horde">(
-    isAuthenticated ? "cloudflare" : "horde",
-  );
-  const [selectedModel, setSelectedModel] = useState<string>(
-    "@cf/black-forest-labs/flux-1-schnell",
-  );
+  const [selectedProvider, setSelectedProvider] = useState<"horde">("horde");
+  const [selectedModel, setSelectedModel] = useState<string>("SDXL 1.0");
 
   // Generation options
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("1:1");
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
-  const [steps, setSteps] = useState<number>(4);
+  const [steps, setSteps] = useState<number>(20);
   const [guidance, setGuidance] = useState<number>(7.5);
   const [seed, setSeed] = useState<number | undefined>(undefined);
 
@@ -58,14 +53,6 @@ export function useImageGeneration() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Sync provider default based on authentication
-  useEffect(() => {
-    if (!isAuthenticated && selectedProvider === "cloudflare") {
-      setSelectedProvider("horde");
-      setSelectedModel("SDXL 1.0");
-    }
-  }, [isAuthenticated, selectedProvider]);
-
   // Load models on mount
   const loadModels = useCallback(async () => {
     setIsLoadingModels(true);
@@ -74,13 +61,7 @@ export function useImageGeneration() {
       const data = await fetchImageModels();
       setModels(data);
 
-      // Pick sensible default if none chosen
-      if (selectedProvider === "cloudflare" && data.cloudflare.length > 0) {
-        if (!data.cloudflare.some((m) => m.id === selectedModel)) {
-          setSelectedModel(data.cloudflare[0].id);
-          setSteps(data.cloudflare[0].defaultSteps || 4);
-        }
-      } else if (selectedProvider === "horde" && data.horde.length > 0) {
+      if (data.horde && data.horde.length > 0) {
         if (!data.horde.some((m) => m.id === selectedModel)) {
           setSelectedModel(data.horde[0].id);
           setSteps(data.horde[0].defaultSteps || 20);
@@ -91,7 +72,7 @@ export function useImageGeneration() {
     } finally {
       setIsLoadingModels(false);
     }
-  }, [selectedProvider, selectedModel]);
+  }, [selectedModel]);
 
   useEffect(() => {
     loadModels();
@@ -110,18 +91,16 @@ export function useImageGeneration() {
 
   // Update default steps when model changes
   const handleSelectModel = useCallback(
-    (modelId: string, provider?: "cloudflare" | "horde") => {
-      const p = provider || selectedProvider;
+    (modelId: string, provider?: "horde") => {
       setSelectedModel(modelId);
       if (provider) setSelectedProvider(provider);
 
-      const list = p === "cloudflare" ? models.cloudflare : models.horde;
-      const found = list.find((m) => m.id === modelId);
+      const found = models.horde.find((m) => m.id === modelId);
       if (found) {
-        setSteps(found.defaultSteps || (modelId.includes("flux") ? 4 : 20));
+        setSteps(found.defaultSteps || 20);
       }
     },
-    [models, selectedProvider],
+    [models],
   );
 
   // Execute generation
@@ -129,7 +108,7 @@ export function useImageGeneration() {
     async (
       overridePrompt?: string,
       overrideModel?: string,
-      overrideProvider?: "cloudflare" | "horde",
+      overrideProvider?: "horde",
       overrideRatio?: AspectRatio,
     ): Promise<GeneratedImageResult> => {
       const p = overridePrompt !== undefined ? overridePrompt : prompt;
@@ -169,8 +148,7 @@ export function useImageGeneration() {
         );
 
         // Find model name for display
-        const list = prov === "cloudflare" ? models.cloudflare : models.horde;
-        const modelObj = list.find((item) => item.id === m);
+        const modelObj = models.horde.find((item) => item.id === m);
         result.modelName = modelObj ? modelObj.name : m;
 
         setCurrentImage(result);

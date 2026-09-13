@@ -5,7 +5,6 @@ import path from "node:path";
 import {
   agentSearchRouter,
   HORDE_FAST_MODEL,
-  CLOUDFLARE_SMART_MODEL,
   HORDE_URL,
 } from "./agentSearch.ts";
 import { generateToken } from "../lib/auth.ts";
@@ -66,11 +65,10 @@ describe("Agent Search Route", () => {
     }
   });
 
-  test("Exports HORDE_FAST_MODEL and CLOUDFLARE_SMART_MODEL constants", () => {
+  test("Exports HORDE_FAST_MODEL constant", () => {
     expect(HORDE_FAST_MODEL).toBe(
       "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
     );
-    expect(CLOUDFLARE_SMART_MODEL).toBe("@cf/nvidia/nemotron-3-120b-a12b");
     expect(HORDE_URL).toBe("https://oai.stablehorde.net/v1/chat/completions");
   });
 
@@ -271,25 +269,30 @@ describe("Agent Search Route", () => {
   });
 
   test("Uses custom summarizerModel for synthesis when provided", async () => {
-    let capturedCfModel = "";
+    let capturedSummarizerModel = "";
+    let callCount = 0;
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (url, init) => {
         const urlStr = String(url);
         if (urlStr.includes("stablehorde.net")) {
-          return new Response(
-            JSON.stringify({
-              choices: [{ message: { content: '{"action": "done"}' } }],
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        if (urlStr.includes("api.cloudflare.com")) {
+          callCount++;
           const reqBody = JSON.parse((init?.body as string) || "{}");
-          capturedCfModel = reqBody.model;
+          if (callCount > 1) {
+            capturedSummarizerModel = reqBody.model;
+          }
           return new Response(
             JSON.stringify({
-              result: { content: "Synthesized final answer" },
+              choices: [
+                {
+                  message: {
+                    content:
+                      callCount === 1
+                        ? '{"action": "done"}'
+                        : "Synthesized final answer",
+                  },
+                },
+              ],
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
@@ -299,8 +302,55 @@ describe("Agent Search Route", () => {
         });
       });
 
-    process.env.CLOUDFLARE_ID = "mock_cf_id";
-    process.env.CLOUDFLARE_TOKEN = "mock_cf_token";
+    const res = await app.request("/api/ai/agent-search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${validToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "Explain neural networks",
+        responseFormat: "summary",
+        stream: false,
+        summarizerModel: "custom/horde-model",
+        summarizerProvider: "horde",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(capturedSummarizerModel).toBe("custom/horde-model");
+  });
+
+  test("Falls back to Horde when legacy Cloudflare summarizer is requested", async () => {
+    let summarizerCalled = false;
+    let callCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      const urlStr = String(url);
+      if (urlStr.includes("stablehorde.net")) {
+        callCount++;
+        if (callCount > 1) {
+          summarizerCalled = true;
+        }
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content:
+                    callCount === 1
+                      ? '{"action": "done"}'
+                      : "Synthesized final answer",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+      });
+    });
 
     const res = await app.request("/api/ai/agent-search", {
       method: "POST",
@@ -318,7 +368,7 @@ describe("Agent Search Route", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(capturedCfModel).toBe("@cf/meta/llama-3.1-8b-instruct-fast");
+    expect(summarizerCalled).toBe(true);
   });
 
   test("Maps Horde 'Smart' model alias to aphrodite/TheDrummer/Behemoth-X-123B-v2.1", async () => {

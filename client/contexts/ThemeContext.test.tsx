@@ -145,8 +145,8 @@ function TestThemeConsumer() {
         data-testid="set-research-summarizer-default"
         onClick={() =>
           setResearchSummarizerDefault(
-            "@cf/nvidia/nemotron-3-120b-a12b",
-            "cloudflare",
+            "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+            "horde",
           )
         }
       >
@@ -361,8 +361,9 @@ describe("ThemeContext & Provider", () => {
     await waitFor(() => {
       expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
         p_user_id: "test-user-id",
-        p_research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
-        p_research_summarizer_default_provider: "cloudflare",
+        p_research_summarizer_default_model:
+          "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+        p_research_summarizer_default_provider: "horde",
       });
     });
   });

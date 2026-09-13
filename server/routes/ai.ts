@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
-import { queryTable, callRpc } from "../lib/dataStore.ts";
+import { queryTable } from "../lib/dataStore.ts";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "../../shared/websiteKnowledge.ts";
 import {
   streamHordeWithContinuation,
@@ -13,11 +13,6 @@ export const aiRouter = new Hono();
 const DEFAULT_MODELS = [
   { provider: "horde", model_id: "Fast" },
   { provider: "horde", model_id: "Smart" },
-  { provider: "cloudflare", model_id: "@cf/nvidia/nemotron-3-120b-a12b" },
-  { provider: "cloudflare", model_id: "@cf/google/gemma-4-26b-a4b-it" },
-  { provider: "cloudflare", model_id: "@cf/zai-org/glm-4.7-flash" },
-  { provider: "cloudflare", model_id: "@cf/ibm-granite/granite-4.0-h-micro" },
-  { provider: "cloudflare", model_id: "@cf/meta/llama-3.1-8b-instruct-fast" },
 ];
 
 const HORDE_MODELS_MAP: Record<string, string[]> = {
@@ -205,11 +200,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     }
   }
 
-  if (
-    !integration?.api_key &&
-    provider !== "horde" &&
-    provider !== "cloudflare"
-  ) {
+  if (!integration?.api_key && provider !== "horde") {
     return c.json({ error: "Provider not configured" }, 400);
   }
 
@@ -360,61 +351,6 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         const data = await hordeResponse.json();
         return c.json(data);
       }
-    } else if (provider === "cloudflare") {
-      if (!user) return c.json({ error: "Authentication required" }, 401);
-
-      // Estimate token usage (input + 400 estimated output)
-      const inputChars = finalMessages.reduce(
-        (acc: number, m: any) => acc + (m.content || "").length,
-        0,
-      );
-      const estimatedTokens = Math.floor(inputChars / 4) + 400;
-      // Convert to points (roughly 10 tokens per point)
-      const p_amount = Math.max(10, Math.floor(estimatedTokens / 10));
-
-      // Deduct points first
-      const rpcRes = callRpc("spend_points", { p_amount }, user.id);
-      if (!rpcRes || !rpcRes.success) {
-        return c.json({ error: "Insufficient points" }, 402);
-      }
-
-      const rawEnv = (c.env || {}) as any;
-      let cloudflareId = "";
-      let cloudflareToken = "";
-
-      for (const [key, value] of Object.entries(rawEnv)) {
-        const cleanKey = key.trim().toLowerCase();
-        if (cleanKey === "cloudflare_id")
-          cloudflareId = (value as string).trim();
-        if (cleanKey === "cloudflare_token")
-          cloudflareToken = (value as string).trim();
-      }
-
-      const procEnv =
-        typeof process !== "undefined" ? process.env : ({} as any);
-      if (!cloudflareId) {
-        cloudflareId = (procEnv.CLOUDFLARE_ID || "").trim();
-      }
-      if (!cloudflareToken) {
-        cloudflareToken = (procEnv.CLOUDFLARE_TOKEN || "").trim();
-      }
-
-      if (!cloudflareId || !cloudflareToken) {
-        return c.json(
-          {
-            error:
-              "Cloudflare AI is temporarily unavailable. Please try a different provider.",
-          },
-          500,
-        );
-      }
-
-      targetUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareId}/ai/v1/chat/completions`;
-      requestBody = { model, messages: finalMessages };
-      if (stream) {
-        requestBody.stream = true;
-      }
-      fetchOptions.headers["Authorization"] = `Bearer ${cloudflareToken}`;
     } else {
       return c.json({ error: "Unsupported provider" }, 400);
     }

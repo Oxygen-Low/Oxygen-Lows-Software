@@ -123,7 +123,6 @@ app.use(
         "https://cdn.jsdelivr.net",
         "https://oai.stablehorde.net",
         "https://stablehorde.net",
-        "https://api.cloudflare.com",
         "https://api.openai.com",
         "https://api.anthropic.com",
         "https://generativelanguage.googleapis.com",

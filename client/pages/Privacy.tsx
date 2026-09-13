@@ -397,8 +397,8 @@ export default function Privacy() {
                   ],
                   [
                     "Cloudflare",
-                    "Infrastructure, DDoS protection, & AI generation",
-                    "IP address, request metadata, AI prompts",
+                    "Infrastructure & DDoS protection",
+                    "IP address, request metadata",
                   ],
                   [
                     "ip-api.com",

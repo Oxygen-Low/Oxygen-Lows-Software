@@ -404,10 +404,10 @@ describe("dataStore", () => {
     );
     expect(initialPrefs.research_agent_default_provider).toBe("horde");
     expect(initialPrefs.research_summarizer_default_model).toBe(
-      "@cf/nvidia/nemotron-3-120b-a12b",
+      "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
     );
     expect(initialPrefs.research_summarizer_default_provider).toBe(
-      "cloudflare",
+      "horde",
     );
 
     // Test upsert_user_preferences RPC with p_ prefixes

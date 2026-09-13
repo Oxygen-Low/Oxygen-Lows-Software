@@ -63,8 +63,8 @@ vi.mock("@/lib/db", () => {
                   "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
                 research_agent_default_provider: "horde",
                 research_summarizer_default_model:
-                  "@cf/nvidia/nemotron-3-120b-a12b",
-                research_summarizer_default_provider: "cloudflare",
+                  "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+                research_summarizer_default_provider: "horde",
               },
               error: null,
             });

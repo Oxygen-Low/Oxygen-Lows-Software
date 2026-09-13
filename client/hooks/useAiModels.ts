@@ -25,31 +25,6 @@ export interface LocalProviderStatus {
 
 export const BUILTIN_MODELS: Model[] = [
   {
-    provider: "cloudflare",
-    model_id: "@cf/nvidia/nemotron-3-120b-a12b",
-    name: "Nemotron 3 120B (Smart)",
-  },
-  {
-    provider: "cloudflare",
-    model_id: "@cf/google/gemma-4-26b-a4b-it",
-    name: "Gemma 4 26B IT (Balanced)",
-  },
-  {
-    provider: "cloudflare",
-    model_id: "@cf/zai-org/glm-4.7-flash",
-    name: "GLM 4.7 Flash (Fast)",
-  },
-  {
-    provider: "cloudflare",
-    model_id: "@cf/ibm-granite/granite-4.0-h-micro",
-    name: "Granite 4.0 H-Micro (Cheap)",
-  },
-  {
-    provider: "cloudflare",
-    model_id: "@cf/meta/llama-3.1-8b-instruct-fast",
-    name: "Llama 3.1 8B Instruct (Roleplay)",
-  },
-  {
     provider: "horde",
     model_id: "Fast",
     name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
@@ -100,19 +75,6 @@ export const POPULAR_PRESETS: Record<
     { model_id: "grok-2-1212", name: "Grok 2" },
     { model_id: "grok-2-vision-1212", name: "Grok 2 Vision" },
     { model_id: "grok-beta", name: "Grok Beta" },
-  ],
-  cloudflare: [
-    { model_id: "@cf/nvidia/nemotron-3-120b-a12b", name: "Nemotron 3 120B" },
-    { model_id: "@cf/google/gemma-4-26b-a4b-it", name: "Gemma 4 26B IT" },
-    { model_id: "@cf/zai-org/glm-4.7-flash", name: "GLM 4.7 Flash" },
-    {
-      model_id: "@cf/ibm-granite/granite-4.0-h-micro",
-      name: "Granite 4.0 H-Micro",
-    },
-    {
-      model_id: "@cf/meta/llama-3.1-8b-instruct-fast",
-      name: "Llama 3.1 8B Instruct",
-    },
   ],
   horde: [
     {
@@ -257,17 +219,28 @@ export const useAiModels = (
     setResearchSummarizerDefault,
   } = useTheme();
 
+  const initialProvider =
+    (chatbotDefaultProvider && chatbotDefaultProvider !== "cloudflare"
+      ? chatbotDefaultProvider
+      : lastProvider && lastProvider !== "cloudflare"
+        ? lastProvider
+        : defaultProvider === "cloudflare"
+          ? "horde"
+          : defaultProvider) || "horde";
+  const initialModel =
+    (initialProvider === "horde" &&
+    (chatbotDefaultModel?.startsWith("@cf/") ||
+      lastModelId?.startsWith("@cf/") ||
+      defaultModelId?.startsWith("@cf/"))
+      ? "Fast"
+      : chatbotDefaultModel || lastModelId || defaultModelId) || "Fast";
+
   const [models, setModels] = useState<Model[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>(
-    chatbotDefaultModel || lastModelId || defaultModelId,
-  );
-  const [selectedProvider, setSelectedProvider] = useState<string>(
-    chatbotDefaultProvider || lastProvider || defaultProvider,
-  );
+  const [selectedModel, setSelectedModel] = useState<string>(initialModel);
+  const [selectedProvider, setSelectedProvider] = useState<string>(initialProvider);
   const [isLoading, setIsLoading] = useState(true);
   const [configuredProviders, setConfiguredProviders] = useState<string[]>([
     "horde",
-    "cloudflare",
     "local-ollama",
     "local-lmstudio",
     "local-kobold",
@@ -302,7 +275,6 @@ export const useAiModels = (
       const userId = sessionData?.session?.user?.id;
       const baseProviders = [
         "horde",
-        "cloudflare",
         "local-ollama",
         "local-lmstudio",
         "local-kobold",

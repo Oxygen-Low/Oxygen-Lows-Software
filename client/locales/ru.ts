@@ -212,7 +212,7 @@ export const ru = {
       "Все доступные модели, сгруппированные по провайдерам, включая локальные и пользовательские.",
     localModelsGroup: "Локальные модели (Ollama / LM Studio / KoboldCPP)",
     cloudModelsGroup: "Облачные провайдеры",
-    builtInModelsGroup: "Встроенные облачные сервисы (Cloudflare и AI Horde)",
+    builtInModelsGroup: "Встроенные облачные сервисы (AI Horde)",
     configured: "Настроен",
     notConfigured: "Требуется API-ключ",
     goToIntegrations: "Интеграции",
@@ -397,16 +397,14 @@ export const ru = {
       "Создавайте авторскую графику и компонуйте изображения с собственными файлами, шрифтами и векторными фигурами.",
       imageGeneratorTitle: "AI Генератор изображений",
     imageGeneratorDesc:
-      "Создавайте высококачественные изображения с помощью бесплатных моделей Cloudflare и безопасных воркеров AI Horde.",
+      "Создавайте высококачественные изображения с помощью безопасных воркеров AI Horde.",
     chatbotImageGen: "Генерация изображений",
-    chatbotImageGenDesc: "Генерация изображений с Cloudflare и AI Horde",
+    chatbotImageGenDesc: "Генерация изображений с AI Horde",
     imageGenSuccess: "Изображение успешно сгенерировано!",
     imageGenCopied: "Изображение скопировано в буфер обмена!",
     imageGenLinkCopied: "Ссылка на изображение скопирована!",
     imageGenDownloaded: "Загрузка началась!",
     imageGenOpeningStudio: "Открытие в Image Studio...",
-    imageGenCloudflareLoginPrompt:
-      "Для использования моделей Cloudflare требуется вход в аккаунт. Либо переключитесь на AI Horde для бесплатного гостевого доступа.",
     imageGenModelLabel: "Модель генерации",
     imageGenPromptLabel: "Запрос (Промпт)",
     imageGenPromptPlaceholder:
@@ -423,8 +421,6 @@ export const ru = {
     imageGenCreating: "Создание вашего изображения...",
     imageGenHordeWaiting:
       "AI Horde обрабатывает задачу на GPU сообщества. Пожалуйста, подождите.",
-    imageGenCloudflareWaiting:
-      "Cloudflare Workers AI выполняет генерацию...",
     imageGenOpenInStudio: "Открыть в Image Studio",
     imageGenSavedStorage: "Сохранено в хранилище",
     imageGenReadyTitle: "Готовы к творчеству",

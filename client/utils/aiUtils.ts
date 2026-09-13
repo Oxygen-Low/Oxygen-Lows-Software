@@ -16,18 +16,6 @@ export const formatModelLabel = (provider: string, modelId: string) => {
     provider === "kobold"
   )
     return "Koboldcpp/" + modelId;
-  if (provider === "cloudflare") {
-    const labels: Record<string, string> = {
-      "@cf/nvidia/nemotron-3-120b-a12b": "Smart - nvidia/nemotron-3-120b-a12b",
-      "@cf/google/gemma-4-26b-a4b-it": "Balanced - google/gemma-4-26b-a4b-it",
-      "@cf/zai-org/glm-4.7-flash": "Fast - zai-org/glm-4.7-flash",
-      "@cf/ibm-granite/granite-4.0-h-micro":
-        "Cheap - ibm-granite/granite-4.0-h-micro",
-      "@cf/meta/llama-3.1-8b-instruct-fast":
-        "Write/Roleplay - meta/llama-3.1-8b-instruct-fast",
-    };
-    if (labels[modelId]) return labels[modelId];
-  }
 
   if (provider === "openrouter" && modelId === "openrouter/free") {
     return "Auto Select - Free Model";

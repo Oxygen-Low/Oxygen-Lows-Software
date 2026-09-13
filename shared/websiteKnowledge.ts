@@ -21,7 +21,7 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
 
 ### 2. Applications & Productivity Tools (/apps)
 - **AI Chatbot** (/apps/chatbot):
-  - Advanced conversational AI supporting multiple cloud providers (Cloudflare AI, Stable Horde, OpenAI GPT-4, Anthropic Claude, Google Gemini, OpenRouter, xAI Grok) and local offline AI models (Ollama, LM Studio, KoboldCpp).
+  - Advanced conversational AI supporting multiple cloud providers (Stable Horde, OpenAI GPT-4, Anthropic Claude, Google Gemini, OpenRouter, xAI Grok) and local offline AI models (Ollama, LM Studio, KoboldCpp).
   - Integrated Web Search & Agentic Research: autonomously explores the live web and reads web pages to answer real-time questions with source citations.
   - Step-by-Step Reasoning Mode: inspect the model's internal thought process and analysis.
   - Code & Document Artifacts: interactive sidebar to view, syntax-highlight, copy, and download generated code and documents.
@@ -71,7 +71,6 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
 
 ### 6. AI Integrations & Local Model Support (/integrations)
 - Configure API keys for third-party AI providers (OpenAI, Anthropic Claude, Google Gemini, OpenRouter, xAI Grok, Stable Horde).
-- Built-in Cloudflare AI access (using platform points).
 - Connect local AI servers without sending data to the cloud: Ollama (http://127.0.0.1:11434), LM Studio (http://127.0.0.1:1234), KoboldCpp (http://127.0.0.1:5001).
 
 ### 7. Custom Characters & Roleplay Studio (/characters)

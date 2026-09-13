@@ -405,8 +405,8 @@ export function initUserFolder(
     chatbot_default_provider: "horde",
     research_agent_default_model: "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
     research_agent_default_provider: "horde",
-    research_summarizer_default_model: "@cf/nvidia/nemotron-3-120b-a12b",
-    research_summarizer_default_provider: "cloudflare",
+    research_summarizer_default_model: "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+    research_summarizer_default_provider: "horde",
     last_model_id: "Fast",
     last_provider: "horde",
     created_at: now,
@@ -918,18 +918,51 @@ export function getTableRows(table: string, userId?: string | number): any[] {
       .filter((p) => p !== null);
   }
 
+function sanitizePreferences(pref: any): any {
+  if (!pref || typeof pref !== "object") return pref;
+  const updated = { ...pref };
+  if (updated.chatbot_default_provider === "cloudflare") {
+    updated.chatbot_default_provider = "horde";
+    if (updated.chatbot_default_model?.startsWith("@cf/")) {
+      updated.chatbot_default_model = "Fast";
+    }
+  }
+  if (updated.research_agent_default_provider === "cloudflare") {
+    updated.research_agent_default_provider = "horde";
+    if (updated.research_agent_default_model?.startsWith("@cf/")) {
+      updated.research_agent_default_model =
+        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M";
+    }
+  }
+  if (updated.research_summarizer_default_provider === "cloudflare") {
+    updated.research_summarizer_default_provider = "horde";
+    if (updated.research_summarizer_default_model?.startsWith("@cf/")) {
+      updated.research_summarizer_default_model =
+        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M";
+    }
+  }
+  if (updated.last_provider === "cloudflare") {
+    updated.last_provider = "horde";
+    if (updated.last_model_id?.startsWith("@cf/")) {
+      updated.last_model_id = "Fast";
+    }
+  }
+  return updated;
+}
+
   if (normTable === "user_preferences") {
     if (userIdStr) {
       const prefPath = path.join(DATA_DIR, userIdStr, "preferences.json");
       const pref = readJsonFile(prefPath, null);
-      return pref ? [pref] : [];
+      return pref ? [sanitizePreferences(pref)] : [];
     }
     const userIds = getAllUserIds();
     return userIds
       .map((id) =>
         readJsonFile(path.join(DATA_DIR, id, "preferences.json"), null),
       )
-      .filter((p) => p !== null);
+      .filter((p) => p !== null)
+      .map((p) => sanitizePreferences(p));
   }
 
   // Global / public aggregation

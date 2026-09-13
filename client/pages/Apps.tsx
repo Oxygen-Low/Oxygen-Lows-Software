@@ -172,7 +172,7 @@ const APPS: AppMetadata[] = [
     defaultName: "AI Image Generator",
     descKey: "apps.imageGeneratorDesc",
     defaultDesc:
-      "Generate high-quality visuals using Cloudflare free image models and AI Horde SFW community workers.",
+      "Generate high-quality visuals using AI Horde SFW community workers.",
     categories: ["All", "LLM/AI", "Utility"],
     availability: "web-and-desktop",
     icon: <ImagePlus className="w-8 h-8 text-cyan-500" />,

@@ -74,15 +74,15 @@ export function AiGenerateDialog({
   } catch {
     hookData = {
       models: [],
-      selectedModel: "@cf/nvidia/nemotron-3-120b-a12b",
-      selectedProvider: "cloudflare",
+      selectedModel: "Fast",
+      selectedProvider: "horde",
     };
   }
 
   const {
     models = [],
-    selectedModel: hookModel = "@cf/nvidia/nemotron-3-120b-a12b",
-    selectedProvider: hookProvider = "cloudflare",
+    selectedModel: hookModel = "Fast",
+    selectedProvider: hookProvider = "horde",
   } = hookData;
 
   const [targetType, setTargetType] = useState<
@@ -96,10 +96,10 @@ export function AiGenerateDialog({
     initialRace?.id || "",
   );
   const [selectedModelId, setSelectedModelId] = useState<string>(
-    hookModel || "@cf/nvidia/nemotron-3-120b-a12b",
+    hookModel || "Fast",
   );
   const [selectedProvider, setSelectedProvider] = useState<string>(
-    hookProvider || "cloudflare",
+    hookProvider || "horde",
   );
   const [includeStats, setIncludeStats] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -218,19 +218,14 @@ export function AiGenerateDialog({
       ? models
       : [
           {
-            provider: "cloudflare",
-            model_id: "@cf/nvidia/nemotron-3-120b-a12b",
-            name: "Nemotron 3 120B (Smart)",
-          },
-          {
-            provider: "cloudflare",
-            model_id: "@cf/google/gemma-4-26b-a4b-it",
-            name: "Gemma 4 26B IT (Balanced)",
-          },
-          {
             provider: "horde",
             model_id: "Fast",
             name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+          },
+          {
+            provider: "horde",
+            model_id: "Smart",
+            name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
           },
         ];
 

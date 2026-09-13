@@ -20,28 +20,6 @@ vi.mock("@/services/imageGen", async (importOriginal) => {
   return {
     ...actual,
     fetchImageModels: vi.fn().mockResolvedValue({
-      cloudflare: [
-        {
-          provider: "cloudflare",
-          id: "@cf/black-forest-labs/flux-1-schnell",
-          name: "FLUX.1 Schnell",
-          description: "Ultra-fast state-of-the-art 4-step generation",
-          free: true,
-          maxSteps: 4,
-          defaultSteps: 4,
-          aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
-        },
-        {
-          provider: "cloudflare",
-          id: "@cf/stabilityai/stable-diffusion-xl-base-1.0",
-          name: "Stable Diffusion XL Base",
-          description: "High-resolution 1024x1024 model",
-          free: true,
-          maxSteps: 20,
-          defaultSteps: 20,
-          aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
-        },
-      ],
       horde: [
         {
           provider: "horde",
@@ -109,21 +87,9 @@ describe("ImageGeneratorApp", () => {
     renderApp();
 
     expect(screen.getByText("AI Image Generator")).toBeDefined();
-    expect(screen.getByText("Cloudflare AI")).toBeDefined();
-    expect(screen.getByText("AI Horde")).toBeDefined();
+    expect(screen.getByText("AI Horde (SFW)")).toBeDefined();
 
-    // Model dropdown options default to Cloudflare FLUX for authenticated users
-    await waitFor(() => {
-      expect(screen.getByText(/FLUX\.1 Schnell/)).toBeDefined();
-    });
-  });
-
-  it("switches providers and updates the model list", async () => {
-    renderApp();
-
-    const hordeButton = screen.getByText("AI Horde");
-    fireEvent.click(hordeButton);
-
+    // Model dropdown options load AI Horde models
     await waitFor(() => {
       expect(screen.getByText(/SDXL 1\.0 \(Horde\)/)).toBeDefined();
     });

@@ -68,8 +68,8 @@ vi.mock("@/lib/db", () => {
                     "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
                   research_agent_default_provider: "horde",
                   research_summarizer_default_model:
-                    "@cf/nvidia/nemotron-3-120b-a12b",
-                  research_summarizer_default_provider: "cloudflare",
+                    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+                  research_summarizer_default_provider: "horde",
                 },
                 error: null,
               }),
@@ -175,7 +175,7 @@ describe("useAiModels Hook", () => {
     });
 
     // Verify built-in models definition
-    expect(BUILTIN_MODELS.some((m) => m.provider === "cloudflare")).toBe(true);
+    expect(BUILTIN_MODELS.some((m) => m.provider === "cloudflare")).toBe(false);
     expect(
       BUILTIN_MODELS.some(
         (m) => m.provider === "horde" && m.model_id === "Fast",
@@ -302,7 +302,7 @@ describe("useAiModels Hook", () => {
         "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
       );
       expect(result.current.researchSummarizerDefaultModel).toBe(
-        "@cf/nvidia/nemotron-3-120b-a12b",
+        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
       );
     });
 

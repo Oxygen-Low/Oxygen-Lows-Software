@@ -397,7 +397,6 @@ export default function Account() {
       { value: "local-ollama", label: "Local Ollama", isLocal: true },
       { value: "local-lmstudio", label: "Local LM Studio", isLocal: true },
       { value: "local-kobold", label: "Local KoboldCPP", isLocal: true },
-      { value: "cloudflare", label: "Cloudflare", isLocal: false },
       { value: "horde", label: "AI Horde", isLocal: false },
     ],
     [],
@@ -528,8 +527,8 @@ export default function Account() {
   }, [models, cloudProviders]);
 
   const builtInModels = useMemo(() => {
-    const fromModels = models.filter((m) =>
-      ["cloudflare", "horde"].includes(m.provider.toLowerCase()),
+    const fromModels = models.filter(
+      (m) => m.provider.toLowerCase() === "horde",
     );
     return fromModels.length > 0 ? fromModels : BUILTIN_MODELS;
   }, [models]);
@@ -1475,7 +1474,7 @@ export default function Account() {
                       {t(
                         "account.builtInModelsGroup",
                         undefined,
-                        "Built-in Cloud Services (Cloudflare & AI Horde)",
+                        "Built-in Cloud Services (AI Horde)",
                       )}
                     </h4>
                   </div>

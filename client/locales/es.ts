@@ -216,7 +216,7 @@ export const es = {
     localModelsGroup: "Modelos locales (Ollama / LM Studio / KoboldCPP)",
     cloudModelsGroup: "Proveedores en la nube",
     builtInModelsGroup:
-      "Servicios integrados en la nube (Cloudflare y AI Horde)",
+      "Servicios integrados en la nube (AI Horde)",
     configured: "Configurado",
     notConfigured: "Clave de API requerida",
     goToIntegrations: "Integraciones",
@@ -401,16 +401,14 @@ export const es = {
       "Diseña gráficos personalizados y compone imágenes utilizando tus propios archivos, fuentes personalizadas y formas.",
     imageGeneratorTitle: "Generador de imágenes IA",
     imageGeneratorDesc:
-      "Genera imágenes de alta calidad con modelos gratuitos de Cloudflare y trabajadores comunitarios seguros (SFW) de AI Horde.",
+      "Genera imágenes de alta calidad con trabajadores comunitarios seguros (SFW) de AI Horde.",
     chatbotImageGen: "Generación de imágenes",
-    chatbotImageGenDesc: "Genera imágenes IA con Cloudflare y AI Horde",
+    chatbotImageGenDesc: "Genera imágenes IA con AI Horde",
     imageGenSuccess: "¡Imagen generada con éxito!",
     imageGenCopied: "¡Imagen copiada al portapapeles!",
     imageGenLinkCopied: "¡Enlace de imagen copiado!",
     imageGenDownloaded: "¡Descarga iniciada!",
     imageGenOpeningStudio: "Abriendo en Image Studio...",
-    imageGenCloudflareLoginPrompt:
-      "Los modelos de Cloudflare requieren iniciar sesión. O cambia a AI Horde para acceso gratuito de invitados.",
     imageGenModelLabel: "Modelo de generación",
     imageGenPromptLabel: "Descripción (Prompt)",
     imageGenPromptPlaceholder:
@@ -427,8 +425,6 @@ export const es = {
     imageGenCreating: "Creando tu imagen...",
     imageGenHordeWaiting:
       "AI Horde distribuye tareas en GPUs comunitarias. Por favor espera.",
-    imageGenCloudflareWaiting:
-      "Cloudflare Workers AI está sintetizando píxeles...",
     imageGenOpenInStudio: "Abrir en Image Studio",
     imageGenSavedStorage: "Guardado en almacenamiento",
     imageGenReadyTitle: "Listo para imaginar",

@@ -210,7 +210,7 @@ export const ko = {
       "감지된 로컬 엔드포인트와 커스텀 등록 모델을 포함하여 제공자별로 분류된 사용 가능한 전체 모델 목록입니다.",
     localModelsGroup: "로컬 모델 (Ollama / LM Studio / KoboldCPP)",
     cloudModelsGroup: "클라우드 제공자",
-    builtInModelsGroup: "내장 클라우드 서비스 (Cloudflare 및 AI Horde)",
+    builtInModelsGroup: "내장 클라우드 서비스 (AI Horde)",
     configured: "구성됨",
     notConfigured: "API 키 필요",
     goToIntegrations: "연동 관리",
@@ -391,16 +391,14 @@ export const ko = {
       "업로드한 에셋, 커스텀 폰트, 다양한 도형을 활용하여 나만의 그래픽을 제작하고 합성하세요.",
       imageGeneratorTitle: "AI 이미지 생성기",
     imageGeneratorDesc:
-      "Cloudflare 무료 이미지 모델 및 AI Horde SFW 커뮤니티 워커를 활용하여 고품질 이미지를 생성합니다.",
+      "AI Horde SFW 커뮤니티 워커를 활용하여 고품질 이미지를 생성합니다.",
     chatbotImageGen: "이미지 생성",
-    chatbotImageGenDesc: "Cloudflare 및 AI Horde로 AI 이미지 생성",
+    chatbotImageGenDesc: "AI Horde로 AI 이미지 생성",
     imageGenSuccess: "이미지가 성공적으로 생성되었습니다!",
     imageGenCopied: "이미지가 클립보드에 복사되었습니다!",
     imageGenLinkCopied: "이미지 링크가 복사되었습니다!",
     imageGenDownloaded: "다운로드가 시작되었습니다!",
     imageGenOpeningStudio: "Image Studio에서 여는 중...",
-    imageGenCloudflareLoginPrompt:
-      "Cloudflare 모델을 사용하려면 로그인이 필요합니다. 게스트로 무료 사용하려면 AI Horde로 전환하세요.",
     imageGenModelLabel: "생성 모델",
     imageGenPromptLabel: "프롬프트",
     imageGenPromptPlaceholder:
@@ -417,8 +415,6 @@ export const ko = {
     imageGenCreating: "이미지 제작 중...",
     imageGenHordeWaiting:
       "AI Horde 커뮤니티 GPU에서 작업을 분산 처리 중입니다. 잠시만 기다려 주세요.",
-    imageGenCloudflareWaiting:
-      "Cloudflare Workers AI에서 픽셀을 합성하고 있습니다...",
     imageGenOpenInStudio: "Image Studio에서 열기",
     imageGenSavedStorage: "스토리지에 저장됨",
     imageGenReadyTitle: "상상을 펼칠 준비 완료",

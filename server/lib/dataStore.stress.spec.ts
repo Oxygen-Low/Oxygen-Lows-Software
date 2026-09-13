@@ -17,7 +17,6 @@ import { Hono } from "hono";
 import {
   agentSearchRouter,
   HORDE_FAST_MODEL,
-  CLOUDFLARE_SMART_MODEL,
 } from "../routes/agentSearch.ts";
 import { generateToken } from "./auth.ts";
 
@@ -598,31 +597,21 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
           p_research_agent_default_model: "pref-model-research",
           p_research_agent_default_provider: "horde",
           p_research_summarizer_default_model: "pref-model-summarizer",
-          p_research_summarizer_default_provider: "cloudflare",
+          p_research_summarizer_default_provider: "horde",
         },
         userA,
       );
 
-      let usedHordeModel = "";
-      let usedCfModel = "";
+      const modelsCalled: string[] = [];
 
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
         const urlStr = String(url);
         const reqBody = JSON.parse((init?.body as string) || "{}");
         if (urlStr.includes("stablehorde.net")) {
-          usedHordeModel = reqBody.model;
+          modelsCalled.push(reqBody.model);
           return new Response(
             JSON.stringify({
               choices: [{ message: { content: '{"action": "done"}' } }],
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        if (urlStr.includes("api.cloudflare.com")) {
-          usedCfModel = reqBody.model;
-          return new Response(
-            JSON.stringify({
-              result: { content: "Synthesized summary" },
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
@@ -631,9 +620,6 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
           status: 404,
         });
       });
-
-      process.env.CLOUDFLARE_ID = "mock_id";
-      process.env.CLOUDFLARE_TOKEN = "mock_token";
 
       // Case 1: Body models provided -> MUST take precedence over user_preferences
       const res1 = await app.request("/api/ai/agent-search", {
@@ -652,8 +638,10 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       });
 
       expect(res1.status).toBe(200);
-      expect(usedHordeModel).toBe("body-override-research");
-      expect(usedCfModel).toBe("body-override-summarizer");
+      expect(modelsCalled).toContain("body-override-research");
+      expect(modelsCalled).toContain("body-override-summarizer");
+
+      modelsCalled.length = 0;
 
       // Case 2: Body models omitted -> MUST take user_preferences
       const res2 = await app.request("/api/ai/agent-search", {
@@ -670,8 +658,8 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       });
 
       expect(res2.status).toBe(200);
-      expect(usedHordeModel).toBe("pref-model-research");
-      expect(usedCfModel).toBe("pref-model-summarizer");
+      expect(modelsCalled).toContain("pref-model-research");
+      expect(modelsCalled).toContain("pref-model-summarizer");
     });
 
     test("agentSearch rejects requests with invalid parameters or payload constraints", async () => {
