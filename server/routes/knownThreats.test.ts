@@ -152,6 +152,27 @@ describe("Web Defender Known Threats API", () => {
       expect(data.is_tor).toBe(true);
     });
 
+    it("identifies established Tor exit nodes from seed data and TOR subnets", async () => {
+      const torIps = ["185.220.101.5", "198.96.155.3", "171.25.193.20"];
+      for (const ip of torIps) {
+        const res = await app.request("/api/webdefender/known-threats?ip=" + ip);
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.is_tor).toBe(true);
+        expect(data.is_vpn).toBe(false);
+      }
+    });
+
+    it("correctly identifies standard cloud infrastructure and public DNS as not VPN", async () => {
+      const nonVpnIps = ["8.8.8.8", "54.239.28.85", "142.250.190.46"];
+      for (const ip of nonVpnIps) {
+        const res = await app.request("/api/webdefender/known-threats?ip=" + ip);
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.is_vpn).toBe(false);
+      }
+    });
+
     it("identifies known VPN networks", async () => {
       const vpnIp = "198.7.58.196";
       const res = await app.request("/api/webdefender/known-threats?ip=" + vpnIp);

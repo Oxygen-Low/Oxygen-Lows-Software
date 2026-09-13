@@ -55,7 +55,6 @@ const SEED_VPN_IPS = [
 const SEED_VPN_CIDRS = [
   // NordVPN / Tefincom subnets
   "185.128.24.0/22",
-  "185.220.100.0/22",
   "89.187.160.0/20",
   "193.189.100.0/23",
   "194.35.233.0/24",
@@ -78,14 +77,60 @@ const SEED_VPN_CIDRS = [
   "185.107.56.0/24",
 ];
 
+// Well-known Public Anycast DNS Resolvers and Standard Cloud/Datacenter Infrastructure.
+// These must NEVER be misidentified as commercial VPNs.
+export const EXCLUDED_NON_VPN_IPS = [
+  // Google Public DNS
+  "8.8.8.8",
+  "8.8.4.4",
+  // Cloudflare DNS
+  "1.1.1.1",
+  "1.0.0.1",
+  // Quad9 DNS
+  "9.9.9.9",
+  "149.112.112.112",
+  // OpenDNS
+  "208.67.222.222",
+  "208.67.220.220",
+  // AdGuard DNS
+  "94.140.14.14",
+  "94.140.15.15",
+];
+
+export const EXCLUDED_NON_VPN_CIDRS = [
+  // Google Public DNS
+  "8.8.8.0/24",
+  "8.8.4.0/24",
+  // Cloudflare DNS
+  "1.1.1.0/24",
+  "1.0.0.0/24",
+  // Quad9 DNS
+  "9.9.9.0/24",
+  "149.112.112.0/24",
+  // OpenDNS
+  "208.67.220.0/23",
+  // Standard AWS Cloud / EC2 Infrastructure
+  "54.224.0.0/11",
+  "54.239.0.0/16",
+  "52.0.0.0/11",
+  "3.0.0.0/9",
+  // Standard Google Infrastructure / GCP
+  "142.250.0.0/15",
+  "172.217.0.0/16",
+  "216.58.192.0/19",
+  // Tor relay networks (Tor nodes are classified as is_tor, never is_vpn)
+  "185.220.100.0/22",
+];
+
 const VPN_FEEDS = [
-  "https://raw.githubusercontent.com/ejrv/VPNs/master/vpn-ipv4.txt",
-  "https://raw.githubusercontent.com/X4BNet/lists_vpn/main/ipv4.txt",
+  "https://api.mullvad.net/www/relays/all/",
 ];
 
 export class VpnDetector {
   private vpnIps: Set<string> = new Set();
   private vpnCidrs: CidrBlock[] = [];
+  private excludedIps: Set<string> = new Set();
+  private excludedCidrs: CidrBlock[] = [];
   private intervalId?: ReturnType<typeof setInterval>;
   private isRefreshing = false;
 
@@ -102,6 +147,15 @@ export class VpnDetector {
       const cidr = parseCidr(cidrStr);
       if (cidr) {
         this.vpnCidrs.push(cidr);
+      }
+    }
+    for (const ip of EXCLUDED_NON_VPN_IPS) {
+      this.excludedIps.add(ip);
+    }
+    for (const cidrStr of EXCLUDED_NON_VPN_CIDRS) {
+      const cidr = parseCidr(cidrStr);
+      if (cidr) {
+        this.excludedCidrs.push(cidr);
       }
     }
   }
@@ -147,6 +201,27 @@ export class VpnDetector {
     return { ips, cidrs };
   }
 
+  isExcluded(ip: string): boolean {
+    if (!ip) return false;
+    const cleanIp = ip.trim().split(":")[0].trim();
+    if (!cleanIp) return false;
+
+    if (this.excludedIps.has(cleanIp)) {
+      return true;
+    }
+
+    const ipNum = ipToNumber(cleanIp);
+    if (ipNum !== null) {
+      for (const cidr of this.excludedCidrs) {
+        if ((ipNum & cidr.mask) >>> 0 === cidr.network) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
   async refresh(): Promise<void> {
     if (this.isRefreshing) return;
     this.isRefreshing = true;
@@ -160,18 +235,37 @@ export class VpnDetector {
                 ? new AbortController()
                 : null;
             const timeout = setTimeout(() => controller?.abort(), 5000);
-            const response = await fetch(url, { signal: controller?.signal });
+            const response = await fetch(url, {
+              signal: controller?.signal,
+              headers: { "User-Agent": "WebDefender/1.0" },
+            });
             clearTimeout(timeout);
 
             if (response.ok) {
               const text = await response.text();
-              const { ips, cidrs } = this.parseLines(text);
-
-              for (const ip of ips) {
-                this.vpnIps.add(ip);
-              }
-              for (const cidr of cidrs) {
-                this.vpnCidrs.push(cidr);
+              if (url.includes("mullvad.net") || text.trim().startsWith("[")) {
+                try {
+                  const data = JSON.parse(text);
+                  if (Array.isArray(data)) {
+                    for (const relay of data) {
+                      if (relay.ipv4_addr_in && !this.isExcluded(relay.ipv4_addr_in)) {
+                        this.vpnIps.add(relay.ipv4_addr_in);
+                      }
+                    }
+                  }
+                } catch {
+                  // Silently ignore JSON parsing error
+                }
+              } else {
+                const { ips, cidrs } = this.parseLines(text);
+                for (const ip of ips) {
+                  if (!this.isExcluded(ip)) {
+                    this.vpnIps.add(ip);
+                  }
+                }
+                for (const cidr of cidrs) {
+                  this.vpnCidrs.push(cidr);
+                }
               }
             }
           } catch (err) {
@@ -188,6 +282,11 @@ export class VpnDetector {
     if (!ip) return false;
     const cleanIp = ip.trim().split(":")[0].trim();
     if (!cleanIp) return false;
+
+    // 0. Explicit exclusion check (Public DNS, Standard Cloud / Datacenter Infrastructure, Tor)
+    if (this.isExcluded(cleanIp)) {
+      return false;
+    }
 
     // 1. Exact IP lookup
     if (this.vpnIps.has(cleanIp)) {
@@ -229,5 +328,7 @@ export class VpnDetector {
     }
     this.vpnIps.clear();
     this.vpnCidrs = [];
+    this.excludedIps.clear();
+    this.excludedCidrs = [];
   }
 }

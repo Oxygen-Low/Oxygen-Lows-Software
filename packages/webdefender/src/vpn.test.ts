@@ -54,7 +54,26 @@ describe("VpnDetector detection", () => {
     expect(detector.isVpn("156.146.35.1")).toBe(true);
     // Normal non-VPN IP
     expect(detector.isVpn("8.8.8.8")).toBe(false);
+    expect(detector.isVpn("8.8.4.4")).toBe(false);
     expect(detector.isVpn("1.1.1.1")).toBe(false);
+    expect(detector.isVpn("9.9.9.9")).toBe(false);
+    // Standard AWS EC2 and Google infrastructure IPs
+    expect(detector.isVpn("54.239.28.85")).toBe(false);
+    expect(detector.isVpn("142.250.190.46")).toBe(false);
+    // Tor exit nodes are not VPNs
+    expect(detector.isVpn("185.220.101.5")).toBe(false);
+  });
+
+  it("never identifies excluded public DNS or cloud infrastructure as VPN", () => {
+    expect(detector.isExcluded("8.8.8.8")).toBe(true);
+    expect(detector.isExcluded("54.239.28.85")).toBe(true);
+    expect(detector.isExcluded("142.250.190.46")).toBe(true);
+    expect(detector.isExcluded("185.220.101.5")).toBe(true);
+
+    expect(detector.isVpn("8.8.8.8")).toBe(false);
+    expect(detector.isVpn("54.239.28.85")).toBe(false);
+    expect(detector.isVpn("142.250.190.46")).toBe(false);
+    expect(detector.isVpn("185.220.101.5")).toBe(false);
   });
 
   it("allows dynamically adding VPN IPs and CIDRs", () => {

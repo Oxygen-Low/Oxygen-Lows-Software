@@ -322,10 +322,13 @@ export async function evaluateIpThreat(ip: string) {
   const isKnownThreat = isBanned || isThreatActor;
 
   // 4. Check TOR exit node
-  const isTor = torDetector.isTorExitNode(cleanIp);
+  let isTor = torDetector.isTorExitNode(cleanIp);
+  if (!isTor && typeof (torDetector as any).isTorExitNodeAsync === "function") {
+    isTor = await torDetector.isTorExitNodeAsync(cleanIp);
+  }
 
-  // 5. Check VPN network
-  const isVpn = vpnDetector.isVpn(cleanIp);
+  // 5. Check VPN network (Tor nodes and excluded cloud/DNS infrastructure are not VPNs)
+  const isVpn = !isTor && vpnDetector.isVpn(cleanIp);
 
   return {
     ip: cleanIp,

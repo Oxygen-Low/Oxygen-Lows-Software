@@ -166,4 +166,19 @@ ExitAddress 3.3.3.3 2023-01-01 00:00:00
     // Set should be cleared
     expect(detector.isTorExitNode("1.1.1.1")).toBe(false);
   });
+
+  it("recognizes known seed Tor exit nodes and Tor CIDR ranges without waiting for network", () => {
+    const detector = new TorDetector();
+    expect(detector.isTorExitNode("185.220.101.5")).toBe(true);
+    expect(detector.isTorExitNode("198.96.155.3")).toBe(true);
+    expect(detector.isTorExitNode("171.25.193.20")).toBe(true);
+    // CIDR range 185.220.100.0/22
+    expect(detector.isTorExitNode("185.220.100.1")).toBe(true);
+    expect(detector.isTorExitNode("185.220.103.250")).toBe(true);
+    // Non-Tor
+    expect(detector.isTorExitNode("8.8.8.8")).toBe(false);
+    expect(detector.isTorExitNode("54.239.28.85")).toBe(false);
+    expect(detector.isTorExitNode("142.250.190.46")).toBe(false);
+    detector.destroy();
+  });
 });
