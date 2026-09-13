@@ -221,13 +221,26 @@ describe("MusicContext loop integration", () => {
 
 describe("MusicContext 10-second auto-resume after exit/refresh", () => {
   let mockSelect: any;
-  const playMock = vi.fn().mockResolvedValue(undefined);
-  const pauseMock = vi.fn();
+  let isMediaPaused = true;
+  const playMock = vi.fn().mockImplementation(function (this: any) {
+    isMediaPaused = false;
+    return Promise.resolve();
+  });
+  const pauseMock = vi.fn().mockImplementation(function (this: any) {
+    isMediaPaused = true;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    isMediaPaused = true;
 
+    Object.defineProperty(window.HTMLMediaElement.prototype, "paused", {
+      get() {
+        return isMediaPaused;
+      },
+      configurable: true,
+    });
     window.HTMLMediaElement.prototype.play = playMock;
     window.HTMLMediaElement.prototype.pause = pauseMock;
 

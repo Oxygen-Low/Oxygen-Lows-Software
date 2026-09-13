@@ -2100,7 +2100,11 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         args?.p_game_id ??
         `custom_${crypto.randomUUID()}`;
 
-      if (userId.includes("..") || path.isAbsolute(userId)) {
+      if (
+        userId.includes("..") ||
+        path.win32.isAbsolute(userId) ||
+        path.posix.isAbsolute(userId)
+      ) {
         return { success: false, error: "Invalid input" };
       }
       const existingGames = getTableRows(
@@ -2680,7 +2684,11 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       if (!userId) return { success: false, error: "Unauthorized" };
       const gameId = String(args?.game_id ?? args?.p_game_id ?? args?.id ?? "").trim();
       if (!gameId) return { success: false, error: "game_id is required" };
-      if (gameId.includes("..") || path.isAbsolute(gameId)) {
+      if (
+        gameId.includes("..") ||
+        path.win32.isAbsolute(gameId) ||
+        path.posix.isAbsolute(gameId)
+      ) {
         return { success: false, error: "Invalid game_id" };
       }
 
@@ -2760,7 +2768,11 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
         return { success: false, error: "game_id and category are required" };
       }
 
-      if (gameId.includes("..") || path.isAbsolute(gameId)) {
+      if (
+        gameId.includes("..") ||
+        path.win32.isAbsolute(gameId) ||
+        path.posix.isAbsolute(gameId)
+      ) {
         return { success: false, error: "Invalid game_id" };
       }
 
@@ -2772,7 +2784,11 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       if (args?.storage_path !== undefined && args?.storage_path !== null) {
         const sp = String(args.storage_path).trim();
         if (sp) {
-          if (sp.includes("..") || path.isAbsolute(sp)) {
+          if (
+            sp.includes("..") ||
+            path.win32.isAbsolute(sp) ||
+            path.posix.isAbsolute(sp)
+          ) {
             return {
               success: false,
               error: "Invalid storage_path: path traversal detected",
