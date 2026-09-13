@@ -380,15 +380,6 @@ export default function Auth() {
 
               <div>
                 <label className="text-xs font-medium text-slate-300 block mb-1">
-                  {t("auth.account", undefined, "Account")}
-                </label>
-                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
-                  {session?.user?.username || session?.user?.email}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">
                   {t("auth.password", undefined, "Password")}
                 </label>
                 <div className="relative">
