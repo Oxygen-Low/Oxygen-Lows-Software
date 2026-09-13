@@ -382,6 +382,44 @@ export const en = {
     imageStudioTitle: "Image Studio",
     imageStudioDesc:
       "Design custom graphics and compose images using your own uploaded assets, custom fonts, and rich shapes.",
+    imageGeneratorTitle: "AI Image Generator",
+    imageGeneratorDesc:
+      "Generate high-quality visuals using Cloudflare free image models and AI Horde SFW community workers.",
+    chatbotImageGen: "Image Generation",
+    chatbotImageGenDesc: "Generate AI images with Cloudflare & AI Horde",
+    imageGenSuccess: "Image generated successfully!",
+    imageGenCopied: "Image copied to clipboard!",
+    imageGenLinkCopied: "Image link copied!",
+    imageGenDownloaded: "Download started!",
+    imageGenOpeningStudio: "Opening in Image Studio...",
+    imageGenCloudflareLoginPrompt:
+      "Cloudflare models require being signed in. Or switch to AI Horde for free guest access.",
+    imageGenModelLabel: "Generation Model",
+    imageGenPromptLabel: "Prompt",
+    imageGenPromptPlaceholder:
+      "Describe the image you want to generate in detail...",
+    imageGenNegativePromptToggle: "Negative Prompt (Optional)",
+    imageGenNegativePlaceholder:
+      "Elements to exclude (e.g. blurry, distorted, low quality)",
+    imageGenAspectRatioLabel: "Aspect Ratio",
+    imageGenAdvancedSettings: "Advanced Settings",
+    imageGenSteps: "Steps",
+    imageGenGuidance: "Guidance / CFG",
+    imageGenSeed: "Seed",
+    imageGenSubmit: "Generate Image",
+    imageGenCreating: "Crafting your image...",
+    imageGenHordeWaiting:
+      "AI Horde distributes tasks across community GPUs. Please hold on.",
+    imageGenCloudflareWaiting:
+      "Cloudflare Workers AI is synthesizing pixels...",
+    imageGenOpenInStudio: "Open in Image Studio",
+    imageGenSavedStorage: "Saved to Storage",
+    imageGenReadyTitle: "Ready to Imagine",
+    imageGenReadyDesc:
+      "Type a prompt on the left and select your favorite model to generate stunning artwork.",
+    imageGenHistory: "Recent Generations",
+    imageGenClearHistory: "Clear All",
+    imageGenExpand: "Full Size",
   },
   gameLibrary: {
     // Title & Descriptions

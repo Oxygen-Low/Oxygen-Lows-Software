@@ -376,6 +376,44 @@ export const ko = {
     imageStudioTitle: "이미지 스튜디오",
     imageStudioDesc:
       "업로드한 에셋, 커스텀 폰트, 다양한 도형을 활용하여 나만의 그래픽을 제작하고 합성하세요.",
+      imageGeneratorTitle: "AI 이미지 생성기",
+    imageGeneratorDesc:
+      "Cloudflare 무료 이미지 모델 및 AI Horde SFW 커뮤니티 워커를 활용하여 고품질 이미지를 생성합니다.",
+    chatbotImageGen: "이미지 생성",
+    chatbotImageGenDesc: "Cloudflare 및 AI Horde로 AI 이미지 생성",
+    imageGenSuccess: "이미지가 성공적으로 생성되었습니다!",
+    imageGenCopied: "이미지가 클립보드에 복사되었습니다!",
+    imageGenLinkCopied: "이미지 링크가 복사되었습니다!",
+    imageGenDownloaded: "다운로드가 시작되었습니다!",
+    imageGenOpeningStudio: "Image Studio에서 여는 중...",
+    imageGenCloudflareLoginPrompt:
+      "Cloudflare 모델을 사용하려면 로그인이 필요합니다. 게스트로 무료 사용하려면 AI Horde로 전환하세요.",
+    imageGenModelLabel: "생성 모델",
+    imageGenPromptLabel: "프롬프트",
+    imageGenPromptPlaceholder:
+      "생성하고 싶은 이미지를 상세하게 설명하세요...",
+    imageGenNegativePromptToggle: "네거티브 프롬프트 (선택 사항)",
+    imageGenNegativePlaceholder:
+      "제외할 요소 (예: 흐릿함, 왜곡, 저화질)",
+    imageGenAspectRatioLabel: "화면 비율",
+    imageGenAdvancedSettings: "고급 설정",
+    imageGenSteps: "단계 (Steps)",
+    imageGenGuidance: "가이던스 / CFG",
+    imageGenSeed: "시드 (Seed)",
+    imageGenSubmit: "이미지 생성",
+    imageGenCreating: "이미지 제작 중...",
+    imageGenHordeWaiting:
+      "AI Horde 커뮤니티 GPU에서 작업을 분산 처리 중입니다. 잠시만 기다려 주세요.",
+    imageGenCloudflareWaiting:
+      "Cloudflare Workers AI에서 픽셀을 합성하고 있습니다...",
+    imageGenOpenInStudio: "Image Studio에서 열기",
+    imageGenSavedStorage: "스토리지에 저장됨",
+    imageGenReadyTitle: "상상을 펼칠 준비 완료",
+    imageGenReadyDesc:
+      "왼쪽에 프롬프트를 입력하고 선호하는 모델을 선택하여 멋진 작품을 만들어 보세요.",
+    imageGenHistory: "최근 생성 내역",
+    imageGenClearHistory: "모두 지우기",
+    imageGenExpand: "전체 화면",
   },
   gameLibrary: {
     // Title & Descriptions

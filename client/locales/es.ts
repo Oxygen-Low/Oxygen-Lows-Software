@@ -386,6 +386,44 @@ export const es = {
     imageStudioTitle: "Image Studio",
     imageStudioDesc:
       "Diseña gráficos personalizados y compone imágenes utilizando tus propios archivos, fuentes personalizadas y formas.",
+    imageGeneratorTitle: "Generador de imágenes IA",
+    imageGeneratorDesc:
+      "Genera imágenes de alta calidad con modelos gratuitos de Cloudflare y trabajadores comunitarios seguros (SFW) de AI Horde.",
+    chatbotImageGen: "Generación de imágenes",
+    chatbotImageGenDesc: "Genera imágenes IA con Cloudflare y AI Horde",
+    imageGenSuccess: "¡Imagen generada con éxito!",
+    imageGenCopied: "¡Imagen copiada al portapapeles!",
+    imageGenLinkCopied: "¡Enlace de imagen copiado!",
+    imageGenDownloaded: "¡Descarga iniciada!",
+    imageGenOpeningStudio: "Abriendo en Image Studio...",
+    imageGenCloudflareLoginPrompt:
+      "Los modelos de Cloudflare requieren iniciar sesión. O cambia a AI Horde para acceso gratuito de invitados.",
+    imageGenModelLabel: "Modelo de generación",
+    imageGenPromptLabel: "Descripción (Prompt)",
+    imageGenPromptPlaceholder:
+      "Describe en detalle la imagen que deseas generar...",
+    imageGenNegativePromptToggle: "Prompt negativo (Opcional)",
+    imageGenNegativePlaceholder:
+      "Elementos a excluir (ej. borroso, distorsionado, baja calidad)",
+    imageGenAspectRatioLabel: "Relación de aspecto",
+    imageGenAdvancedSettings: "Configuración avanzada",
+    imageGenSteps: "Pasos (Steps)",
+    imageGenGuidance: "Guía / CFG",
+    imageGenSeed: "Semilla (Seed)",
+    imageGenSubmit: "Generar imagen",
+    imageGenCreating: "Creando tu imagen...",
+    imageGenHordeWaiting:
+      "AI Horde distribuye tareas en GPUs comunitarias. Por favor espera.",
+    imageGenCloudflareWaiting:
+      "Cloudflare Workers AI está sintetizando píxeles...",
+    imageGenOpenInStudio: "Abrir en Image Studio",
+    imageGenSavedStorage: "Guardado en almacenamiento",
+    imageGenReadyTitle: "Listo para imaginar",
+    imageGenReadyDesc:
+      "Escribe una descripción a la izquierda y elige tu modelo preferido para crear obras de arte.",
+    imageGenHistory: "Generaciones recientes",
+    imageGenClearHistory: "Borrar todo",
+    imageGenExpand: "Tamaño completo",
   },
   gameLibrary: {
     // Title & Descriptions

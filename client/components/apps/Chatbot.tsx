@@ -19,7 +19,16 @@ import {
   MessageSquare,
   Globe,
   Sparkles,
+  ImagePlus,
+  Download,
+  Maximize2,
+  Layers,
 } from "lucide-react";
+import {
+  fetchImageModels,
+  generateImage,
+  ImageModelInfo,
+} from "@/services/imageGen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -180,6 +189,9 @@ interface Message {
   is_web_search?: boolean;
   web_search_status?: "searching" | "searched";
   created_at?: string;
+  is_image_gen?: boolean;
+  image_url?: string;
+  image_model?: string;
 }
 
 interface Chat {
@@ -275,6 +287,8 @@ const ChatMessage = React.memo(
     let displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
     const [reasoningExpanded, setReasoningExpanded] = useState(false);
     const [copiedReasoning, setCopiedReasoning] = useState(false);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [copiedImage, setCopiedImage] = useState(false);
 
     const handleCopyReasoning = useCallback(
       async (e: React.MouseEvent) => {
@@ -476,18 +490,173 @@ const ChatMessage = React.memo(
                 )}
               </div>
             )}
-            <div className="text-[15px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900 border border-slate-800 text-slate-200">
-              {displayContent ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={memoizedMarkdownComponents}
+            {m.is_image_gen ? (
+              <div className="image-gen-card w-full max-w-md rounded-2xl border border-white/10 bg-[#121216] overflow-hidden shadow-2xl">
+                {m.image_url ? (
+                  <>
+                    <div
+                      className="relative aspect-square max-h-[380px] bg-black/50 overflow-hidden flex items-center justify-center cursor-pointer group"
+                      onClick={() => setLightboxOpen(true)}
+                    >
+                      <img
+                        src={m.image_url}
+                        alt={m.content}
+                        className="w-full h-full object-contain rounded-t-2xl transition-transform duration-200 group-hover:scale-[1.02]"
+                      />
+                      {m.image_model && (
+                        <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md border border-white/10 text-[10px] text-cyan-300 font-mono flex items-center gap-1 shadow-md">
+                          <Sparkles className="w-3 h-3 text-cyan-400" />
+                          {m.image_model}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3 bg-[#16161c] border-t border-white/10 flex items-center justify-between gap-2">
+                      <p className="text-xs text-slate-300 line-clamp-1 italic">
+                        "{m.content}"
+                      </p>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = m.image_url!;
+                            link.download = `chatbot_image_${Date.now()}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            toast.success(
+                              t(
+                                "apps.imageGenDownloaded",
+                                undefined,
+                                "Download started!",
+                              ),
+                            );
+                          }}
+                          className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                          title={t("common.download", undefined, "Download")}
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              if (m.image_url!.startsWith("data:")) {
+                                const res = await fetch(m.image_url!);
+                                const blob = await res.blob();
+                                await navigator.clipboard.write([
+                                  new ClipboardItem({ [blob.type]: blob }),
+                                ]);
+                              } else {
+                                await navigator.clipboard.writeText(m.image_url!);
+                              }
+                              setCopiedImage(true);
+                              setTimeout(() => setCopiedImage(false), 2000);
+                              toast.success(
+                                t(
+                                  "apps.imageGenCopied",
+                                  undefined,
+                                  "Image copied to clipboard!",
+                                ),
+                              );
+                            } catch {
+                              await navigator.clipboard.writeText(m.image_url!);
+                              toast.success(
+                                t(
+                                  "apps.imageGenLinkCopied",
+                                  undefined,
+                                  "Image link copied!",
+                                ),
+                              );
+                            }
+                          }}
+                          className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                          title={t("common.copy", undefined, "Copy")}
+                        >
+                          {copiedImage ? (
+                            <Check className="w-3.5 h-3.5 text-green-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sessionStorage.setItem(
+                              "image_studio_pending_image",
+                              m.image_url!,
+                            );
+                            if (typeof window !== "undefined") {
+                              window.location.href = "/apps?app=image-studio";
+                            }
+                          }}
+                          className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                          title={t(
+                            "apps.imageGenOpenInStudio",
+                            undefined,
+                            "Open in Image Studio",
+                          )}
+                        >
+                          <Layers className="w-3.5 h-3.5 text-primary" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLightboxOpen(true)}
+                          className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                          title={t("apps.imageGenExpand", undefined, "Full Size")}
+                        >
+                          <Maximize2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-6 flex flex-col items-center justify-center text-center space-y-3">
+                    <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+                    <p className="text-xs text-slate-300 font-mono">
+                      {m.content || "Generating image with AI..."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-[15px] leading-[1.6] space-y-4 ai-message-content p-4 rounded-2xl rounded-tl-sm bg-slate-900 border border-slate-800 text-slate-200">
+                {displayContent ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={memoizedMarkdownComponents}
+                  >
+                    {displayContent}
+                  </ReactMarkdown>
+                ) : (
+                  <span className="animate-pulse">...</span>
+                )}
+              </div>
+            )}
+            {lightboxOpen && m.image_url && (
+              <div
+                className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+                onClick={() => setLightboxOpen(false)}
+              >
+                <div
+                  className="relative max-w-5xl max-h-[90vh] flex flex-col items-center"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {displayContent}
-                </ReactMarkdown>
-              ) : (
-                <span className="animate-pulse">...</span>
-              )}
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(false)}
+                    className="absolute -top-10 right-0 p-1.5 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <img
+                    src={m.image_url}
+                    alt={m.content}
+                    className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-white/10"
+                  />
+                </div>
+              </div>
+            )}
             {siblings.length > 0 && (
               <div className="flex items-center gap-2 mt-2 ml-1 text-slate-400 text-xs">
                 <button
@@ -702,6 +871,33 @@ export function ChatbotApp() {
   const { t } = useTranslation();
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
+  const [isImageGenEnabled, setIsImageGenEnabled] = useState(false);
+  const [chatImageProvider, setChatImageProvider] = useState<"cloudflare" | "horde">(
+    session?.user?.id ? "cloudflare" : "horde",
+  );
+  const [chatImageModel, setChatImageModel] = useState<string>(
+    "@cf/black-forest-labs/flux-1-schnell",
+  );
+  const [chatImageModels, setChatImageModels] = useState<{
+    cloudflare: ImageModelInfo[];
+    horde: ImageModelInfo[];
+  }>({ cloudflare: [], horde: [] });
+  const [imageModelDropdownOpen, setImageModelDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (isImageGenEnabled && chatImageModels.cloudflare.length === 0) {
+      fetchImageModels()
+        .then((data) => {
+          setChatImageModels(data);
+          if (!session?.user?.id) {
+            setChatImageProvider("horde");
+            if (data.horde.length > 0) setChatImageModel(data.horde[0].id);
+          }
+        })
+        .catch((e) => console.error("Failed loading image models in chatbot", e));
+    }
+  }, [isImageGenEnabled, chatImageModels.cloudflare.length, session?.user?.id]);
+
   const [optionsDropdownOpen, setOptionsDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -870,6 +1066,7 @@ export function ChatbotApp() {
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const imageModelDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -884,6 +1081,12 @@ export function ChatbotApp() {
         !modelDropdownRef.current.contains(e.target as Node)
       ) {
         setModelDropdownOpen(false);
+      }
+      if (
+        imageModelDropdownRef.current &&
+        !imageModelDropdownRef.current.contains(e.target as Node)
+      ) {
+        setImageModelDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -1920,6 +2123,132 @@ export function ChatbotApp() {
       };
       setActiveChildren(activeChildrenRef.current);
 
+      if (isImageGenEnabled) {
+        setAllMessages((prev) =>
+          prev.map((m) =>
+            m.id === "temp-streaming"
+              ? {
+                  ...m,
+                  content: "Generating image with AI...",
+                  is_image_gen: true,
+                }
+              : m,
+          ),
+        );
+
+        const imgResult = await generateImage(
+          {
+            provider: chatImageProvider,
+            model: chatImageModel,
+            prompt: originalInput,
+            aspectRatio: "1:1",
+            signal: controller.signal,
+          },
+          (prog) => {
+            setAllMessages((prev) =>
+              prev.map((m) =>
+                m.id === "temp-streaming"
+                  ? {
+                      ...m,
+                      content: prog.message || "Generating image...",
+                      is_image_gen: true,
+                    }
+                  : m,
+              ),
+            );
+          },
+        );
+
+        const modelDisplayName =
+          chatImageProvider === "cloudflare"
+            ? chatImageModels.cloudflare.find((m) => m.id === chatImageModel)?.name ||
+              "FLUX.1 Schnell"
+            : chatImageModels.horde.find((m) => m.id === chatImageModel)?.name ||
+              "SDXL 1.0 (Horde)";
+
+        let insertData: any = {
+          parent_id: userMsgData.id,
+          chat_id: activeChatId,
+          role: "assistant",
+          content: originalInput,
+          is_image_gen: true,
+          image_url: imgResult.url,
+          image_model: modelDisplayName,
+        };
+
+        let assistantMsgData = {
+          id: "msg-" + Math.random().toString(36).substring(2),
+        };
+
+        if (!isGuest) {
+          let assistantInsertPayload: any = { ...insertData };
+          if (isCategoryEncryptionEnabled("chatbot")) {
+            const key = getActiveMasterKey();
+            if (key) {
+              assistantInsertPayload = await encryptChatMessageData(
+                assistantInsertPayload,
+                key,
+              );
+            }
+          }
+
+          const { data, error: assistantInsertError } = await supabase
+            .from("chat_messages")
+            .insert(assistantInsertPayload)
+            .select()
+            .single();
+
+          if (assistantInsertError) {
+            const fallbackPayload = {
+              parent_id: userMsgData.id,
+              chat_id: activeChatId,
+              role: "assistant",
+              content: `![${originalInput}](${imgResult.url})`,
+            };
+            const { data: retryData, error: retryError } = await supabase
+              .from("chat_messages")
+              .insert(fallbackPayload)
+              .select()
+              .single();
+            if (!retryError && retryData) {
+              assistantMsgData = retryData;
+            }
+          } else {
+            assistantMsgData = data;
+          }
+        }
+
+        setAllMessages((prev) =>
+          prev.map((m) =>
+            m.id === "temp-streaming"
+              ? {
+                  ...m,
+                  id: assistantMsgData.id,
+                  content: originalInput,
+                  is_image_gen: true,
+                  image_url: imgResult.url,
+                  image_model: modelDisplayName,
+                }
+              : m,
+          ),
+        );
+
+        activeChildrenRef.current = {
+          ...activeChildrenRef.current,
+          [userMsgData.id]: assistantMsgData.id,
+        };
+        setActiveChildren(activeChildrenRef.current);
+
+        if (!isGuest) {
+          await supabase
+            .from("chats")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", activeChatId);
+        }
+
+        return;
+      }
+
       let currentMessages = [...messages, userMessage];
       let iterations = 0;
       let shouldContinue = true;
@@ -2734,6 +3063,37 @@ export function ChatbotApp() {
                         </div>
                       </button>
 
+                      {/* Image Generation Toggle */}
+                      <button
+                        onClick={() =>
+                          setIsImageGenEnabled(!isImageGenEnabled)
+                        }
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
+                      >
+                        <div className="flex items-center gap-3 w-full rounded-lg transition-colors group">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-white/90 font-medium font-display flex items-center gap-1.5">
+                              <ImagePlus className="w-3.5 h-3.5 text-cyan-400" />
+                              {t(
+                                "apps.chatbotImageGen",
+                                undefined,
+                                "Image Generation",
+                              )}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-body">
+                              {t(
+                                "apps.chatbotImageGenDesc",
+                                undefined,
+                                "Generate AI images with Cloudflare & AI Horde",
+                              )}
+                            </span>
+                          </div>
+                          {isImageGenEnabled && (
+                            <Check className="w-4 h-4 text-primary ml-auto" />
+                          )}
+                        </div>
+                      </button>
+
                       {/* Character Selections */}
                       <div className="px-3 pt-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">
@@ -2826,10 +3186,133 @@ export function ChatbotApp() {
                   placeholder="Type a message..."
                 />
 
-                <div
-                  className="relative shrink-0 flex items-center gap-1"
-                  ref={modelDropdownRef}
-                >
+                {isImageGenEnabled ? (
+                  <div
+                    className="relative shrink-0 flex items-center gap-1"
+                    ref={imageModelDropdownRef}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageModelDropdownOpen(!imageModelDropdownOpen);
+                        setOptionsDropdownOpen(false);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 hover:bg-cyan-500/25 transition-colors text-xs text-cyan-300 font-medium"
+                      title="Select Image Generation Model"
+                    >
+                      <ImagePlus className="w-3.5 h-3.5 text-cyan-400" />
+                      <span className="truncate max-w-[130px]">
+                        {chatImageProvider === "cloudflare"
+                          ? chatImageModels.cloudflare.find(
+                              (m) => m.id === chatImageModel,
+                            )?.name || "FLUX.1 Schnell"
+                          : chatImageModels.horde.find(
+                              (m) => m.id === chatImageModel,
+                            )?.name || "SDXL 1.0 (Horde)"}
+                      </span>
+                      <span className="material-symbols-outlined text-[16px] font-family-material">
+                        expand_more
+                      </span>
+                    </button>
+                    <div
+                      className={cn(
+                        "absolute right-0 w-72 bg-[#1A1A1E]/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-200 z-[100] shadow-2xl",
+                        appStateClass === "state-empty"
+                          ? "top-[calc(100%+10px)] origin-top-right"
+                          : "top-[-10px] -translate-y-full origin-bottom-right",
+                        imageModelDropdownOpen
+                          ? "opacity-100 scale-100 pointer-events-auto"
+                          : "opacity-0 scale-95 pointer-events-none",
+                      )}
+                    >
+                      <div className="max-h-[300px] overflow-y-auto no-scrollbar p-2 space-y-2">
+                        <div className="px-2 pt-1 pb-0.5 flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">
+                            Cloudflare Free
+                          </span>
+                          {!session?.user?.id && (
+                            <span className="text-[10px] text-amber-400">
+                              Login required
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          {chatImageModels.cloudflare.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              disabled={!session?.user?.id}
+                              onClick={() => {
+                                setChatImageProvider("cloudflare");
+                                setChatImageModel(m.id);
+                                setImageModelDropdownOpen(false);
+                              }}
+                              className={cn(
+                                "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between",
+                                chatImageProvider === "cloudflare" &&
+                                  chatImageModel === m.id
+                                  ? "bg-cyan-500/20 text-cyan-300 font-medium"
+                                  : "text-slate-300 hover:bg-white/5",
+                                !session?.user?.id &&
+                                  "opacity-50 cursor-not-allowed",
+                              )}
+                            >
+                              <span>{m.name}</span>
+                              {chatImageProvider === "cloudflare" &&
+                                chatImageModel === m.id && (
+                                  <Check className="w-3.5 h-3.5 text-cyan-400" />
+                                )}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="border-t border-white/5 pt-1.5 px-2 pb-0.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">
+                            AI Horde SFW (Free)
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          {chatImageModels.horde.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setChatImageProvider("horde");
+                                setChatImageModel(m.id);
+                                setImageModelDropdownOpen(false);
+                              }}
+                              className={cn(
+                                "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between",
+                                chatImageProvider === "horde" &&
+                                  chatImageModel === m.id
+                                  ? "bg-primary/20 text-primary font-medium"
+                                  : "text-slate-300 hover:bg-white/5",
+                              )}
+                            >
+                              <div className="flex flex-col">
+                                <span>{m.name}</span>
+                                {m.workers ? (
+                                  <span className="text-[10px] text-slate-500">
+                                    {m.workers} workers{" "}
+                                    {m.eta ? `· ~${m.eta}s` : ""}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {chatImageProvider === "horde" &&
+                                chatImageModel === m.id && (
+                                  <Check className="w-3.5 h-3.5 text-primary" />
+                                )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="relative shrink-0 flex items-center gap-1"
+                    ref={modelDropdownRef}
+                  >
                   <button
                     onClick={() => {
                       if (!modelDropdownOpen) {
@@ -3120,6 +3603,7 @@ export function ChatbotApp() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {isTyping ? (
                   <button

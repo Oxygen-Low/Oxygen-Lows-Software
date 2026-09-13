@@ -382,6 +382,44 @@ export const ru = {
     imageStudioTitle: "Image Studio",
     imageStudioDesc:
       "Создавайте авторскую графику и компонуйте изображения с собственными файлами, шрифтами и векторными фигурами.",
+      imageGeneratorTitle: "AI Генератор изображений",
+    imageGeneratorDesc:
+      "Создавайте высококачественные изображения с помощью бесплатных моделей Cloudflare и безопасных воркеров AI Horde.",
+    chatbotImageGen: "Генерация изображений",
+    chatbotImageGenDesc: "Генерация изображений с Cloudflare и AI Horde",
+    imageGenSuccess: "Изображение успешно сгенерировано!",
+    imageGenCopied: "Изображение скопировано в буфер обмена!",
+    imageGenLinkCopied: "Ссылка на изображение скопирована!",
+    imageGenDownloaded: "Загрузка началась!",
+    imageGenOpeningStudio: "Открытие в Image Studio...",
+    imageGenCloudflareLoginPrompt:
+      "Для использования моделей Cloudflare требуется вход в аккаунт. Либо переключитесь на AI Horde для бесплатного гостевого доступа.",
+    imageGenModelLabel: "Модель генерации",
+    imageGenPromptLabel: "Запрос (Промпт)",
+    imageGenPromptPlaceholder:
+      "Подробно опишите изображение, которое хотите получить...",
+    imageGenNegativePromptToggle: "Отрицательный промпт (необязательно)",
+    imageGenNegativePlaceholder:
+      "Исключаемые элементы (напр. размытость, искажения, низкое качество)",
+    imageGenAspectRatioLabel: "Соотношение сторон",
+    imageGenAdvancedSettings: "Расширенные настройки",
+    imageGenSteps: "Шаги (Steps)",
+    imageGenGuidance: "Соответствие (CFG)",
+    imageGenSeed: "Сид (Seed)",
+    imageGenSubmit: "Сгенерировать изображение",
+    imageGenCreating: "Создание вашего изображения...",
+    imageGenHordeWaiting:
+      "AI Horde обрабатывает задачу на GPU сообщества. Пожалуйста, подождите.",
+    imageGenCloudflareWaiting:
+      "Cloudflare Workers AI выполняет генерацию...",
+    imageGenOpenInStudio: "Открыть в Image Studio",
+    imageGenSavedStorage: "Сохранено в хранилище",
+    imageGenReadyTitle: "Готовы к творчеству",
+    imageGenReadyDesc:
+      "Введите запрос слева и выберите модель для создания великолепных изображений.",
+    imageGenHistory: "Недавние генерации",
+    imageGenClearHistory: "Очистить всё",
+    imageGenExpand: "Полный размер",
   },
   gameLibrary: {
     // Title & Descriptions

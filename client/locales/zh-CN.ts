@@ -357,6 +357,41 @@ export const zhCN = {
     imageStudioTitle: "图像工坊",
     imageStudioDesc:
       "使用您上传的文件、自定义字体与丰富形状，自由设计并排版合成专属图像。",
+      imageGeneratorTitle: "AI 图像生成器",
+    imageGeneratorDesc:
+      "使用 Cloudflare 免费图像模型和 AI Horde SFW 社区算力生成高质量图像。",
+    chatbotImageGen: "图像生成",
+    chatbotImageGenDesc: "使用 Cloudflare 和 AI Horde 生成 AI 图像",
+    imageGenSuccess: "图像生成成功！",
+    imageGenCopied: "图像已复制到剪贴板！",
+    imageGenLinkCopied: "图像链接已复制！",
+    imageGenDownloaded: "已开始下载！",
+    imageGenOpeningStudio: "正在 Image Studio 中打开...",
+    imageGenCloudflareLoginPrompt:
+      "使用 Cloudflare 模型需要先登录。您也可以切换到 AI Horde 进行免费访客体验。",
+    imageGenModelLabel: "生成模型",
+    imageGenPromptLabel: "提示词",
+    imageGenPromptPlaceholder: "详细描述您想要生成的图像内容...",
+    imageGenNegativePromptToggle: "反向提示词（可选）",
+    imageGenNegativePlaceholder: "排除的元素（如：模糊、变形、低画质）",
+    imageGenAspectRatioLabel: "宽高比",
+    imageGenAdvancedSettings: "高级设置",
+    imageGenSteps: "采样步数 (Steps)",
+    imageGenGuidance: "提示词引导系数 (CFG)",
+    imageGenSeed: "随机种子 (Seed)",
+    imageGenSubmit: "生成图像",
+    imageGenCreating: "正在为您绘制图像...",
+    imageGenHordeWaiting:
+      "AI Horde 正在社区 GPU 上分发处理任务，请稍候。",
+    imageGenCloudflareWaiting: "Cloudflare Workers AI 正在合成像素...",
+    imageGenOpenInStudio: "在 Image Studio 中打开",
+    imageGenSavedStorage: "已保存到云存储",
+    imageGenReadyTitle: "发挥您的想象力",
+    imageGenReadyDesc:
+      "在左侧输入提示词并选择您喜爱的模型，即可轻松生成精美艺术作品。",
+    imageGenHistory: "最近生成记录",
+    imageGenClearHistory: "清空全部",
+    imageGenExpand: "查看原图",
   },
   gameLibrary: {
     // Title & Descriptions

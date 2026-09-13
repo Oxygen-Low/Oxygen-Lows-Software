@@ -379,6 +379,44 @@ export const ja = {
     imageStudioTitle: "イメージスタジオ",
     imageStudioDesc:
       "アップロードした画像、カスタムフォント、豊富な図形を使って、オリジナルのグラフィックを作成・編集します。",
+      imageGeneratorTitle: "AI画像ジェネレーター",
+    imageGeneratorDesc:
+      "Cloudflareの無料画像モデルとAI HordeのSFWコミュニティワーカーを使用して高品質なビジュアルを生成します。",
+    chatbotImageGen: "画像生成",
+    chatbotImageGenDesc: "CloudflareとAI HordeでAI画像を生成",
+    imageGenSuccess: "画像が正常に生成されました！",
+    imageGenCopied: "画像をクリップボードにコピーしました！",
+    imageGenLinkCopied: "画像リンクをコピーしました！",
+    imageGenDownloaded: "ダウンロードを開始しました！",
+    imageGenOpeningStudio: "Image Studioで開いています...",
+    imageGenCloudflareLoginPrompt:
+      "Cloudflareモデルの使用にはログインが必要です。ゲスト利用の場合はAI Hordeに切り替えてください。",
+    imageGenModelLabel: "生成モデル",
+    imageGenPromptLabel: "プロンプト",
+    imageGenPromptPlaceholder:
+      "生成したい画像の詳細を記述してください...",
+    imageGenNegativePromptToggle: "ネガティブプロンプト（任意）",
+    imageGenNegativePlaceholder:
+      "除外する要素（例：ぼやけ、歪み、低品質など）",
+    imageGenAspectRatioLabel: "アスペクト比",
+    imageGenAdvancedSettings: "高度な設定",
+    imageGenSteps: "ステップ数",
+    imageGenGuidance: "ガイダンス (CFG)",
+    imageGenSeed: "シード値",
+    imageGenSubmit: "画像を生成",
+    imageGenCreating: "画像を生成中...",
+    imageGenHordeWaiting:
+      "AI HordeのコミュニティGPUにリクエストを分散処理しています。お待ちください。",
+    imageGenCloudflareWaiting:
+      "Cloudflare Workers AIがピクセルを生成しています...",
+    imageGenOpenInStudio: "Image Studioで開く",
+    imageGenSavedStorage: "ストレージに保存済み",
+    imageGenReadyTitle: "イマジネーションの準備完了",
+    imageGenReadyDesc:
+      "左側にプロンプトを入力し、お気に入りのモデルを選んで素晴らしいアートワークを作成しましょう。",
+    imageGenHistory: "最近の生成履歴",
+    imageGenClearHistory: "すべて消去",
+    imageGenExpand: "最大表示",
   },
   gameLibrary: {
     // Title & Descriptions

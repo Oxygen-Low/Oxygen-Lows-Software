@@ -32,11 +32,13 @@ import {
   ClipboardList,
   Trophy,
   Palette,
+  ImagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { FileConverterApp } from "@/components/apps/FileConverter";
 import { ChatbotApp } from "@/components/apps/Chatbot";
+import { ImageGeneratorApp } from "@/components/apps/ImageGenerator";
 import { PublicAssetsApp } from "@/components/apps/PublicAssets";
 import { DataSaveApp } from "@/components/apps/DataSave";
 import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
@@ -163,6 +165,18 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: ChatbotApp,
+  },
+  {
+    id: "image-generator",
+    nameKey: "apps.imageGeneratorTitle",
+    defaultName: "AI Image Generator",
+    descKey: "apps.imageGeneratorDesc",
+    defaultDesc:
+      "Generate high-quality visuals using Cloudflare free image models and AI Horde SFW community workers.",
+    categories: ["All", "LLM/AI", "Utility"],
+    availability: "web-and-desktop",
+    icon: <ImagePlus className="w-8 h-8 text-cyan-500" />,
+    component: ImageGeneratorApp,
   },
   {
     id: "file-compressor",

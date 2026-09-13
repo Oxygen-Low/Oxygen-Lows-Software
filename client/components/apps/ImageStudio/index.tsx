@@ -236,6 +236,24 @@ export function ImageStudioApp() {
     }));
   };
 
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem("image_studio_pending_image");
+      if (pending) {
+        sessionStorage.removeItem("image_studio_pending_image");
+        const img = new window.Image();
+        img.onload = () => {
+          handleAddImageToCanvas(
+            pending,
+            img.naturalWidth || 512,
+            img.naturalHeight || 512,
+          );
+        };
+        img.src = pending;
+      }
+    } catch {}
+  }, []);
+
   // Add Text layer
   const handleAddTextLayer = (
     preset: "heading" | "subheading" | "body",
