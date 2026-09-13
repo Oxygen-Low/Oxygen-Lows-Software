@@ -122,6 +122,49 @@ export function verifyToken(token: string): TokenPayload | null {
   }
 }
 
+export function generateOAuthState(
+  payload: Record<string, any>,
+  expiresInMs = 10 * 60 * 1000,
+): string {
+  const secret = getSecretKey();
+  const data = {
+    ...payload,
+    exp: Date.now() + expiresInMs,
+    nonce: crypto.randomBytes(8).toString("hex"),
+  };
+  const encoded = Buffer.from(JSON.stringify(data)).toString("base64url");
+  const sig = crypto
+    .createHmac("sha256", secret)
+    .update(encoded)
+    .digest("base64url");
+  return `${encoded}.${sig}`;
+}
+
+export function verifyOAuthState(state: string): Record<string, any> | null {
+  try {
+    if (!state) return null;
+    const [encoded, sig] = state.split(".");
+    if (!encoded || !sig) return null;
+    const secret = getSecretKey();
+    const expectedSig = crypto
+      .createHmac("sha256", secret)
+      .update(encoded)
+      .digest("base64url");
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
+      return null;
+    }
+    const data = JSON.parse(
+      Buffer.from(encoded, "base64url").toString("utf-8"),
+    );
+    if (typeof data.exp === "number" && data.exp < Date.now()) {
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveUserFromToken(token: string) {
   if (!token) return null;
 

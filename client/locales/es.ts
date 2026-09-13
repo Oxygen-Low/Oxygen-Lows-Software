@@ -68,6 +68,15 @@ export const es = {
     welcomeBack: "¡Bienvenido de nuevo!",
     language: "Idioma",
     signInGoogle: "Iniciar sesión con Google",
+    oauthNotLinkedError:
+      "No hay ninguna cuenta vinculada a esta cuenta de Google. Inicia sesión con tus credenciales y vincula Google en Seguridad -> OAuth.",
+    unlockAfterOAuthTitle: "Desbloquear cifrado de conocimiento cero",
+    unlockAfterOAuthDesc:
+      "Introduce tu contraseña para derivar tu clave de cifrado de conocimiento cero, o continúa con la sesión bloqueada.",
+    unlockAndContinue: "Desbloquear y continuar",
+    skipUnlock: "Omitir por ahora",
+    orSignInWith: "O iniciar sesión con",
+    googleNotConfigured: "Google OAuth no está configurado en este servidor",
     agreeNotice: "Al iniciar sesión, aceptas nuestra",
     and: "y",
     privacyPolicy: "Política de privacidad",
@@ -1319,6 +1328,24 @@ export const es = {
     runMigrationBtn: "Migrar Datos a Contraseña",
     migrationCompleteToast: "¡Datos migrados con éxito a tu clave de contraseña!",
     migrateFromMasterKeyButton: "Migrar desde Clave Maestra",
+    oauthTitle: "OAuth",
+    oauthDesc:
+      "Administra las cuentas externas vinculadas a tu perfil para el inicio de sesión único.",
+    googleProvider: "Google",
+    linkGoogle: "Vincular cuenta de Google",
+    unlinkGoogle: "Desvincular Google",
+    linkedAs: "Vinculado como {email}",
+    notLinked: "No vinculado",
+    linkPasswordPrompt:
+      "Introduce la contraseña de tu cuenta para verificar tu identidad antes de vincular Google:",
+    unlinkPasswordPrompt:
+      "Introduce la contraseña de tu cuenta para confirmar la desvinculación de Google:",
+    oauthAlreadyLinked:
+      "Esta cuenta de Google ya está vinculada a otra cuenta.",
+    oauthLinkedSuccess: "Cuenta de Google vinculada correctamente.",
+    oauthUnlinkedSuccess: "Cuenta de Google desvinculada correctamente.",
+    oauthFailed: "La autenticación de Google se canceló o falló.",
+    googleNotConfigured: "Google OAuth no está configurado en este servidor.",
   },
   integrations: {
     title: "Integraciones y Claves API",

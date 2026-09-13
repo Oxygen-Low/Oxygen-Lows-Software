@@ -68,6 +68,15 @@ export const ja = {
     welcomeBack: "お帰りなさい！",
     language: "言語",
     signInGoogle: "Googleでサインイン",
+    oauthNotLinkedError:
+      "このGoogleアカウントにリンクされているアカウントはありません。認証情報でログインし、セキュリティ -> OAuth でGoogleをリンクしてください。",
+    unlockAfterOAuthTitle: "ゼロ知識暗号化のロック解除",
+    unlockAfterOAuthDesc:
+      "パスワードを入力してゼロ知識暗号化キーを導出するか、セッションをロックしたまま続行してください。",
+    unlockAndContinue: "ロック解除して続行",
+    skipUnlock: "今はスキップ",
+    orSignInWith: "または次でサインイン",
+    googleNotConfigured: "このサーバーではGoogle OAuthが設定されていません",
     agreeNotice: "サインインすることで、以下の事項に同意したことになります：",
     and: "および",
     privacyPolicy: "プライバシーポリシー",
@@ -1304,6 +1313,26 @@ notificationsTitle: "通知",
     runMigrationBtn: "パスワードキーにデータを移行",
     migrationCompleteToast: "パスワードキーへのデータ移行が完了しました！",
     migrateFromMasterKeyButton: "マスターキーから移行",
+    oauthTitle: "OAuth",
+    oauthDesc:
+      "シングルサインオン用にプロフィールにリンクされた外部アカウントを管理します。",
+    googleProvider: "Google",
+    linkGoogle: "Googleアカウントをリンク",
+    unlinkGoogle: "Googleのリンクを解除",
+    linkedAs: "{email} としてリンク中",
+    notLinked: "未リンク",
+    linkPasswordPrompt:
+      "Googleをリンクする前に本人確認のためアカウントパスワードを入力してください：",
+    unlinkPasswordPrompt:
+      "Googleアカウントのリンク解除を確認するためアカウントパスワードを入力してください：",
+    oauthAlreadyLinked:
+      "このGoogleアカウントは既に別のアカウントにリンクされています。",
+    oauthLinkedSuccess: "Googleアカウントが正常にリンクされました。",
+    oauthUnlinkedSuccess:
+      "Googleアカウントのリンクが正常に解除されました。",
+    oauthFailed: "Google認証がキャンセルされたか失敗しました。",
+    googleNotConfigured:
+      "このサーバーではGoogle OAuthが設定されていません。",
   },
   integrations: {
     title: "連携とAPIキー",

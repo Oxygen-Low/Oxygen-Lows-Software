@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Navigate, useLocation, Link } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -17,11 +17,15 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
+import { GoogleIcon } from "@/components/ui/GoogleIcon";
+import { setLocalSession } from "@/lib/localSession";
 import {
   isValidMasterKeyString,
   parseMasterKeyString,
   parseKeyFileContent,
   bytesToHex,
+  deriveEncryptionKeyFromPassword,
+  setActiveMasterKey,
 } from "@/lib/crypto";
 
 export default function Auth() {
@@ -52,12 +56,36 @@ export default function Auth() {
   const [oldMasterKey, setOldMasterKey] = useState("");
   const keyFileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const navigate = useNavigate();
+  const [requiresUnlock, setRequiresUnlock] = useState(() => {
+    try {
+      const sp = new URLSearchParams(location.search);
+      return sp.get("requires_unlock") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
+  const [googleOAuthConfigured, setGoogleOAuthConfigured] = useState(true);
+
   const requestedReturnTo = new URLSearchParams(location.search).get(
     "returnTo",
   );
   const returnTo = getSafeReturnPath(requestedReturnTo);
 
   useEffect(() => {
+    fetch("/api/auth/oauth/config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.google) {
+          setGoogleOAuthConfigured(Boolean(data.google.enabled));
+        }
+      })
+      .catch(() => {});
+
     const hash = window.location.hash;
     if (hash && hash.includes("error_description")) {
       const params = new URLSearchParams(hash.substring(1));
@@ -68,13 +96,58 @@ export default function Auth() {
     }
 
     const queryParams = new URLSearchParams(location.search);
-    const queryError = queryParams.get("error_description");
+    const queryError =
+      queryParams.get("error_description") || queryParams.get("error");
     if (queryError) {
-      setError(queryError);
+      if (queryError === "oauth_not_linked") {
+        setError(
+          t(
+            "auth.oauthNotLinkedError",
+            undefined,
+            "No account is linked to this Google account. Please log in with your credentials and link Google under Security -> OAuth.",
+          ),
+        );
+      } else if (queryError === "oauth_unconfigured") {
+        setError(
+          t(
+            "auth.googleNotConfigured",
+            undefined,
+            "Google OAuth is not configured on this server",
+          ),
+        );
+      } else {
+        setError(queryError);
+      }
+    }
+
+    const oauthToken = queryParams.get("oauth_token");
+    const needsUnlock = queryParams.get("requires_unlock") === "true";
+    if (oauthToken) {
+      setOauthLoading(true);
+      fetch(`/api/auth/session?token=${encodeURIComponent(oauthToken)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.session) {
+            setLocalSession(data.session);
+            if (needsUnlock) {
+              setRequiresUnlock(true);
+            }
+          } else {
+            setError(
+              data?.error || "Failed to establish session from Google sign-in",
+            );
+          }
+        })
+        .catch((err) => {
+          setError(err?.message || "Failed to establish session");
+        })
+        .finally(() => {
+          setOauthLoading(false);
+        });
     }
   }, [location]);
 
-  if (loading) {
+  if (loading || oauthLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
@@ -82,10 +155,37 @@ export default function Auth() {
     );
   }
 
-  // If already logged in locally
-  if (session) {
+  // If already logged in locally (and not in post-OAuth unlock state)
+  if (session && !requiresUnlock) {
     return <Navigate to={returnTo} replace />;
   }
+
+  const handleUnlockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unlockPassword) return;
+    setError(null);
+    setIsUnlocking(true);
+    try {
+      const userSalt =
+        session?.user?.email || session?.user?.username || "";
+      const encKey = await deriveEncryptionKeyFromPassword(
+        unlockPassword,
+        userSalt,
+      );
+      setActiveMasterKey(encKey);
+      setRequiresUnlock(false);
+      navigate(returnTo, { replace: true });
+    } catch (err: any) {
+      setError(err?.message || "Failed to derive encryption key");
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  const handleSkipUnlock = () => {
+    setRequiresUnlock(false);
+    navigate(returnTo, { replace: true });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,24 +341,121 @@ export default function Auth() {
             </h1>
           </div>
           <p className="text-slate-400 text-sm">
-            {needsMigration
+            {requiresUnlock
               ? t(
-                  "auth.securityUpgradeTitle",
+                  "auth.unlockAfterOAuthTitle",
                   undefined,
-                  "Security Upgrade & Password Migration",
+                  "Unlock Zero-Knowledge Encryption",
                 )
-              : mode === "signin"
-                ? t("auth.welcomeBack", undefined, "Welcome back!")
-                : t(
-                    "auth.createAccountDesc",
+              : needsMigration
+                ? t(
+                    "auth.securityUpgradeTitle",
                     undefined,
-                    "Create your local account",
-                  )}
+                    "Security Upgrade & Password Migration",
+                  )
+                : mode === "signin"
+                  ? t("auth.welcomeBack", undefined, "Welcome back!")
+                  : t(
+                      "auth.createAccountDesc",
+                      undefined,
+                      "Create your local account",
+                    )}
           </p>
         </div>
 
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-6 sm:p-8 rounded-2xl shadow-2xl">
-          {needsMigration ? (
+          {requiresUnlock ? (
+            /* Post-OAuth Unlock Form */
+            <form onSubmit={handleUnlockSubmit} className="space-y-4">
+              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs">
+                <ShieldCheck className="w-5 h-5 shrink-0 text-cyan-400" />
+                <span>
+                  {t(
+                    "auth.unlockAfterOAuthDesc",
+                    undefined,
+                    "Enter your password to derive your zero-knowledge encryption key, or continue with session locked.",
+                  )}
+                </span>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-300 block mb-1">
+                  {t("auth.account", undefined, "Account")}
+                </label>
+                <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
+                  {session?.user?.username || session?.user?.email}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-300 block mb-1">
+                  {t("auth.password", undefined, "Password")}
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    id="oauth-unlock-password-input"
+                    type={showUnlockPassword ? "text" : "password"}
+                    required
+                    value={unlockPassword}
+                    onChange={(e) => setUnlockPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-10 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUnlockPassword(!showUnlockPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white transition"
+                  >
+                    {showUnlockPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-900/20 border border-red-800/50 rounded-lg">
+                  <p className="text-red-400 text-xs">{error}</p>
+                </div>
+              )}
+
+              <button
+                id="oauth-unlock-and-continue-btn"
+                type="submit"
+                disabled={isUnlocking}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-lg shadow-lg shadow-cyan-500/20 text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
+              >
+                {isUnlocking ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <span>
+                      {t(
+                        "auth.unlockAndContinue",
+                        undefined,
+                        "Unlock & Continue",
+                      )}
+                    </span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <button
+                id="oauth-skip-unlock-btn"
+                type="button"
+                onClick={handleSkipUnlock}
+                className="w-full py-2 text-xs text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5"
+              >
+                <span>
+                  {t("auth.skipUnlock", undefined, "Skip for Now")}
+                </span>
+              </button>
+            </form>
+          ) : needsMigration ? (
             /* Migration Form */
             <form onSubmit={handleMigrateSubmit} className="space-y-4">
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs">
@@ -580,6 +777,32 @@ export default function Auth() {
               )}
             </button>
           </form>
+
+          {mode === "signin" && googleOAuthConfigured && (
+            <div className="mt-4">
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-800"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-slate-900/60 px-2 text-slate-500">
+                    {t("auth.orSignInWith", undefined, "Or sign in with")}
+                  </span>
+                </div>
+              </div>
+
+              <a
+                id="sign-in-with-google-btn"
+                href={`/api/auth/oauth/google/login?returnTo=${encodeURIComponent(returnTo)}`}
+                className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
+              >
+                <GoogleIcon className="w-4 h-4" />
+                <span>
+                  {t("auth.signInGoogle", undefined, "Sign in with Google")}
+                </span>
+              </a>
+            </div>
+          )}
           </>
           )}
 

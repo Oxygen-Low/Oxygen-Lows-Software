@@ -6,6 +6,10 @@ import {
   getUserByUsernameOrEmail,
   getProfileByUserId,
   updateUserAuthVerifier,
+  getUserByOAuthProvider,
+  linkUserOAuth,
+  unlinkUserOAuth,
+  getUserOAuthStatus,
 } from "../lib/dataStore.ts";
 import {
   generateSalt,
@@ -14,6 +18,8 @@ import {
   generateToken,
   resolveUserFromToken,
   localAuthMiddleware,
+  generateOAuthState,
+  verifyOAuthState,
 } from "../lib/auth.ts";
 
 export const authRouter = new Hono();
@@ -303,6 +309,7 @@ authRouter.get("/session", async (c) => {
     }
 
     const profile = getProfileByUserId(user.id);
+    const oauth = getUserOAuthStatus(user.id);
 
     return c.json({
       session: {
@@ -313,6 +320,7 @@ authRouter.get("/session", async (c) => {
       user: {
         ...user,
         profile,
+        oauth,
       },
     });
   } catch (err: any) {
@@ -326,3 +334,297 @@ authRouter.get("/session", async (c) => {
 authRouter.post("/logout", async (c) => {
   return c.json({ success: true });
 });
+
+function getGoogleRedirectUri(c: any): string {
+  if (process.env.GOOGLE_REDIRECT_URI) {
+    return process.env.GOOGLE_REDIRECT_URI;
+  }
+  const host =
+    c.req.header("x-forwarded-host") ||
+    c.req.header("host") ||
+    "localhost:3000";
+  const protoHeader =
+    c.req.header("x-forwarded-proto") ||
+    (host.startsWith("localhost") || host.startsWith("127.0.0.1")
+      ? "http"
+      : "https");
+  const protocol = protoHeader.split(",")[0].trim();
+  return `${protocol}://${host}/api/auth/oauth/google/callback`;
+}
+
+/**
+ * Get OAuth configuration status
+ */
+authRouter.get("/oauth/config", (c) => {
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  return c.json({
+    google: {
+      enabled: Boolean(googleClientId && googleClientSecret),
+    },
+  });
+});
+
+/**
+ * Initiate linking of a Google account (requires authentication and password verification)
+ */
+authRouter.post(
+  "/oauth/google/init-link",
+  localAuthMiddleware,
+  async (c: any) => {
+    try {
+      const user = c.get("user");
+      const body = await c.req.json().catch(() => ({}));
+      const { password, authToken } = body;
+
+      const tokenInput = authToken || password;
+      if (!tokenInput) {
+        return c.json(
+          { error: "Password is required to link an external account" },
+          400,
+        );
+      }
+
+      const dbUser = getUserById(user.id);
+      if (!dbUser) {
+        return c.json({ error: "User not found" }, 404);
+      }
+
+      if (dbUser.auth_verifier) {
+        const valid = verifyAuthToken(
+          tokenInput,
+          dbUser.auth_verifier,
+          dbUser.auth_salt,
+        );
+        if (!valid) {
+          return c.json({ error: "Incorrect password" }, 400);
+        }
+      }
+
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        return c.json(
+          { error: "Google OAuth is not configured on the server" },
+          500,
+        );
+      }
+
+      const state = generateOAuthState({
+        action: "link",
+        userId: String(user.id),
+      });
+
+      const redirectUri = getGoogleRedirectUri(c);
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "openid email profile",
+        state,
+        access_type: "online",
+        prompt: "select_account",
+      });
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      return c.json({ url: authUrl });
+    } catch (err: any) {
+      return c.json(
+        { error: err.message || "Failed to initialize Google linking" },
+        500,
+      );
+    }
+  },
+);
+
+/**
+ * Start Google OAuth sign-in flow
+ */
+authRouter.get("/oauth/google/login", (c) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return c.redirect(
+      "/auth?error=" +
+        encodeURIComponent("Google OAuth is not configured on the server"),
+    );
+  }
+
+  const returnTo = c.req.query("returnTo") || "/apps";
+  const state = generateOAuthState({
+    action: "login",
+    returnTo,
+  });
+
+  const redirectUri = getGoogleRedirectUri(c);
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid email profile",
+    state,
+    access_type: "online",
+    prompt: "select_account",
+  });
+
+  return c.redirect(
+    `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+  );
+});
+
+/**
+ * Google OAuth Callback
+ */
+authRouter.get("/oauth/google/callback", async (c) => {
+  const code = c.req.query("code");
+  const stateParam = c.req.query("state");
+  const errorParam = c.req.query("error");
+
+  const state = stateParam ? verifyOAuthState(stateParam) : null;
+
+  if (errorParam) {
+    if (state?.action === "link") {
+      return c.redirect("/security?error=oauth_failed");
+    }
+    return c.redirect(`/auth?error=${encodeURIComponent(errorParam)}`);
+  }
+
+  if (!code || !stateParam || !state) {
+    return c.redirect("/auth?error=invalid_or_expired_state");
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    if (state.action === "link") {
+      return c.redirect("/security?error=oauth_unconfigured");
+    }
+    return c.redirect("/auth?error=oauth_unconfigured");
+  }
+
+  try {
+    const redirectUri = getGoogleRedirectUri(c);
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }).toString(),
+    });
+
+    const tokenJson: any = await tokenRes.json();
+    if (!tokenRes.ok || !tokenJson.access_token) {
+      if (state.action === "link") {
+        return c.redirect("/security?error=oauth_token_failed");
+      }
+      return c.redirect("/auth?error=oauth_token_failed");
+    }
+
+    const userRes = await fetch(
+      "https://www.googleapis.com/oauth2/v3/userinfo",
+      {
+        headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+      },
+    );
+    const googleUser: any = await userRes.json();
+    if (!userRes.ok || !googleUser.sub) {
+      if (state.action === "link") {
+        return c.redirect("/security?error=oauth_user_failed");
+      }
+      return c.redirect("/auth?error=oauth_user_failed");
+    }
+
+    const googleId = String(googleUser.sub);
+    const googleEmail = String(googleUser.email || "");
+
+    if (state.action === "link") {
+      const targetUserId = state.userId;
+      if (!targetUserId) {
+        return c.redirect("/security?error=invalid_user");
+      }
+
+      const existingUser = getUserByOAuthProvider("google", googleId);
+      if (existingUser && String(existingUser.id) !== String(targetUserId)) {
+        return c.redirect("/security?error=oauth_already_linked");
+      }
+
+      linkUserOAuth(targetUserId, "google", {
+        id: googleId,
+        email: googleEmail,
+      });
+
+      return c.redirect("/security?oauth=linked");
+    }
+
+    if (state.action === "login") {
+      const linkedUser = getUserByOAuthProvider("google", googleId);
+      if (!linkedUser) {
+        return c.redirect("/auth?error=oauth_not_linked");
+      }
+
+      const token = generateToken(linkedUser);
+      const returnTo = state.returnTo || "/apps";
+      return c.redirect(
+        `/auth?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
+      );
+    }
+
+    return c.redirect("/auth");
+  } catch (err: any) {
+    if (state.action === "link") {
+      return c.redirect("/security?error=oauth_exception");
+    }
+    return c.redirect(
+      `/auth?error=${encodeURIComponent(err.message || "oauth_exception")}`,
+    );
+  }
+});
+
+/**
+ * Unlink Google account (requires authentication and password verification)
+ */
+authRouter.post(
+  "/oauth/google/unlink",
+  localAuthMiddleware,
+  async (c: any) => {
+    try {
+      const user = c.get("user");
+      const body = await c.req.json().catch(() => ({}));
+      const { password, authToken } = body;
+
+      const tokenInput = authToken || password;
+      if (!tokenInput) {
+        return c.json(
+          { error: "Password is required to unlink an external account" },
+          400,
+        );
+      }
+
+      const dbUser = getUserById(user.id);
+      if (!dbUser) {
+        return c.json({ error: "User not found" }, 404);
+      }
+
+      if (dbUser.auth_verifier) {
+        const valid = verifyAuthToken(
+          tokenInput,
+          dbUser.auth_verifier,
+          dbUser.auth_salt,
+        );
+        if (!valid) {
+          return c.json({ error: "Incorrect password" }, 400);
+        }
+      }
+
+      unlinkUserOAuth(user.id, "google");
+      return c.json({ success: true });
+    } catch (err: any) {
+      return c.json(
+        { error: err.message || "Failed to unlink Google account" },
+        500,
+      );
+    }
+  },
+);

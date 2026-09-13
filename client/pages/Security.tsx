@@ -17,7 +17,10 @@ import {
   CheckCircle2,
   ArrowLeft,
   Loader2,
+  Link2,
+  Unlink,
 } from "lucide-react";
+import { GoogleIcon } from "@/components/ui/GoogleIcon";
 import { toast } from "sonner";
 import {
   Card,
@@ -141,6 +144,136 @@ export default function Security() {
   const [changePasswordError, setChangePasswordError] = useState<
     string | null
   >(null);
+
+  // OAuth State
+  const [googleOAuthConfigured, setGoogleOAuthConfigured] =
+    useState<boolean>(true);
+  const [linkedGoogle, setLinkedGoogle] = useState<{
+    linked: boolean;
+    email?: string;
+    linked_at?: string;
+  } | null>(() => {
+    const raw = session?.user?.oauth?.google;
+    return raw?.id || raw?.linked
+      ? { linked: true, email: raw.email, linked_at: raw.linked_at }
+      : null;
+  });
+
+  const [showLinkGoogleDialog, setShowLinkGoogleDialog] =
+    useState<boolean>(false);
+  const [showUnlinkGoogleDialog, setShowUnlinkGoogleDialog] =
+    useState<boolean>(false);
+  const [googleReauthPassword, setGoogleReauthPassword] = useState<string>("");
+  const [googleReauthError, setGoogleReauthError] = useState<string | null>(
+    null,
+  );
+  const [isProcessingGoogleOAuth, setIsProcessingGoogleOAuth] =
+    useState<boolean>(false);
+
+  useEffect(() => {
+    fetch("/api/auth/oauth/config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.google) {
+          setGoogleOAuthConfigured(Boolean(data.google.enabled));
+        }
+      })
+      .catch(() => {});
+
+    if (session?.access_token) {
+      fetch("/api/auth/session", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.user?.oauth?.google) {
+            setLinkedGoogle({
+              linked: true,
+              email: data.user.oauth.google.email,
+              linked_at: data.user.oauth.google.linked_at,
+            });
+          } else {
+            setLinkedGoogle(null);
+          }
+        })
+        .catch(() => {});
+    }
+
+    const oauthParam = searchParams.get("oauth");
+    const errorParam = searchParams.get("error");
+    if (oauthParam === "linked") {
+      toast.success(
+        t(
+          "security.oauthLinkedSuccess",
+          undefined,
+          "Google account successfully linked.",
+        ),
+      );
+      navigate("/security", { replace: true });
+    } else if (errorParam === "oauth_already_linked") {
+      toast.error(
+        t(
+          "security.oauthAlreadyLinked",
+          undefined,
+          "This Google account is already linked to another account.",
+        ),
+      );
+      navigate("/security", { replace: true });
+    } else if (errorParam) {
+      toast.error(
+        t(
+          "security.oauthFailed",
+          undefined,
+          "Google authentication was cancelled or failed.",
+        ),
+      );
+      navigate("/security", { replace: true });
+    }
+  }, [searchParams, session?.access_token]);
+
+  const handleInitiateLinkGoogle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleReauthPassword) return;
+    setIsProcessingGoogleOAuth(true);
+    setGoogleReauthError(null);
+    try {
+      if (!auth?.initLinkGoogle) {
+        throw new Error("Authentication method not available");
+      }
+      const authUrl = await auth.initLinkGoogle(googleReauthPassword);
+      window.location.href = authUrl;
+    } catch (err: any) {
+      setGoogleReauthError(err.message || "Failed to initiate Google link");
+      setIsProcessingGoogleOAuth(false);
+    }
+  };
+
+  const handleUnlinkGoogle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleReauthPassword) return;
+    setIsProcessingGoogleOAuth(true);
+    setGoogleReauthError(null);
+    try {
+      if (!auth?.unlinkGoogle) {
+        throw new Error("Authentication method not available");
+      }
+      await auth.unlinkGoogle(googleReauthPassword);
+      setLinkedGoogle(null);
+      setShowUnlinkGoogleDialog(false);
+      setGoogleReauthPassword("");
+      toast.success(
+        t(
+          "security.oauthUnlinkedSuccess",
+          undefined,
+          "Google account successfully unlinked.",
+        ),
+      );
+    } catch (err: any) {
+      setGoogleReauthError(err.message || "Failed to unlink Google account");
+    } finally {
+      setIsProcessingGoogleOAuth(false);
+    }
+  };
 
   // Keep session storage synced
   useEffect(() => {
@@ -977,6 +1110,127 @@ export default function Security() {
           </CardContent>
         </Card>
 
+        {/* Section 3: OAuth Accounts */}
+        <Card className="bg-slate-900/50 border-slate-800">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-lg sm:text-xl text-white flex items-center gap-2">
+                  <Link2 className="w-5 h-5 text-cyan-400" />
+                  {t("security.oauthTitle", undefined, "OAuth")}
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-slate-400">
+                  {t(
+                    "security.oauthDesc",
+                    undefined,
+                    "Manage external accounts linked to your profile for single sign-on.",
+                  )}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-950/50 hover:bg-slate-950/90 hover:border-slate-700/80 transition-all gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 shrink-0 mt-0.5 sm:mt-0 flex items-center justify-center">
+                  <GoogleIcon className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm sm:text-base font-semibold text-white">
+                      {t("security.googleProvider", undefined, "Google")}
+                    </span>
+                    {linkedGoogle?.linked ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      >
+                        {t(
+                          "security.encryptionEnabled",
+                          undefined,
+                          "Linked",
+                        )}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 border-slate-700"
+                      >
+                        {t("security.notLinked", undefined, "Not Linked")}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                    {linkedGoogle?.linked && linkedGoogle.email
+                      ? t(
+                          "security.linkedAs",
+                          { email: linkedGoogle.email },
+                          `Linked as ${linkedGoogle.email}`,
+                        )
+                      : t(
+                          "security.oauthDesc",
+                          undefined,
+                          "Connect your Google account to enable Google sign-in for your profile.",
+                        )}
+                  </p>
+                  {!googleOAuthConfigured && (
+                    <p className="text-[11px] text-amber-400/90">
+                      {t(
+                        "security.googleNotConfigured",
+                        undefined,
+                        "Google OAuth is not configured on this server.",
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end sm:pl-4 gap-2">
+                {linkedGoogle?.linked ? (
+                  <Button
+                    id="unlink-google-btn"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setGoogleReauthPassword("");
+                      setGoogleReauthError(null);
+                      setShowUnlinkGoogleDialog(true);
+                    }}
+                    className="border-rose-900/50 bg-rose-950/20 text-rose-400 hover:bg-rose-900/40 hover:text-rose-200 text-xs gap-1.5"
+                  >
+                    <Unlink className="w-3.5 h-3.5" />
+                    <span>
+                      {t("security.unlinkGoogle", undefined, "Unlink Google")}
+                    </span>
+                  </Button>
+                ) : (
+                  <Button
+                    id="link-google-btn"
+                    size="sm"
+                    disabled={!googleOAuthConfigured}
+                    onClick={() => {
+                      setGoogleReauthPassword("");
+                      setGoogleReauthError(null);
+                      setShowLinkGoogleDialog(true);
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs gap-2"
+                  >
+                    <GoogleIcon className="w-3.5 h-3.5" />
+                    <span>
+                      {t(
+                        "security.linkGoogle",
+                        undefined,
+                        "Link Google Account",
+                      )}
+                    </span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Dialog 1: Change Password */}
         <Dialog
           open={showChangePasswordDialog}
@@ -1099,6 +1353,187 @@ export default function Security() {
                       "security.changePasswordBtn",
                       undefined,
                       "Change Password",
+                    )}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog 2: Link Google Account */}
+        <Dialog
+          open={showLinkGoogleDialog}
+          onOpenChange={(open) => {
+            if (!isProcessingGoogleOAuth) setShowLinkGoogleDialog(open);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <GoogleIcon className="w-5 h-5" />
+                {t("security.linkGoogle", undefined, "Link Google Account")}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.linkPasswordPrompt",
+                  undefined,
+                  "Enter your account password to verify your identity before linking Google:",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={handleInitiateLinkGoogle}
+              className="space-y-4 py-2"
+            >
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="link-google-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.currentPassword",
+                    undefined,
+                    "Current Password",
+                  )}
+                </Label>
+                <Input
+                  id="link-google-password-input"
+                  type="password"
+                  required
+                  value={googleReauthPassword}
+                  onChange={(e) => setGoogleReauthPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              {googleReauthError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {googleReauthError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isProcessingGoogleOAuth}
+                  onClick={() => setShowLinkGoogleDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-link-google-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    isProcessingGoogleOAuth || !googleReauthPassword.trim()
+                  }
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium gap-2"
+                >
+                  {isProcessingGoogleOAuth ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <GoogleIcon className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t(
+                      "security.linkGoogle",
+                      undefined,
+                      "Link Google Account",
+                    )}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog 3: Unlink Google Account */}
+        <Dialog
+          open={showUnlinkGoogleDialog}
+          onOpenChange={(open) => {
+            if (!isProcessingGoogleOAuth) setShowUnlinkGoogleDialog(open);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-rose-400">
+                <Unlink className="w-5 h-5 text-rose-400" />
+                {t("security.unlinkGoogle", undefined, "Unlink Google")}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.unlinkPasswordPrompt",
+                  undefined,
+                  "Enter your account password to confirm unlinking your Google account:",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleUnlinkGoogle} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="unlink-google-password-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.currentPassword",
+                    undefined,
+                    "Current Password",
+                  )}
+                </Label>
+                <Input
+                  id="unlink-google-password-input"
+                  type="password"
+                  required
+                  value={googleReauthPassword}
+                  onChange={(e) => setGoogleReauthPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              {googleReauthError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {googleReauthError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isProcessingGoogleOAuth}
+                  onClick={() => setShowUnlinkGoogleDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-unlink-google-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    isProcessingGoogleOAuth || !googleReauthPassword.trim()
+                  }
+                  className="bg-rose-600 hover:bg-rose-500 text-white font-medium gap-2"
+                >
+                  {isProcessingGoogleOAuth ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Unlink className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t(
+                      "security.unlinkGoogle",
+                      undefined,
+                      "Unlink Google",
                     )}
                   </span>
                 </Button>

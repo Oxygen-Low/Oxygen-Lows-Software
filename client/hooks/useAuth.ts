@@ -240,6 +240,70 @@ export const useAuth = () => {
     }
   };
 
+  const unlockSessionWithPassword = async (password: string) => {
+    if (!session?.user) throw new Error("Not authenticated");
+    const userEmail = session.user.email || session.user.username;
+    const encKey = await deriveEncryptionKeyFromPassword(password, userEmail);
+    setActiveMasterKey(encKey);
+    return encKey;
+  };
+
+  const initLinkGoogle = async (password: string) => {
+    if (!session?.user) throw new Error("Not authenticated");
+    setError(null);
+    const userEmail = session.user.email || session.user.username;
+    const authToken = await deriveAuthTokenFromPassword(password, userEmail);
+
+    const res = await fetch("/api/auth/oauth/google/init-link", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ authToken, password }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      throw new Error(json.error || "Failed to initialize Google link");
+    }
+    return json.url;
+  };
+
+  const unlinkGoogle = async (password: string) => {
+    if (!session?.user) throw new Error("Not authenticated");
+    setError(null);
+    const userEmail = session.user.email || session.user.username;
+    const authToken = await deriveAuthTokenFromPassword(password, userEmail);
+
+    const res = await fetch("/api/auth/oauth/google/unlink", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ authToken, password }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      throw new Error(json.error || "Failed to unlink Google account");
+    }
+
+    try {
+      const sessRes = await fetch("/api/auth/session", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const sessJson = await sessRes.json();
+      if (sessJson?.session) {
+        setLocalSession(sessJson.session);
+        setSession(sessJson.session);
+      }
+    } catch {}
+
+    return { success: true };
+  };
+
   return {
     session,
     loading,
@@ -248,6 +312,9 @@ export const useAuth = () => {
     signUp,
     migrateAccount,
     changePassword,
+    unlockSessionWithPassword,
+    initLinkGoogle,
+    unlinkGoogle,
     signOut,
   };
 };

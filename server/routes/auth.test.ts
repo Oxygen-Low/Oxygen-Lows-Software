@@ -141,4 +141,242 @@ describe("authRouter", () => {
     const postMigLoginJson = await postMigLoginRes.json();
     expect(postMigLoginJson.token).toBeDefined();
   });
+
+  describe("Google OAuth", () => {
+    const origClientId = process.env.GOOGLE_CLIENT_ID;
+    const origClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    let userToken: string;
+    let testUserId: string;
+    let oauthSuffix: string;
+
+    beforeEach(async () => {
+      process.env.GOOGLE_CLIENT_ID = "mock-google-client-id";
+      process.env.GOOGLE_CLIENT_SECRET = "mock-google-client-secret";
+      oauthSuffix = Math.random().toString(36).substring(2, 8);
+
+      // Register test user
+      const regRes = await app.request("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: `oauthuser_${oauthSuffix}`,
+          email: `oauthuser_${oauthSuffix}@example.com`,
+          password: "testPassword123!",
+        }),
+      });
+      const regJson = await regRes.json();
+      userToken = regJson.token;
+      testUserId = regJson.user.id;
+    });
+
+    it("should return config status correctly", async () => {
+      const res1 = await app.request("/api/auth/oauth/config");
+      expect(res1.status).toBe(200);
+      const json1 = await res1.json();
+      expect(json1.google.enabled).toBe(true);
+
+      delete process.env.GOOGLE_CLIENT_ID;
+      const res2 = await app.request("/api/auth/oauth/config");
+      const json2 = await res2.json();
+      expect(json2.google.enabled).toBe(false);
+      process.env.GOOGLE_CLIENT_ID = "mock-google-client-id";
+    });
+
+    it("should require password re-auth to initiate Google linking", async () => {
+      // Missing password
+      const res1 = await app.request("/api/auth/oauth/google/init-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({}),
+      });
+      expect(res1.status).toBe(400);
+
+      // Wrong password
+      const res2 = await app.request("/api/auth/oauth/google/init-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ password: "wrongPassword" }),
+      });
+      expect(res2.status).toBe(400);
+
+      // Correct password
+      const res3 = await app.request("/api/auth/oauth/google/init-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ password: "testPassword123!" }),
+      });
+      expect(res3.status).toBe(200);
+      const json3 = await res3.json();
+      expect(json3.url).toBeDefined();
+      expect(json3.url).toContain("accounts.google.com");
+      expect(json3.url).toContain("client_id=mock-google-client-id");
+      expect(json3.url).toContain("state=");
+    });
+
+    it("should initiate Google login redirect", async () => {
+      const res = await app.request("/api/auth/oauth/google/login?returnTo=/apps");
+      expect(res.status).toBe(302);
+      const loc = res.headers.get("location");
+      expect(loc).toBeDefined();
+      expect(loc).toContain("accounts.google.com");
+      expect(loc).toContain("client_id=mock-google-client-id");
+    });
+
+    it("should link Google account on valid callback and reject collision", async () => {
+      const { generateOAuthState } = await import("../lib/auth.ts");
+      const googleSub = `sub_${oauthSuffix}`;
+      const googleEmail = `test_${oauthSuffix}@gmail.com`;
+
+      // Mock fetch for Google token and userinfo
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("oauth2.googleapis.com/token")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ access_token: "mock-google-access-token" }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        if (url.includes("googleapis.com/oauth2/v3/userinfo")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ sub: googleSub, email: googleEmail }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        return originalFetch(url);
+      });
+
+      try {
+        const linkState = generateOAuthState({
+          action: "link",
+          userId: testUserId,
+        });
+
+        // 1. Link to test user
+        const linkRes = await app.request(
+          `/api/auth/oauth/google/callback?code=mock-code&state=${linkState}`,
+        );
+        expect(linkRes.status).toBe(302);
+        expect(linkRes.headers.get("location")).toBe("/security?oauth=linked");
+
+        // Verify session returns linked oauth
+        const sessRes = await app.request("/api/auth/session", {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        const sessJson = await sessRes.json();
+        expect(sessJson.user.oauth?.google?.linked).toBe(true);
+        expect(sessJson.user.oauth?.google?.email).toBe(googleEmail);
+
+        // 2. Collision test: Another user tries to link the same Google account
+        const otherSuffix = oauthSuffix + "_2";
+        const otherRegRes = await app.request("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: `otheruser_${otherSuffix}`,
+            email: `otheruser_${otherSuffix}@example.com`,
+            password: "password123",
+          }),
+        });
+        const otherRegJson = await otherRegRes.json();
+        const otherState = generateOAuthState({
+          action: "link",
+          userId: otherRegJson.user.id,
+        });
+
+        const collisionRes = await app.request(
+          `/api/auth/oauth/google/callback?code=mock-code&state=${otherState}`,
+        );
+        expect(collisionRes.status).toBe(302);
+        expect(collisionRes.headers.get("location")).toBe(
+          "/security?error=oauth_already_linked",
+        );
+
+        // 3. Login test for linked account
+        const loginState = generateOAuthState({
+          action: "login",
+          returnTo: "/apps",
+        });
+        const loginRes = await app.request(
+          `/api/auth/oauth/google/callback?code=mock-code&state=${loginState}`,
+        );
+        expect(loginRes.status).toBe(302);
+        const loginLoc = loginRes.headers.get("location") || "";
+        expect(loginLoc).toContain("/auth?oauth_token=");
+        expect(loginLoc).toContain("requires_unlock=true");
+
+        // 4. Login test for unlinked account (NO SIGN UP WITH GOOGLE)
+        const unlinkedSub = `unlinked_sub_${oauthSuffix}`;
+        globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("oauth2.googleapis.com/token")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ access_token: "mock-google-token" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          if (url.includes("googleapis.com/oauth2/v3/userinfo")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ sub: unlinkedSub, email: "unlinked@gmail.com" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          return originalFetch(url);
+        });
+
+        const unlinkedLoginRes = await app.request(
+          `/api/auth/oauth/google/callback?code=mock-code&state=${loginState}`,
+        );
+        expect(unlinkedLoginRes.status).toBe(302);
+        expect(unlinkedLoginRes.headers.get("location")).toBe(
+          "/auth?error=oauth_not_linked",
+        );
+
+        // 5. Unlink with password re-auth
+        const unlinkWrong = await app.request("/api/auth/oauth/google/unlink", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ password: "wrong" }),
+        });
+        expect(unlinkWrong.status).toBe(400);
+
+        const unlinkOk = await app.request("/api/auth/oauth/google/unlink", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ password: "testPassword123!" }),
+        });
+        expect(unlinkOk.status).toBe(200);
+
+        // Verify unlinked
+        const postUnlinkSess = await app.request("/api/auth/session", {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        const postUnlinkJson = await postUnlinkSess.json();
+        expect(postUnlinkJson.user.oauth?.google).toBeUndefined();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  });
 });

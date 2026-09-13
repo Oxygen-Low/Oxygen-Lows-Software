@@ -68,6 +68,15 @@ export const ko = {
     welcomeBack: "다시 오신 것을 환영합니다!",
     language: "언어",
     signInGoogle: "Google로 로그인",
+    oauthNotLinkedError:
+      "이 Google 계정에 연결된 계정이 없습니다. 사용자 정보로 로그인한 후 보안 -> OAuth에서 Google을 연결하세요.",
+    unlockAfterOAuthTitle: "영지식 암호화 잠금 해제",
+    unlockAfterOAuthDesc:
+      "비밀번호를 입력하여 영지식 암호화 키를 파생하거나 세션이 잠긴 상태로 계속 진행하세요.",
+    unlockAndContinue: "잠금 해제 및 계속",
+    skipUnlock: "지금은 건너뛰기",
+    orSignInWith: "또는 다음으로 로그인",
+    googleNotConfigured: "이 서버에 Google OAuth가 구성되지 않았습니다",
     agreeNotice: "로그인하면 다음에 동의하게 됩니다:",
     and: "및",
     privacyPolicy: "개인정보처리방침",

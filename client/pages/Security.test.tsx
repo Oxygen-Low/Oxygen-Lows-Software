@@ -447,4 +447,87 @@ describe("Security Page Component", () => {
       ),
     ).toBeNull();
   });
+
+  it("renders OAuth section and handles link/unlink dialogs", async () => {
+    const mockInitLink = vi.fn().mockResolvedValue("https://accounts.google.com/oauth");
+    const mockUnlink = vi.fn().mockResolvedValue({ success: true });
+
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "u", email: "user@test.com" } },
+      changePassword: vi.fn(),
+      initLinkGoogle: mockInitLink,
+      unlinkGoogle: mockUnlink,
+    });
+
+    renderWithRouter();
+
+    // Verify OAuth section
+    expect(screen.getByText("OAuth")).toBeDefined();
+    expect(screen.getByText("Google")).toBeDefined();
+    expect(screen.getByText("Not Linked")).toBeDefined();
+
+    const linkBtn = document.getElementById("link-google-btn")!;
+    expect(linkBtn).toBeDefined();
+
+    // Click link -> opens password prompt dialog
+    fireEvent.click(linkBtn);
+    expect(
+      screen.getByText(
+        "Enter your account password to verify your identity before linking Google:",
+      ),
+    ).toBeDefined();
+
+    const passInput = document.getElementById(
+      "link-google-password-input",
+    ) as HTMLInputElement;
+    fireEvent.change(passInput, { target: { value: "mypassword" } });
+
+    const submitLink = document.getElementById("submit-link-google-btn")!;
+    fireEvent.click(submitLink);
+
+    await waitFor(() => {
+      expect(mockInitLink).toHaveBeenCalledWith("mypassword");
+    });
+  });
+
+  it("renders linked Google account and unlinking dialog", async () => {
+    const mockUnlink = vi.fn().mockResolvedValue({ success: true });
+
+    (useAuth as any).mockReturnValue({
+      session: {
+        user: {
+          id: "u",
+          email: "user@test.com",
+          oauth: { google: { id: "g1", email: "googleuser@gmail.com", linked: true } },
+        },
+      },
+      changePassword: vi.fn(),
+      unlinkGoogle: mockUnlink,
+    });
+
+    renderWithRouter();
+
+    expect(screen.getByText("Linked as googleuser@gmail.com")).toBeDefined();
+    const unlinkBtn = document.getElementById("unlink-google-btn")!;
+    expect(unlinkBtn).toBeDefined();
+
+    fireEvent.click(unlinkBtn);
+    expect(
+      screen.getByText(
+        "Enter your account password to confirm unlinking your Google account:",
+      ),
+    ).toBeDefined();
+
+    const passInput = document.getElementById(
+      "unlink-google-password-input",
+    ) as HTMLInputElement;
+    fireEvent.change(passInput, { target: { value: "mypassword" } });
+
+    const submitUnlink = document.getElementById("submit-unlink-google-btn")!;
+    fireEvent.click(submitUnlink);
+
+    await waitFor(() => {
+      expect(mockUnlink).toHaveBeenCalledWith("mypassword");
+    });
+  });
 });

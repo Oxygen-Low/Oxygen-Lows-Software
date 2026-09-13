@@ -1229,6 +1229,24 @@ notificationsTitle: "通知",
     runMigrationBtn: "迁移数据至密码加密",
     migrationCompleteToast: "数据已成功迁移至密码密钥！",
     migrateFromMasterKeyButton: "从主密钥迁移",
+    oauthTitle: "OAuth",
+    oauthDesc:
+      "管理关联到个人资料的外部单点登录帐号。",
+    googleProvider: "Google",
+    linkGoogle: "关联 Google 帐号",
+    unlinkGoogle: "取消关联 Google",
+    linkedAs: "已关联为 {email}",
+    notLinked: "未关联",
+    linkPasswordPrompt:
+      "在关联 Google 之前输入您的账户密码以验证您的身份：",
+    unlinkPasswordPrompt:
+      "输入您的账户密码以确认取消关联 Google 帐号：",
+    oauthAlreadyLinked:
+      "此 Google 帐号已关联到另一个用户账户。",
+    oauthLinkedSuccess: "Google 帐号关联成功。",
+    oauthUnlinkedSuccess: "Google 帐号取消关联成功。",
+    oauthFailed: "Google 身份验证已取消或失败。",
+    googleNotConfigured: "此服务器上未配置 Google OAuth。",
   },
   integrations: {
     title: "集成与 API 密钥",

@@ -167,4 +167,121 @@ describe("Auth Component", () => {
       ).toBeDefined();
     });
   });
+
+  it("should render Sign in with Google on signin mode but not on signup mode", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // In signin mode: Google button is present
+    const googleBtn = document.getElementById("sign-in-with-google-btn");
+    expect(googleBtn).toBeDefined();
+    expect(screen.getByText("Sign in with Google")).toBeDefined();
+
+    // Switch to signup mode: Google button must NOT be present
+    const signUpTab = screen.getByRole("button", { name: "Create Account" });
+    fireEvent.click(signUpTab);
+
+    expect(document.getElementById("sign-in-with-google-btn")).toBeNull();
+  });
+
+  it("should display error message when oauth_not_linked error is in URL query parameters", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth?error=oauth_not_linked"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No account is linked to this Google account. Please log in with your credentials and link Google under Security -> OAuth.",
+        ),
+      ).toBeDefined();
+    });
+  });
+
+  it("should render post-OAuth unlock form and allow unlock or skip", async () => {
+    const mockSession = {
+      access_token: "token-123",
+      user: { id: "u1", email: "googleuser@test.com", username: "guser" },
+    };
+
+    (useAuth as any).mockReturnValue({
+      session: mockSession,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    // Mock session API response
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/auth/session")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ session: mockSession }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ google: { enabled: true } }),
+      });
+    });
+
+    try {
+      render(
+        <MemoryRouter
+          initialEntries={["/auth?oauth_token=token-123&requires_unlock=true"]}
+        >
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/apps" element={<div>Apps Destination</div>} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Unlock Zero-Knowledge Encryption"),
+        ).toBeDefined();
+        expect(
+          document.getElementById("oauth-unlock-and-continue-btn"),
+        ).toBeDefined();
+        expect(
+          document.getElementById("oauth-skip-unlock-btn"),
+        ).toBeDefined();
+      });
+
+      // Clicking Skip for Now navigates to returnTo (/apps)
+      const skipBtn = document.getElementById("oauth-skip-unlock-btn")!;
+      fireEvent.click(skipBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Apps Destination")).toBeDefined();
+      });
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
 });

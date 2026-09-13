@@ -371,6 +371,7 @@ export function initUserFolder(
     role,
     points: 100,
     custom_models: [],
+    oauth: {},
     created_at: now,
     updated_at: now,
   };
@@ -572,6 +573,89 @@ export function getUserByUsernameOrEmail(identifier: string) {
     }
   }
   return null;
+}
+
+export function getUserByOAuthProvider(
+  provider: string,
+  providerUserId: string,
+) {
+  if (!provider || !providerUserId) return null;
+  const userIds = getAllUserIds();
+  for (const id of userIds) {
+    const user = getUserById(id);
+    if (
+      user &&
+      user.oauth &&
+      user.oauth[provider] &&
+      String(user.oauth[provider].id) === String(providerUserId)
+    ) {
+      return user;
+    }
+  }
+  return null;
+}
+
+export function linkUserOAuth(
+  userId: string | number,
+  provider: string,
+  data: { id: string; email: string },
+) {
+  const existing = getUserByOAuthProvider(provider, data.id);
+  if (existing && String(existing.id) !== String(userId)) {
+    throw new Error("This account is already linked to another user");
+  }
+
+  const userPath = path.join(DATA_DIR, String(userId), "user.json");
+  if (!fs.existsSync(userPath)) return null;
+  const user = readJsonFile<Record<string, any>>(userPath, null);
+  if (!user) return null;
+
+  if (!user.oauth) {
+    user.oauth = {};
+  }
+  user.oauth[provider] = {
+    id: data.id,
+    email: data.email,
+    linked_at: new Date().toISOString(),
+  };
+  user.updated_at = new Date().toISOString();
+  writeJsonFile(userPath, user);
+  return user;
+}
+
+export function unlinkUserOAuth(userId: string | number, provider: string) {
+  const userPath = path.join(DATA_DIR, String(userId), "user.json");
+  if (!fs.existsSync(userPath)) return null;
+  const user = readJsonFile<Record<string, any>>(userPath, null);
+  if (!user) return null;
+
+  if (user.oauth && user.oauth[provider]) {
+    delete user.oauth[provider];
+    user.updated_at = new Date().toISOString();
+    writeJsonFile(userPath, user);
+  }
+  return user;
+}
+
+export function getUserOAuthStatus(userId: string | number) {
+  const user = getUserById(userId);
+  if (!user || !user.oauth) {
+    return {};
+  }
+  const result: Record<
+    string,
+    { linked: boolean; email?: string; linked_at?: string }
+  > = {};
+  for (const [provider, info] of Object.entries<any>(user.oauth)) {
+    if (info && info.id) {
+      result[provider] = {
+        linked: true,
+        email: info.email,
+        linked_at: info.linked_at,
+      };
+    }
+  }
+  return result;
 }
 
 const profileCache = new Map<string, { data: any; timestamp: number }>();

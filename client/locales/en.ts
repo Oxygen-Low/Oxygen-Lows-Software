@@ -68,6 +68,15 @@ export const en = {
     welcomeBack: "Welcome back!",
     language: "Language",
     signInGoogle: "Sign in with Google",
+    oauthNotLinkedError:
+      "No account is linked to this Google account. Please log in with your credentials and link Google under Security -> OAuth.",
+    unlockAfterOAuthTitle: "Unlock Zero-Knowledge Encryption",
+    unlockAfterOAuthDesc:
+      "Enter your password to derive your zero-knowledge encryption key, or continue with session locked.",
+    unlockAndContinue: "Unlock & Continue",
+    skipUnlock: "Skip for Now",
+    orSignInWith: "Or sign in with",
+    googleNotConfigured: "Google OAuth is not configured on this server",
     agreeNotice: "By signing in, you agree to our",
     and: "and",
     privacyPolicy: "Privacy Policy",
@@ -1307,6 +1316,24 @@ export const en = {
     migrationCompleteToast:
       "Data successfully migrated to your password key!",
     migrateFromMasterKeyButton: "Migrate from Masterkey",
+    oauthTitle: "OAuth",
+    oauthDesc:
+      "Manage external accounts linked to your profile for single sign-on.",
+    googleProvider: "Google",
+    linkGoogle: "Link Google Account",
+    unlinkGoogle: "Unlink Google",
+    linkedAs: "Linked as {email}",
+    notLinked: "Not Linked",
+    linkPasswordPrompt:
+      "Enter your account password to verify your identity before linking Google:",
+    unlinkPasswordPrompt:
+      "Enter your account password to confirm unlinking your Google account:",
+    oauthAlreadyLinked:
+      "This Google account is already linked to another account.",
+    oauthLinkedSuccess: "Google account successfully linked.",
+    oauthUnlinkedSuccess: "Google account successfully unlinked.",
+    oauthFailed: "Google authentication was cancelled or failed.",
+    googleNotConfigured: "Google OAuth is not configured on this server.",
   },
   integrations: {
     title: "Integrations & API Keys",

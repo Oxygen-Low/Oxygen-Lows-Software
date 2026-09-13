@@ -68,6 +68,15 @@ export const ru = {
     welcomeBack: "С возвращением!",
     language: "Язык",
     signInGoogle: "Войти через Google",
+    oauthNotLinkedError:
+      "С этой учетной записью Google не связано ни одного аккаунта. Пожалуйста, войдите со своими учетными данными и привяжите Google в разделе Безопасность -> OAuth.",
+    unlockAfterOAuthTitle: "Разблокировать шифрование с нулевым разглашением",
+    unlockAfterOAuthDesc:
+      "Введите пароль для получения ключа шифрования с нулевым разглашением или продолжите с заблокированной сессией.",
+    unlockAndContinue: "Разблокировать и продолжить",
+    skipUnlock: "Пропустить",
+    orSignInWith: "Или войти через",
+    googleNotConfigured: "Google OAuth не настроен на этом сервере",
     agreeNotice: "Выполняя вход, вы соглашаетесь с нашими",
     and: "и",
     privacyPolicy: "Политикой конфиденциальности",
