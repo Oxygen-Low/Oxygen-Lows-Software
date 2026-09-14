@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { lookup } from "node:dns/promises";
+import { lookup, resolveTxt } from "node:dns/promises";
 import { isPrivateIP, assertPublicHostname } from "./safeAiUrl.ts";
 
 export const DATA_DIR = path.join(process.cwd(), "Data");
@@ -17,8 +17,12 @@ export interface WebmasterSite {
   id: string;
   userId: string;
   url: string;
+  domain: string;
   sitemapUrl?: string;
-  status: "pending" | "crawling" | "indexed" | "error";
+  status: "unverified" | "pending" | "crawling" | "indexed" | "error";
+  verified: boolean;
+  verificationToken: string;
+  adminAdded?: boolean;
   pageCount: number;
   lastCrawledAt?: string;
   createdAt: string;
@@ -157,6 +161,44 @@ export async function validateCrawlUrl(urlString: string): Promise<URL> {
   }
 
   return parsed;
+}
+
+/**
+ * Checks DNS TXT records for a domain to verify ownership.
+ * Checks both root hostname and _oxylow-challenge.<hostname>.
+ */
+export async function verifyDomainDns(
+  domain: string,
+  expectedToken: string
+): Promise<{ verified: boolean; message: string; foundRecords?: string[] }> {
+  const cleanDomain = domain.split(":")[0].toLowerCase();
+  const hostnamesToTry = [cleanDomain, `_oxylow-challenge.${cleanDomain}`];
+  const allFoundRecords: string[] = [];
+
+  for (const host of hostnamesToTry) {
+    try {
+      const records = await resolveTxt(host);
+      for (const recordChunks of records) {
+        const fullTxt = recordChunks.join("");
+        allFoundRecords.push(fullTxt);
+        if (
+          fullTxt === `oxylow-verification=${expectedToken}` ||
+          fullTxt === expectedToken ||
+          fullTxt.includes(`oxylow-verification=${expectedToken}`)
+        ) {
+          return { verified: true, message: `Domain ownership verified on ${host}` };
+        }
+      }
+    } catch {
+      // Record not found on this host
+    }
+  }
+
+  return {
+    verified: false,
+    message: `Verification TXT record not found. Please add a TXT record with value "oxylow-verification=${expectedToken}" to ${cleanDomain} or _oxylow-challenge.${cleanDomain}`,
+    foundRecords: allFoundRecords,
+  };
 }
 
 /**
@@ -452,6 +494,19 @@ export async function crawlSite(
   }
 
   const site = sites[siteIndex];
+
+  if (!site.verified && !site.adminAdded) {
+    site.status = "unverified";
+    site.error = "DNS verification required before crawling.";
+    site.logs.push({
+      timestamp: new Date().toISOString(),
+      message: `Crawl prevented: Domain ${site.domain || site.url} is unverified. Add TXT record "oxylow-verification=${site.verificationToken || ''}" to verify ownership.`,
+      level: "warn",
+    });
+    saveSites(sites);
+    return { success: false, pagesCrawled: 0, error: site.error };
+  }
+
   site.status = "crawling";
   site.error = undefined;
   site.logs.push({

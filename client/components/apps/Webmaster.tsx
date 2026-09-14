@@ -7,6 +7,7 @@ import {
   Trash2,
   ExternalLink,
   ShieldCheck,
+  ShieldAlert,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -16,6 +17,10 @@ import {
   ArrowUpRight,
   ListFilter,
   Terminal,
+  Copy,
+  Check,
+  Key,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +52,12 @@ interface WebmasterSite {
   id: string;
   userId: string;
   url: string;
+  domain: string;
   sitemapUrl?: string;
-  status: "pending" | "crawling" | "indexed" | "error";
+  status: "unverified" | "pending" | "crawling" | "indexed" | "error";
+  verified: boolean;
+  verificationToken: string;
+  adminAdded?: boolean;
   pageCount: number;
   lastCrawledAt?: string;
   createdAt: string;
@@ -79,15 +88,29 @@ export function WebmasterApp() {
   const { t } = useTranslation();
   const { session } = useAuth();
   const token = session?.access_token;
+  const user = session?.user;
+  const isAdmin = user?.role === "admin" || String(user?.id) === "1";
 
+  const [activeTab, setActiveTab] = useState<"sites" | "admin">("sites");
   const [sites, setSites] = useState<WebmasterSite[]>([]);
+  const [adminSites, setAdminSites] = useState<WebmasterSite[]>([]);
   const [stats, setStats] = useState<WebmasterStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminLoading, setAdminLoading] = useState(false);
 
-  // Form state
+  // User submission form state
   const [urlInput, setUrlInput] = useState("");
   const [sitemapInput, setSitemapInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Admin submission form state
+  const [adminUrlInput, setAdminUrlInput] = useState("");
+  const [adminSitemapInput, setAdminSitemapInput] = useState("");
+  const [adminSubmitting, setAdminSubmitting] = useState(false);
+
+  // Verification state
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   // Selected site modal
   const [selectedSite, setSelectedSite] = useState<WebmasterSite | null>(null);
@@ -119,16 +142,37 @@ export function WebmasterApp() {
     }
   }, [token]);
 
+  const fetchAdminSites = useCallback(async () => {
+    if (!token || !isAdmin) return;
+    setAdminLoading(true);
+    try {
+      const res = await fetch("/api/webmaster/admin/sites", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminSites(data.sites || []);
+      }
+    } catch {
+      toast.error("Failed to load admin domains");
+    } finally {
+      setAdminLoading(false);
+    }
+  }, [token, isAdmin]);
+
   useEffect(() => {
     fetchSitesAndStats();
-    // Auto-refresh when any site is in crawling status
+    if (isAdmin) {
+      fetchAdminSites();
+    }
     const interval = setInterval(() => {
       if (sites.some((s) => s.status === "crawling" || s.status === "pending")) {
         fetchSitesAndStats();
+        if (isAdmin) fetchAdminSites();
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [fetchSitesAndStats, sites]);
+  }, [fetchSitesAndStats, fetchAdminSites, sites, isAdmin]);
 
   const handleSubmitSite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +204,11 @@ export function WebmasterApp() {
         throw new Error(data.error || "Failed to submit website");
       }
 
-      toast.success("Website submitted! oxylow bot will now crawl and index it.");
+      if (data.site?.verified) {
+        toast.success("Website submitted and queued for crawling!");
+      } else {
+        toast.info("Website submitted! Please add the DNS TXT record to verify ownership before indexing.");
+      }
       setUrlInput("");
       setSitemapInput("");
       fetchSitesAndStats();
@@ -168,6 +216,88 @@ export function WebmasterApp() {
       toast.error(err.message || "Failed to submit website");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerifyDns = async (siteId: string) => {
+    if (!token) return;
+    setVerifyingId(siteId);
+    try {
+      const res = await fetch(`/api/webmaster/sites/${siteId}/verify`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "DNS verification check failed.");
+      }
+      toast.success(data.message || "Domain verified successfully!");
+      fetchSitesAndStats();
+    } catch (err: any) {
+      toast.error(err.message || "DNS verification failed");
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const handleAdminAddSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    if (!adminUrlInput.trim()) {
+      toast.error("Please enter a website URL.");
+      return;
+    }
+
+    setAdminSubmitting(true);
+    try {
+      const res = await fetch("/api/webmaster/admin/sites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          url: adminUrlInput.trim(),
+          sitemapUrl: adminSitemapInput.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to add domain");
+      }
+
+      toast.success("Domain added without verification and queued for crawling!");
+      setAdminUrlInput("");
+      setAdminSitemapInput("");
+      fetchAdminSites();
+      fetchSitesAndStats();
+    } catch (err: any) {
+      toast.error(err.message || "Error adding domain");
+    } finally {
+      setAdminSubmitting(false);
+    }
+  };
+
+  const handleAdminDeleteSite = async (siteId: string) => {
+    if (!token) return;
+    if (!confirm("Are you sure you want to remove this admin-added domain and all its indexed pages?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/webmaster/admin/sites/${siteId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to remove domain");
+      }
+      toast.success("Domain removed from search index");
+      fetchAdminSites();
+      fetchSitesAndStats();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove domain");
     }
   };
 
@@ -184,6 +314,7 @@ export function WebmasterApp() {
       }
       toast.success("Re-crawl triggered! oxylow bot is indexing the site.");
       fetchSitesAndStats();
+      if (isAdmin) fetchAdminSites();
     } catch (err: any) {
       toast.error(err.message || "Error starting re-crawl");
     }
@@ -208,6 +339,7 @@ export function WebmasterApp() {
         setIsDetailsOpen(false);
       }
       fetchSitesAndStats();
+      if (isAdmin) fetchAdminSites();
     } catch (err: any) {
       toast.error(err.message || "Error deleting website");
     }
@@ -235,8 +367,22 @@ export function WebmasterApp() {
     }
   };
 
-  const getStatusBadge = (status: WebmasterSite["status"]) => {
-    switch (status) {
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedToken(id);
+    toast.success("Verification token copied to clipboard");
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  const getStatusBadge = (site: WebmasterSite) => {
+    if (!site.verified && !site.adminAdded) {
+      return (
+        <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 gap-1 font-normal">
+          <ShieldAlert className="w-3 h-3" /> Unverified
+        </Badge>
+      );
+    }
+    switch (site.status) {
       case "indexed":
         return (
           <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 gap-1 font-normal">
@@ -245,7 +391,7 @@ export function WebmasterApp() {
         );
       case "crawling":
         return (
-          <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 gap-1 font-normal">
+          <Badge className="bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20 gap-1 font-normal">
             <RotateCw className="w-3 h-3 animate-spin" /> Crawling
           </Badge>
         );
@@ -261,6 +407,8 @@ export function WebmasterApp() {
             <AlertCircle className="w-3 h-3" /> Crawl Error
           </Badge>
         );
+      default:
+        return null;
     }
   };
 
@@ -274,17 +422,47 @@ export function WebmasterApp() {
             Webmaster Console
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Submit your URLs and sitemaps to have them crawled and indexed by the <strong className="text-foreground">oxylow</strong> bot for Oxygen Low's Software Web Browser.
+            Verify domain ownership via DNS, submit sitemaps, and index websites for Oxygen Low's Software Web Browser.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchSitesAndStats()}
-          className="self-start md:self-auto gap-2"
-        >
-          <RotateCw className="w-4 h-4" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          {isAdmin && (
+            <div className="flex bg-muted p-1 rounded-lg border border-border mr-2">
+              <button
+                onClick={() => setActiveTab("sites")}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                  activeTab === "sites"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                My Sites
+              </button>
+              <button
+                onClick={() => setActiveTab("admin")}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
+                  activeTab === "admin"
+                    ? "bg-card text-cyan-500 font-semibold shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                Admin Panel
+              </button>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              fetchSitesAndStats();
+              if (isAdmin) fetchAdminSites();
+            }}
+            className="gap-2"
+          >
+            <RotateCw className="w-4 h-4" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Overview Cards */}
@@ -295,7 +473,7 @@ export function WebmasterApp() {
             <CardTitle className="text-2xl font-bold">{stats?.totalSites ?? sites.length}</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-muted-foreground">
-            Websites registered under your account
+            Websites registered in the index
           </CardContent>
         </Card>
 
@@ -311,10 +489,10 @@ export function WebmasterApp() {
 
         <Card className="border-border bg-card shadow-sm">
           <CardHeader className="p-4 pb-2">
-            <CardDescription className="text-xs font-semibold uppercase">Bot Compliance</CardDescription>
+            <CardDescription className="text-xs font-semibold uppercase">Verification & Bot</CardDescription>
             <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-emerald-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Robots.txt & Rate-Limited
+              DNS TXT Verification Required
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-muted-foreground space-y-1">
@@ -324,170 +502,430 @@ export function WebmasterApp() {
         </Card>
       </div>
 
-      {/* Submission Card */}
-      <Card className="border-border bg-card shadow-sm">
-        <CardHeader className="p-5 pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Plus className="w-5 h-5 text-cyan-500" />
-            Submit Website for Indexing
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Provide your website URL and an optional XML sitemap. oxylow will verify robots.txt, parse your pages, and add them to search.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-5 pt-0">
-          <form onSubmit={handleSubmitSite} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">
-                  Website URL <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
-                  <Input
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    placeholder="https://example.com"
-                    className="pl-9 text-sm"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">
-                  Sitemap URL <span className="text-muted-foreground text-[11px]">(Optional)</span>
-                </label>
-                <div className="relative">
-                  <Layers className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
-                  <Input
-                    value={sitemapInput}
-                    onChange={(e) => setSitemapInput(e.target.value)}
-                    placeholder="https://example.com/sitemap.xml"
-                    className="pl-9 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-[11px] text-muted-foreground">
-                oxylow enforces per-domain request delays and obeys robots.txt directives.
-              </p>
-              <Button type="submit" disabled={submitting} className="gap-2">
-                {submitting ? (
-                  <>
-                    <RotateCw className="w-4 h-4 animate-spin" /> Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Bot className="w-4 h-4" /> Submit & Crawl
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Sites List */}
-      <Card className="border-border bg-card shadow-sm">
-        <CardHeader className="p-5 pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Globe className="w-5 h-5 text-cyan-500" />
-            Your Submitted Websites
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Monitor crawl status, re-trigger indexing, and inspect discovered pages.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-5 pt-0">
-          {loading ? (
-            <div className="py-12 flex justify-center items-center text-muted-foreground">
-              <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
-            </div>
-          ) : sites.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground space-y-2">
-              <Globe className="w-10 h-10 mx-auto text-muted-foreground/50" />
-              <p className="text-sm font-medium">No websites submitted yet</p>
-              <p className="text-xs">Use the submission form above to add your first website.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border border rounded-lg overflow-hidden">
-              {sites.map((site) => (
-                <div
-                  key={site.id}
-                  className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <a
-                        href={site.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium text-sm hover:text-cyan-400 flex items-center gap-1.5"
-                      >
-                        {site.url}
-                        <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
-                      </a>
-                      {getStatusBadge(site.status)}
+      {/* TAB: ADMIN DOMAIN PANEL */}
+      {isAdmin && activeTab === "admin" && (
+        <div className="space-y-6">
+          <Card className="border-cyan-500/30 bg-cyan-950/10 shadow-sm">
+            <CardHeader className="p-5 pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-cyan-400">
+                <Crown className="w-5 h-5 text-amber-400" />
+                Admin Domain Manager: Add Domains Without Verification
+              </CardTitle>
+              <CardDescription className="text-xs">
+                As an administrator, you can add any website or domain directly to the index without DNS verification (e.g. popular platforms, reference sites, search directories).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 pt-0">
+              <form onSubmit={handleAdminAddSite} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Website URL <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                      <Input
+                        value={adminUrlInput}
+                        onChange={(e) => setAdminUrlInput(e.target.value)}
+                        placeholder="https://wikipedia.org"
+                        className="pl-9 text-sm"
+                        required
+                      />
                     </div>
-                    {site.sitemapUrl && (
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Layers className="w-3 h-3 text-cyan-500 shrink-0" />
-                        Sitemap: {site.sitemapUrl}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Sitemap URL <span className="text-muted-foreground text-[11px]">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Layers className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                      <Input
+                        value={adminSitemapInput}
+                        onChange={(e) => setAdminSitemapInput(e.target.value)}
+                        placeholder="https://wikipedia.org/sitemap.xml"
+                        className="pl-9 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Admin added domains are instantly verified and immediately queued for crawling.
+                  </p>
+                  <Button type="submit" disabled={adminSubmitting} className="gap-2">
+                    {adminSubmitting ? (
+                      <>
+                        <RotateCw className="w-4 h-4 animate-spin" /> Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Crown className="w-4 h-4 text-amber-400" /> Add & Crawl Directly
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Admin Domains Table */}
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader className="p-5 pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Globe className="w-5 h-5 text-cyan-500" />
+                Admin-Added Domains ({adminSites.length})
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Global sites added by administrators without DNS verification.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 pt-0">
+              {adminLoading ? (
+                <div className="py-12 flex justify-center items-center text-muted-foreground">
+                  <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
+                </div>
+              ) : adminSites.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground space-y-2">
+                  <Globe className="w-10 h-10 mx-auto text-muted-foreground/50" />
+                  <p className="text-sm font-medium">No admin domains added yet</p>
+                  <p className="text-xs">Use the form above to add popular websites directly.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border border rounded-lg overflow-hidden">
+                  {adminSites.map((site) => (
+                    <div
+                      key={site.id}
+                      className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <a
+                            href={site.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-medium text-sm hover:text-cyan-400 flex items-center gap-1.5"
+                          >
+                            {site.url}
+                            <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
+                          </a>
+                          <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px]">
+                            Admin Added
+                          </Badge>
+                          {getStatusBadge(site)}
+                        </div>
+                        {site.sitemapUrl && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-cyan-500 shrink-0" />
+                            Sitemap: {site.sitemapUrl}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 text-[11px] text-muted-foreground pt-1">
+                          <span>Pages indexed: <strong className="text-foreground">{site.pageCount}</strong></span>
+                          {site.lastCrawledAt && (
+                            <span>Last crawled: {new Date(site.lastCrawledAt).toLocaleString()}</span>
+                          )}
+                        </div>
+                        {site.error && (
+                          <p className="text-xs text-rose-400 font-mono mt-1">
+                            Error: {site.error}
+                          </p>
+                        )}
                       </div>
-                    )}
-                    <div className="flex items-center gap-4 text-[11px] text-muted-foreground pt-1">
-                      <span>Pages indexed: <strong className="text-foreground">{site.pageCount}</strong></span>
-                      {site.lastCrawledAt && (
-                        <span>Last crawled: {new Date(site.lastCrawledAt).toLocaleString()}</span>
-                      )}
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenDetails(site)}
+                          className="h-8 text-xs gap-1.5"
+                        >
+                          <Terminal className="w-3.5 h-3.5 text-cyan-500" />
+                          Details & Logs
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={site.status === "crawling"}
+                          onClick={() => handleRecrawl(site.id)}
+                          className="h-8 text-xs gap-1.5"
+                          title="Re-crawl site"
+                        >
+                          <RotateCw className={`w-3.5 h-3.5 ${site.status === "crawling" ? "animate-spin" : ""}`} />
+                          Re-crawl
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAdminDeleteSite(site.id)}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-500"
+                          title="Delete domain"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                    {site.error && (
-                      <p className="text-xs text-rose-400 font-mono mt-1">
-                        Error: {site.error}
-                      </p>
-                    )}
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* TAB: MY SITES (USER VIEW) */}
+      {(!isAdmin || activeTab === "sites") && (
+        <div className="space-y-6">
+          {/* Submission Card */}
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader className="p-5 pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Plus className="w-5 h-5 text-cyan-500" />
+                Submit Website for Indexing
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Provide your website URL and optional sitemap. A DNS TXT verification record must be configured to verify ownership before the oxylow crawler indexes your pages.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 pt-0">
+              <form onSubmit={handleSubmitSite} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Website URL <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                      <Input
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        placeholder="https://example.com"
+                        className="pl-9 text-sm"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleOpenDetails(site)}
-                      className="h-8 text-xs gap-1.5"
-                    >
-                      <Terminal className="w-3.5 h-3.5 text-cyan-500" />
-                      Details & Logs
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={site.status === "crawling"}
-                      onClick={() => handleRecrawl(site.id)}
-                      className="h-8 text-xs gap-1.5"
-                      title="Re-crawl site"
-                    >
-                      <RotateCw className={`w-3.5 h-3.5 ${site.status === "crawling" ? "animate-spin" : ""}`} />
-                      Re-crawl
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(site.id)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-500"
-                      title="Delete website"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Sitemap URL <span className="text-muted-foreground text-[11px]">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Layers className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                      <Input
+                        value={sitemapInput}
+                        onChange={(e) => setSitemapInput(e.target.value)}
+                        placeholder="https://example.com/sitemap.xml"
+                        className="pl-9 text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Domain verification required before crawling. Rate limits & robots.txt strictly honored.
+                  </p>
+                  <Button type="submit" disabled={submitting} className="gap-2">
+                    {submitting ? (
+                      <>
+                        <RotateCw className="w-4 h-4 animate-spin" /> Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="w-4 h-4" /> Submit Website
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Sites List */}
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader className="p-5 pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Globe className="w-5 h-5 text-cyan-500" />
+                Your Websites
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Manage your domains, verify DNS records, and track crawler status.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 pt-0">
+              {loading ? (
+                <div className="py-12 flex justify-center items-center text-muted-foreground">
+                  <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
+                </div>
+              ) : sites.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground space-y-2">
+                  <Globe className="w-10 h-10 mx-auto text-muted-foreground/50" />
+                  <p className="text-sm font-medium">No websites submitted yet</p>
+                  <p className="text-xs">Use the submission form above to add your first website.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border border rounded-lg overflow-hidden">
+                  {sites.map((site) => {
+                    const isUnverified = !site.verified && !site.adminAdded;
+                    return (
+                      <div
+                        key={site.id}
+                        className="p-4 flex flex-col space-y-3 hover:bg-muted/20 transition-colors"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <a
+                                href={site.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-medium text-sm hover:text-cyan-400 flex items-center gap-1.5"
+                              >
+                                {site.url}
+                                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              </a>
+                              {getStatusBadge(site)}
+                              {site.adminAdded && (
+                                <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px]">
+                                  Admin Added
+                                </Badge>
+                              )}
+                            </div>
+                            {site.sitemapUrl && (
+                              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Layers className="w-3 h-3 text-cyan-500 shrink-0" />
+                                Sitemap: {site.sitemapUrl}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-4 text-[11px] text-muted-foreground pt-1">
+                              <span>Pages indexed: <strong className="text-foreground">{site.pageCount}</strong></span>
+                              {site.lastCrawledAt && (
+                                <span>Last crawled: {new Date(site.lastCrawledAt).toLocaleString()}</span>
+                              )}
+                            </div>
+                            {site.error && !isUnverified && (
+                              <p className="text-xs text-rose-400 font-mono mt-1">
+                                Error: {site.error}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isUnverified && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={verifyingId === site.id}
+                                onClick={() => handleVerifyDns(site.id)}
+                                className="h-8 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                              >
+                                <RotateCw className={`w-3.5 h-3.5 ${verifyingId === site.id ? "animate-spin" : ""}`} />
+                                Verify DNS
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenDetails(site)}
+                              className="h-8 text-xs gap-1.5"
+                            >
+                              <Terminal className="w-3.5 h-3.5 text-cyan-500" />
+                              Details & Logs
+                            </Button>
+                            {!isUnverified && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={site.status === "crawling"}
+                                onClick={() => handleRecrawl(site.id)}
+                                className="h-8 text-xs gap-1.5"
+                                title="Re-crawl site"
+                              >
+                                <RotateCw className={`w-3.5 h-3.5 ${site.status === "crawling" ? "animate-spin" : ""}`} />
+                                Re-crawl
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDelete(site.id)}
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-500"
+                              title="Delete website"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* DNS Verification Instruction Box */}
+                        {isUnverified && (
+                          <div className="bg-amber-950/20 border border-amber-500/30 rounded-lg p-3.5 space-y-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-amber-400 flex items-center gap-1.5">
+                                <Key className="w-3.5 h-3.5" />
+                                DNS Ownership Verification Required
+                              </span>
+                              <span className="text-[11px] text-muted-foreground">
+                                Add a TXT record to your DNS provider
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-background/60 p-2.5 rounded border border-border font-mono text-[11px]">
+                              <div>
+                                <span className="text-muted-foreground block text-[10px] font-sans">Type:</span>
+                                <strong>TXT</strong>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground block text-[10px] font-sans">Host:</span>
+                                <span>@ or _oxylow-challenge</span>
+                              </div>
+                              <div className="flex items-center justify-between sm:col-span-1">
+                                <div className="truncate mr-1">
+                                  <span className="text-muted-foreground block text-[10px] font-sans">Value:</span>
+                                  <span className="text-cyan-400 truncate block">
+                                    oxylow-verification={site.verificationToken}
+                                  </span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => copyToClipboard(`oxylow-verification=${site.verificationToken}`, site.id)}
+                                  className="h-6 w-6 p-0 shrink-0"
+                                  title="Copy TXT value"
+                                >
+                                  {copiedToken === site.id ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  ) : (
+                                    <Copy className="w-3.5 h-3.5" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+                              <span>Once the TXT record propagates (usually 1-5 mins), click "Verify DNS".</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={verifyingId === site.id}
+                                onClick={() => handleVerifyDns(site.id)}
+                                className="h-7 text-xs gap-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                              >
+                                <RotateCw className={`w-3 h-3 ${verifyingId === site.id ? "animate-spin" : ""}`} />
+                                Check DNS
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Site Details & Crawl Logs Modal */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -500,7 +938,7 @@ export function WebmasterApp() {
                     <Globe className="w-5 h-5 text-cyan-500 shrink-0" />
                     {selectedSite.url}
                   </DialogTitle>
-                  {getStatusBadge(selectedSite.status)}
+                  {getStatusBadge(selectedSite)}
                 </div>
               </DialogHeader>
 
@@ -508,15 +946,17 @@ export function WebmasterApp() {
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold flex items-center justify-between border-b border-border pb-2">
                   <span>Indexed Pages ({loadingPages ? "..." : sitePages.length})</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={selectedSite.status === "crawling"}
-                    onClick={() => handleRecrawl(selectedSite.id)}
-                    className="h-7 text-xs gap-1.5"
-                  >
-                    <RotateCw className="w-3 h-3" /> Re-crawl
-                  </Button>
+                  {selectedSite.verified && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={selectedSite.status === "crawling"}
+                      onClick={() => handleRecrawl(selectedSite.id)}
+                      className="h-7 text-xs gap-1.5"
+                    >
+                      <RotateCw className="w-3 h-3" /> Re-crawl
+                    </Button>
+                  )}
                 </h3>
 
                 {loadingPages ? (
@@ -525,7 +965,9 @@ export function WebmasterApp() {
                   </div>
                 ) : sitePages.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic py-3">
-                    No pages have been indexed yet.
+                    {selectedSite.verified
+                      ? "No pages have been indexed yet."
+                      : "Domain ownership must be verified before pages can be indexed."}
                   </p>
                 ) : (
                   <div className="max-h-60 overflow-y-auto divide-y divide-border border rounded-lg">
