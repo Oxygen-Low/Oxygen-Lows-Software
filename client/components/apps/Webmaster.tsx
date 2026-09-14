@@ -207,28 +207,13 @@ export function WebmasterApp() {
       fetchAdminSites(true);
     }
     const interval = setInterval(() => {
-      const isModalBusy =
-        isDetailsOpenRef.current &&
-        selectedSiteRef.current &&
-        (selectedSiteRef.current.status === "crawling" ||
-          selectedSiteRef.current.status === "pending" ||
-          (selectedSiteRef.current.queuePosition !== undefined &&
-            selectedSiteRef.current.queuePosition !== null));
+      const isQueued = (s: { queuePosition?: number | null; nextCrawlScheduledAt?: string | null }) =>
+        (s.queuePosition !== undefined && s.queuePosition !== null) || Boolean(s.nextCrawlScheduledAt);
 
-      const hasCrawlingUser = sitesRef.current.some(
-        (s) =>
-          s.status === "crawling" ||
-          s.status === "pending" ||
-          (s.queuePosition !== undefined && s.queuePosition !== null) ||
-          Boolean(s.nextCrawlScheduledAt)
-      );
-      const hasCrawlingAdmin = adminSitesRef.current.some(
-        (s) =>
-          s.status === "crawling" ||
-          s.status === "pending" ||
-          (s.queuePosition !== undefined && s.queuePosition !== null) ||
-          Boolean(s.nextCrawlScheduledAt)
-      );
+      const isModalBusy = isDetailsOpenRef.current && selectedSiteRef.current && isQueued(selectedSiteRef.current);
+
+      const hasCrawlingUser = sitesRef.current.some(isQueued);
+      const hasCrawlingAdmin = adminSitesRef.current.some(isQueued);
 
       if (hasCrawlingUser || isModalBusy) {
         fetchSitesAndStats(false);
@@ -236,7 +221,7 @@ export function WebmasterApp() {
       if (isAdmin && (hasCrawlingUser || hasCrawlingAdmin || isModalBusy)) {
         fetchAdminSites(false);
       }
-      if (isDetailsOpenRef.current && selectedSiteRef.current?.status === "crawling") {
+      if (isDetailsOpenRef.current && selectedSiteRef.current?.queuePosition === 1) {
         fetchSitePages(selectedSiteRef.current.id);
       }
     }, 1500);
@@ -432,7 +417,7 @@ export function WebmasterApp() {
   };
 
   const isSiteBusy = (site: WebmasterSite) => {
-    return site.status === "crawling" || site.status === "pending" || (site.queuePosition !== undefined && site.queuePosition !== null);
+    return site.queuePosition !== undefined && site.queuePosition !== null;
   };
 
   const getStatusBadge = (site: WebmasterSite) => {
@@ -443,26 +428,24 @@ export function WebmasterApp() {
         </Badge>
       );
     }
-    if (site.status === "crawling") {
+    if (site.queuePosition === 1) {
       return (
         <Badge className="bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20 gap-1 font-normal">
           <RotateCw className="w-3 h-3 animate-spin" /> Crawling
         </Badge>
       );
     }
-    if (
-      site.status === "pending" ||
-      (site.queuePosition !== undefined && site.queuePosition !== null)
-    ) {
-      const pos = site.queuePosition || 1;
+    if (site.queuePosition !== undefined && site.queuePosition !== null) {
       return (
         <Badge className="bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 gap-1 font-normal">
-          <Clock className="w-3 h-3" /> Queued ({pos})
+          <Clock className="w-3 h-3" /> Queued ({site.queuePosition})
         </Badge>
       );
     }
     switch (site.status) {
       case "indexed":
+      case "pending":
+      case "crawling":
         if (site.nextCrawlScheduledAt && site.pendingUrls && site.pendingUrls.length > 0) {
           return (
             <div className="flex flex-wrap items-center gap-1.5">

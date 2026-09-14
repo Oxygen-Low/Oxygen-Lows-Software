@@ -30,6 +30,7 @@ import {
   setBatchCrawlDelayMs,
   setDefaultDomainDelayMs,
   MAX_SITE_INDEX_PAGES,
+  resumeInterruptedCrawls,
 } from "../lib/oxylowCrawler";
 
 describe("Webmaster Router & DNS Verification", () => {
@@ -387,5 +388,48 @@ describe("Webmaster Router & DNS Verification", () => {
     } finally {
       global.fetch = originalFetch;
     }
+  });
+
+  it("re-queues sites left pending or crawling after a restart", () => {
+    saveSites([
+      {
+        id: "stuck-crawling",
+        userId: "1",
+        url: "https://first.example",
+        domain: "first.example",
+        status: "crawling",
+        verified: true,
+        verificationToken: "a",
+        adminAdded: true,
+        pageCount: 20,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        logs: [],
+        pendingUrls: ["https://first.example/page-2"],
+      },
+      {
+        id: "stuck-pending",
+        userId: "1",
+        url: "https://second.example",
+        domain: "second.example",
+        status: "pending",
+        verified: true,
+        verificationToken: "b",
+        adminAdded: true,
+        pageCount: 0,
+        createdAt: "2026-01-02T00:00:00.000Z",
+        logs: [],
+      },
+    ]);
+
+    expect(getQueuePosition("stuck-crawling")).toBeNull();
+    expect(getQueuePosition("stuck-pending")).toBeNull();
+
+    const resumed = resumeInterruptedCrawls();
+    expect(resumed).toBe(2);
+    expect(getQueuePosition("stuck-crawling")).toBe(1);
+    expect(getQueuePosition("stuck-pending")).toBe(2);
+    expect(resumeInterruptedCrawls()).toBe(0);
+
+    clearCrawlQueue();
   });
 });

@@ -241,9 +241,9 @@ webmasterRouter.post("/sites/:id/crawl", async (c) => {
   }
 
   const queuePos = getQueuePosition(site.id);
-  if (queuePos !== null || site.status === "crawling") {
+  if (queuePos !== null) {
     return c.json(
-      { error: `Site is already queued for crawling (position ${queuePos || 1}).` },
+      { error: `Site is already queued for crawling (position ${queuePos}).` },
       409
     );
   }

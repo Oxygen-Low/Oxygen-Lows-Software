@@ -850,6 +850,48 @@ export function getQueuePosition(siteId: string): number | null {
 }
 
 /**
+ * Re-queues sites left pending/crawling (or with leftover URLs) after a process restart.
+ * In-memory queue and batch timers do not survive restart.
+ */
+export function resumeInterruptedCrawls(): number {
+  const sites = getSites();
+  const toResume = sites.filter((site) => {
+    if (!site.verified && !site.adminAdded) return false;
+    if (getQueuePosition(site.id) !== null) return false;
+    const hasPendingUrls = Array.isArray(site.pendingUrls) && site.pendingUrls.length > 0;
+    return site.status === "pending" || site.status === "crawling" || hasPendingUrls;
+  });
+
+  toResume.sort((a, b) => {
+    const rank = (site: WebmasterSite) =>
+      site.status === "crawling" ? 0 : site.status === "pending" ? 1 : 2;
+    const byStatus = rank(a) - rank(b);
+    if (byStatus !== 0) return byStatus;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  if (toResume.length === 0) return 0;
+
+  for (const site of toResume) {
+    if (site.status === "crawling") {
+      site.status = "pending";
+    }
+    site.nextCrawlScheduledAt = null;
+    site.logs.push({
+      timestamp: new Date().toISOString(),
+      message: "Resuming crawl after server restart.",
+      level: "info",
+    });
+  }
+  saveSites(sites);
+
+  for (const site of toResume) {
+    enqueueCrawl(site.id, CRAWL_BATCH_SIZE);
+  }
+  return toResume.length;
+}
+
+/**
  * Enqueues a site to be crawled/indexed.
  * Returns the 1-based queue position.
  */

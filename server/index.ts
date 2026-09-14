@@ -23,6 +23,7 @@ import { adminNotificationsRouter } from "./routes/adminNotifications.ts";
 import { adminWebdefenderRouter } from "./routes/adminWebdefender.ts";
 import { browserRouter } from "./routes/browser.ts";
 import { webmasterRouter } from "./routes/webmaster.ts";
+import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
   publicDefenderBannedIp,
@@ -1128,7 +1129,14 @@ app.get("/api/banned-ips", async (c) => {
 });
 
 export function createServer() {
+  if (!process.env.VITEST) {
+    resumeInterruptedCrawls();
+  }
   return app;
+}
+
+if (!process.env.VITEST) {
+  resumeInterruptedCrawls();
 }
 
 export default app;
