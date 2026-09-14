@@ -418,6 +418,12 @@ export const es = {
     pixelArtStudioTitle: "Estudio de Pixel Art",
     pixelArtStudioDesc:
       "Crea pixel art retro, animaciones de varios fotogramas y hojas de sprites con paletas y capas personalizadas.",
+    webBrowserTitle: "Navegador Web",
+    webBrowserDesc:
+      "Navega por Internet con pestañas múltiples, sugerencias de búsqueda, marcadores y modo lectura impulsado por el rastreador oxylow.",
+    webmasterTitle: "Webmaster",
+    webmasterDesc:
+      "Envía sitios web y mapas del sitio para ser rastreados e indexados por el bot oxylow para el navegador web.",
     imageGeneratorTitle: "Generador de imágenes IA",
     imageGeneratorDesc:
       "Genera imágenes de alta calidad con trabajadores comunitarios seguros (SFW) de AI Horde.",

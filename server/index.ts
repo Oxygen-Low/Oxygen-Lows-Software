@@ -21,6 +21,8 @@ import { softwareAwardsRouter } from "./routes/softwareAwards.ts";
 import { notificationsRouter } from "./routes/notifications.ts";
 import { adminNotificationsRouter } from "./routes/adminNotifications.ts";
 import { adminWebdefenderRouter } from "./routes/adminWebdefender.ts";
+import { browserRouter } from "./routes/browser.ts";
+import { webmasterRouter } from "./routes/webmaster.ts";
 import {
   getActiveDefenderBannedIps,
   publicDefenderBannedIp,
@@ -58,7 +60,9 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/data") ||
     c.req.path.startsWith("/api/surveys") ||
     c.req.path.startsWith("/api/ai") ||
-    c.req.path.startsWith("/api/realtime")
+    c.req.path.startsWith("/api/realtime") ||
+    c.req.path.startsWith("/api/browser") ||
+    c.req.path.startsWith("/api/webmaster")
   ) {
     return next();
   }
@@ -1081,6 +1085,41 @@ app.route("/api/notifications", notificationsRouter);
 app.route("/api/admin/notifications", adminNotificationsRouter);
 app.route("/api/admin/webdefender", adminWebdefenderRouter);
 app.route("/api/admin/banned-ips", adminWebdefenderRouter);
+app.route("/api/browser", browserRouter);
+app.route("/api/webmaster", webmasterRouter);
+
+app.get("/bot", (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>oxylow Bot - Oxygen Low's Software Crawler</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; max-width: 700px; margin: 0 auto; line-height: 1.6; }
+          h1 { color: #38bdf8; }
+          code { background: #1e293b; padding: 0.2rem 0.4rem; border-radius: 4px; color: #f43f5e; }
+          .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; margin-top: 1.5rem; }
+          a { color: #38bdf8; }
+        </style>
+      </head>
+      <body>
+        <h1>oxylow Crawler Bot</h1>
+        <p>You have received a visit from <code>oxylow</code>, the official web crawler and search indexer for <strong>Oxygen Low's Software</strong>.</p>
+        <div class="card">
+          <h2>Bot Identity & Compliance</h2>
+          <ul>
+            <li><strong>User-Agent:</strong> <code>Mozilla/5.0 (compatible; oxylow/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)</code></li>
+            <li><strong>Robots.txt:</strong> oxylow strictly respects <code>robots.txt</code> rules (both <code>User-agent: oxylow</code> and <code>User-agent: *</code>), including <code>Disallow</code> directives and <code>Crawl-delay</code> rate limiting.</li>
+            <li><strong>Politeness:</strong> oxylow enforces minimum delays between requests to the same domain.</li>
+            <li><strong>Contact & Abuse:</strong> If you have questions, feedback, or need to report crawler issues, please contact us at <a href="mailto:support@oxygenlow.com">support@oxygenlow.com</a>.</li>
+          </ul>
+        </div>
+      </body>
+    </html>
+  `, 200, { "Content-Type": "text/html; charset=utf-8" });
+});
 
 app.get("/api/banned-ips", async (c) => {
   const bannedIps = getActiveDefenderBannedIps().map(publicDefenderBannedIp);

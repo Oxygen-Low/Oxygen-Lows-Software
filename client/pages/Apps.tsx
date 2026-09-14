@@ -60,6 +60,8 @@ import { SoftwareAwardsApp } from "@/components/apps/SoftwareAwards";
 import { ImageStudioApp } from "@/components/apps/ImageStudio";
 import { PixelArtStudioApp } from "@/components/apps/PixelArtStudio";
 import { ThreeDStudioApp } from "@/components/studio3d/ThreeDStudioApp";
+import { WebBrowserApp } from "@/components/apps/WebBrowser";
+import { WebmasterApp } from "@/components/apps/Webmaster";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -380,6 +382,31 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Paintbrush className="w-8 h-8 text-cyan-500" />,
     component: PixelArtStudioApp,
+  },
+  {
+    id: "web-browser",
+    nameKey: "apps.webBrowserTitle",
+    defaultName: "Web Browser",
+    descKey: "apps.webBrowserDesc",
+    defaultDesc:
+      "Browse the internet with multi-tab navigation, search suggestions, bookmarks, and reader mode powered by the oxylow crawler.",
+    categories: ["All", "Utility", "Social"],
+    availability: "web-and-desktop",
+    icon: <Globe className="w-8 h-8 text-cyan-500" />,
+    component: WebBrowserApp,
+  },
+  {
+    id: "webmaster",
+    nameKey: "apps.webmasterTitle",
+    defaultName: "Webmaster",
+    descKey: "apps.webmasterDesc",
+    defaultDesc:
+      "Submit websites and sitemaps to be crawled and indexed by the oxylow bot for the Web Browser.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Bot className="w-8 h-8 text-cyan-500" />,
+    component: WebmasterApp,
+    authRequired: true,
   },
 ];
 
