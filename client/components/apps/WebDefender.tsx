@@ -237,6 +237,11 @@ type AppConfig = {
   block_shell_injection: boolean;
   block_path_traversal: boolean;
   block_ssrf: boolean;
+  block_sensitive_paths: boolean;
+  auto_block_sensitive_paths: boolean;
+  sensitive_path_threshold: number;
+  sensitive_path_window_seconds: number;
+  sensitive_path_ban_duration_seconds: number;
   block_tor: boolean;
   block_vpn: boolean;
   ddos_protection: boolean;
@@ -1862,6 +1867,11 @@ const defaultDefenderConfig: AppConfig = {
   block_shell_injection: true,
   block_path_traversal: true,
   block_ssrf: true,
+  block_sensitive_paths: true,
+  auto_block_sensitive_paths: true,
+  sensitive_path_threshold: 3,
+  sensitive_path_window_seconds: 20,
+  sensitive_path_ban_duration_seconds: 600,
   block_tor: true,
   block_vpn: true,
   ddos_protection: true,
@@ -1916,6 +1926,15 @@ export function SettingsTab({
   const [eventsLimitInput, setEventsLimitInput] = useState<string>(() =>
     String(getAppConfig(app.defender_config).events_limit ?? 50),
   );
+  const [thresholdInput, setThresholdInput] = useState<string>(() =>
+    String(getAppConfig(app.defender_config).sensitive_path_threshold ?? 3),
+  );
+  const [windowInput, setWindowInput] = useState<string>(() =>
+    String(getAppConfig(app.defender_config).sensitive_path_window_seconds ?? 20),
+  );
+  const [banDurationMinutesInput, setBanDurationMinutesInput] = useState<string>(() =>
+    String(Math.round((getAppConfig(app.defender_config).sensitive_path_ban_duration_seconds ?? 600) / 60)),
+  );
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -1969,6 +1988,13 @@ export function SettingsTab({
     const limit = updated.events_limit ?? 50;
     setEventsLimitInput(String(limit));
     lastSavedLimitRef.current = limit;
+
+    const threshold = updated.sensitive_path_threshold ?? 3;
+    setThresholdInput(String(threshold));
+    const windowSec = updated.sensitive_path_window_seconds ?? 20;
+    setWindowInput(String(windowSec));
+    const banMin = Math.round((updated.sensitive_path_ban_duration_seconds ?? 600) / 60);
+    setBanDurationMinutesInput(String(banMin));
   }, [app.defender_config]);
 
   const updateConfig = async (updates: Partial<AppConfig>) => {
@@ -1989,6 +2015,17 @@ export function SettingsTab({
         setEventsLimitInput(String(revertVal));
         lastSavedLimitRef.current = revertVal;
       }
+      if (updates.sensitive_path_threshold !== undefined) {
+        setThresholdInput(String(config.sensitive_path_threshold ?? 3));
+      }
+      if (updates.sensitive_path_window_seconds !== undefined) {
+        setWindowInput(String(config.sensitive_path_window_seconds ?? 20));
+      }
+      if (updates.sensitive_path_ban_duration_seconds !== undefined) {
+        setBanDurationMinutesInput(
+          String(Math.round((config.sensitive_path_ban_duration_seconds ?? 600) / 60)),
+        );
+      }
     }
   };
 
@@ -2001,6 +2038,34 @@ export function SettingsTab({
     if (clamped !== lastSavedLimitRef.current) {
       lastSavedLimitRef.current = clamped;
       updateConfig({ events_limit: clamped });
+    }
+  };
+
+  const handleSaveThreshold = () => {
+    const val = parseInt(thresholdInput, 10);
+    const clamped = isNaN(val) ? 3 : Math.max(1, val);
+    setThresholdInput(String(clamped));
+    if (clamped !== config.sensitive_path_threshold) {
+      updateConfig({ sensitive_path_threshold: clamped });
+    }
+  };
+
+  const handleSaveWindow = () => {
+    const val = parseInt(windowInput, 10);
+    const clamped = isNaN(val) ? 20 : Math.max(1, val);
+    setWindowInput(String(clamped));
+    if (clamped !== config.sensitive_path_window_seconds) {
+      updateConfig({ sensitive_path_window_seconds: clamped });
+    }
+  };
+
+  const handleSaveBanDuration = () => {
+    const val = parseInt(banDurationMinutesInput, 10);
+    const clamped = isNaN(val) ? 10 : Math.max(1, val);
+    setBanDurationMinutesInput(String(clamped));
+    const seconds = clamped * 60;
+    if (seconds !== config.sensitive_path_ban_duration_seconds) {
+      updateConfig({ sensitive_path_ban_duration_seconds: seconds });
     }
   };
 
@@ -2178,6 +2243,19 @@ export function SettingsTab({
               label: "SSRF",
               desc: "Prevent Server-Side Request Forgery.",
             },
+            {
+              id: "block_sensitive_paths",
+              label: t(
+                "apps.webDefenderSensitivePaths",
+                undefined,
+                "Sensitive Path Probing",
+              ),
+              desc: t(
+                "apps.webDefenderSensitivePathsDesc",
+                undefined,
+                "Detect and block attempts to access sensitive files, config, credentials, and endpoints.",
+              ),
+            },
           ].map((setting) => (
             <div key={setting.id} className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -2190,6 +2268,133 @@ export function SettingsTab({
               />
             </div>
           ))}
+
+          <Separator className="bg-slate-800" />
+
+          {/* Sensitive Path Auto-Block IP Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base text-white">
+                  {t(
+                    "apps.webDefenderAutoBlockSensitivePaths",
+                    undefined,
+                    "Auto-block IP on Repeated Probes",
+                  )}
+                </Label>
+                <p className="text-sm text-slate-400">
+                  {t(
+                    "apps.webDefenderAutoBlockSensitivePathsDesc",
+                    undefined,
+                    "Automatically ban an IP across all application requests after repeated sensitive path attempts within a short time window.",
+                  )}
+                </p>
+              </div>
+              <Switch
+                checked={config.auto_block_sensitive_paths !== false}
+                onCheckedChange={(c) =>
+                  updateConfig({ auto_block_sensitive_paths: c })
+                }
+              />
+            </div>
+
+            {config.auto_block_sensitive_paths !== false && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-300">
+                    {t(
+                      "apps.webDefenderThreshold",
+                      undefined,
+                      "Attempt Threshold",
+                    )}
+                  </Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={thresholdInput}
+                    onChange={(e) => setThresholdInput(e.target.value)}
+                    onBlur={handleSaveThreshold}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSaveThreshold();
+                      }
+                    }}
+                    className="bg-slate-950 border-slate-800 font-mono text-sm"
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    {t(
+                      "apps.webDefenderThresholdDesc",
+                      undefined,
+                      "Number of sensitive path attempts required to trigger an automatic IP block.",
+                    )}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-300">
+                    {t(
+                      "apps.webDefenderWindow",
+                      undefined,
+                      "Detection Window (seconds)",
+                    )}
+                  </Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={windowInput}
+                    onChange={(e) => setWindowInput(e.target.value)}
+                    onBlur={handleSaveWindow}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSaveWindow();
+                      }
+                    }}
+                    className="bg-slate-950 border-slate-800 font-mono text-sm"
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    {t(
+                      "apps.webDefenderWindowDesc",
+                      undefined,
+                      "Time window in seconds within which the threshold must be reached.",
+                    )}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-300">
+                    {t(
+                      "apps.webDefenderBanDuration",
+                      undefined,
+                      "Ban Duration (minutes)",
+                    )}
+                  </Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={banDurationMinutesInput}
+                    onChange={(e) => setBanDurationMinutesInput(e.target.value)}
+                    onBlur={handleSaveBanDuration}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSaveBanDuration();
+                      }
+                    }}
+                    className="bg-slate-950 border-slate-800 font-mono text-sm"
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    {t(
+                      "apps.webDefenderBanDurationDesc",
+                      undefined,
+                      "Duration in minutes that the offending IP remains blocked from all requests.",
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

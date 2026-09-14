@@ -394,6 +394,21 @@ export const ko = {
       "아웃바운드 연결 모니터링 비활성화됨",
     webDefenderOutboundDisabledAlertDesc:
       "설정에서 아웃바운드 연결 모니터링이 꺼져 있습니다. 애플리케이션의 네트워크 요청이 가로채지거나 기록되지 않습니다.",
+    webDefenderSensitivePaths: "민감한 경로 탐지",
+    webDefenderSensitivePathsDesc:
+      "민감한 파일, 설정, 자격 증명 및 엔드포인트에 대한 접근 시도를 감지하고 차단합니다.",
+    webDefenderAutoBlockSensitivePaths: "반복 탐색 시 IP 자동 차단",
+    webDefenderAutoBlockSensitivePathsDesc:
+      "짧은 시간 내에 민감한 경로 접근을 반복 시도한 IP를 애플리케이션 전체에서 자동으로 차단합니다.",
+    webDefenderThreshold: "시도 횟수 임계값",
+    webDefenderThresholdDesc:
+      "자동 IP 차단을 유발하는 데 필요한 민감한 경로 탐색 시도 횟수입니다.",
+    webDefenderWindow: "감지 시간 범위(초)",
+    webDefenderWindowDesc:
+      "임계값에 도달해야 하는 초 단위의 시간 창입니다.",
+    webDefenderBanDuration: "차단 기간(분)",
+    webDefenderBanDurationDesc:
+      "해당 IP가 모든 요청에서 차단되는 시간(분)입니다.",
     passwordManagerTitle: "비밀번호 관리자",
     passwordManagerDesc:
       "AES-256 제로 지식 암호화로 비밀번호를 안전하게 저장하고 관리합니다.",

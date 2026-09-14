@@ -397,6 +397,21 @@ export const ja = {
       "アウトバウンド接続モニタリングが無効です",
     webDefenderOutboundDisabledAlertDesc:
       "アウトバウンド接続モニタリングは設定で無効になっています。アプリケーションからのネットワークリクエストは傍受または記録されません。",
+    webDefenderSensitivePaths: "機密パスのプローブ検出",
+    webDefenderSensitivePathsDesc:
+      "機密ファイル、設定、認証情報、エンドポイントへのアクセス試行を検出してブロックします。",
+    webDefenderAutoBlockSensitivePaths: "プローブ反復時のIP自動ブロック",
+    webDefenderAutoBlockSensitivePathsDesc:
+      "短時間内に機密パスへのアクセス試行を繰り返したIPを、アプリ全体で自動的にブロックします。",
+    webDefenderThreshold: "試行回数の閾値",
+    webDefenderThresholdDesc:
+      "自動IPブロックを発動するために必要な機密パスプローブの試行回数。",
+    webDefenderWindow: "検出ウィンドウ（秒）",
+    webDefenderWindowDesc:
+      "閾値に達する必要がある秒単位の時間枠。",
+    webDefenderBanDuration: "ブロック期間（分）",
+    webDefenderBanDurationDesc:
+      "違反IPがすべてのリクエストからブロックされ続ける分数。",
     passwordManagerTitle: "パスワードマネージャー",
     passwordManagerDesc:
       "AES-256ゼロ知識暗号化でパスワードを安全に保存・管理します。",

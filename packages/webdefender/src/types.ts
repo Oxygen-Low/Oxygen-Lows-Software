@@ -7,6 +7,10 @@ export interface DefenderConfig {
   syncIntervalMs?: number; // Config sync interval in milliseconds (default 60000ms, 0 to disable)
   excludePaths?: (string | RegExp)[]; // Paths completely bypassed by Defender middleware
   skipBodyScanPaths?: (string | RegExp)[]; // Paths where body injection scanning is skipped (e.g. AI chat, encrypted data)
+  autoBlockSensitivePaths?: boolean;
+  sensitivePathThreshold?: number;
+  sensitivePathWindowSeconds?: number;
+  sensitivePathBanDurationSeconds?: number;
   onBlocked?: (event: BlockedEvent) => void;
   onError?: (error: Error) => void;
 }
@@ -57,6 +61,10 @@ export interface AppConfig {
   blockPathTraversal: boolean;
   blockSsrf: boolean;
   blockSensitivePaths: boolean;
+  autoBlockSensitivePaths: boolean;
+  sensitivePathThreshold: number;
+  sensitivePathWindowSeconds: number;
+  sensitivePathBanDurationSeconds: number;
   blockTor: boolean;
   blockVpn: boolean;
   blockCountries: string[];

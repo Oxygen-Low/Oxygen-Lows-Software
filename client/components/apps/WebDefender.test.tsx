@@ -29,6 +29,11 @@ describe("Defender getAppConfig", () => {
     expect(configNull.block_http_exploit).toBe(true);
     expect(configNull.block_botnets).toBe(true);
     expect(configNull.events_limit).toBe(50);
+    expect(configNull.block_sensitive_paths).toBe(true);
+    expect(configNull.auto_block_sensitive_paths).toBe(true);
+    expect(configNull.sensitive_path_threshold).toBe(3);
+    expect(configNull.sensitive_path_window_seconds).toBe(20);
+    expect(configNull.sensitive_path_ban_duration_seconds).toBe(600);
 
     const configUndefined = getAppConfig(undefined);
     expect(configUndefined.block_sql_injection).toBe(true);
@@ -39,6 +44,11 @@ describe("Defender getAppConfig", () => {
     expect(configUndefined.block_http_exploit).toBe(true);
     expect(configUndefined.block_botnets).toBe(true);
     expect(configUndefined.events_limit).toBe(50);
+    expect(configUndefined.block_sensitive_paths).toBe(true);
+    expect(configUndefined.auto_block_sensitive_paths).toBe(true);
+    expect(configUndefined.sensitive_path_threshold).toBe(3);
+    expect(configUndefined.sensitive_path_window_seconds).toBe(20);
+    expect(configUndefined.sensitive_path_ban_duration_seconds).toBe(600);
   });
 
   it("extracts config correctly from a single object (1-to-1 relation)", () => {

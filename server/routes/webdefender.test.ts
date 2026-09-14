@@ -132,6 +132,11 @@ describe("WebDefender with local/migrated accounts", () => {
           block_sql_injection: false,
           block_countries: ["KP", "IR"],
           events_limit: 100,
+          block_sensitive_paths: true,
+          auto_block_sensitive_paths: true,
+          sensitive_path_threshold: 3,
+          sensitive_path_window_seconds: 20,
+          sensitive_path_ban_duration_seconds: 600,
         }),
       },
     );
@@ -141,6 +146,11 @@ describe("WebDefender with local/migrated accounts", () => {
     expect(json.block_sql_injection).toBe(false);
     expect(json.block_countries).toEqual(["KP", "IR"]);
     expect(json.events_limit).toBe(100);
+    expect(json.block_sensitive_paths).toBe(true);
+    expect(json.auto_block_sensitive_paths).toBe(true);
+    expect(json.sensitive_path_threshold).toBe(3);
+    expect(json.sensitive_path_window_seconds).toBe(20);
+    expect(json.sensitive_path_ban_duration_seconds).toBe(600);
   });
 
   it("should verify the API key from the NPM package endpoint", async () => {

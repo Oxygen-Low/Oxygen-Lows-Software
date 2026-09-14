@@ -404,6 +404,21 @@ export const es = {
       "Monitoreo de conexiones salientes deshabilitado",
     webDefenderOutboundDisabledAlertDesc:
       "El monitoreo de conexiones salientes está desactivado en la configuración. Las solicitudes de red de su aplicación no se interceptan ni se registran.",
+    webDefenderSensitivePaths: "Sondeo de rutas confidenciales",
+    webDefenderSensitivePathsDesc:
+      "Detecta y bloquea intentos de acceder a archivos confidenciales, configuraciones, credenciales y extremos protegidos.",
+    webDefenderAutoBlockSensitivePaths: "Bloqueo automático de IP por sondeos repetidos",
+    webDefenderAutoBlockSensitivePathsDesc:
+      "Bloquea automáticamente una IP en todas las solicitudes tras repetidos intentos de acceso a rutas confidenciales.",
+    webDefenderThreshold: "Umbral de intentos",
+    webDefenderThresholdDesc:
+      "Número de intentos de acceso a rutas confidenciales necesarios para activar un bloqueo temporal.",
+    webDefenderWindow: "Ventana de detección (segundos)",
+    webDefenderWindowDesc:
+      "Ventana de tiempo en segundos dentro de la cual se debe alcanzar el umbral.",
+    webDefenderBanDuration: "Duración del bloqueo (minutos)",
+    webDefenderBanDurationDesc:
+      "Tiempo en minutos que la IP infractora permanecerá bloqueada para todas las solicitudes.",
     passwordManagerTitle: "Gestor de Contraseñas",
     passwordManagerDesc:
       "Almacena y gestiona contraseñas de forma segura con cifrado de conocimiento cero AES-256.",

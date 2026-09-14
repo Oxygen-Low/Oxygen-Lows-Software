@@ -58,6 +58,8 @@ export class DefenderClient {
   private threatActorDetector: ThreatActorDetector;
   private outboundMonitor: OutboundMonitor;
   private rateLimiter: RateLimiter;
+  private temporaryBans = new Map<string, { expiresAt: number; reason: string }>();
+  private sensitivePathAttempts = new Map<string, number[]>();
   private apiUrl: string;
   private isInitialized = false;
   private configSyncIntervalId?: ReturnType<typeof setInterval>;
@@ -134,6 +136,22 @@ export class DefenderClient {
       blockPathTraversal: cfg.block_path_traversal ?? true,
       blockSsrf: cfg.block_ssrf ?? true,
       blockSensitivePaths: cfg.block_sensitive_paths ?? true,
+      autoBlockSensitivePaths:
+        this.config.autoBlockSensitivePaths ??
+        cfg.auto_block_sensitive_paths ??
+        true,
+      sensitivePathThreshold:
+        this.config.sensitivePathThreshold ??
+        cfg.sensitive_path_threshold ??
+        3,
+      sensitivePathWindowSeconds:
+        this.config.sensitivePathWindowSeconds ??
+        cfg.sensitive_path_window_seconds ??
+        20,
+      sensitivePathBanDurationSeconds:
+        this.config.sensitivePathBanDurationSeconds ??
+        cfg.sensitive_path_ban_duration_seconds ??
+        600,
       blockTor: cfg.block_tor ?? true,
       blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
@@ -467,6 +485,7 @@ export class DefenderClient {
     }
 
     const { ip, method, path, query, body, headers, userAgent } = req;
+    const cleanIp = (ip || "").trim().toLowerCase();
 
     let isBlocked = false;
     let blockReason = "";
@@ -477,6 +496,18 @@ export class DefenderClient {
       blockReason = reason;
       isBlocked = true;
     };
+
+    // 0a. Temporary IP bans (e.g. repeated sensitive path probe violations)
+    if (!isBlocked && cleanIp) {
+      const ban = this.temporaryBans.get(cleanIp);
+      if (ban) {
+        if (Date.now() < ban.expiresAt) {
+          fail("ip_block", ban.reason);
+        } else {
+          this.temporaryBans.delete(cleanIp);
+        }
+      }
+    }
 
     // 0. Platform-wide administrator IP bans
     if (
@@ -647,6 +678,35 @@ export class DefenderClient {
           "sensitive_path",
           `Sensitive path probe detected: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`,
         );
+
+        if (this.appConfig.autoBlockSensitivePaths && cleanIp) {
+          const now = Date.now();
+          const windowMs =
+            (this.appConfig.sensitivePathWindowSeconds ?? 20) * 1000;
+          const threshold = this.appConfig.sensitivePathThreshold ?? 3;
+          const banDurationSeconds =
+            this.appConfig.sensitivePathBanDurationSeconds ?? 600;
+
+          const recentAttempts = (
+            this.sensitivePathAttempts.get(cleanIp) || []
+          ).filter((ts) => now - ts <= windowMs);
+          recentAttempts.push(now);
+
+          if (recentAttempts.length >= threshold) {
+            const durationMinutes = Math.round(banDurationSeconds / 60);
+            const durationStr =
+              durationMinutes >= 1
+                ? `${durationMinutes} minute${durationMinutes === 1 ? "" : "s"}`
+                : `${banDurationSeconds} seconds`;
+            this.temporaryBans.set(cleanIp, {
+              expiresAt: now + banDurationSeconds * 1000,
+              reason: `IP temporarily blocked for ${durationStr}: repeated sensitive path attempts`,
+            });
+            this.sensitivePathAttempts.delete(cleanIp);
+          } else {
+            this.sensitivePathAttempts.set(cleanIp, recentAttempts);
+          }
+        }
       }
     }
 
@@ -719,5 +779,7 @@ export class DefenderClient {
     this.threatActorDetector.destroy();
     this.outboundMonitor.uninstall();
     this.rateLimiter.destroy();
+    this.temporaryBans.clear();
+    this.sensitivePathAttempts.clear();
   }
 }

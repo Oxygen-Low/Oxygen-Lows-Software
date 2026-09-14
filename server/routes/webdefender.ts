@@ -624,6 +624,11 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     block_shell_injection: true,
     block_path_traversal: true,
     block_ssrf: true,
+    block_sensitive_paths: true,
+    auto_block_sensitive_paths: true,
+    sensitive_path_threshold: 3,
+    sensitive_path_window_seconds: 20,
+    sensitive_path_ban_duration_seconds: 600,
     block_tor: true,
     block_vpn: true,
     block_countries: [],
@@ -759,6 +764,11 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "block_shell_injection",
     "block_path_traversal",
     "block_ssrf",
+    "block_sensitive_paths",
+    "auto_block_sensitive_paths",
+    "sensitive_path_threshold",
+    "sensitive_path_window_seconds",
+    "sensitive_path_ban_duration_seconds",
     "block_tor",
     "block_vpn",
     "block_countries",
@@ -788,6 +798,12 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
           1000,
           Math.max(1, parseInt(body[key]) || 50),
         );
+      } else if (key === "sensitive_path_threshold") {
+        updatePayload[key] = Math.max(1, parseInt(body[key]) || 3);
+      } else if (key === "sensitive_path_window_seconds") {
+        updatePayload[key] = Math.max(1, parseInt(body[key]) || 20);
+      } else if (key === "sensitive_path_ban_duration_seconds") {
+        updatePayload[key] = Math.max(1, parseInt(body[key]) || 600);
       } else {
         updatePayload[key] = body[key];
       }

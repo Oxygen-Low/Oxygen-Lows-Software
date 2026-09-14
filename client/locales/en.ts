@@ -400,6 +400,21 @@ export const en = {
       "Outbound Connection Monitoring Disabled",
     webDefenderOutboundDisabledAlertDesc:
       "Outbound connection monitoring is turned off in Settings. Network requests from your application are not being intercepted or logged.",
+    webDefenderSensitivePaths: "Sensitive Path Probing",
+    webDefenderSensitivePathsDesc:
+      "Detect and block attempts to access sensitive files, config, credentials, and endpoints.",
+    webDefenderAutoBlockSensitivePaths: "Auto-block IP on Repeated Probes",
+    webDefenderAutoBlockSensitivePathsDesc:
+      "Automatically ban an IP across all application requests after repeated sensitive path attempts within a short time window.",
+    webDefenderThreshold: "Attempt Threshold",
+    webDefenderThresholdDesc:
+      "Number of sensitive path attempts required to trigger an automatic IP block.",
+    webDefenderWindow: "Detection Window (seconds)",
+    webDefenderWindowDesc:
+      "Time window in seconds within which the threshold must be reached.",
+    webDefenderBanDuration: "Ban Duration (minutes)",
+    webDefenderBanDurationDesc:
+      "Duration in minutes that the offending IP remains blocked from all requests.",
     passwordManagerTitle: "Password Manager",
     passwordManagerDesc:
       "Securely store and manage passwords with AES-256 zero-knowledge encryption.",

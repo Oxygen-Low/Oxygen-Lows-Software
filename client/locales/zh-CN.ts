@@ -373,6 +373,21 @@ export const zhCN = {
     webDefenderOutboundDisabledAlert: "出站连接监控已禁用",
     webDefenderOutboundDisabledAlertDesc:
       "出站连接监控已在设置中关闭。来自应用程序的网络请求不会被拦截或记录。",
+    webDefenderSensitivePaths: "敏感路径探测",
+    webDefenderSensitivePathsDesc:
+      "检测并阻止针对敏感文件、配置文件、凭据及端点的探测尝试。",
+    webDefenderAutoBlockSensitivePaths: "重复探测时自动封禁 IP",
+    webDefenderAutoBlockSensitivePathsDesc:
+      "在短时间内多次尝试访问敏感路径时，自动在整个应用程序中封禁该 IP。",
+    webDefenderThreshold: "尝试次数阈值",
+    webDefenderThresholdDesc:
+      "触发自动 IP 封禁所需的敏感路径探测尝试次数。",
+    webDefenderWindow: "检测窗口（秒）",
+    webDefenderWindowDesc:
+      "必须达到阈值的秒数时间窗口。",
+    webDefenderBanDuration: "封禁时长（分钟）",
+    webDefenderBanDurationDesc:
+      "违规 IP 在所有请求中被封禁的持续时长（分钟）。",
     passwordManagerTitle: "密码管理器",
     passwordManagerDesc: "使用 AES-256 零知识加密安全存储和管理密码。",
     gameLibraryTitle: "游戏库",
