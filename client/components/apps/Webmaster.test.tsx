@@ -67,7 +67,7 @@ describe("WebmasterApp", () => {
     expect(screen.getByPlaceholderText("https://example.com")).toBeDefined();
   });
 
-  it("displays Queued ([position]) badge instead of Crawling for queued/indexing sites", async () => {
+  it("displays Crawling badge for actively crawling sites and Queued ([position]) for queued sites", async () => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/api/webmaster/sites")) {
         return Promise.resolve({
@@ -122,8 +122,7 @@ describe("WebmasterApp", () => {
     }) as any;
 
     render(<WebmasterApp />);
-    expect(await screen.findByText("Queued (1)")).toBeDefined();
+    expect(await screen.findByText("Crawling")).toBeDefined();
     expect(await screen.findByText("Queued (2)")).toBeDefined();
-    expect(screen.queryByText("Crawling")).toBeNull();
   });
 });

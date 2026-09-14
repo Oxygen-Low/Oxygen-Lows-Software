@@ -125,6 +125,26 @@ export function WebmasterApp() {
   sitesRef.current = sites;
   const adminSitesRef = useRef(adminSites);
   adminSitesRef.current = adminSites;
+  const selectedSiteRef = useRef(selectedSite);
+  selectedSiteRef.current = selectedSite;
+  const isDetailsOpenRef = useRef(isDetailsOpen);
+  isDetailsOpenRef.current = isDetailsOpen;
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  const fetchSitePages = useCallback(async (siteId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/webmaster/sites/${siteId}/pages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSitePages(data.pages || []);
+      }
+    } catch {
+      // ignore
+    }
+  }, [token]);
 
   const fetchSitesAndStats = useCallback(async (isInitial = false) => {
     if (!token) return;
@@ -138,7 +158,13 @@ export function WebmasterApp() {
 
       if (sitesRes.ok) {
         const sitesData = await sitesRes.json();
-        setSites(sitesData.sites || []);
+        const userSites: WebmasterSite[] = sitesData.sites || [];
+        setSites(userSites);
+        setSelectedSite((prev) => {
+          if (!prev) return null;
+          const updated = userSites.find((s) => s.id === prev.id);
+          return updated || prev;
+        });
       }
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -160,7 +186,13 @@ export function WebmasterApp() {
       });
       if (res.ok) {
         const data = await res.json();
-        setAdminSites(data.sites || []);
+        const aSites: WebmasterSite[] = data.sites || [];
+        setAdminSites(aSites);
+        setSelectedSite((prev) => {
+          if (!prev) return null;
+          const updated = aSites.find((s) => s.id === prev.id);
+          return updated || prev;
+        });
       }
     } catch {
       if (isInitial) toast.error("Failed to load admin domains");
@@ -175,6 +207,14 @@ export function WebmasterApp() {
       fetchAdminSites(true);
     }
     const interval = setInterval(() => {
+      const isModalBusy =
+        isDetailsOpenRef.current &&
+        selectedSiteRef.current &&
+        (selectedSiteRef.current.status === "crawling" ||
+          selectedSiteRef.current.status === "pending" ||
+          (selectedSiteRef.current.queuePosition !== undefined &&
+            selectedSiteRef.current.queuePosition !== null));
+
       const hasCrawlingUser = sitesRef.current.some(
         (s) =>
           s.status === "crawling" ||
@@ -190,15 +230,24 @@ export function WebmasterApp() {
           Boolean(s.nextCrawlScheduledAt)
       );
 
-      if (hasCrawlingUser) {
+      if (hasCrawlingUser || isModalBusy) {
         fetchSitesAndStats(false);
       }
-      if (isAdmin && (hasCrawlingUser || hasCrawlingAdmin)) {
+      if (isAdmin && (hasCrawlingUser || hasCrawlingAdmin || isModalBusy)) {
         fetchAdminSites(false);
       }
-    }, 3000);
+      if (isDetailsOpenRef.current && selectedSiteRef.current?.status === "crawling") {
+        fetchSitePages(selectedSiteRef.current.id);
+      }
+    }, 1500);
     return () => clearInterval(interval);
-  }, [fetchSitesAndStats, fetchAdminSites, isAdmin]);
+  }, [fetchSitesAndStats, fetchAdminSites, fetchSitePages, isAdmin]);
+
+  useEffect(() => {
+    if (isDetailsOpen && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [selectedSite?.logs?.length, isDetailsOpen]);
 
   const handleSubmitSite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,22 +420,8 @@ export function WebmasterApp() {
     setSelectedSite(site);
     setIsDetailsOpen(true);
     setLoadingPages(true);
-
-    if (token) {
-      try {
-        const res = await fetch(`/api/webmaster/sites/${site.id}/pages`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setSitePages(data.pages || []);
-        }
-      } catch {
-        toast.error("Failed to load indexed pages for this site");
-      } finally {
-        setLoadingPages(false);
-      }
-    }
+    await fetchSitePages(site.id);
+    setLoadingPages(false);
   };
 
   const copyToClipboard = (text: string, id: string) => {
@@ -408,27 +443,21 @@ export function WebmasterApp() {
         </Badge>
       );
     }
+    if (site.status === "crawling") {
+      return (
+        <Badge className="bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20 gap-1 font-normal">
+          <RotateCw className="w-3 h-3 animate-spin" /> Crawling
+        </Badge>
+      );
+    }
     if (
-      site.status === "crawling" ||
       site.status === "pending" ||
       (site.queuePosition !== undefined && site.queuePosition !== null)
     ) {
-      const pos = site.queuePosition ?? (site.status === "crawling" ? 1 : 1);
-      const isActivelyCrawling = site.status === "crawling" || pos === 1;
+      const pos = site.queuePosition || 1;
       return (
-        <Badge
-          className={`${
-            isActivelyCrawling
-              ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20"
-              : "bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20"
-          } gap-1 font-normal`}
-        >
-          {isActivelyCrawling ? (
-            <RotateCw className="w-3 h-3 animate-spin" />
-          ) : (
-            <Clock className="w-3 h-3" />
-          )}
-          {`Queued (${pos})`}
+        <Badge className="bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 gap-1 font-normal">
+          <Clock className="w-3 h-3" /> Queued ({pos})
         </Badge>
       );
     }
@@ -1071,6 +1100,7 @@ export function WebmasterApp() {
                   ) : (
                     <div className="text-muted-foreground">No logs recorded yet.</div>
                   )}
+                  <div ref={logsEndRef} />
                 </div>
               </div>
             </div>

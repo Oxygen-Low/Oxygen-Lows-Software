@@ -545,17 +545,29 @@ export async function crawlSite(
   const existingPages = isContinuation ? currentIndex.filter((p) => p.siteId === site.id) : [];
   const crawledUrls = new Set<string>(existingPages.map((p) => p.url));
 
-  site.logs.push({
-    timestamp: new Date().toISOString(),
-    message: isContinuation
+  const log = (message: string, level: "info" | "warn" | "error" = "info") => {
+    site.logs.push({
+      timestamp: new Date().toISOString(),
+      message,
+      level,
+    });
+    saveSites(sites);
+  };
+
+  log(
+    isContinuation
       ? `Resuming crawl batch for ${site.domain || site.url} (${existingPages.length} pages already indexed, ${site.pendingUrls?.length || 0} queued)...`
       : `Starting crawl with oxylow bot (contact: ${OXYLOW_CONTACT_EMAIL})...`,
-    level: "info",
-  });
-  saveSites(sites);
+    "info"
+  );
 
   const crawlQueue: string[] = isContinuation ? [...(site.pendingUrls || [])] : [];
   let pagesCrawled = 0;
+
+  const baseIndex = isContinuation
+    ? currentIndex
+    : currentIndex.filter((p) => p.siteId !== site.id);
+  const newIndexedPages: IndexedPage[] = [];
 
   try {
     const parsedStartUrl = await validateCrawlUrl(site.url);
@@ -563,34 +575,18 @@ export async function crawlSite(
     const origin = parsedStartUrl.origin;
 
     // 1. Fetch robots.txt
-    site.logs.push({
-      timestamp: new Date().toISOString(),
-      message: `Fetching robots.txt from ${origin}/robots.txt...`,
-      level: "info",
-    });
+    log(`Fetching robots.txt from ${origin}/robots.txt...`, "info");
     const robots = await getRobotsRules(origin, domain);
-    site.logs.push({
-      timestamp: new Date().toISOString(),
-      message: `Robots.txt parsed. Disallowed paths: ${robots.disallow.length}, Crawl-delay: ${robots.crawlDelayMs}ms`,
-      level: "info",
-    });
+    log(`Robots.txt parsed. Disallowed paths: ${robots.disallow.length}, Crawl-delay: ${robots.crawlDelayMs}ms`, "info");
 
     if (!isContinuation) {
       // 2. Discover from Sitemap if available on fresh crawl
       const sitemapTarget = site.sitemapUrl || `${origin}/sitemap.xml`;
-      site.logs.push({
-        timestamp: new Date().toISOString(),
-        message: `Checking sitemap at ${sitemapTarget}...`,
-        level: "info",
-      });
+      log(`Checking sitemap at ${sitemapTarget}...`, "info");
 
       const sitemapUrls = await parseSitemap(sitemapTarget, domain, robots.crawlDelayMs);
       if (sitemapUrls.length > 0) {
-        site.logs.push({
-          timestamp: new Date().toISOString(),
-          message: `Found ${sitemapUrls.length} URLs in sitemap.`,
-          level: "info",
-        });
+        log(`Found ${sitemapUrls.length} URLs in sitemap.`, "info");
         for (const u of sitemapUrls) {
           if (crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
           if (!crawlQueue.includes(u)) {
@@ -605,11 +601,6 @@ export async function crawlSite(
       }
     }
 
-    const baseIndex = isContinuation
-      ? currentIndex
-      : currentIndex.filter((p) => p.siteId !== site.id);
-    const newIndexedPages: IndexedPage[] = [];
-
     while (
       crawlQueue.length > 0 &&
       pagesCrawled < maxPages &&
@@ -623,30 +614,18 @@ export async function crawlSite(
       try {
         parsedCurrent = await validateCrawlUrl(currentUrl);
       } catch (err: any) {
-        site.logs.push({
-          timestamp: new Date().toISOString(),
-          message: `Skipping ${currentUrl}: ${err.message}`,
-          level: "warn",
-        });
+        log(`Skipping ${currentUrl}: ${err.message}`, "warn");
         continue;
       }
 
       // Check robots.txt disallow rules
       if (!isPathAllowed(parsedCurrent.pathname, robots)) {
-        site.logs.push({
-          timestamp: new Date().toISOString(),
-          message: `Blocked by robots.txt: ${parsedCurrent.pathname}`,
-          level: "warn",
-        });
+        log(`Blocked by robots.txt: ${parsedCurrent.pathname}`, "warn");
         continue;
       }
 
       // Enforce delay between requests to this domain
-      site.logs.push({
-        timestamp: new Date().toISOString(),
-        message: `Requesting ${currentUrl} (enforcing domain delay)...`,
-        level: "info",
-      });
+      log(`Requesting ${currentUrl} (enforcing domain delay)...`, "info");
       await waitForDomainSlot(domain, robots.crawlDelayMs);
 
       try {
@@ -666,18 +645,14 @@ export async function crawlSite(
 
         const contentType = res.headers.get("content-type") || "";
         if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
-          site.logs.push({
-            timestamp: new Date().toISOString(),
-            message: `Skipping non-HTML page ${currentUrl} (${contentType})`,
-            level: "info",
-          });
+          log(`Skipping non-HTML page ${currentUrl} (${contentType})`, "info");
           continue;
         }
 
         const html = await res.text();
         const extracted = extractPageData(html, currentUrl);
 
-        newIndexedPages.push({
+        const pageItem: IndexedPage = {
           id: crypto.randomUUID(),
           siteId: site.id,
           url: currentUrl,
@@ -689,15 +664,19 @@ export async function crawlSite(
           bodyPreview: extracted.bodyPreview,
           favicon: extracted.favicon,
           indexedAt: new Date().toISOString(),
-        });
+        };
+
+        newIndexedPages.push(pageItem);
+        baseIndex.push(pageItem);
+        saveIndex(baseIndex);
 
         pagesCrawled++;
         const totalSoFar = existingPages.length + pagesCrawled;
-        site.logs.push({
-          timestamp: new Date().toISOString(),
-          message: `Indexed (${pagesCrawled}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
-          level: "info",
-        });
+        site.pageCount = totalSoFar;
+        log(
+          `Indexed (${pagesCrawled}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
+          "info"
+        );
 
         // Add internal links to queue up to MAX_SITE_INDEX_PAGES
         for (const link of extracted.links) {
@@ -707,17 +686,9 @@ export async function crawlSite(
           }
         }
       } catch (reqErr: any) {
-        site.logs.push({
-          timestamp: new Date().toISOString(),
-          message: `Error fetching ${currentUrl}: ${reqErr.message}`,
-          level: "error",
-        });
+        log(`Error fetching ${currentUrl}: ${reqErr.message}`, "error");
       }
     }
-
-    // Save updated index
-    baseIndex.push(...newIndexedPages);
-    saveIndex(baseIndex);
 
     const totalIndexed = existingPages.length + newIndexedPages.length;
     site.pageCount = totalIndexed;
@@ -730,12 +701,10 @@ export async function crawlSite(
       site.pendingUrls = remainingUrls.slice(0, MAX_SITE_INDEX_PAGES - totalIndexed);
       site.nextCrawlScheduledAt = new Date(Date.now() + BATCH_CRAWL_DELAY_MS).toISOString();
       site.status = totalIndexed > 0 ? "indexed" : "error";
-      site.logs.push({
-        timestamp: new Date().toISOString(),
-        message: `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${site.pendingUrls.length} pages remaining. Waiting 10 minutes before re-queuing next batch.`,
-        level: "info",
-      });
-      saveSites(sites);
+      log(
+        `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${site.pendingUrls.length} pages remaining. Waiting 10 minutes before re-queuing next batch.`,
+        "info"
+      );
 
       // Schedule re-queuing in 10 minutes
       cancelScheduledCrawl(site.id);
@@ -755,27 +724,19 @@ export async function crawlSite(
       site.nextCrawlScheduledAt = null;
       cancelScheduledCrawl(site.id);
       site.status = totalIndexed > 0 ? "indexed" : "error";
-      site.logs.push({
-        timestamp: new Date().toISOString(),
-        message:
-          totalIndexed >= MAX_SITE_INDEX_PAGES
-            ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
-            : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
-        level: "info",
-      });
-      saveSites(sites);
+      log(
+        totalIndexed >= MAX_SITE_INDEX_PAGES
+          ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
+          : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
+        "info"
+      );
     }
 
     return { success: totalIndexed > 0, pagesCrawled };
   } catch (err: any) {
     site.status = site.pageCount > 0 ? "indexed" : "error";
     site.error = err.message || "Crawl failed";
-    site.logs.push({
-      timestamp: new Date().toISOString(),
-      message: `Crawl aborted with error: ${site.error}`,
-      level: "error",
-    });
-    saveSites(sites);
+    log(`Crawl aborted with error: ${site.error}`, "error");
     return { success: false, pagesCrawled, error: err.message };
   }
 }
