@@ -32,6 +32,10 @@ import {
   setDefaultDomainDelayMs,
   MAX_SITE_INDEX_PAGES,
   resumeInterruptedCrawls,
+  isJsOrCookieChallenge,
+  setPlaywrightFirefox,
+  saveIndex,
+  getIndex,
 } from "../lib/oxylowCrawler";
 
 describe("Webmaster Router & DNS Verification", () => {
@@ -545,5 +549,137 @@ describe("Webmaster Router & DNS Verification", () => {
     expect(resumeInterruptedCrawls()).toBe(0);
 
     clearCrawlQueue();
+  });
+
+  describe("JavaScript / Cookie Challenge Detection & Firefox Headless Playwright Rendering", () => {
+    it("correctly identifies JavaScript and cookie challenge pages", () => {
+      expect(
+        isJsOrCookieChallenge("<html><body>Enable JavaScript and cookies to continue</body></html>")
+      ).toBe(true);
+      expect(
+        isJsOrCookieChallenge("<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>")
+      ).toBe(true);
+      expect(
+        isJsOrCookieChallenge("<html><body><noscript>Please enable JavaScript to view this website</noscript></body></html>")
+      ).toBe(true);
+      expect(
+        isJsOrCookieChallenge("<html><body>Cloudflare Turnstile verification required</body></html>", "", 403)
+      ).toBe(true);
+      expect(
+        isJsOrCookieChallenge("<html><head><title>Welcome</title></head><body><h1>Hello World</h1><p>Normal article about baking bread.</p></body></html>")
+      ).toBe(false);
+    });
+
+    it("defers cookie/JS challenge pages and renders them with Firefox Headless to continue indexing", async () => {
+      setDefaultDomainDelayMs(0);
+      setBatchCrawlDelayMs(1000);
+      saveIndex([]);
+
+      const mockPage = {
+        goto: vi.fn().mockResolvedValue(undefined),
+        waitForTimeout: vi.fn().mockResolvedValue(undefined),
+        content: vi.fn().mockResolvedValue(
+          '<html><head><title>Rendered App Page</title></head><body><h1>Welcome to Rendered App</h1><a href="https://spa-site.com/rendered-subpage">Subpage Link</a></body></html>'
+        ),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const mockContext = {
+        newPage: vi.fn().mockResolvedValue(mockPage),
+      };
+
+      const mockBrowser = {
+        newContext: vi.fn().mockResolvedValue(mockContext),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const mockFirefox = {
+        launch: vi.fn().mockResolvedValue(mockBrowser),
+      };
+
+      setPlaywrightFirefox(mockFirefox);
+
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("/robots.txt")) {
+          return new Response("User-agent: *\nAllow: /\nCrawl-delay: 0\n", {
+            status: 200,
+            headers: { "content-type": "text/plain" },
+          });
+        }
+        if (url === "https://spa-site.com" || url === "https://spa-site.com/") {
+          // Returns a challenge page on initial HTTP fetch
+          return new Response(
+            "<html><head><title>Just a moment...</title></head><body>Enable JavaScript and cookies to continue</body></html>",
+            {
+              status: 200,
+              headers: { "content-type": "text/html" },
+            }
+          );
+        }
+        if (url === "https://spa-site.com/rendered-subpage") {
+          // Standard page discovered from headless render
+          return new Response(
+            "<html><head><title>Rendered Subpage</title></head><body><p>Discovered from rendered page!</p></body></html>",
+            {
+              status: 200,
+              headers: { "content-type": "text/html" },
+            }
+          );
+        }
+        return new Response("Not found", { status: 404 });
+      }) as any;
+
+      try {
+        vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+          id: "1",
+          email: "admin@oxygenlow.com",
+          role: "admin",
+        } as any);
+
+        const res = await webmasterRouter.fetch(
+          new Request("http://localhost/admin/sites", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer test-admin-token",
+            },
+            body: JSON.stringify({ url: "https://spa-site.com" }),
+          })
+        );
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        const siteId = data.site.id;
+
+        // Wait for crawl to complete (including headless render and continuing indexing for the new link)
+        await new Promise((r) => setTimeout(r, 120));
+
+        // Firefox launch should have been invoked
+        expect(mockFirefox.launch).toHaveBeenCalledWith(expect.objectContaining({ headless: true }));
+        expect(mockPage.goto).toHaveBeenCalledWith(expect.stringContaining("https://spa-site.com"), expect.any(Object));
+
+        const sites = getSites();
+        const site = sites.find((s) => s.id === siteId);
+        expect(site).toBeDefined();
+        // Both the rendered page and the newly discovered subpage were indexed!
+        expect(site?.pageCount).toBe(2);
+
+        const index = getIndex();
+        const renderedEntry = index.find((p) => p.url.startsWith("https://spa-site.com") && !p.url.includes("subpage"));
+        expect(renderedEntry?.title).toBe("Rendered App Page");
+        expect(renderedEntry?.headings).toContain("Welcome to Rendered App");
+
+        const subpageEntry = index.find((p) => p.url === "https://spa-site.com/rendered-subpage");
+        expect(subpageEntry?.title).toBe("Rendered Subpage");
+
+        // Verify crawl logs reflect deferred queuing and headless rendering
+        const logs = site?.logs || [];
+        expect(logs.some((l) => l.message.includes("Queued for Firefox Headless rendering"))).toBe(true);
+        expect(logs.some((l) => l.message.includes("Indexed via Firefox Headless"))).toBe(true);
+      } finally {
+        global.fetch = originalFetch;
+        clearCrawlQueue();
+      }
+    });
   });
 });

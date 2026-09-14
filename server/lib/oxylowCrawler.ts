@@ -3,6 +3,12 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { lookup, resolveTxt } from "node:dns/promises";
 import { isPrivateIP, assertPublicHostname } from "./safeAiUrl.ts";
+import { firefox } from "playwright";
+
+export let playwrightFirefox: any = firefox;
+export function setPlaywrightFirefox(customFirefox: any) {
+  playwrightFirefox = customFirefox;
+}
 
 export const DATA_DIR = path.join(process.cwd(), "Data");
 export const SITES_FILE = path.join(DATA_DIR, "webmaster_sites.json");
@@ -544,6 +550,203 @@ export function isCrawlScheduled(siteId: string): boolean {
 }
 
 /**
+ * Detects if a page indicates a requirement for JavaScript or cookies (e.g. anti-bot challenge, Cloudflare, Turnstile, or SPA barrier).
+ */
+export function isJsOrCookieChallenge(html: string, title = "", status = 200): boolean {
+  if (status === 403 || status === 503) {
+    const lower = (html + " " + title).toLowerCase();
+    if (
+      lower.includes("cookie") ||
+      lower.includes("javascript") ||
+      lower.includes("challenge") ||
+      lower.includes("cloudflare") ||
+      lower.includes("turnstile") ||
+      lower.includes("just a moment") ||
+      lower.includes("attention required") ||
+      lower.includes("checking your browser")
+    ) {
+      return true;
+    }
+  }
+
+  const combined = (title + " " + html).toLowerCase();
+
+  const challengePatterns = [
+    /enable\s+javascript\s+and\s+cookies/i,
+    /enable\s+cookies\s+and\s+javascript/i,
+    /enable\s+javascript\s+or\s+cookies/i,
+    /enable\s+cookies\s+or\s+javascript/i,
+    /enable\s+javascript\s+to\s+continue/i,
+    /enable\s+cookies\s+to\s+continue/i,
+    /please\s+enable\s+(?:javascript|cookies)/i,
+    /turn\s+on\s+javascript/i,
+    /requires\s+javascript/i,
+    /requires\s+cookies/i,
+    /cookies\s+are\s+required/i,
+    /javascript\s+is\s+required/i,
+    /need\s+to\s+enable\s+javascript/i,
+    /need\s+to\s+enable\s+cookies/i,
+    /javascript\s+must\s+be\s+enabled/i,
+    /cookies\s+must\s+be\s+enabled/i,
+    /javascript\s+is\s+disabled/i,
+    /cookies\s+are\s+disabled/i,
+    /checking\s+your\s+browser\s+before\s+accessing/i,
+    /just\s+a\s+moment\.\.\./i,
+    /attention\s+required!\s*\|\s*cloudflare/i,
+    /cf-browser-verification/i,
+    /ddos\s+protection\s+by\s+cloudflare/i,
+  ];
+
+  for (const pattern of challengePatterns) {
+    if (pattern.test(combined)) {
+      return true;
+    }
+  }
+
+  // Check <noscript> elements specifically mentioning cookies or javascript
+  const noscriptRegex = /<noscript[^>]*>([\s\S]*?)<\/noscript>/gi;
+  let nsMatch: RegExpExecArray | null;
+  while ((nsMatch = noscriptRegex.exec(html)) !== null) {
+    const nsContent = nsMatch[1].toLowerCase();
+    if (
+      (nsContent.includes("javascript") || nsContent.includes("cookie")) &&
+      (nsContent.includes("enable") ||
+        nsContent.includes("require") ||
+        nsContent.includes("need") ||
+        nsContent.includes("turn on") ||
+        nsContent.includes("disabled"))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export interface RenderWithFirefoxOptions {
+  urls: string[];
+  domain: string;
+  siteId: string;
+  maxPages: number;
+  existingTotal: number;
+  abortSignal: AbortSignal;
+  log: (msg: string, level?: "info" | "warn" | "error", immediate?: boolean) => void;
+  mutateSite: (fn: (currentSite: WebmasterSite) => void, immediate?: boolean) => WebmasterSite | null;
+  onPageIndexed: (pageItem: IndexedPage) => void;
+  onNewLinksDiscovered: (links: string[]) => void;
+  currentCrawledCount: () => number;
+}
+
+/**
+ * Renders deferred pages using Firefox Headless and Playwright, extracting dynamic content and internal links.
+ */
+export async function renderWithFirefoxHeadless(options: RenderWithFirefoxOptions): Promise<number> {
+  const {
+    urls,
+    domain,
+    siteId,
+    maxPages,
+    existingTotal,
+    abortSignal,
+    log,
+    mutateSite,
+    onPageIndexed,
+    onNewLinksDiscovered,
+    currentCrawledCount,
+  } = options;
+
+  let renderedCount = 0;
+  let browser: any = null;
+
+  try {
+    log(`Launching Firefox Headless with Playwright for dynamic page rendering...`, "info");
+    browser = await playwrightFirefox.launch({
+      headless: true,
+    });
+
+    const context = await browser.newContext({
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
+      viewport: { width: 1280, height: 800 },
+    });
+
+    for (const url of urls) {
+      if (abortSignal.aborted) break;
+      if (currentCrawledCount() >= maxPages) break;
+      if (existingTotal + currentCrawledCount() >= MAX_SITE_INDEX_PAGES) break;
+
+      log(`Rendering ${url} in Firefox Headless...`, "info");
+      let page: any = null;
+      try {
+        page = await context.newPage();
+        await page.goto(url, {
+          waitUntil: "domcontentloaded",
+          timeout: 20000,
+        });
+
+        if (typeof page.waitForTimeout === "function") {
+          await page.waitForTimeout(1500).catch(() => {});
+        }
+
+        const renderedHtml = await page.content();
+        const extracted = extractPageData(renderedHtml, url);
+
+        if (isJsOrCookieChallenge(renderedHtml, extracted.title, 200)) {
+          log(
+            `Page ${url} still requires cookies or JavaScript interaction after Firefox Headless render; skipping.`,
+            "warn"
+          );
+          continue;
+        }
+
+        const pageItem: IndexedPage = {
+          id: crypto.randomUUID(),
+          siteId,
+          url,
+          domain,
+          title: extracted.title,
+          description: extracted.description,
+          headings: extracted.headings,
+          keywords: extracted.keywords,
+          bodyPreview: extracted.bodyPreview,
+          favicon: extracted.favicon,
+          indexedAt: new Date().toISOString(),
+        };
+
+        onPageIndexed(pageItem);
+        renderedCount++;
+
+        const totalSoFar = existingTotal + currentCrawledCount();
+        mutateSite((s) => {
+          s.pageCount = totalSoFar;
+          s.logs.push({
+            timestamp: new Date().toISOString(),
+            message: `Indexed via Firefox Headless (${currentCrawledCount()}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
+            level: "info",
+          });
+        }, false);
+
+        onNewLinksDiscovered(extracted.links);
+      } catch (renderErr: any) {
+        log(`Failed to render ${url} with Firefox Headless: ${renderErr.message}`, "warn");
+      } finally {
+        if (page) {
+          await page.close().catch(() => {});
+        }
+      }
+    }
+  } catch (browserErr: any) {
+    log(`Error launching or running Firefox Headless: ${browserErr.message}`, "error");
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
+
+  return renderedCount;
+}
+
+/**
  * Crawls a submitted site with the "oxylow" bot:
  * - Checks robots.txt (supports User-agent: oxylow and Crawl-delay)
  * - Uses sitemap if provided or discovered
@@ -614,6 +817,7 @@ export async function crawlSite(
   const abortSignal = siteAbortController.signal;
 
   const crawlQueue: string[] = isContinuation ? [...(site.pendingUrls || [])] : [];
+  const deferredJsUrls: string[] = [];
   let pagesCrawled = 0;
 
   const baseIndex = isContinuation
@@ -654,108 +858,195 @@ export async function crawlSite(
       }
     }
 
-    while (
-      crawlQueue.length > 0 &&
-      pagesCrawled < maxPages &&
-      existingPages.length + pagesCrawled < MAX_SITE_INDEX_PAGES
-    ) {
-      if (abortSignal.aborted || !activeCrawlingSiteIds.has(site.id)) {
-        return { success: false, pagesCrawled, error: "Crawl cancelled" };
-      }
-      const currentUrl = crawlQueue.shift()!;
-      if (crawledUrls.has(currentUrl)) continue;
-      crawledUrls.add(currentUrl);
+    const processCrawlQueue = async (): Promise<boolean> => {
+      while (
+        crawlQueue.length > 0 &&
+        pagesCrawled < maxPages &&
+        existingPages.length + pagesCrawled < MAX_SITE_INDEX_PAGES
+      ) {
+        if (abortSignal.aborted || !activeCrawlingSiteIds.has(site.id)) {
+          return false;
+        }
+        const currentUrl = crawlQueue.shift()!;
+        if (crawledUrls.has(currentUrl)) continue;
+        crawledUrls.add(currentUrl);
 
-      let parsedCurrent: URL;
-      try {
-        parsedCurrent = await validateCrawlUrl(currentUrl);
-      } catch (err: any) {
-        log(`Skipping ${currentUrl}: ${err.message}`, "warn");
-        continue;
-      }
-
-      // Check robots.txt disallow rules
-      if (!isPathAllowed(parsedCurrent.pathname, robots)) {
-        log(`Blocked by robots.txt: ${parsedCurrent.pathname}`, "warn");
-        continue;
-      }
-
-      // Enforce delay between requests to this domain
-      log(`Requesting ${currentUrl} (enforcing domain delay)...`, "info");
-      await waitForDomainSlot(domain, robots.crawlDelayMs);
-
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
-        const fetchSignal = (AbortSignal as any).any
-          ? (AbortSignal as any).any([controller.signal, abortSignal])
-          : controller.signal;
-
-        const res = await fetch(currentUrl, {
-          method: "GET",
-          headers: {
-            "User-Agent": OXYLOW_USER_AGENT,
-            "From": OXYLOW_CONTACT_EMAIL,
-            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-          },
-          signal: fetchSignal,
-        }).finally(() => clearTimeout(timeout));
-
-        const contentType = res.headers.get("content-type") || "";
-        if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
-          log(`Skipping non-HTML page ${currentUrl} (${contentType})`, "info");
+        let parsedCurrent: URL;
+        try {
+          parsedCurrent = await validateCrawlUrl(currentUrl);
+        } catch (err: any) {
+          log(`Skipping ${currentUrl}: ${err.message}`, "warn");
           continue;
         }
 
-        const html = await res.text();
-        const extracted = extractPageData(html, currentUrl);
-
-        const pageItem: IndexedPage = {
-          id: crypto.randomUUID(),
-          siteId: site.id,
-          url: currentUrl,
-          domain,
-          title: extracted.title,
-          description: extracted.description,
-          headings: extracted.headings,
-          keywords: extracted.keywords,
-          bodyPreview: extracted.bodyPreview,
-          favicon: extracted.favicon,
-          indexedAt: new Date().toISOString(),
-        };
-
-        newIndexedPages.push(pageItem);
-        baseIndex.push(pageItem);
-        cachedIndex = baseIndex;
-
-        pagesCrawled++;
-        const totalSoFar = existingPages.length + pagesCrawled;
-        const pageUpdated = mutateSite((s) => {
-          s.pageCount = totalSoFar;
-          s.logs.push({
-            timestamp: new Date().toISOString(),
-            message: `Indexed (${pagesCrawled}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
-            level: "info",
-          });
-        }, false);
-
-        if (!pageUpdated) {
-          return { success: false, pagesCrawled, error: "Site removed" };
+        // Check robots.txt disallow rules
+        if (!isPathAllowed(parsedCurrent.pathname, robots)) {
+          log(`Blocked by robots.txt: ${parsedCurrent.pathname}`, "warn");
+          continue;
         }
 
-        // Add internal links to queue up to MAX_SITE_INDEX_PAGES
-        for (const link of extracted.links) {
-          if (crawledUrls.size + crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
-          if (!crawledUrls.has(link) && !crawlQueue.includes(link)) {
-            crawlQueue.push(link);
+        // Enforce delay between requests to this domain
+        log(`Requesting ${currentUrl} (enforcing domain delay)...`, "info");
+        await waitForDomainSlot(domain, robots.crawlDelayMs);
+
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 12000);
+          const fetchSignal = (AbortSignal as any).any
+            ? (AbortSignal as any).any([controller.signal, abortSignal])
+            : controller.signal;
+
+          const res = await fetch(currentUrl, {
+            method: "GET",
+            headers: {
+              "User-Agent": OXYLOW_USER_AGENT,
+              "From": OXYLOW_CONTACT_EMAIL,
+              Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.5",
+            },
+            signal: fetchSignal,
+          }).finally(() => clearTimeout(timeout));
+
+          const contentType = res.headers.get("content-type") || "";
+          if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
+            log(`Skipping non-HTML page ${currentUrl} (${contentType})`, "info");
+            continue;
+          }
+
+          const html = await res.text();
+          const extracted = extractPageData(html, currentUrl);
+
+          // Check if page mentions cookies or JavaScript requirements / challenge
+          if (isJsOrCookieChallenge(html, extracted.title, res.status)) {
+            log(
+              `Page mentions cookies or JavaScript requirements (challenge/SPA): "${currentUrl}". Queued for Firefox Headless rendering.`,
+              "warn"
+            );
+            crawledUrls.delete(currentUrl);
+            if (!deferredJsUrls.includes(currentUrl)) {
+              deferredJsUrls.push(currentUrl);
+            }
+            continue;
+          }
+
+          const pageItem: IndexedPage = {
+            id: crypto.randomUUID(),
+            siteId: site.id,
+            url: currentUrl,
+            domain,
+            title: extracted.title,
+            description: extracted.description,
+            headings: extracted.headings,
+            keywords: extracted.keywords,
+            bodyPreview: extracted.bodyPreview,
+            favicon: extracted.favicon,
+            indexedAt: new Date().toISOString(),
+          };
+
+          newIndexedPages.push(pageItem);
+          baseIndex.push(pageItem);
+          cachedIndex = baseIndex;
+
+          pagesCrawled++;
+          const totalSoFar = existingPages.length + pagesCrawled;
+          const pageUpdated = mutateSite((s) => {
+            s.pageCount = totalSoFar;
+            s.logs.push({
+              timestamp: new Date().toISOString(),
+              message: `Indexed (${pagesCrawled}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
+              level: "info",
+            });
+          }, false);
+
+          if (!pageUpdated) {
+            return false;
+          }
+
+          // Add internal links to queue up to MAX_SITE_INDEX_PAGES
+          for (const link of extracted.links) {
+            if (crawledUrls.size + crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
+            if (!crawledUrls.has(link) && !crawlQueue.includes(link) && !deferredJsUrls.includes(link)) {
+              crawlQueue.push(link);
+            }
+          }
+        } catch (reqErr: any) {
+          log(`Error fetching ${currentUrl}: ${reqErr.message}`, "error");
+          if (abortSignal.aborted || !activeCrawlingSiteIds.has(site.id)) {
+            return false;
           }
         }
-      } catch (reqErr: any) {
-        log(`Error fetching ${currentUrl}: ${reqErr.message}`, "error");
-        if (abortSignal.aborted || !activeCrawlingSiteIds.has(site.id)) {
-          return { success: false, pagesCrawled, error: "Crawl cancelled" };
-        }
+      }
+      return true;
+    };
+
+    const crawlOk = await processCrawlQueue();
+    if (!crawlOk && (abortSignal.aborted || !activeCrawlingSiteIds.has(site.id))) {
+      return { success: false, pagesCrawled, error: "Crawl cancelled" };
+    }
+
+    // Stage 2: When there are no more pages to index in the standard queue,
+    // render deferred pages with Firefox Headless and Playwright to continue indexing.
+    if (
+      deferredJsUrls.length > 0 &&
+      pagesCrawled < maxPages &&
+      existingPages.length + pagesCrawled < MAX_SITE_INDEX_PAGES &&
+      !abortSignal.aborted &&
+      activeCrawlingSiteIds.has(site.id)
+    ) {
+      log(
+        `No more standard pages to index. Rendering ${deferredJsUrls.length} page(s) with Firefox Headless and Playwright...`,
+        "info"
+      );
+
+      const urlsToRender: string[] = [];
+      while (
+        deferredJsUrls.length > 0 &&
+        pagesCrawled + urlsToRender.length < maxPages &&
+        existingPages.length + pagesCrawled + urlsToRender.length < MAX_SITE_INDEX_PAGES
+      ) {
+        urlsToRender.push(deferredJsUrls.shift()!);
+      }
+
+      for (const u of urlsToRender) {
+        crawledUrls.add(u);
+      }
+
+      await renderWithFirefoxHeadless({
+        urls: urlsToRender,
+        domain,
+        siteId: site.id,
+        maxPages,
+        existingTotal: existingPages.length,
+        abortSignal,
+        log,
+        mutateSite,
+        onPageIndexed: (pageItem) => {
+          newIndexedPages.push(pageItem);
+          baseIndex.push(pageItem);
+          cachedIndex = baseIndex;
+          pagesCrawled++;
+        },
+        onNewLinksDiscovered: (links) => {
+          for (const link of links) {
+            if (crawledUrls.size + crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
+            if (!crawledUrls.has(link) && !crawlQueue.includes(link) && !deferredJsUrls.includes(link)) {
+              crawlQueue.push(link);
+            }
+          }
+        },
+        currentCrawledCount: () => pagesCrawled,
+      });
+
+      // Continue indexing newly discovered links from the rendered pages if any
+      if (
+        crawlQueue.length > 0 &&
+        pagesCrawled < maxPages &&
+        existingPages.length + pagesCrawled < MAX_SITE_INDEX_PAGES &&
+        !abortSignal.aborted &&
+        activeCrawlingSiteIds.has(site.id)
+      ) {
+        log(`Continuing crawl with newly discovered links from Firefox Headless rendering...`, "info");
+        await processCrawlQueue();
       }
     }
 
@@ -766,7 +1057,7 @@ export async function crawlSite(
     saveIndex(baseIndex);
 
     const totalIndexed = existingPages.length + newIndexedPages.length;
-    const remainingUrls = crawlQueue.filter((u) => !crawledUrls.has(u));
+    const remainingUrls = [...crawlQueue, ...deferredJsUrls].filter((u) => !crawledUrls.has(u));
 
     const finalUpdated = mutateSite((s) => {
       s.pageCount = totalIndexed;
@@ -1060,6 +1351,7 @@ export function clearCrawlQueue(): void {
   isCrawlerProcessing = false;
   BATCH_CRAWL_DELAY_MS = 0;
   DEFAULT_DOMAIN_DELAY_MS = 1000;
+  playwrightFirefox = firefox;
 }
 
 export function getCurrentCrawlingSiteId(): string | null {
