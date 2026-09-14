@@ -84,9 +84,6 @@ importers:
       ping:
         specifier: ^1.0.0
         version: 1.0.0
-      playwright:
-        specifier: ^1.63.0
-        version: 1.63.0
       pokersolver:
         specifier: ^2.1.4
         version: 2.1.4
@@ -3283,16 +3280,6 @@ packages:
   ping@1.0.0:
     resolution: {integrity: sha512-3dxdgGtV+7P/EVo42JhkGSomeO/0GGicSz3mI/yK+AI+VGNAOfakw5XfcbGI4IjyBY+ZZwvuRXdhnNF2uliKew==}
     engines: {node: '>=22.0.0'}
-
-  playwright-core@1.63.0:
-    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
-    engines: {node: '>=20'}
-    hasBin: true
-
-  playwright@1.63.0:
-    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
-    engines: {node: '>=20'}
-    hasBin: true
 
   pokersolver@2.1.4:
     resolution: {integrity: sha512-vmgZS+K8H8r1RePQykFM5YyvlKo1v3xVec8FMBjg9N6mR2Tj/n/X415w+lG67FWbrk71D/CADmKFinDgaQlAsw==}
@@ -6863,12 +6850,6 @@ snapshots:
   picomatch@4.0.7: {}
 
   ping@1.0.0: {}
-
-  playwright-core@1.63.0: {}
-
-  playwright@1.63.0:
-    dependencies:
-      playwright-core: 1.63.0
 
   pokersolver@2.1.4: {}
 
