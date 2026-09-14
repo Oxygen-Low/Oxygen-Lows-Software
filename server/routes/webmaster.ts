@@ -20,7 +20,6 @@ import {
   WebmasterSite,
   OXYLOW_USER_AGENT,
   OXYLOW_CONTACT_EMAIL,
-  isJsOrCookieChallenge,
 } from "../lib/oxylowCrawler.ts";
 
 export const webmasterRouter = new Hono();
@@ -316,9 +315,7 @@ webmasterRouter.get("/sites/:id/pages", async (c) => {
   }
 
   const index = getIndex();
-  const pages = index.filter(
-    (p) => p.siteId === siteId && !isJsOrCookieChallenge(p.bodyPreview, p.title)
-  );
+  const pages = index.filter((p) => p.siteId === siteId);
 
   return c.json({ site: attachQueuePosition(site), pages });
 });
