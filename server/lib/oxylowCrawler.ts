@@ -984,8 +984,22 @@ export function attachQueuePositions<T extends WebmasterSite>(sites: T[]): T[] {
 export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { results: SearchResult[]; total: number } {
   const index = getIndex();
   const trimmed = query.trim().toLowerCase();
+
+  const deduplicateByDomain = (items: SearchResult[]): SearchResult[] => {
+    const seenDomains = new Set<string>();
+    const deduplicated: SearchResult[] = [];
+    for (const item of items) {
+      const d = (item.domain || "").toLowerCase();
+      if (d && !seenDomains.has(d)) {
+        seenDomains.add(d);
+        deduplicated.push(item);
+      }
+    }
+    return deduplicated;
+  };
+
   if (!trimmed) {
-    const results: SearchResult[] = index.slice((page - 1) * pageSize, page * pageSize).map((item) => ({
+    const rawResults: SearchResult[] = index.map((item) => ({
       url: item.url,
       domain: item.domain,
       title: item.title,
@@ -995,12 +1009,15 @@ export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { res
       score: 1,
       indexedAt: item.indexedAt,
     }));
-    return { results, total: index.length };
+    const uniqueResults = deduplicateByDomain(rawResults);
+    const start = (page - 1) * pageSize;
+    const results = uniqueResults.slice(start, start + pageSize);
+    return { results, total: uniqueResults.length };
   }
 
   const queryTerms = trimmed.split(/\s+/).filter(Boolean);
 
-  const scored = index
+  const scored: SearchResult[] = index
     .map((item) => {
       let score = 0;
       const lowerTitle = (item.title || "").toLowerCase();
@@ -1038,9 +1055,12 @@ export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { res
     .filter((res) => res.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  const total = scored.length;
+  // Filter so domains can only appear once in search results, retaining the highest-scoring page for each domain
+  const uniqueScored = deduplicateByDomain(scored);
+
+  const total = uniqueScored.length;
   const start = (page - 1) * pageSize;
-  const results = scored.slice(start, start + pageSize);
+  const results = uniqueScored.slice(start, start + pageSize);
 
   return { results, total };
 }
@@ -1053,18 +1073,29 @@ export function getOxylowSuggestions(query: string, limit = 6): { title: string;
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return [];
 
-  const matched = index
-    .filter(
-      (item) =>
-        item.title.toLowerCase().includes(trimmed) ||
-        item.url.toLowerCase().includes(trimmed) ||
-        item.domain.toLowerCase().includes(trimmed)
-    )
-    .slice(0, limit)
-    .map((item) => ({
-      title: item.title,
-      url: item.url,
-    }));
+  const matched: { title: string; url: string }[] = [];
+  const seenDomains = new Set<string>();
+
+  for (const item of index) {
+    const lowerTitle = (item.title || "").toLowerCase();
+    const lowerUrl = (item.url || "").toLowerCase();
+    const lowerDomain = (item.domain || "").toLowerCase();
+
+    if (
+      lowerTitle.includes(trimmed) ||
+      lowerUrl.includes(trimmed) ||
+      lowerDomain.includes(trimmed)
+    ) {
+      if (lowerDomain && !seenDomains.has(lowerDomain)) {
+        seenDomains.add(lowerDomain);
+        matched.push({
+          title: item.title,
+          url: item.url,
+        });
+        if (matched.length >= limit) break;
+      }
+    }
+  }
 
   return matched;
 }

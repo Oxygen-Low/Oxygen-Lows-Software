@@ -5,6 +5,7 @@ import {
   extractPageData,
   searchOxylowIndex,
   getOxylowSuggestions,
+  saveIndex,
   waitForDomainSlot,
   OXYLOW_USER_AGENT,
   OXYLOW_CONTACT_EMAIL,
@@ -105,5 +106,51 @@ describe("Browser Router & oxylow crawler", () => {
 
     const duration = Date.now() - start;
     expect(duration).toBeGreaterThanOrEqual(45);
+  });
+
+  it("ensures domains can only appear once in search results", () => {
+    saveIndex([
+      {
+        id: "p1",
+        url: "https://example.com/page1",
+        domain: "example.com",
+        title: "Developer Guide",
+        description: "Official developer guide documentation",
+        headings: ["Docs"],
+        keywords: ["guide"],
+        bodyPreview: "Learn how to develop",
+        indexedAt: new Date().toISOString(),
+      },
+      {
+        id: "p2",
+        url: "https://example.com/page2",
+        domain: "example.com",
+        title: "Developer Overview",
+        description: "Overview page",
+        headings: ["Overview"],
+        keywords: ["overview"],
+        bodyPreview: "Short overview",
+        indexedAt: new Date().toISOString(),
+      },
+      {
+        id: "p3",
+        url: "https://another-domain.org/developer",
+        domain: "another-domain.org",
+        title: "Developer Portal",
+        description: "Another site developer portal",
+        headings: ["Portal"],
+        keywords: ["developer"],
+        bodyPreview: "Developer tools and portal",
+        indexedAt: new Date().toISOString(),
+      },
+    ]);
+
+    const { results, total } = searchOxylowIndex("developer");
+    expect(total).toBe(2);
+    expect(results).toHaveLength(2);
+    const domains = results.map((r) => r.domain);
+    expect(new Set(domains)).toEqual(new Set(["example.com", "another-domain.org"]));
+    expect(results.filter((r) => r.domain === "example.com")).toHaveLength(1);
+    expect(results.filter((r) => r.domain === "another-domain.org")).toHaveLength(1);
   });
 });
