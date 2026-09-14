@@ -307,7 +307,6 @@ describe("Webmaster Router & DNS Verification", () => {
       await new Promise((r) => setTimeout(r, 40));
 
       const sitesAfterBatch1 = getSites();
-      console.log("DEBUG sitesAfterBatch1 length:", sitesAfterBatch1.length, "siteId:", siteId, "ids:", sitesAfterBatch1.map(s => s.id));
       const siteAfter1 = sitesAfterBatch1.find((s) => s.id === siteId);
       expect(siteAfter1).toBeDefined();
       expect(siteAfter1?.pageCount).toBe(20);
