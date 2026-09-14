@@ -290,6 +290,12 @@ export const ja = {
     fileCompressorTitle: "ファイル圧縮ツール",
     fileCompressorDesc:
       "ファイルを簡単に圧縮してストレージの空き容量を増やします。",
+    fileConverterTitle: "ファイル変換ツール",
+    fileConverterDesc:
+      "ブラウザ上で画像、音声、動画ファイルをローカルに変換します。",
+    fileTrimmerTitle: "ファイルトリミングツール",
+    fileTrimmerDesc:
+      "ブラウザ上で音声や動画ファイルをローカルにトリミングします。",
     publicCharactersTitle: "パブリックキャラクター",
     publicCharactersDesc:
       "コミュニティとキャラクターやユニバースを発見し、ダウンロードし、共有します。",

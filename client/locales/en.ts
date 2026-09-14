@@ -287,6 +287,12 @@ export const en = {
     chatbotDesc: "Chat and brainstorm with intelligent AI assistants.",
     fileCompressorTitle: "File Compressor",
     fileCompressorDesc: "Easily compress your files to free up storage space.",
+    fileConverterTitle: "File Converter",
+    fileConverterDesc:
+      "Convert Images, Audio, and Video files locally in your browser.",
+    fileTrimmerTitle: "File Trimmer",
+    fileTrimmerDesc:
+      "Trim Audio and Video files locally in your browser.",
     publicCharactersTitle: "Public Characters",
     publicCharactersDesc:
       "Discover, download, and share characters and universes with the community.",

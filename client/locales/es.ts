@@ -295,6 +295,12 @@ export const es = {
     fileCompressorTitle: "Compresor de Archivos",
     fileCompressorDesc:
       "Comprime fácilmente tus archivos para liberar espacio de almacenamiento.",
+    fileConverterTitle: "Convertidor de Archivos",
+    fileConverterDesc:
+      "Convierte imágenes, audio y archivos de video localmente en tu navegador.",
+    fileTrimmerTitle: "Recortador de Archivos",
+    fileTrimmerDesc:
+      "Recorta archivos de audio y video localmente en tu navegador.",
     publicCharactersTitle: "Personajes Públicos",
     publicCharactersDesc:
       "Descubre, descarga y comparte personajes y universos con la comunidad.",

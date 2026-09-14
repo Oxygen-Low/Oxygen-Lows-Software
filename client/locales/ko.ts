@@ -286,6 +286,12 @@ export const ko = {
       "지능형 AI 어시스턴트와 채팅하고 아이디어를 브레인스토밍하세요.",
     fileCompressorTitle: "파일 압축기",
     fileCompressorDesc: "저장 공간을 확보하기 위해 파일을 쉽게 압축합니다.",
+    fileConverterTitle: "파일 변환기",
+    fileConverterDesc:
+      "브라우저에서 이미지, 오디오 및 비디오 파일을 로컬로 변환합니다.",
+    fileTrimmerTitle: "파일 트리머",
+    fileTrimmerDesc:
+      "브라우저에서 오디오 및 비디오 파일을 로컬로 트리밍합니다.",
     publicCharactersTitle: "공개 캐릭터",
     publicCharactersDesc:
       "커뮤니티와 캐릭터 및 유니버스를 발견, 다운로드, 공유하세요.",

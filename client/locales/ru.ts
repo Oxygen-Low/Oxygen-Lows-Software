@@ -289,6 +289,12 @@ export const ru = {
     fileCompressorTitle: "Компрессор файлов",
     fileCompressorDesc:
       "Легко сжимайте ваши файлы, чтобы освободить место в хранилище.",
+    fileConverterTitle: "Конвертер файлов",
+    fileConverterDesc:
+      "Конвертируйте изображения, аудио и видео локально в вашем браузере.",
+    fileTrimmerTitle: "Обрезка файлов",
+    fileTrimmerDesc:
+      "Обрезайте аудио и видео файлы локально в вашем браузере.",
     publicCharactersTitle: "Публичные персонажи",
     publicCharactersDesc:
       "Находите, скачивайте и делитесь персонажами и вселенными с сообществом.",

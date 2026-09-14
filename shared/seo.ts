@@ -45,6 +45,16 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     description: "In-browser media and document compressor",
   },
   {
+    href: "/apps/file-converter",
+    label: "File Converter",
+    description: "In-browser image, audio, and video converter",
+  },
+  {
+    href: "/apps/file-trimmer",
+    label: "File Trimmer",
+    description: "In-browser audio and video trimming utility",
+  },
+  {
     href: "/apps/public-characters",
     label: "Public Characters",
     description: "Community-created AI characters and assets",
@@ -353,6 +363,71 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
       { href: "/apps/qrcode-generator", label: "QR Code Generator" },
     ],
     softwareType: "File Compression Utility",
+  },
+  "/apps/file-converter": {
+    path: "/apps/file-converter",
+    title: "File Converter - Oxygen Low's Software",
+    description:
+      "Convert images, audio, and video files locally in your browser with zero data leaving your device.",
+    canonicalPath: "/apps/file-converter",
+    h1: "Online File Converter",
+    h2: [
+      "Local Browser Conversion",
+      "Image, Audio & Video Support",
+      "Private & Secure Processing",
+    ],
+    keywords: [
+      "file converter",
+      "convert audio",
+      "convert video",
+      "convert images",
+      "ffmpeg wasm",
+    ],
+    ogType: "website",
+    breadcrumbs: [
+      { name: "Home", url: "/" },
+      { name: "Apps", url: "/apps" },
+      { name: "File Converter", url: "/apps/file-converter" },
+    ],
+    internalLinks: [
+      { href: "/apps", label: "All Apps" },
+      { href: "/apps/file-compressor", label: "File Compressor" },
+      { href: "/apps/file-trimmer", label: "File Trimmer" },
+    ],
+    softwareType: "File Conversion Utility",
+  },
+  "/apps/file-trimmer": {
+    path: "/apps/file-trimmer",
+    title: "File Trimmer - Oxygen Low's Software",
+    description:
+      "Trim audio and video files locally in your browser with precision interval controls and instant playback preview.",
+    canonicalPath: "/apps/file-trimmer",
+    h1: "Online Audio & Video File Trimmer",
+    h2: [
+      "Local Browser Trimming",
+      "Precise Timestamp Controls",
+      "Lossless Stream Copy & Transcoding",
+    ],
+    keywords: [
+      "file trimmer",
+      "trim video",
+      "trim audio",
+      "cut video online",
+      "mp4 trimmer",
+      "mp3 trimmer",
+    ],
+    ogType: "website",
+    breadcrumbs: [
+      { name: "Home", url: "/" },
+      { name: "Apps", url: "/apps" },
+      { name: "File Trimmer", url: "/apps/file-trimmer" },
+    ],
+    internalLinks: [
+      { href: "/apps", label: "All Apps" },
+      { href: "/apps/file-converter", label: "File Converter" },
+      { href: "/apps/file-compressor", label: "File Compressor" },
+    ],
+    softwareType: "Media Trimming Utility",
   },
   "/apps/public-characters": {
     path: "/apps/public-characters",

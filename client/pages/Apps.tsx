@@ -33,10 +33,12 @@ import {
   Trophy,
   Palette,
   ImagePlus,
+  Scissors,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { FileConverterApp } from "@/components/apps/FileConverter";
+import { FileTrimmerApp } from "@/components/apps/FileTrimmer";
 import { ChatbotApp } from "@/components/apps/Chatbot";
 import { ImageGeneratorApp } from "@/components/apps/ImageGenerator";
 import { PublicAssetsApp } from "@/components/apps/PublicAssets";
@@ -200,6 +202,17 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: FileConverterApp,
+  },
+  {
+    id: "file-trimmer",
+    nameKey: "apps.fileTrimmerTitle",
+    defaultName: "File Trimmer",
+    descKey: "apps.fileTrimmerDesc",
+    defaultDesc: "Trim Audio and Video files locally in your browser.",
+    categories: ["All", "Utility"],
+    availability: "web-and-desktop",
+    icon: <Scissors className="w-8 h-8 text-cyan-500" />,
+    component: FileTrimmerApp,
   },
   {
     id: "public-assets",

@@ -33,6 +33,10 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
   - Format, beautify, minify, validate, and inspect JSON payloads with real-time error detection and interactive tree visualization.
 - **File Compressor** (/apps/file-compressor):
   - In-browser compression for images, audio, video, and documents to reduce file sizes with zero quality loss and without uploading files to third parties.
+- **File Converter** (/apps/file-converter):
+  - In-browser media converter supporting images, audio, and video formats locally using WebAssembly.
+- **File Trimmer** (/apps/file-trimmer):
+  - In-browser audio and video trimming utility with interactive preview, precise timestamp controls, and lossless stream copy or re-encoding.
 - **QR Code Generator** (/apps/qrcode-generator):
   - Generate customized high-resolution QR codes for websites, plain text, Wi-Fi networks, and contact cards with instant PNG/vector download.
 - **Data Save** (/apps/data-save):
