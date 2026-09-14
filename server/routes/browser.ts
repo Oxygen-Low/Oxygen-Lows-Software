@@ -108,6 +108,9 @@ browserRouter.get("/proxy", async (c) => {
         </script>
       `;
 
+      // Strip any third-party meta framing and CSP tags that might break iframe rendering
+      html = html.replace(/<meta\s+[^>]*http-equiv=["']?(?:content-security-policy|x-frame-options)["']?[^>]*>/gi, "");
+
       if (/<head[^>]*>/i.test(html)) {
         html = html.replace(/<head[^>]*>/i, (match) => `${match}\n${baseTag}\n${injectionScript}`);
       } else {
@@ -117,7 +120,7 @@ browserRouter.get("/proxy", async (c) => {
       // Return sanitized HTML with stripped framing restriction headers
       return c.html(html, 200, {
         "Content-Type": contentType,
-        // Explicitly avoid X-Frame-Options / frame-ancestors blocking
+        "X-Frame-Options": "SAMEORIGIN",
       });
     }
 
