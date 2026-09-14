@@ -119,7 +119,6 @@ webmasterRouter.post("/sites", async (c) => {
     return c.json({ error: "This URL has already been submitted." }, 409);
   }
 
-  const isAdminUser = checkIsAdmin(user);
   const verificationToken = crypto.randomBytes(16).toString("hex");
 
   const newSite: WebmasterSite = {
@@ -128,18 +127,16 @@ webmasterRouter.post("/sites", async (c) => {
     url: formattedUrl,
     domain,
     sitemapUrl: formattedSitemap || undefined,
-    status: isAdminUser ? "pending" : "unverified",
-    verified: isAdminUser,
+    status: "unverified",
+    verified: false,
     verificationToken,
-    adminAdded: isAdminUser,
+    adminAdded: false,
     pageCount: 0,
     createdAt: new Date().toISOString(),
     logs: [
       {
         timestamp: new Date().toISOString(),
-        message: isAdminUser
-          ? `Added directly by administrator ${user.username || user.email || user.id}`
-          : `Submitted. DNS verification required: Add TXT record "oxylow-verification=${verificationToken}" to ${domain} or _oxylow-challenge.${domain}`,
+        message: `Submitted. DNS verification required: Add TXT record "oxylow-verification=${verificationToken}" to ${domain} or _oxylow-challenge.${domain}`,
         level: "info",
       },
     ],
@@ -147,13 +144,6 @@ webmasterRouter.post("/sites", async (c) => {
 
   sites.unshift(newSite);
   saveSites(sites);
-
-  // If added by admin, trigger crawling immediately
-  if (isAdminUser) {
-    setTimeout(() => {
-      crawlSite(newSite.id, 20).catch(console.error);
-    }, 100);
-  }
 
   return c.json({ site: newSite }, 201);
 });

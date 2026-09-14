@@ -204,11 +204,7 @@ export function WebmasterApp() {
         throw new Error(data.error || "Failed to submit website");
       }
 
-      if (data.site?.verified) {
-        toast.success("Website submitted and queued for crawling!");
-      } else {
-        toast.info("Website submitted! Please add the DNS TXT record to verify ownership before indexing.");
-      }
+      toast.info("Website submitted! Please add the DNS TXT record to verify ownership before indexing.");
       setUrlInput("");
       setSitemapInput("");
       fetchSitesAndStats();

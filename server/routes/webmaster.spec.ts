@@ -72,6 +72,29 @@ describe("Webmaster Router & DNS Verification", () => {
     expect(typeof body.site.verificationToken).toBe("string");
   });
 
+  it("requires verification even if an admin adds a domain via regular /sites endpoint", async () => {
+    vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+      id: "1",
+      email: "admin@oxygenlow.com",
+      role: "admin",
+    } as any);
+
+    const req = new Request("http://localhost/sites", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-admin-token",
+      },
+      body: JSON.stringify({ url: "https://example.com" }),
+    });
+    const res = await webmasterRouter.fetch(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.site.verified).toBe(false);
+    expect(body.site.status).toBe("unverified");
+    expect(body.site.adminAdded).toBe(false);
+  });
+
   it("allows admin to add domain directly without verification", async () => {
     vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
       id: "1",
