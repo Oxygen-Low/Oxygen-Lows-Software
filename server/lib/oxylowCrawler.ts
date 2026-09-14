@@ -811,15 +811,7 @@ export async function renderWithFirefoxHeadless(options: RenderWithFirefoxOption
       }
     }
   } catch (browserErr: any) {
-    const rawMsg = browserErr?.message || "";
-    if (rawMsg.includes("missing dependencies") || rawMsg.includes("install-deps")) {
-      log(
-        "Firefox Headless cannot run because the host Linux system is missing browser libraries. Server admin: run 'sudo npx playwright install-deps firefox' on the server terminal.",
-        "error"
-      );
-    } else {
-      log(`Error launching or running Firefox Headless: ${rawMsg}`, "error");
-    }
+    log(`Error launching or running Firefox Headless: ${browserErr.message}`, "error");
   } finally {
     if (browser) {
       await browser.close().catch(() => {});
