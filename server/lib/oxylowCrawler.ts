@@ -925,6 +925,15 @@ export async function renderWithJsdomFallback(options: RenderWithFirefoxOptions)
         const extracted = extractPageData(renderedHtml, url);
         dom.window.close();
 
+        // Check if the page is still a challenge page / blocked
+        if (isJsOrCookieChallenge(renderedHtml, extracted.title, res.status)) {
+          log(
+            `Page ${url} is still blocked by anti-bot challenge; skipping from search index.`,
+            "warn"
+          );
+          continue;
+        }
+
         const pageItem: IndexedPage = {
           id: crypto.randomUUID(),
           siteId,
@@ -1038,9 +1047,11 @@ export async function crawlSite(
   const deferredJsUrls: string[] = [];
   let pagesCrawled = 0;
 
-  const baseIndex = isContinuation
-    ? currentIndex
-    : currentIndex.filter((p) => p.siteId !== site.id);
+  const baseIndex = (
+    isContinuation
+      ? currentIndex
+      : currentIndex.filter((p) => p.siteId !== site.id)
+  ).filter((p) => !isJsOrCookieChallenge(p.bodyPreview, p.title));
   const newIndexedPages: IndexedPage[] = [];
 
   try {
@@ -1268,13 +1279,11 @@ export async function crawlSite(
       }
     }
 
-    if (abortSignal.aborted || !activeCrawlingSiteIds.has(siteId)) {
-      return { success: false, pagesCrawled, error: "Crawl cancelled" };
-    }
+    const cleanIndex = baseIndex.filter((p) => !isJsOrCookieChallenge(p.bodyPreview, p.title));
+    saveIndex(cleanIndex);
 
-    saveIndex(baseIndex);
-
-    const totalIndexed = existingPages.length + newIndexedPages.length;
+    const validExistingCount = existingPages.filter((p) => !isJsOrCookieChallenge(p.bodyPreview, p.title)).length;
+    const totalIndexed = validExistingCount + newIndexedPages.length;
     const remainingUrls = [...crawlQueue, ...deferredJsUrls].filter((u) => !crawledUrls.has(u));
 
     const finalUpdated = mutateSite((s) => {
@@ -1602,7 +1611,7 @@ export function attachQueuePositions<T extends WebmasterSite>(sites: T[]): T[] {
  * Searches the oxylow search index.
  */
 export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { results: SearchResult[]; total: number } {
-  const index = getIndex();
+  const index = getIndex().filter((p) => !isJsOrCookieChallenge(p.bodyPreview, p.title));
   const trimmed = query.trim().toLowerCase();
 
   const deduplicateByDomain = (items: SearchResult[]): SearchResult[] => {
@@ -1689,7 +1698,7 @@ export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { res
  * Autocomplete suggestions for Omnibox.
  */
 export function getOxylowSuggestions(query: string, limit = 6): { title: string; url: string }[] {
-  const index = getIndex();
+  const index = getIndex().filter((p) => !isJsOrCookieChallenge(p.bodyPreview, p.title));
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return [];
 
