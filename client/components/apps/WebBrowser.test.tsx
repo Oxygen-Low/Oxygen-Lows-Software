@@ -26,8 +26,7 @@ describe("WebBrowserApp", () => {
     render(<WebBrowserApp />);
     expect(screen.getByText("oxylow Browser")).toBeDefined();
     expect(screen.getByPlaceholderText(/Search with oxylow or enter URL/i)).toBeDefined();
-    expect(screen.getByText("Oxygen Low's Software")).toBeDefined();
-    expect(screen.getByText("Wikipedia")).toBeDefined();
+    expect(screen.getByText("Quick Access")).toBeDefined();
   });
 
   it("allows adding and switching tabs", () => {

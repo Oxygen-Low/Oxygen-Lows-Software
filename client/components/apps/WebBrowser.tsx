@@ -85,14 +85,6 @@ const DEFAULT_HOME_TAB: Tab = {
   mode: "home",
 };
 
-const POPULAR_SITES = [
-  { title: "Oxygen Low's Software", url: "https://oxygenlow.com", desc: "Online Tools & Utilities" },
-  { title: "Wikipedia", url: "https://www.wikipedia.org", desc: "The Free Encyclopedia" },
-  { title: "MDN Web Docs", url: "https://developer.mozilla.org", desc: "Web Technologies Documentation" },
-  { title: "GitHub", url: "https://github.com", desc: "Code Collaboration & Repositories" },
-  { title: "Hacker News", url: "https://news.ycombinator.com", desc: "Tech News & Discussion" },
-];
-
 export function WebBrowserApp() {
   const { t } = useTranslation();
   const [tabs, setTabs] = useState<Tab[]>([DEFAULT_HOME_TAB]);
@@ -109,10 +101,7 @@ export function WebBrowserApp() {
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(() => {
     try {
       const saved = localStorage.getItem("oxylow_browser_bookmarks");
-      return saved ? JSON.parse(saved) : [
-        { title: "Oxygen Low's Software", url: "https://oxygenlow.com" },
-        { title: "Wikipedia", url: "https://www.wikipedia.org" },
-      ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -647,23 +636,31 @@ export function WebBrowserApp() {
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Quick Access
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
-                  {POPULAR_SITES.map((site, i) => (
-                    <div
-                      key={i}
-                      onClick={() => navigateTo(site.url)}
-                      className="p-3 rounded-xl border border-border bg-card hover:bg-muted/60 cursor-pointer transition-all hover:border-cyan-500/40 group shadow-sm"
-                    >
-                      <div className="flex items-center gap-2 font-medium text-sm text-foreground group-hover:text-cyan-500 transition-colors">
-                        <Globe className="w-4 h-4 text-cyan-500 shrink-0" />
-                        <span className="truncate">{site.title}</span>
+                {bookmarks.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
+                    {bookmarks.map((b, i) => (
+                      <div
+                        key={i}
+                        onClick={() => navigateTo(b.url)}
+                        className="p-3 rounded-xl border border-border bg-card hover:bg-muted/60 cursor-pointer transition-all hover:border-cyan-500/40 group shadow-sm"
+                      >
+                        <div className="flex items-center gap-2 font-medium text-sm text-foreground group-hover:text-cyan-500 transition-colors">
+                          <Globe className="w-4 h-4 text-cyan-500 shrink-0" />
+                          <span className="truncate">{b.title}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate mt-1 font-mono">
+                          {b.url}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate mt-1">
-                        {site.desc}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      No bookmarks saved yet. Enter any URL in the search bar above, or submit websites to be indexed with the Webmaster app.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
