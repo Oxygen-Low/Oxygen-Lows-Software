@@ -681,5 +681,72 @@ describe("Webmaster Router & DNS Verification", () => {
         clearCrawlQueue();
       }
     });
+
+    it("falls back to JSDOM when Playwright is missing host dependencies (no sudo)", async () => {
+      setDefaultDomainDelayMs(0);
+      setBatchCrawlDelayMs(1000);
+      saveIndex([]);
+
+      const mockFirefox = {
+        launch: vi.fn().mockRejectedValue(
+          new Error("Host system is missing dependencies to run browsers. Please install them with: sudo npx playwright install-deps")
+        ),
+      };
+      setPlaywrightFirefox(mockFirefox);
+
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("/robots.txt")) {
+          return new Response("User-agent: *\nAllow: /\nCrawl-delay: 0\n", {
+            status: 200,
+            headers: { "content-type": "text/plain" },
+          });
+        }
+        if (url === "https://jsdom-fallback.com" || url === "https://jsdom-fallback.com/") {
+          return new Response(
+            "<html><head><title>Just a moment...</title></head><body>Enable JavaScript and cookies to continue</body></html>",
+            {
+              status: 200,
+              headers: { "content-type": "text/html" },
+            }
+          );
+        }
+        return new Response("Not found", { status: 404 });
+      }) as any;
+
+      try {
+        vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+          id: "1",
+          email: "admin@oxygenlow.com",
+          role: "admin",
+        } as any);
+
+        const res = await webmasterRouter.fetch(
+          new Request("http://localhost/admin/sites", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer test-admin-token",
+            },
+            body: JSON.stringify({ url: "https://jsdom-fallback.com" }),
+          })
+        );
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        const siteId = data.site.id;
+
+        await new Promise((r) => setTimeout(r, 120));
+
+        const sites = getSites();
+        const site = sites.find((s) => s.id === siteId);
+        expect(site).toBeDefined();
+
+        const logs = site?.logs || [];
+        expect(logs.some((l) => l.message.includes("Falling back to pure Node.js DOM rendering (JSDOM)"))).toBe(true);
+      } finally {
+        global.fetch = originalFetch;
+        clearCrawlQueue();
+      }
+    });
   });
 });
