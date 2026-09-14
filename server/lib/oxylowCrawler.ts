@@ -12,7 +12,7 @@ export const OXYLOW_USER_AGENT =
   "Mozilla/5.0 (compatible; oxylow/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)";
 export const OXYLOW_CONTACT_EMAIL = "support@oxygenlow.com";
 export let DEFAULT_DOMAIN_DELAY_MS = 1000;
-export const MAX_SITE_INDEX_PAGES = 500;
+export const MAX_SITE_INDEX_PAGES = 1000;
 export const CRAWL_BATCH_SIZE = 20;
 export let BATCH_CRAWL_DELAY_MS = 0;
 
@@ -550,7 +550,7 @@ export function isCrawlScheduled(siteId: string): boolean {
  * - Enforces per-domain delay between requests
  * - Identifies with oxylow user agent & contact email support@oxygenlow.com
  * - Saves extracted pages into the search index
- * - Batch size: 20 pages per run. If > 20 pages found, re-queues the next batch immediately, up to 500 pages max.
+ * - Batch size: 20 pages per run. If > 20 pages found, re-queues the next batch immediately, up to 1000 pages max.
  */
 export async function crawlSite(
   siteId: string,

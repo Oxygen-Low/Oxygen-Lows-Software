@@ -424,7 +424,7 @@ describe("Webmaster Router & DNS Verification", () => {
     }
   });
 
-  it("caps total discovered and pending pages at 500 pages maximum", async () => {
+  it("caps total discovered and pending pages at 1000 pages maximum", async () => {
     setBatchCrawlDelayMs(10000); // long delay so batch 2 doesn't trigger
     setDefaultDomainDelayMs(0);
 
@@ -437,8 +437,8 @@ describe("Webmaster Router & DNS Verification", () => {
         });
       }
       if (url.includes("/sitemap.xml")) {
-        // Sitemap with 550 pages
-        const xml = Array.from({ length: 550 }, (_, i) => `<url><loc>https://huge-site.com/p-${i + 1}</loc></url>`).join("");
+        // Sitemap with 1050 pages
+        const xml = Array.from({ length: 1050 }, (_, i) => `<url><loc>https://huge-site.com/p-${i + 1}</loc></url>`).join("");
         return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${xml}</urlset>`, {
           status: 200,
           headers: { "content-type": "application/xml" },
@@ -479,9 +479,9 @@ describe("Webmaster Router & DNS Verification", () => {
       const site = sites.find((s) => s.id === siteId);
       expect(site).toBeDefined();
       expect(site?.pageCount).toBe(20);
-      // Total indexed (20) + pendingUrls (480) = 500 max limit
-      expect(site?.pendingUrls?.length).toBe(480);
-      expect((site?.pageCount || 0) + (site?.pendingUrls?.length || 0)).toBe(500);
+      // Total indexed (20) + pendingUrls (980) = 1000 max limit
+      expect(site?.pendingUrls?.length).toBe(980);
+      expect((site?.pageCount || 0) + (site?.pendingUrls?.length || 0)).toBe(1000);
     } finally {
       global.fetch = originalFetch;
     }
