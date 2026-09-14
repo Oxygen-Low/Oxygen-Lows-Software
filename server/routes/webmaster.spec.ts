@@ -26,6 +26,7 @@ import {
   saveSites,
   clearCrawlQueue,
   getQueuePosition,
+  isSiteCrawling,
   getSites,
   setBatchCrawlDelayMs,
   setDefaultDomainDelayMs,
@@ -145,7 +146,7 @@ describe("Webmaster Router & DNS Verification", () => {
     expect(body.site.verified).toBe(true);
     expect(body.site.adminAdded).toBe(true);
     expect(["pending", "crawling"]).toContain(body.site.status);
-    expect(body.site.queuePosition).toBe(1);
+    expect(body.site.queuePosition ?? null).toBeNull();
 
     // Can fetch admin sites list
     const listReq = new Request("http://localhost/admin/sites", {
@@ -165,7 +166,7 @@ describe("Webmaster Router & DNS Verification", () => {
     expect(failCheck.verified).toBe(false);
   });
 
-  it("enforces 1 domain indexed at a time with clear queue positions", async () => {
+  it("enforces up to 2 domains indexed concurrently with domain prioritization and clear queue positions", async () => {
     vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
       id: "1",
       email: "admin@oxygenlow.com",
@@ -194,9 +195,10 @@ describe("Webmaster Router & DNS Verification", () => {
     );
     expect(res1.status).toBe(201);
     const body1 = await res1.json();
-    expect(body1.site.queuePosition).toBe(1);
+    expect(body1.site.status).toBe("crawling");
+    expect(body1.site.queuePosition ?? null).toBeNull();
 
-    // Add second domain while first is in queue / indexing
+    // Add second domain while first is crawling: should run concurrently in slot 2
     const res2 = await webmasterRouter.fetch(
       new Request("http://localhost/admin/sites", {
         method: "POST",
@@ -209,9 +211,10 @@ describe("Webmaster Router & DNS Verification", () => {
     );
     expect(res2.status).toBe(201);
     const body2 = await res2.json();
-    expect(body2.site.queuePosition).toBe(2);
+    expect(body2.site.status).toBe("crawling");
+    expect(body2.site.queuePosition ?? null).toBeNull();
 
-    // Add third domain
+    // Add third domain while two are crawling: goes to waiting queue at position 1
     const res3 = await webmasterRouter.fetch(
       new Request("http://localhost/admin/sites", {
         method: "POST",
@@ -224,9 +227,9 @@ describe("Webmaster Router & DNS Verification", () => {
     );
     expect(res3.status).toBe(201);
     const body3 = await res3.json();
-    expect(body3.site.queuePosition).toBe(3);
+    expect(body3.site.queuePosition).toBe(1);
 
-    // Verify GET /admin/sites returns correct queue positions
+    // Verify GET /admin/sites returns correct statuses and queue positions
     const listRes = await webmasterRouter.fetch(
       new Request("http://localhost/admin/sites", {
         headers: { Authorization: "Bearer test-admin-token" },
@@ -236,11 +239,13 @@ describe("Webmaster Router & DNS Verification", () => {
     const siteA = listBody.sites.find((s: any) => s.domain === "site-a.com");
     const siteB = listBody.sites.find((s: any) => s.domain === "site-b.com");
     const siteC = listBody.sites.find((s: any) => s.domain === "site-c.com");
-    expect(siteA.queuePosition).toBe(1);
-    expect(siteB.queuePosition).toBe(2);
-    expect(siteC.queuePosition).toBe(3);
+    expect(siteA.status).toBe("crawling");
+    expect(siteA.queuePosition ?? null).toBeNull();
+    expect(siteB.status).toBe("crawling");
+    expect(siteB.queuePosition ?? null).toBeNull();
+    expect(siteC.queuePosition).toBe(1);
 
-    // Deleting site-b removes it from the queue
+    // Deleting actively crawling site-b aborts it and frees a slot
     const delRes = await webmasterRouter.fetch(
       new Request(`http://localhost/admin/sites/${siteB.id}`, {
         method: "DELETE",
@@ -249,10 +254,102 @@ describe("Webmaster Router & DNS Verification", () => {
     );
     expect(delRes.status).toBe(200);
 
-    // Position of site-c moves up to 2
-    expect(getQueuePosition(siteC.id)).toBe(2);
+    // Site-c immediately transitions into active crawling slot
+    expect(getQueuePosition(siteC.id)).toBeNull();
 
     clearCrawlQueue();
+  });
+
+  it("prioritizes different domains from queue when a crawl slot opens up", async () => {
+    vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+      id: "1",
+      email: "admin@oxygenlow.com",
+      role: "admin",
+    } as any);
+
+    let finishSiteA: () => void = () => {};
+    let finishSiteB: () => void = () => {};
+    let finishDiff: () => void = () => {};
+    let activeBResolved = false;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes("/robots.txt")) {
+        return new Response("User-agent: *\nAllow: /\nCrawl-delay: 0\n", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      if (url.includes("/sitemap.xml")) {
+        return new Response("", { status: 404 });
+      }
+      if (url.includes("active-a.com")) {
+        await new Promise<void>((r) => {
+          finishSiteA = r;
+        });
+      } else if (url.includes("active-b.com") && !activeBResolved) {
+        await new Promise<void>((r) => {
+          finishSiteB = r;
+        });
+      } else if (url.includes("diff-domain.com")) {
+        await new Promise<void>((r) => {
+          finishDiff = r;
+        });
+      }
+      return new Response("<html><head><title>Page</title></head><body>OK</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as any;
+
+    // Fill the 2 slots with domain active-a.com and active-b.com
+    await webmasterRouter.fetch(
+      new Request("http://localhost/admin/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer test-admin-token" },
+        body: JSON.stringify({ url: "https://active-a.com" }),
+      })
+    );
+    await webmasterRouter.fetch(
+      new Request("http://localhost/admin/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer test-admin-token" },
+        body: JSON.stringify({ url: "https://active-b.com" }),
+      })
+    );
+
+    // Queue 1: same domain as active-a.com
+    const sameDomainRes = await webmasterRouter.fetch(
+      new Request("http://localhost/admin/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer test-admin-token" },
+        body: JSON.stringify({ url: "https://active-a.com/subpage" }),
+      })
+    );
+    const sameDomainSite = (await sameDomainRes.json()).site;
+
+    // Queue 2: completely different domain diff-domain.com
+    const diffDomainRes = await webmasterRouter.fetch(
+      new Request("http://localhost/admin/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer test-admin-token" },
+        body: JSON.stringify({ url: "https://diff-domain.com" }),
+      })
+    );
+    const diffDomainSite = (await diffDomainRes.json()).site;
+
+    // Finish site B (active-b.com). active-a.com is STILL actively crawling.
+    // The worker should pick diff-domain.com over active-a.com/subpage because its domain differs from active-a.com!
+    activeBResolved = true;
+    finishSiteB();
+    await new Promise((r) => setTimeout(r, 60));
+
+    expect(isSiteCrawling(diffDomainSite.id)).toBe(true);
+    expect(getQueuePosition(sameDomainSite.id)).toBe(1);
+
+    clearCrawlQueue();
+    finishSiteA();
+    finishDiff();
+    await new Promise((r) => setTimeout(r, 20));
   });
 
   it("indexes 20 pages, schedules next batch after delay, re-queues and indexes remaining pages", async () => {
@@ -419,15 +516,32 @@ describe("Webmaster Router & DNS Verification", () => {
         createdAt: "2026-01-02T00:00:00.000Z",
         logs: [],
       },
+      {
+        id: "stuck-queued",
+        userId: "1",
+        url: "https://third.example",
+        domain: "third.example",
+        status: "pending",
+        verified: true,
+        verificationToken: "c",
+        adminAdded: true,
+        pageCount: 0,
+        createdAt: "2026-01-03T00:00:00.000Z",
+        logs: [],
+      },
     ]);
 
     expect(getQueuePosition("stuck-crawling")).toBeNull();
     expect(getQueuePosition("stuck-pending")).toBeNull();
+    expect(getQueuePosition("stuck-queued")).toBeNull();
 
     const resumed = resumeInterruptedCrawls();
-    expect(resumed).toBe(2);
-    expect(getQueuePosition("stuck-crawling")).toBe(1);
-    expect(getQueuePosition("stuck-pending")).toBe(2);
+    expect(resumed).toBe(3);
+    expect(isSiteCrawling("stuck-crawling")).toBe(true);
+    expect(getQueuePosition("stuck-crawling")).toBeNull();
+    expect(isSiteCrawling("stuck-pending")).toBe(true);
+    expect(getQueuePosition("stuck-pending")).toBeNull();
+    expect(getQueuePosition("stuck-queued")).toBe(1);
     expect(resumeInterruptedCrawls()).toBe(0);
 
     clearCrawlQueue();

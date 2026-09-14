@@ -86,7 +86,7 @@ describe("WebmasterApp", () => {
                   pageCount: 0,
                   createdAt: new Date().toISOString(),
                   logs: [],
-                  queuePosition: 1,
+                  queuePosition: null,
                 },
                 {
                   id: "site-2",
@@ -99,7 +99,7 @@ describe("WebmasterApp", () => {
                   pageCount: 0,
                   createdAt: new Date().toISOString(),
                   logs: [],
-                  queuePosition: 2,
+                  queuePosition: 1,
                 },
               ],
             }),
@@ -123,6 +123,6 @@ describe("WebmasterApp", () => {
 
     render(<WebmasterApp />);
     expect(await screen.findByText("Crawling")).toBeDefined();
-    expect(await screen.findByText("Queued (2)")).toBeDefined();
+    expect(await screen.findByText("Queued (1)")).toBeDefined();
   });
 });

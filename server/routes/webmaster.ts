@@ -9,6 +9,7 @@ import {
   crawlSite,
   enqueueCrawl,
   getQueuePosition,
+  isSiteCrawling,
   removeFromCrawlQueue,
   cancelScheduledCrawl,
   attachQueuePosition,
@@ -238,6 +239,10 @@ webmasterRouter.post("/sites/:id/crawl", async (c) => {
 
   if (!site.verified && !site.adminAdded) {
     return c.json({ error: "Domain must be verified via DNS record before crawling." }, 400);
+  }
+
+  if (isSiteCrawling(site.id) || site.status === "crawling") {
+    return c.json({ error: "Site is currently being crawled." }, 409);
   }
 
   const queuePos = getQueuePosition(site.id);

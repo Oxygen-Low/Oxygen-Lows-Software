@@ -91,7 +91,10 @@ function ensureDataFiles() {
 let cachedSites: WebmasterSite[] | null = null;
 let cachedIndex: IndexedPage[] | null = null;
 let saveSitesTimeout: NodeJS.Timeout | null = null;
-let activeCrawlAbortController: AbortController | null = null;
+const activeCrawlAbortControllers = new Map<string, AbortController>();
+const activeCrawlingSiteIds = new Set<string>();
+const activeCrawlingDomains = new Map<string, string>();
+export const MAX_CONCURRENT_CRAWLS = 2;
 
 export function flushSitesToDisk(): void {
   if (saveSitesTimeout) {
@@ -606,8 +609,9 @@ export async function crawlSite(
     "info"
   );
 
-  activeCrawlAbortController = new AbortController();
-  const abortSignal = activeCrawlAbortController.signal;
+  const siteAbortController = new AbortController();
+  activeCrawlAbortControllers.set(site.id, siteAbortController);
+  const abortSignal = siteAbortController.signal;
 
   const crawlQueue: string[] = isContinuation ? [...(site.pendingUrls || [])] : [];
   let pagesCrawled = 0;
@@ -620,6 +624,7 @@ export async function crawlSite(
   try {
     const parsedStartUrl = await validateCrawlUrl(site.url);
     const domain = parsedStartUrl.hostname.toLowerCase();
+    activeCrawlingDomains.set(site.id, domain);
     const origin = parsedStartUrl.origin;
 
     // 1. Fetch robots.txt
@@ -654,7 +659,7 @@ export async function crawlSite(
       pagesCrawled < maxPages &&
       existingPages.length + pagesCrawled < MAX_SITE_INDEX_PAGES
     ) {
-      if (abortSignal.aborted || currentCrawlingSiteId !== site.id) {
+      if (abortSignal.aborted || !activeCrawlingSiteIds.has(site.id)) {
         return { success: false, pagesCrawled, error: "Crawl cancelled" };
       }
       const currentUrl = crawlQueue.shift()!;
@@ -682,6 +687,9 @@ export async function crawlSite(
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 12000);
+        const fetchSignal = (AbortSignal as any).any
+          ? (AbortSignal as any).any([controller.signal, abortSignal])
+          : controller.signal;
 
         const res = await fetch(currentUrl, {
           method: "GET",
@@ -691,7 +699,7 @@ export async function crawlSite(
             Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
           },
-          signal: controller.signal,
+          signal: fetchSignal,
         }).finally(() => clearTimeout(timeout));
 
         const contentType = res.headers.get("content-type") || "";
@@ -745,10 +753,13 @@ export async function crawlSite(
         }
       } catch (reqErr: any) {
         log(`Error fetching ${currentUrl}: ${reqErr.message}`, "error");
+        if (abortSignal.aborted || !activeCrawlingSiteIds.has(site.id)) {
+          return { success: false, pagesCrawled, error: "Crawl cancelled" };
+        }
       }
     }
 
-    if (abortSignal.aborted || currentCrawlingSiteId !== siteId) {
+    if (abortSignal.aborted || !activeCrawlingSiteIds.has(siteId)) {
       return { success: false, pagesCrawled, error: "Crawl cancelled" };
     }
 
@@ -816,11 +827,13 @@ export async function crawlSite(
       });
     }, true);
     return { success: false, pagesCrawled, error: err.message };
+  } finally {
+    activeCrawlAbortControllers.delete(site.id);
   }
 }
 
 // ============================================================
-// Server-side Crawl Queue: Exactly 1 domain indexed at a time
+// Server-side Crawl Queue: Up to 2 domains indexed concurrently
 // ============================================================
 
 export interface CrawlQueueItem {
@@ -829,24 +842,36 @@ export interface CrawlQueueItem {
 }
 
 const serverCrawlQueue: CrawlQueueItem[] = [];
-let currentCrawlingSiteId: string | null = null;
 let isCrawlerProcessing = false;
 
 /**
- * Returns the 1-based queue position for a site:
- * - 1 if currently indexing
- * - 2, 3, ... if waiting in the FIFO queue
- * - null if not currently in queue or indexing
+ * Returns the 1-based queue position for a waiting site:
+ * - null if currently actively crawling or not in queue
+ * - 1, 2, ... if waiting in the FIFO queue
  */
 export function getQueuePosition(siteId: string): number | null {
-  if (currentCrawlingSiteId === siteId) {
-    return 1;
+  if (activeCrawlingSiteIds.has(siteId)) {
+    return null;
   }
   const queueIndex = serverCrawlQueue.findIndex((item) => item.siteId === siteId);
   if (queueIndex !== -1) {
-    return (currentCrawlingSiteId ? 1 : 0) + queueIndex + 1;
+    return queueIndex + 1;
   }
   return null;
+}
+
+/**
+ * Checks if a site is currently actively crawling.
+ */
+export function isSiteCrawling(siteId: string): boolean {
+  return activeCrawlingSiteIds.has(siteId);
+}
+
+/**
+ * Returns all currently actively crawling site IDs.
+ */
+export function getActiveCrawlingSiteIds(): string[] {
+  return Array.from(activeCrawlingSiteIds);
 }
 
 /**
@@ -857,7 +882,7 @@ export function resumeInterruptedCrawls(): number {
   const sites = getSites();
   const toResume = sites.filter((site) => {
     if (!site.verified && !site.adminAdded) return false;
-    if (getQueuePosition(site.id) !== null) return false;
+    if (getQueuePosition(site.id) !== null || activeCrawlingSiteIds.has(site.id)) return false;
     const hasPendingUrls = Array.isArray(site.pendingUrls) && site.pendingUrls.length > 0;
     return site.status === "pending" || site.status === "crawling" || hasPendingUrls;
   });
@@ -893,9 +918,12 @@ export function resumeInterruptedCrawls(): number {
 
 /**
  * Enqueues a site to be crawled/indexed.
- * Returns the 1-based queue position.
+ * Returns the 1-based queue position if waiting in queue, or null if actively crawling.
  */
-export function enqueueCrawl(siteId: string, maxPages = 20): number {
+export function enqueueCrawl(siteId: string, maxPages = 20): number | null {
+  if (activeCrawlingSiteIds.has(siteId)) {
+    return null;
+  }
   const existingPos = getQueuePosition(siteId);
   if (existingPos !== null) {
     return existingPos;
@@ -912,23 +940,47 @@ export function enqueueCrawl(siteId: string, maxPages = 20): number {
 
   processNextInQueue().catch(console.error);
 
-  return getQueuePosition(siteId) || 1;
+  return getQueuePosition(siteId);
 }
 
 /**
- * Sequential queue worker ensuring only 1 domain is crawled at a time.
+ * Concurrent queue worker ensuring up to 2 domains are crawled concurrently,
+ * prioritizing distinct domains so fetch cooldowns can interleave.
  */
 async function processNextInQueue(): Promise<void> {
   if (isCrawlerProcessing) return;
   isCrawlerProcessing = true;
 
   try {
-    while (serverCrawlQueue.length > 0) {
-      const next = serverCrawlQueue.shift()!;
-      currentCrawlingSiteId = next.siteId;
-
+    while (activeCrawlingSiteIds.size < MAX_CONCURRENT_CRAWLS && serverCrawlQueue.length > 0) {
+      const runningDomains = new Set(activeCrawlingDomains.values());
       const sites = getSites();
+
+      // Prioritize next queued item with a different domain than currently active crawls
+      let chosenIndex = serverCrawlQueue.findIndex((item) => {
+        const s = sites.find((site) => site.id === item.siteId);
+        const domain = s?.domain?.toLowerCase() || (s?.url ? new URL(s.url).hostname.toLowerCase() : "");
+        return domain && !runningDomains.has(domain);
+      });
+
+      if (chosenIndex === -1) {
+        chosenIndex = 0;
+      }
+
+      const [next] = serverCrawlQueue.splice(chosenIndex, 1);
       const site = sites.find((s) => s.id === next.siteId);
+      let domain = site?.domain?.toLowerCase() || "";
+      if (!domain && site?.url) {
+        try {
+          domain = new URL(site.url).hostname.toLowerCase();
+        } catch {}
+      }
+
+      activeCrawlingSiteIds.add(next.siteId);
+      if (domain) {
+        activeCrawlingDomains.set(next.siteId, domain);
+      }
+
       if (site) {
         site.status = "crawling";
         site.logs.push({
@@ -939,31 +991,45 @@ async function processNextInQueue(): Promise<void> {
         saveSites(sites);
       }
 
-      try {
-        await crawlSite(next.siteId, next.maxPages);
-      } catch (err: any) {
-        console.error(`Error processing crawl for site ${next.siteId}:`, err);
-      } finally {
-        if (currentCrawlingSiteId === next.siteId) {
-          currentCrawlingSiteId = null;
+      // Launch async crawl for this slot
+      (async () => {
+        try {
+          await crawlSite(next.siteId, next.maxPages);
+        } catch (err: any) {
+          console.error(`Error processing crawl for site ${next.siteId}:`, err);
+        } finally {
+          activeCrawlingSiteIds.delete(next.siteId);
+          activeCrawlingDomains.delete(next.siteId);
+          activeCrawlAbortControllers.delete(next.siteId);
+          processNextInQueue().catch(console.error);
         }
-      }
+      })();
     }
   } finally {
     isCrawlerProcessing = false;
-    if (serverCrawlQueue.length > 0) {
+    if (activeCrawlingSiteIds.size < MAX_CONCURRENT_CRAWLS && serverCrawlQueue.length > 0) {
       processNextInQueue().catch(console.error);
     }
   }
 }
 
 /**
- * Removes a site from the pending crawl queue.
+ * Removes a site from the pending crawl queue or cancels it if currently crawling.
  */
 export function removeFromCrawlQueue(siteId: string): void {
   const idx = serverCrawlQueue.findIndex((item) => item.siteId === siteId);
   if (idx !== -1) {
     serverCrawlQueue.splice(idx, 1);
+  }
+  if (activeCrawlingSiteIds.has(siteId)) {
+    const controller = activeCrawlAbortControllers.get(siteId);
+    if (controller) {
+      controller.abort();
+      activeCrawlAbortControllers.delete(siteId);
+    }
+    activeCrawlingSiteIds.delete(siteId);
+    activeCrawlingDomains.delete(siteId);
+    processNextInQueue().catch(console.error);
   }
 }
 
@@ -971,10 +1037,13 @@ export function removeFromCrawlQueue(siteId: string): void {
  * Clears the crawl queue (for test cleanup).
  */
 export function clearCrawlQueue(): void {
-  if (activeCrawlAbortController) {
-    activeCrawlAbortController.abort();
-    activeCrawlAbortController = null;
+  for (const controller of activeCrawlAbortControllers.values()) {
+    controller.abort();
   }
+  activeCrawlAbortControllers.clear();
+  activeCrawlingSiteIds.clear();
+  activeCrawlingDomains.clear();
+
   if (saveSitesTimeout) {
     clearTimeout(saveSitesTimeout);
     saveSitesTimeout = null;
@@ -988,18 +1057,17 @@ export function clearCrawlQueue(): void {
   domainLastRequestTime.clear();
   robotsCache.clear();
   serverCrawlQueue.length = 0;
-  currentCrawlingSiteId = null;
   isCrawlerProcessing = false;
   BATCH_CRAWL_DELAY_MS = 0;
   DEFAULT_DOMAIN_DELAY_MS = 1000;
 }
 
 export function getCurrentCrawlingSiteId(): string | null {
-  return currentCrawlingSiteId;
+  return activeCrawlingSiteIds.values().next().value || null;
 }
 
 export function getCrawlQueueLength(): number {
-  return (currentCrawlingSiteId ? 1 : 0) + serverCrawlQueue.length;
+  return activeCrawlingSiteIds.size + serverCrawlQueue.length;
 }
 
 /**

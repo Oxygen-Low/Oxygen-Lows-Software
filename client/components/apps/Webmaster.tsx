@@ -207,8 +207,8 @@ export function WebmasterApp() {
       fetchAdminSites(true);
     }
     const interval = setInterval(() => {
-      const isQueued = (s: { queuePosition?: number | null; nextCrawlScheduledAt?: string | null }) =>
-        (s.queuePosition !== undefined && s.queuePosition !== null) || Boolean(s.nextCrawlScheduledAt);
+      const isQueued = (s: { status?: string; queuePosition?: number | null; nextCrawlScheduledAt?: string | null }) =>
+        s.status === "crawling" || (s.queuePosition !== undefined && s.queuePosition !== null) || Boolean(s.nextCrawlScheduledAt);
 
       const isModalBusy = isDetailsOpenRef.current && selectedSiteRef.current && isQueued(selectedSiteRef.current);
 
@@ -221,7 +221,7 @@ export function WebmasterApp() {
       if (isAdmin && (hasCrawlingUser || hasCrawlingAdmin || isModalBusy)) {
         fetchAdminSites(false);
       }
-      if (isDetailsOpenRef.current && selectedSiteRef.current?.queuePosition === 1) {
+      if (isDetailsOpenRef.current && (selectedSiteRef.current?.status === "crawling" || selectedSiteRef.current?.queuePosition === 1)) {
         fetchSitePages(selectedSiteRef.current.id);
       }
     }, 1500);
@@ -417,7 +417,7 @@ export function WebmasterApp() {
   };
 
   const isSiteBusy = (site: WebmasterSite) => {
-    return site.queuePosition !== undefined && site.queuePosition !== null;
+    return site.status === "crawling" || (site.queuePosition !== undefined && site.queuePosition !== null);
   };
 
   const getStatusBadge = (site: WebmasterSite) => {
@@ -428,7 +428,7 @@ export function WebmasterApp() {
         </Badge>
       );
     }
-    if (site.queuePosition === 1) {
+    if (site.status === "crawling" && !site.nextCrawlScheduledAt) {
       return (
         <Badge className="bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20 gap-1 font-normal">
           <RotateCw className="w-3 h-3 animate-spin" /> Crawling
