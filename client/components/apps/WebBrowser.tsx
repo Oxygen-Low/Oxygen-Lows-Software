@@ -85,6 +85,10 @@ const DEFAULT_HOME_TAB: Tab = {
   mode: "home",
 };
 
+const DEFAULT_BOOKMARKS: BookmarkItem[] = [
+  { title: "Oxygen Low's Software", url: "https://oxygenlow.com" },
+];
+
 export function WebBrowserApp() {
   const { t } = useTranslation();
   const [tabs, setTabs] = useState<Tab[]>([DEFAULT_HOME_TAB]);
@@ -101,9 +105,23 @@ export function WebBrowserApp() {
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(() => {
     try {
       const saved = localStorage.getItem("oxylow_browser_bookmarks");
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(
+            (b: BookmarkItem) =>
+              !b.url?.toLowerCase().includes("wikipedia.org") &&
+              !b.title?.toLowerCase().includes("wikipedia")
+          );
+          if (parsed.length > 0 && filtered.length === 0) {
+            return DEFAULT_BOOKMARKS;
+          }
+          return filtered;
+        }
+      }
+      return DEFAULT_BOOKMARKS;
     } catch {
-      return [];
+      return DEFAULT_BOOKMARKS;
     }
   });
 
@@ -502,7 +520,7 @@ export function WebBrowserApp() {
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="Search with oxylow or enter URL..."
+              placeholder="Search or enter URL..."
               className="pl-9 pr-8 h-9 text-sm bg-muted/40 hover:bg-muted/70 focus:bg-background transition-colors w-full rounded-full"
             />
             {activeTab.url && (
@@ -525,7 +543,7 @@ export function WebBrowserApp() {
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-xl z-50 overflow-hidden">
               <div className="p-1 text-[11px] font-semibold text-muted-foreground px-3 py-1 bg-muted/30">
-                oxylow Search Suggestions
+                Search Suggestions
               </div>
               {suggestions.map((sug, i) => (
                 <div
@@ -602,9 +620,9 @@ export function WebBrowserApp() {
                 <Globe className="w-8 h-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">oxylow Browser</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Browser</h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Powered by the autonomous oxylow web crawler & search index
+                  Powered by the autonomous web crawler & search index
                 </p>
               </div>
 
@@ -684,7 +702,7 @@ export function WebBrowserApp() {
             {isSearching ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground space-y-3">
                 <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
-                <p className="text-sm">Searching the oxylow index...</p>
+                <p className="text-sm">Searching the index...</p>
               </div>
             ) : searchResults.length === 0 ? (
               <div className="text-center py-16 space-y-3">

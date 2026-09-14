@@ -554,10 +554,10 @@ export function WebmasterApp() {
 
         <Card className="border-border bg-card shadow-sm">
           <CardHeader className="p-4 pb-2">
-            <CardDescription className="text-xs font-semibold uppercase">Verification & Bot</CardDescription>
+            <CardDescription className="text-xs font-semibold uppercase">Crawler Bot</CardDescription>
             <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-emerald-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              DNS TXT Verification Required
+              Robots.txt & Rate-Limited
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-muted-foreground space-y-1">

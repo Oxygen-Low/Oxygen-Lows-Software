@@ -425,10 +425,10 @@ export const ko = {
       "맞춤형 팔레트와 레이어를 사용하여 레트로 픽셀 아트, 다중 프레임 애니메이션 및 스프라이트 시트를 만드세요.",
     webBrowserTitle: "웹 브라우저",
     webBrowserDesc:
-      "oxylow 크롤러가 지원하는 다중 탭 탐색, 검색어 추천, 북마크 및 리더 모드로 인터넷을 탐색하세요.",
+      "다중 탭 탐색, 검색어 추천, 북마크 및 리더 모드로 인터넷을 탐색하세요.",
     webmasterTitle: "웹마스터",
     webmasterDesc:
-      "웹 브라우저용 oxylow 봇이 크롤링하고 색인화할 웹사이트 및 사이트맵을 제출하세요.",
+      "크롤링하고 색인화할 웹사이트 및 사이트맵을 제출하세요.",
       imageGeneratorTitle: "AI 이미지 생성기",
     imageGeneratorDesc:
       "AI Horde SFW 커뮤니티 워커를 활용하여 고품질 이미지를 생성합니다.",

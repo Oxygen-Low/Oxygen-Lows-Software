@@ -431,10 +431,10 @@ export const en = {
       "Create retro pixel art, multi-frame animations, and sprite sheets with custom palettes and layers.",
     webBrowserTitle: "Web Browser",
     webBrowserDesc:
-      "Browse the internet with multi-tab navigation, search suggestions, bookmarks, and reader mode powered by the oxylow crawler.",
+      "Browse the internet with multi-tab navigation, search suggestions, bookmarks, and reader mode.",
     webmasterTitle: "Webmaster",
     webmasterDesc:
-      "Submit websites and sitemaps to be crawled and indexed by the oxylow bot for the Web Browser.",
+      "Submit websites and sitemaps to be crawled and indexed.",
     imageGeneratorTitle: "AI Image Generator",
     imageGeneratorDesc:
       "Generate high-quality visuals using AI Horde SFW community workers.",

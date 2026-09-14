@@ -389,7 +389,7 @@ const APPS: AppMetadata[] = [
     defaultName: "Web Browser",
     descKey: "apps.webBrowserDesc",
     defaultDesc:
-      "Browse the internet with multi-tab navigation, search suggestions, bookmarks, and reader mode powered by the oxylow crawler.",
+      "Browse the internet with multi-tab navigation, search suggestions, bookmarks, and reader mode.",
     categories: ["All", "Utility", "Social"],
     availability: "web-and-desktop",
     icon: <Globe className="w-8 h-8 text-cyan-500" />,
@@ -401,7 +401,7 @@ const APPS: AppMetadata[] = [
     defaultName: "Webmaster",
     descKey: "apps.webmasterDesc",
     defaultDesc:
-      "Submit websites and sitemaps to be crawled and indexed by the oxylow bot for the Web Browser.",
+      "Submit websites and sitemaps to be crawled and indexed.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,

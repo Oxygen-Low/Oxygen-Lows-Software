@@ -18,15 +18,39 @@ vi.mock("sonner", () => ({
 }));
 
 describe("WebBrowserApp", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   afterEach(() => {
     cleanup();
   });
 
-  it("renders the browser home page with oxylow search", () => {
+  it("renders the browser home page with Browser title and no oxylow text in heading", () => {
     render(<WebBrowserApp />);
-    expect(screen.getByText("oxylow Browser")).toBeDefined();
-    expect(screen.getByPlaceholderText(/Search with oxylow or enter URL/i)).toBeDefined();
+    expect(screen.getByRole("heading", { level: 1, name: "Browser" })).toBeDefined();
+    expect(screen.queryByText("oxylow Browser")).toBeNull();
+    expect(screen.getByPlaceholderText("Search or enter URL...")).toBeDefined();
     expect(screen.getByText("Quick Access")).toBeDefined();
+  });
+
+  it("renders Quick Access with Oxygen Low's Software and without Wikipedia", () => {
+    render(<WebBrowserApp />);
+    expect(screen.getByText("Oxygen Low's Software")).toBeDefined();
+    expect(screen.queryByText("Wikipedia")).toBeNull();
+  });
+
+  it("filters out Wikipedia from legacy localStorage bookmarks", () => {
+    localStorage.setItem(
+      "oxylow_browser_bookmarks",
+      JSON.stringify([
+        { title: "Oxygen Low's Software", url: "https://oxygenlow.com" },
+        { title: "Wikipedia", url: "https://www.wikipedia.org" },
+      ])
+    );
+    render(<WebBrowserApp />);
+    expect(screen.getByText("Oxygen Low's Software")).toBeDefined();
+    expect(screen.queryByText("Wikipedia")).toBeNull();
   });
 
   it("allows adding and switching tabs", () => {

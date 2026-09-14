@@ -403,10 +403,10 @@ export const zhCN = {
       "使用自定义调色板和图层创建复古像素艺术、多帧动画和精灵表。",
     webBrowserTitle: "网页浏览器",
     webBrowserDesc:
-      "支持多标签浏览、搜索建议、书签和阅读模式，由 oxylow 爬虫索引驱动。",
+      "支持多标签浏览、搜索建议、书签和阅读模式。",
     webmasterTitle: "网站管理员",
     webmasterDesc:
-      "提交网站与网站地图，由 oxylow 机器人爬取并索引，以便在网页浏览器中搜索浏览。",
+      "提交网站与网站地图以进行爬取和索引。",
       imageGeneratorTitle: "AI 图像生成器",
     imageGeneratorDesc:
       "使用 AI Horde SFW 社区算力生成高质量图像。",
