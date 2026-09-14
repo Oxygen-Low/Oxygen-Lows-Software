@@ -151,3 +151,23 @@ export const SYSTEM_FONTS = [
   { name: "Trebuchet MS", font: "'Trebuchet MS', sans-serif" },
   { name: "Comic Sans MS", font: "'Comic Sans MS', cursive, sans-serif" },
 ];
+
+export type LayerAlignment =
+  | "left"
+  | "center-h"
+  | "right"
+  | "top"
+  | "center-v"
+  | "bottom";
+
+export interface StudioTemplate {
+  id: string;
+  name: string;
+  category: string;
+  previewColor: string;
+  width: number;
+  height: number;
+  background: CanvasBackground;
+  layers: CanvasLayer[];
+}
+

@@ -93,4 +93,51 @@ describe("Apps", () => {
 
     expect(screen.getAllByText(/Game Library/i).length).toBeGreaterThan(0);
   });
+
+  it("renders search bar and filters apps dynamically", () => {
+    render(
+      <MemoryRouter initialEntries={["/apps"]}>
+        <Apps />
+      </MemoryRouter>,
+    );
+
+    const searchInput = screen.getByRole("searchbox");
+    expect(searchInput).toBeDefined();
+    expect(searchInput.getAttribute("placeholder")).toBe("Search apps...");
+
+    // Filter by name
+    fireEvent.change(searchInput, { target: { value: "base64" } });
+    expect(screen.getByText("Base64 Encoder/Decoder")).toBeDefined();
+    expect(screen.queryByText("Chatbot")).toBeNull();
+
+    // Clear search with inline X button
+    const clearBtn = screen.getByLabelText("Clear search");
+    fireEvent.click(clearBtn);
+    expect(screen.getByText("Chatbot")).toBeDefined();
+    expect(screen.getByText("Base64 Encoder/Decoder")).toBeDefined();
+  });
+
+  it("displays empty state when no apps match query and allows resetting search", () => {
+    render(
+      <MemoryRouter initialEntries={["/apps"]}>
+        <Apps />
+      </MemoryRouter>,
+    );
+
+    const searchInput = screen.getByRole("searchbox");
+    fireEvent.change(searchInput, {
+      target: { value: "nonexistentappxyz123" },
+    });
+
+    expect(
+      screen.getByText('No apps found matching "nonexistentappxyz123".'),
+    ).toBeDefined();
+
+    const resetButtons = screen.getAllByRole("button", { name: "Clear search" });
+    expect(resetButtons.length).toBe(2);
+    fireEvent.click(resetButtons[1]);
+
+    expect(screen.getByText("Chatbot")).toBeDefined();
+    expect(screen.getByText("File Compressor")).toBeDefined();
+  });
 });

@@ -247,4 +247,96 @@ describe("ImageStudioApp", () => {
       expect(screen.getByText("Export File (.json)")).toBeDefined();
     });
   });
+
+  it("allows selecting starter templates and replaces canvas layout", async () => {
+    window.confirm = vi.fn().mockReturnValue(true);
+    render(
+      <BrowserRouter>
+        <ImageStudioApp />
+      </BrowserRouter>,
+    );
+
+    // Switch to Templates tab
+    fireEvent.click(screen.getByText("Templates"));
+    expect(screen.getByText("YouTube Thumbnail")).toBeDefined();
+    expect(screen.getByText("Special Offer / Sale")).toBeDefined();
+
+    // Click Use Template on YouTube Thumbnail
+    const useButtons = screen.getAllByText("Use Template");
+    fireEvent.click(useButtons[0]);
+
+    // Check project name updated
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("YouTube Thumbnail")).toBeDefined();
+    });
+  });
+
+  it("initializes line shape with visible stroke width and color", () => {
+    render(
+      <BrowserRouter>
+        <ImageStudioApp />
+      </BrowserRouter>,
+    );
+
+    // Switch to Shapes tab
+    fireEvent.click(screen.getByText("Shapes"));
+    expect(screen.getByText("Line")).toBeDefined();
+
+    // Click to add line
+    fireEvent.click(screen.getByText("Line"));
+
+    // Check Layers tab
+    fireEvent.click(screen.getByText("Layers"));
+    expect(screen.getByText("Line")).toBeDefined();
+  });
+
+  it("supports inline layer renaming in the Layers tab", async () => {
+    render(
+      <BrowserRouter>
+        <ImageStudioApp />
+      </BrowserRouter>,
+    );
+
+    // Switch to Layers tab
+    fireEvent.click(screen.getByText("Layers"));
+    const headingLayer = screen.getByText("Welcome Heading");
+    expect(headingLayer).toBeDefined();
+
+    // Double click to trigger inline edit
+    fireEvent.doubleClick(headingLayer);
+
+    // Check input is shown with current value
+    const input = screen.getByDisplayValue("Welcome Heading");
+    fireEvent.change(input, { target: { value: "Updated Banner Title" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    // Verify updated title is rendered
+    await waitFor(() => {
+      expect(screen.getByText("Updated Banner Title")).toBeDefined();
+    });
+  });
+
+  it("opens the AI Image generation modal from Uploads tab", async () => {
+    render(
+      <BrowserRouter>
+        <ImageStudioApp />
+      </BrowserRouter>,
+    );
+
+    // Uploads tab is active by default
+    const generateBtn = screen.getByText("Generate with AI");
+    expect(generateBtn).toBeDefined();
+
+    // Click Generate with AI
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Generate Image with AI")).toBeDefined();
+      expect(
+        screen.getByPlaceholderText(/A futuristic cyber city with glowing neon billboards/i),
+      ).toBeDefined();
+      expect(screen.getByText("Generate & Insert")).toBeDefined();
+    });
+  });
 });
+

@@ -14,6 +14,8 @@ import {
   ShapeType,
   CanvasBackground,
   DEFAULT_FILTERS,
+  LayerAlignment,
+  StudioTemplate,
 } from "./types";
 import { useCanvasHistory } from "./hooks/useCanvasHistory";
 import { useCustomFonts } from "./hooks/useCustomFonts";
@@ -23,6 +25,7 @@ import { CanvasStage } from "./CanvasStage";
 import { InspectorToolbar } from "./InspectorToolbar";
 import { ExportDialog } from "./ExportDialog";
 import { ProjectsDialog } from "./ProjectsDialog";
+import { CropDialog } from "./CropDialog";
 import { toast } from "sonner";
 
 const LOCAL_ACTIVE_PROJECT_KEY = "image_studio_active_project";
@@ -141,6 +144,8 @@ export function ImageStudioApp() {
   // Dialog States
   const [exportOpen, setExportOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropLayer, setCropLayer] = useState<ImageLayer | null>(null);
 
   // Auto-save locally on project changes
   useEffect(() => {
@@ -182,7 +187,9 @@ export function ImageStudioApp() {
   const handleUpdateLayer = (id: string, updates: Partial<CanvasLayer>) => {
     setProject((prev) => ({
       ...prev,
-      layers: prev.layers.map((l) => (l.id === id ? ({ ...l, ...updates } as any) : l)),
+      layers: prev.layers.map((l) =>
+        l.id === id ? ({ ...l, ...updates } as any) : l,
+      ),
     }));
   };
 
@@ -312,12 +319,17 @@ export function ImageStudioApp() {
   const handleAddShape = (shapeType: ShapeType) => {
     let width = 240;
     let height = 240;
+    let strokeColor = "transparent";
+    let strokeWidth = 0;
+
     if (shapeType === "rounded-rectangle") {
       width = 320;
       height = 200;
     } else if (shapeType === "line") {
       width = 300;
-      height = 10;
+      height = 4;
+      strokeColor = "#06b6d4";
+      strokeWidth = 4;
     } else if (shapeType === "arrow") {
       width = 280;
       height = 60;
@@ -338,8 +350,8 @@ export function ImageStudioApp() {
       isVisible: true,
       fill: "#06b6d4",
       fillType: "solid",
-      strokeColor: "transparent",
-      strokeWidth: 0,
+      strokeColor,
+      strokeWidth,
       cornerRadius: 16,
     };
 
@@ -420,7 +432,8 @@ export function ImageStudioApp() {
     setProject((prev) => ({
       ...prev,
       layers: prev.layers.filter((l) => l.id !== id),
-      selectedLayerId: prev.selectedLayerId === id ? null : prev.selectedLayerId,
+      selectedLayerId:
+        prev.selectedLayerId === id ? null : prev.selectedLayerId,
     }));
   };
 
@@ -453,9 +466,97 @@ export function ImageStudioApp() {
     }));
   };
 
+  // Align Layer
+  const handleAlignLayer = (id: string, alignment: LayerAlignment) => {
+    const target = project.layers.find((l) => l.id === id);
+    if (!target) return;
+
+    let newX = target.x;
+    let newY = target.y;
+
+    if (alignment === "left") newX = 0;
+    else if (alignment === "center-h")
+      newX = Math.round((project.width - target.width) / 2);
+    else if (alignment === "right") newX = project.width - target.width;
+    else if (alignment === "top") newY = 0;
+    else if (alignment === "center-v")
+      newY = Math.round((project.height - target.height) / 2);
+    else if (alignment === "bottom") newY = project.height - target.height;
+
+    handleUpdateLayer(id, { x: newX, y: newY });
+  };
+
+  // Rename Layer
+  const handleRenameLayer = (id: string, newName: string) => {
+    handleUpdateLayer(id, { name: newName });
+  };
+
+  // Crop Handlers
+  const handleOpenCrop = (layer: ImageLayer) => {
+    setCropLayer(layer);
+    setCropDialogOpen(true);
+  };
+
+  const handleApplyCrop = (
+    layerId: string,
+    croppedDataUrl: string,
+    width: number,
+    height: number,
+  ) => {
+    handleUpdateLayer(layerId, {
+      src: croppedDataUrl,
+      naturalWidth: width,
+      naturalHeight: height,
+      width,
+      height,
+    } as any);
+  };
+
+  // Load Template
+  const handleLoadTemplate = (template: StudioTemplate) => {
+    if (
+      window.confirm(
+        t(
+          "imageStudio.confirmLoadTemplate",
+          undefined,
+          "Load this template design? Any unsaved changes on the current canvas will be replaced.",
+        ),
+      )
+    ) {
+      const clonedLayers = template.layers.map((l) => ({
+        ...l,
+        id: `${l.type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      }));
+
+      const newProject: CanvasProject = {
+        id: `project-${Date.now()}`,
+        name: template.name,
+        width: template.width,
+        height: template.height,
+        background: { ...template.background },
+        layers: clonedLayers,
+        selectedLayerId: clonedLayers[0]?.id || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      resetHistory(newProject);
+      toast.success(
+        t(
+          "imageStudio.templateLoaded",
+          undefined,
+          "Template loaded successfully!",
+        ),
+      );
+      handleFitToScreen();
+    }
+  };
+
   // Match Canvas to Image
   const handleMatchCanvasToSelectedImage = () => {
-    const selected = project.layers.find((l) => l.id === project.selectedLayerId);
+    const selected = project.layers.find(
+      (l) => l.id === project.selectedLayerId,
+    );
     if (selected && selected.type === "image") {
       const imgLayer = selected as ImageLayer;
       const nw = imgLayer.naturalWidth || selected.width;
@@ -470,7 +571,13 @@ export function ImageStudioApp() {
             : l,
         ),
       }));
-      toast.success(t("imageStudio.canvasMatched", undefined, "Canvas size matched to image resolution!"));
+      toast.success(
+        t(
+          "imageStudio.canvasMatched",
+          undefined,
+          "Canvas size matched to image resolution!",
+        ),
+      );
       handleFitToScreen();
     }
   };
@@ -497,7 +604,9 @@ export function ImageStudioApp() {
       )
     ) {
       resetHistory(createDefaultProject());
-      toast.success(t("imageStudio.newProjectCreated", undefined, "New project created!"));
+      toast.success(
+        t("imageStudio.newProjectCreated", undefined, "New project created!"),
+      );
       handleFitToScreen();
     }
   };
@@ -518,7 +627,8 @@ export function ImageStudioApp() {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", handleFsChange);
-    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFsChange);
   }, []);
 
   // Keyboard shortcuts listener
@@ -572,8 +682,31 @@ export function ImageStudioApp() {
         return;
       }
 
+      // Duplicate: Ctrl+D / Cmd+D
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        handleDuplicateLayer(selectedId);
+        return;
+      }
+
+      // Z-Order: [ send backward, ] bring forward
+      if (e.key === "[") {
+        e.preventDefault();
+        handleSendBackward(selectedId);
+        return;
+      }
+      if (e.key === "]") {
+        e.preventDefault();
+        handleBringForward(selectedId);
+        return;
+      }
+
       // Paste: Ctrl+V / Cmd+V
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v" && copiedLayer) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "v" &&
+        copiedLayer
+      ) {
         e.preventDefault();
         handleDuplicateLayer(copiedLayer.id);
         return;
@@ -675,6 +808,8 @@ export function ImageStudioApp() {
           onSendToBack={handleSendToBack}
           onDuplicateLayer={handleDuplicateLayer}
           onDeleteLayer={handleDeleteLayer}
+          onAlignLayer={handleAlignLayer}
+          onOpenCrop={handleOpenCrop}
         />
       )}
 
@@ -696,6 +831,8 @@ export function ImageStudioApp() {
           onMoveLayerDown={handleSendBackward}
           onDuplicateLayer={handleDuplicateLayer}
           onDeleteLayer={handleDeleteLayer}
+          onRenameLayer={handleRenameLayer}
+          onLoadTemplate={handleLoadTemplate}
         />
 
         {/* Center Interactive Canvas Stage */}
@@ -709,6 +846,14 @@ export function ImageStudioApp() {
             onPanChange={setPan}
             onZoomChange={setZoom}
             onMatchCanvasToImage={handleResizeCanvas}
+            onDuplicateLayer={handleDuplicateLayer}
+            onDeleteLayer={handleDeleteLayer}
+            onBringForward={handleBringForward}
+            onSendBackward={handleSendBackward}
+            onBringToFront={handleBringToFront}
+            onSendToBack={handleSendToBack}
+            onToggleLock={handleToggleLock}
+            onAlignLayer={handleAlignLayer}
           />
         </div>
       </div>
@@ -728,6 +873,13 @@ export function ImageStudioApp() {
           resetHistory(loaded);
           handleFitToScreen();
         }}
+      />
+
+      <CropDialog
+        open={cropDialogOpen}
+        onOpenChange={setCropDialogOpen}
+        layer={cropLayer}
+        onApplyCrop={handleApplyCrop}
       />
     </div>
   );

@@ -34,7 +34,10 @@ import {
   Palette,
   ImagePlus,
   Scissors,
+  Search,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { FileCompressorApp } from "@/components/apps/FileCompressor";
 import { FileConverterApp } from "@/components/apps/FileConverter";
@@ -396,6 +399,7 @@ export default function Apps() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { appId: paramAppId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
@@ -455,11 +459,26 @@ export default function Apps() {
   );
 
   const filteredApps = useMemo(() => {
-    if (selectedCategory === "All") return availableApps;
-    return availableApps.filter((app) =>
-      app.categories.includes(selectedCategory),
-    );
-  }, [selectedCategory, availableApps]);
+    let list = availableApps;
+    if (selectedCategory !== "All") {
+      list = list.filter((app) =>
+        app.categories.includes(selectedCategory),
+      );
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(
+        (app) =>
+          app.name.toLowerCase().includes(q) ||
+          app.description.toLowerCase().includes(q) ||
+          app.defaultName.toLowerCase().includes(q) ||
+          app.defaultDesc.toLowerCase().includes(q) ||
+          app.id.toLowerCase().includes(q) ||
+          app.categories.some((cat) => cat.toLowerCase().includes(q)),
+      );
+    }
+    return list;
+  }, [selectedCategory, availableApps, searchQuery]);
 
   const categoryAppCounts = useMemo(() => {
     const counts: Record<Category, number> = {
@@ -614,17 +633,42 @@ export default function Apps() {
   return (
     <Layout>
       <div className="space-y-6 sm:space-y-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
-            {t("apps.title", undefined, "Apps")}
-          </h1>
-          <p className="text-sm sm:text-base text-slate-400">
-            {t(
-              "apps.subtitle",
-              undefined,
-              "Explore and try out our collection of awesome tools!",
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
+              {t("apps.title", undefined, "Apps")}
+            </h1>
+            <p className="text-sm sm:text-base text-slate-400">
+              {t(
+                "apps.subtitle",
+                undefined,
+                "Explore and try out our collection of awesome tools!",
+              )}
+            </p>
+          </div>
+
+          <div className="relative w-full sm:w-72 md:w-80 shrink-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <Input
+              type="text"
+              role="searchbox"
+              aria-label={t("apps.searchPlaceholder", undefined, "Search apps...")}
+              placeholder={t("apps.searchPlaceholder", undefined, "Search apps...")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-9 py-2 bg-slate-900/80 border-slate-800 text-white placeholder:text-slate-500 rounded-xl focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label={t("apps.clearSearch", undefined, "Clear search")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
-          </p>
+          </div>
         </div>
         {isDesktopMode && (
           <section
@@ -760,20 +804,35 @@ export default function Apps() {
               ))}
             </div>
           ) : (
-            <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl">
-              <p className="text-slate-500">
-                {isDesktopMode && selectedAvailability === "desktop-only"
+            <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-xl space-y-3">
+              <p className="text-slate-400">
+                {searchQuery.trim()
                   ? t(
-                      "apps.noDesktopApps",
-                      undefined,
-                      "No desktop-only apps are available yet.",
+                      "apps.noAppsMatchingSearch",
+                      { query: searchQuery.trim() },
+                      `No apps found matching "${searchQuery.trim()}".`,
                     )
-                  : t(
-                      "apps.noAppsFound",
-                      undefined,
-                      "No apps found in this category.",
-                    )}
+                  : isDesktopMode && selectedAvailability === "desktop-only"
+                    ? t(
+                        "apps.noDesktopApps",
+                        undefined,
+                        "No desktop-only apps are available yet.",
+                      )
+                    : t(
+                        "apps.noAppsFound",
+                        undefined,
+                        "No apps found in this category.",
+                      )}
               </p>
+              {searchQuery.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg text-sm transition-colors"
+                >
+                  {t("apps.clearSearch", undefined, "Clear search")}
+                </button>
+              )}
             </div>
           )}
         </div>

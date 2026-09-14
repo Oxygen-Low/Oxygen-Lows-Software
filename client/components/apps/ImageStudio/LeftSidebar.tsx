@@ -5,6 +5,7 @@ import {
   Square,
   Palette,
   Layers,
+  LayoutTemplate,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -13,16 +14,24 @@ import { TextPanel } from "./TextPanel";
 import { ShapesPanel } from "./ShapesPanel";
 import { BackgroundPanel } from "./BackgroundPanel";
 import { LayersPanel } from "./LayersPanel";
+import { TemplatesPanel } from "./TemplatesPanel";
 import {
   CanvasProject,
   CanvasLayer,
   ShapeType,
   CanvasBackground,
   CustomFont,
+  StudioTemplate,
 } from "./types";
 import { useTranslation } from "@/contexts/LanguageContext";
 
-type ActiveTab = "uploads" | "text" | "shapes" | "background" | "layers";
+type ActiveTab =
+  | "uploads"
+  | "text"
+  | "shapes"
+  | "background"
+  | "layers"
+  | "templates";
 
 interface LeftSidebarProps {
   project: CanvasProject;
@@ -52,6 +61,8 @@ interface LeftSidebarProps {
   onMoveLayerDown: (id: string) => void;
   onDuplicateLayer: (id: string) => void;
   onDeleteLayer: (id: string) => void;
+  onRenameLayer?: (id: string, newName: string) => void;
+  onLoadTemplate: (template: StudioTemplate) => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -69,12 +80,19 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onMoveLayerDown,
   onDuplicateLayer,
   onDeleteLayer,
+  onRenameLayer,
+  onLoadTemplate,
 }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ActiveTab>("uploads");
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
+    {
+      id: "templates",
+      label: t("imageStudio.templates", undefined, "Templates"),
+      icon: <LayoutTemplate className="w-5 h-5" />,
+    },
     {
       id: "uploads",
       label: t("imageStudio.uploads", undefined, "Uploads"),
@@ -114,7 +132,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   return (
     <aside className="flex h-full border-r border-border bg-card/90 backdrop-blur-md z-20 shrink-0">
       {/* Icon Navigation Column */}
-      <nav aria-label={t("imageStudio.toolsNav", undefined, "Studio Tools")} className="w-16 border-r border-border bg-card/60 flex flex-col items-center py-3 gap-1 shrink-0">
+      <nav
+        aria-label={t("imageStudio.toolsNav", undefined, "Studio Tools")}
+        className="w-16 border-r border-border bg-card/60 flex flex-col items-center py-3 gap-1 shrink-0"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -135,7 +156,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         <div className="mt-auto">
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            title={isCollapsed ? t("imageStudio.expand", undefined, "Expand sidebar") : t("imageStudio.collapse", undefined, "Collapse sidebar")}
+            title={
+              isCollapsed
+                ? t("imageStudio.expand", undefined, "Expand sidebar")
+                : t("imageStudio.collapse", undefined, "Collapse sidebar")
+            }
             className="w-10 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             {isCollapsed ? (
@@ -150,6 +175,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       {/* Expanded Content Panel */}
       {!isCollapsed && (
         <div className="w-72 sm:w-80 h-full overflow-y-auto bg-card/40 flex flex-col">
+          {activeTab === "templates" && (
+            <TemplatesPanel onLoadTemplate={onLoadTemplate} />
+          )}
+
           {activeTab === "uploads" && (
             <UploadsPanel onAddImageToCanvas={onAddImageToCanvas} />
           )}
@@ -182,6 +211,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               onMoveLayerDown={onMoveLayerDown}
               onDuplicateLayer={onDuplicateLayer}
               onDeleteLayer={onDeleteLayer}
+              onRenameLayer={onRenameLayer}
             />
           )}
         </div>

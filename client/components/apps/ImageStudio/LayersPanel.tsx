@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Eye,
   EyeOff,
@@ -12,9 +12,12 @@ import {
   Type,
   Square,
   Layers,
+  Edit2,
+  Check,
 } from "lucide-react";
 import { CanvasLayer } from "./types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/contexts/LanguageContext";
 
 interface LayersPanelProps {
@@ -27,6 +30,7 @@ interface LayersPanelProps {
   onMoveLayerDown: (id: string) => void;
   onDuplicateLayer: (id: string) => void;
   onDeleteLayer: (id: string) => void;
+  onRenameLayer?: (id: string, newName: string) => void;
 }
 
 export const LayersPanel: React.FC<LayersPanelProps> = ({
@@ -39,8 +43,11 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
   onMoveLayerDown,
   onDuplicateLayer,
   onDeleteLayer,
+  onRenameLayer,
 }) => {
   const { t } = useTranslation();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const getLayerIcon = (layer: CanvasLayer) => {
     switch (layer.type) {
@@ -53,8 +60,23 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
     }
   };
 
+  const startEditing = (layer: CanvasLayer, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingId(layer.id);
+    setEditingName(layer.name);
+  };
+
+  const finishEditing = (id: string) => {
+    if (editingName.trim() && onRenameLayer) {
+      onRenameLayer(id, editingName.trim());
+    }
+    setEditingId(null);
+  };
+
   // Render top z-index layer first
-  const reversedLayers = [...layers].map((layer, index) => ({ layer, index })).reverse();
+  const reversedLayers = [...layers]
+    .map((layer, index) => ({ layer, index }))
+    .reverse();
 
   return (
     <div className="space-y-3 p-3">
@@ -80,6 +102,7 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
             const isSelected = layer.id === selectedLayerId;
             const isTop = index === layers.length - 1;
             const isBottom = index === 0;
+            const isEditing = editingId === layer.id;
 
             return (
               <div
@@ -94,19 +117,61 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
                 {/* Icon */}
                 {getLayerIcon(layer)}
 
-                {/* Name */}
+                {/* Name / Inline Rename */}
                 <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-xs truncate font-medium ${
-                      isSelected ? "text-primary" : "text-foreground"
-                    }`}
-                  >
-                    {layer.name}
-                  </p>
+                  {isEditing ? (
+                    <div
+                      className="flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={() => finishEditing(layer.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") finishEditing(layer.id);
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        autoFocus
+                        className="h-6 text-xs px-1.5 py-0 bg-background"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => finishEditing(layer.id)}
+                      >
+                        <Check className="w-3 h-3 text-primary" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <p
+                      onDoubleClick={(e) => startEditing(layer, e)}
+                      title={t("imageStudio.doubleClickRename", undefined, "Double-click to rename")}
+                      className={`text-xs truncate font-medium ${
+                        isSelected ? "text-primary" : "text-foreground"
+                      }`}
+                    >
+                      {layer.name}
+                    </p>
+                  )}
                 </div>
 
                 {/* Layer Quick Actions */}
                 <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100">
+                  {/* Edit button */}
+                  {!isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => startEditing(layer, e)}
+                      title={t("imageStudio.renameLayer", undefined, "Rename layer")}
+                      className="h-6 w-6 p-0 hover:bg-background text-muted-foreground hover:text-foreground hidden group-hover:flex"
+                    >
+                      <Edit2 className="w-2.5 h-2.5" />
+                    </Button>
+                  )}
+
                   {/* Move Up */}
                   <Button
                     variant="ghost"

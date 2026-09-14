@@ -5,12 +5,25 @@ import React, {
   useCallback,
 } from "react";
 import {
+  Copy,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  BringToFront,
+  SendToBack,
+  Lock,
+  Unlock,
+  LayoutGrid,
+} from "lucide-react";
+import {
   CanvasProject,
   CanvasLayer,
   ImageLayer,
   TextLayer,
+  LayerAlignment,
 } from "./types";
 import { drawBackground, drawLayer } from "./canvasUtils";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 interface CanvasStageProps {
   project: CanvasProject;
@@ -21,6 +34,14 @@ interface CanvasStageProps {
   onPanChange: (pan: { x: number; y: number }) => void;
   onZoomChange: (zoom: number) => void;
   onMatchCanvasToImage?: (imgWidth: number, imgHeight: number) => void;
+  onDuplicateLayer?: (id: string) => void;
+  onDeleteLayer?: (id: string) => void;
+  onBringForward?: (id: string) => void;
+  onSendBackward?: (id: string) => void;
+  onBringToFront?: (id: string) => void;
+  onSendToBack?: (id: string) => void;
+  onToggleLock?: (id: string) => void;
+  onAlignLayer?: (id: string, alignment: LayerAlignment) => void;
 }
 
 type DragMode =
@@ -45,7 +66,16 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   onSelectLayer,
   onPanChange,
   onZoomChange,
+  onDuplicateLayer,
+  onDeleteLayer,
+  onBringForward,
+  onSendBackward,
+  onBringToFront,
+  onSendToBack,
+  onToggleLock,
+  onAlignLayer,
 }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -69,6 +99,11 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    layer: CanvasLayer;
+  } | null>(null);
   const [, setRerenderTrigger] = useState(0);
 
   const selectedLayer = project.layers.find(
@@ -114,6 +149,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       ) {
         setIsSpacePressed(true);
       }
+      if (e.key === "Escape") {
+        setContextMenu(null);
+      }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") {
@@ -143,6 +181,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   // Handle Wheel Zoom & Pan
   const handleWheel = (e: React.WheelEvent) => {
+    if (contextMenu) setContextMenu(null);
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
@@ -159,6 +198,8 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   // Start drag / click
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (contextMenu) setContextMenu(null);
+
     if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
       return;
     }
@@ -211,8 +252,35 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const coords = getCanvasCoords(e.clientX, e.clientY);
+    const reversedLayers = [...project.layers].reverse();
+    const hitLayer = reversedLayers.find((layer) => {
+      if (!layer.isVisible) return false;
+      return (
+        coords.x >= layer.x &&
+        coords.x <= layer.x + layer.width &&
+        coords.y >= layer.y &&
+        coords.y <= layer.y + layer.height
+      );
+    });
+
+    if (hitLayer) {
+      onSelectLayer(hitLayer.id);
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        layer: hitLayer,
+      });
+    } else {
+      setContextMenu(null);
+    }
+  };
+
   const handleHandleMouseDown = (e: React.MouseEvent, mode: DragMode) => {
     e.stopPropagation();
+    if (contextMenu) setContextMenu(null);
     if (!selectedLayer || selectedLayer.isLocked) return;
 
     const coords = getCanvasCoords(e.clientX, e.clientY);
@@ -340,7 +408,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     setSnapGuides({});
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleDoubleClick = () => {
     if (selectedLayer?.type === "text" && !selectedLayer.isLocked) {
       setIsEditingText(true);
     }
@@ -362,6 +430,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       style={{
         backgroundImage:
           "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)",
@@ -433,33 +502,51 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: (selectedLayer as TextLayer).textAlign === "center" ? "center" : (selectedLayer as TextLayer).textAlign === "right" ? "flex-end" : "flex-start",
+                  justifyContent:
+                    (selectedLayer as TextLayer).textAlign === "center"
+                      ? "center"
+                      : (selectedLayer as TextLayer).textAlign === "right"
+                        ? "flex-end"
+                        : "flex-start",
                 }}
               >
                 <textarea
                   className="bg-transparent outline-none resize-none overflow-hidden m-0 p-0 whitespace-pre"
                   style={{
-                    fontFamily: (selectedLayer as TextLayer).fontFamily || "sans-serif",
+                    fontFamily:
+                      (selectedLayer as TextLayer).fontFamily || "sans-serif",
                     fontSize: `${(selectedLayer as TextLayer).fontSize}px`,
-                    fontWeight: (selectedLayer as TextLayer).fontWeight || "normal",
-                    fontStyle: (selectedLayer as TextLayer).fontStyle || "normal",
+                    fontWeight:
+                      (selectedLayer as TextLayer).fontWeight || "normal",
+                    fontStyle:
+                      (selectedLayer as TextLayer).fontStyle || "normal",
                     color: (selectedLayer as TextLayer).color || "#ffffff",
-                    textAlign: (selectedLayer as TextLayer).textAlign || "left",
-                    lineHeight: (selectedLayer as TextLayer).lineHeight || 1.2,
+                    textAlign:
+                      (selectedLayer as TextLayer).textAlign || "left",
+                    lineHeight:
+                      (selectedLayer as TextLayer).lineHeight || 1.2,
                     letterSpacing: `${(selectedLayer as TextLayer).letterSpacing || 0}px`,
-                    textDecoration: (selectedLayer as TextLayer).underline ? "underline" : "none",
-                    WebkitTextStroke: (selectedLayer as TextLayer).strokeWidth && (selectedLayer as TextLayer).strokeColor
-                      ? `${(selectedLayer as TextLayer).strokeWidth}px ${(selectedLayer as TextLayer).strokeColor}`
-                      : undefined,
-                    textShadow: (selectedLayer as TextLayer).shadowColor && (selectedLayer as TextLayer).shadowBlur
-                      ? `${(selectedLayer as TextLayer).shadowOffsetX || 0}px ${(selectedLayer as TextLayer).shadowOffsetY || 0}px ${(selectedLayer as TextLayer).shadowBlur}px ${(selectedLayer as TextLayer).shadowColor}`
-                      : undefined,
+                    textDecoration: (selectedLayer as TextLayer).underline
+                      ? "underline"
+                      : "none",
+                    WebkitTextStroke:
+                      (selectedLayer as TextLayer).strokeWidth &&
+                      (selectedLayer as TextLayer).strokeColor
+                        ? `${(selectedLayer as TextLayer).strokeWidth}px ${(selectedLayer as TextLayer).strokeColor}`
+                        : undefined,
+                    textShadow:
+                      (selectedLayer as TextLayer).shadowColor &&
+                      (selectedLayer as TextLayer).shadowBlur
+                        ? `${(selectedLayer as TextLayer).shadowOffsetX || 0}px ${(selectedLayer as TextLayer).shadowOffsetY || 0}px ${(selectedLayer as TextLayer).shadowBlur}px ${(selectedLayer as TextLayer).shadowColor}`
+                        : undefined,
                     opacity: selectedLayer.opacity ?? 1,
                     width: "100%",
                     height: "100%",
                   }}
                   value={(selectedLayer as TextLayer).text}
-                  onChange={(e) => onUpdateLayer(selectedLayer.id, { text: e.target.value })}
+                  onChange={(e) =>
+                    onUpdateLayer(selectedLayer.id, { text: e.target.value })
+                  }
                   onBlur={() => setIsEditingText(false)}
                   onKeyDown={(e) => e.stopPropagation()}
                   onKeyUp={(e) => e.stopPropagation()}
@@ -471,9 +558,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             {!selectedLayer.isLocked && !isEditingText && (
               <>
                 {/* Rotation Handle Line and Dot */}
-                <div
-                  className="absolute left-1/2 -top-6 w-[2px] h-6 bg-cyan-400 -translate-x-1/2 pointer-events-none"
-                />
+                <div className="absolute left-1/2 -top-6 w-[2px] h-6 bg-cyan-400 -translate-x-1/2 pointer-events-none" />
                 <div
                   title="Rotate"
                   className="absolute left-1/2 -top-8 -translate-x-1/2 w-4 h-4 rounded-full bg-white border-2 border-cyan-500 cursor-alias pointer-events-auto hover:scale-125 transition-transform"
@@ -526,6 +611,123 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Right-click Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[190px] bg-popover border border-border rounded-xl shadow-2xl py-1 text-xs text-popover-foreground animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1 font-semibold text-[11px] text-muted-foreground border-b border-border truncate max-w-[200px]">
+            {contextMenu.layer.name}
+          </div>
+
+          <button
+            onClick={() => {
+              onDuplicateLayer?.(contextMenu.layer.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-accent text-left"
+          >
+            <Copy className="w-3.5 h-3.5 text-primary" />
+            <span>{t("imageStudio.duplicate", undefined, "Duplicate")}</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Ctrl+D</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onAlignLayer?.(contextMenu.layer.id, "center-h");
+              onAlignLayer?.(contextMenu.layer.id, "center-v");
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-accent text-left"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>{t("imageStudio.centerOnCanvas", undefined, "Center on Canvas")}</span>
+          </button>
+
+          <div className="h-[1px] bg-border my-1" />
+
+          <button
+            onClick={() => {
+              onBringForward?.(contextMenu.layer.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-accent text-left"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+            <span>{t("imageStudio.bringForward", undefined, "Bring Forward")}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onSendBackward?.(contextMenu.layer.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-accent text-left"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+            <span>{t("imageStudio.sendBackward", undefined, "Send Backward")}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onBringToFront?.(contextMenu.layer.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-accent text-left"
+          >
+            <BringToFront className="w-3.5 h-3.5" />
+            <span>{t("imageStudio.bringToFront", undefined, "Bring to Front")}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onSendToBack?.(contextMenu.layer.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-accent text-left"
+          >
+            <SendToBack className="w-3.5 h-3.5" />
+            <span>{t("imageStudio.sendToBack", undefined, "Send to Back")}</span>
+          </button>
+
+          <div className="h-[1px] bg-border my-1" />
+
+          <button
+            onClick={() => {
+              onToggleLock?.(contextMenu.layer.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-accent text-left"
+          >
+            {contextMenu.layer.isLocked ? (
+              <>
+                <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t("imageStudio.unlock", undefined, "Unlock")}</span>
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5" />
+                <span>{t("imageStudio.lock", undefined, "Lock")}</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              onDeleteLayer?.(contextMenu.layer.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-rose-500/20 text-rose-400 text-left"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{t("imageStudio.delete", undefined, "Delete")}</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Del</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
