@@ -471,9 +471,9 @@ export function WebmasterApp() {
               </Badge>
               <Badge
                 className="bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 gap-1 font-normal"
-                title={`Next 20 pages will be queued in 10 minutes (${site.pendingUrls.length} remaining)`}
+                title={`Next 20 pages will be queued (${site.pendingUrls.length} remaining)`}
               >
-                <Clock className="w-3 h-3" /> Next 20 in 10m
+                <Clock className="w-3 h-3" /> More pages remaining
               </Badge>
             </div>
           );

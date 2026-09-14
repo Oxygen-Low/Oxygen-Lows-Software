@@ -14,7 +14,7 @@ export const OXYLOW_CONTACT_EMAIL = "support@oxygenlow.com";
 export let DEFAULT_DOMAIN_DELAY_MS = 1000;
 export const MAX_SITE_INDEX_PAGES = 500;
 export const CRAWL_BATCH_SIZE = 20;
-export let BATCH_CRAWL_DELAY_MS = 10 * 60 * 1000; // 10 minutes
+export let BATCH_CRAWL_DELAY_MS = 0;
 
 export function setDefaultDomainDelayMs(ms: number) {
   DEFAULT_DOMAIN_DELAY_MS = ms;
@@ -547,7 +547,7 @@ export function isCrawlScheduled(siteId: string): boolean {
  * - Enforces per-domain delay between requests
  * - Identifies with oxylow user agent & contact email support@oxygenlow.com
  * - Saves extracted pages into the search index
- * - Batch size: 20 pages per run. If > 20 pages found, waits 10 minutes then re-queues up to 500 pages max.
+ * - Batch size: 20 pages per run. If > 20 pages found, re-queues the next batch immediately, up to 500 pages max.
  */
 export async function crawlSite(
   siteId: string,
@@ -767,11 +767,11 @@ export async function crawlSite(
         s.status = totalIndexed > 0 ? "indexed" : "error";
         s.logs.push({
           timestamp: new Date().toISOString(),
-          message: `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${s.pendingUrls.length} pages remaining. Waiting 10 minutes before re-queuing next batch.`,
+          message: `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${s.pendingUrls.length} pages remaining. Re-queuing next batch.`,
           level: "info",
         });
 
-        // Schedule re-queuing in 10 minutes
+        // Re-queue the next batch (no inter-batch wait)
         cancelScheduledCrawl(s.id);
         const timer = setTimeout(() => {
           scheduledBatchTimers.delete(s.id);
@@ -948,7 +948,7 @@ export function clearCrawlQueue(): void {
   serverCrawlQueue.length = 0;
   currentCrawlingSiteId = null;
   isCrawlerProcessing = false;
-  BATCH_CRAWL_DELAY_MS = 10 * 60 * 1000;
+  BATCH_CRAWL_DELAY_MS = 0;
   DEFAULT_DOMAIN_DELAY_MS = 1000;
 }
 
