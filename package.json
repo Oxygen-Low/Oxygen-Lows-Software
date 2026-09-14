@@ -13,7 +13,8 @@
     "start": "cross-env NODE_ENV=production node dist/server/serve.js",
     "test": "vitest --run --maxWorkers=4",
     "format.fix": "prettier --write .",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "install:browser": "playwright install firefox"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
