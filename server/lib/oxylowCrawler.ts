@@ -577,6 +577,9 @@ export async function crawlSite(
   site.error = undefined;
 
   const isContinuation = Array.isArray(site.pendingUrls) && site.pendingUrls.length > 0;
+  const currentIndex = getIndex();
+  const existingPages = isContinuation ? currentIndex.filter((p) => p.siteId === site.id) : [];
+  const crawledUrls = new Set<string>(existingPages.map((p) => p.url));
   const mutateSite = (fn: (currentSite: WebmasterSite) => void, immediate = false): WebmasterSite | null => {
     const currentSites = getSites();
     const currentSite = currentSites.find((s) => s.id === siteId);
