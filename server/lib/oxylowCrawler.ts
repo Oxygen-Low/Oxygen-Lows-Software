@@ -554,19 +554,9 @@ export function isCrawlScheduled(siteId: string): boolean {
 }
 
 /**
- * Detects if a page indicates a genuine requirement or barrier for JavaScript or cookies
- * (e.g. anti-bot challenge, Cloudflare Turnstile, or empty SPA barrier).
+ * Detects if a page indicates a requirement for JavaScript or cookies (e.g. anti-bot challenge, Cloudflare, Turnstile, or SPA barrier).
  */
 export function isJsOrCookieChallenge(html: string, title = "", status = 200): boolean {
-  if (!title) {
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch) {
-      title = titleMatch[1];
-    }
-  }
-  const lowerTitle = title.trim().toLowerCase();
-
-  // 1. HTTP 403 or 503 with challenge indicators is always a challenge
   if (status === 403 || status === 503) {
     const lower = (html + " " + title).toLowerCase();
     if (
@@ -583,37 +573,8 @@ export function isJsOrCookieChallenge(html: string, title = "", status = 200): b
     }
   }
 
-  // 2. Explicit challenge page titles
-  const challengeTitles = [
-    "just a moment...",
-    "just a moment",
-    "attention required! | cloudflare",
-    "attention required",
-    "checking your browser",
-    "security check",
-    "ddos protection by cloudflare",
-  ];
-  if (challengeTitles.some((t) => lowerTitle.includes(t))) {
-    return true;
-  }
-
-  // 3. Clean body text: check if the page already has real readable content
-  const cleanBody = html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
-    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // If the page has substantial clean content (> 300 chars) and a real non-challenge title,
-  // it is already a fully formed, valid page (e.g. npmjs.org having an inactive noscript warning)
-  if (cleanBody.length > 300 && lowerTitle && !challengeTitles.some((t) => lowerTitle.includes(t))) {
-    return false;
-  }
-
-  // 4. For pages with sparse/empty bodies (or no title), check if they are blocked by cookie or JS requirements
   const combined = (title + " " + html).toLowerCase();
+
   const challengePatterns = [
     /enable\s+javascript\s+and\s+cookies/i,
     /enable\s+cookies\s+and\s+javascript/i,
@@ -633,6 +594,9 @@ export function isJsOrCookieChallenge(html: string, title = "", status = 200): b
     /cookies\s+must\s+be\s+enabled/i,
     /javascript\s+is\s+disabled/i,
     /cookies\s+are\s+disabled/i,
+    /checking\s+your\s+browser\s+before\s+accessing/i,
+    /just\s+a\s+moment\.\.\./i,
+    /attention\s+required!\s*\|\s*cloudflare/i,
     /cf-browser-verification/i,
     /ddos\s+protection\s+by\s+cloudflare/i,
   ];
@@ -643,7 +607,7 @@ export function isJsOrCookieChallenge(html: string, title = "", status = 200): b
     }
   }
 
-  // Check <noscript> elements specifically
+  // Check <noscript> elements specifically mentioning cookies or javascript
   const noscriptRegex = /<noscript[^>]*>([\s\S]*?)<\/noscript>/gi;
   let nsMatch: RegExpExecArray | null;
   while ((nsMatch = noscriptRegex.exec(html)) !== null) {
@@ -755,17 +719,10 @@ export async function renderWithFirefoxHeadless(options: RenderWithFirefoxOption
       });
     } catch (launchErr: any) {
       const errMsg = launchErr?.message || "";
-      if (errMsg.includes("missing dependencies") || errMsg.includes("install-deps")) {
-        log(
-          "Host system is missing Linux GUI libraries for Firefox Headless (no sudo). Falling back to pure Node.js DOM rendering (JSDOM)...",
-          "warn"
-        );
-        return await renderWithJsdomFallback(options);
-      }
       if (
         errMsg.includes("Executable doesn't exist") ||
         errMsg.includes("download new browsers") ||
-        errMsg.includes("playwright install firefox")
+        errMsg.includes("playwright install")
       ) {
         log(`Firefox binary missing on server. Attempting automatic installation...`, "info");
         const installed = await ensureFirefoxInstalled(log);
@@ -857,10 +814,9 @@ export async function renderWithFirefoxHeadless(options: RenderWithFirefoxOption
     const rawMsg = browserErr?.message || "";
     if (rawMsg.includes("missing dependencies") || rawMsg.includes("install-deps")) {
       log(
-        "Host system is missing Linux GUI libraries for Firefox Headless (no sudo). Falling back to pure Node.js DOM rendering (JSDOM)...",
-        "warn"
+        "Firefox Headless cannot run because the host Linux system is missing browser libraries. Server admin: run 'sudo npx playwright install-deps firefox' on the server terminal.",
+        "error"
       );
-      return await renderWithJsdomFallback(options);
     } else {
       log(`Error launching or running Firefox Headless: ${rawMsg}`, "error");
     }
@@ -868,97 +824,6 @@ export async function renderWithFirefoxHeadless(options: RenderWithFirefoxOption
     if (browser) {
       await browser.close().catch(() => {});
     }
-  }
-
-  return renderedCount;
-}
-
-/**
- * Zero-sudo, pure JavaScript fallback renderer using JSDOM when headless browser system libraries are missing.
- */
-export async function renderWithJsdomFallback(options: RenderWithFirefoxOptions): Promise<number> {
-  const {
-    urls,
-    domain,
-    siteId,
-    maxPages,
-    existingTotal,
-    abortSignal,
-    log,
-    mutateSite,
-    onPageIndexed,
-    onNewLinksDiscovered,
-    currentCrawledCount,
-  } = options;
-
-  let renderedCount = 0;
-  try {
-    const { JSDOM } = await import("jsdom");
-
-    for (const url of urls) {
-      if (abortSignal.aborted) break;
-      if (currentCrawledCount() >= maxPages) break;
-      if (existingTotal + currentCrawledCount() >= MAX_SITE_INDEX_PAGES) break;
-
-      log(`Rendering ${url} via pure JavaScript JSDOM engine (no sudo needed)...`, "info");
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
-
-        const res = await fetch(url, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-          },
-          signal: controller.signal,
-        }).finally(() => clearTimeout(timeout));
-
-        const html = await res.text();
-        const dom = new JSDOM(html, {
-          url,
-          runScripts: "outside-only",
-        });
-
-        const renderedHtml = dom.serialize();
-        const extracted = extractPageData(renderedHtml, url);
-        dom.window.close();
-
-        const pageItem: IndexedPage = {
-          id: crypto.randomUUID(),
-          siteId,
-          url,
-          domain,
-          title: extracted.title,
-          description: extracted.description,
-          headings: extracted.headings,
-          keywords: extracted.keywords,
-          bodyPreview: extracted.bodyPreview,
-          favicon: extracted.favicon,
-          indexedAt: new Date().toISOString(),
-        };
-
-        onPageIndexed(pageItem);
-        renderedCount++;
-
-        const totalSoFar = existingTotal + currentCrawledCount();
-        mutateSite((s) => {
-          s.pageCount = totalSoFar;
-          s.logs.push({
-            timestamp: new Date().toISOString(),
-            message: `Indexed via JSDOM fallback (${currentCrawledCount()}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
-            level: "info",
-          });
-        }, false);
-
-        onNewLinksDiscovered(extracted.links);
-      } catch (err: any) {
-        log(`Failed JSDOM rendering for ${url}: ${err.message}`, "warn");
-      }
-    }
-  } catch (jsdomErr: any) {
-    log(`JSDOM fallback error: ${jsdomErr.message}`, "error");
   }
 
   return renderedCount;
