@@ -340,5 +340,12 @@ type _AssertKoThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof
 type _AssertRuThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof ru.threatLookup>>;
 type _AssertZhThreatLookup = AssertTrue<ExactKeys<typeof en.threatLookup, typeof zhCN.threatLookup>>;
 
+// 8. pixelArtStudio leaf keys exact parity across all 6 locales
+type _AssertEsPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, typeof es.pixelArtStudio>>;
+type _AssertJaPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, typeof ja.pixelArtStudio>>;
+type _AssertKoPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, typeof ko.pixelArtStudio>>;
+type _AssertRuPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, typeof ru.pixelArtStudio>>;
+type _AssertZhPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, typeof zhCN.pixelArtStudio>>;
+
 
 

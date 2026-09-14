@@ -97,6 +97,7 @@ describe("WebDefender with local/migrated accounts", () => {
     expect(json.defender_config).toBeDefined();
     expect(json.defender_config.length).toBeGreaterThan(0);
     expect(json.defender_config[0].block_sql_injection).toBe(true);
+    expect(json.defender_config[0].monitor_outbound).toBe(true);
   });
 
   it("should toggle block mode on the app", async () => {
@@ -316,6 +317,60 @@ describe("WebDefender with local/migrated accounts", () => {
     );
 
     expect(delRes.status).toBe(204);
+  });
+
+  it("should respect monitor_outbound toggle and drop outbound logging when disabled", async () => {
+    // 1. Disable monitor_outbound in config
+    const cfgRes = await app.request(`/api/webdefender/apps/${createdAppId}/config`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ monitor_outbound: false }),
+    });
+    expect(cfgRes.status).toBe(200);
+    const cfgJson = await cfgRes.json();
+    expect(cfgJson.monitor_outbound).toBe(false);
+
+    // 2. Post an outbound connection with API key
+    const outRes = await app.request("/api/webdefender/outbound", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${createdApiKey}`,
+      },
+      body: JSON.stringify({
+        host: "api.github.com",
+        port: 443,
+        protocol: "tcp",
+      }),
+    });
+    expect(outRes.status).toBe(200);
+
+    // 3. Verify that outbound list is still empty (connection was not logged)
+    const getRes = await app.request(
+      `/api/webdefender/apps/${createdAppId}/outbound`,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      },
+    );
+    expect(getRes.status).toBe(200);
+    const getJson = await getRes.json();
+    expect(getJson.length).toBe(0);
+
+    // 4. Re-enable monitor_outbound
+    const enableRes = await app.request(`/api/webdefender/apps/${createdAppId}/config`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ monitor_outbound: true }),
+    });
+    expect(enableRes.status).toBe(200);
   });
 
   it("should rotate the API key", async () => {

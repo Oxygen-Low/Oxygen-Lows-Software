@@ -1,8 +1,24 @@
 import { DefenderClient, IncomingRequest } from "./webdefender.js";
 
+function isPathMatch(path: string, patterns?: (string | RegExp)[]): boolean {
+  if (!patterns || patterns.length === 0) return false;
+  return patterns.some((p) => {
+    if (typeof p === "string") return path.startsWith(p);
+    if (p instanceof RegExp) return p.test(path);
+    return false;
+  });
+}
+
 export function createExpressMiddleware(client: DefenderClient) {
+  const config = client.getConfig();
+
   return async (req: any, res: any, next: any) => {
     try {
+      const path = req.path || req.url || "/";
+      if (isPathMatch(path, config.excludePaths)) {
+        return next();
+      }
+
       const ip =
         req.headers["x-forwarded-for"] ||
         req.socket?.remoteAddress ||
@@ -14,8 +30,9 @@ export function createExpressMiddleware(client: DefenderClient) {
           ? ip.split(",")[0].trim()
           : String(ip);
 
+      const skipBodyScan = isPathMatch(path, config.skipBodyScanPaths);
       let bodyStr = "";
-      if (req.body) {
+      if (!skipBodyScan && req.body) {
         if (typeof req.body === "string") {
           bodyStr = req.body;
         } else if (Buffer.isBuffer(req.body)) {
@@ -30,11 +47,12 @@ export function createExpressMiddleware(client: DefenderClient) {
       const defenderReq: IncomingRequest = {
         ip: normalizedIp,
         method: req.method || "GET",
-        path: req.path || req.url || "/",
+        path,
         query: req.query || {},
         body: bodyStr,
         headers: req.headers || {},
         userAgent: req.headers["user-agent"] || "",
+        skipBodyScan,
       };
 
       const result = await client.handleRequest(defenderReq);

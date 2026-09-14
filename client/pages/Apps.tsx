@@ -32,6 +32,7 @@ import {
   ClipboardList,
   Trophy,
   Palette,
+  Paintbrush,
   ImagePlus,
   Scissors,
   Search,
@@ -57,6 +58,7 @@ import { GameLibraryApp } from "@/components/apps/GameLibrary";
 import { SurveysApp } from "@/components/apps/Surveys";
 import { SoftwareAwardsApp } from "@/components/apps/SoftwareAwards";
 import { ImageStudioApp } from "@/components/apps/ImageStudio";
+import { PixelArtStudioApp } from "@/components/apps/PixelArtStudio";
 import { ThreeDStudioApp } from "@/components/studio3d/ThreeDStudioApp";
 
 type Category =
@@ -366,6 +368,18 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
     component: ThreeDStudioApp,
+  },
+  {
+    id: "pixel-art-studio",
+    nameKey: "apps.pixelArtStudioTitle",
+    defaultName: "Pixel Art Studio",
+    descKey: "apps.pixelArtStudioDesc",
+    defaultDesc:
+      "Create retro pixel art, multi-frame animations, and sprite sheets with custom palettes and layers.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Paintbrush className="w-8 h-8 text-cyan-500" />,
+    component: PixelArtStudioApp,
   },
 ];
 

@@ -255,6 +255,7 @@ type AppConfig = {
   block_botnets: boolean;
   events_limit: number;
   auto_block_abuseipdb: boolean;
+  monitor_outbound?: boolean;
 };
 
 type Route = {
@@ -1022,6 +1023,7 @@ function AppDashboard({
             <OutboundTab
               outbounds={outbounds}
               blockMode={app.block_mode_enabled}
+              monitorOutbound={app.defender_config?.[0]?.monitor_outbound !== false}
               authFetch={authFetch}
               onUpdate={loadData}
             />
@@ -1707,14 +1709,18 @@ export function EventsTab({ events }: { events: Event[] }) {
 function OutboundTab({
   outbounds,
   blockMode,
+  monitorOutbound = true,
   authFetch,
   onUpdate,
 }: {
   outbounds: Outbound[];
   blockMode: boolean;
+  monitorOutbound?: boolean;
   authFetch: any;
   onUpdate: () => void;
 }) {
+  const { t } = useTranslation();
+
   const handleToggle = async (id: string, isAllowed: boolean) => {
     try {
       await authFetch(`/api/webdefender/outbound/${id}`, {
@@ -1739,6 +1745,26 @@ function OutboundTab({
 
   return (
     <div className="space-y-6">
+      {!monitorOutbound && (
+        <Alert className="bg-slate-950 border-amber-500/50">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-400">
+            {t(
+              "apps.webDefenderOutboundDisabledAlert",
+              undefined,
+              "Outbound Connection Monitoring Disabled",
+            )}
+          </AlertTitle>
+          <AlertDescription className="text-slate-400 mt-1">
+            {t(
+              "apps.webDefenderOutboundDisabledAlertDesc",
+              undefined,
+              "Outbound connection monitoring is turned off in Settings. Network requests from your application are not being intercepted or logged.",
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Alert className="bg-slate-900 border-slate-800">
         <Globe className="h-4 w-4 text-cyan-500" />
         <AlertTitle>Outbound Connections</AlertTitle>
@@ -2164,6 +2190,48 @@ export function SettingsTab({
               />
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>
+            {t(
+              "apps.webDefenderOutboundMonitoring",
+              undefined,
+              "Outbound Connection Monitoring",
+            )}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              "apps.webDefenderOutboundMonitoringDesc",
+              undefined,
+              "Track and log outbound HTTP/HTTPS network connections made by your application. When disabled, network interception is deactivated.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <Label className="text-base text-white">
+              {t(
+                "apps.webDefenderOutboundMonitoring",
+                undefined,
+                "Outbound Connection Monitoring",
+              )}
+            </Label>
+            <p className="text-sm text-slate-400">
+              {config.monitor_outbound !== false
+                ? "Outbound HTTP/HTTPS requests from your application are monitored and logged."
+                : "Outbound network requests are unhooked and will not be monitored or logged."}
+            </p>
+          </div>
+          <Switch
+            checked={config.monitor_outbound !== false}
+            onCheckedChange={(checked) =>
+              updateConfig({ monitor_outbound: checked })
+            }
+            aria-label="Toggle Outbound Connection Monitoring"
+          />
         </CardContent>
       </Card>
 

@@ -1,6 +1,15 @@
 import { DefenderClient } from "./webdefender.js";
 import { DefenderConfig } from "./types.js";
 
+function isPathMatch(path: string, patterns?: (string | RegExp)[]): boolean {
+  if (!patterns || patterns.length === 0) return false;
+  return patterns.some((p) => {
+    if (typeof p === "string") return path.startsWith(p);
+    if (p instanceof RegExp) return p.test(path);
+    return false;
+  });
+}
+
 export function createNextDefender(config: DefenderConfig) {
   const client = new DefenderClient(config);
   // Fire-and-forget init
@@ -8,18 +17,23 @@ export function createNextDefender(config: DefenderConfig) {
 
   return async (request: any, NextResponse: any) => {
     try {
+      const url = new URL(request.url);
+      if (isPathMatch(url.pathname, config.excludePaths)) {
+        return NextResponse.next();
+      }
+
       const ip =
         request.headers.get("x-forwarded-for") || request.ip || "unknown";
       const normalizedIp = ip.split(",")[0].trim();
 
+      const skipBodyScan = isPathMatch(url.pathname, config.skipBodyScanPaths);
       let bodyStr = "";
-      if (request.method !== "GET" && request.method !== "HEAD") {
+      if (!skipBodyScan && request.method !== "GET" && request.method !== "HEAD") {
         try {
           bodyStr = await request.clone().text();
         } catch (e) {}
       }
 
-      const url = new URL(request.url);
       const queryParams: Record<string, string> = {};
       url.searchParams.forEach((val, key) => {
         queryParams[key] = val;
@@ -38,6 +52,7 @@ export function createNextDefender(config: DefenderConfig) {
         body: bodyStr,
         headers: headersObj,
         userAgent: request.headers.get("user-agent") || "",
+        skipBodyScan,
       };
 
       const result = await client.handleRequest(reqInfo);

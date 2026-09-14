@@ -5,6 +5,8 @@ export interface DefenderConfig {
   offlineMode?: boolean;
   realtime?: boolean; // Enable real-time config updates via SSE streaming (default true)
   syncIntervalMs?: number; // Config sync interval in milliseconds (default 60000ms, 0 to disable)
+  excludePaths?: (string | RegExp)[]; // Paths completely bypassed by Defender middleware
+  skipBodyScanPaths?: (string | RegExp)[]; // Paths where body injection scanning is skipped (e.g. AI chat, encrypted data)
   onBlocked?: (event: BlockedEvent) => void;
   onError?: (error: Error) => void;
 }
@@ -73,6 +75,7 @@ export interface AppConfig {
   blockBotnets: boolean;
   ddosProtection: boolean;
   ddosThresholdRpm: number;
+  monitorOutbound: boolean;
   eventsLimit?: number;
   routes: RouteConfig[];
 }

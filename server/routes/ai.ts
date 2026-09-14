@@ -15,11 +15,64 @@ const DEFAULT_MODELS = [
   { provider: "horde", model_id: "Smart" },
 ];
 
-const HORDE_MODELS_MAP: Record<string, string[]> = {
-  TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
-  Fast: ["koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M"],
+export const HORDE_MODELS_MAP: Record<string, string[]> = {
+  TitleGen: [
+    "koboldcpp/Llama-3.2-1B-Instruct",
+    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
+    "meta-llama/Llama-3.2-3B-Instruct",
+  ],
+  Fast: [
+    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
+    "koboldcpp/llama-3.2-3b-instruct-q4_k_m",
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "koboldcpp/Llama-3.2-1B-Instruct",
+    "koboldcpp/L3-Super-Nova-RP-8B",
+    "koboldcpp/L3-8B-Stheno-v3.2",
+    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+  ],
+  "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M": [
+    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
+    "koboldcpp/llama-3.2-3b-instruct-q4_k_m",
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "koboldcpp/Llama-3.2-1B-Instruct",
+    "koboldcpp/L3-Super-Nova-RP-8B",
+    "koboldcpp/L3-8B-Stheno-v3.2",
+    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+  ],
   Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
+
+export function resolveHordeModel(model: string): string {
+  if (HORDE_MODELS_MAP[model]) {
+    return HORDE_MODELS_MAP[model].join(",");
+  }
+  return model;
+}
+
+export async function getFallbackHordeModel(
+  preference: "fast" | "general" = "fast",
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      "https://stablehorde.net/api/v2/status/models?type=text",
+    );
+    if (!res.ok) return null;
+    const models: Array<{ name: string; count: number }> = await res.json();
+    const sorted = models
+      .filter((m) => m && m.count > 0 && typeof m.name === "string")
+      .sort((a, b) => b.count - a.count);
+
+    if (preference === "fast") {
+      const fast = sorted.find((m) =>
+        /(?:^|[^0-9])([1378])b(?:[^0-9]|$)/i.test(m.name),
+      );
+      if (fast) return fast.name;
+    }
+    return sorted[0]?.name || null;
+  } catch {
+    return null;
+  }
+}
 
 export interface SearchIntent {
   search: boolean;
@@ -294,23 +347,39 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "horde") {
-      const actualModel = HORDE_MODELS_MAP[model]?.[0] || model;
+      let actualModel = resolveHordeModel(model);
       const hordeHeaders: Record<string, string> = {
         Authorization: `Bearer ${integration?.api_key || "0000000000"}`,
       };
-      const hordeRequestBody = {
+      let hordeRequestBody = {
         ...requestBody,
         model: actualModel,
         messages: finalMessages,
       };
 
       if (stream) {
-        const hordeResponse = await streamHordeWithContinuation({
+        let hordeResponse = await streamHordeWithContinuation({
           targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
           fetchHeaders: hordeHeaders,
           requestBody: hordeRequestBody,
           signal: c.req.raw.signal,
         });
+
+        if (hordeResponse.status === 406) {
+          const dynamicFallback = await getFallbackHordeModel(
+            model.toLowerCase().includes("fast") ? "fast" : "general",
+          );
+          if (dynamicFallback && dynamicFallback !== actualModel) {
+            actualModel = dynamicFallback;
+            hordeRequestBody = { ...hordeRequestBody, model: actualModel };
+            hordeResponse = await streamHordeWithContinuation({
+              targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+              fetchHeaders: hordeHeaders,
+              requestBody: hordeRequestBody,
+              signal: c.req.raw.signal,
+            });
+          }
+        }
 
         if (!hordeResponse.ok) {
           const status = hordeResponse.status;
@@ -329,12 +398,28 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         c.header("Connection", "keep-alive");
         return c.body(hordeResponse.body as any);
       } else {
-        const hordeResponse = await fetchHordeNonStreamWithContinuation({
+        let hordeResponse = await fetchHordeNonStreamWithContinuation({
           targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
           fetchHeaders: hordeHeaders,
           requestBody: hordeRequestBody,
           signal: c.req.raw.signal,
         });
+
+        if (hordeResponse.status === 406) {
+          const dynamicFallback = await getFallbackHordeModel(
+            model.toLowerCase().includes("fast") ? "fast" : "general",
+          );
+          if (dynamicFallback && dynamicFallback !== actualModel) {
+            actualModel = dynamicFallback;
+            hordeRequestBody = { ...hordeRequestBody, model: actualModel };
+            hordeResponse = await fetchHordeNonStreamWithContinuation({
+              targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+              fetchHeaders: hordeHeaders,
+              requestBody: hordeRequestBody,
+              signal: c.req.raw.signal,
+            });
+          }
+        }
 
         if (!hordeResponse.ok) {
           const status = hordeResponse.status;

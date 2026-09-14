@@ -528,6 +528,13 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
 // 4. POST /outbound - Log/upsert an outbound connection
 defenderRouter.post("/outbound", eventLimiter, requireApiKey, async (c) => {
   const app = c.get("defenderApp");
+  const config = Array.isArray(app.defender_config)
+    ? app.defender_config[0] || {}
+    : app.defender_config || {};
+  if (config.monitor_outbound === false) {
+    return c.json({}, 200);
+  }
+
   const body = await c.req.json().catch(() => ({}));
 
   const existingOutbound = getTableRows("defender_outbound", app.user_id);
@@ -633,6 +640,7 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     block_botnets: true,
     ddos_protection: true,
     ddos_threshold_rpm: 1000,
+    monitor_outbound: true,
     events_limit: 50,
     auto_block_abuseipdb: false,
     created_at: now,
@@ -767,6 +775,7 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "block_botnets",
     "ddos_protection",
     "ddos_threshold_rpm",
+    "monitor_outbound",
     "events_limit",
     "auto_block_abuseipdb",
   ];

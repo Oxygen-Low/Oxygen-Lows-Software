@@ -56,7 +56,9 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/storage") ||
     c.req.path.startsWith("/api/auth") ||
     c.req.path.startsWith("/api/data") ||
-    c.req.path.startsWith("/api/surveys")
+    c.req.path.startsWith("/api/surveys") ||
+    c.req.path.startsWith("/api/ai") ||
+    c.req.path.startsWith("/api/realtime")
   ) {
     return next();
   }
@@ -65,6 +67,7 @@ app.use("*", async (c, next) => {
       {
         apiKey: process.env.DEFENDER_API_KEY || "",
         apiUrl: process.env.DEFENDER_API_URL || "https://oxygenlow.com",
+        skipBodyScanPaths: ["/api/ai", "/api/data", "/api/storage"],
       },
       app,
     );

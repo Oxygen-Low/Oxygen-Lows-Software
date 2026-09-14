@@ -14,13 +14,28 @@ export const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
 export const HORDE_FAST_MODEL = "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M";
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
-  TitleGen: ["koboldcpp/Llama-3.2-1B-Instruct"],
-  Fast: ["koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M"],
+  TitleGen: [
+    "koboldcpp/Llama-3.2-1B-Instruct",
+    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
+    "meta-llama/Llama-3.2-3B-Instruct",
+  ],
+  Fast: [
+    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
+    "koboldcpp/llama-3.2-3b-instruct-q4_k_m",
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "koboldcpp/Llama-3.2-1B-Instruct",
+    "koboldcpp/L3-Super-Nova-RP-8B",
+    "koboldcpp/L3-8B-Stheno-v3.2",
+    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+  ],
   Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 
 export function resolveHordeModel(model: string): string {
-  return HORDE_MODELS_MAP[model]?.[0] || model;
+  if (HORDE_MODELS_MAP[model]) {
+    return HORDE_MODELS_MAP[model].join(",");
+  }
+  return model;
 }
 
 // Max research tool rounds with Horde (up to 100 calls)

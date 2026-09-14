@@ -465,6 +465,86 @@ describe("aiRouter Horde proxy continuation", () => {
     expect(data.choices[0].finish_reason).toBe("stop");
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("should resolve Fast model to a comma-separated list of active Horde candidates", async () => {
+    let requestedModel = "";
+    globalThis.fetch = vi.fn().mockImplementation(async (url, init) => {
+      const body = JSON.parse(init?.body || "{}");
+      requestedModel = body.model;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "OK" }, finish_reason: "stop" }],
+        }),
+      };
+    });
+
+    const res = await aiRouter.request("/proxy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "horde",
+        model: "Fast",
+        messages: [{ role: "user", content: "Hi" }],
+        stream: false,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(requestedModel).toContain("koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M");
+    expect(requestedModel).toContain("meta-llama/Llama-3.2-3B-Instruct");
+  });
+
+  it("should retry with dynamic fallback model if Horde returns 406", async () => {
+    let callCount = 0;
+    let fallbackModelUsed = "";
+    globalThis.fetch = vi.fn().mockImplementation(async (url, init) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/status/models")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [
+            { name: "koboldcpp/Llama-3.2-1B-Instruct", count: 3 },
+          ],
+        };
+      }
+      callCount++;
+      if (callCount === 1) {
+        return {
+          ok: false,
+          status: 406,
+          json: async () => ({ detail: "Model None not known!" }),
+        };
+      }
+      const body = JSON.parse(init?.body || "{}");
+      fallbackModelUsed = body.model;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "Fallback success" }, finish_reason: "stop" }],
+        }),
+      };
+    });
+
+    const res = await aiRouter.request("/proxy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "horde",
+        model: "UnknownOrOfflineModel",
+        messages: [{ role: "user", content: "Hi" }],
+        stream: false,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(fallbackModelUsed).toBe("koboldcpp/Llama-3.2-1B-Instruct");
+    const data = await res.json();
+    expect(data.choices[0].message.content).toBe("Fallback success");
+  });
 });
 
 

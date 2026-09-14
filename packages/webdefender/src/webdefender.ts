@@ -25,6 +25,16 @@ export interface IncomingRequest {
   body: string;
   headers: Record<string, string | string[] | undefined>;
   userAgent: string;
+  skipBodyScan?: boolean;
+}
+
+function isPathMatch(path: string, patterns?: (string | RegExp)[]): boolean {
+  if (!patterns || patterns.length === 0) return false;
+  return patterns.some((p) => {
+    if (typeof p === "string") return path.startsWith(p);
+    if (p instanceof RegExp) return p.test(path);
+    return false;
+  });
 }
 
 export interface RequestResult {
@@ -147,6 +157,7 @@ export class DefenderClient {
       blockBotnets: cfg.block_botnets ?? true,
       ddosProtection: cfg.ddos_protection ?? true,
       ddosThresholdRpm: cfg.ddos_threshold_rpm ?? 1000,
+      monitorOutbound: cfg.monitor_outbound ?? true,
       eventsLimit: cfg.events_limit ?? 50,
       routes,
     };
@@ -215,8 +226,8 @@ export class DefenderClient {
         }
       }
 
-      // 5. Install outbound monitor
-      this.outboundMonitor.install();
+      // 5. Install outbound monitor if enabled
+      this.syncOutboundMonitor();
       this.isInitialized = true;
 
       // 6. Start real-time config stream and periodic sync
@@ -227,6 +238,14 @@ export class DefenderClient {
         this.config.onError(error);
       }
       console.error("[Defender] Initialization failed:", error);
+    }
+  }
+
+  private syncOutboundMonitor(): void {
+    if (this.appConfig?.monitorOutbound !== false) {
+      this.outboundMonitor.install();
+    } else {
+      this.outboundMonitor.uninstall();
     }
   }
 
@@ -281,6 +300,7 @@ export class DefenderClient {
                 try {
                   const rawConfig = JSON.parse(dataStr);
                   this.appConfig = this.normalizeConfig(rawConfig);
+                  this.syncOutboundMonitor();
                 } catch (_) {}
               }
               currentEvent = "message";
@@ -343,6 +363,7 @@ export class DefenderClient {
 
       if (response.ok) {
         this.appConfig = this.normalizeConfig(await response.json());
+        this.syncOutboundMonitor();
       }
     } catch (error) {
       if (this.config.onError && error instanceof Error) {
@@ -352,6 +373,10 @@ export class DefenderClient {
   }
 
   private reportOutbound(conn: OutboundConnection) {
+    if (this.appConfig?.monitorOutbound === false) {
+      return;
+    }
+
     const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
     if (this.config.offlineMode || noApiKey) {
       return;
@@ -433,6 +458,10 @@ export class DefenderClient {
   }
 
   async handleRequest(req: IncomingRequest): Promise<RequestResult> {
+    if (isPathMatch(req.path, this.config.excludePaths)) {
+      return { blocked: false, eventType: "allowed" };
+    }
+
     if (!this.appConfig) {
       return { blocked: false, eventType: "allowed" };
     }
@@ -578,7 +607,11 @@ export class DefenderClient {
 
     // 5. Injection Scanning
     if (!isBlocked) {
-      const scanRes = scanRequest(method, path, query, body, headers);
+      const skipBody =
+        req.skipBodyScan ||
+        isPathMatch(path, this.config.skipBodyScanPaths);
+      const scanBody = skipBody ? "" : body;
+      const scanRes = scanRequest(method, path, query, scanBody, headers);
       for (const threat of scanRes.threats) {
         let shouldBlock = false;
         switch (threat.type) {
@@ -669,6 +702,10 @@ export class DefenderClient {
       reason: isBlocked ? blockReason : undefined,
       eventType,
     };
+  }
+
+  getConfig(): DefenderConfig {
+    return this.config;
   }
 
   destroy(): void {

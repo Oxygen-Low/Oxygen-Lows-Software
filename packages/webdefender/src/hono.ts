@@ -1,6 +1,15 @@
 import { DefenderClient } from "./webdefender.js";
 import { DefenderConfig } from "./types.js";
 
+function isPathMatch(path: string, patterns?: (string | RegExp)[]): boolean {
+  if (!patterns || patterns.length === 0) return false;
+  return patterns.some((p) => {
+    if (typeof p === "string") return path.startsWith(p);
+    if (p instanceof RegExp) return p.test(path);
+    return false;
+  });
+}
+
 export async function createDefender(
   config: DefenderConfig,
   app?: any,
@@ -10,21 +19,29 @@ export async function createDefender(
 
   return async (c: any, next: any) => {
     try {
+      const pathname = new URL(c.req.url).pathname;
+      if (isPathMatch(pathname, config.excludePaths)) {
+        return next();
+      }
+
       const ip =
         c.req.header("x-forwarded-for") ||
         c.req.header("cf-connecting-ip") ||
         "unknown";
       const normalizedIp = ip.split(",")[0].trim();
 
+      const skipBodyScan = isPathMatch(pathname, config.skipBodyScanPaths);
       let bodyStr = "";
-      try {
-        if (["POST", "PUT", "PATCH"].includes(c.req.method.toUpperCase())) {
-          const raw = c.req.raw.clone();
-          const text = await raw.text();
-          bodyStr = text || "";
+      if (!skipBodyScan) {
+        try {
+          if (["POST", "PUT", "PATCH"].includes(c.req.method.toUpperCase())) {
+            const raw = c.req.raw.clone();
+            const text = await raw.text();
+            bodyStr = text || "";
+          }
+        } catch (e) {
+          // Can't read body, ignore
         }
-      } catch (e) {
-        // Can't read body, ignore
       }
 
       // Hono parses query as Record<string, string | string[]>
@@ -33,11 +50,12 @@ export async function createDefender(
       const reqInfo = {
         ip: normalizedIp,
         method: c.req.method,
-        path: new URL(c.req.url).pathname,
+        path: pathname,
         query: query,
         body: bodyStr,
         headers: c.req.header(),
         userAgent: c.req.header("user-agent") || "",
+        skipBodyScan,
       };
 
       const result = await client.handleRequest(reqInfo);
