@@ -13,6 +13,9 @@ describe("detectSensitivePath", () => {
     expect(detectSensitivePath("/about")).toBeNull();
     expect(detectSensitivePath("/contact")).toBeNull();
     expect(detectSensitivePath("/blog/my-post")).toBeNull();
+    expect(detectSensitivePath("/robots.txt")).toBeNull();
+    expect(detectSensitivePath("/sitemap.xml")).toBeNull();
+    expect(detectSensitivePath("/.well-known/security.txt")).toBeNull();
   });
 
   it("should return null for empty / falsy input", () => {
@@ -153,5 +156,47 @@ describe("detectSensitivePath", () => {
   it("should strip query strings before matching", () => {
     expect(detectSensitivePath("/.env?foo=bar")).not.toBeNull();
     expect(detectSensitivePath("/wp-login.php?redirect_to=/admin")).not.toBeNull();
+  });
+
+  // ── Scanner attack attempt detection ─────────────────────────────────────────
+  it("should detect all paths from recent scanner attack attempt", () => {
+    // Paths from prompt
+    expect(detectSensitivePath("/.git/zzcanary-31ace029da94793e")).not.toBeNull();
+    expect(detectSensitivePath("/_vti_pvt/zzcanary-14a6457aafc806ad")).not.toBeNull();
+    expect(detectSensitivePath("/api/.env")?.category).toBe("credentials");
+    expect(detectSensitivePath("/.env")?.category).toBe("credentials");
+    expect(detectSensitivePath("/.git/HEAD")?.category).toBe("vcs");
+    expect(detectSensitivePath("/_vti_pvt/service.pwd")?.category).toBe("credentials");
+    expect(detectSensitivePath("/.ssh/id_rsa")?.category).toBe("credentials");
+    expect(detectSensitivePath("/.bash_history")?.category).toBe("credentials");
+    expect(detectSensitivePath("/.npmrc")?.category).toBe("credentials");
+    expect(detectSensitivePath("/secrets.json")?.category).toBe("credentials");
+    expect(detectSensitivePath("/zzcanary-3c896927ab2a3b17.env")).not.toBeNull();
+
+    // Paths from screenshots
+    expect(detectSensitivePath("/.svn/zzcanary-3db22feaa2c274d7")).not.toBeNull();
+    expect(detectSensitivePath("/.vscode/sftp.json")?.category).toBe("credentials");
+    expect(detectSensitivePath("/server.key")?.category).toBe("credentials");
+    expect(detectSensitivePath("/.env.production")?.category).toBe("credentials");
+    expect(detectSensitivePath("/zzcanary-6314c15b558e38fd")?.category).toBe("canary");
+    expect(detectSensitivePath("/actuator/zzcanary-3ddeb040a69bb7b9")?.category).toBe("debug");
+    expect(detectSensitivePath("/backup.tar.gz")?.category).toBe("backup");
+    expect(detectSensitivePath("/backup.zip")?.category).toBe("backup");
+    expect(detectSensitivePath("/.svn/wc.db")).not.toBeNull();
+    expect(detectSensitivePath("/actuator/heapdump")?.category).toBe("debug");
+    expect(detectSensitivePath("/dump.sql")?.category).toBe("backup");
+    expect(detectSensitivePath("/database_backup.sql")?.category).toBe("backup");
+    expect(detectSensitivePath("/zzcanary-5aab18f51f096c6c.sql")).not.toBeNull();
+    expect(detectSensitivePath("/database.sql")?.category).toBe("backup");
+    expect(detectSensitivePath("/backup.sql")?.category).toBe("backup");
+    expect(detectSensitivePath("/zzcanary-49a5e50df4385cee.xml")?.category).toBe("canary");
+    expect(detectSensitivePath("/.ssh/zzcanary-29cf44002e0eb1d1")?.category).toBe("credentials");
+    expect(detectSensitivePath("/config.xml")?.category).toBe("config");
+    expect(detectSensitivePath("/zzcanary-4fee254614301b9b.yml")?.category).toBe("canary");
+    expect(detectSensitivePath("/storage/logs/zzcanary-3266ffdf1f457f30")?.category).toBe("debug");
+    expect(detectSensitivePath("/.ssh/id_ed25519")?.category).toBe("credentials");
+    expect(detectSensitivePath("/docker-compose.yml")?.category).toBe("infra");
+    expect(detectSensitivePath("/user_secrets.yml")?.category).toBe("credentials");
+    expect(detectSensitivePath("/storage/logs/laravel.log")?.category).toBe("debug");
   });
 });

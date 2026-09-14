@@ -21,7 +21,8 @@ export type SensitivePathCategory =
   | "backup"
   | "debug"
   | "cloud"
-  | "infra";
+  | "infra"
+  | "canary";
 
 interface SensitivePathRule {
   /** Exact lower-case path(s) that should trigger a block. */
@@ -37,6 +38,11 @@ const RULES: SensitivePathRule[] = [
   // ── Credentials & secrets ──────────────────────────────────────────────────
   {
     category: "credentials",
+    prefix: [
+      "/.ssh/",
+      "/.vscode/",
+      "/_vti_pvt/",
+    ],
     exact: [
       "/.env",
       "/.env.local",
@@ -54,6 +60,9 @@ const RULES: SensitivePathRule[] = [
       "/secrets.yml",
       "/secrets.json",
       "/secrets.toml",
+      "/user_secrets.yml",
+      "/user_secrets.yaml",
+      "/user_secrets.json",
       "/.secrets",
       "/credentials",
       "/credentials.json",
@@ -71,8 +80,10 @@ const RULES: SensitivePathRule[] = [
       "/.ssh/id_rsa",
       "/.ssh/id_ed25519",
       "/.ssh/id_ecdsa",
+      "/.ssh/id_dsa",
       "/.ssh/authorized_keys",
       "/.ssh/known_hosts",
+      "/.ssh/config",
       "/private.key",
       "/private.pem",
       "/server.key",
@@ -84,6 +95,24 @@ const RULES: SensitivePathRule[] = [
       "/.auth",
       "/api-keys.json",
       "/api_keys.json",
+      "/.bash_history",
+      "/.zsh_history",
+      "/.sh_history",
+      "/.history",
+      "/.bashrc",
+      "/.bash_profile",
+      "/.profile",
+      "/.zshrc",
+      "/.npmrc",
+      "/.yarnrc",
+      "/.yarnrc.yml",
+      "/.docker/config.json",
+      "/.vscode/sftp.json",
+      "/_vti_pvt/service.pwd",
+      "/_vti_pvt/administrators.pwd",
+      "/_vti_pvt/users.pwd",
+      "/_vti_pvt/service.grp",
+      "/_vti_pvt/writeto.cnf",
     ],
   },
 
@@ -142,8 +171,6 @@ const RULES: SensitivePathRule[] = [
       "/server-info",
       "/status",
       "/.htaccess",
-      "/robots.txt", // not a secret but reveals structure — log only
-      "/sitemap.xml",
     ],
   },
 
@@ -189,7 +216,6 @@ const RULES: SensitivePathRule[] = [
       "/nginx.conf",
       "/apache.conf",
       "/httpd.conf",
-      "/.well-known/security.txt", // usually fine, but sometimes probed
     ],
   },
 
@@ -307,6 +333,7 @@ const RULES: SensitivePathRule[] = [
       "/admin.php",
       "/panel",
       "/cpanel",
+      "/storage/logs",
     ],
     prefix: [
       "/actuator/",
@@ -319,6 +346,15 @@ const RULES: SensitivePathRule[] = [
       "/phpmyadmin/",
       "/pma/",
       "/adminer",
+      "/storage/logs/",
+    ],
+  },
+
+  // ── Vulnerability scanner canary probes (e.g. Qualys WAS) ─────────────────
+  {
+    category: "canary",
+    prefix: [
+      "/zzcanary",
     ],
   },
 ];
@@ -362,8 +398,9 @@ for (const rule of RULES) {
 export function detectSensitivePath(rawPath: string): SensitivePathMatch | null {
   if (!rawPath || typeof rawPath !== "string") return null;
 
-  // Normalise: lower-case and strip query string / fragment
-  const path = rawPath.toLowerCase().split("?")[0].split("#")[0];
+  // Normalise: lower-case, strip query string / fragment, and collapse multiple slashes
+  const cleaned = rawPath.toLowerCase().split("?")[0].split("#")[0];
+  const path = cleaned.replace(/\/+/g, "/");
 
   // 1. Exact match
   const exact = exactMap.get(path);
@@ -375,9 +412,23 @@ export function detectSensitivePath(rawPath: string): SensitivePathMatch | null 
     if (path.startsWith(prefix)) return { path, category };
   }
 
-  // 3. Suffix match — applies to the final path segment only to avoid false
-  //    positives on legitimate paths like `/api/backup-plan`.
+  // 3. Canary detection (Qualys WAS / automated vulnerability scanner canary tokens)
+  if (path.includes("zzcanary")) {
+    return { path, category: "canary" };
+  }
+
+  // 4. Dotenv detection on final segment (e.g. /api/.env, /.env.production, /test.env)
   const lastSegment = path.split("/").pop() ?? "";
+  if (
+    lastSegment === ".env" ||
+    lastSegment.startsWith(".env.") ||
+    lastSegment.endsWith(".env")
+  ) {
+    return { path, category: "credentials" };
+  }
+
+  // 5. Suffix match — applies to the final path segment only to avoid false
+  //    positives on legitimate paths like `/api/backup-plan`.
   if (lastSegment.length > 0) {
     for (let i = 0; i < suffixList.length; i++) {
       const { suffix, category } = suffixList[i];
