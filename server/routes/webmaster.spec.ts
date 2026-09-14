@@ -37,6 +37,18 @@ describe("Webmaster Router & DNS Verification", () => {
     vi.restoreAllMocks();
     clearCrawlQueue();
     saveSites([]);
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes("/robots.txt")) {
+        return new Response("User-agent: *\nAllow: /\nCrawl-delay: 0\n", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      return new Response("<html><head><title>Test Page</title></head><body>Content</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as any;
   });
 
   it("rejects unauthorized access to sites and stats", async () => {
@@ -159,6 +171,15 @@ describe("Webmaster Router & DNS Verification", () => {
       role: "admin",
     } as any);
 
+    // Ensure crawl stays active while asserting queue positions
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      await new Promise((r) => setTimeout(r, 120));
+      return new Response("<html><head><title>Delayed Page</title></head><body>B</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as any;
+
     // Add first domain
     const res1 = await webmasterRouter.fetch(
       new Request("http://localhost/admin/sites", {
@@ -229,6 +250,8 @@ describe("Webmaster Router & DNS Verification", () => {
 
     // Position of site-c moves up to 2
     expect(getQueuePosition(siteC.id)).toBe(2);
+
+    clearCrawlQueue();
   });
 
   it("indexes 20 pages, schedules next batch after delay, re-queues and indexes remaining pages", async () => {
@@ -284,6 +307,7 @@ describe("Webmaster Router & DNS Verification", () => {
       await new Promise((r) => setTimeout(r, 40));
 
       const sitesAfterBatch1 = getSites();
+      console.log("DEBUG sitesAfterBatch1 length:", sitesAfterBatch1.length, "siteId:", siteId, "ids:", sitesAfterBatch1.map(s => s.id));
       const siteAfter1 = sitesAfterBatch1.find((s) => s.id === siteId);
       expect(siteAfter1).toBeDefined();
       expect(siteAfter1?.pageCount).toBe(20);

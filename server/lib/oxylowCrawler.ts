@@ -91,6 +91,7 @@ function ensureDataFiles() {
 let cachedSites: WebmasterSite[] | null = null;
 let cachedIndex: IndexedPage[] | null = null;
 let saveSitesTimeout: NodeJS.Timeout | null = null;
+let activeCrawlAbortController: AbortController | null = null;
 
 export function flushSitesToDisk(): void {
   if (saveSitesTimeout) {
@@ -576,17 +577,23 @@ export async function crawlSite(
   site.error = undefined;
 
   const isContinuation = Array.isArray(site.pendingUrls) && site.pendingUrls.length > 0;
-  const currentIndex = getIndex();
-  const existingPages = isContinuation ? currentIndex.filter((p) => p.siteId === site.id) : [];
-  const crawledUrls = new Set<string>(existingPages.map((p) => p.url));
+  const mutateSite = (fn: (currentSite: WebmasterSite) => void, immediate = false): WebmasterSite | null => {
+    const currentSites = getSites();
+    const currentSite = currentSites.find((s) => s.id === siteId);
+    if (!currentSite) return null;
+    fn(currentSite);
+    saveSites(currentSites, immediate);
+    return currentSite;
+  };
 
-  const log = (message: string, level: "info" | "warn" | "error" = "info") => {
-    site.logs.push({
-      timestamp: new Date().toISOString(),
-      message,
-      level,
-    });
-    saveSites(sites);
+  const log = (message: string, level: "info" | "warn" | "error" = "info", immediate = false) => {
+    mutateSite((s) => {
+      s.logs.push({
+        timestamp: new Date().toISOString(),
+        message,
+        level,
+      });
+    }, immediate);
   };
 
   log(
@@ -595,6 +602,9 @@ export async function crawlSite(
       : `Starting crawl with oxylow bot (contact: ${OXYLOW_CONTACT_EMAIL})...`,
     "info"
   );
+
+  activeCrawlAbortController = new AbortController();
+  const abortSignal = activeCrawlAbortController.signal;
 
   const crawlQueue: string[] = isContinuation ? [...(site.pendingUrls || [])] : [];
   let pagesCrawled = 0;
@@ -641,6 +651,9 @@ export async function crawlSite(
       pagesCrawled < maxPages &&
       existingPages.length + pagesCrawled < MAX_SITE_INDEX_PAGES
     ) {
+      if (abortSignal.aborted || currentCrawlingSiteId !== site.id) {
+        return { success: false, pagesCrawled, error: "Crawl cancelled" };
+      }
       const currentUrl = crawlQueue.shift()!;
       if (crawledUrls.has(currentUrl)) continue;
       crawledUrls.add(currentUrl);
@@ -707,11 +720,18 @@ export async function crawlSite(
 
         pagesCrawled++;
         const totalSoFar = existingPages.length + pagesCrawled;
-        site.pageCount = totalSoFar;
-        log(
-          `Indexed (${pagesCrawled}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
-          "info"
-        );
+        const pageUpdated = mutateSite((s) => {
+          s.pageCount = totalSoFar;
+          s.logs.push({
+            timestamp: new Date().toISOString(),
+            message: `Indexed (${pagesCrawled}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
+            level: "info",
+          });
+        }, false);
+
+        if (!pageUpdated) {
+          return { success: false, pagesCrawled, error: "Site removed" };
+        }
 
         // Add internal links to queue up to MAX_SITE_INDEX_PAGES
         for (const link of extracted.links) {
@@ -725,59 +745,73 @@ export async function crawlSite(
       }
     }
 
+    if (abortSignal.aborted || currentCrawlingSiteId !== siteId) {
+      return { success: false, pagesCrawled, error: "Crawl cancelled" };
+    }
+
     saveIndex(baseIndex);
 
     const totalIndexed = existingPages.length + newIndexedPages.length;
-    site.pageCount = totalIndexed;
-    site.lastCrawledAt = new Date().toISOString();
-
-    // Check remaining pages
     const remainingUrls = crawlQueue.filter((u) => !crawledUrls.has(u));
 
-    if (remainingUrls.length > 0 && totalIndexed < MAX_SITE_INDEX_PAGES) {
-      site.pendingUrls = remainingUrls.slice(0, MAX_SITE_INDEX_PAGES - totalIndexed);
-      site.nextCrawlScheduledAt = new Date(Date.now() + BATCH_CRAWL_DELAY_MS).toISOString();
-      site.status = totalIndexed > 0 ? "indexed" : "error";
-      log(
-        `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${site.pendingUrls.length} pages remaining. Waiting 10 minutes before re-queuing next batch.`,
-        "info",
-        true
-      );
+    const finalUpdated = mutateSite((s) => {
+      s.pageCount = totalIndexed;
+      s.lastCrawledAt = new Date().toISOString();
 
-      // Schedule re-queuing in 10 minutes
-      cancelScheduledCrawl(site.id);
-      const timer = setTimeout(() => {
-        scheduledBatchTimers.delete(site.id);
-        const latestSites = getSites();
-        const target = latestSites.find((s) => s.id === site.id);
-        if (target && target.pendingUrls && target.pendingUrls.length > 0) {
-          target.nextCrawlScheduledAt = null;
-          saveSites(latestSites);
-          enqueueCrawl(target.id, maxPages);
-        }
-      }, BATCH_CRAWL_DELAY_MS);
-      scheduledBatchTimers.set(site.id, timer);
-    } else {
-      site.pendingUrls = [];
-      site.nextCrawlScheduledAt = null;
-      cancelScheduledCrawl(site.id);
-      site.status = totalIndexed > 0 ? "indexed" : "error";
-      log(
-        totalIndexed >= MAX_SITE_INDEX_PAGES
-          ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
-          : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
-        "info",
-        true
-      );
+      if (remainingUrls.length > 0 && totalIndexed < MAX_SITE_INDEX_PAGES) {
+        s.pendingUrls = remainingUrls.slice(0, MAX_SITE_INDEX_PAGES - totalIndexed);
+        s.nextCrawlScheduledAt = new Date(Date.now() + BATCH_CRAWL_DELAY_MS).toISOString();
+        s.status = totalIndexed > 0 ? "indexed" : "error";
+        s.logs.push({
+          timestamp: new Date().toISOString(),
+          message: `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${s.pendingUrls.length} pages remaining. Waiting 10 minutes before re-queuing next batch.`,
+          level: "info",
+        });
+
+        // Schedule re-queuing in 10 minutes
+        cancelScheduledCrawl(s.id);
+        const timer = setTimeout(() => {
+          scheduledBatchTimers.delete(s.id);
+          const latestSites = getSites();
+          const target = latestSites.find((item) => item.id === s.id);
+          if (target && target.pendingUrls && target.pendingUrls.length > 0) {
+            target.nextCrawlScheduledAt = null;
+            saveSites(latestSites);
+            enqueueCrawl(target.id, maxPages);
+          }
+        }, BATCH_CRAWL_DELAY_MS);
+        scheduledBatchTimers.set(s.id, timer);
+      } else {
+        s.pendingUrls = [];
+        s.nextCrawlScheduledAt = null;
+        cancelScheduledCrawl(s.id);
+        s.status = totalIndexed > 0 ? "indexed" : "error";
+        s.logs.push({
+          timestamp: new Date().toISOString(),
+          message:
+            totalIndexed >= MAX_SITE_INDEX_PAGES
+              ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
+              : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
+          level: "info",
+        });
+      }
+    }, true);
+
+    if (!finalUpdated) {
+      return { success: false, pagesCrawled, error: "Site removed" };
     }
 
-    flushSitesToDisk();
     return { success: totalIndexed > 0, pagesCrawled };
   } catch (err: any) {
-    site.status = site.pageCount > 0 ? "indexed" : "error";
-    site.error = err.message || "Crawl failed";
-    log(`Crawl aborted with error: ${site.error}`, "error", true);
-    flushSitesToDisk();
+    mutateSite((s) => {
+      s.status = s.pageCount > 0 ? "indexed" : "error";
+      s.error = err.message || "Crawl failed";
+      s.logs.push({
+        timestamp: new Date().toISOString(),
+        message: `Crawl aborted with error: ${s.error}`,
+        level: "error",
+      });
+    }, true);
     return { success: false, pagesCrawled, error: err.message };
   }
 }
@@ -865,11 +899,12 @@ async function processNextInQueue(): Promise<void> {
       } catch (err: any) {
         console.error(`Error processing crawl for site ${next.siteId}:`, err);
       } finally {
-        currentCrawlingSiteId = null;
+        if (currentCrawlingSiteId === next.siteId) {
+          currentCrawlingSiteId = null;
+        }
       }
     }
   } finally {
-    currentCrawlingSiteId = null;
     isCrawlerProcessing = false;
     if (serverCrawlQueue.length > 0) {
       processNextInQueue().catch(console.error);
@@ -891,6 +926,10 @@ export function removeFromCrawlQueue(siteId: string): void {
  * Clears the crawl queue (for test cleanup).
  */
 export function clearCrawlQueue(): void {
+  if (activeCrawlAbortController) {
+    activeCrawlAbortController.abort();
+    activeCrawlAbortController = null;
+  }
   if (saveSitesTimeout) {
     clearTimeout(saveSitesTimeout);
     saveSitesTimeout = null;
