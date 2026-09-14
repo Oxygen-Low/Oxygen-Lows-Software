@@ -2,12 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { lookup, resolveTxt } from "node:dns/promises";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
 import { isPrivateIP, assertPublicHostname } from "./safeAiUrl.ts";
 import { firefox } from "playwright";
-
-const execAsync = promisify(exec);
 
 export let playwrightFirefox: any = firefox;
 export function setPlaywrightFirefox(customFirefox: any) {
@@ -641,55 +637,6 @@ export interface RenderWithFirefoxOptions {
   currentCrawledCount: () => number;
 }
 
-let firefoxInstallPromise: Promise<boolean> | null = null;
-
-export async function ensureFirefoxInstalled(
-  log?: (msg: string, level?: "info" | "warn" | "error") => void
-): Promise<boolean> {
-  if (firefoxInstallPromise) {
-    return firefoxInstallPromise;
-  }
-
-  firefoxInstallPromise = (async () => {
-    try {
-      if (typeof playwrightFirefox.executablePath === "function") {
-        try {
-          const execPath = playwrightFirefox.executablePath();
-          if (fs.existsSync(execPath)) {
-            return true;
-          }
-        } catch {
-          // Executable not found
-        }
-      }
-
-      log?.(
-        "Firefox binary for Playwright not found on server. Attempting automatic installation (npx playwright install firefox)...",
-        "info"
-      );
-
-      await execAsync("npx playwright install firefox", {
-        cwd: process.cwd(),
-        timeout: 180000,
-        env: { ...process.env },
-      });
-
-      log?.("Firefox browser binary installed successfully.", "info");
-      return true;
-    } catch (err: any) {
-      log?.(
-        `Automatic Firefox installation failed: ${err.message}. Please run "npx playwright install firefox" (and "npx playwright install-deps firefox" on Linux) on the server.`,
-        "warn"
-      );
-      return false;
-    } finally {
-      firefoxInstallPromise = null;
-    }
-  })();
-
-  return firefoxInstallPromise;
-}
-
 /**
  * Renders deferred pages using Firefox Headless and Playwright, extracting dynamic content and internal links.
  */
@@ -713,31 +660,9 @@ export async function renderWithFirefoxHeadless(options: RenderWithFirefoxOption
 
   try {
     log(`Launching Firefox Headless with Playwright for dynamic page rendering...`, "info");
-    try {
-      browser = await playwrightFirefox.launch({
-        headless: true,
-      });
-    } catch (launchErr: any) {
-      const errMsg = launchErr?.message || "";
-      if (
-        errMsg.includes("Executable doesn't exist") ||
-        errMsg.includes("download new browsers") ||
-        errMsg.includes("playwright install")
-      ) {
-        log(`Firefox binary missing on server. Attempting automatic installation...`, "info");
-        const installed = await ensureFirefoxInstalled(log);
-        if (installed) {
-          log(`Retrying Firefox Headless launch...`, "info");
-          browser = await playwrightFirefox.launch({
-            headless: true,
-          });
-        } else {
-          throw launchErr;
-        }
-      } else {
-        throw launchErr;
-      }
-    }
+    browser = await playwrightFirefox.launch({
+      headless: true,
+    });
 
     const context = await browser.newContext({
       userAgent:
