@@ -88,32 +88,67 @@ function ensureDataFiles() {
   }
 }
 
-export function getSites(): WebmasterSite[] {
-  ensureDataFiles();
-  try {
-    const raw = fs.readFileSync(SITES_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return [];
+let cachedSites: WebmasterSite[] | null = null;
+let cachedIndex: IndexedPage[] | null = null;
+let saveSitesTimeout: NodeJS.Timeout | null = null;
+
+export function flushSitesToDisk(): void {
+  if (saveSitesTimeout) {
+    clearTimeout(saveSitesTimeout);
+    saveSitesTimeout = null;
+  }
+  if (cachedSites) {
+    ensureDataFiles();
+    fs.writeFileSync(SITES_FILE, JSON.stringify(cachedSites, null, 2), "utf8");
   }
 }
 
-export function saveSites(sites: WebmasterSite[]): void {
+export function getSites(): WebmasterSite[] {
+  if (cachedSites) {
+    return cachedSites;
+  }
   ensureDataFiles();
-  fs.writeFileSync(SITES_FILE, JSON.stringify(sites, null, 2), "utf8");
+  try {
+    const raw = fs.readFileSync(SITES_FILE, "utf8");
+    cachedSites = JSON.parse(raw);
+    return cachedSites!;
+  } catch {
+    cachedSites = [];
+    return cachedSites;
+  }
+}
+
+export function saveSites(sites: WebmasterSite[], immediate = true): void {
+  cachedSites = sites;
+  if (immediate) {
+    flushSitesToDisk();
+  } else {
+    if (!saveSitesTimeout) {
+      saveSitesTimeout = setTimeout(() => {
+        saveSitesTimeout = null;
+        flushSitesToDisk();
+      }, 500);
+    }
+  }
 }
 
 export function getIndex(): IndexedPage[] {
+  if (cachedIndex) {
+    return cachedIndex;
+  }
   ensureDataFiles();
   try {
     const raw = fs.readFileSync(INDEX_FILE, "utf8");
-    return JSON.parse(raw);
+    cachedIndex = JSON.parse(raw);
+    return cachedIndex!;
   } catch {
-    return [];
+    cachedIndex = [];
+    return cachedIndex;
   }
 }
 
 export function saveIndex(index: IndexedPage[]): void {
+  cachedIndex = index;
   ensureDataFiles();
   fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2), "utf8");
 }
@@ -668,7 +703,7 @@ export async function crawlSite(
 
         newIndexedPages.push(pageItem);
         baseIndex.push(pageItem);
-        saveIndex(baseIndex);
+        cachedIndex = baseIndex;
 
         pagesCrawled++;
         const totalSoFar = existingPages.length + pagesCrawled;
@@ -690,6 +725,8 @@ export async function crawlSite(
       }
     }
 
+    saveIndex(baseIndex);
+
     const totalIndexed = existingPages.length + newIndexedPages.length;
     site.pageCount = totalIndexed;
     site.lastCrawledAt = new Date().toISOString();
@@ -703,7 +740,8 @@ export async function crawlSite(
       site.status = totalIndexed > 0 ? "indexed" : "error";
       log(
         `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${site.pendingUrls.length} pages remaining. Waiting 10 minutes before re-queuing next batch.`,
-        "info"
+        "info",
+        true
       );
 
       // Schedule re-queuing in 10 minutes
@@ -728,15 +766,18 @@ export async function crawlSite(
         totalIndexed >= MAX_SITE_INDEX_PAGES
           ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
           : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
-        "info"
+        "info",
+        true
       );
     }
 
+    flushSitesToDisk();
     return { success: totalIndexed > 0, pagesCrawled };
   } catch (err: any) {
     site.status = site.pageCount > 0 ? "indexed" : "error";
     site.error = err.message || "Crawl failed";
-    log(`Crawl aborted with error: ${site.error}`, "error");
+    log(`Crawl aborted with error: ${site.error}`, "error", true);
+    flushSitesToDisk();
     return { success: false, pagesCrawled, error: err.message };
   }
 }
@@ -850,6 +891,12 @@ export function removeFromCrawlQueue(siteId: string): void {
  * Clears the crawl queue (for test cleanup).
  */
 export function clearCrawlQueue(): void {
+  if (saveSitesTimeout) {
+    clearTimeout(saveSitesTimeout);
+    saveSitesTimeout = null;
+  }
+  cachedSites = null;
+  cachedIndex = null;
   for (const timer of scheduledBatchTimers.values()) {
     clearTimeout(timer);
   }
