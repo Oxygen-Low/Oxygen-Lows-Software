@@ -11,7 +11,18 @@ export const INDEX_FILE = path.join(DATA_DIR, "oxylow_index.json");
 export const OXYLOW_USER_AGENT =
   "Mozilla/5.0 (compatible; oxylow/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)";
 export const OXYLOW_CONTACT_EMAIL = "support@oxygenlow.com";
-export const DEFAULT_DOMAIN_DELAY_MS = 1000;
+export let DEFAULT_DOMAIN_DELAY_MS = 1000;
+export const MAX_SITE_INDEX_PAGES = 500;
+export const CRAWL_BATCH_SIZE = 20;
+export let BATCH_CRAWL_DELAY_MS = 10 * 60 * 1000; // 10 minutes
+
+export function setDefaultDomainDelayMs(ms: number) {
+  DEFAULT_DOMAIN_DELAY_MS = ms;
+}
+
+export function setBatchCrawlDelayMs(ms: number) {
+  BATCH_CRAWL_DELAY_MS = ms;
+}
 
 export interface WebmasterSite {
   id: string;
@@ -28,6 +39,9 @@ export interface WebmasterSite {
   createdAt: string;
   error?: string;
   logs: { timestamp: string; message: string; level?: "info" | "warn" | "error" }[];
+  queuePosition?: number | null;
+  pendingUrls?: string[];
+  nextCrawlScheduledAt?: string | null;
 }
 
 export interface IndexedPage {
@@ -215,7 +229,7 @@ export async function getRobotsRules(
 
   const defaultResult = { disallow: [], allow: [], crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS };
   try {
-    await waitForDomainSlot(domain, 500);
+    await waitForDomainSlot(domain, DEFAULT_DOMAIN_DELAY_MS > 0 ? 500 : 0);
     const robotsUrl = `${origin}/robots.txt`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
@@ -273,8 +287,8 @@ export async function getRobotsRules(
         }
       } else if (key === "crawl-delay") {
         const delaySec = parseFloat(val);
-        if (!isNaN(delaySec) && delaySec > 0) {
-          crawlDelayMs = Math.max(DEFAULT_DOMAIN_DELAY_MS, Math.round(delaySec * 1000));
+        if (!isNaN(delaySec) && delaySec >= 0) {
+          crawlDelayMs = Math.round(delaySec * 1000);
         }
       }
     }
@@ -332,7 +346,7 @@ export async function parseSitemap(sitemapUrl: string, domain: string, crawlDela
     // Look for <loc>https://...</loc> tags
     const locRegex = /<loc>(https?:\/\/[^<]+)<\/loc>/gi;
     let match: RegExpExecArray | null;
-    while ((match = locRegex.exec(xml)) !== null && discoveredUrls.length < 100) {
+    while ((match = locRegex.exec(xml)) !== null && discoveredUrls.length < MAX_SITE_INDEX_PAGES) {
       const u = match[1].trim();
       if (!discoveredUrls.includes(u)) {
         discoveredUrls.push(u);
@@ -475,6 +489,21 @@ export function extractPageData(
   };
 }
 
+// Batch crawl scheduler
+const scheduledBatchTimers = new Map<string, NodeJS.Timeout>();
+
+export function cancelScheduledCrawl(siteId: string): void {
+  const timer = scheduledBatchTimers.get(siteId);
+  if (timer) {
+    clearTimeout(timer);
+    scheduledBatchTimers.delete(siteId);
+  }
+}
+
+export function isCrawlScheduled(siteId: string): boolean {
+  return scheduledBatchTimers.has(siteId);
+}
+
 /**
  * Crawls a submitted site with the "oxylow" bot:
  * - Checks robots.txt (supports User-agent: oxylow and Crawl-delay)
@@ -482,10 +511,11 @@ export function extractPageData(
  * - Enforces per-domain delay between requests
  * - Identifies with oxylow user agent & contact email support@oxygenlow.com
  * - Saves extracted pages into the search index
+ * - Batch size: 20 pages per run. If > 20 pages found, waits 10 minutes then re-queues up to 500 pages max.
  */
 export async function crawlSite(
   siteId: string,
-  maxPages = 20
+  maxPages = CRAWL_BATCH_SIZE
 ): Promise<{ success: boolean; pagesCrawled: number; error?: string }> {
   const sites = getSites();
   const siteIndex = sites.findIndex((s) => s.id === siteId);
@@ -509,15 +539,22 @@ export async function crawlSite(
 
   site.status = "crawling";
   site.error = undefined;
+
+  const isContinuation = Array.isArray(site.pendingUrls) && site.pendingUrls.length > 0;
+  const currentIndex = getIndex();
+  const existingPages = isContinuation ? currentIndex.filter((p) => p.siteId === site.id) : [];
+  const crawledUrls = new Set<string>(existingPages.map((p) => p.url));
+
   site.logs.push({
     timestamp: new Date().toISOString(),
-    message: `Starting crawl with oxylow bot (contact: ${OXYLOW_CONTACT_EMAIL})...`,
+    message: isContinuation
+      ? `Resuming crawl batch for ${site.domain || site.url} (${existingPages.length} pages already indexed, ${site.pendingUrls?.length || 0} queued)...`
+      : `Starting crawl with oxylow bot (contact: ${OXYLOW_CONTACT_EMAIL})...`,
     level: "info",
   });
   saveSites(sites);
 
-  const crawlQueue: string[] = [];
-  const crawledUrls = new Set<string>();
+  const crawlQueue: string[] = isContinuation ? [...(site.pendingUrls || [])] : [];
   let pagesCrawled = 0;
 
   try {
@@ -538,39 +575,46 @@ export async function crawlSite(
       level: "info",
     });
 
-    // 2. Discover from Sitemap if available
-    const sitemapTarget = site.sitemapUrl || `${origin}/sitemap.xml`;
-    site.logs.push({
-      timestamp: new Date().toISOString(),
-      message: `Checking sitemap at ${sitemapTarget}...`,
-      level: "info",
-    });
-
-    const sitemapUrls = await parseSitemap(sitemapTarget, domain, robots.crawlDelayMs);
-    if (sitemapUrls.length > 0) {
+    if (!isContinuation) {
+      // 2. Discover from Sitemap if available on fresh crawl
+      const sitemapTarget = site.sitemapUrl || `${origin}/sitemap.xml`;
       site.logs.push({
         timestamp: new Date().toISOString(),
-        message: `Found ${sitemapUrls.length} URLs in sitemap.`,
+        message: `Checking sitemap at ${sitemapTarget}...`,
         level: "info",
       });
-      for (const u of sitemapUrls) {
-        if (!crawlQueue.includes(u)) {
-          crawlQueue.push(u);
+
+      const sitemapUrls = await parseSitemap(sitemapTarget, domain, robots.crawlDelayMs);
+      if (sitemapUrls.length > 0) {
+        site.logs.push({
+          timestamp: new Date().toISOString(),
+          message: `Found ${sitemapUrls.length} URLs in sitemap.`,
+          level: "info",
+        });
+        for (const u of sitemapUrls) {
+          if (crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
+          if (!crawlQueue.includes(u)) {
+            crawlQueue.push(u);
+          }
         }
+      }
+
+      // Always ensure start URL is in queue
+      if (!crawlQueue.includes(site.url)) {
+        crawlQueue.unshift(site.url);
       }
     }
 
-    // Always ensure start URL is in queue
-    if (!crawlQueue.includes(site.url)) {
-      crawlQueue.unshift(site.url);
-    }
-
-    const currentIndex = getIndex();
-    // Remove existing pages for this site to refresh
-    const filteredIndex = currentIndex.filter((p) => p.siteId !== site.id);
+    const baseIndex = isContinuation
+      ? currentIndex
+      : currentIndex.filter((p) => p.siteId !== site.id);
     const newIndexedPages: IndexedPage[] = [];
 
-    while (crawlQueue.length > 0 && pagesCrawled < maxPages) {
+    while (
+      crawlQueue.length > 0 &&
+      pagesCrawled < maxPages &&
+      existingPages.length + pagesCrawled < MAX_SITE_INDEX_PAGES
+    ) {
       const currentUrl = crawlQueue.shift()!;
       if (crawledUrls.has(currentUrl)) continue;
       crawledUrls.add(currentUrl);
@@ -648,18 +692,18 @@ export async function crawlSite(
         });
 
         pagesCrawled++;
+        const totalSoFar = existingPages.length + pagesCrawled;
         site.logs.push({
           timestamp: new Date().toISOString(),
-          message: `Indexed (${pagesCrawled}/${maxPages}): "${extracted.title}"`,
+          message: `Indexed (${pagesCrawled}/${maxPages}, total: ${totalSoFar}/${MAX_SITE_INDEX_PAGES}): "${extracted.title}"`,
           level: "info",
         });
 
-        // Add internal links to queue if space remains
-        if (crawlQueue.length + pagesCrawled < maxPages * 2) {
-          for (const link of extracted.links) {
-            if (!crawledUrls.has(link) && !crawlQueue.includes(link)) {
-              crawlQueue.push(link);
-            }
+        // Add internal links to queue up to MAX_SITE_INDEX_PAGES
+        for (const link of extracted.links) {
+          if (crawledUrls.size + crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
+          if (!crawledUrls.has(link) && !crawlQueue.includes(link)) {
+            crawlQueue.push(link);
           }
         }
       } catch (reqErr: any) {
@@ -672,23 +716,59 @@ export async function crawlSite(
     }
 
     // Save updated index
-    filteredIndex.push(...newIndexedPages);
-    saveIndex(filteredIndex);
+    baseIndex.push(...newIndexedPages);
+    saveIndex(baseIndex);
 
-    // Update site state
-    site.status = pagesCrawled > 0 ? "indexed" : "error";
-    site.pageCount = newIndexedPages.length;
+    const totalIndexed = existingPages.length + newIndexedPages.length;
+    site.pageCount = totalIndexed;
     site.lastCrawledAt = new Date().toISOString();
-    site.logs.push({
-      timestamp: new Date().toISOString(),
-      message: `Crawl finished. Successfully indexed ${newIndexedPages.length} pages.`,
-      level: "info",
-    });
-    saveSites(sites);
 
-    return { success: true, pagesCrawled };
+    // Check remaining pages
+    const remainingUrls = crawlQueue.filter((u) => !crawledUrls.has(u));
+
+    if (remainingUrls.length > 0 && totalIndexed < MAX_SITE_INDEX_PAGES) {
+      site.pendingUrls = remainingUrls.slice(0, MAX_SITE_INDEX_PAGES - totalIndexed);
+      site.nextCrawlScheduledAt = new Date(Date.now() + BATCH_CRAWL_DELAY_MS).toISOString();
+      site.status = totalIndexed > 0 ? "indexed" : "error";
+      site.logs.push({
+        timestamp: new Date().toISOString(),
+        message: `Batch completed: indexed ${pagesCrawled} pages (total: ${totalIndexed}/${MAX_SITE_INDEX_PAGES}). ${site.pendingUrls.length} pages remaining. Waiting 10 minutes before re-queuing next batch.`,
+        level: "info",
+      });
+      saveSites(sites);
+
+      // Schedule re-queuing in 10 minutes
+      cancelScheduledCrawl(site.id);
+      const timer = setTimeout(() => {
+        scheduledBatchTimers.delete(site.id);
+        const latestSites = getSites();
+        const target = latestSites.find((s) => s.id === site.id);
+        if (target && target.pendingUrls && target.pendingUrls.length > 0) {
+          target.nextCrawlScheduledAt = null;
+          saveSites(latestSites);
+          enqueueCrawl(target.id, maxPages);
+        }
+      }, BATCH_CRAWL_DELAY_MS);
+      scheduledBatchTimers.set(site.id, timer);
+    } else {
+      site.pendingUrls = [];
+      site.nextCrawlScheduledAt = null;
+      cancelScheduledCrawl(site.id);
+      site.status = totalIndexed > 0 ? "indexed" : "error";
+      site.logs.push({
+        timestamp: new Date().toISOString(),
+        message:
+          totalIndexed >= MAX_SITE_INDEX_PAGES
+            ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
+            : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
+        level: "info",
+      });
+      saveSites(sites);
+    }
+
+    return { success: totalIndexed > 0, pagesCrawled };
   } catch (err: any) {
-    site.status = "error";
+    site.status = site.pageCount > 0 ? "indexed" : "error";
     site.error = err.message || "Crawl failed";
     site.logs.push({
       timestamp: new Date().toISOString(),
@@ -699,6 +779,154 @@ export async function crawlSite(
     return { success: false, pagesCrawled, error: err.message };
   }
 }
+
+// ============================================================
+// Server-side Crawl Queue: Exactly 1 domain indexed at a time
+// ============================================================
+
+export interface CrawlQueueItem {
+  siteId: string;
+  maxPages: number;
+}
+
+const serverCrawlQueue: CrawlQueueItem[] = [];
+let currentCrawlingSiteId: string | null = null;
+let isCrawlerProcessing = false;
+
+/**
+ * Returns the 1-based queue position for a site:
+ * - 1 if currently indexing
+ * - 2, 3, ... if waiting in the FIFO queue
+ * - null if not currently in queue or indexing
+ */
+export function getQueuePosition(siteId: string): number | null {
+  if (currentCrawlingSiteId === siteId) {
+    return 1;
+  }
+  const queueIndex = serverCrawlQueue.findIndex((item) => item.siteId === siteId);
+  if (queueIndex !== -1) {
+    return (currentCrawlingSiteId ? 1 : 0) + queueIndex + 1;
+  }
+  return null;
+}
+
+/**
+ * Enqueues a site to be crawled/indexed.
+ * Returns the 1-based queue position.
+ */
+export function enqueueCrawl(siteId: string, maxPages = 20): number {
+  const existingPos = getQueuePosition(siteId);
+  if (existingPos !== null) {
+    return existingPos;
+  }
+
+  serverCrawlQueue.push({ siteId, maxPages });
+
+  const sites = getSites();
+  const site = sites.find((s) => s.id === siteId);
+  if (site && site.status !== "crawling") {
+    site.status = "pending";
+    saveSites(sites);
+  }
+
+  processNextInQueue().catch(console.error);
+
+  return getQueuePosition(siteId) || 1;
+}
+
+/**
+ * Sequential queue worker ensuring only 1 domain is crawled at a time.
+ */
+async function processNextInQueue(): Promise<void> {
+  if (isCrawlerProcessing) return;
+  isCrawlerProcessing = true;
+
+  try {
+    while (serverCrawlQueue.length > 0) {
+      const next = serverCrawlQueue.shift()!;
+      currentCrawlingSiteId = next.siteId;
+
+      const sites = getSites();
+      const site = sites.find((s) => s.id === next.siteId);
+      if (site) {
+        site.status = "crawling";
+        site.logs.push({
+          timestamp: new Date().toISOString(),
+          message: "Crawling started by oxylow bot from crawl queue.",
+          level: "info",
+        });
+        saveSites(sites);
+      }
+
+      try {
+        await crawlSite(next.siteId, next.maxPages);
+      } catch (err: any) {
+        console.error(`Error processing crawl for site ${next.siteId}:`, err);
+      } finally {
+        currentCrawlingSiteId = null;
+      }
+    }
+  } finally {
+    currentCrawlingSiteId = null;
+    isCrawlerProcessing = false;
+    if (serverCrawlQueue.length > 0) {
+      processNextInQueue().catch(console.error);
+    }
+  }
+}
+
+/**
+ * Removes a site from the pending crawl queue.
+ */
+export function removeFromCrawlQueue(siteId: string): void {
+  const idx = serverCrawlQueue.findIndex((item) => item.siteId === siteId);
+  if (idx !== -1) {
+    serverCrawlQueue.splice(idx, 1);
+  }
+}
+
+/**
+ * Clears the crawl queue (for test cleanup).
+ */
+export function clearCrawlQueue(): void {
+  for (const timer of scheduledBatchTimers.values()) {
+    clearTimeout(timer);
+  }
+  scheduledBatchTimers.clear();
+  domainLastRequestTime.clear();
+  robotsCache.clear();
+  serverCrawlQueue.length = 0;
+  currentCrawlingSiteId = null;
+  isCrawlerProcessing = false;
+  BATCH_CRAWL_DELAY_MS = 10 * 60 * 1000;
+  DEFAULT_DOMAIN_DELAY_MS = 1000;
+}
+
+export function getCurrentCrawlingSiteId(): string | null {
+  return currentCrawlingSiteId;
+}
+
+export function getCrawlQueueLength(): number {
+  return (currentCrawlingSiteId ? 1 : 0) + serverCrawlQueue.length;
+}
+
+/**
+ * Attaches queuePosition to a site object.
+ */
+export function attachQueuePosition<T extends WebmasterSite>(site: T): T {
+  return {
+    ...site,
+    queuePosition: getQueuePosition(site.id),
+  };
+}
+
+/**
+ * Attaches queuePosition to a list of site objects.
+ */
+export function attachQueuePositions<T extends WebmasterSite>(sites: T[]): T[] {
+  return sites.map(attachQueuePosition);
+}
+
 
 /**
  * Searches the oxylow search index.

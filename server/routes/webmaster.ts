@@ -7,6 +7,13 @@ import {
   getIndex,
   saveIndex,
   crawlSite,
+  enqueueCrawl,
+  getQueuePosition,
+  removeFromCrawlQueue,
+  cancelScheduledCrawl,
+  attachQueuePosition,
+  attachQueuePositions,
+  getCrawlQueueLength,
   validateCrawlUrl,
   verifyDomainDns,
   WebmasterSite,
@@ -44,7 +51,7 @@ webmasterRouter.get("/sites", async (c) => {
     ? allSites
     : allSites.filter((s) => s.userId === user.id);
 
-  return c.json({ sites: userSites });
+  return c.json({ sites: attachQueuePositions(userSites) });
 });
 
 // Overall stats
@@ -67,6 +74,7 @@ webmasterRouter.get("/stats", async (c) => {
     totalSites: userSites.length,
     totalPagesIndexed: userPagesCount,
     globalIndexCount: index.length,
+    queuedSitesCount: getCrawlQueueLength(),
     botUserAgent: OXYLOW_USER_AGENT,
     botContactEmail: OXYLOW_CONTACT_EMAIL,
   });
@@ -145,7 +153,7 @@ webmasterRouter.post("/sites", async (c) => {
   sites.unshift(newSite);
   saveSites(sites);
 
-  return c.json({ site: newSite }, 201);
+  return c.json({ site: attachQueuePosition(newSite) }, 201);
 });
 
 // Verify DNS TXT record for a site
@@ -183,11 +191,13 @@ webmasterRouter.post("/sites/:id/verify", async (c) => {
     saveSites(sites);
 
     // Queue crawl now that domain is verified
-    setTimeout(() => {
-      crawlSite(site.id, 20).catch(console.error);
-    }, 100);
+    enqueueCrawl(site.id, 20);
 
-    return c.json({ message: "Domain verified successfully! oxylow bot queued for crawling.", verified: true, site });
+    return c.json({
+      message: "Domain verified successfully! oxylow bot queued for crawling.",
+      verified: true,
+      site: attachQueuePosition(site),
+    });
   } else {
     site.logs.push({
       timestamp: new Date().toISOString(),
@@ -201,7 +211,7 @@ webmasterRouter.post("/sites/:id/verify", async (c) => {
         error: result.message,
         verified: false,
         foundRecords: result.foundRecords,
-        site,
+        site: attachQueuePosition(site),
       },
       400
     );
@@ -230,19 +240,23 @@ webmasterRouter.post("/sites/:id/crawl", async (c) => {
     return c.json({ error: "Domain must be verified via DNS record before crawling." }, 400);
   }
 
-  if (site.status === "crawling") {
-    return c.json({ error: "Site is already currently being crawled." }, 409);
+  const queuePos = getQueuePosition(site.id);
+  if (queuePos !== null || site.status === "crawling") {
+    return c.json(
+      { error: `Site is already queued for crawling (position ${queuePos || 1}).` },
+      409
+    );
   }
 
-  // Trigger crawl in background
-  setTimeout(() => {
-    crawlSite(site.id, 20).catch(console.error);
-  }, 100);
-
-  site.status = "crawling";
+  cancelScheduledCrawl(site.id);
+  site.pendingUrls = undefined;
+  site.nextCrawlScheduledAt = null;
   saveSites(sites);
 
-  return c.json({ message: "Crawl started", site });
+  enqueueCrawl(site.id, 20);
+  const updatedSite = getSites().find((s) => s.id === site.id) || site;
+
+  return c.json({ message: "Crawl queued", site: attachQueuePosition(updatedSite) });
 });
 
 // Delete a site and its indexed pages
@@ -264,6 +278,8 @@ webmasterRouter.delete("/sites/:id", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
+  cancelScheduledCrawl(siteId);
+  removeFromCrawlQueue(siteId);
   sites.splice(siteIndex, 1);
   saveSites(sites);
 
@@ -296,7 +312,7 @@ webmasterRouter.get("/sites/:id/pages", async (c) => {
   const index = getIndex();
   const pages = index.filter((p) => p.siteId === siteId);
 
-  return c.json({ site, pages });
+  return c.json({ site: attachQueuePosition(site), pages });
 });
 
 // ==========================================
@@ -313,7 +329,7 @@ webmasterRouter.get("/admin/sites", async (c) => {
   const allSites = getSites();
   const adminSites = allSites.filter((s) => s.adminAdded);
 
-  return c.json({ sites: adminSites });
+  return c.json({ sites: attachQueuePositions(adminSites) });
 });
 
 // Add domain directly without verification (for popular sites, etc.)
@@ -370,10 +386,9 @@ webmasterRouter.post("/admin/sites", async (c) => {
         level: "info",
       });
       saveSites(sites);
-      setTimeout(() => {
-        crawlSite(existing.id, 20).catch(console.error);
-      }, 100);
-      return c.json({ site: existing, message: "Existing domain upgraded to admin verified." });
+      enqueueCrawl(existing.id, 20);
+      const updated = getSites().find((s) => s.id === existing.id) || existing;
+      return c.json({ site: attachQueuePosition(updated), message: "Existing domain upgraded to admin verified." });
     }
     return c.json({ error: "This URL has already been added." }, 409);
   }
@@ -402,12 +417,11 @@ webmasterRouter.post("/admin/sites", async (c) => {
   sites.unshift(newSite);
   saveSites(sites);
 
-  // Trigger crawl immediately
-  setTimeout(() => {
-    crawlSite(newSite.id, 20).catch(console.error);
-  }, 100);
+  // Trigger crawl via queue
+  enqueueCrawl(newSite.id, 20);
+  const updated = getSites().find((s) => s.id === newSite.id) || newSite;
 
-  return c.json({ site: newSite }, 201);
+  return c.json({ site: attachQueuePosition(updated) }, 201);
 });
 
 // Remove admin-added domain
@@ -424,6 +438,8 @@ webmasterRouter.delete("/admin/sites/:id", async (c) => {
     return c.json({ error: "Site not found" }, 404);
   }
 
+  cancelScheduledCrawl(siteId);
+  removeFromCrawlQueue(siteId);
   sites.splice(siteIndex, 1);
   saveSites(sites);
 
@@ -434,3 +450,4 @@ webmasterRouter.delete("/admin/sites/:id", async (c) => {
 
   return c.json({ success: true, message: "Domain removed from search index by admin." });
 });
+

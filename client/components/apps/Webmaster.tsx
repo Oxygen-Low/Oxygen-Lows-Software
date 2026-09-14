@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search,
   Globe,
@@ -63,6 +63,9 @@ interface WebmasterSite {
   createdAt: string;
   error?: string;
   logs: SiteLog[];
+  queuePosition?: number | null;
+  pendingUrls?: string[];
+  nextCrawlScheduledAt?: string | null;
 }
 
 interface IndexedPage {
@@ -118,8 +121,14 @@ export function WebmasterApp() {
   const [loadingPages, setLoadingPages] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  const fetchSitesAndStats = useCallback(async () => {
+  const sitesRef = useRef(sites);
+  sitesRef.current = sites;
+  const adminSitesRef = useRef(adminSites);
+  adminSitesRef.current = adminSites;
+
+  const fetchSitesAndStats = useCallback(async (isInitial = false) => {
     if (!token) return;
+    if (isInitial) setLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const [sitesRes, statsRes] = await Promise.all([
@@ -136,15 +145,15 @@ export function WebmasterApp() {
         setStats(statsData);
       }
     } catch {
-      toast.error("Failed to load webmaster data");
+      if (isInitial) toast.error("Failed to load webmaster data");
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, [token]);
 
-  const fetchAdminSites = useCallback(async () => {
+  const fetchAdminSites = useCallback(async (isInitial = false) => {
     if (!token || !isAdmin) return;
-    setAdminLoading(true);
+    if (isInitial) setAdminLoading(true);
     try {
       const res = await fetch("/api/webmaster/admin/sites", {
         headers: { Authorization: `Bearer ${token}` },
@@ -154,25 +163,42 @@ export function WebmasterApp() {
         setAdminSites(data.sites || []);
       }
     } catch {
-      toast.error("Failed to load admin domains");
+      if (isInitial) toast.error("Failed to load admin domains");
     } finally {
-      setAdminLoading(false);
+      if (isInitial) setAdminLoading(false);
     }
   }, [token, isAdmin]);
 
   useEffect(() => {
-    fetchSitesAndStats();
+    fetchSitesAndStats(true);
     if (isAdmin) {
-      fetchAdminSites();
+      fetchAdminSites(true);
     }
     const interval = setInterval(() => {
-      if (sites.some((s) => s.status === "crawling" || s.status === "pending")) {
-        fetchSitesAndStats();
-        if (isAdmin) fetchAdminSites();
+      const hasCrawlingUser = sitesRef.current.some(
+        (s) =>
+          s.status === "crawling" ||
+          s.status === "pending" ||
+          (s.queuePosition !== undefined && s.queuePosition !== null) ||
+          Boolean(s.nextCrawlScheduledAt)
+      );
+      const hasCrawlingAdmin = adminSitesRef.current.some(
+        (s) =>
+          s.status === "crawling" ||
+          s.status === "pending" ||
+          (s.queuePosition !== undefined && s.queuePosition !== null) ||
+          Boolean(s.nextCrawlScheduledAt)
+      );
+
+      if (hasCrawlingUser) {
+        fetchSitesAndStats(false);
+      }
+      if (isAdmin && (hasCrawlingUser || hasCrawlingAdmin)) {
+        fetchAdminSites(false);
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [fetchSitesAndStats, fetchAdminSites, sites, isAdmin]);
+  }, [fetchSitesAndStats, fetchAdminSites, isAdmin]);
 
   const handleSubmitSite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,7 +303,7 @@ export function WebmasterApp() {
 
   const handleAdminDeleteSite = async (siteId: string) => {
     if (!token) return;
-    if (!confirm("Are you sure you want to remove this admin-added domain and all its indexed pages?")) {
+    if (!confirm("Are you sure you want to remove this domain and delete its indexed pages?")) {
       return;
     }
 
@@ -356,7 +382,7 @@ export function WebmasterApp() {
           setSitePages(data.pages || []);
         }
       } catch {
-        setSitePages([]);
+        toast.error("Failed to load indexed pages for this site");
       } finally {
         setLoadingPages(false);
       }
@@ -370,6 +396,10 @@ export function WebmasterApp() {
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
+  const isSiteBusy = (site: WebmasterSite) => {
+    return site.status === "crawling" || site.status === "pending" || (site.queuePosition !== undefined && site.queuePosition !== null);
+  };
+
   const getStatusBadge = (site: WebmasterSite) => {
     if (!site.verified && !site.adminAdded) {
       return (
@@ -378,23 +408,50 @@ export function WebmasterApp() {
         </Badge>
       );
     }
+    if (
+      site.status === "crawling" ||
+      site.status === "pending" ||
+      (site.queuePosition !== undefined && site.queuePosition !== null)
+    ) {
+      const pos = site.queuePosition ?? (site.status === "crawling" ? 1 : 1);
+      const isActivelyCrawling = site.status === "crawling" || pos === 1;
+      return (
+        <Badge
+          className={`${
+            isActivelyCrawling
+              ? "bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20"
+              : "bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20"
+          } gap-1 font-normal`}
+        >
+          {isActivelyCrawling ? (
+            <RotateCw className="w-3 h-3 animate-spin" />
+          ) : (
+            <Clock className="w-3 h-3" />
+          )}
+          {`Queued (${pos})`}
+        </Badge>
+      );
+    }
     switch (site.status) {
       case "indexed":
+        if (site.nextCrawlScheduledAt && site.pendingUrls && site.pendingUrls.length > 0) {
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 gap-1 font-normal">
+                <CheckCircle2 className="w-3 h-3" /> Indexed ({site.pageCount})
+              </Badge>
+              <Badge
+                className="bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 gap-1 font-normal"
+                title={`Next 20 pages will be queued in 10 minutes (${site.pendingUrls.length} remaining)`}
+              >
+                <Clock className="w-3 h-3" /> Next 20 in 10m
+              </Badge>
+            </div>
+          );
+        }
         return (
           <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 gap-1 font-normal">
             <CheckCircle2 className="w-3 h-3" /> Indexed
-          </Badge>
-        );
-      case "crawling":
-        return (
-          <Badge className="bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20 gap-1 font-normal">
-            <RotateCw className="w-3 h-3 animate-spin" /> Crawling
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge className="bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 gap-1 font-normal">
-            <Clock className="w-3 h-3" /> Queued
           </Badge>
         );
       case "error":
@@ -578,7 +635,7 @@ export function WebmasterApp() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 pt-0">
-              {adminLoading ? (
+              {adminLoading && adminSites.length === 0 ? (
                 <div className="py-12 flex justify-center items-center text-muted-foreground">
                   <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
                 </div>
@@ -643,12 +700,12 @@ export function WebmasterApp() {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={site.status === "crawling"}
+                          disabled={isSiteBusy(site)}
                           onClick={() => handleRecrawl(site.id)}
                           className="h-8 text-xs gap-1.5"
                           title="Re-crawl site"
                         >
-                          <RotateCw className={`w-3.5 h-3.5 ${site.status === "crawling" ? "animate-spin" : ""}`} />
+                          <RotateCw className={`w-3.5 h-3.5 ${isSiteBusy(site) ? "animate-spin" : ""}`} />
                           Re-crawl
                         </Button>
                         <Button
@@ -751,7 +808,7 @@ export function WebmasterApp() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 pt-0">
-              {loading ? (
+              {loading && sites.length === 0 ? (
                 <div className="py-12 flex justify-center items-center text-muted-foreground">
                   <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
                 </div>
@@ -834,12 +891,12 @@ export function WebmasterApp() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={site.status === "crawling"}
+                                disabled={isSiteBusy(site)}
                                 onClick={() => handleRecrawl(site.id)}
                                 className="h-8 text-xs gap-1.5"
                                 title="Re-crawl site"
                               >
-                                <RotateCw className={`w-3.5 h-3.5 ${site.status === "crawling" ? "animate-spin" : ""}`} />
+                                <RotateCw className={`w-3.5 h-3.5 ${isSiteBusy(site) ? "animate-spin" : ""}`} />
                                 Re-crawl
                               </Button>
                             )}
@@ -946,11 +1003,11 @@ export function WebmasterApp() {
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={selectedSite.status === "crawling"}
+                      disabled={isSiteBusy(selectedSite)}
                       onClick={() => handleRecrawl(selectedSite.id)}
                       className="h-7 text-xs gap-1.5"
                     >
-                      <RotateCw className="w-3 h-3" /> Re-crawl
+                      <RotateCw className={`w-3 h-3 ${isSiteBusy(selectedSite) ? "animate-spin" : ""}`} /> Re-crawl
                     </Button>
                   )}
                 </h3>

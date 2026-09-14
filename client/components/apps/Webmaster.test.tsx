@@ -66,4 +66,64 @@ describe("WebmasterApp", () => {
     expect(screen.getByText(/support@oxygenlow.com/i)).toBeDefined();
     expect(screen.getByPlaceholderText("https://example.com")).toBeDefined();
   });
+
+  it("displays Queued ([position]) badge instead of Crawling for queued/indexing sites", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/webmaster/sites")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              sites: [
+                {
+                  id: "site-1",
+                  userId: "test-user-id",
+                  url: "https://first-site.org",
+                  domain: "first-site.org",
+                  status: "crawling",
+                  verified: true,
+                  verificationToken: "token-1",
+                  pageCount: 0,
+                  createdAt: new Date().toISOString(),
+                  logs: [],
+                  queuePosition: 1,
+                },
+                {
+                  id: "site-2",
+                  userId: "test-user-id",
+                  url: "https://second-site.org",
+                  domain: "second-site.org",
+                  status: "pending",
+                  verified: true,
+                  verificationToken: "token-2",
+                  pageCount: 0,
+                  createdAt: new Date().toISOString(),
+                  logs: [],
+                  queuePosition: 2,
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/webmaster/stats")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              totalSites: 2,
+              totalPagesIndexed: 0,
+              globalIndexCount: 0,
+              botUserAgent: "oxylow/1.0",
+              botContactEmail: "support@oxygenlow.com",
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as any;
+
+    render(<WebmasterApp />);
+    expect(await screen.findByText("Queued (1)")).toBeDefined();
+    expect(await screen.findByText("Queued (2)")).toBeDefined();
+    expect(screen.queryByText("Crawling")).toBeNull();
+  });
 });
