@@ -42,7 +42,6 @@ export const en = {
     storage: "Storage",
     account: "Account",
     security: "Security",
-    integrations: "Integrations",
     friends: "Friends",
     customize: "Customize",
     threeDBackground: "3D Background",
@@ -214,7 +213,6 @@ export const en = {
     builtInModelsGroup: "Built-in Cloud Services (AI Horde)",
     configured: "Configured",
     notConfigured: "API Key Required",
-    goToIntegrations: "Integrations",
     deleteModelConfirmTitle: "Remove Custom Model",
     deleteModelConfirmDesc:
       "Are you sure you want to remove this custom model? You can re-register it at any time.",
@@ -229,7 +227,7 @@ export const en = {
     presetBadge: "Preset",
     builtInBadge: "Built-in",
     providerNotConfiguredWarning:
-      "Note: This provider does not have an active API key in Integrations. You can register the model now and add the key later.",
+      "Note: This provider does not have an active API key configured. You can register the model now and configure credentials later.",
   },
   userProfile: {
     userNotFound: "User not found",
@@ -1308,11 +1306,6 @@ export const en = {
     chatbotChats: "Chatbot Chats",
     chatbotChatsDesc:
       "Encrypt AI conversations, message history, and system prompts.",
-    integrations: "API Keys & Integrations",
-    integrationsDesc:
-      "Encrypt stored API keys, LLM credentials, and MCP access tokens.",
-    cannotDisableIntegrationsWithKeys:
-      "Cannot disable encryption while API keys/integrations are stored. Please remove all stored integrations first.",
     passwords: "Password Vault",
     passwordsDesc:
       "Encrypt stored passwords, URLs, and notes in your personal password manager.",
@@ -1410,72 +1403,6 @@ export const en = {
     githubOauthFailed: "GitHub authentication was cancelled or failed.",
     googleNotConfigured: "Google OAuth is not configured on this server.",
     githubNotConfigured: "GitHub OAuth is not configured on this server.",
-  },
-  integrations: {
-    title: "Integrations & API Keys",
-    subtitle:
-      "Securely manage API keys and credentials for LLM models, integrations, and MCP servers.",
-    aesEncryptedBadge: "AES-256 Encrypted",
-    encryptionDisabledBadge: "Encryption Required",
-    encryptionRequiredTitle: "Zero-Knowledge Encryption Required",
-    encryptionRequiredDesc:
-      "To protect your private API keys and tokens from unauthorized access, Oxygen Low's Software requires client-side AES-256 masterkey encryption for all stored integrations. Data is encrypted directly in your browser before saving.",
-    encryptionNoticeDetail:
-      "Your masterkey is held only in your local session and is never uploaded or accessible to the server.",
-    enableEncryptionButton: "Enable Integration Encryption",
-    encryptionEnabledToast: "Encryption enabled for API keys & integrations",
-    totalAvailable: "Total Supported",
-    configuredCount: "Configured",
-    securityStatus: "Protection",
-    aesProtected: "AES-256 Zero-Knowledge",
-    categoryModels: "LLM Models",
-    categoryIntegrations: "LLM Integrations",
-    categoryMcps: "LLM Mcps",
-    searchPlaceholder: "Search integrations...",
-    noIntegrationsFound: "No integrations found matching your search.",
-    configuredBadge: "Configured",
-    notConfiguredBadge: "Not Set",
-    apiKeyLabel: "API Key / Token",
-    baseUrlLabel: "Endpoint / Base URL (Optional)",
-    baseUrlHelp:
-      "Leave default or customize if connecting via a proxy, custom gateway, or local relay.",
-    defaultEndpointLabel: "Default Endpoint",
-    fixedBaseUrlHelp:
-      "This integration always uses the standard official endpoint.",
-    copyKey: "Copy Key",
-    copiedToast: "API key copied to clipboard",
-    noKeyStored: "No API key configured yet",
-    getKeyLink: "Get API Key",
-    documentation: "Documentation",
-    configureButton: "Configure",
-    configureModalTitle: "Configure {name}",
-    configureModalDefaultTitle: "Configure Integration",
-    dialogEncryptionNotice:
-      "Credentials will be encrypted with your 256-bit AES masterkey before transmission.",
-    keyRequiredError: "API key / token is required",
-    masterKeyMissingError: "Masterkey required to encrypt integration",
-    savedToast: "{name} credentials saved securely.",
-    saveError: "Failed to save integration",
-    deletedToast: "{name} integration removed.",
-    deleteError: "Failed to delete integration",
-    fetchError: "Failed to load integrations",
-    deleteConfirmTitle: "Delete {name} integration?",
-    deleteConfirmDefaultTitle: "Delete integration?",
-    deleteConfirmDesc:
-      "This will permanently remove the stored API key and credentials from your encrypted cloud storage.",
-    openaiDesc: "API key for OpenAI models including GPT-4o, o1, and o3-mini.",
-    geminiDesc: "API key for Google Gemini Flash, Pro, and embedding models.",
-    openrouterDesc:
-      "Universal API key providing access to hundreds of AI models.",
-    xaiDesc: "API key for xAI Grok frontier and vision models.",
-    anthropicDesc:
-      "API key for Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku, and Opus.",
-    googleJulesDesc:
-      "Access token and integration credentials for Google Jules coding workflows.",
-    googleStitchMcpDesc:
-      "Model Context Protocol (MCP) server token and endpoint for Google Stitch.",
-    githubMcpDesc:
-      "GitHub Personal Access Token (PAT) for GitHub MCP repository tools.",
   },
   passwords: {
     appTitle: "Password Manager",
@@ -2088,7 +2015,6 @@ export const en = {
     friends: "Friends",
     account: "Account",
     security: "Security",
-    integrations: "Integrations",
     customize: "Customize",
     characters: "Characters",
     support: "Support",

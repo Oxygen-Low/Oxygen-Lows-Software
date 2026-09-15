@@ -13,7 +13,6 @@ const mockDelete = vi.fn().mockReturnThis();
 const mockEq = vi.fn().mockReturnThis();
 
 let mockDbModels: any[] = [];
-let mockIntegrations: any[] = [];
 
 vi.mock("@/lib/db", () => {
   const mockClient = {
@@ -42,13 +41,6 @@ vi.mock("@/lib/db", () => {
               eq: vi.fn().mockResolvedValue({ data: null, error: null }),
             })),
           })),
-        };
-      }
-      if (table === "user_integrations") {
-        return {
-          select: vi
-            .fn()
-            .mockResolvedValue({ data: mockIntegrations, error: null }),
         };
       }
       if (table === "user_preferences") {
@@ -115,10 +107,6 @@ describe("useAiModels Hook", () => {
     vi.clearAllMocks();
     localStorage.clear();
     mockDbModels = [];
-    mockIntegrations = [
-      { provider: "openai", is_active: true, api_key: "sk-test" },
-      { provider: "anthropic", is_active: true, api_key: "sk-ant" },
-    ];
 
     global.fetch = vi.fn().mockImplementation((url) => {
       const urlStr = String(url);
@@ -200,12 +188,11 @@ describe("useAiModels Hook", () => {
     expect(result.current.localStatus.totalLocal).toBeGreaterThan(0);
   });
 
-  it("detects configured integrations from user_integrations", async () => {
+  it("detects configured base providers", async () => {
     const { result } = renderHook(() => useAiModels(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.isProviderConfigured("openai")).toBe(true);
-      expect(result.current.isProviderConfigured("anthropic")).toBe(true);
+      expect(result.current.isProviderConfigured("horde")).toBe(true);
       expect(result.current.isProviderConfigured("google")).toBe(false);
     });
   });

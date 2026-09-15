@@ -149,7 +149,7 @@ export default function Terms() {
           <P>
             <strong>Client-Side Master Key:</strong> Certain sensitive data
             (including character details, data saves, chat histories, and
-            integrations) is secured using Zero-Knowledge Client-Side Encryption
+            passwords) is secured using Zero-Knowledge Client-Side Encryption
             (AES-256-GCM). You are solely responsible for securely storing your
             master key or downloaded <code>.key</code> backups.{" "}
             <strong>We cannot recover or reset lost keys.</strong>
@@ -303,24 +303,18 @@ export default function Terms() {
           </P>
         </Section>
 
-        {/* 10. Third-Party Services & Integrations */}
+        {/* 10. Third-Party Services */}
         <Section
           id="third-party"
-          title="10. Third-Party Services &amp; Integrations"
+          title="10. Third-Party Services"
           index={10}
         >
           <P>
-            The Service integrates with third-party services (including OpenAI,
+            The Service connects with third-party services (including OpenAI,
             Anthropic, Google, GitHub, and others listed in our
             Privacy Policy). Your use of those services is governed by their
             respective terms and privacy policies. We are not responsible for
             the availability, accuracy, or practices of any third-party service.
-          </P>
-          <P>
-            <strong>Integrations &amp; API Keys:</strong> Any third-party API
-            keys you provide to the Service are stored using Zero-Knowledge
-            Encryption on your device before transmission. We do not have access
-            to your raw API keys.
           </P>
           <P>
             <strong>Autonomous Agents &amp; M2M Auth:</strong> Access by

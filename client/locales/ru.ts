@@ -61,7 +61,6 @@ export const ru = {
     closeMenu: "Закрыть меню",
     openSidebar: "Открыть боковую панель",
     closeSidebar: "Закрыть боковую панель",
-    integrations: "Интеграции",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -215,7 +214,6 @@ export const ru = {
     builtInModelsGroup: "Встроенные облачные сервисы (AI Horde)",
     configured: "Настроен",
     notConfigured: "Требуется API-ключ",
-    goToIntegrations: "Интеграции",
     deleteModelConfirmTitle: "Удалить пользовательскую модель",
     deleteModelConfirmDesc:
       "Вы уверены, что хотите удалить эту модель? Вы сможете зарегистрировать её снова в любое время.",
@@ -230,7 +228,7 @@ export const ru = {
     presetBadge: "Пресет",
     builtInBadge: "Встроенная",
     providerNotConfiguredWarning:
-      "Примечание: Для этого провайдера не настроен API-ключ в Интеграциях. Вы можете зарегистрировать модель сейчас, а ключ добавить позже.",
+      "Примечание: Для этого провайдера не настроен активный API-ключ. Вы можете зарегистрировать модель сейчас, а ключ добавить позже.",
   },
   userProfile: {
     userNotFound: "Пользователь не найден",
@@ -1326,11 +1324,6 @@ notificationsTitle: "Уведомления",
     invalidKeyFileError:
       "В загруженном файле не найден действительный 256-битный мастер-ключ.",
     readKeyFileError: "Не удалось прочитать файл .key.",
-    integrations: "API-ключи и Интеграции",
-    integrationsDesc:
-      "Шифруйте сохраненные API-ключи, учетные данные LLM и токены доступа MCP.",
-    cannotDisableIntegrationsWithKeys:
-      "Невозможно отключить шифрование, пока сохранены API-ключи/интеграции. Пожалуйста, сначала удалите все сохраненные интеграции.",
     passwords: "Хранилище паролей",
     passwordsDesc:
       "Шифруйте сохраненные пароли, URL и заметки в вашем персональном менеджере паролей.",
@@ -1411,73 +1404,6 @@ notificationsTitle: "Уведомления",
     githubOauthFailed: "Аутентификация GitHub была отменена или не удалась.",
     googleNotConfigured: "Google OAuth не настроен на этом сервере.",
     githubNotConfigured: "GitHub OAuth не настроен на этом сервере.",
-  },
-  integrations: {
-    title: "Интеграции и API-ключи",
-    subtitle:
-      "Безопасно управляйте API-ключами и учетными данными для моделей LLM, интеграций и серверов MCP.",
-    aesEncryptedBadge: "Зашифровано AES-256",
-    encryptionDisabledBadge: "Требуется шифрование",
-    encryptionRequiredTitle: "Требуется шифрование с нулевым разглашением",
-    encryptionRequiredDesc:
-      "Для защиты ваших личных API-ключей и токенов от несанкционированного доступа Oxygen Low's Software требует шифрования мастер-ключом AES-256 на стороне клиента для всех сохраненных интеграций. Данные шифруются прямо в вашем браузере перед сохранением.",
-    encryptionNoticeDetail:
-      "Ваш мастер-ключ хранится только в локальной сессии, никогда не загружается на сервер и недоступен ему.",
-    enableEncryptionButton: "Включить шифрование интеграций",
-    encryptionEnabledToast: "Шифрование для API-ключей и интеграций включено",
-    totalAvailable: "Всего поддерживается",
-    configuredCount: "Настроено",
-    securityStatus: "Защита",
-    aesProtected: "AES-256 с нулевым разглашением",
-    categoryModels: "Модели LLM",
-    categoryIntegrations: "Интеграции LLM",
-    categoryMcps: "MCP LLM",
-    searchPlaceholder: "Поиск интеграций...",
-    noIntegrationsFound:
-      "Интеграции, соответствующие вашему запросу, не найдены.",
-    configuredBadge: "Настроено",
-    notConfiguredBadge: "Не задано",
-    apiKeyLabel: "API-ключ / Токен",
-    baseUrlLabel: "Эндпоинт / Базовый URL (Необязательно)",
-    baseUrlHelp:
-      "Оставьте по умолчанию или измените, если подключаетесь через прокси, кастомный шлюз или локальный ретранслятор.",
-    defaultEndpointLabel: "Эндпоинт по умолчанию",
-    fixedBaseUrlHelp:
-      "Эта интеграция всегда использует стандартный официальный эндпоинт.",
-    copyKey: "Копировать ключ",
-    copiedToast: "API-ключ скопирован в буфер обмена",
-    noKeyStored: "API-ключ еще не настроен",
-    getKeyLink: "Получить API-ключ",
-    documentation: "Документация",
-    configureButton: "Настроить",
-    configureModalTitle: "Настроить {name}",
-    configureModalDefaultTitle: "Настроить интеграцию",
-    dialogEncryptionNotice:
-      "Учетные данные будут зашифрованы вашим 256-битным мастер-ключом AES перед передачей.",
-    keyRequiredError: "Требуется API-ключ / токен",
-    masterKeyMissingError: "Для шифрования интеграции требуется мастер-ключ",
-    savedToast: "Учетные данные {name} безопасно сохранены.",
-    saveError: "Не удалось сохранить интеграцию",
-    deletedToast: "Интеграция {name} удалена.",
-    deleteError: "Не удалось удалить интеграцию",
-    fetchError: "Не удалось загрузить интеграции",
-    deleteConfirmTitle: "Удалить интеграцию {name}?",
-    deleteConfirmDefaultTitle: "Удалить интеграцию?",
-    deleteConfirmDesc:
-      "Это навсегда удалит сохраненный API-ключ и учетные данные из вашего зашифрованного облачного хранилища.",
-    openaiDesc: "API-ключ для моделей OpenAI, включая GPT-4o, o1 и o3-mini.",
-    geminiDesc: "API-ключ для моделей Google Gemini Flash, Pro и эмбеддингов.",
-    openrouterDesc:
-      "Универсальный API-ключ, предоставляющий доступ к сотням моделей ИИ.",
-    xaiDesc: "API-ключ для моделей xAI Grok (передовые и визуальные).",
-    anthropicDesc:
-      "API-ключ для Claude 3.5 Sonnet, Claude 3.7 Sonnet, Haiku и Opus.",
-    googleJulesDesc:
-      "Токен доступа и учетные данные интеграции для рабочих процессов кодирования Google Jules.",
-    googleStitchMcpDesc:
-      "Токен сервера и эндпоинт протокола контекста модели (MCP) для Google Stitch.",
-    githubMcpDesc:
-      "Личный токен доступа GitHub (PAT) для инструментов репозитория GitHub MCP.",
   },
   passwords: {
     appTitle: "Менеджер паролей",
@@ -2090,7 +2016,6 @@ notificationsTitle: "Уведомления",
     friends: "Друзья",
     account: "Аккаунт",
     security: "Безопасность",
-    integrations: "Интеграции",
     customize: "Настройка",
     characters: "Персонажи",
     support: "Поддержка",

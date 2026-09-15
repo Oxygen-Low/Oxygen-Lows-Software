@@ -208,21 +208,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     return c.json({ error: "Authentication required for this model." }, 401);
   }
 
-  let integration: any = null;
-  if (user) {
-    const integrations = queryTable({
-      table: "user_integrations",
-      userId: user.id,
-      filters: [{ field: "provider", operator: "eq", value: provider }],
-    });
-    if (Array.isArray(integrations) && integrations.length > 0) {
-      integration = integrations[0];
-    }
-  }
-
-  if (apiKey) {
-    integration = { ...integration, api_key: apiKey };
-  }
+  let integration: any = apiKey ? { api_key: apiKey } : null;
   if (baseUrl) {
     try {
       const parsed = new URL(baseUrl);

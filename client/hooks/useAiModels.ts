@@ -269,55 +269,6 @@ export const useAiModels = (
     >
   >({});
 
-  const fetchIntegrations = useCallback(async () => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData?.session?.user?.id;
-      const baseProviders = [
-        "horde",
-        "local-ollama",
-        "local-lmstudio",
-        "local-kobold",
-      ];
-
-      if (userId) {
-        const { data, error } = await supabase
-          .from("user_integrations")
-          .select("provider, is_active, api_key");
-        if (!error && Array.isArray(data)) {
-          for (const item of data) {
-            if (
-              item.provider &&
-              item.is_active !== false &&
-              !baseProviders.includes(item.provider)
-            ) {
-              baseProviders.push(item.provider);
-            }
-          }
-        }
-      } else {
-        // Guest mode fallback from localStorage
-        try {
-          const raw = localStorage.getItem("guest_integrations");
-          if (raw) {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-              for (const p of list) {
-                if (typeof p === "string" && !baseProviders.includes(p)) {
-                  baseProviders.push(p);
-                }
-              }
-            }
-          }
-        } catch {}
-      }
-
-      setConfiguredProviders(baseProviders);
-    } catch (e) {
-      console.error("Failed to fetch integrations status", e);
-    }
-  }, []);
-
   const fetchModels = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -526,9 +477,8 @@ export const useAiModels = (
   }, [lastModelId, lastProvider, chatbotDefaultModel, chatbotDefaultProvider]);
 
   useEffect(() => {
-    fetchIntegrations();
     fetchModels();
-  }, [fetchIntegrations, fetchModels]);
+  }, [fetchModels]);
 
   useEffect(() => {
     const fetchStatus = async () => {

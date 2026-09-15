@@ -73,25 +73,21 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
 - **Automatic Master Key Locking**: Automatic master key locking after 30 minutes of inactivity to protect sensitive data.
 - **Recovery Keys**: Secure master key export and recovery phrase backup.
 
-### 6. AI Integrations & Local Model Support (/integrations)
-- Configure API keys for third-party AI providers (OpenAI, Anthropic Claude, Google Gemini, OpenRouter, xAI Grok, Stable Horde).
-- Connect local AI servers without sending data to the cloud: Ollama (http://127.0.0.1:11434), LM Studio (http://127.0.0.1:1234), KoboldCpp (http://127.0.0.1:5001).
-
-### 7. Custom Characters & Roleplay Studio (/characters)
+### 6. Custom Characters & Roleplay Studio (/characters)
 - Create rich AI character personas, custom races/species, and fictional universes.
 - Define appearance, personality, backstories, tone, and full RPG stats (STR, DEX, CON, INT, WIS, CHA) that inject seamlessly into Chatbot conversations.
 
-### 8. Customization, Themes & Audio (/customize)
+### 7. Customization, Themes & Audio (/customize)
 - Themes, neon/glassmorphism UI styles, language switching (English, Spanish, Japanese, Korean, Russian, Simplified Chinese), and built-in sidebar Music Player.
 
-### 9. Social, Friends & Community (/friends)
+### 8. Social, Friends & Community (/friends)
 - Add friends, view online status, user profiles, and connect with the community.
 - Official Discord community (https://discord.gg/tNczTe66jK) and Trello development roadmap (https://trello.com/b/OmFTZeVK/oxygen-lows-software-development).
 
-### 10. Downloads & Desktop Apps (/download)
+### 9. Downloads & Desktop Apps (/download)
 - Native Windows desktop application and Android client downloads.
 
-### 11. Support & Transparency (/support, /legal)
+### 10. Support & Transparency (/support, /legal)
 - In-app support ticket submission and admin chat system.
 - Transparent legal, Privacy Policy, Terms of Service, EULA, DMCA, and Acceptable Use policies.
 `.trim();

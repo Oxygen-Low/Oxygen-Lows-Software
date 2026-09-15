@@ -703,7 +703,7 @@ export function clearActiveMasterKey(): void {
 }
 
 export type EncryptionCategory =
-  "characters" | "data_save" | "chatbot" | "integrations" | "passwords";
+  "characters" | "data_save" | "chatbot" | "passwords";
 
 export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
   EncryptionCategory,
@@ -712,7 +712,6 @@ export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
   characters: "oxygen_encrypt_characters",
   data_save: "oxygen_encrypt_data_save",
   chatbot: "oxygen_encrypt_chatbot",
-  integrations: "oxygen_encrypt_integrations",
   passwords: "oxygen_encrypt_passwords",
 };
 
@@ -1156,42 +1155,6 @@ export async function decryptChatMessageData<T extends ChatMessageData>(
   return result;
 }
 
-export interface IntegrationData {
-  id?: string;
-  user_id?: string;
-  category?: string;
-  provider?: string;
-  name?: string;
-  api_key?: string | null;
-  base_url?: string | null;
-  config?: Record<string, any> | null;
-  [key: string]: any;
-}
-
-export async function encryptIntegrationData<T extends IntegrationData>(
-  data: T,
-  keyBytes: Uint8Array,
-): Promise<T> {
-  const result: any = { ...data };
-  if (data.api_key !== undefined)
-    result.api_key = await encryptField(data.api_key, keyBytes);
-  if (data.base_url !== undefined)
-    result.base_url = await encryptField(data.base_url, keyBytes);
-  return result;
-}
-
-export async function decryptIntegrationData<T extends IntegrationData>(
-  data: T,
-  keyBytes: Uint8Array | null,
-): Promise<T> {
-  const result: any = { ...data };
-  if (data.api_key !== undefined)
-    result.api_key = await decryptField(data.api_key, keyBytes);
-  if (data.base_url !== undefined)
-    result.base_url = await decryptField(data.base_url, keyBytes);
-  return result;
-}
-
 export interface PasswordData {
   id?: string;
   user_id?: string;
@@ -1439,39 +1402,6 @@ export async function migrateCategoryEncryption({
         }
       }
     }
-  } else if (category === "integrations") {
-    let queryIntegrations = db.from("user_integrations").select("*");
-    if (userId) queryIntegrations = queryIntegrations.eq("user_id", userId);
-    const { data: list, error: integrationsError } = await queryIntegrations;
-    if (integrationsError) throw integrationsError;
-
-    if (list && list.length > 0) {
-      for (const item of list) {
-        if (enable) {
-          const enc = await encryptIntegrationData(item, keyBytes);
-          const { error: updateError } = await db
-            .from("user_integrations")
-            .update({
-              api_key: enc.api_key,
-              base_url: enc.base_url,
-            })
-            .eq("id", item.id);
-          if (updateError) throw updateError;
-          updatedCount++;
-        } else {
-          const dec = await decryptIntegrationData(item, keyBytes);
-          const { error: updateError } = await db
-            .from("user_integrations")
-            .update({
-              api_key: dec.api_key,
-              base_url: dec.base_url,
-            })
-            .eq("id", item.id);
-          if (updateError) throw updateError;
-          updatedCount++;
-        }
-      }
-    }
   } else if (category === "passwords") {
     let queryPasswords = db.from("user_passwords").select("*");
     if (userId) queryPasswords = queryPasswords.eq("user_id", userId);
@@ -1540,7 +1470,6 @@ export async function rotateMasterKey({
     "characters",
     "data_save",
     "chatbot",
-    "integrations",
     "passwords",
   ];
 
@@ -1656,27 +1585,6 @@ export async function rotateMasterKey({
               updatedCount++;
             }
           }
-        }
-      }
-    } else if (category === "integrations") {
-      let queryIntegrations = db.from("user_integrations").select("*");
-      if (userId) queryIntegrations = queryIntegrations.eq("user_id", userId);
-      const { data: list, error: integrationsError } = await queryIntegrations;
-      if (integrationsError) throw integrationsError;
-
-      if (list && list.length > 0) {
-        for (const item of list) {
-          const dec = await decryptIntegrationData(item, oldKeyBytes);
-          const enc = await encryptIntegrationData(dec, newKeyBytes);
-          const { error: updateError } = await db
-            .from("user_integrations")
-            .update({
-              api_key: enc.api_key,
-              base_url: enc.base_url,
-            })
-            .eq("id", item.id);
-          if (updateError) throw updateError;
-          updatedCount++;
         }
       }
     } else if (category === "passwords") {

@@ -229,18 +229,7 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
   }
 
   if (provider === "horde") {
-    // Check if user has an AI Horde API key in user_integrations
     let hordeApiKey = "0000000000";
-    if (user) {
-      const integrations = queryTable({
-        table: "user_integrations",
-        userId: user.id,
-        filters: [{ field: "provider", operator: "eq", value: "horde" }],
-      });
-      if (Array.isArray(integrations) && integrations[0]?.api_key) {
-        hordeApiKey = integrations[0].api_key;
-      }
-    }
 
     const requestedModel = String(model || "quality").trim();
     const matchedPreset = IMAGE_GENERATOR_PRESETS.find(

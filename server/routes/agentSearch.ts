@@ -450,6 +450,7 @@ async function callModelProvider({
   tools,
   userId,
   hordeApiKey,
+  apiKey,
   signal,
 }: {
   provider: string;
@@ -459,31 +460,16 @@ async function callModelProvider({
   tools?: any[];
   userId?: string;
   hordeApiKey?: string;
+  apiKey?: string;
   signal?: AbortSignal;
 }): Promise<Response> {
-  let integration: any = null;
-  if (userId) {
-    try {
-      const ints = queryTable({
-        table: "user_integrations",
-        userId,
-        filters: [{ field: "provider", operator: "eq", value: provider }],
-      });
-      if (Array.isArray(ints) && ints[0]) {
-        integration = ints[0];
-      }
-    } catch {}
-  }
-
-  const apiKey = integration?.api_key;
-
   if (
     !apiKey &&
     provider !== "horde" &&
     !provider.includes("horde")
   ) {
     throw new Error(
-      `Provider '${provider}' is not configured. Please configure an API key in Integrations.`,
+      `Provider '${provider}' is not configured.`,
     );
   }
 
@@ -633,6 +619,7 @@ agentSearchRouter.post(
         researchProvider,
         summarizerModel,
         summarizerProvider,
+        apiKey,
       } = body;
 
       if (typeof query !== "string" || !query.trim()) {
@@ -747,76 +734,33 @@ agentSearchRouter.post(
           : effectiveResearchModel;
 
       if (
+        !apiKey &&
         effectiveResearchProvider !== "horde" &&
         !effectiveResearchProvider.includes("horde")
       ) {
-        let intg = null;
-        try {
-          const ints = queryTable({
-            table: "user_integrations",
-            userId: user.id,
-            filters: [
-              {
-                field: "provider",
-                operator: "eq",
-                value: effectiveResearchProvider,
-              },
-            ],
-          });
-          if (Array.isArray(ints) && ints[0]?.api_key) intg = ints[0];
-        } catch {}
-        if (!intg) {
-          return c.json(
-            {
-              error: `Provider '${effectiveResearchProvider}' is not configured. Please configure an API key in Integrations.`,
-            },
-            400,
-          );
-        }
+        return c.json(
+          {
+            error: `Provider '${effectiveResearchProvider}' is not configured.`,
+          },
+          400,
+        );
       }
 
       if (
         !researchOnly &&
+        !apiKey &&
         effectiveSummarizerProvider !== "horde" &&
         !effectiveSummarizerProvider.includes("horde")
       ) {
-        let intg = null;
-        try {
-          const ints = queryTable({
-            table: "user_integrations",
-            userId: user.id,
-            filters: [
-              {
-                field: "provider",
-                operator: "eq",
-                value: effectiveSummarizerProvider,
-              },
-            ],
-          });
-          if (Array.isArray(ints) && ints[0]?.api_key) intg = ints[0];
-        } catch {}
-        if (!intg) {
-          return c.json(
-            {
-              error: `Provider '${effectiveSummarizerProvider}' is not configured. Please configure an API key in Integrations.`,
-            },
-            400,
-          );
-        }
+        return c.json(
+          {
+            error: `Provider '${effectiveSummarizerProvider}' is not configured.`,
+          },
+          400,
+        );
       }
 
-      // Check if user has Horde integration key
       let hordeApiKey = "0000000000";
-      try {
-        const hordeInts = queryTable({
-          table: "user_integrations",
-          userId: user.id,
-          filters: [{ field: "provider", operator: "eq", value: "horde" }],
-        });
-        if (Array.isArray(hordeInts) && hordeInts[0]?.api_key) {
-          hordeApiKey = hordeInts[0].api_key;
-        }
-      } catch {}
 
       // Prepare multimodal user images for vision
       let userImages: string[] = [];
@@ -975,6 +919,7 @@ Guidelines:
               tools: SEARCH_TOOLS,
               userId: user.id,
               hordeApiKey,
+              apiKey,
               signal: AbortSignal.timeout(10000),
             });
             const data = await res.json();
@@ -1076,6 +1021,7 @@ Guidelines:
             stream: false,
             userId: user.id,
             hordeApiKey,
+            apiKey,
             signal: AbortSignal.timeout(60000),
           });
         } catch (e: any) {
@@ -1169,6 +1115,7 @@ Guidelines:
                 tools: SEARCH_TOOLS,
                 userId: user.id,
                 hordeApiKey,
+                apiKey,
                 signal: AbortSignal.timeout(10000),
               });
               const data = await res.json();
@@ -1360,6 +1307,7 @@ Guidelines:
               stream: true,
               userId: user.id,
               hordeApiKey,
+              apiKey,
               signal: AbortSignal.timeout(60000),
             });
           } catch (e: any) {

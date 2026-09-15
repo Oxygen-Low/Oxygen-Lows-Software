@@ -21,7 +21,6 @@ import {
   Gamepad2,
   Scale,
   ShieldCheck,
-  KeyRound,
   Menu,
   X,
   ExternalLink,
@@ -88,13 +87,6 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Security",
     href: "/security",
     icon: ShieldCheck,
-  },
-  {
-    key: "integrations",
-    labelKey: "nav.integrations",
-    defaultLabel: "Integrations",
-    href: "/integrations",
-    icon: KeyRound,
   },
   {
     key: "friends",

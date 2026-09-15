@@ -32,7 +32,7 @@ You retain ownership of any content you create, upload, or submit through the So
 
 You represent and warrant that you have all rights necessary to grant this licence and that your User Content does not infringe any third-party intellectual property rights, violate any applicable law, or breach any obligation of confidentiality.
 
-Zero-Knowledge Encryption: The Software uses Zero-Knowledge Client-Side Encryption for sensitive User Content (such as character data, saves, and integrations). You acknowledge that the Licensor does not hold your decryption keys and cannot decrypt your data. The Licensor is not liable for any data loss arising from a forgotten password, lost .key file, or compromised local device.
+Zero-Knowledge Encryption: The Software uses Zero-Knowledge Client-Side Encryption for sensitive User Content (such as character data, saves, and passwords). You acknowledge that the Licensor does not hold your decryption keys and cannot decrypt your data. The Licensor is not liable for any data loss arising from a forgotten password, lost .key file, or compromised local device.
 
 6. Updates & Modifications
 The Licensor may, from time to time, issue updates, patches, or new versions of the Software. Such updates may be applied automatically or may require your action. This EULA applies to all updates and supplements to the original Software unless a separate licence accompanies an update, in which case that separate licence governs.

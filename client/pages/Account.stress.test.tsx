@@ -14,7 +14,6 @@ import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
 let mockDbUserModels: any[] = [];
-let mockDbIntegrations: any[] = [];
 let mockRpcCalls: Array<{ name: string; params: any }> = [];
 let mockInsertCalls: any[] = [];
 let mockDeleteCalls: any[] = [];
@@ -105,14 +104,6 @@ vi.mock("@/lib/db", () => {
         }),
       };
 
-      if (table === "user_integrations") {
-        return {
-          select: vi
-            .fn()
-            .mockResolvedValue({ data: [...mockDbIntegrations], error: null }),
-        };
-      }
-
       return builder;
     }),
     rpc: vi.fn((name: string, params: any) => {
@@ -185,10 +176,6 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
     vi.clearAllMocks();
     localStorage.clear();
     mockDbUserModels = [];
-    mockDbIntegrations = [
-      { provider: "openai", is_active: true, api_key: "sk-openai-key" },
-      { provider: "anthropic", is_active: true, api_key: "sk-ant-key" },
-    ];
     mockRpcCalls = [];
     mockInsertCalls = [];
     mockDeleteCalls = [];
@@ -261,14 +248,12 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       expect(screen.getByText(/Built-in Cloud Services/i)).toBeDefined();
     });
 
-    it("displays 'Configured' for active integrations and 'API Key Required' for unconfigured", async () => {
+    it("displays 'API Key Required' for unconfigured cloud providers", async () => {
       renderAccount();
 
       await waitFor(() => {
-        const configuredBadges = screen.getAllByText("Configured");
-        expect(configuredBadges.length).toBeGreaterThanOrEqual(2); // OpenAI and Anthropic
         const notConfiguredBadges = screen.getAllByText("API Key Required");
-        expect(notConfiguredBadges.length).toBeGreaterThanOrEqual(3); // Google, OpenRouter, Grok
+        expect(notConfiguredBadges.length).toBeGreaterThanOrEqual(5);
       });
     });
   });

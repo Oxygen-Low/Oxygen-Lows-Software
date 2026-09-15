@@ -210,7 +210,7 @@ export default function Eula() {
           <P>
             <strong>Zero-Knowledge Encryption:</strong> The Software uses
             Zero-Knowledge Client-Side Encryption for sensitive User Content
-            (such as character data, saves, and integrations). You acknowledge
+            (such as character data, saves, and passwords). You acknowledge
             that the Licensor does not hold your decryption keys and cannot
             decrypt your data. The Licensor is not liable for any data loss
             arising from a forgotten password, lost <code>.key</code> file, or

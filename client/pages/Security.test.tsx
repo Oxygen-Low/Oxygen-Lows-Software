@@ -13,7 +13,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { clearActiveMasterKey } from "@/lib/crypto";
 
 // Mock db
-let mockIntegrationsCount = 0;
 let mockPasswordsCount = 0;
 
 vi.mock("@/lib/db", () => {
@@ -21,7 +20,7 @@ vi.mock("@/lib/db", () => {
     select: vi.fn().mockImplementation((_cols: string, opts?: any) => {
       if (opts?.count === "exact" && opts?.head === true) {
         return Promise.resolve({
-          count: mockIntegrationsCount || mockPasswordsCount,
+          count: mockPasswordsCount,
           error: null,
         });
       }
@@ -35,7 +34,7 @@ vi.mock("@/lib/db", () => {
     order: vi.fn().mockReturnThis(),
     then: vi.fn((resolve: any) =>
       resolve({
-        count: mockIntegrationsCount || mockPasswordsCount,
+        count: mockPasswordsCount,
         data: [],
         error: null,
       }),
@@ -79,7 +78,6 @@ describe("Security Page Component", () => {
     localStorage.clear();
     sessionStorage.clear();
     clearActiveMasterKey();
-    mockIntegrationsCount = 0;
     mockPasswordsCount = 0;
     (useAuth as any).mockReturnValue({
       session: { user: { id: "u", email: "user@test.com" } },
@@ -124,13 +122,12 @@ describe("Security Page Component", () => {
     ).toBeNull();
   });
 
-  it("renders encryption toggles for Characters, Data Save, Chatbot, Integrations, and Password Vault", () => {
+  it("renders encryption toggles for Characters, Data Save, Chatbot, and Password Vault", () => {
     renderWithRouter();
     expect(screen.getByText("Protected Data Categories")).toBeDefined();
     expect(screen.getByText("Characters and Universes")).toBeDefined();
     expect(screen.getByText("Data Save Entries")).toBeDefined();
     expect(screen.getByText("Chatbot Chats")).toBeDefined();
-    expect(screen.getByText("API Keys & Integrations")).toBeDefined();
     expect(screen.getByText("Password Vault")).toBeDefined();
   });
 
@@ -151,9 +148,6 @@ describe("Security Page Component", () => {
     const chatbotToggle = document.getElementById(
       "toggle-chatbot",
     ) as HTMLButtonElement;
-    const integrationsToggle = document.getElementById(
-      "toggle-integrations",
-    ) as HTMLButtonElement;
     const passwordsToggle = document.getElementById(
       "toggle-passwords",
     ) as HTMLButtonElement;
@@ -161,7 +155,6 @@ describe("Security Page Component", () => {
     expect(charactersToggle.disabled).toBe(true);
     expect(dataSaveToggle.disabled).toBe(true);
     expect(chatbotToggle.disabled).toBe(true);
-    expect(integrationsToggle.disabled).toBe(true);
     expect(passwordsToggle.disabled).toBe(true);
 
     fireEvent.click(charactersToggle);
@@ -229,7 +222,7 @@ describe("Security Page Component", () => {
     });
   });
 
-  it("allows toggling encryption for Data Save, Chatbot, Integrations, and Passwords", async () => {
+  it("allows toggling encryption for Data Save, Chatbot, and Passwords", async () => {
     renderWithRouter();
 
     // Unlock session
@@ -248,9 +241,6 @@ describe("Security Page Component", () => {
     const chatbotToggle = document.getElementById(
       "toggle-chatbot",
     ) as HTMLButtonElement;
-    const integrationsToggle = document.getElementById(
-      "toggle-integrations",
-    ) as HTMLButtonElement;
     const passwordsToggle = document.getElementById(
       "toggle-passwords",
     ) as HTMLButtonElement;
@@ -263,11 +253,6 @@ describe("Security Page Component", () => {
     fireEvent.click(chatbotToggle);
     await waitFor(() => {
       expect(localStorage.getItem("oxygen_encrypt_chatbot")).toBe("true");
-    });
-
-    fireEvent.click(integrationsToggle);
-    await waitFor(() => {
-      expect(localStorage.getItem("oxygen_encrypt_integrations")).toBe("true");
     });
 
     fireEvent.click(passwordsToggle);
@@ -402,35 +387,6 @@ describe("Security Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Passwords do not match")).toBeDefined();
       expect(mockChangePassword).not.toHaveBeenCalled();
-    });
-  });
-
-  it("prevents disabling integrations encryption when stored integrations exist in database", async () => {
-    renderWithRouter();
-
-    // Unlock session first
-    fireEvent.change(document.getElementById("unlock-password-input")!, {
-      target: { value: "MySecurePass123!" },
-    });
-    fireEvent.click(document.getElementById("unlock-with-password-btn")!);
-
-    await waitFor(() => {
-      expect(screen.getByText("Encryption Active")).toBeDefined();
-    });
-
-    // Set integration active in localStorage
-    localStorage.setItem("oxygen_encrypt_integrations", "true");
-    mockIntegrationsCount = 2;
-
-    const integrationsToggle = document.getElementById(
-      "toggle-integrations",
-    ) as HTMLButtonElement;
-
-    fireEvent.click(integrationsToggle);
-
-    await waitFor(() => {
-      // Should not have disabled integrations in localStorage
-      expect(localStorage.getItem("oxygen_encrypt_integrations")).toBe("true");
     });
   });
 

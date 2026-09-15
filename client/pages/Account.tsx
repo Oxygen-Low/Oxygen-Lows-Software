@@ -15,7 +15,6 @@ import {
   Server,
   Cpu,
   Layers,
-  ExternalLink,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -1390,18 +1389,6 @@ export default function Account() {
                                 </Badge>
                               )}
                             </div>
-
-                            <Link
-                              to="/integrations"
-                              className="text-xs text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
-                            >
-                              {t(
-                                "account.goToIntegrations",
-                                undefined,
-                                "Integrations",
-                              )}
-                              <ExternalLink className="w-3 h-3" />
-                            </Link>
                           </div>
 
                           {pModels.length === 0 ? (
@@ -1681,7 +1668,7 @@ export default function Account() {
                     {t(
                       "account.providerNotConfiguredWarning",
                       undefined,
-                      "Note: This provider does not have an active API key in Integrations. You can register the model now and add the key later.",
+                      "Note: This provider does not have an active API key configured. You can register the model now and configure credentials later.",
                     )}
                   </p>
                 </div>

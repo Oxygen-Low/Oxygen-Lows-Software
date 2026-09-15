@@ -294,7 +294,7 @@ export default function Privacy() {
               </p>
               <P>
                 Certain data, including characters, data saves, chatbot
-                sessions, and third-party API keys (Integrations), are encrypted
+                sessions, and passwords, are encrypted
                 client-side using AES-256-GCM before transmission. We host the
                 encrypted ciphertext but we cannot read, decrypt, or access the
                 underlying data.

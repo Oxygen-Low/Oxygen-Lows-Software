@@ -337,7 +337,7 @@ describe("AI System Prompt Website Knowledge Base", () => {
 
     expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/storage");
     expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/security");
-    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/integrations");
+    expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).not.toContain("/integrations");
     expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/characters");
     expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/customize");
     expect(WEBSITE_KNOWLEDGE_SYSTEM_PROMPT).toContain("/download");

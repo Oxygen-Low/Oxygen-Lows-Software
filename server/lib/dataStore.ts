@@ -344,7 +344,6 @@ export function initUserFolder(
   ensureDir(path.join(userDir, "storage"));
   ensureDir(path.join(userDir, "public_assets"));
   ensureDir(path.join(userDir, "vpn"));
-  ensureDir(path.join(userDir, "integrations"));
   ensureDir(path.join(userDir, "support"));
   ensureDir(path.join(userDir, "friends"));
   ensureDir(path.join(userDir, "defender"));
@@ -426,7 +425,6 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "chatbot", "public_characters.json"), []);
   writeJsonFile(path.join(userDir, "passwords", "passwords.json"), []);
   writeJsonFile(path.join(userDir, "vpn", "configs.json"), []);
-  writeJsonFile(path.join(userDir, "integrations", "integrations.json"), []);
   writeJsonFile(path.join(userDir, "support", "tickets.json"), []);
   writeJsonFile(path.join(userDir, "support", "messages.json"), []);
   writeJsonFile(path.join(userDir, "friends", "friends.json"), []);
@@ -736,9 +734,6 @@ export function getTableFilePath(
         break;
       case "vpn_configs":
         filePath = path.join(userDir, "vpn", "configs.json");
-        break;
-      case "user_integrations":
-        filePath = path.join(userDir, "integrations", "integrations.json");
         break;
       case "support_tickets":
         filePath = path.join(userDir, "support", "tickets.json");
