@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { injectSeoTags, getSeoMetadata, SEO_ROUTES } from "../shared/seo.ts";
+import {
+  injectSeoTags,
+  getSeoMetadata,
+  SEO_ROUTES,
+  generateJsonLd,
+  type RouteSeoData,
+} from "../shared/seo.ts";
 import app from "./index.ts";
 
 const AUDITED_URLS = [
@@ -269,5 +275,88 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("content-encoding")).toBe("gzip");
+  });
+});
+
+describe("generateJsonLd", () => {
+  const defaultMetadata: RouteSeoData = {
+    path: "/test",
+    title: "Test Title",
+    description: "Test Description",
+    canonicalPath: "/test",
+    h1: "Test H1",
+  };
+
+  it("returns default Website, Organization, and WebPage schemas", () => {
+    const schemas = generateJsonLd(defaultMetadata);
+    expect(schemas).toHaveLength(3);
+
+    const websiteSchema = schemas[0];
+    expect(websiteSchema["@type"]).toBe("WebSite");
+    expect(websiteSchema.url).toBe("https://oxygenlow.com");
+
+    const organizationSchema = schemas[1];
+    expect(organizationSchema["@type"]).toBe("Organization");
+    expect(organizationSchema.url).toBe("https://oxygenlow.com");
+
+    const webPageSchema = schemas[2];
+    expect(webPageSchema["@type"]).toBe("WebPage");
+    expect(webPageSchema.name).toBe("Test Title");
+    expect(webPageSchema.headline).toBe("Test H1");
+    expect(webPageSchema.description).toBe("Test Description");
+    expect(webPageSchema.url).toBe("https://oxygenlow.com/test");
+  });
+
+  it("formats canonicalUrl correctly when canonicalPath is '/'", () => {
+    const rootMetadata = { ...defaultMetadata, canonicalPath: "/" };
+    const schemas = generateJsonLd(rootMetadata);
+    const webPageSchema = schemas[2];
+    expect(webPageSchema.url).toBe("https://oxygenlow.com");
+  });
+
+  it("sets WebPage schema @type to 'TechArticle' when metadata.ogType is 'article'", () => {
+    const articleMetadata: RouteSeoData = { ...defaultMetadata, ogType: "article" };
+    const schemas = generateJsonLd(articleMetadata);
+    const webPageSchema = schemas[2];
+    expect(webPageSchema["@type"]).toBe("TechArticle");
+  });
+
+  it("includes the BreadcrumbList object inside the WebPage schema if metadata.breadcrumbs has items", () => {
+    const breadcrumbMetadata: RouteSeoData = {
+      ...defaultMetadata,
+      breadcrumbs: [
+        { name: "Home", url: "/" },
+        { name: "Test", url: "/test" },
+      ],
+    };
+    const schemas = generateJsonLd(breadcrumbMetadata);
+    const webPageSchema = schemas[2];
+    expect(webPageSchema.breadcrumb).toBeDefined();
+    expect(webPageSchema.breadcrumb["@type"]).toBe("BreadcrumbList");
+    expect(webPageSchema.breadcrumb.itemListElement).toHaveLength(2);
+    expect(webPageSchema.breadcrumb.itemListElement[0].name).toBe("Home");
+    expect(webPageSchema.breadcrumb.itemListElement[0].item).toBe("https://oxygenlow.com/");
+    expect(webPageSchema.breadcrumb.itemListElement[1].name).toBe("Test");
+    expect(webPageSchema.breadcrumb.itemListElement[1].item).toBe("https://oxygenlow.com/test");
+  });
+
+  it("pushes the SoftwareApplication schema to the returned array when metadata.softwareType is provided", () => {
+    const softwareMetadata: RouteSeoData = { ...defaultMetadata, softwareType: "Utility" };
+    const schemas = generateJsonLd(softwareMetadata);
+    expect(schemas).toHaveLength(4);
+
+    const softwareSchema = schemas[3];
+    expect(softwareSchema["@type"]).toBe("SoftwareApplication");
+    expect(softwareSchema.applicationCategory).toBe("Utility");
+    expect(softwareSchema.name).toBe("Test H1");
+  });
+
+  it("uses a custom baseUrl instead of the default", () => {
+    const customBaseUrl = "https://custom.test.com";
+    const schemas = generateJsonLd(defaultMetadata, customBaseUrl);
+
+    expect(schemas[0].url).toBe(customBaseUrl);
+    expect(schemas[1].url).toBe(customBaseUrl);
+    expect(schemas[2].url).toBe(`${customBaseUrl}/test`);
   });
 });
