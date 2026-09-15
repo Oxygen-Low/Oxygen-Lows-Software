@@ -96,7 +96,7 @@
     "@types/react-dom": "^19.2.5",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/supertest": "^7.2.1",
-    "@types/three": "^0.185.4",
+    "@types/three": "^0.186.0",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.5.6",
