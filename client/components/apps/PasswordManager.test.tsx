@@ -293,6 +293,11 @@ describe("PasswordManagerApp", () => {
     const copyOtpBtns = screen.getAllByTitle(/Copy OTP code/i);
     expect(copyOtpBtns.length).toBeGreaterThan(0);
 
+    // wait for code to be generated before clicking, otherwise code is empty and click early returns
+    await waitFor(() => {
+      expect(screen.queryByText("------")).toBeNull();
+    }, { timeout: 3000 });
+
     fireEvent.click(copyOtpBtns[0]);
 
     await waitFor(() => {
