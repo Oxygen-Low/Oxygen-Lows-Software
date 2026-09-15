@@ -1,5 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { createServer } from "./index";
+import { resumeInterruptedCrawls } from "./lib/oxylowCrawler";
+
+vi.mock("./lib/oxylowCrawler", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...(actual as any),
+    resumeInterruptedCrawls: vi.fn(),
+  };
+});
 
 describe("Server", () => {
   const app = createServer();
@@ -115,5 +124,28 @@ describe("Server", () => {
       const body = await response.text();
       expect(body).toContain("auth.md");
     });
+  });
+});
+
+describe("createServer", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should not call resumeInterruptedCrawls when VITEST is set", () => {
+    process.env.VITEST = "true";
+    createServer();
+    expect(resumeInterruptedCrawls).not.toHaveBeenCalled();
+  });
+
+  it("should call resumeInterruptedCrawls when VITEST is not set", () => {
+    const originalVitest = process.env.VITEST;
+    delete process.env.VITEST;
+
+    createServer();
+
+    expect(resumeInterruptedCrawls).toHaveBeenCalledTimes(1);
+
+    process.env.VITEST = originalVitest;
   });
 });
