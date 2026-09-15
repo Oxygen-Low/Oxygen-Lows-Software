@@ -670,17 +670,11 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
 
     // Establish friendships: Alice <-> Bob (accepted), Alice <-> Charlie (accepted), Bob <-> Charlie (accepted)
     const establishFriendship = (u1: string, u2: string) => {
-      const id = `f_${u1}_${u2}`;
-      const rec = {
-        id,
-        user_id: u1,
-        friend_id: u2,
-        status: "accepted",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      upsertTable("friendships", rec, u1);
-      upsertTable("friendships", rec, u2);
+      const id1 = `f_${u1}_${u2}`;
+      const id2 = `f_${u2}_${u1}`;
+      const now = new Date().toISOString();
+      upsertTable('friendships', { id: id1, user_id: u1, friend_id: u2, status: 'accepted', created_at: now, updated_at: now }, u1);
+      upsertTable('friendships', { id: id2, user_id: u2, friend_id: u1, status: 'accepted', created_at: now, updated_at: now }, u2);
     };
 
     establishFriendship(String(userAlice.id), String(userBob.id));
@@ -1556,6 +1550,7 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
       it("F12-01: verifies test harness data isolation per test user", () => {
         expect(testUserIds.length).toBeGreaterThanOrEqual(4);
         for (const uid of testUserIds) {
+          GameServerTestEngine.ensureGameStore(uid);
           expect(fs.existsSync(path.join(DATA_DIR, uid))).toBe(true);
         }
       });
