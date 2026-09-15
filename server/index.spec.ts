@@ -1,5 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { createServer } from "./index";
+import { createServer, getLinkHeaders } from "./index";
+
+describe("getLinkHeaders", () => {
+  it("should return a correctly formatted Link header string", () => {
+    const linkHeaders = getLinkHeaders();
+    expect(typeof linkHeaders).toBe("string");
+
+    // Check targets and types
+    expect(linkHeaders).toContain('</.well-known/api-catalog>; rel="api-catalog"');
+    expect(linkHeaders).toContain('</api/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.0"');
+    expect(linkHeaders).toContain('</api/docs>; rel="service-doc"; type="text/html"');
+    expect(linkHeaders).toContain('</llms.txt>; rel="describedby"; type="text/plain"');
+    expect(linkHeaders).toContain('</auth.md>; rel="describedby"; type="text/markdown"');
+    expect(linkHeaders).toContain('</.well-known/oauth-protected-resource>; rel="oauth-protected-resource"');
+    expect(linkHeaders).toContain('</.well-known/oauth-authorization-server>; rel="oauth-authorization-server"');
+
+    // Check format (joined by comma)
+    expect(linkHeaders.split(", ").length).toBe(7);
+  });
+});
 
 describe("Server", () => {
   const app = createServer();
