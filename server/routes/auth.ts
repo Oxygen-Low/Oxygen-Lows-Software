@@ -469,18 +469,25 @@ authRouter.post(
  * Start Google OAuth sign-in flow
  */
 authRouter.get("/oauth/google/login", (c) => {
+  const platform =
+    c.req.query("platform") ||
+    (c.req.query("mobile") === "1" ? "mobile" : undefined);
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
-    return c.redirect(
-      "/auth?error=" +
-        encodeURIComponent("Google OAuth is not configured on the server"),
-    );
+    const errorTarget =
+      platform === "mobile"
+        ? "oxygenlows://auth?error=" +
+          encodeURIComponent("Google OAuth is not configured on the server")
+        : "/auth?error=" +
+          encodeURIComponent("Google OAuth is not configured on the server");
+    return c.redirect(errorTarget);
   }
 
   const returnTo = c.req.query("returnTo") || "/apps";
   const state = generateOAuthState({
     action: "login",
     returnTo,
+    platform,
   });
 
   const redirectUri = getGoogleRedirectUri(c);
@@ -508,12 +515,15 @@ authRouter.get("/oauth/google/callback", async (c) => {
   const errorParam = c.req.query("error");
 
   const state = stateParam ? verifyOAuthState(stateParam) : null;
+  const isMobile = state?.platform === "mobile";
+  const authBase = isMobile ? "oxygenlows://auth" : "/auth";
+  const securityBase = isMobile ? "oxygenlows://security" : "/security";
 
   if (errorParam) {
     if (state?.action === "link") {
-      return c.redirect("/security?error=oauth_failed");
+      return c.redirect(`${securityBase}?error=oauth_failed`);
     }
-    return c.redirect(`/auth?error=${encodeURIComponent(errorParam)}`);
+    return c.redirect(`${authBase}?error=${encodeURIComponent(errorParam)}`);
   }
 
   if (!code || !stateParam || !state) {
@@ -524,9 +534,9 @@ authRouter.get("/oauth/google/callback", async (c) => {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
     if (state.action === "link") {
-      return c.redirect("/security?error=oauth_unconfigured");
+      return c.redirect(`${securityBase}?error=oauth_unconfigured`);
     }
-    return c.redirect("/auth?error=oauth_unconfigured");
+    return c.redirect(`${authBase}?error=oauth_unconfigured`);
   }
 
   try {
@@ -546,9 +556,9 @@ authRouter.get("/oauth/google/callback", async (c) => {
     const tokenJson: any = await tokenRes.json();
     if (!tokenRes.ok || !tokenJson.access_token) {
       if (state.action === "link") {
-        return c.redirect("/security?error=oauth_token_failed");
+        return c.redirect(`${securityBase}?error=oauth_token_failed`);
       }
-      return c.redirect("/auth?error=oauth_token_failed");
+      return c.redirect(`${authBase}?error=oauth_token_failed`);
     }
 
     const userRes = await fetch(
@@ -560,9 +570,9 @@ authRouter.get("/oauth/google/callback", async (c) => {
     const googleUser: any = await userRes.json();
     if (!userRes.ok || !googleUser.sub) {
       if (state.action === "link") {
-        return c.redirect("/security?error=oauth_user_failed");
+        return c.redirect(`${securityBase}?error=oauth_user_failed`);
       }
-      return c.redirect("/auth?error=oauth_user_failed");
+      return c.redirect(`${authBase}?error=oauth_user_failed`);
     }
 
     const googleId = String(googleUser.sub);
@@ -571,12 +581,12 @@ authRouter.get("/oauth/google/callback", async (c) => {
     if (state.action === "link") {
       const targetUserId = state.userId;
       if (!targetUserId) {
-        return c.redirect("/security?error=invalid_user");
+        return c.redirect(`${securityBase}?error=invalid_user`);
       }
 
       const existingUser = getUserByOAuthProvider("google", googleId);
       if (existingUser && String(existingUser.id) !== String(targetUserId)) {
-        return c.redirect("/security?error=oauth_already_linked");
+        return c.redirect(`${securityBase}?error=oauth_already_linked`);
       }
 
       linkUserOAuth(targetUserId, "google", {
@@ -584,29 +594,29 @@ authRouter.get("/oauth/google/callback", async (c) => {
         email: googleEmail,
       });
 
-      return c.redirect("/security?oauth=linked");
+      return c.redirect(`${securityBase}?oauth=linked`);
     }
 
     if (state.action === "login") {
       const linkedUser = getUserByOAuthProvider("google", googleId);
       if (!linkedUser) {
-        return c.redirect("/auth?error=oauth_not_linked");
+        return c.redirect(`${authBase}?error=oauth_not_linked`);
       }
 
       const token = generateToken(linkedUser);
       const returnTo = state.returnTo || "/apps";
       return c.redirect(
-        `/auth?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
+        `${authBase}?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
       );
     }
 
-    return c.redirect("/auth");
+    return c.redirect(authBase);
   } catch (err: any) {
     if (state.action === "link") {
-      return c.redirect("/security?error=oauth_exception");
+      return c.redirect(`${securityBase}?error=oauth_exception`);
     }
     return c.redirect(
-      `/auth?error=${encodeURIComponent(err.message || "oauth_exception")}`,
+      `${authBase}?error=${encodeURIComponent(err.message || "oauth_exception")}`,
     );
   }
 });
@@ -730,18 +740,27 @@ authRouter.post(
  * Start GitHub OAuth sign-in flow
  */
 authRouter.get("/oauth/github/login", (c) => {
+  const platform =
+    c.req.query("platform") ||
+    (c.req.query("mobile") === "1" ? "mobile" : undefined);
   const clientId = process.env.GITHUB_CLIENT_ID;
   if (!clientId) {
-    return c.redirect(
-      "/auth?error=" +
-        encodeURIComponent("GitHub OAuth is not configured on the server"),
-    );
+    const errorTarget =
+      platform === "mobile"
+        ? "oxygenlows://auth?error=" +
+          encodeURIComponent("GitHub OAuth is not configured on the server") +
+          "&provider=github"
+        : "/auth?error=" +
+          encodeURIComponent("GitHub OAuth is not configured on the server") +
+          "&provider=github";
+    return c.redirect(errorTarget);
   }
 
   const returnTo = c.req.query("returnTo") || "/apps";
   const state = generateOAuthState({
     action: "login",
     returnTo,
+    platform,
   });
 
   const redirectUri = getGithubRedirectUri(c);
@@ -766,13 +785,16 @@ authRouter.get("/oauth/github/callback", async (c) => {
   const errorParam = c.req.query("error");
 
   const state = stateParam ? verifyOAuthState(stateParam) : null;
+  const isMobile = state?.platform === "mobile";
+  const authBase = isMobile ? "oxygenlows://auth" : "/auth";
+  const securityBase = isMobile ? "oxygenlows://security" : "/security";
 
   if (errorParam) {
     if (state?.action === "link") {
-      return c.redirect("/security?error=oauth_failed&provider=github");
+      return c.redirect(`${securityBase}?error=oauth_failed&provider=github`);
     }
     return c.redirect(
-      `/auth?error=${encodeURIComponent(errorParam)}&provider=github`,
+      `${authBase}?error=${encodeURIComponent(errorParam)}&provider=github`,
     );
   }
 
@@ -784,9 +806,9 @@ authRouter.get("/oauth/github/callback", async (c) => {
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
     if (state.action === "link") {
-      return c.redirect("/security?error=oauth_unconfigured&provider=github");
+      return c.redirect(`${securityBase}?error=oauth_unconfigured&provider=github`);
     }
-    return c.redirect("/auth?error=oauth_unconfigured&provider=github");
+    return c.redirect(`${authBase}?error=oauth_unconfigured&provider=github`);
   }
 
   try {
@@ -811,9 +833,9 @@ authRouter.get("/oauth/github/callback", async (c) => {
     const tokenJson: any = await tokenRes.json();
     if (!tokenRes.ok || !tokenJson.access_token) {
       if (state.action === "link") {
-        return c.redirect("/security?error=oauth_token_failed&provider=github");
+        return c.redirect(`${securityBase}?error=oauth_token_failed&provider=github`);
       }
-      return c.redirect("/auth?error=oauth_token_failed&provider=github");
+      return c.redirect(`${authBase}?error=oauth_token_failed&provider=github`);
     }
 
     const userRes = await fetch("https://api.github.com/user", {
@@ -826,9 +848,9 @@ authRouter.get("/oauth/github/callback", async (c) => {
     const githubUser: any = await userRes.json();
     if (!userRes.ok || !githubUser.id) {
       if (state.action === "link") {
-        return c.redirect("/security?error=oauth_user_failed&provider=github");
+        return c.redirect(`${securityBase}?error=oauth_user_failed&provider=github`);
       }
-      return c.redirect("/auth?error=oauth_user_failed&provider=github");
+      return c.redirect(`${authBase}?error=oauth_user_failed&provider=github`);
     }
 
     const githubId = String(githubUser.id);
@@ -863,12 +885,12 @@ authRouter.get("/oauth/github/callback", async (c) => {
     if (state.action === "link") {
       const targetUserId = state.userId;
       if (!targetUserId) {
-        return c.redirect("/security?error=invalid_user&provider=github");
+        return c.redirect(`${securityBase}?error=invalid_user&provider=github`);
       }
 
       const existingUser = getUserByOAuthProvider("github", githubId);
       if (existingUser && String(existingUser.id) !== String(targetUserId)) {
-        return c.redirect("/security?error=oauth_already_linked&provider=github");
+        return c.redirect(`${securityBase}?error=oauth_already_linked&provider=github`);
       }
 
       linkUserOAuth(targetUserId, "github", {
@@ -876,29 +898,29 @@ authRouter.get("/oauth/github/callback", async (c) => {
         email: githubEmail,
       });
 
-      return c.redirect("/security?oauth=linked&provider=github");
+      return c.redirect(`${securityBase}?oauth=linked&provider=github`);
     }
 
     if (state.action === "login") {
       const linkedUser = getUserByOAuthProvider("github", githubId);
       if (!linkedUser) {
-        return c.redirect("/auth?error=oauth_not_linked&provider=github");
+        return c.redirect(`${authBase}?error=oauth_not_linked&provider=github`);
       }
 
       const token = generateToken(linkedUser);
       const returnTo = state.returnTo || "/apps";
       return c.redirect(
-        `/auth?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
+        `${authBase}?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
       );
     }
 
-    return c.redirect("/auth");
+    return c.redirect(authBase);
   } catch (err: any) {
     if (state.action === "link") {
-      return c.redirect("/security?error=oauth_exception&provider=github");
+      return c.redirect(`${securityBase}?error=oauth_exception&provider=github`);
     }
     return c.redirect(
-      `/auth?error=${encodeURIComponent(err.message || "oauth_exception")}&provider=github`,
+      `${authBase}?error=${encodeURIComponent(err.message || "oauth_exception")}&provider=github`,
     );
   }
 });

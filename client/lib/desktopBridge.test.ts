@@ -151,4 +151,45 @@ describe("desktopBridge", () => {
       consoleErrorSpy.mockRestore();
     });
   });
+
+  describe("isMobileApp and openExternalBrowser", () => {
+    it("should detect mobile app when AndroidApp is present", () => {
+      (window as any).AndroidApp = {};
+      expect(desktopBridge.isMobileApp()).toBe(true);
+      delete (window as any).AndroidApp;
+    });
+
+    it("should detect mobile app when android=1 is in URL search params", () => {
+      delete (window as any).AndroidApp;
+      window.history.pushState({}, "", "/auth?android=1");
+      expect(desktopBridge.isMobileApp()).toBe(true);
+      window.history.pushState({}, "", "/auth");
+    });
+
+    it("should open external browser via AndroidApp.postMessage when AndroidApp is available", async () => {
+      const mockPostMessage = vi.fn();
+      (window as any).AndroidApp = { postMessage: mockPostMessage };
+
+      const ok = await desktopBridge.openExternalBrowser("https://example.com/oauth");
+      expect(ok).toBe(true);
+      expect(mockPostMessage).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(mockPostMessage.mock.calls[0][0]);
+      expect(payload.command).toBe("open_browser");
+      expect(payload.url).toBe("https://example.com/oauth");
+
+      delete (window as any).AndroidApp;
+    });
+
+    it("should open external browser via window.open when bridge is not available", async () => {
+      delete (window as any).AndroidApp;
+      delete (window as any).chrome;
+      const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+      const ok = await desktopBridge.openExternalBrowser("https://example.com/oauth");
+      expect(ok).toBe(true);
+      expect(windowOpenSpy).toHaveBeenCalledWith("https://example.com/oauth", "_blank");
+
+      windowOpenSpy.mockRestore();
+    });
+  });
 });

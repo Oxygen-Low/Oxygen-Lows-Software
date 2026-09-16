@@ -378,6 +378,100 @@ describe("authRouter", () => {
         globalThis.fetch = originalFetch;
       }
     });
+
+    it("should handle mobile platform Google OAuth login and callback with deep link redirect", async () => {
+      const { generateOAuthState } = await import("../lib/auth.ts");
+      const googleSub = `sub_mob_${oauthSuffix}`;
+      const googleEmail = `test_mob_${oauthSuffix}@gmail.com`;
+
+      // 1. Initiate login with platform=mobile
+      const loginRes = await app.request(
+        "/api/auth/oauth/google/login?platform=mobile&returnTo=/apps",
+      );
+      expect(loginRes.status).toBe(302);
+      const loc = loginRes.headers.get("location") || "";
+      expect(loc).toContain("accounts.google.com");
+
+      // 2. Link account first
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("oauth2.googleapis.com/token")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ access_token: "mock-google-access-token" }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        if (url.includes("googleapis.com/oauth2/v3/userinfo")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ sub: googleSub, email: googleEmail }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        return originalFetch(url);
+      });
+
+      try {
+        const linkState = generateOAuthState({
+          action: "link",
+          userId: testUserId,
+        });
+        await app.request(
+          `/api/auth/oauth/google/callback?code=mock-code&state=${linkState}`,
+        );
+
+        // 3. Callback with mobile platform -> should redirect to oxygenlows://auth?oauth_token=...
+        const mobileLoginState = generateOAuthState({
+          action: "login",
+          returnTo: "/apps",
+          platform: "mobile",
+        });
+
+        const callbackRes = await app.request(
+          `/api/auth/oauth/google/callback?code=mock-code&state=${mobileLoginState}`,
+        );
+        expect(callbackRes.status).toBe(302);
+        const callbackLoc = callbackRes.headers.get("location") || "";
+        expect(callbackLoc.startsWith("oxygenlows://auth")).toBe(true);
+        expect(callbackLoc).toContain("oauth_token=");
+        expect(callbackLoc).toContain("requires_unlock=true");
+
+        // 4. Unlinked account on mobile -> should redirect to oxygenlows://auth?error=oauth_not_linked
+        const unlinkedSub = `unlinked_mob_${oauthSuffix}`;
+        globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("oauth2.googleapis.com/token")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ access_token: "mock-google-access-token" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          if (url.includes("googleapis.com/oauth2/v3/userinfo")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ sub: unlinkedSub, email: "unlinked@gmail.com" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          return originalFetch(url);
+        });
+
+        const unlinkedRes = await app.request(
+          `/api/auth/oauth/google/callback?code=mock-code&state=${mobileLoginState}`,
+        );
+        expect(unlinkedRes.status).toBe(302);
+        expect(unlinkedRes.headers.get("location")).toBe(
+          "oxygenlows://auth?error=oauth_not_linked",
+        );
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
   });
 
   describe("GitHub OAuth", () => {
@@ -636,6 +730,110 @@ describe("authRouter", () => {
         });
         const postUnlinkJson = await postUnlinkSess.json();
         expect(postUnlinkJson.user.oauth?.github).toBeUndefined();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("should handle mobile platform GitHub OAuth login and callback with deep link redirect", async () => {
+      const { generateOAuthState } = await import("../lib/auth.ts");
+      const githubId = `99mob_${oauthSuffix}`;
+      const githubEmail = `test_mob_${oauthSuffix}@github.com`;
+
+      // 1. Initiate login with platform=mobile
+      const loginRes = await app.request(
+        "/api/auth/oauth/github/login?platform=mobile&returnTo=/apps",
+      );
+      expect(loginRes.status).toBe(302);
+      const loc = loginRes.headers.get("location") || "";
+      expect(loc).toContain("github.com/login/oauth/authorize");
+
+      // 2. Link account first
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("github.com/login/oauth/access_token")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ access_token: "mock-github-access-token" }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        if (url.includes("api.github.com/user/emails")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify([
+                { email: githubEmail, primary: true, verified: true },
+              ]),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        if (url.includes("api.github.com/user")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ id: githubId, login: `gh_mob_${oauthSuffix}`, email: null }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+        return originalFetch(url);
+      });
+
+      try {
+        const linkState = generateOAuthState({
+          action: "link",
+          userId: testUserId,
+        });
+        await app.request(
+          `/api/auth/oauth/github/callback?code=mock-code&state=${linkState}`,
+        );
+
+        // 3. Callback with mobile platform -> should redirect to oxygenlows://auth?oauth_token=...
+        const mobileLoginState = generateOAuthState({
+          action: "login",
+          returnTo: "/apps",
+          platform: "mobile",
+        });
+
+        const callbackRes = await app.request(
+          `/api/auth/oauth/github/callback?code=mock-code&state=${mobileLoginState}`,
+        );
+        expect(callbackRes.status).toBe(302);
+        const callbackLoc = callbackRes.headers.get("location") || "";
+        expect(callbackLoc.startsWith("oxygenlows://auth")).toBe(true);
+        expect(callbackLoc).toContain("oauth_token=");
+        expect(callbackLoc).toContain("requires_unlock=true");
+
+        // 4. Unlinked account on mobile -> should redirect to oxygenlows://auth?error=oauth_not_linked&provider=github
+        const unlinkedId = `unlinked_mob_${oauthSuffix}`;
+        globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+          if (url.includes("github.com/login/oauth/access_token")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ access_token: "mock-github-token" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          if (url.includes("api.github.com/user")) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ id: unlinkedId, login: "unlinked", email: "unlinked@github.com" }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          }
+          return originalFetch(url);
+        });
+
+        const unlinkedRes = await app.request(
+          `/api/auth/oauth/github/callback?code=mock-code&state=${mobileLoginState}`,
+        );
+        expect(unlinkedRes.status).toBe(302);
+        expect(unlinkedRes.headers.get("location")).toBe(
+          "oxygenlows://auth?error=oauth_not_linked&provider=github",
+        );
       } finally {
         globalThis.fetch = originalFetch;
       }

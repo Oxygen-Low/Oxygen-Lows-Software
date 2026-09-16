@@ -65,7 +65,18 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent?) {
         intent?.data?.let { uri ->
             if (uri.scheme == "oxygenlows") {
-                val urlString = uri.toString().replaceFirst("oxygenlows://", "https://oxygenlow.com/")
+                val currentBase = try {
+                    val currentUrl = webView.url
+                    if (!currentUrl.isNullOrBlank()) {
+                        val parsed = Uri.parse(currentUrl)
+                        "${parsed.scheme}://${parsed.authority}/"
+                    } else {
+                        "https://oxygenlow.com/"
+                    }
+                } catch (e: Exception) {
+                    "https://oxygenlow.com/"
+                }
+                val urlString = uri.toString().replaceFirst("oxygenlows://", currentBase)
                 val separator = if (urlString.contains("?")) "&" else "?"
                 webView.loadUrl(urlString + separator + "android=1")
             }

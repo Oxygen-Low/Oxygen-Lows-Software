@@ -113,6 +113,50 @@ export function isDesktopBridgeAvailable(): boolean {
   return !!(window as any).chrome?.webview;
 }
 
+export function isMobileApp(): boolean {
+  if (typeof window === "undefined") return false;
+  if ((window as any).AndroidApp) return true;
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("android") === "1" || sp.get("mobile") === "1") {
+      sessionStorage.setItem("oxygen_is_mobile_app", "1");
+      return true;
+    }
+    if (sessionStorage.getItem("oxygen_is_mobile_app") === "1") {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+export async function openExternalBrowser(url: string): Promise<boolean> {
+  if (typeof (window as any).AndroidApp?.postMessage === "function") {
+    try {
+      (window as any).AndroidApp.postMessage(
+        JSON.stringify({
+          command: "open_browser",
+          id: crypto.randomUUID(),
+          url,
+        }),
+      );
+      return true;
+    } catch {}
+  }
+
+  if ((window as any).chrome?.webview?.postMessage) {
+    try {
+      await callDesktopBridge("open_browser", { url });
+      return true;
+    } catch {}
+  }
+
+  if (typeof window !== "undefined") {
+    window.open(url, "_blank");
+    return true;
+  }
+  return false;
+}
+
 export function callDesktopBridge<T = any>(
   command: string,
   params: Record<string, any> = {},

@@ -201,6 +201,46 @@ describe("Auth Component", () => {
     expect(document.getElementById("sign-in-with-github-btn")).toBeNull();
   });
 
+  it("should open external browser for Google and GitHub sign in when in mobile app", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    const mockPostMessage = vi.fn();
+    (window as any).AndroidApp = { postMessage: mockPostMessage };
+
+    render(
+      <MemoryRouter initialEntries={["/auth?returnTo=%2Fapps"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const googleBtn = document.getElementById("sign-in-with-google-btn")!;
+    fireEvent.click(googleBtn);
+
+    expect(mockPostMessage).toHaveBeenCalledTimes(1);
+    const googleMsg = JSON.parse(mockPostMessage.mock.calls[0][0]);
+    expect(googleMsg.command).toBe("open_browser");
+    expect(googleMsg.url).toContain("/api/auth/oauth/google/login?platform=mobile&returnTo=%2Fapps");
+
+    mockPostMessage.mockClear();
+
+    const githubBtn = document.getElementById("sign-in-with-github-btn")!;
+    fireEvent.click(githubBtn);
+
+    expect(mockPostMessage).toHaveBeenCalledTimes(1);
+    const githubMsg = JSON.parse(mockPostMessage.mock.calls[0][0]);
+    expect(githubMsg.command).toBe("open_browser");
+    expect(githubMsg.url).toContain("/api/auth/oauth/github/login?platform=mobile&returnTo=%2Fapps");
+
+    delete (window as any).AndroidApp;
+  });
+
   it("should display error message when oauth_not_linked error is in URL query parameters", async () => {
     (useAuth as any).mockReturnValue({
       session: null,

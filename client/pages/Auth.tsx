@@ -32,6 +32,7 @@ import {
   deriveEncryptionKeyFromPassword,
   setActiveMasterKey,
 } from "@/lib/crypto";
+import { isMobileApp, openExternalBrowser } from "@/lib/desktopBridge";
 
 export default function Auth() {
   const location = useLocation();
@@ -313,6 +314,18 @@ export default function Auth() {
   const handleSkipUnlock = () => {
     setRequiresUnlock(false);
     navigate(returnTo, { replace: true });
+  };
+
+  const handleOAuthSignIn = (
+    provider: "google" | "github",
+    e: React.MouseEvent<HTMLAnchorElement>,
+  ) => {
+    if (isMobileApp()) {
+      e.preventDefault();
+      const origin = window.location.origin;
+      const targetUrl = `${origin}/api/auth/oauth/${provider}/login?platform=mobile&returnTo=${encodeURIComponent(returnTo)}`;
+      openExternalBrowser(targetUrl);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1040,6 +1053,7 @@ export default function Auth() {
                             <a
                               id="sign-in-with-google-btn"
                               href={`/api/auth/oauth/google/login?returnTo=${encodeURIComponent(returnTo)}`}
+                              onClick={(e) => handleOAuthSignIn("google", e)}
                               className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
                             >
                               <GoogleIcon className="w-4 h-4" />
@@ -1057,6 +1071,7 @@ export default function Auth() {
                             <a
                               id="sign-in-with-github-btn"
                               href={`/api/auth/oauth/github/login?returnTo=${encodeURIComponent(returnTo)}`}
+                              onClick={(e) => handleOAuthSignIn("github", e)}
                               className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
                             >
                               <GithubIcon className="w-4 h-4" />
