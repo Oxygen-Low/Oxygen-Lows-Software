@@ -512,10 +512,16 @@ export class DefenderClient {
       }
     }
 
+    const detectedCountry =
+      getCountryCode(req?.headers) ||
+      (typeof req?.query?.countryCode === "string"
+        ? req.query.countryCode
+        : null);
+
     const payload = {
       eventType: event.type,
       ip: event.ip,
-      countryCode: req?.query?.countryCode || null,
+      countryCode: detectedCountry || null,
       method: event.method,
       path: event.path,
       blocked: event.blocked,
@@ -658,13 +664,13 @@ export class DefenderClient {
       }
     }
 
-    // 1. IP Geo Check
+    // 1. IP Geo Check (via CDN headers)
     if (
       !isBlocked &&
       this.appConfig.blockCountries &&
       this.appConfig.blockCountries.length > 0
     ) {
-      const countryCode = await getCountryCode(ip);
+      const countryCode = getCountryCode(headers);
       if (countryCode && this.appConfig.blockCountries.includes(countryCode)) {
         fail("country_block", `Country blocked: ${countryCode}`);
       }

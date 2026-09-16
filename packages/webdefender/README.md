@@ -104,12 +104,12 @@ export async function middleware(request) {
 
 ## How it works
 
-When initialized, the middleware fetches its configuration from the central API based on your `apiKey`. It routinely refreshes known TOR exit nodes and caching IP country codes.
+When initialized, the middleware fetches its configuration from the central API based on your `apiKey` and routinely refreshes known TOR exit nodes.
 
 On every incoming request, it executes the following pipeline:
 
 1. **Individual IP Check**: Verifies if the request IP is in your blocked IP list.
-2. **IP Geo Check**: Verifies if the request originates from a blocked country.
+2. **IP Geo Check**: Verifies if the request originates from a blocked country using ultra-fast CDN / edge headers (Cloudflare, Vercel, AWS CloudFront, Fastly, Netlify, etc.).
 3. **TOR Check**: Checks if the IP is a known TOR exit node.
 4. **VPN Check**: Checks if the IP is a known commercial VPN exit node / server.
 5. **Known Threat Actor Check**: Cross-references with real-time threat intelligence feeds.

@@ -401,11 +401,6 @@ export default function Privacy() {
                     "IP address, request metadata",
                   ],
                   [
-                    "ip-api.com",
-                    "IP Geolocation for Web Defender",
-                    "IP address",
-                  ],
-                  [
                     "Tor Project",
                     "TOR Exit Node Detection",
                     "No personal data shared (we fetch their public exit node list)",
