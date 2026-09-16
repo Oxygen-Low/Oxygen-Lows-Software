@@ -243,7 +243,7 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: "different_username_99",
+          username: `diff_username_${Date.now()}_99`,
           email: testUser1.email.toUpperCase(),
           password: "Password123!",
         }),
