@@ -407,6 +407,24 @@ export const ko = {
     webDefenderBanDuration: "차단 기간(분)",
     webDefenderBanDurationDesc:
       "해당 IP가 모든 요청에서 차단되는 시간(분)입니다.",
+    webDefenderLoggingOptimization: "로그 최적화",
+    webDefenderLoggingOptimizationDesc:
+      "인메모리 배치 처리, 위협 전용 필터링 및 고유 IP 중복 제거를 통해 트래픽이 많은 서버의 부하, 메모리 및 대역폭을 줄입니다.",
+    webDefenderBatchLogging: "배치 로깅",
+    webDefenderBatchLoggingDesc:
+      "모든 수신 연결마다 요청을 보내는 대신 이벤트를 메모리에 버퍼링하고 주기적으로 배치로 전송합니다.",
+    webDefenderBatchInterval: "배치 주기 (초)",
+    webDefenderBatchIntervalDesc:
+      "서버로 전송하기 전 이벤트를 메모리에 유지하는 시간 (1 - 300초, 기본값 20초). 500개 이벤트가 누적되면 자동으로 즉시 전송됩니다.",
+    webDefenderOnlyThreats: "위협만 로깅 모드",
+    webDefenderOnlyThreatsDesc:
+      "위협이 없는 안전한 연결을 완전히 무시하고 악성 또는 차단된 요청만 기록하여 로그 양을 최소화합니다.",
+    webDefenderUniqueIps: "고유 IP만 로깅",
+    webDefenderUniqueIpsDesc:
+      "인메모리 쿨다운을 적용하여 고유한 방문자 IP 주소만 기록합니다. 새로 감지된 위협은 항상 즉시 기록됩니다.",
+    webDefenderUniqueIpCooldown: "IP 쿨다운 (초)",
+    webDefenderUniqueIpCooldownDesc:
+      "동일한 IP의 다음 안전한 요청을 기록할 수 있을 때까지의 쿨다운 시간 (1 - 86400초, 기본값 300초).",
     passwordManagerTitle: "비밀번호 관리자",
     passwordManagerDesc:
       "AES-256 제로 지식 암호화로 비밀번호를 안전하게 저장하고 관리합니다.",

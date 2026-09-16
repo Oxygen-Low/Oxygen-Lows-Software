@@ -137,6 +137,11 @@ describe("WebDefender with local/migrated accounts", () => {
           sensitive_path_threshold: 3,
           sensitive_path_window_seconds: 20,
           sensitive_path_ban_duration_seconds: 600,
+          batch_logging_enabled: true,
+          batch_logging_interval_seconds: 25,
+          only_log_threats: true,
+          log_unique_ips_only: true,
+          unique_ip_cooldown_seconds: 120,
         }),
       },
     );
@@ -151,6 +156,11 @@ describe("WebDefender with local/migrated accounts", () => {
     expect(json.sensitive_path_threshold).toBe(3);
     expect(json.sensitive_path_window_seconds).toBe(20);
     expect(json.sensitive_path_ban_duration_seconds).toBe(600);
+    expect(json.batch_logging_enabled).toBe(true);
+    expect(json.batch_logging_interval_seconds).toBe(25);
+    expect(json.only_log_threats).toBe(true);
+    expect(json.log_unique_ips_only).toBe(true);
+    expect(json.unique_ip_cooldown_seconds).toBe(120);
   });
 
   it("should verify the API key from the NPM package endpoint", async () => {
@@ -168,6 +178,11 @@ describe("WebDefender with local/migrated accounts", () => {
     expect(json.block_mode_enabled).toBe(true);
     expect(json.config.block_sql_injection).toBe(false);
     expect(json.config.block_countries).toEqual(["KP", "IR"]);
+    expect(json.config.batch_logging_enabled).toBe(true);
+    expect(json.config.batch_logging_interval_seconds).toBe(25);
+    expect(json.config.only_log_threats).toBe(true);
+    expect(json.config.log_unique_ips_only).toBe(true);
+    expect(json.config.unique_ip_cooldown_seconds).toBe(120);
   });
 
   it("should register routes via package endpoint", async () => {
@@ -266,6 +281,52 @@ describe("WebDefender with local/migrated accounts", () => {
     expect(json.events[0].event_type).toBe("sql_injection");
     expect(json.events[0].blocked).toBe(true);
     expect(json.total).toBe(1);
+  });
+
+  it("should log a batch array of security events in a single request", async () => {
+    const batchRes = await app.request("/api/webdefender/event", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${createdApiKey}`,
+      },
+      body: JSON.stringify([
+        {
+          eventType: "shell_injection",
+          ip: "203.0.113.5",
+          method: "POST",
+          path: "/api/upload",
+          blocked: true,
+          requestBodySnippet: "; rm -rf /",
+        },
+        {
+          eventType: "allowed",
+          ip: "203.0.113.6",
+          method: "GET",
+          path: "/api/status",
+          blocked: false,
+        },
+      ]),
+    });
+
+    expect(batchRes.status).toBe(201);
+    const batchJson = await batchRes.json();
+    expect(batchJson.logged).toBe(2);
+
+    const getRes = await app.request(
+      `/api/webdefender/apps/${createdAppId}/events?limit=50`,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      },
+    );
+
+    expect(getRes.status).toBe(200);
+    const json = await getRes.json();
+    expect(json.events.length).toBe(3); // 1 previous + 2 new
+    expect(json.events.some((e: any) => e.event_type === "shell_injection")).toBe(true);
+    expect(json.events.some((e: any) => e.event_type === "allowed")).toBe(true);
   });
 
   it("should log, retrieve, toggle, and delete outbound connections", async () => {

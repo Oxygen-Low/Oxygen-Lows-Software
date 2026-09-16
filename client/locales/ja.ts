@@ -410,6 +410,24 @@ export const ja = {
     webDefenderBanDuration: "ブロック期間（分）",
     webDefenderBanDurationDesc:
       "違反IPがすべてのリクエストからブロックされ続ける分数。",
+    webDefenderLoggingOptimization: "ログ出力の最適化",
+    webDefenderLoggingOptimizationDesc:
+      "インメモリバッチ処理、脅威のみのフィルタリング、ユニークIP重複排除により、高トラフィックサーバーの負荷、メモリ、帯域幅を削減します。",
+    webDefenderBatchLogging: "バッチログ記録",
+    webDefenderBatchLoggingDesc:
+      "受信接続ごとにリクエストを送信する代わりに、イベントをメモリにバッファリングし、定期的にまとめてフラッシュします。",
+    webDefenderBatchInterval: "バッチ間隔（秒）",
+    webDefenderBatchIntervalDesc:
+      "サーバーに送信する前にイベントをメモリに保持する時間（1〜300秒、デフォルト20秒）。500件蓄積されると自動的に早期フラッシュされます。",
+    webDefenderOnlyThreats: "脅威のみ記録モード",
+    webDefenderOnlyThreatsDesc:
+      "脅威のない安全な接続を完全に無視し、悪意のあるリクエストやブロックされたリクエストのみを記録してログ量を最小限に抑えます。",
+    webDefenderUniqueIps: "ユニークIPのみ記録",
+    webDefenderUniqueIpsDesc:
+      "インメモリのクールダウンを適用して、ユニークな訪問者IPアドレスのみを記録します。新しく検出された脅威は常に即座に記録されます。",
+    webDefenderUniqueIpCooldown: "IPクールダウン（秒）",
+    webDefenderUniqueIpCooldownDesc:
+      "同じIPからの次の安全なリクエストを記録できるようになるまでのクールダウン時間（1〜86400秒、デフォルト300秒）。",
     passwordManagerTitle: "パスワードマネージャー",
     passwordManagerDesc:
       "AES-256ゼロ知識暗号化でパスワードを安全に保存・管理します。",

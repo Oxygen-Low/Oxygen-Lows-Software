@@ -261,6 +261,11 @@ type AppConfig = {
   events_limit: number;
   auto_block_abuseipdb: boolean;
   monitor_outbound?: boolean;
+  batch_logging_enabled?: boolean;
+  batch_logging_interval_seconds?: number;
+  only_log_threats?: boolean;
+  log_unique_ips_only?: boolean;
+  unique_ip_cooldown_seconds?: number;
 };
 
 type Route = {
@@ -1890,6 +1895,11 @@ const defaultDefenderConfig: AppConfig = {
   block_botnets: true,
   events_limit: 50,
   auto_block_abuseipdb: false,
+  batch_logging_enabled: true,
+  batch_logging_interval_seconds: 20,
+  only_log_threats: false,
+  log_unique_ips_only: false,
+  unique_ip_cooldown_seconds: 300,
 };
 
 export function getAppConfig(defenderConfig: any): AppConfig {
@@ -1934,6 +1944,12 @@ export function SettingsTab({
   );
   const [banDurationMinutesInput, setBanDurationMinutesInput] = useState<string>(() =>
     String(Math.round((getAppConfig(app.defender_config).sensitive_path_ban_duration_seconds ?? 600) / 60)),
+  );
+  const [batchIntervalInput, setBatchIntervalInput] = useState<string>(() =>
+    String(getAppConfig(app.defender_config).batch_logging_interval_seconds ?? 20),
+  );
+  const [uniqueIpCooldownInput, setUniqueIpCooldownInput] = useState<string>(() =>
+    String(getAppConfig(app.defender_config).unique_ip_cooldown_seconds ?? 300),
   );
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
@@ -1995,6 +2011,10 @@ export function SettingsTab({
     setWindowInput(String(windowSec));
     const banMin = Math.round((updated.sensitive_path_ban_duration_seconds ?? 600) / 60);
     setBanDurationMinutesInput(String(banMin));
+    const batchInterval = updated.batch_logging_interval_seconds ?? 20;
+    setBatchIntervalInput(String(batchInterval));
+    const ipCooldown = updated.unique_ip_cooldown_seconds ?? 300;
+    setUniqueIpCooldownInput(String(ipCooldown));
   }, [app.defender_config]);
 
   const updateConfig = async (updates: Partial<AppConfig>) => {
@@ -2025,6 +2045,12 @@ export function SettingsTab({
         setBanDurationMinutesInput(
           String(Math.round((config.sensitive_path_ban_duration_seconds ?? 600) / 60)),
         );
+      }
+      if (updates.batch_logging_interval_seconds !== undefined) {
+        setBatchIntervalInput(String(config.batch_logging_interval_seconds ?? 20));
+      }
+      if (updates.unique_ip_cooldown_seconds !== undefined) {
+        setUniqueIpCooldownInput(String(config.unique_ip_cooldown_seconds ?? 300));
       }
     }
   };
@@ -2066,6 +2092,24 @@ export function SettingsTab({
     const seconds = clamped * 60;
     if (seconds !== config.sensitive_path_ban_duration_seconds) {
       updateConfig({ sensitive_path_ban_duration_seconds: seconds });
+    }
+  };
+
+  const handleSaveBatchInterval = () => {
+    const val = parseInt(batchIntervalInput, 10);
+    const clamped = isNaN(val) ? 20 : Math.min(300, Math.max(1, val));
+    setBatchIntervalInput(String(clamped));
+    if (clamped !== config.batch_logging_interval_seconds) {
+      updateConfig({ batch_logging_interval_seconds: clamped });
+    }
+  };
+
+  const handleSaveUniqueIpCooldown = () => {
+    const val = parseInt(uniqueIpCooldownInput, 10);
+    const clamped = isNaN(val) ? 300 : Math.min(86400, Math.max(1, val));
+    setUniqueIpCooldownInput(String(clamped));
+    if (clamped !== config.unique_ip_cooldown_seconds) {
+      updateConfig({ unique_ip_cooldown_seconds: clamped });
     }
   };
 
@@ -2724,6 +2768,170 @@ export function SettingsTab({
               <Plus className="w-4 h-4 mr-2" /> Block IP
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>
+            {t(
+              "apps.webDefenderLoggingOptimization",
+              undefined,
+              "Logging Optimization",
+            )}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              "apps.webDefenderLoggingOptimizationDesc",
+              undefined,
+              "Reduce load, memory, and bandwidth on high-traffic servers with in-memory batching, threat-only filtering, and unique IP deduplication.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base text-white">
+                {t(
+                  "apps.webDefenderBatchLogging",
+                  undefined,
+                  "Batch Logging",
+                )}
+              </Label>
+              <p className="text-sm text-slate-400">
+                {t(
+                  "apps.webDefenderBatchLoggingDesc",
+                  undefined,
+                  "Buffer events in memory and flush periodically in batches instead of sending a request on every incoming connection.",
+                )}
+              </p>
+            </div>
+            <Switch
+              checked={config.batch_logging_enabled !== false}
+              onCheckedChange={(c) => updateConfig({ batch_logging_enabled: c })}
+              aria-label="Toggle Batch Logging"
+            />
+          </div>
+
+          {config.batch_logging_enabled !== false && (
+            <div className="pl-4 border-l-2 border-slate-800 space-y-2">
+              <Label className="text-sm text-slate-300">
+                {t(
+                  "apps.webDefenderBatchInterval",
+                  undefined,
+                  "Batch Interval (seconds)",
+                )}
+              </Label>
+              <p className="text-xs text-slate-400">
+                {t(
+                  "apps.webDefenderBatchIntervalDesc",
+                  undefined,
+                  "How long to hold events in memory before flushing to the server (1 - 300 seconds, default 20s). Automatically flushes early if 500 events accumulate.",
+                )}
+              </p>
+              <Input
+                type="number"
+                min={1}
+                max={300}
+                value={batchIntervalInput}
+                onChange={(e) => setBatchIntervalInput(e.target.value)}
+                onBlur={handleSaveBatchInterval}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                    handleSaveBatchInterval();
+                  }
+                }}
+                className="w-32 bg-slate-950 border-slate-700 font-mono text-sm"
+              />
+            </div>
+          )}
+
+          <Separator className="bg-slate-800" />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base text-white">
+                {t(
+                  "apps.webDefenderOnlyThreats",
+                  undefined,
+                  "Only Log Threats Mode",
+                )}
+              </Label>
+              <p className="text-sm text-slate-400">
+                {t(
+                  "apps.webDefenderOnlyThreatsDesc",
+                  undefined,
+                  "Completely ignore all clean, non-threat connections and only log malicious or blocked requests to minimize logging volume.",
+                )}
+              </p>
+            </div>
+            <Switch
+              checked={Boolean(config.only_log_threats)}
+              onCheckedChange={(c) => updateConfig({ only_log_threats: c })}
+              aria-label="Toggle Only Log Threats Mode"
+            />
+          </div>
+
+          <Separator className="bg-slate-800" />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base text-white">
+                {t(
+                  "apps.webDefenderUniqueIps",
+                  undefined,
+                  "Only Log Unique IPs",
+                )}
+              </Label>
+              <p className="text-sm text-slate-400">
+                {t(
+                  "apps.webDefenderUniqueIpsDesc",
+                  undefined,
+                  "Only log unique visitor IP addresses with an in-memory cooldown. Newly detected threats are always logged immediately.",
+                )}
+              </p>
+            </div>
+            <Switch
+              checked={Boolean(config.log_unique_ips_only)}
+              onCheckedChange={(c) => updateConfig({ log_unique_ips_only: c })}
+              aria-label="Toggle Only Log Unique IPs"
+            />
+          </div>
+
+          {config.log_unique_ips_only && (
+            <div className="pl-4 border-l-2 border-slate-800 space-y-2">
+              <Label className="text-sm text-slate-300">
+                {t(
+                  "apps.webDefenderUniqueIpCooldown",
+                  undefined,
+                  "IP Cooldown (seconds)",
+                )}
+              </Label>
+              <p className="text-xs text-slate-400">
+                {t(
+                  "apps.webDefenderUniqueIpCooldownDesc",
+                  undefined,
+                  "Cooldown duration before another clean request from the same IP can be logged (1 - 86400 seconds, default 300s).",
+                )}
+              </p>
+              <Input
+                type="number"
+                min={1}
+                max={86400}
+                value={uniqueIpCooldownInput}
+                onChange={(e) => setUniqueIpCooldownInput(e.target.value)}
+                onBlur={handleSaveUniqueIpCooldown}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                    handleSaveUniqueIpCooldown();
+                  }
+                }}
+                className="w-32 bg-slate-950 border-slate-700 font-mono text-sm"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -60,6 +60,10 @@ export class DefenderClient {
   private rateLimiter: RateLimiter;
   private temporaryBans = new Map<string, { expiresAt: number; reason: string }>();
   private sensitivePathAttempts = new Map<string, number[]>();
+  private batchBuffer: any[] = [];
+  private batchTimer?: ReturnType<typeof setTimeout>;
+  private uniqueIpCache = new Map<string, number>();
+  private uniqueIpPruneInterval?: ReturnType<typeof setInterval>;
   private apiUrl: string;
   private isInitialized = false;
   private configSyncIntervalId?: ReturnType<typeof setInterval>;
@@ -77,6 +81,12 @@ export class DefenderClient {
       (conn) => this.reportOutbound(conn),
       new URL(this.apiUrl).hostname,
     );
+    this.uniqueIpPruneInterval = setInterval(() => {
+      this.pruneUniqueIpCache();
+    }, 60000);
+    if (typeof this.uniqueIpPruneInterval.unref === "function") {
+      this.uniqueIpPruneInterval.unref();
+    }
   }
 
   private buildRouteCache(routes: RouteConfig[]) {
@@ -176,6 +186,26 @@ export class DefenderClient {
       ddosProtection: cfg.ddos_protection ?? true,
       ddosThresholdRpm: cfg.ddos_threshold_rpm ?? 1000,
       monitorOutbound: cfg.monitor_outbound ?? true,
+      batchLoggingEnabled:
+        this.config.batchLogging ??
+        cfg.batch_logging_enabled ??
+        true,
+      batchLoggingIntervalSeconds:
+        this.config.batchLoggingIntervalSeconds ??
+        cfg.batch_logging_interval_seconds ??
+        20,
+      onlyLogThreats:
+        this.config.onlyLogThreats ??
+        cfg.only_log_threats ??
+        false,
+      logUniqueIpsOnly:
+        this.config.logUniqueIpsOnly ??
+        cfg.log_unique_ips_only ??
+        false,
+      uniqueIpCooldownSeconds:
+        this.config.uniqueIpCooldownSeconds ??
+        cfg.unique_ip_cooldown_seconds ??
+        300,
       eventsLimit: cfg.events_limit ?? 50,
       routes,
     };
@@ -410,10 +440,35 @@ export class DefenderClient {
     }).catch(() => {});
   }
 
-  private logEvent(event: BlockedEvent, req?: Partial<IncomingRequest>) {
-    if (this.config.onBlocked && event.blocked) {
-      this.config.onBlocked(event);
+  private pruneUniqueIpCache(): void {
+    if (this.uniqueIpCache.size === 0) return;
+    const cooldownMs = (this.appConfig?.uniqueIpCooldownSeconds ?? 300) * 1000;
+    const now = Date.now();
+    for (const [ip, ts] of this.uniqueIpCache.entries()) {
+      if (now - ts > cooldownMs) {
+        this.uniqueIpCache.delete(ip);
+      }
     }
+    if (this.uniqueIpCache.size > 50000) {
+      const excess = this.uniqueIpCache.size - 50000;
+      let count = 0;
+      for (const key of this.uniqueIpCache.keys()) {
+        this.uniqueIpCache.delete(key);
+        count++;
+        if (count >= excess) break;
+      }
+    }
+  }
+
+  flushBatch(): void {
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = undefined;
+    }
+    if (this.batchBuffer.length === 0) return;
+
+    const eventsToSend = this.batchBuffer;
+    this.batchBuffer = [];
 
     const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
     if (this.config.offlineMode || noApiKey) {
@@ -426,15 +481,78 @@ export class DefenderClient {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.config.apiKey}`,
       },
-      body: JSON.stringify({
-        eventType: event.type,
-        ip: event.ip,
-        countryCode: req?.query?.countryCode || null,
-        method: event.method,
-        path: event.path,
-        blocked: event.blocked,
-        requestBodySnippet: req?.body ? req.body.substring(0, 500) : null,
-      }),
+      body: JSON.stringify(eventsToSend),
+    }).catch(() => {});
+  }
+
+  private logEvent(event: BlockedEvent, req?: Partial<IncomingRequest>) {
+    if (this.config.onBlocked && event.blocked) {
+      this.config.onBlocked(event);
+    }
+
+    // 1. Only log threats check
+    const isThreat = event.type !== "allowed" || event.blocked;
+    if (this.appConfig?.onlyLogThreats && !isThreat) {
+      return;
+    }
+
+    // 2. Only log unique IPs check (with cooldown)
+    const cleanIp = (event.ip || "").trim().toLowerCase();
+    if (this.appConfig?.logUniqueIpsOnly && cleanIp) {
+      const now = Date.now();
+      const cooldownMs = (this.appConfig.uniqueIpCooldownSeconds || 300) * 1000;
+      if (!isThreat) {
+        const lastLogged = this.uniqueIpCache.get(cleanIp);
+        if (lastLogged && now - lastLogged < cooldownMs) {
+          return;
+        }
+        this.uniqueIpCache.set(cleanIp, now);
+      } else {
+        this.uniqueIpCache.set(cleanIp, now);
+      }
+    }
+
+    const payload = {
+      eventType: event.type,
+      ip: event.ip,
+      countryCode: req?.query?.countryCode || null,
+      method: event.method,
+      path: event.path,
+      blocked: event.blocked,
+      requestBodySnippet: req?.body ? req.body.substring(0, 500) : null,
+    };
+
+    const noApiKey = !this.config.apiKey || this.config.apiKey.trim() === "";
+    if (this.config.offlineMode || noApiKey) {
+      return;
+    }
+
+    // 3. Batch logging
+    if (this.appConfig?.batchLoggingEnabled) {
+      this.batchBuffer.push(payload);
+      if (this.batchBuffer.length >= 500) {
+        this.flushBatch();
+      } else if (!this.batchTimer) {
+        const intervalMs =
+          Math.max(1, this.appConfig.batchLoggingIntervalSeconds || 20) * 1000;
+        this.batchTimer = setTimeout(() => {
+          this.batchTimer = undefined;
+          this.flushBatch();
+        }, intervalMs);
+        if (typeof this.batchTimer.unref === "function") {
+          this.batchTimer.unref();
+        }
+      }
+      return;
+    }
+
+    fetch(`${this.apiUrl}/api/webdefender/event`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify(payload),
     }).catch(() => {});
   }
 
@@ -774,6 +892,17 @@ export class DefenderClient {
       clearInterval(this.configSyncIntervalId);
       this.configSyncIntervalId = undefined;
     }
+    this.flushBatch();
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = undefined;
+    }
+    if (this.uniqueIpPruneInterval) {
+      clearInterval(this.uniqueIpPruneInterval);
+      this.uniqueIpPruneInterval = undefined;
+    }
+    this.uniqueIpCache.clear();
+    this.batchBuffer = [];
     this.torDetector.destroy();
     this.vpnDetector.destroy();
     this.threatActorDetector.destroy();

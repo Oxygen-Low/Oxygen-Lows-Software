@@ -417,6 +417,24 @@ export const es = {
     webDefenderBanDuration: "Duración del bloqueo (minutos)",
     webDefenderBanDurationDesc:
       "Tiempo en minutos que la IP infractora permanecerá bloqueada para todas las solicitudes.",
+    webDefenderLoggingOptimization: "Optimización de registros",
+    webDefenderLoggingOptimizationDesc:
+      "Reduzca la carga, memoria y ancho de banda en servidores de alto tráfico con procesamiento por lotes en memoria, filtrado solo de amenazas y deduplicación de IP únicas.",
+    webDefenderBatchLogging: "Registro por lotes",
+    webDefenderBatchLoggingDesc:
+      "Almacene eventos en búfer en memoria y envíelos periódicamente en lotes en lugar de enviar una solicitud con cada conexión entrante.",
+    webDefenderBatchInterval: "Intervalo del lote (segundos)",
+    webDefenderBatchIntervalDesc:
+      "Tiempo de retención de eventos en memoria antes de enviarlos al servidor (1 - 300 segundos, por defecto 20s). Se vacía automáticamente si se acumulan 500 eventos.",
+    webDefenderOnlyThreats: "Modo solo registrar amenazas",
+    webDefenderOnlyThreatsDesc:
+      "Ignore por completo las conexiones limpias sin amenazas y registre solo las solicitudes maliciosas o bloqueadas para minimizar el volumen de registros.",
+    webDefenderUniqueIps: "Solo registrar IP únicas",
+    webDefenderUniqueIpsDesc:
+      "Registre únicamente direcciones IP de visitantes únicas con tiempo de enfriamiento en memoria. Las amenazas recién detectadas siempre se registran de inmediato.",
+    webDefenderUniqueIpCooldown: "Tiempo de enfriamiento de IP (segundos)",
+    webDefenderUniqueIpCooldownDesc:
+      "Duración de enfriamiento antes de permitir registrar otra solicitud limpia de la misma IP (1 - 86400 segundos, por defecto 300s).",
     passwordManagerTitle: "Gestor de Contraseñas",
     passwordManagerDesc:
       "Almacena y gestiona contraseñas de forma segura con cifrado de conocimiento cero AES-256.",

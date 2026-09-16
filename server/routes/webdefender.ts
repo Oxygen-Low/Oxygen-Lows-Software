@@ -480,49 +480,63 @@ defenderRouter.post("/register", packageLimiter, requireApiKey, async (c) => {
   return c.json({ registered: registeredCount });
 });
 
-// 3. POST /event - Log an inbound security event
+// 3. POST /event - Log inbound security event(s) (single or batch array)
 defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
   const app = c.get("defenderApp");
   const body = await c.req.json().catch(() => ({}));
+  const rawEvents: any[] = Array.isArray(body) ? body : [body];
 
-  // Try to match route_id
-  const matchingRoute = (app.defender_routes || []).find(
-    (r: any) => r.method === body.method && r.path === body.path,
-  );
-
-  const eventRecord = {
-    id: randomUUID(),
-    app_id: app.id,
-    user_id: app.user_id,
-    route_id: matchingRoute?.id || null,
-    event_type: body.eventType,
-    ip: body.ip,
-    country_code: body.countryCode,
-    method: body.method,
-    path: body.path,
-    blocked: Boolean(body.blocked),
-    request_body_snippet: body.requestBodySnippet || null,
-    created_at: new Date().toISOString(),
-  };
+  if (rawEvents.length === 0) {
+    return c.json({ logged: 0 }, 201);
+  }
 
   const existingEvents = getTableRows("defender_events", app.user_id);
-  existingEvents.unshift(eventRecord);
-
   const config = Array.isArray(app.defender_config)
     ? app.defender_config[0] || {}
     : app.defender_config || {};
-  if (body.blocked) {
-    await checkAbuseIpDbAndMaybeBlock(app, body.ip, config);
-  }
-  const maxEvents = Math.min(1000, Math.max(1, config.events_limit || 50));
 
+  const now = new Date().toISOString();
+  const createdRecords: any[] = [];
+
+  for (const item of rawEvents) {
+    if (!item || typeof item !== "object") continue;
+
+    const matchingRoute = (app.defender_routes || []).find(
+      (r: any) => r.method === item.method && r.path === item.path,
+    );
+
+    const eventRecord = {
+      id: randomUUID(),
+      app_id: app.id,
+      user_id: app.user_id,
+      route_id: matchingRoute?.id || null,
+      event_type: item.eventType,
+      ip: item.ip,
+      country_code: item.countryCode || null,
+      method: item.method,
+      path: item.path,
+      blocked: Boolean(item.blocked),
+      request_body_snippet: item.requestBodySnippet || null,
+      created_at: now,
+    };
+
+    createdRecords.push(eventRecord);
+
+    if (item.blocked && item.ip) {
+      checkAbuseIpDbAndMaybeBlock(app, item.ip, config).catch(() => {});
+    }
+  }
+
+  existingEvents.unshift(...createdRecords);
+
+  const maxEvents = Math.min(1000, Math.max(1, config.events_limit || 50));
   const appEvents = existingEvents
     .filter((e: any) => e.app_id === app.id)
     .slice(0, maxEvents);
   const otherEvents = existingEvents.filter((e: any) => e.app_id !== app.id);
   saveTableRows("defender_events", app.user_id, [...appEvents, ...otherEvents]);
 
-  return c.json({}, 201);
+  return c.json({ logged: createdRecords.length }, 201);
 });
 
 // 4. POST /outbound - Log/upsert an outbound connection
@@ -646,6 +660,11 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     ddos_protection: true,
     ddos_threshold_rpm: 1000,
     monitor_outbound: true,
+    batch_logging_enabled: true,
+    batch_logging_interval_seconds: 20,
+    only_log_threats: false,
+    log_unique_ips_only: false,
+    unique_ip_cooldown_seconds: 300,
     events_limit: 50,
     auto_block_abuseipdb: false,
     created_at: now,
@@ -788,6 +807,11 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "monitor_outbound",
     "events_limit",
     "auto_block_abuseipdb",
+    "batch_logging_enabled",
+    "batch_logging_interval_seconds",
+    "only_log_threats",
+    "log_unique_ips_only",
+    "unique_ip_cooldown_seconds",
   ];
 
   const updatePayload: Record<string, any> = { app_id: id, user_id: user.id };
@@ -804,6 +828,22 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
         updatePayload[key] = Math.max(1, parseInt(body[key]) || 20);
       } else if (key === "sensitive_path_ban_duration_seconds") {
         updatePayload[key] = Math.max(1, parseInt(body[key]) || 600);
+      } else if (key === "batch_logging_interval_seconds") {
+        updatePayload[key] = Math.min(
+          300,
+          Math.max(1, parseInt(body[key]) || 20),
+        );
+      } else if (key === "unique_ip_cooldown_seconds") {
+        updatePayload[key] = Math.min(
+          86400,
+          Math.max(1, parseInt(body[key]) || 300),
+        );
+      } else if (
+        key === "batch_logging_enabled" ||
+        key === "only_log_threats" ||
+        key === "log_unique_ips_only"
+      ) {
+        updatePayload[key] = Boolean(body[key]);
       } else {
         updatePayload[key] = body[key];
       }

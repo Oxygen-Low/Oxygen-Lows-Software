@@ -11,6 +11,11 @@ export interface DefenderConfig {
   sensitivePathThreshold?: number;
   sensitivePathWindowSeconds?: number;
   sensitivePathBanDurationSeconds?: number;
+  batchLogging?: boolean;
+  batchLoggingIntervalSeconds?: number;
+  onlyLogThreats?: boolean;
+  logUniqueIpsOnly?: boolean;
+  uniqueIpCooldownSeconds?: number;
   onBlocked?: (event: BlockedEvent) => void;
   onError?: (error: Error) => void;
 }
@@ -84,6 +89,11 @@ export interface AppConfig {
   ddosProtection: boolean;
   ddosThresholdRpm: number;
   monitorOutbound: boolean;
+  batchLoggingEnabled: boolean;
+  batchLoggingIntervalSeconds: number;
+  onlyLogThreats: boolean;
+  logUniqueIpsOnly: boolean;
+  uniqueIpCooldownSeconds: number;
   eventsLimit?: number;
   routes: RouteConfig[];
 }

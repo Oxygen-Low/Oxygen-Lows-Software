@@ -386,6 +386,24 @@ export const zhCN = {
     webDefenderBanDuration: "封禁时长（分钟）",
     webDefenderBanDurationDesc:
       "违规 IP 在所有请求中被封禁的持续时长（分钟）。",
+    webDefenderLoggingOptimization: "日志记录优化",
+    webDefenderLoggingOptimizationDesc:
+      "通过内存批处理、仅威胁过滤和独立IP去重，减少高流量服务器上的负载、内存占用和带宽消耗。",
+    webDefenderBatchLogging: "批量日志记录",
+    webDefenderBatchLoggingDesc:
+      "在内存中缓冲事件并定期批量发送，而不是在每个传入连接时立即发送请求。",
+    webDefenderBatchInterval: "批处理时间间隔（秒）",
+    webDefenderBatchIntervalDesc:
+      "在将事件发送到服务器之前将其保留在内存中的时间（1 - 300 秒，默认 20 秒）。累积达到 500 个事件时会自动提前发送。",
+    webDefenderOnlyThreats: "仅记录威胁模式",
+    webDefenderOnlyThreatsDesc:
+      "完全忽略所有无威胁的正常连接，仅记录恶意或被阻止的请求，从而最大限度减少日志量。",
+    webDefenderUniqueIps: "仅记录独立 IP",
+    webDefenderUniqueIpsDesc:
+      "仅记录唯一的访客 IP 地址并设置内存冷却时间。新检测到的威胁始终会立即记录。",
+    webDefenderUniqueIpCooldown: "IP 冷却时间（秒）",
+    webDefenderUniqueIpCooldownDesc:
+      "允许再次记录来自同一 IP 的正常请求之前的冷却时长（1 - 86400 秒，默认 300 秒）。",
     passwordManagerTitle: "密码管理器",
     passwordManagerDesc: "使用 AES-256 零知识加密安全存储和管理密码。",
     gameLibraryTitle: "游戏库",

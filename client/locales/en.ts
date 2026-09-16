@@ -413,6 +413,24 @@ export const en = {
     webDefenderBanDuration: "Ban Duration (minutes)",
     webDefenderBanDurationDesc:
       "Duration in minutes that the offending IP remains blocked from all requests.",
+    webDefenderLoggingOptimization: "Logging Optimization",
+    webDefenderLoggingOptimizationDesc:
+      "Reduce load, memory, and bandwidth on high-traffic servers with in-memory batching, threat-only filtering, and unique IP deduplication.",
+    webDefenderBatchLogging: "Batch Logging",
+    webDefenderBatchLoggingDesc:
+      "Buffer events in memory and flush periodically in batches instead of sending a request on every incoming connection.",
+    webDefenderBatchInterval: "Batch Interval (seconds)",
+    webDefenderBatchIntervalDesc:
+      "How long to hold events in memory before flushing to the server (1 - 300 seconds, default 20s). Automatically flushes early if 500 events accumulate.",
+    webDefenderOnlyThreats: "Only Log Threats Mode",
+    webDefenderOnlyThreatsDesc:
+      "Completely ignore all clean, non-threat connections and only log malicious or blocked requests to minimize logging volume.",
+    webDefenderUniqueIps: "Only Log Unique IPs",
+    webDefenderUniqueIpsDesc:
+      "Only log unique visitor IP addresses with an in-memory cooldown. Newly detected threats are always logged immediately.",
+    webDefenderUniqueIpCooldown: "IP Cooldown (seconds)",
+    webDefenderUniqueIpCooldownDesc:
+      "Cooldown duration before another clean request from the same IP can be logged (1 - 86400 seconds, default 300s).",
     passwordManagerTitle: "Password Manager",
     passwordManagerDesc:
       "Securely store and manage passwords with AES-256 zero-knowledge encryption.",
