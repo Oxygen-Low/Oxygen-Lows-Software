@@ -15,6 +15,10 @@ import {
   KeyRound,
   Upload,
   ArrowLeft,
+  Smartphone,
+  RefreshCw,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
@@ -37,7 +41,7 @@ export default function Auth() {
     description: t("auth.welcomeBack", undefined, "Welcome back!"),
   });
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "quick">("signin");
   const [login, setLogin] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -46,6 +50,16 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Quick Sign In state
+  const [quickSessionId, setQuickSessionId] = useState<string | null>(null);
+  const [quickCode, setQuickCode] = useState<string | null>(null);
+  const [quickExpiresAt, setQuickExpiresAt] = useState<number>(0);
+  const [quickRemainingSeconds, setQuickRemainingSeconds] = useState<number>(0);
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickStatus, setQuickStatus] = useState<
+    "pending" | "approved" | "rejected" | "expired" | null
+  >(null);
 
   // Migration state
   const [needsMigration, setNeedsMigration] = useState(false);
@@ -165,6 +179,101 @@ export default function Auth() {
         });
     }
   }, [location]);
+
+  const fetchQuickSignInCode = async () => {
+    setQuickLoading(true);
+    setError(null);
+    setQuickStatus("pending");
+    try {
+      const res = await fetch("/api/auth/quick-sign-in/create", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to generate quick sign-in code");
+      }
+      setQuickSessionId(data.sessionId);
+      setQuickCode(data.code);
+      setQuickExpiresAt(data.expiresAt);
+      setQuickRemainingSeconds(
+        Math.max(0, Math.floor((data.expiresAt - Date.now()) / 1000)),
+      );
+    } catch (err: any) {
+      setError(err.message || "Failed to generate quick sign-in code");
+    } finally {
+      setQuickLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mode === "quick" && !quickCode && !quickLoading) {
+      fetchQuickSignInCode();
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "quick" || !quickExpiresAt) return;
+
+    const timerInterval = setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.floor((quickExpiresAt - Date.now()) / 1000),
+      );
+      setQuickRemainingSeconds(remaining);
+      if (remaining <= 0) {
+        setQuickStatus("expired");
+      }
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [mode, quickExpiresAt]);
+
+  useEffect(() => {
+    if (
+      mode !== "quick" ||
+      !quickSessionId ||
+      quickStatus === "approved" ||
+      quickStatus === "rejected" ||
+      quickStatus === "expired"
+    ) {
+      return;
+    }
+
+    let active = true;
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `/api/auth/quick-sign-in/poll?sessionId=${encodeURIComponent(quickSessionId)}`,
+        );
+        const data = await res.json();
+        if (!active) return;
+
+        if (data.status === "approved" && data.session) {
+          setQuickStatus("approved");
+          setLocalSession(data.session);
+          navigate(returnTo, { replace: true });
+        } else if (data.status === "rejected") {
+          setQuickStatus("rejected");
+          setError(
+            t(
+              "security.quickSignInDenied",
+              undefined,
+              "Sign in request was denied.",
+            ),
+          );
+        } else if (data.status === "expired") {
+          setQuickStatus("expired");
+        }
+      } catch {
+        // Ignore polling transient network failures
+      }
+    }, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(pollInterval);
+    };
+  }, [mode, quickSessionId, quickStatus, returnTo, navigate, t]);
 
   if (loading || oauthLoading) {
     return (
@@ -647,6 +756,20 @@ export default function Auth() {
                 >
                   {t("auth.signUp", undefined, "Create Account")}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("quick");
+                    setError(null);
+                  }}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
+                    mode === "quick"
+                      ? "bg-cyan-500 text-white shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {t("auth.quickSignIn", undefined, "Quick Sign In")}
+                </button>
               </div>
 
               {error && (
@@ -655,182 +778,303 @@ export default function Auth() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signin" ? (
-              <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">
-                  {t("auth.usernameOrEmail", undefined, "Username or Email")}
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    required
-                    value={login}
-                    onChange={(e) => setLogin(e.target.value)}
-                    placeholder={t(
-                      "auth.enterUsernameOrEmail",
-                      undefined,
-                      "Enter your username or email",
-                    )}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
-                  />
-                </div>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">
-                    {t("auth.username", undefined, "Username")}
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. johndoe"
-                      className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
-                    />
+              {mode === "quick" ? (
+                <div className="space-y-5">
+                  <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs flex items-start gap-2.5">
+                    <Smartphone className="w-5 h-5 shrink-0 text-cyan-400 mt-0.5" />
+                    <span>
+                      {t(
+                        "auth.quickSignInInstructions",
+                        undefined,
+                        "On a device where you are already signed in, go to Security and enter this code.",
+                      )}
+                    </span>
                   </div>
-                </div>
 
-                <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">
-                    {t("auth.email", undefined, "Email")}
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="user@example.com"
-                      className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1">
-                {t("auth.password", undefined, "Password")}
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={
-                    mode === "signup" ? "Min 6 characters" : "••••••••"
-                  }
-                  className="w-full pl-9 pr-9 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-200"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
+                  {quickLoading ? (
+                    <div className="py-10 flex flex-col items-center justify-center gap-3">
+                      <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+                      <p className="text-xs text-slate-400">
+                        {t("common.loading", undefined, "Loading...")}
+                      </p>
+                    </div>
+                  ) : quickStatus === "approved" ? (
+                    <div className="py-6 flex flex-col items-center justify-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                        <ShieldCheck className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-medium text-emerald-400 text-center">
+                        {t(
+                          "auth.quickSignInSuccess",
+                          undefined,
+                          "Quick Sign In successful! Redirecting...",
+                        )}
+                      </p>
+                    </div>
+                  ) : quickStatus === "expired" || quickRemainingSeconds <= 0 ? (
+                    <div className="py-4 space-y-4">
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-xs text-center">
+                        {t(
+                          "auth.codeExpired",
+                          undefined,
+                          "Code expired. Please generate a new code.",
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={fetchQuickSignInCode}
+                        className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2 transition"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>
+                          {t("auth.refreshCode", undefined, "Generate New Code")}
+                        </span>
+                      </button>
+                    </div>
                   ) : (
-                    <Eye className="w-4 h-4" />
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-medium text-slate-400 block mb-2 text-center">
+                          {t(
+                            "auth.quickSignInCode",
+                            undefined,
+                            "Quick Sign In Code",
+                          )}
+                        </label>
+                        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center tracking-[0.3em] font-mono font-bold text-3xl text-cyan-400 select-all shadow-inner">
+                          {quickCode}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>{t("auth.expiresIn", undefined, "Expires in")}:</span>
+                          <span className="font-mono text-white font-medium">
+                            {Math.floor(quickRemainingSeconds / 60)}:
+                            {String(quickRemainingSeconds % 60).padStart(2, "0")}
+                          </span>
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={fetchQuickSignInCode}
+                          disabled={quickLoading}
+                          className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline disabled:opacity-50"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>
+                            {t("auth.refreshCode", undefined, "Generate New Code")}
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-center gap-2 text-xs text-slate-400">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+                        <span>
+                          {t(
+                            "auth.waitingForApproval",
+                            undefined,
+                            "Waiting for approval from your other device...",
+                          )}
+                        </span>
+                      </div>
+                    </div>
                   )}
-                </button>
-              </div>
-            </div>
-
-            {mode === "signup" && (
-              <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">
-                  {t("auth.confirmPassword", undefined, "Confirm Password")}
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
-                  />
                 </div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-lg shadow-lg shadow-cyan-500/20 text-sm flex items-center justify-center gap-2 transition disabled:opacity-50 mt-2"
-            >
-              {submitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <span>
-                    {mode === "signin"
-                      ? t("auth.signInButton", undefined, "Sign In")
-                      : t(
-                          "auth.createAccountButton",
-                          undefined,
-                          "Create Account",
-                        )}
-                  </span>
-                  <ArrowRight className="w-4 h-4" />
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    {mode === "signin" ? (
+                      <div>
+                        <label className="text-xs font-medium text-slate-300 block mb-1">
+                          {t("auth.usernameOrEmail", undefined, "Username or Email")}
+                        </label>
+                        <div className="relative">
+                          <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          <input
+                            type="text"
+                            required
+                            value={login}
+                            onChange={(e) => setLogin(e.target.value)}
+                            placeholder={t(
+                              "auth.enterUsernameOrEmail",
+                              undefined,
+                              "Enter your username or email",
+                            )}
+                            className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-xs font-medium text-slate-300 block mb-1">
+                            {t("auth.username", undefined, "Username")}
+                          </label>
+                          <div className="relative">
+                            <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                            <input
+                              type="text"
+                              required
+                              value={username}
+                              onChange={(e) => setUsername(e.target.value)}
+                              placeholder="e.g. johndoe"
+                              className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-slate-300 block mb-1">
+                            {t("auth.email", undefined, "Email")}
+                          </label>
+                          <div className="relative">
+                            <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                            <input
+                              type="email"
+                              required
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="user@example.com"
+                              className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="text-xs font-medium text-slate-300 block mb-1">
+                        {t("auth.password", undefined, "Password")}
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder={
+                            mode === "signup" ? "Min 6 characters" : "••••••••"
+                          }
+                          className="w-full pl-9 pr-9 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-200"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {mode === "signup" && (
+                      <div>
+                        <label className="text-xs font-medium text-slate-300 block mb-1">
+                          {t("auth.confirmPassword", undefined, "Confirm Password")}
+                        </label>
+                        <div className="relative">
+                          <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            required
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-lg shadow-lg shadow-cyan-500/20 text-sm flex items-center justify-center gap-2 transition disabled:opacity-50 mt-2"
+                    >
+                      {submitting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <span>
+                            {mode === "signin"
+                              ? t("auth.signInButton", undefined, "Sign In")
+                              : t(
+                                  "auth.createAccountButton",
+                                  undefined,
+                                  "Create Account",
+                                )}
+                          </span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  {mode === "signin" &&
+                    (googleOAuthConfigured || githubOAuthConfigured) && (
+                      <div className="mt-4">
+                        <div className="relative my-4">
+                          <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-slate-800"></div>
+                          </div>
+                          <div className="relative flex justify-center text-xs">
+                            <span className="bg-slate-900/60 px-2 text-slate-500">
+                              {t(
+                                "auth.orSignInWith",
+                                undefined,
+                                "Or sign in with",
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {googleOAuthConfigured && (
+                            <a
+                              id="sign-in-with-google-btn"
+                              href={`/api/auth/oauth/google/login?returnTo=${encodeURIComponent(returnTo)}`}
+                              className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
+                            >
+                              <GoogleIcon className="w-4 h-4" />
+                              <span>
+                                {t(
+                                  "auth.signInGoogle",
+                                  undefined,
+                                  "Sign in with Google",
+                                )}
+                              </span>
+                            </a>
+                          )}
+
+                          {githubOAuthConfigured && (
+                            <a
+                              id="sign-in-with-github-btn"
+                              href={`/api/auth/oauth/github/login?returnTo=${encodeURIComponent(returnTo)}`}
+                              className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
+                            >
+                              <GithubIcon className="w-4 h-4" />
+                              <span>
+                                {t(
+                                  "auth.signInGithub",
+                                  undefined,
+                                  "Sign in with GitHub",
+                                )}
+                              </span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
                 </>
               )}
-            </button>
-          </form>
-
-          {mode === "signin" && (googleOAuthConfigured || githubOAuthConfigured) && (
-            <div className="mt-4">
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800"></div>
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-slate-900/60 px-2 text-slate-500">
-                    {t("auth.orSignInWith", undefined, "Or sign in with")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2.5">
-                {googleOAuthConfigured && (
-                  <a
-                    id="sign-in-with-google-btn"
-                    href={`/api/auth/oauth/google/login?returnTo=${encodeURIComponent(returnTo)}`}
-                    className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
-                  >
-                    <GoogleIcon className="w-4 h-4" />
-                    <span>
-                      {t("auth.signInGoogle", undefined, "Sign in with Google")}
-                    </span>
-                  </a>
-                )}
-
-                {githubOAuthConfigured && (
-                  <a
-                    id="sign-in-with-github-btn"
-                    href={`/api/auth/oauth/github/login?returnTo=${encodeURIComponent(returnTo)}`}
-                    className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
-                  >
-                    <GithubIcon className="w-4 h-4" />
-                    <span>
-                      {t("auth.signInGithub", undefined, "Sign in with GitHub")}
-                    </span>
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-          </>
+            </>
           )}
 
           <div className="space-y-4 mt-6">

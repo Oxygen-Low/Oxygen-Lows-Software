@@ -19,6 +19,10 @@ import {
   Loader2,
   Link2,
   Unlink,
+  Smartphone,
+  Laptop,
+  Globe,
+  Clock,
 } from "lucide-react";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
 import { GithubIcon } from "@/components/ui/GithubIcon";
@@ -180,6 +184,134 @@ export default function Security() {
   );
   const [isProcessingGithubOAuth, setIsProcessingGithubOAuth] =
     useState<boolean>(false);
+
+  // Quick Sign In State
+  const [quickCodeInput, setQuickCodeInput] = useState<string>("");
+  const [quickVerifying, setQuickVerifying] = useState<boolean>(false);
+  const [quickSessionDetails, setQuickSessionDetails] = useState<{
+    valid: boolean;
+    code: string;
+    createdAt: number;
+    expiresAt: number;
+    ip: string;
+    userAgent: string;
+  } | null>(null);
+  const [showQuickConfirmDialog, setShowQuickConfirmDialog] =
+    useState<boolean>(false);
+  const [quickApproving, setQuickApproving] = useState<boolean>(false);
+  const [quickRejecting, setQuickRejecting] = useState<boolean>(false);
+
+  const handleVerifyQuickCode = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanCode = quickCodeInput.trim().toUpperCase();
+    if (!cleanCode || cleanCode.length !== 6) {
+      toast.error(
+        t(
+          "security.invalidCode",
+          undefined,
+          "Invalid or expired quick sign in code.",
+        ),
+      );
+      return;
+    }
+    setQuickVerifying(true);
+    try {
+      const res = await fetch("/api/auth/quick-sign-in/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ code: cleanCode }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        throw new Error(
+          data.error ||
+            t(
+              "security.invalidCode",
+              undefined,
+              "Invalid or expired quick sign in code.",
+            ),
+        );
+      }
+      setQuickSessionDetails(data);
+      setShowQuickConfirmDialog(true);
+    } catch (err: any) {
+      toast.error(
+        err.message ||
+          t(
+            "security.invalidCode",
+            undefined,
+            "Invalid or expired quick sign in code.",
+          ),
+      );
+    } finally {
+      setQuickVerifying(false);
+    }
+  };
+
+  const handleApproveQuickSignIn = async () => {
+    if (!quickSessionDetails) return;
+    setQuickApproving(true);
+    try {
+      const res = await fetch("/api/auth/quick-sign-in/approve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ code: quickSessionDetails.code }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to approve sign in");
+      }
+      toast.success(
+        t(
+          "security.quickSignInApproved",
+          undefined,
+          "Device signed in successfully!",
+        ),
+      );
+      setShowQuickConfirmDialog(false);
+      setQuickCodeInput("");
+      setQuickSessionDetails(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve sign in");
+    } finally {
+      setQuickApproving(false);
+    }
+  };
+
+  const handleRejectQuickSignIn = async () => {
+    if (!quickSessionDetails) return;
+    setQuickRejecting(true);
+    try {
+      await fetch("/api/auth/quick-sign-in/reject", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ code: quickSessionDetails.code }),
+      });
+      toast.info(
+        t(
+          "security.quickSignInDenied",
+          undefined,
+          "Sign in request was denied.",
+        ),
+      );
+      setShowQuickConfirmDialog(false);
+      setQuickCodeInput("");
+      setQuickSessionDetails(null);
+    } catch {
+      // Ignored
+    } finally {
+      setQuickRejecting(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/auth/oauth/config")
@@ -1312,6 +1444,72 @@ export default function Security() {
           </CardContent>
         </Card>
 
+        {/* Card 5: Quick Sign In */}
+        <Card className="bg-slate-900/50 border-slate-800">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg sm:text-xl text-white flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-cyan-400" />
+                  <span>
+                    {t(
+                      "security.quickSignInTitle",
+                      undefined,
+                      "Quick Sign In",
+                    )}
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-slate-400">
+                  {t(
+                    "security.quickSignInDesc",
+                    undefined,
+                    "Enter a 6-character code shown on another device to sign it into your account.",
+                  )}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={handleVerifyQuickCode}
+              className="flex flex-col sm:flex-row items-center gap-3"
+            >
+              <div className="relative w-full sm:w-72">
+                <Input
+                  type="text"
+                  maxLength={6}
+                  value={quickCodeInput}
+                  onChange={(e) =>
+                    setQuickCodeInput(e.target.value.toUpperCase())
+                  }
+                  placeholder={t(
+                    "security.enterCode",
+                    undefined,
+                    "Enter 6-character code",
+                  )}
+                  className="bg-slate-950 border-slate-800 text-white font-mono tracking-[0.2em] uppercase text-center sm:text-left text-sm"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={
+                  quickVerifying || quickCodeInput.trim().length !== 6
+                }
+                className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs gap-2"
+              >
+                {quickVerifying ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Smartphone className="w-4 h-4" />
+                )}
+                <span>
+                  {t("security.verifyCode", undefined, "Verify Code")}
+                </span>
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
         {/* Dialog 1: Change Password */}
         <Dialog
           open={showChangePasswordDialog}
@@ -1801,6 +1999,138 @@ export default function Security() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog 6: Confirm Quick Sign In */}
+        <Dialog
+          open={showQuickConfirmDialog}
+          onOpenChange={(open) => {
+            if (!open && !quickApproving && !quickRejecting) {
+              setShowQuickConfirmDialog(false);
+            }
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <Smartphone className="w-5 h-5 text-cyan-400" />
+                <span>
+                  {t(
+                    "security.confirmQuickSignInTitle",
+                    undefined,
+                    "Confirm Quick Sign In",
+                  )}
+                </span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.confirmQuickSignInDesc",
+                  undefined,
+                  "A device is requesting to sign into your account. Please verify the device details before confirming.",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {quickSessionDetails && (
+              <div className="space-y-3 py-2 text-xs">
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">
+                      {t(
+                        "auth.quickSignInCode",
+                        undefined,
+                        "Quick Sign In Code",
+                      )}
+                    </span>
+                    <span className="font-mono font-bold text-cyan-400 text-sm">
+                      {quickSessionDetails.code}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="text-slate-400 flex items-center gap-1.5 shrink-0">
+                      <Laptop className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        {t(
+                          "security.requestingDevice",
+                          undefined,
+                          "Requesting Device",
+                        )}
+                      </span>
+                    </span>
+                    <span className="text-white text-right break-all">
+                      {quickSessionDetails.userAgent}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        {t("security.ipAddress", undefined, "IP Address")}
+                      </span>
+                    </span>
+                    <span className="font-mono text-white">
+                      {quickSessionDetails.ip}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        {t("security.requestedAt", undefined, "Requested At")}
+                      </span>
+                    </span>
+                    <span className="text-white">
+                      {new Date(quickSessionDetails.createdAt).toLocaleTimeString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-cyan-300 text-[11px] leading-relaxed">
+                  {t(
+                    "security.approveSignInWarning",
+                    undefined,
+                    "Approving will grant this device full access to your account.",
+                  )}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={quickApproving || quickRejecting}
+                onClick={handleRejectQuickSignIn}
+                className="text-slate-400 hover:text-red-400 text-xs"
+              >
+                {quickRejecting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : null}
+                <span>
+                  {t("security.denySignIn", undefined, "Deny Request")}
+                </span>
+              </Button>
+              <Button
+                type="button"
+                disabled={quickApproving || quickRejecting}
+                onClick={handleApproveQuickSignIn}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs gap-1.5"
+              >
+                {quickApproving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                )}
+                <span>
+                  {t(
+                    "security.approveSignIn",
+                    undefined,
+                    "Grant Access & Sign In",
+                  )}
+                </span>
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

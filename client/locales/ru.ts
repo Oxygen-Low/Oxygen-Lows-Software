@@ -115,6 +115,21 @@ export const ru = {
     previousMasterKeyPlaceholder:
       "Вставьте 64-значный шестнадцатеричный или Base64 мастер-ключ...",
     migrateButton: "Завершить перенос и войти",
+    quickSignIn: "Быстрый вход",
+    quickSignInDesc:
+      "Войдите на другом устройстве с помощью 6-значного кода.",
+    quickSignInCode: "Код быстрого входа",
+    quickSignInInstructions:
+      "На устройстве, где вы уже выполнили вход, перейдите в раздел «Безопасность» и введите этот код.",
+    expiresIn: "Истекает через",
+    refreshCode: "Создать новый код",
+    backToSignIn: "Назад к входу",
+    waitingForApproval:
+      "Ожидание подтверждения с другого устройства...",
+    quickSignInSuccess:
+      "Быстрый вход выполнен! Перенаправление...",
+    codeExpired:
+      "Срок действия кода истек. Сгенерируйте новый код.",
   },
   migration: {
     title: "Перенос на аккаунт сайта",
@@ -1453,6 +1468,22 @@ notificationsTitle: "Уведомления",
     githubOauthFailed: "Аутентификация GitHub была отменена или не удалась.",
     googleNotConfigured: "Google OAuth не настроен на этом сервере.",
     githubNotConfigured: "GitHub OAuth не настроен на этом сервере.",
+    quickSignInTitle: "Быстрый вход",
+    quickSignInDesc:
+      "Введите 6-значный код, отображаемый на другом устройстве, чтобы войти в аккаунт.",
+    enterCode: "Введите 6-значный код",
+    verifyCode: "Проверить код",
+    confirmQuickSignInTitle: "Подтверждение быстрого входа",
+    confirmQuickSignInDesc:
+      "Устройство запрашивает вход в ваш аккаунт. Пожалуйста, проверьте данные устройства перед подтверждением.",
+    requestingDevice: "Запрашивающее устройство",
+    ipAddress: "IP-адрес",
+    requestedAt: "Время запроса",
+    approveSignIn: "Разрешить доступ и войти",
+    denySignIn: "Отклонить запрос",
+    quickSignInApproved: "Устройство успешно авторизовано!",
+    quickSignInDenied: "Запрос на вход отклонен.",
+    invalidCode: "Недействительный или истекший код быстрого входа.",
   },
   passwords: {
     appTitle: "Менеджер паролей",

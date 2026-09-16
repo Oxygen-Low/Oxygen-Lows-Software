@@ -456,14 +456,6 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
             {/* Mobile Quick Action Links inside sidebar */}
             <div className="pt-3 mt-3 border-t border-border/50 md:hidden space-y-1.5">
-              <Link
-                to="/download"
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 transition-colors"
-              >
-                <DownloadIcon className="w-4 h-4 text-slate-400" />
-                {t("nav.downloadApp", undefined, "Download Desktop App")}
-              </Link>
               <a
                 href="https://discord.gg/tNczTe66jK"
                 target="_blank"

@@ -21,6 +21,13 @@ import {
   generateOAuthState,
   verifyOAuthState,
 } from "../lib/auth.ts";
+import {
+  createQuickSignInSession,
+  getQuickSignInById,
+  getQuickSignInByCode,
+  approveQuickSignInSession,
+  rejectQuickSignInSession,
+} from "../lib/quickSignIn.ts";
 
 export const authRouter = new Hono();
 
@@ -942,3 +949,180 @@ authRouter.post(
     }
   },
 );
+
+/**
+ * Create a new Quick Sign In session (called by unauthenticated device)
+ */
+authRouter.post("/quick-sign-in/create", async (c) => {
+  try {
+    const rawIp =
+      c.req.header("x-forwarded-for") ||
+      c.req.header("x-real-ip") ||
+      "127.0.0.1";
+    const ip = rawIp.split(",")[0].trim();
+    const userAgent = c.req.header("user-agent") || "Unknown Device";
+
+    const session = createQuickSignInSession({ ip, userAgent });
+    return c.json({
+      sessionId: session.sessionId,
+      code: session.code,
+      expiresAt: session.expiresAt,
+    });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to create quick sign-in session" },
+      500,
+    );
+  }
+});
+
+/**
+ * Poll quick sign in status (called by unauthenticated device)
+ */
+authRouter.get("/quick-sign-in/poll", async (c) => {
+  try {
+    const sessionId = c.req.query("sessionId");
+    if (!sessionId) {
+      return c.json({ error: "sessionId is required" }, 400);
+    }
+
+    const session = getQuickSignInById(sessionId);
+    if (!session) {
+      return c.json({ status: "expired", error: "Session not found or expired" }, 404);
+    }
+
+    if (session.status === "approved" && session.authData) {
+      return c.json({
+        status: "approved",
+        session: session.authData.session,
+        token: session.authData.token,
+        user: session.authData.user,
+      });
+    }
+
+    return c.json({
+      status: session.status,
+      expiresAt: session.expiresAt,
+    });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to poll quick sign-in status" },
+      500,
+    );
+  }
+});
+
+/**
+ * Verify a 6-character code (called by authenticated device)
+ */
+authRouter.post("/quick-sign-in/verify", localAuthMiddleware, async (c: any) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const { code } = body;
+
+    if (!code || typeof code !== "string") {
+      return c.json({ error: "Code is required" }, 400);
+    }
+
+    const session = getQuickSignInByCode(code);
+    if (!session || session.status !== "pending") {
+      return c.json(
+        { error: "Invalid or expired quick sign-in code", valid: false },
+        400,
+      );
+    }
+
+    return c.json({
+      valid: true,
+      code: session.code,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+      ip: session.ip,
+      userAgent: session.userAgent,
+    });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to verify quick sign-in code" },
+      500,
+    );
+  }
+});
+
+/**
+ * Approve a quick sign in request (called by authenticated device)
+ */
+authRouter.post("/quick-sign-in/approve", localAuthMiddleware, async (c: any) => {
+  try {
+    const user = c.get("user");
+    const body = await c.req.json().catch(() => ({}));
+    const { code } = body;
+
+    if (!code || typeof code !== "string") {
+      return c.json({ error: "Code is required" }, 400);
+    }
+
+    const dbUser = getUserById(user.id);
+    if (!dbUser) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    const token = generateToken(dbUser);
+    const sessionData = {
+      access_token: token,
+      token_type: "bearer",
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        username: dbUser.username,
+        role: dbUser.role,
+        user_metadata: {
+          username: dbUser.username,
+          full_name: dbUser.username,
+          role: dbUser.role,
+        },
+      },
+    };
+
+    const approved = approveQuickSignInSession(code, {
+      user: sessionData.user,
+      token,
+      session: sessionData,
+    });
+
+    if (!approved) {
+      return c.json(
+        { error: "Failed to approve session. Code may be invalid or expired." },
+        400,
+      );
+    }
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to approve quick sign-in" },
+      500,
+    );
+  }
+});
+
+/**
+ * Reject a quick sign in request (called by authenticated device)
+ */
+authRouter.post("/quick-sign-in/reject", localAuthMiddleware, async (c: any) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const { code } = body;
+
+    if (!code || typeof code !== "string") {
+      return c.json({ error: "Code is required" }, 400);
+    }
+
+    const rejected = rejectQuickSignInSession(code);
+    return c.json({ success: rejected });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to reject quick sign-in" },
+      500,
+    );
+  }
+});

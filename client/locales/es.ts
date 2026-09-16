@@ -115,6 +115,21 @@ export const es = {
     previousMasterKeyPlaceholder:
       "Pega la clave maestra Hexadecimal de 64 caracteres/Base64...",
     migrateButton: "Completar Migración e Iniciar Sesión",
+    quickSignIn: "Inicio de sesión rápido",
+    quickSignInDesc:
+      "Inicia sesión en otro dispositivo usando un código rápido de 6 caracteres.",
+    quickSignInCode: "Código de inicio rápido",
+    quickSignInInstructions:
+      "En un dispositivo donde ya hayas iniciado sesión, ve a Seguridad e introduce este código.",
+    expiresIn: "Expira en",
+    refreshCode: "Generar nuevo código",
+    backToSignIn: "Volver a Iniciar sesión",
+    waitingForApproval:
+      "Esperando confirmación desde tu otro dispositivo...",
+    quickSignInSuccess:
+      "¡Inicio de sesión rápido exitoso! Redirigiendo...",
+    codeExpired:
+      "El código ha expirado. Por favor genera un nuevo código.",
   },
   migration: {
     title: "Migrar a Cuenta del Sitio Web",
@@ -1464,6 +1479,22 @@ export const es = {
     githubOauthFailed: "La autenticación de GitHub se canceló o falló.",
     googleNotConfigured: "Google OAuth no está configurado en este servidor.",
     githubNotConfigured: "GitHub OAuth no está configurado en este servidor.",
+    quickSignInTitle: "Inicio de sesión rápido",
+    quickSignInDesc:
+      "Introduce el código de 6 caracteres que se muestra en otro dispositivo para iniciar sesión en tu cuenta.",
+    enterCode: "Introduce el código de 6 caracteres",
+    verifyCode: "Verificar código",
+    confirmQuickSignInTitle: "Confirmar inicio de sesión rápido",
+    confirmQuickSignInDesc:
+      "Un dispositivo solicita iniciar sesión en tu cuenta. Por favor verifica los detalles del dispositivo antes de confirmar.",
+    requestingDevice: "Dispositivo solicitante",
+    ipAddress: "Dirección IP",
+    requestedAt: "Solicitado el",
+    approveSignIn: "Conceder acceso e iniciar sesión",
+    denySignIn: "Rechazar solicitud",
+    quickSignInApproved: "¡Dispositivo autenticado con éxito!",
+    quickSignInDenied: "Solicitud de inicio de sesión rechazada.",
+    invalidCode: "Código de inicio rápido inválido o expirado.",
   },
   passwords: {
     appTitle: "Gestor de Contraseñas",

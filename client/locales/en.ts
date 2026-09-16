@@ -115,6 +115,17 @@ export const en = {
     previousMasterKeyPlaceholder:
       "Paste 64-char Hex/Base64 masterkey (if you had one)...",
     migrateButton: "Complete Migration & Sign In",
+    quickSignIn: "Quick Sign In",
+    quickSignInDesc: "Sign in to another device using a quick 6-character code.",
+    quickSignInCode: "Quick Sign In Code",
+    quickSignInInstructions:
+      "On a device where you are already signed in, go to Security and enter this code.",
+    expiresIn: "Expires in",
+    refreshCode: "Generate New Code",
+    backToSignIn: "Back to Sign In",
+    waitingForApproval: "Waiting for approval from your other device...",
+    quickSignInSuccess: "Quick Sign In successful! Redirecting...",
+    codeExpired: "Code expired. Please generate a new code.",
   },
   migration: {
     title: "Migrate to Website Account",
@@ -1451,6 +1462,22 @@ export const en = {
     githubOauthFailed: "GitHub authentication was cancelled or failed.",
     googleNotConfigured: "Google OAuth is not configured on this server.",
     githubNotConfigured: "GitHub OAuth is not configured on this server.",
+    quickSignInTitle: "Quick Sign In",
+    quickSignInDesc:
+      "Enter a 6-character code shown on another device to sign it into your account.",
+    enterCode: "Enter 6-character code",
+    verifyCode: "Verify Code",
+    confirmQuickSignInTitle: "Confirm Quick Sign In",
+    confirmQuickSignInDesc:
+      "A device is requesting to sign into your account. Please verify the device details before confirming.",
+    requestingDevice: "Requesting Device",
+    ipAddress: "IP Address",
+    requestedAt: "Requested At",
+    approveSignIn: "Grant Access & Sign In",
+    denySignIn: "Deny Request",
+    quickSignInApproved: "Device signed in successfully!",
+    quickSignInDenied: "Sign in request was denied.",
+    invalidCode: "Invalid or expired quick sign in code.",
   },
   passwords: {
     appTitle: "Password Manager",

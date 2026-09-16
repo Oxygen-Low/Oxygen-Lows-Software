@@ -115,6 +115,18 @@ export const ja = {
     previousMasterKeyPlaceholder:
       "以前使用していた64文字のHex/Base64マスターキーを入力...",
     migrateButton: "移行を完了してサインイン",
+    quickSignIn: "クイックログイン",
+    quickSignInDesc:
+      "6桁のクイックコードを使用して別のデバイスにログインします。",
+    quickSignInCode: "クイックログインコード",
+    quickSignInInstructions:
+      "すでにログインしているデバイスで「セキュリティ」を開き、このコードを入力してください。",
+    expiresIn: "有効期限",
+    refreshCode: "新しいコードを生成",
+    backToSignIn: "ログインに戻る",
+    waitingForApproval: "別デバイスからの承認を待機中...",
+    quickSignInSuccess: "クイックログインが完了しました！リダイレクト中...",
+    codeExpired: "コードの有効期限が切れました。新しいコードを生成してください。",
   },
   migration: {
     title: "ウェブサイトアカウントへ移行",
@@ -1451,6 +1463,22 @@ notificationsTitle: "通知",
     githubOauthFailed: "GitHub認証がキャンセルされたか失敗しました。",
     googleNotConfigured:
       "このサーバーではGoogle OAuthが設定されていません。",
+    quickSignInTitle: "クイックログイン",
+    quickSignInDesc:
+      "別のデバイスに表示された6桁のコードを入力して、アカウントにログインさせます。",
+    enterCode: "6桁のコードを入力",
+    verifyCode: "コードを確認",
+    confirmQuickSignInTitle: "クイックログインの確認",
+    confirmQuickSignInDesc:
+      "デバイスからアカウントへのログイン要求がありました。確認する前にデバイスの詳細を確認してください。",
+    requestingDevice: "要求デバイス",
+    ipAddress: "IPアドレス",
+    requestedAt: "要求日時",
+    approveSignIn: "アクセスを許可してログイン",
+    denySignIn: "要求を拒否",
+    quickSignInApproved: "デバイスのログインが完了しました！",
+    quickSignInDenied: "ログイン要求を拒否しました。",
+    invalidCode: "無効または期限切れのクイックログインコードです。",
   },
   passwords: {
     appTitle: "パスワードマネージャー",

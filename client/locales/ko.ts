@@ -115,6 +115,18 @@ export const ko = {
     previousMasterKeyPlaceholder:
       "이전에 사용하던 64자 Hex/Base64 마스터 키 입력...",
     migrateButton: "마이그레이션 완료 및 로그인",
+    quickSignIn: "빠른 로그인",
+    quickSignInDesc:
+      "빠른 6자리 코드를 사용하여 다른 기기에서 로그인하세요.",
+    quickSignInCode: "빠른 로그인 코드",
+    quickSignInInstructions:
+      "이미 로그인된 기기에서 '보안'으로 이동하여 이 코드를 입력하세요.",
+    expiresIn: "만료 시간",
+    refreshCode: "새 코드 생성",
+    backToSignIn: "로그인으로 돌아가기",
+    waitingForApproval: "다른 기기의 승인을 기다리는 중...",
+    quickSignInSuccess: "빠른 로그인 완료! 이동 중...",
+    codeExpired: "코드가 만료되었습니다. 새 코드를 생성해 주세요.",
   },
   migration: {
     title: "웹사이트 계정으로 이전",
@@ -1431,6 +1443,22 @@ notificationsTitle: "알림",
     githubOauthFailed: "GitHub 인증이 취소되었거나 실패했습니다.",
     googleNotConfigured: "이 서버에 Google OAuth가 구성되지 않았습니다.",
     githubNotConfigured: "이 서버에 GitHub OAuth가 구성되지 않았습니다.",
+    quickSignInTitle: "빠른 로그인",
+    quickSignInDesc:
+      "다른 기기에 표시된 6자리 코드를 입력하여 해당 기기를 로그인시키세요.",
+    enterCode: "6자리 코드 입력",
+    verifyCode: "코드 확인",
+    confirmQuickSignInTitle: "빠른 로그인 확인",
+    confirmQuickSignInDesc:
+      "기기에서 계정 로그인 요청이 접수되었습니다. 확인하기 전에 기기 세부정보를 확인하세요.",
+    requestingDevice: "요청 기기",
+    ipAddress: "IP 주소",
+    requestedAt: "요청 시간",
+    approveSignIn: "액세스 허용 및 로그인",
+    denySignIn: "요청 거부",
+    quickSignInApproved: "기기 로그인이 성공적으로 완료되었습니다!",
+    quickSignInDenied: "로그인 요청이 거부되었습니다.",
+    invalidCode: "유효하지 않거나 만료된 빠른 로그인 코드입니다.",
   },
   passwords: {
     appTitle: "비밀번호 관리자",
