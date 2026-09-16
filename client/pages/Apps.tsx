@@ -62,6 +62,7 @@ import { PixelArtStudioApp } from "@/components/apps/PixelArtStudio";
 import { ThreeDStudioApp } from "@/components/studio3d/ThreeDStudioApp";
 import { WebBrowserApp } from "@/components/apps/WebBrowser";
 import { WebmasterApp } from "@/components/apps/Webmaster";
+import { DeveloperAuthApp } from "@/components/apps/DeveloperAuth";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -295,6 +296,19 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
     component: DefenderApp,
+    authRequired: true,
+  },
+  {
+    id: "developer-auth",
+    nameKey: "apps.developerAuthTitle",
+    defaultName: "Developer Auth",
+    descKey: "apps.developerAuthDesc",
+    defaultDesc:
+      "Create and manage OAuth 2.0 authentication applications, API keys, scopes, and user permissions for Oxygen Low's Software.",
+    categories: ["All", "Development", "Security"],
+    availability: "web-and-desktop",
+    icon: <KeyRound className="w-8 h-8 text-cyan-500" />,
+    component: DeveloperAuthApp,
     authRequired: true,
   },
   {

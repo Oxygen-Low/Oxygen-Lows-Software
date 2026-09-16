@@ -79,6 +79,7 @@ const AcceptableUse = lazyWithRetry(() => import("./pages/AcceptableUse"));
 const Legal = lazyWithRetry(() => import("./pages/Legal"));
 const License = lazyWithRetry(() => import("./pages/License"));
 const Download = lazyWithRetry(() => import("./pages/Download"));
+const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -105,6 +106,7 @@ const App = () => (
                     <Route path="/apps" element={<Apps />} />
                     <Route path="/apps/:appId" element={<Apps />} />
                     <Route path="/apps/3d-background" element={<Apps />} />
+                    <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
                     <Route path="/banned-ips" element={<BannedIps />} />
                     <Route path="/webdefender/banned-ips" element={<BannedIps />} />
                     <Route path="/games" element={<Games />} />

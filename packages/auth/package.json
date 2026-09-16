@@ -1,0 +1,39 @@
+{
+  "name": "@oxygenlow/auth",
+  "version": "1.0.0",
+  "author": "Oxygen Low's Software",
+  "description": "Official authentication SDK for Oxygen Low's Software. Universal zero-dependency OAuth 2.0 authentication and identity verification.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "auth",
+    "oauth",
+    "authentication",
+    "sso",
+    "identity",
+    "oxygen-low"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Oxygen-Low/Oxygen-Lows-Software.git"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "typescript": "7.0.2"
+  }
+}

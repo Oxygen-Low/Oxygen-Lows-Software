@@ -14,6 +14,7 @@ import { defenderRouter } from "./routes/webdefender.ts";
 import { storageRouter } from "./routes/storage.ts";
 import { agentSearchRouter } from "./routes/agentSearch.ts";
 import { authRouter } from "./routes/auth.ts";
+import { oauthRouter } from "./routes/oauth.ts";
 import { dataRouter } from "./routes/data.ts";
 import { surveysRouter } from "./routes/surveys.ts";
 import { realtimeRouter } from "./routes/realtime.ts";
@@ -58,6 +59,7 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/admin/webdefender") ||
     c.req.path.startsWith("/api/storage") ||
     c.req.path.startsWith("/api/auth") ||
+    c.req.path.startsWith("/api/oauth") ||
     c.req.path.startsWith("/api/data") ||
     c.req.path.startsWith("/api/surveys") ||
     c.req.path.startsWith("/api/ai") ||
@@ -1079,6 +1081,7 @@ app.route("/api/webdefender", defenderRouter);
 app.route("/api/defender", defenderRouter);
 app.route("/api/storage", storageRouter);
 app.route("/api/auth", authRouter);
+app.route("/api/oauth", oauthRouter);
 app.route("/api/data", dataRouter);
 app.route("/api/surveys", surveysRouter);
 app.route("/api/realtime", realtimeRouter);

@@ -232,6 +232,59 @@ export interface GameConflictRecord {
   [key: string]: any;
 }
 
+export interface OAuthAppRecord {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  client_id: string;
+  api_key_hash: string;
+  api_key_prefix: string;
+  redirect_uris: string[];
+  allowed_scopes: string[];
+  website_url?: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: any;
+}
+
+export interface OAuthCodeRecord {
+  code: string;
+  app_id: string;
+  client_id: string;
+  user_id: string;
+  redirect_uri: string;
+  scopes: string[];
+  state?: string;
+  expires_at: number;
+  used: boolean;
+  created_at: string;
+  [key: string]: any;
+}
+
+export interface OAuthGrantRecord {
+  id: string;
+  app_id: string;
+  client_id: string;
+  user_id: string;
+  scopes: string[];
+  created_at: string;
+  updated_at: string;
+  [key: string]: any;
+}
+
+export interface OAuthTokenRecord {
+  token: string;
+  app_id: string;
+  client_id: string;
+  user_id: string;
+  scopes: string[];
+  expires_at: number;
+  revoked: boolean;
+  created_at: string;
+  [key: string]: any;
+}
+
 // Ensure Data directory exists
 function ensureDir(dirPath: string) {
   if (!fs.existsSync(dirPath)) {
@@ -349,6 +402,7 @@ export function initUserFolder(
   ensureDir(path.join(userDir, "defender"));
   ensureDir(path.join(userDir, "models"));
   ensureDir(path.join(userDir, "games"));
+  ensureDir(path.join(userDir, "oauth"));
 
   // Also ensure upload directories exist
   ensureDir(path.join(process.cwd(), "uploads", "Storage", userId));
@@ -771,6 +825,18 @@ export function getTableFilePath(
         break;
       case "defender_apps":
         filePath = path.join(userDir, "defender", "apps.json");
+        break;
+      case "oauth_apps":
+        filePath = path.join(userDir, "oauth", "apps.json");
+        break;
+      case "oauth_grants":
+        filePath = path.join(userDir, "oauth", "grants.json");
+        break;
+      case "oauth_codes":
+        filePath = path.join(userDir, "oauth", "codes.json");
+        break;
+      case "oauth_tokens":
+        filePath = path.join(userDir, "oauth", "tokens.json");
         break;
       case "defender_config":
         filePath = path.join(userDir, "defender", "config.json");

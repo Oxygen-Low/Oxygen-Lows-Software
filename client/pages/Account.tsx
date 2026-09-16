@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  KeyRound,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db, supabase } from "@/lib/db";
@@ -115,6 +117,73 @@ export default function Account() {
   const [bioInput, setBioInput] = useState("");
   const [additionalLanguages, setAdditionalLanguages] = useState<string[]>([]);
   const [selectedAddLanguage, setSelectedAddLanguage] = useState<string>("");
+
+  // Authorized OAuth Apps State
+  const [authorizedApps, setAuthorizedApps] = useState<
+    Array<{
+      id: string;
+      app_id: string;
+      client_id: string;
+      app_name: string;
+      description: string;
+      website_url: string;
+      scopes: string[];
+      created_at: string;
+    }>
+  >([]);
+  const [loadingGrants, setLoadingGrants] = useState(false);
+  const [grantToRevoke, setGrantToRevoke] = useState<{
+    id: string;
+    app_name: string;
+  } | null>(null);
+
+  const fetchAuthorizedApps = useCallback(async () => {
+    if (!session?.access_token) return;
+    try {
+      setLoadingGrants(true);
+      const res = await fetch("/api/oauth/user/grants", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAuthorizedApps(data);
+      }
+    } catch {
+    } finally {
+      setLoadingGrants(false);
+    }
+  }, [session?.access_token]);
+
+  useEffect(() => {
+    fetchAuthorizedApps();
+  }, [fetchAuthorizedApps]);
+
+  const handleRevokeGrant = async () => {
+    if (!grantToRevoke || !session?.access_token) return;
+    try {
+      const res = await fetch(`/api/oauth/user/grants/${grantToRevoke.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        toast({
+          title: t(
+            "account.accessRevoked",
+            undefined,
+            "Access revoked successfully",
+          ),
+        });
+        fetchAuthorizedApps();
+      }
+    } catch {
+      toast({
+        title: "Failed to revoke access",
+        variant: "destructive",
+      });
+    } finally {
+      setGrantToRevoke(null);
+    }
+  };
 
   // Models Tab State & Hooks
   const {
@@ -941,6 +1010,103 @@ export default function Account() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Authorized OAuth Applications */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-white text-lg flex items-center gap-2">
+                      <KeyRound className="w-5 h-5 text-cyan-400" />
+                      {t("account.authorizedApps", undefined, "Authorized Applications")}
+                    </CardTitle>
+                    <CardDescription>
+                      {t(
+                        "account.authorizedAppsDesc",
+                        undefined,
+                        "Third-party applications you have granted permission to access your Oxygen Low's Software account.",
+                      )}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchAuthorizedApps}
+                    className="text-slate-400 hover:text-white h-8 px-2"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingGrants ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {authorizedApps.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-center">
+                    <p className="text-xs text-slate-400">
+                      {t(
+                        "account.noAuthorizedApps",
+                        undefined,
+                        "You have not authorized any third-party applications.",
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {authorizedApps.map((grant) => (
+                      <div
+                        key={grant.id}
+                        className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-white">
+                              {grant.app_name}
+                            </h4>
+                            {grant.website_url && (
+                              <a
+                                href={grant.website_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-slate-500 hover:text-cyan-400"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                          </div>
+                          {grant.description && (
+                            <p className="text-xs text-slate-400">
+                              {grant.description}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            <span className="text-[11px] text-slate-500 mr-1">
+                              {t("account.grantedOn", undefined, "Authorized on")}{" "}
+                              {new Date(grant.created_at).toLocaleDateString()}:
+                            </span>
+                            {grant.scopes.map((s) => (
+                              <Badge
+                                key={s}
+                                variant="outline"
+                                className="bg-slate-900 border-slate-800 text-cyan-300 text-[10px] px-1.5 py-0"
+                              >
+                                {s}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setGrantToRevoke({ id: grant.id, app_name: grant.app_name })}
+                          className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs shrink-0 self-start sm:self-center"
+                        >
+                          {t("account.revokeAccess", undefined, "Revoke Access")}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Models Tab */}
@@ -1747,6 +1913,43 @@ export default function Account() {
               {isDeletingModel
                 ? t("common.loading", undefined, "Removing...")
                 : t("common.delete", undefined, "Delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke OAuth Grant Alert */}
+      <AlertDialog
+        open={Boolean(grantToRevoke)}
+        onOpenChange={(open) => !open && setGrantToRevoke(null)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white text-base">
+              {t("account.revokeAccess", undefined, "Revoke Access")}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-400">
+              {t(
+                "account.revokeConfirm",
+                undefined,
+                "Are you sure you want to revoke access for this application?",
+              )}
+              {grantToRevoke && (
+                <span className="block mt-2 font-semibold text-white">
+                  {grantToRevoke.app_name}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-slate-800 text-slate-300 hover:bg-slate-800 text-xs">
+              {t("common.cancel", undefined, "Cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevokeGrant}
+              className="bg-red-600 hover:bg-red-500 text-white text-xs"
+            >
+              {t("account.revokeAccess", undefined, "Revoke Access")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
