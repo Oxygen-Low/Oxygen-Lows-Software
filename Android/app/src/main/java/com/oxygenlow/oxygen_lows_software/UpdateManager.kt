@@ -119,7 +119,7 @@ class UpdateManager(private val context: Context) {
         downloadUrl: String,
         progressCallback: ((Int) -> Unit)? = null
     ): Boolean {
-        val updatesDir = File(context.cacheDir, "updates")
+        val updatesDir = File(context.externalCacheDir ?: context.cacheDir, "updates")
         if (!updatesDir.exists()) {
             updatesDir.mkdirs()
         }
@@ -191,6 +191,20 @@ class UpdateManager(private val context: Context) {
                 tempFile.delete()
             }
 
+            apkFile.setReadable(true, false)
+
+            val archiveInfo = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+            if (archiveInfo == null) {
+                Log.e(TAG, "Downloaded APK is invalid or corrupt")
+                if (apkFile.exists()) {
+                    apkFile.delete()
+                }
+                activity.runOnUiThread {
+                    Toast.makeText(activity, activity.getString(R.string.update_failed), Toast.LENGTH_SHORT).show()
+                }
+                return false
+            }
+
             installApk(activity, apkFile)
             return true
         } catch (e: Exception) {
@@ -210,6 +224,18 @@ class UpdateManager(private val context: Context) {
     private fun installApk(activity: Activity, apkFile: File) {
         activity.runOnUiThread {
             try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    if (!activity.packageManager.canRequestPackageInstalls()) {
+                        val settingsIntent = Intent(
+                            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:${activity.packageName}")
+                        ).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        activity.startActivity(settingsIntent)
+                    }
+                }
+
                 val contentUri: Uri = FileProvider.getUriForFile(
                     activity,
                     "${activity.packageName}.fileprovider",

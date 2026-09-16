@@ -21,7 +21,7 @@
         
         <activity
             android:name=".MainActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:theme="@style/Theme.OxygenLowsSoftware">

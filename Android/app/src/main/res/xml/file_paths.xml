@@ -2,4 +2,5 @@
 <paths>
     <cache-path name="vpn_profiles" path="vpn_profiles/" />
     <cache-path name="updates" path="updates/" />
+    <external-cache-path name="external_updates" path="updates/" />
 </paths>
