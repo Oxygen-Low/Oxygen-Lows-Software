@@ -150,21 +150,5 @@
     "file-type@<=21.3.3": "21.3.3",
     "dompurify@<=3.4.13": "3.4.13",
     "inline-style-parser@<0.2.9": "0.2.9"
-  },
-  "pnpm": {
-    "overrides": {
-      "body-parser>raw-body": "4.0.0",
-      "dompurify@<=3.4.13": "3.4.13",
-      "es-define-property": "npm:@socketregistry/es-define-property@^1",
-      "es-set-tostringtag": "npm:@socketregistry/es-set-tostringtag@^1",
-      "function-bind": "npm:@socketregistry/function-bind@^1",
-      "gopd": "npm:@socketregistry/gopd@^1",
-      "has-symbols": "npm:@socketregistry/has-symbols@^1",
-      "has-tostringtag": "npm:@socketregistry/has-tostringtag@^1",
-      "hasown": "npm:@socketregistry/hasown@^1",
-      "indent-string": "npm:@socketregistry/indent-string@^1",
-      "safer-buffer": "npm:@socketregistry/safer-buffer@^1",
-      "side-channel": "npm:@socketregistry/side-channel@^1"
-    }
   }
 }
