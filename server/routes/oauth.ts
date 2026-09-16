@@ -20,11 +20,7 @@ export const oauthRouter = new Hono<{
   Variables: { user: any; userId: string };
 }>();
 
-const authLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  max: 60,
-  message: "Too many OAuth requests. Please try again later.",
-});
+const authLimiter = rateLimiter(60, 60 * 1000, "oauth");
 
 export const SUPPORTED_SCOPES = [
   "username",
