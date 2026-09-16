@@ -3,6 +3,8 @@ package com.oxygenlow.oxygen_lows_software
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.webkit.JavascriptInterface
@@ -144,6 +146,8 @@ class MainActivity : AppCompatActivity() {
 
 class WebAppInterface(private val context: Activity, private val webView: WebView) {
 
+    private var activeRingtone: Ringtone? = null
+
     @JavascriptInterface
     fun postMessage(message: String) {
         try {
@@ -152,6 +156,44 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
             val id = json.optString("id")
 
             when (command) {
+                "play_ringtone" -> {
+                    try {
+                        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                        activeRingtone?.stop()
+                        activeRingtone = RingtoneManager.getRingtone(context, uri)
+                        activeRingtone?.play()
+                        val response = JSONObject().apply {
+                            put("id", id)
+                            put("success", true)
+                        }
+                        sendResponse(response.toString())
+                    } catch (e: Exception) {
+                        val response = JSONObject().apply {
+                            put("id", id)
+                            put("success", false)
+                            put("error", e.message)
+                        }
+                        sendResponse(response.toString())
+                    }
+                }
+                "stop_ringtone" -> {
+                    try {
+                        activeRingtone?.stop()
+                        activeRingtone = null
+                        val response = JSONObject().apply {
+                            put("id", id)
+                            put("success", true)
+                        }
+                        sendResponse(response.toString())
+                    } catch (e: Exception) {
+                        val response = JSONObject().apply {
+                            put("id", id)
+                            put("success", false)
+                            put("error", e.message)
+                        }
+                        sendResponse(response.toString())
+                    }
+                }
                 "require_admin" -> {
                     // Always true on Android wrapper to bypass Windows block
                     val response = JSONObject().apply {

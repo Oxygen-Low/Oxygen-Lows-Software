@@ -43,6 +43,7 @@ export const ja = {
     account: "アカウント",
     security: "セキュリティ",
     friends: "フレンド",
+    chat: "チャット",
     customize: "カスタマイズ",
     threeDBackground: "3D背景",
     characters: "キャラクター",
@@ -301,6 +302,9 @@ export const ja = {
     signInToContinue: "続行するにはサインインしてください",
     backToApps: "アプリ一覧に戻る",
     adminRequired: "このアプリを使用するには管理者権限が必要です。",
+    chatTitle: "チャット",
+    chatDesc:
+      "DiscordスタイルのサーバーでE2EEメッセージングと直接P2P音声・ビデオ通話を使用して友達とチャットできます。",
     base64Title: "Base64 エンコーダ/デコーダ",
     base64Desc:
       "Base64を使用してテキストやデータを簡単にエンコードまたはデコードします。",
@@ -2090,6 +2094,7 @@ notificationsTitle: "通知",
     games: "ゲーム",
     storage: "ストレージ",
     friends: "フレンド",
+    chat: "チャット",
     account: "アカウント",
     security: "セキュリティ",
     customize: "カスタマイズ",
@@ -2354,6 +2359,11 @@ notificationsTitle: "通知",
     invalidProject: "無効なプロジェクトファイルです",
     importError: "ファイルの読み込みに失敗しました",
     imageImported: "画像をインポートしてドット絵化しました！",
+  },
+  chat: {
+    title: "チャット",
+    subtitle:
+      "友達とチャットしたり、サーバーで交流したり、直接音声・ビデオ通話を行えます。",
   },
   developerAuth: {
     title: "開発者認証",

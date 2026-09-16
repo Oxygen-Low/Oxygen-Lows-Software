@@ -43,6 +43,7 @@ export const es = {
     account: "Cuenta",
     security: "Seguridad",
     friends: "Amigos",
+    chat: "Chat",
     customize: "Personalizar",
     threeDBackground: "Fondo 3D",
     characters: "Personajes",
@@ -310,6 +311,9 @@ export const es = {
     backToApps: "Volver a la lista de aplicaciones",
     adminRequired:
       "Se requieren permisos de administrador para usar esta aplicación.",
+    chatTitle: "Chat",
+    chatDesc:
+      "Chatea con amigos en servidores estilo Discord con mensajería E2EE y llamadas de voz y video P2P directas.",
     base64Title: "Codificador/Decodificador Base64",
     base64Desc: "Codifica o decodifica fácilmente texto y datos usando Base64.",
     jsonFormatterTitle: "Formateador JSON",
@@ -2106,6 +2110,7 @@ export const es = {
     games: "Juegos",
     storage: "Almacenamiento",
     friends: "Amigos",
+    chat: "Chat",
     account: "Cuenta",
     security: "Seguridad",
     customize: "Personalizar",
@@ -2370,6 +2375,11 @@ export const es = {
     invalidProject: "Archivo de proyecto no válido",
     importError: "Error al analizar el archivo",
     imageImported: "¡Imagen importada y pixelada!",
+  },
+  chat: {
+    title: "Chat",
+    subtitle:
+      "Chatea con amigos, pasa el rato en servidores y realiza llamadas directas de voz y video.",
   },
   developerAuth: {
     title: "Autenticación para Desarrolladores",

@@ -213,9 +213,27 @@ public partial class MainWindow : Window
             var cmd = cmdProp.GetString();
             string id = doc.RootElement.TryGetProperty("id", out var idProp) ? idProp.GetString() ?? "" : "";
 
-            try
-            {
-                if (cmd == "open_browser")
+                if (cmd == "show_call_notification")
+                {
+                    string callerName = doc.RootElement.TryGetProperty("callerName", out var cn) ? cn.GetString() ?? "Someone" : "Someone";
+                    bool isVideo = doc.RootElement.TryGetProperty("isVideo", out var iv) && iv.GetBoolean();
+                    
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (WindowState == WindowState.Minimized)
+                        {
+                            WindowState = WindowState.Normal;
+                        }
+                        Activate();
+                        System.Media.SystemSounds.Exclamation.Play();
+                    });
+                    if (!string.IsNullOrEmpty(id)) SendWebMessage(new { id, success = true });
+                }
+                else if (cmd == "stop_call_ringtone")
+                {
+                    if (!string.IsNullOrEmpty(id)) SendWebMessage(new { id, success = true });
+                }
+                else if (cmd == "open_browser")
                 {
                     string url = doc.RootElement.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
                     if (!string.IsNullOrEmpty(url))

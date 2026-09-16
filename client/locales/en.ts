@@ -43,6 +43,7 @@ export const en = {
     account: "Account",
     security: "Security",
     friends: "Friends",
+    chat: "Chat",
     customize: "Customize",
     threeDBackground: "3D Background",
     characters: "Characters",
@@ -300,6 +301,9 @@ export const en = {
     signInToContinue: "Sign In to Continue",
     backToApps: "Back to apps list",
     adminRequired: "Administrator permissions are required to use this app.",
+    chatTitle: "Chat",
+    chatDesc:
+      "Chat with friends in Discord-style servers with E2EE messaging and direct P2P voice & video calls.",
     base64Title: "Base64 Encoder/Decoder",
     base64Desc: "Easily encode or decode text and data using Base64.",
     jsonFormatterTitle: "JSON Formatter",
@@ -2088,6 +2092,7 @@ export const en = {
     games: "Games",
     storage: "Storage",
     friends: "Friends",
+    chat: "Chat",
     account: "Account",
     security: "Security",
     customize: "Customize",
@@ -2351,6 +2356,11 @@ export const en = {
     invalidProject: "Invalid project file",
     importError: "Failed to parse file",
     imageImported: "Image imported and pixelated!",
+  },
+  chat: {
+    title: "Chat",
+    subtitle:
+      "Chat with friends, hang out in servers, and make direct voice & video calls.",
   },
   developerAuth: {
     title: "Developer Auth",

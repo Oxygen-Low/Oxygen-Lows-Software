@@ -26,6 +26,7 @@ import {
   ExternalLink,
   Download as DownloadIcon,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -94,6 +95,13 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Friends",
     href: "/friends",
     icon: Users,
+  },
+  {
+    key: "chat",
+    labelKey: "nav.chat",
+    defaultLabel: "Chat",
+    href: "/chat",
+    icon: MessageSquare,
   },
   {
     key: "customize",

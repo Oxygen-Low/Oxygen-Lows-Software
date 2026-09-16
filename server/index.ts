@@ -24,6 +24,7 @@ import { adminNotificationsRouter } from "./routes/adminNotifications.ts";
 import { adminWebdefenderRouter } from "./routes/adminWebdefender.ts";
 import { browserRouter } from "./routes/browser.ts";
 import { webmasterRouter } from "./routes/webmaster.ts";
+import { chatRouter } from "./routes/chat.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -65,7 +66,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/ai") ||
     c.req.path.startsWith("/api/realtime") ||
     c.req.path.startsWith("/api/browser") ||
-    c.req.path.startsWith("/api/webmaster")
+    c.req.path.startsWith("/api/webmaster") ||
+    c.req.path.startsWith("/api/chat")
   ) {
     return next();
   }
@@ -1092,6 +1094,7 @@ app.route("/api/admin/webdefender", adminWebdefenderRouter);
 app.route("/api/admin/banned-ips", adminWebdefenderRouter);
 app.route("/api/browser", browserRouter);
 app.route("/api/webmaster", webmasterRouter);
+app.route("/api/chat", chatRouter);
 
 app.get("/bot", (c) => {
   return c.html(`

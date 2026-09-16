@@ -48,6 +48,7 @@ const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const Apps = lazyWithRetry(() => import("./pages/Apps"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const Friends = lazyWithRetry(() => import("./pages/Friends"));
+const Chat = lazyWithRetry(() => import("./pages/Chat"));
 const Account = lazyWithRetry(() => import("./pages/Account"));
 const Security = lazyWithRetry(() => import("./pages/Security"));
 const Storage = lazyWithRetry(() => import("./pages/Storage"));
@@ -81,6 +82,7 @@ const License = lazyWithRetry(() => import("./pages/License"));
 const Download = lazyWithRetry(() => import("./pages/Download"));
 const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ChatProvider } from "./contexts/ChatContext";
 
 const queryClient = new QueryClient();
 
@@ -91,22 +93,24 @@ const App = () => (
         <ThemeProvider>
           <BrowserRouter>
             <MusicProvider>
-              <Toaster />
-              <Sonner />
-              <ErrorBoundary>
-                <Suspense
-                  fallback={
-                    <div className="flex h-screen items-center justify-center">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    </div>
-                  }
-                >
-                  <Routes>
-                    <Route path="/" element={<Apps />} />
-                    <Route path="/apps" element={<Apps />} />
-                    <Route path="/apps/:appId" element={<Apps />} />
-                    <Route path="/apps/3d-background" element={<Apps />} />
-                    <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
+              <ChatProvider>
+                <Toaster />
+                <Sonner />
+                <ErrorBoundary>
+                  <Suspense
+                    fallback={
+                      <div className="flex h-screen items-center justify-center">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                      </div>
+                    }
+                  >
+                    <Routes>
+                      <Route path="/" element={<Apps />} />
+                      <Route path="/apps" element={<Apps />} />
+                      <Route path="/apps/:appId" element={<Apps />} />
+                      <Route path="/apps/3d-background" element={<Apps />} />
+                      <Route path="/chat" element={<Chat />} />
+                      <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
                     <Route path="/banned-ips" element={<BannedIps />} />
                     <Route path="/webdefender/banned-ips" element={<BannedIps />} />
                     <Route path="/games" element={<Games />} />
@@ -290,8 +294,9 @@ const App = () => (
                   </Routes>
                 </Suspense>
               </ErrorBoundary>
-            </MusicProvider>
-          </BrowserRouter>
+            </ChatProvider>
+          </MusicProvider>
+        </BrowserRouter>
         </ThemeProvider>
       </LanguageProvider>
     </TooltipProvider>

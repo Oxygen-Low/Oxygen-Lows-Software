@@ -63,6 +63,7 @@ import { ThreeDStudioApp } from "@/components/studio3d/ThreeDStudioApp";
 import { WebBrowserApp } from "@/components/apps/WebBrowser";
 import { WebmasterApp } from "@/components/apps/Webmaster";
 import { DeveloperAuthApp } from "@/components/apps/DeveloperAuth";
+import { ChatApp } from "@/components/apps/Chat";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -143,6 +144,17 @@ const CATEGORY_DEFINITIONS: {
 ];
 
 const APPS: AppMetadata[] = [
+  {
+    id: "chat",
+    nameKey: "apps.chatTitle",
+    defaultName: "Chat",
+    descKey: "apps.chatDesc",
+    defaultDesc: "Chat with friends in Discord-style servers with E2EE messaging and direct P2P voice & video calls.",
+    categories: ["All", "Social"],
+    availability: "web-and-desktop",
+    icon: <MessageSquare className="w-8 h-8 text-cyan-500" />,
+    component: ChatApp,
+  },
   {
     id: "base64-encoder",
     nameKey: "apps.base64Title",

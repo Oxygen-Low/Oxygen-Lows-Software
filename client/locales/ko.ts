@@ -43,6 +43,7 @@ export const ko = {
     account: "계정",
     security: "보안",
     friends: "친구",
+    chat: "채팅",
     customize: "커스터마이즈",
     threeDBackground: "3D 배경",
     characters: "캐릭터",
@@ -297,6 +298,9 @@ export const ko = {
     signInToContinue: "계속하려면 로그인",
     backToApps: "앱 목록으로 돌아가기",
     adminRequired: "이 앱을 사용하려면 관리자 권한이 필요합니다.",
+    chatTitle: "채팅",
+    chatDesc:
+      "Discord 스타일 서버에서 종단 간 암호화(E2EE) 메시징 및 직접 P2P 음성/영상 통화로 친구들과 채팅하세요.",
     base64Title: "Base64 인코더/디코더",
     base64Desc:
       "Base64를 사용하여 텍스트와 데이터를 쉽게 인코딩 또는 디코딩합니다.",
@@ -2069,6 +2073,7 @@ notificationsTitle: "알림",
     games: "게임",
     storage: "저장공간",
     friends: "친구",
+    chat: "채팅",
     account: "계정",
     security: "보안",
     customize: "사용자 설정",
@@ -2331,6 +2336,11 @@ notificationsTitle: "알림",
     invalidProject: "유효하지 않은 프로젝트 파일입니다",
     importError: "파일 구문 분석 실패",
     imageImported: "이미지를 가져와 픽셀화했습니다!",
+  },
+  chat: {
+    title: "채팅",
+    subtitle:
+      "친구와 채팅하고, 서버에서 어울리며, 직접 음성 및 영상 통화를 할 수 있습니다.",
   },
   developerAuth: {
     title: "개발자 인증",
