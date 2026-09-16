@@ -83,7 +83,7 @@ describe("PasswordManagerApp", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    navigator.clipboard.writeText = vi.fn().mockResolvedValue(undefined);
+    (navigator.clipboard as any).writeText = vi.fn().mockResolvedValue(undefined);
 
     insertMock = vi.fn().mockResolvedValue({ data: null, error: null });
     updateMock = vi.fn().mockReturnValue({
