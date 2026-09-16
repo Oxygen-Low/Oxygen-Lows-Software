@@ -290,7 +290,7 @@ export const zhCN = {
     adminRequired: "需要管理员权限才能使用此应用。",
     chatTitle: "聊天",
     chatDesc:
-      "在类 Discord 服务器中与朋友聊天，支持端到端加密消息以及直接 P2P 语音和视频通话。",
+      "在加密聊天空间中与朋友和社区保持联系，支持直接 P2P 语音和视频通话。",
     base64Title: "Base64 编码/解码器",
     base64Desc: "轻松使用 Base64 对文本和数据进行编码或解码。",
     jsonFormatterTitle: "JSON 格式化工具",

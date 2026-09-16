@@ -313,7 +313,7 @@ export const es = {
       "Se requieren permisos de administrador para usar esta aplicación.",
     chatTitle: "Chat",
     chatDesc:
-      "Chatea con amigos en servidores estilo Discord con mensajería E2EE y llamadas de voz y video P2P directas.",
+      "Conéctate con amigos y comunidades en espacios de chat encriptados con llamadas directas de voz y video P2P.",
     base64Title: "Codificador/Decodificador Base64",
     base64Desc: "Codifica o decodifica fácilmente texto y datos usando Base64.",
     jsonFormatterTitle: "Formateador JSON",

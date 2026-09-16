@@ -303,7 +303,7 @@ export const en = {
     adminRequired: "Administrator permissions are required to use this app.",
     chatTitle: "Chat",
     chatDesc:
-      "Chat with friends in Discord-style servers with E2EE messaging and direct P2P voice & video calls.",
+      "Connect with friends and communities in encrypted chat spaces with direct P2P voice & video calling.",
     base64Title: "Base64 Encoder/Decoder",
     base64Desc: "Easily encode or decode text and data using Base64.",
     jsonFormatterTitle: "JSON Formatter",

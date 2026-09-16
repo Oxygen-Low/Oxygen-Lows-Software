@@ -300,7 +300,7 @@ export const ko = {
     adminRequired: "이 앱을 사용하려면 관리자 권한이 필요합니다.",
     chatTitle: "채팅",
     chatDesc:
-      "Discord 스타일 서버에서 종단 간 암호화(E2EE) 메시징 및 직접 P2P 음성/영상 통화로 친구들과 채팅하세요.",
+      "종단 간 암호화 채팅 공간과 직접 P2P 음성/영상 통화로 친구 및 커뮤니티와 소통하세요.",
     base64Title: "Base64 인코더/디코더",
     base64Desc:
       "Base64를 사용하여 텍스트와 데이터를 쉽게 인코딩 또는 디코딩합니다.",

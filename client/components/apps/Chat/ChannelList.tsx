@@ -13,6 +13,9 @@ import {
   Headphones,
   Shield,
   Lock,
+  Sparkles,
+  Radio,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -79,17 +82,20 @@ export function ChannelList() {
   };
 
   return (
-    <div className="flex flex-col w-60 bg-slate-900/90 border-r border-slate-800/80 shrink-0 select-none h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between h-14 px-4 border-b border-slate-800/80 font-bold text-white shadow-sm">
-        <span className="truncate">
-          {activeServerId === "dms" ? "Direct Messages" : activeServer?.name || "Server"}
-        </span>
+    <div className="flex flex-col w-64 bg-slate-900/80 backdrop-blur-md border-r border-slate-800/60 shrink-0 select-none h-full">
+      {/* Space Header */}
+      <div className="flex items-center justify-between h-14 px-4 border-b border-slate-800/70 shadow-sm bg-slate-900/50">
+        <div className="flex items-center gap-2 truncate">
+          <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="font-bold text-white text-sm tracking-wide truncate">
+            {activeServerId === "dms" ? "Direct Messages" : activeServer?.name || "Space Hub"}
+          </span>
+        </div>
         {activeServerId !== "dms" && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-slate-400 hover:text-white"
+            className="h-7 w-7 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/70 rounded-lg"
             onClick={() => setIsAddChannelOpen(true)}
           >
             <Plus className="h-4 w-4" />
@@ -101,14 +107,14 @@ export function ChannelList() {
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
         {activeServerId === "dms" ? (
           <div className="space-y-1">
-            <div className="flex items-center justify-between px-2 mb-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Conversations
+            <div className="flex items-center justify-between px-2 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Users className="h-3 w-3 text-cyan-400" /> Private Chats
               </span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-5 w-5 text-slate-400 hover:text-white"
+                className="h-5 w-5 text-slate-400 hover:text-cyan-300"
                 onClick={() => setIsNewDmOpen(true)}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -116,8 +122,8 @@ export function ChannelList() {
             </div>
 
             {dms.length === 0 ? (
-              <div className="px-3 py-4 text-xs text-slate-500 text-center">
-                No direct messages yet. Start a chat with a friend!
+              <div className="px-3 py-6 text-xs text-slate-500 text-center border border-dashed border-slate-800/80 rounded-xl my-2">
+                No direct chats yet. Click the + icon to start a secure conversation.
               </div>
             ) : (
               dms.map((dm) => {
@@ -129,28 +135,31 @@ export function ChannelList() {
                   <div
                     key={dm.id}
                     className={cn(
-                      "group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm transition-all cursor-pointer",
+                      "group flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-200 cursor-pointer",
                       isActive
-                        ? "bg-slate-800 text-white font-medium shadow-sm"
-                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                        ? "bg-slate-800/90 text-white font-medium shadow-md border border-slate-700/60"
+                        : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 border border-transparent"
                     )}
                     onClick={() => setActiveChannelId(dm.id)}
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="bg-primary/20 text-[10px] text-primary">
-                          {recipientName.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="truncate">{recipientName}</span>
-                      <Lock className="h-3 w-3 text-emerald-400/80 shrink-0" />
+                    <div className="flex items-center gap-2.5 truncate">
+                      <div className="relative">
+                        <Avatar className="h-7 w-7 border border-slate-700/60 shadow-inner">
+                          <AvatarFallback className="bg-gradient-to-br from-cyan-900/60 to-blue-900/60 text-[10px] font-bold text-cyan-300">
+                            {recipientName.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+                      </div>
+                      <span className="truncate text-xs font-semibold">{recipientName}</span>
+                      <Lock className="h-3 w-3 text-emerald-400/90 shrink-0" />
                     </div>
 
                     <div className="hidden group-hover:flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-slate-400 hover:text-emerald-400"
+                        className="h-6 w-6 text-slate-400 hover:text-emerald-400 hover:bg-emerald-950/40 rounded-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           startCall(dm.id, recipientName, false);
@@ -161,7 +170,7 @@ export function ChannelList() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-slate-400 hover:text-blue-400"
+                        className="h-6 w-6 text-slate-400 hover:text-cyan-400 hover:bg-cyan-950/40 rounded-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           startCall(dm.id, recipientName, true);
@@ -179,14 +188,14 @@ export function ChannelList() {
           <>
             {/* Text Channels */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between px-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Text Channels
+              <div className="flex items-center justify-between px-2 mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <MessageSquare className="h-3 w-3 text-cyan-400" /> Text Rooms
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 text-slate-400 hover:text-white"
+                  className="h-5 w-5 text-slate-400 hover:text-cyan-300"
                   onClick={() => {
                     setNewChannelType("text");
                     setIsAddChannelOpen(true);
@@ -202,30 +211,30 @@ export function ChannelList() {
                   <button
                     key={channel.id}
                     className={cn(
-                      "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition-all text-left",
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-200 text-left font-medium",
                       isActive
-                        ? "bg-slate-800 text-white font-medium shadow-sm"
-                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                        ? "bg-slate-800/90 text-white shadow-md border border-slate-700/60"
+                        : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 border border-transparent"
                     )}
                     onClick={() => setActiveChannelId(channel.id)}
                   >
-                    <Hash className="h-4 w-4 text-slate-500 shrink-0" />
+                    <Hash className="h-3.5 w-3.5 text-cyan-400/80 shrink-0" />
                     <span className="truncate">{channel.name}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Voice Channels */}
+            {/* Voice & Video Rooms */}
             <div className="space-y-1 pt-2">
-              <div className="flex items-center justify-between px-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Voice Channels
+              <div className="flex items-center justify-between px-2 mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Radio className="h-3 w-3 text-emerald-400" /> Voice & Video
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 text-slate-400 hover:text-white"
+                  className="h-5 w-5 text-slate-400 hover:text-emerald-300"
                   onClick={() => {
                     setNewChannelType("voice");
                     setIsAddChannelOpen(true);
@@ -241,20 +250,20 @@ export function ChannelList() {
                   <button
                     key={channel.id}
                     className={cn(
-                      "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm transition-all text-left",
+                      "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all duration-200 text-left font-medium",
                       isConnected
-                        ? "bg-emerald-950/40 text-emerald-400 font-medium border border-emerald-500/30"
-                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                        ? "bg-emerald-950/50 text-emerald-300 border border-emerald-500/40 shadow-md"
+                        : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 border border-transparent"
                     )}
                     onClick={() => joinVoiceChannel(channel)}
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <Volume2 className={cn("h-4 w-4 shrink-0", isConnected ? "text-emerald-400" : "text-slate-500")} />
+                    <div className="flex items-center gap-2.5 truncate">
+                      <Volume2 className={cn("h-3.5 w-3.5 shrink-0", isConnected ? "text-emerald-400" : "text-slate-500")} />
                       <span className="truncate">{channel.name}</span>
                     </div>
                     {isConnected && (
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full font-mono">
-                        Connected
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-mono font-semibold">
+                        Live
                       </span>
                     )}
                   </button>
@@ -265,30 +274,30 @@ export function ChannelList() {
         )}
       </div>
 
-      {/* User Footer / Controls */}
-      <div className="flex items-center justify-between h-14 px-3 bg-slate-950/80 border-t border-slate-800/80">
+      {/* User Status Bar */}
+      <div className="flex items-center justify-between h-14 px-3 bg-slate-950/90 border-t border-slate-800/70">
         <div className="flex items-center gap-2 truncate">
           <div className="relative">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary/20 text-xs font-bold text-primary">
+            <Avatar className="h-8 w-8 ring-1 ring-cyan-500/30 shadow-inner">
+              <AvatarFallback className="bg-gradient-to-br from-cyan-900/60 to-indigo-900/60 text-xs font-bold text-cyan-300">
                 {username.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-slate-950" />
+            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-950" />
           </div>
           <div className="flex flex-col truncate leading-tight">
             <span className="text-xs font-semibold text-white truncate">{username}</span>
-            <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-              <Shield className="h-2.5 w-2.5" /> E2EE Ready
+            <span className="text-[10px] text-cyan-400 flex items-center gap-1 font-mono">
+              <Shield className="h-2.5 w-2.5" /> E2EE Active
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className={cn("h-7 w-7", activeCall?.isAudioMuted ? "text-rose-400" : "text-slate-400 hover:text-white")}
+            className={cn("h-7 w-7 rounded-lg", activeCall?.isAudioMuted ? "text-rose-400 bg-rose-950/40" : "text-slate-400 hover:text-white hover:bg-slate-800")}
             onClick={toggleMute}
           >
             {activeCall?.isAudioMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
@@ -296,7 +305,7 @@ export function ChannelList() {
           <Button
             variant="ghost"
             size="icon"
-            className={cn("h-7 w-7", activeCall?.isDeafened ? "text-rose-400" : "text-slate-400 hover:text-white")}
+            className={cn("h-7 w-7 rounded-lg", activeCall?.isDeafened ? "text-rose-400 bg-rose-950/40" : "text-slate-400 hover:text-white hover:bg-slate-800")}
             onClick={toggleDeafen}
           >
             <Headphones className="h-3.5 w-3.5" />
@@ -304,36 +313,38 @@ export function ChannelList() {
         </div>
       </div>
 
-      {/* Create Channel Dialog */}
+      {/* Create Room Dialog */}
       <Dialog open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen}>
-        <DialogContent className="sm:max-w-md bg-slate-900 text-white border-slate-800">
+        <DialogContent className="sm:max-w-md bg-slate-900/95 border-slate-800 text-white backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Create Channel</DialogTitle>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-cyan-400" /> Create Room
+            </DialogTitle>
             <DialogDescription className="text-slate-400">
-              in {activeServer?.name || "Server"}
+              in {activeServer?.name || "Space"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-3">
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Channel Type
+                Room Type
               </Label>
               <RadioGroup
                 value={newChannelType}
                 onValueChange={(val: any) => setNewChannelType(val)}
                 className="grid grid-cols-2 gap-3"
               >
-                <div className="flex items-center space-x-2 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer">
+                <div className="flex items-center space-x-2 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer">
                   <RadioGroupItem value="text" id="text" />
                   <Label htmlFor="text" className="cursor-pointer flex items-center gap-1.5 text-sm">
-                    <Hash className="h-4 w-4 text-slate-400" /> Text
+                    <Hash className="h-4 w-4 text-cyan-400" /> Text Room
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer">
+                <div className="flex items-center space-x-2 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer">
                   <RadioGroupItem value="voice" id="voice" />
                   <Label htmlFor="voice" className="cursor-pointer flex items-center gap-1.5 text-sm">
-                    <Volume2 className="h-4 w-4 text-slate-400" /> Voice
+                    <Volume2 className="h-4 w-4 text-emerald-400" /> Voice & Video
                   </Label>
                 </div>
               </RadioGroup>
@@ -341,14 +352,14 @@ export function ChannelList() {
 
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Channel Name
+                Room Name
               </Label>
               <Input
-                placeholder="new-channel"
+                placeholder="e.g. general-chat, team-voice"
                 value={newChannelName}
                 onChange={(e) => setNewChannelName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateChannel()}
-                className="bg-slate-950 border-slate-800 text-white"
+                className="bg-slate-950 border-slate-800 text-white focus-visible:ring-cyan-500"
               />
             </div>
           </div>
@@ -357,8 +368,12 @@ export function ChannelList() {
             <Button variant="ghost" onClick={() => setIsAddChannelOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateChannel} disabled={!newChannelName.trim()}>
-              Create Channel
+            <Button
+              onClick={handleCreateChannel}
+              disabled={!newChannelName.trim()}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold"
+            >
+              Create Room
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -366,11 +381,13 @@ export function ChannelList() {
 
       {/* Start Direct Message Dialog */}
       <Dialog open={isNewDmOpen} onOpenChange={setIsNewDmOpen}>
-        <DialogContent className="sm:max-w-md bg-slate-900 text-white border-slate-800">
+        <DialogContent className="sm:max-w-md bg-slate-900/95 border-slate-800 text-white backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">New Direct Message</DialogTitle>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Lock className="h-5 w-5 text-emerald-400" /> Start Encrypted Direct Chat
+            </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Start an end-to-end encrypted direct chat with a friend.
+              Zero-knowledge E2EE private chat with ECDH key exchange.
             </DialogDescription>
           </DialogHeader>
 
@@ -383,7 +400,7 @@ export function ChannelList() {
                 placeholder="e.g. user_12345"
                 value={dmFriendId}
                 onChange={(e) => setDmFriendId(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white"
+                className="bg-slate-950 border-slate-800 text-white focus-visible:ring-cyan-500"
               />
             </div>
             <div className="space-y-2">
@@ -395,7 +412,7 @@ export function ChannelList() {
                 value={dmFriendName}
                 onChange={(e) => setDmFriendName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleStartDm()}
-                className="bg-slate-950 border-slate-800 text-white"
+                className="bg-slate-950 border-slate-800 text-white focus-visible:ring-cyan-500"
               />
             </div>
           </div>
@@ -404,7 +421,11 @@ export function ChannelList() {
             <Button variant="ghost" onClick={() => setIsNewDmOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleStartDm} disabled={!dmFriendId.trim()}>
+            <Button
+              onClick={handleStartDm}
+              disabled={!dmFriendId.trim()}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold"
+            >
               Start Conversation
             </Button>
           </DialogFooter>

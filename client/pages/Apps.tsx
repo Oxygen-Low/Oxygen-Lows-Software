@@ -147,7 +147,8 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.chatTitle",
     defaultName: "Chat",
     descKey: "apps.chatDesc",
-    defaultDesc: "Chat with friends in Discord-style servers with E2EE messaging and direct P2P voice & video calls.",
+    defaultDesc:
+      "Connect with friends and communities in encrypted chat spaces with direct P2P voice & video calling.",
     categories: ["All", "Social"],
     availability: "web-and-desktop",
     icon: <MessageSquare className="w-8 h-8 text-cyan-500" />,
