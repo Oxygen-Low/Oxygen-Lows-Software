@@ -42,7 +42,7 @@ chatRouter.get("/state", async (c) => {
   const dms = allDms.filter((dm: any) => dm.participants && dm.participants.includes(userId));
 
   return c.json({
-    user: { id: userId, username: user.username, display_name: user.display_name || user.username },
+    user: { id: userId, username: user.username, display_name: (user as any).display_name || user.username },
     servers,
     channels,
     dms,
@@ -209,7 +209,7 @@ chatRouter.post("/messages", async (c) => {
     id: `msg_${crypto.randomUUID()}`,
     target_id: targetId,
     sender_id: userId,
-    sender_name: user.display_name || user.username,
+    sender_name: (user as any).display_name || user.username,
     content: isEncrypted ? "[Encrypted Message]" : content,
     is_encrypted: isEncrypted,
     encrypted_payload: encryptedPayload,
@@ -250,7 +250,7 @@ chatRouter.post("/calls/signal", async (c) => {
   const eventPayload = {
     type,
     senderId: userId,
-    senderName: user.display_name || user.username,
+    senderName: (user as any).display_name || user.username,
     targetUserId,
     roomId,
     isVideo: !!isVideo,

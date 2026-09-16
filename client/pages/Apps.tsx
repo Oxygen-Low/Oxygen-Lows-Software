@@ -30,7 +30,6 @@ import {
   KeyRound,
   Gamepad2,
   ClipboardList,
-  Trophy,
   Palette,
   Paintbrush,
   ImagePlus,
@@ -56,7 +55,6 @@ import { DefenderApp } from "@/components/apps/WebDefender";
 import { PasswordManagerApp } from "@/components/apps/PasswordManager";
 import { GameLibraryApp } from "@/components/apps/GameLibrary";
 import { SurveysApp } from "@/components/apps/Surveys";
-import { SoftwareAwardsApp } from "@/components/apps/SoftwareAwards";
 import { ImageStudioApp } from "@/components/apps/ImageStudio";
 import { PixelArtStudioApp } from "@/components/apps/PixelArtStudio";
 import { ThreeDStudioApp } from "@/components/studio3d/ThreeDStudioApp";
@@ -359,19 +357,6 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <ClipboardList className="w-8 h-8 text-cyan-500" />,
     component: SurveysApp,
-  },
-  {
-    id: "software-awards",
-    nameKey: "apps.softwareAwardsTitle",
-    defaultName: "Software Awards",
-    descKey: "apps.softwareAwardsDesc",
-    defaultDesc:
-      "Vote for your favorite software and see the community's top choices in our monthly awards.",
-    categories: ["All", "Social", "Utility"],
-    availability: "web-and-desktop",
-    icon: <Trophy className="w-8 h-8 text-cyan-500" />,
-    component: SoftwareAwardsApp,
-    authRequired: true,
   },
   {
     id: "image-studio",
