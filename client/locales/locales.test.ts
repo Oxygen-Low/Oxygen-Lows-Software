@@ -347,5 +347,12 @@ type _AssertKoPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, ty
 type _AssertRuPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, typeof ru.pixelArtStudio>>;
 type _AssertZhPixelArtStudio = AssertTrue<ExactKeys<typeof en.pixelArtStudio, typeof zhCN.pixelArtStudio>>;
 
+// 9. games leaf keys exact parity across all 6 locales
+type _AssertEsGames = AssertTrue<ExactKeys<typeof en.games, typeof es.games>>;
+type _AssertJaGames = AssertTrue<ExactKeys<typeof en.games, typeof ja.games>>;
+type _AssertKoGames = AssertTrue<ExactKeys<typeof en.games, typeof ko.games>>;
+type _AssertRuGames = AssertTrue<ExactKeys<typeof en.games, typeof ru.games>>;
+type _AssertZhGames = AssertTrue<ExactKeys<typeof en.games, typeof zhCN.games>>;
+
 
 

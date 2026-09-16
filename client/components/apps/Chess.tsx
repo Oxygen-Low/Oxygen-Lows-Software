@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { RotateCcw, Sparkles, Trophy, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 // Piece values for simple evaluation
 const PIECE_VALUES: Record<string, number> = {
@@ -18,6 +19,12 @@ const PIECE_VALUES: Record<string, number> = {
 
 // Evaluate the board from AI's perspective
 function evaluateBoard(game: Chess, aiColor: "w" | "b"): number {
+  if (game.isCheckmate()) {
+    return game.turn() === aiColor ? -10000 : 10000;
+  }
+  if (game.isDraw()) {
+    return 0;
+  }
   let totalEvaluation = 0;
   const board = game.board();
 
@@ -41,7 +48,7 @@ function calculateBestMove(game: Chess, aiColor: "w" | "b"): string {
   if (possibleMoves.length === 0) return "";
 
   let bestMove = possibleMoves[0];
-  let bestValue = -9999;
+  let bestValue = -99999;
 
   for (const move of possibleMoves) {
     game.move(move.san);
@@ -65,9 +72,10 @@ function calculateBestMove(game: Chess, aiColor: "w" | "b"): string {
 }
 
 export function ChessApp() {
-  const [game, setGame] = useState<Chess>(new Chess());
+  const { t } = useTranslation();
+  const [game, setGame] = useState<Chess>(() => new Chess());
   const [playerColor, setPlayerColor] = useState<"w" | "b">("w");
-  const [gameStatus, setGameStatus] = useState<string>("White to move");
+  const [gameStatus, setGameStatus] = useState<string>("");
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [boardWidth, setBoardWidth] = useState(400);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
@@ -91,38 +99,52 @@ export function ChessApp() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const updateStatus = useCallback((currentGame: Chess) => {
-    if (currentGame.isCheckmate()) {
-      setIsGameOver(true);
-      setGameStatus(
-        `Checkmate! ${currentGame.turn() === "w" ? "Black" : "White"} wins.`,
-      );
-    } else if (currentGame.isDraw()) {
-      setIsGameOver(true);
-      if (currentGame.isStalemate()) {
-        setGameStatus("Draw by stalemate.");
-      } else if (currentGame.isThreefoldRepetition()) {
-        setGameStatus("Draw by repetition.");
-      } else if (currentGame.isInsufficientMaterial()) {
-        setGameStatus("Draw by insufficient material.");
+  const updateStatus = useCallback(
+    (currentGame: Chess) => {
+      if (currentGame.isCheckmate()) {
+        setIsGameOver(true);
+        const winner =
+          currentGame.turn() === "w"
+            ? t("games.chessBlackWins")
+            : t("games.chessWhiteWins");
+        setGameStatus(winner);
+      } else if (currentGame.isDraw()) {
+        setIsGameOver(true);
+        if (currentGame.isStalemate()) {
+          setGameStatus(t("games.chessDrawStalemate"));
+        } else if (currentGame.isThreefoldRepetition()) {
+          setGameStatus(t("games.chessDrawRepetition"));
+        } else if (currentGame.isInsufficientMaterial()) {
+          setGameStatus(t("games.chessDrawMaterial"));
+        } else {
+          setGameStatus(t("games.chessDraw"));
+        }
       } else {
-        setGameStatus("Game drawn.");
+        setIsGameOver(false);
+        let statusText =
+          currentGame.turn() === "w"
+            ? t("games.chessWhiteToMove")
+            : t("games.chessBlackToMove");
+        if (currentGame.isCheck()) {
+          statusText += ` - ${t("games.chessCheck")}`;
+        }
+        setGameStatus(statusText);
       }
-    } else {
-      setIsGameOver(false);
-      let statusText =
-        currentGame.turn() === "w" ? "White to move" : "Black to move";
-      if (currentGame.isCheck()) {
-        statusText += " - Check!";
-      }
-      setGameStatus(statusText);
-    }
-  }, []);
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    updateStatus(game);
+  }, [updateStatus, game]);
 
   const makeMove = useCallback(
     (move: any) => {
       try {
-        const gameCopy = new Chess(game.fen());
+        const gameCopy = new Chess();
+        if (game.history().length > 0) {
+          gameCopy.loadPgn(game.pgn());
+        }
         const result = gameCopy.move(move);
 
         if (result) {
@@ -130,7 +152,7 @@ export function ChessApp() {
           updateStatus(gameCopy);
           return true;
         }
-      } catch (e) {
+      } catch {
         // Invalid move
       }
       return false;
@@ -143,7 +165,10 @@ export function ChessApp() {
     if (!isGameOver && game.turn() !== playerColor) {
       const aiColor = playerColor === "w" ? "b" : "w";
       const timer = setTimeout(() => {
-        const gameCopy = new Chess(game.fen());
+        const gameCopy = new Chess();
+        if (game.history().length > 0) {
+          gameCopy.loadPgn(game.pgn());
+        }
         const bestMove = calculateBestMove(gameCopy, aiColor);
 
         if (bestMove) {
@@ -155,21 +180,43 @@ export function ChessApp() {
     }
   }, [game, isGameOver, makeMove, playerColor]);
 
-  function onDrop(sourceSquare: string, targetSquare: string, piece: string) {
+  function onPieceDrop({
+    piece,
+    sourceSquare,
+    targetSquare,
+  }: {
+    piece: { pieceType: string };
+    sourceSquare: string;
+    targetSquare: string | null;
+  }): boolean {
     // Only allow player to move via drag and drop
-    if (game.turn() !== playerColor || isGameOver) return false;
+    if (!targetSquare || game.turn() !== playerColor || isGameOver) return false;
 
-    const promotion = piece[1].toLowerCase() ?? "q";
+    const isPawn = piece.pieceType.toLowerCase().endsWith("p");
+    const isPromotion =
+      isPawn &&
+      ((playerColor === "w" && targetSquare.endsWith("8")) ||
+        (playerColor === "b" && targetSquare.endsWith("1")));
+
     const success = makeMove({
       from: sourceSquare,
       to: targetSquare,
-      promotion: promotion,
+      promotion: isPromotion ? "q" : undefined,
     });
     if (success) {
       setMoveFrom(null);
       setOptionSquares({});
     }
-    return success;
+    return Boolean(success);
+  }
+
+  function canDragPiece({
+    piece,
+  }: {
+    piece: { pieceType: string };
+  }): boolean {
+    if (isGameOver || game.turn() !== playerColor) return false;
+    return piece.pieceType.startsWith(playerColor);
   }
 
   function getMoveOptions(square: string) {
@@ -183,16 +230,15 @@ export function ChessApp() {
     }
 
     const newSquares: Record<string, React.CSSProperties> = {};
-    moves.map((move) => {
+    moves.forEach((move) => {
       newSquares[move.to] = {
         background:
           game.get(move.to as any) &&
-          game.get(move.to as any).color !== game.get(square as any)?.color
-            ? "radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)"
-            : "radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)",
+          game.get(move.to as any)?.color !== game.get(square as any)?.color
+            ? "radial-gradient(circle, rgba(239, 68, 68, 0.5) 85%, transparent 85%)"
+            : "radial-gradient(circle, rgba(0, 0, 0, 0.3) 25%, transparent 25%)",
         borderRadius: "50%",
       };
-      return move;
     });
     newSquares[square] = {
       background: "rgba(255, 255, 0, 0.4)",
@@ -201,7 +247,7 @@ export function ChessApp() {
     return true;
   }
 
-  function onSquareClick(square: string) {
+  function onSquareClick({ square }: { square: string }) {
     if (game.turn() !== playerColor || isGameOver) return;
 
     if (!moveFrom) {
@@ -218,10 +264,11 @@ export function ChessApp() {
     const foundMove = moveOptions.find((m) => m.to === square);
 
     if (foundMove) {
+      const isPromotion = foundMove.promotion !== undefined;
       const success = makeMove({
         from: moveFrom,
         to: square,
-        promotion: "q",
+        promotion: isPromotion ? "q" : undefined,
       });
       if (success) {
         setMoveFrom(null);
@@ -229,8 +276,9 @@ export function ChessApp() {
       }
     } else {
       const hasMoveOptions = getMoveOptions(square);
-      if (hasMoveOptions) setMoveFrom(square);
-      else {
+      if (hasMoveOptions) {
+        setMoveFrom(square);
+      } else {
         setMoveFrom(null);
         setOptionSquares({});
       }
@@ -252,7 +300,7 @@ export function ChessApp() {
       <div className="flex items-center gap-3 mb-6">
         <Sparkles className="w-8 h-8 text-cyan-500" />
         <h2 className="text-3xl font-bold text-white tracking-tight">
-          Play vs AI
+          {t("games.chessPlayVsAi")}
         </h2>
       </div>
 
@@ -262,7 +310,9 @@ export function ChessApp() {
           <Card className="bg-slate-900/50 border-slate-800">
             <CardContent className="p-6 flex flex-col gap-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <span className="text-slate-400 font-medium">Status</span>
+                <span className="text-slate-400 font-medium">
+                  {t("games.chessStatus")}
+                </span>
                 <Badge
                   variant="outline"
                   className={
@@ -274,10 +324,10 @@ export function ChessApp() {
                   }
                 >
                   {isGameOver
-                    ? "Game Over"
+                    ? t("games.chessGameOver")
                     : game.turn() === playerColor
-                      ? "Your Turn"
-                      : "AI Thinking..."}
+                      ? t("games.chessYourTurn")
+                      : t("games.chessAiThinking")}
                 </Badge>
               </div>
 
@@ -297,7 +347,7 @@ export function ChessApp() {
                   className={`flex-1 flex items-center justify-center gap-2 text-white ${playerColor === "w" ? "bg-cyan-600 hover:bg-cyan-500" : "bg-slate-800 hover:bg-slate-700"}`}
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Play White
+                  {t("games.chessPlayWhite")}
                 </Button>
                 <Button
                   onClick={() => resetGame("b")}
@@ -305,7 +355,7 @@ export function ChessApp() {
                   className={`flex-1 flex items-center justify-center gap-2 text-white ${playerColor === "b" ? "bg-purple-600 hover:bg-purple-500" : "bg-slate-800 hover:bg-slate-700"}`}
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Play Black
+                  {t("games.chessPlayBlack")}
                 </Button>
               </div>
             </CardContent>
@@ -314,12 +364,12 @@ export function ChessApp() {
           <Card className="bg-slate-900/50 border-slate-800 flex-grow">
             <CardContent className="p-6">
               <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
-                Move History
+                {t("games.chessMoveHistory")}
               </h3>
               <div className="h-48 overflow-y-auto pr-2 custom-scrollbar">
                 {game.history().length === 0 ? (
                   <p className="text-slate-600 text-center italic mt-10">
-                    No moves yet
+                    {t("games.chessNoMoves")}
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -363,21 +413,17 @@ export function ChessApp() {
             style={{ maxWidth: boardWidth }}
           >
             <Chessboard
-              {...({
+              options={{
                 position: game.fen(),
-                onPieceDrop: onDrop,
+                onPieceDrop: onPieceDrop,
                 onSquareClick: onSquareClick,
-                customSquareStyles: optionSquares,
-                boardWidth: boardWidth,
-                customDarkSquareStyle: { backgroundColor: "#334155" },
-                customLightSquareStyle: { backgroundColor: "#cbd5e1" },
-                arePremovesAllowed: false,
+                canDragPiece: canDragPiece,
+                squareStyles: optionSquares,
+                darkSquareStyle: { backgroundColor: "#334155" },
+                lightSquareStyle: { backgroundColor: "#cbd5e1" },
                 boardOrientation: playerColor === "w" ? "white" : "black",
-                isDraggablePiece: ({ piece }: any) =>
-                  piece[0] === playerColor &&
-                  game.turn() === playerColor &&
-                  !isGameOver,
-              } as any)}
+                animationDurationInMs: 200,
+              }}
             />
           </div>
         </div>
