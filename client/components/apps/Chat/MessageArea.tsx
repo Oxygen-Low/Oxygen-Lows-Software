@@ -9,21 +9,12 @@ import {
   Hash,
   Phone,
   Video,
-  ShieldCheck,
   Lock,
   Smile,
   FileText,
   Key,
-  CheckCircle2,
   Sparkles,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -36,13 +27,11 @@ export function MessageArea() {
     activeChannelId,
     messages,
     startCall,
-    keyPair,
   } = useChat();
 
   const { session } = useAuth();
   const userId = session?.user?.id ? String(session.user.id) : null;
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isCryptoInfoOpen, setIsCryptoInfoOpen] = useState(false);
 
   const activeChannel = channels.find((c) => c.id === activeChannelId);
   const activeDm = dms.find((d) => d.id === activeChannelId);
@@ -79,15 +68,6 @@ export function MessageArea() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-white text-sm tracking-wide">{title}</span>
-              {isDm && (
-                <button
-                  onClick={() => setIsCryptoInfoOpen(true)}
-                  className="flex items-center gap-1 bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-mono transition-colors"
-                >
-                  <Lock className="h-2.5 w-2.5" />
-                  <span>E2EE Verified</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -204,52 +184,6 @@ export function MessageArea() {
 
       {/* Message Input */}
       <MessageInput channelName={title} isDm={isDm} />
-
-      {/* Cryptography Info Dialog */}
-      <Dialog open={isCryptoInfoOpen} onOpenChange={setIsCryptoInfoOpen}>
-        <DialogContent className="sm:max-w-md bg-slate-900/95 border-slate-800 text-white backdrop-blur-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-emerald-400">
-              <ShieldCheck className="h-6 w-6" /> End-to-End Encryption Details
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Cryptographic session parameters verified by Web Crypto API.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-3 text-xs">
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80 space-y-2">
-              <div className="flex justify-between text-slate-400">
-                <span>Algorithm:</span>
-                <span className="font-mono text-cyan-300">ECDH (NIST P-256)</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Cipher:</span>
-                <span className="font-mono text-cyan-300">AES-256-GCM</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Key Derivation:</span>
-                <span className="font-mono text-cyan-300">HKDF / SHA-256</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Zero-Knowledge:</span>
-                <span className="font-mono text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Active
-                </span>
-              </div>
-            </div>
-
-            {keyPair && (
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold text-slate-400">Your Public Fingerprint</span>
-                <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-[10px] font-mono text-slate-400 break-all select-all">
-                  {keyPair.publicKey.slice(0, 64)}...
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

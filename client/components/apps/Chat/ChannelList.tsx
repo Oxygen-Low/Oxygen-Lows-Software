@@ -11,7 +11,6 @@ import {
   Mic,
   MicOff,
   Headphones,
-  Shield,
   Lock,
   Sparkles,
   Radio,
@@ -287,9 +286,6 @@ export function ChannelList() {
           </div>
           <div className="flex flex-col truncate leading-tight">
             <span className="text-xs font-semibold text-white truncate">{username}</span>
-            <span className="text-[10px] text-cyan-400 flex items-center gap-1 font-mono">
-              <Shield className="h-2.5 w-2.5" /> E2EE Active
-            </span>
           </div>
         </div>
 
