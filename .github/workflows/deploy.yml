@@ -1,4 +1,4 @@
-name: Deploy to Plesk
+name: Deploy
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
       - name: Build project
         run: pnpm run build
 
-      - name: Commit and push to plesk branch
+      - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
