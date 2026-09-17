@@ -149,7 +149,33 @@ describe("Models Component UI", () => {
     });
   });
 
-  it("should switch to Host tab and show local controls", async () => {
+  it("should show desktop required gate on Host tab when running in web mode", async () => {
+    delete (window as any).chrome;
+
+    render(
+      <MemoryRouter>
+        <ModelsApp />
+      </MemoryRouter>
+    );
+
+    const hostTabButton = screen.getByRole("tab", { name: /Host Models/i });
+    fireEvent.keyDown(hostTabButton, { key: "Enter" });
+    fireEvent.click(hostTabButton);
+
+    await waitFor(() => {
+      expect(screen.getByText("Desktop App Required to Host Models")).toBeDefined();
+      expect(screen.getAllByText("Download Desktop App").length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText("Browse Shared Models")).toBeDefined();
+    });
+  });
+
+  it("should switch to Host tab and show local controls when running in desktop mode", async () => {
+    (window as any).chrome = {
+      webview: {
+        postMessage: vi.fn(),
+      },
+    };
+
     render(
       <MemoryRouter>
         <ModelsApp />
@@ -164,6 +190,8 @@ describe("Models Component UI", () => {
       expect(screen.getByText("Share Local Models")).toBeDefined();
       expect(screen.getByText("Scan Local Engines")).toBeDefined();
     });
+
+    delete (window as any).chrome;
   });
 
   it("should switch to Pinned tab", async () => {

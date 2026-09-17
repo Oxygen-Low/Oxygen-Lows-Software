@@ -22,11 +22,25 @@ describe("Models Server Relay Routes", () => {
     vi.restoreAllMocks();
   });
 
-  it("should reject unauthorized host registration", async () => {
-    vi.spyOn(auth, "resolveUserFromToken").mockResolvedValue(null as any);
+  it("should reject non-desktop host registration with 403", async () => {
     const res = await app.request("/api/models/relay/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ models: [] }),
+    });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toContain("desktop app");
+  });
+
+  it("should reject unauthorized host registration when on desktop", async () => {
+    vi.spyOn(auth, "resolveUserFromToken").mockResolvedValue(null as any);
+    const res = await app.request("/api/models/relay/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-oxygen-client": "desktop",
+      },
       body: JSON.stringify({ models: [] }),
     });
     expect(res.status).toBe(401);
@@ -44,6 +58,7 @@ describe("Models Server Relay Routes", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer mock-token-100",
+        "x-oxygen-client": "desktop",
       },
       body: JSON.stringify({
         models: [
@@ -97,6 +112,7 @@ describe("Models Server Relay Routes", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer mock-token-100",
+        "x-oxygen-client": "desktop",
       },
       body: JSON.stringify({
         models: [
@@ -143,6 +159,7 @@ describe("Models Server Relay Routes", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer mock-token-100",
+        "x-oxygen-client": "desktop",
       },
       body: JSON.stringify({
         models: [
@@ -277,6 +294,7 @@ describe("Models Server Relay Routes", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer token-700",
+        "x-oxygen-client": "desktop",
       },
       body: JSON.stringify({
         models: [

@@ -125,7 +125,14 @@ class ModelsHostRelayManager {
     } catch {}
   }
 
+  public isHostingAvailable(): boolean {
+    return isDesktopBridgeAvailable();
+  }
+
   public async startHosting(token: string, models: LocalSharedModelConfig[]) {
+    if (!isDesktopBridgeAvailable()) {
+      throw new Error("Model hosting is only available in the Oxygen Low's Software desktop app.");
+    }
     this.authToken = token;
     this.registeredModels = models;
 
@@ -135,6 +142,7 @@ class ModelsHostRelayManager {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        "x-oxygen-client": "desktop",
       },
       body: JSON.stringify({
         models,
@@ -169,10 +177,20 @@ class ModelsHostRelayManager {
   }
 
   private async connectTunnel(token: string, signal: AbortSignal) {
-    const url = `/api/models/relay/tunnel?token=${encodeURIComponent(token)}`;
+    if (!isDesktopBridgeAvailable()) {
+      this.isConnected = false;
+      this.notify();
+      return;
+    }
+    const url = `/api/models/relay/tunnel?token=${encodeURIComponent(token)}&client=desktop`;
 
     try {
-      const response = await fetch(url, { signal });
+      const response = await fetch(url, {
+        signal,
+        headers: {
+          "x-oxygen-client": "desktop",
+        },
+      });
       if (!response.ok || !response.body) {
         this.isConnected = false;
         this.notify();
@@ -473,6 +491,9 @@ class ModelsHostRelayManager {
 
   // Probe local models using direct fetch or desktop bridge
   public async discoverLocalModels(customUrls: string[] = []): Promise<Array<{ model_id: string; provider: "ollama" | "lmstudio" | "kobold" | "python" | "custom"; name?: string; customUrl?: string }>> {
+    if (!isDesktopBridgeAvailable()) {
+      return [];
+    }
     const discovered: Array<{ model_id: string; provider: any; name?: string; customUrl?: string }> = [];
     const seen = new Set<string>();
 

@@ -2491,5 +2491,12 @@ notificationsTitle: "알림",
     noModelsFound: "조건과 일치하는 공유 모델이 없습니다.",
     noPinnedModels: "아직 고정한 공유 모델이 없습니다.",
     hostNotConfigured: "호스팅은 데스크톱 앱에서 사용하거나 로컬 엔진이 실행 중일 때 가능합니다.",
+    desktopRequiredHostTitle: "모델을 호스팅하려면 데스크톱 앱이 필요합니다",
+    desktopRequiredHostDesc:
+      "모델 호스팅은 데스크톱 전용 기능입니다. 로컬 AI 엔진(Ollama, LM Studio, KoboldCPP)에 연결하고 암호화된 릴레이 터널을 설정하려면 Oxygen Low's Software 데스크톱 앱이 필요합니다. 웹에서는 공유된 모델을 자유롭게 탐색하고 고정하여 사용할 수 있습니다.",
+    downloadDesktopApp: "데스크톱 앱 다운로드",
+    browseModelsAction: "공유 모델 둘러보기",
+    desktopFeatureBadge: "데스크톱 기능",
+    webModeBadge: "웹 모드",
   },
 } as const;

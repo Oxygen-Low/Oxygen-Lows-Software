@@ -35,7 +35,31 @@ describe("modelsHostRelay Client Manager", () => {
     expect(modelsHostRelay.getState().masterPaused).toBe(false);
   });
 
-  it("should discover local models across custom endpoints", async () => {
+  it("should disable hosting and discovery when desktop bridge is not available (web mode)", async () => {
+    delete (globalThis as any).window?.chrome;
+    delete (globalThis as any).chrome;
+
+    expect(modelsHostRelay.isHostingAvailable()).toBe(false);
+
+    const discovered = await modelsHostRelay.discoverLocalModels(["http://localhost:8080/v1"]);
+    expect(discovered).toEqual([]);
+
+    await expect(modelsHostRelay.startHosting("test-token", [])).rejects.toThrow(
+      "Model hosting is only available in the Oxygen Low's Software desktop app."
+    );
+  });
+
+  it("should discover local models across custom endpoints when desktop bridge is present", async () => {
+    // Mock desktop bridge presence
+    (globalThis as any).window = globalThis.window || {};
+    (globalThis as any).window.chrome = {
+      webview: {
+        postMessage: vi.fn(),
+      },
+    };
+
+    expect(modelsHostRelay.isHostingAvailable()).toBe(true);
+
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
       const urlStr = String(url);
       if (urlStr.includes("11434/api/tags")) {
@@ -70,5 +94,7 @@ describe("modelsHostRelay Client Manager", () => {
     expect(models.some((m) => m.model_id === "llama3.2:3b")).toBe(true);
     expect(models.some((m) => m.model_id === "qwen2.5-coder-7b-instruct")).toBe(true);
     expect(models.some((m) => m.model_id === "my-vllm-model")).toBe(true);
+
+    delete (globalThis as any).window.chrome;
   });
 });

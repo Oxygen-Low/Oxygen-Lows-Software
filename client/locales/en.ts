@@ -2512,6 +2512,13 @@ export const en = {
     noModelsFound: "No shared models found matching your criteria.",
     noPinnedModels: "You have not pinned any shared models yet.",
     hostNotConfigured: "Hosting is available from the desktop application or with local engines running.",
+    desktopRequiredHostTitle: "Desktop App Required to Host Models",
+    desktopRequiredHostDesc:
+      "Model hosting is a desktop-exclusive feature. It requires the Oxygen Low's Software desktop app to connect to your local AI engines (Ollama, LM Studio, KoboldCPP) and establish an encrypted relay tunnel. You can still discover, pin, and use shared models directly on the web.",
+    downloadDesktopApp: "Download Desktop App",
+    browseModelsAction: "Browse Shared Models",
+    desktopFeatureBadge: "Desktop Feature",
+    webModeBadge: "Web Mode",
   },
 } as const;
 

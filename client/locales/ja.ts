@@ -2514,5 +2514,12 @@ notificationsTitle: "通知",
     noModelsFound: "条件に一致する共有モデルが見つかりませんでした。",
     noPinnedModels: "まだ共有モデルを固定していません。",
     hostNotConfigured: "ホスティングはデスクトップアプリまたはローカルエンジンの実行時に利用可能です。",
+    desktopRequiredHostTitle: "モデルのホストにはデスクトップアプリが必要です",
+    desktopRequiredHostDesc:
+      "モデルのホストはデスクトップ専用機能です。ローカルのAIエンジン（Ollama、LM Studio、KoboldCPP）に接続し暗号化されたリレートンネルを確立するには、Oxygen Low's Software デスクトップアプリが必要です。Web上でも共有モデルの検索、ピン留め、利用は自由に行えます。",
+    downloadDesktopApp: "デスクトップアプリをダウンロード",
+    browseModelsAction: "共有モデルを探す",
+    desktopFeatureBadge: "デスクトップ機能",
+    webModeBadge: "Webモード",
   },
 } as const;

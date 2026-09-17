@@ -210,6 +210,14 @@ export function _resetModelsState() {
 // ---------------------------------------------------------------------------
 
 modelsRouter.post("/relay/register", async (c) => {
+  const isDesktop = c.req.header("x-oxygen-client") === "desktop";
+  if (!isDesktop) {
+    return c.json(
+      { error: "Model hosting is only supported on the Oxygen Low's Software desktop app." },
+      403,
+    );
+  }
+
   const token = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
   const user = token ? await resolveUserFromToken(token) : null;
   if (!user) {
@@ -291,6 +299,16 @@ modelsRouter.post("/relay/register", async (c) => {
 
 // Host Tunnel: SSE stream where host listens for incoming inference requests
 modelsRouter.get("/relay/tunnel", async (c) => {
+  const isDesktop =
+    c.req.header("x-oxygen-client") === "desktop" ||
+    c.req.query("client") === "desktop";
+  if (!isDesktop) {
+    return c.json(
+      { error: "Model hosting is only supported on the Oxygen Low's Software desktop app." },
+      403,
+    );
+  }
+
   const token =
     c.req.query("token") ||
     c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");

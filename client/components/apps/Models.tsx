@@ -31,7 +31,10 @@ import {
   Loader2,
   ChevronRight,
   Sliders,
+  Globe,
+  Download,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -66,6 +69,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useToast } from "@/components/ui/use-toast";
+import { isDesktopBridgeAvailable } from "@/lib/desktopBridge";
 import {
   modelsHostRelay,
   LocalSharedModelConfig,
@@ -112,6 +116,9 @@ export function Models() {
   const [sharedModels, setSharedModels] = useState<SharedModelItem[]>([]);
   const [pinnedModelIds, setPinnedModelIds] = useState<string[]>([]);
   const [isLoadingShared, setIsLoadingShared] = useState(false);
+
+  // Desktop bridge detection: model hosting is a desktop-only capability
+  const isDesktop = isDesktopBridgeAvailable();
 
   // Host configuration state
   const [hostState, setHostState] = useState<HostRelayState>(
@@ -196,11 +203,11 @@ export function Models() {
     }
   }, [session?.access_token]);
 
-  // Load host config on mount
+  // Load host config on mount (desktop only)
   useEffect(() => {
     fetchSharedModels();
 
-    if (session?.access_token) {
+    if (isDesktop && session?.access_token) {
       fetch("/api/models/host/config", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
@@ -217,10 +224,11 @@ export function Models() {
         })
         .catch(() => {});
     }
-  }, [session?.access_token, fetchSharedModels]);
+  }, [session?.access_token, fetchSharedModels, isDesktop]);
 
-  // Initial local models scan
+  // Initial local models scan (desktop only)
   const handleScanLocal = useCallback(async () => {
+    if (!isDesktop) return;
     setIsScanning(true);
     try {
       const discovered =
@@ -262,14 +270,17 @@ export function Models() {
     } finally {
       setIsScanning(false);
     }
-  }, [customEndpoints, session?.user?.id, t, toast]);
+  }, [customEndpoints, session?.user?.id, t, toast, isDesktop]);
 
   useEffect(() => {
-    handleScanLocal();
-  }, [handleScanLocal]);
+    if (isDesktop) {
+      handleScanLocal();
+    }
+  }, [handleScanLocal, isDesktop]);
 
-  // Start / update hosting whenever configured models change
+  // Start / update hosting whenever configured models change (desktop only)
   const handleSaveHostConfig = async (updated: LocalSharedModelConfig[]) => {
+    if (!isDesktop) return;
     setConfiguredModels(updated);
     if (!session?.access_token) return;
 
@@ -535,60 +546,83 @@ export function Models() {
             </div>
           </div>
 
-          {/* Quick Host Controls & Status */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className={
-                hostState.isConnected
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                  : "bg-slate-800 text-slate-400 border-slate-700"
-              }
-            >
-              <Radio
-                className={`w-3.5 h-3.5 mr-1.5 ${hostState.isConnected ? "animate-pulse" : ""}`}
-              />
-              {hostState.isConnected
-                ? t("models.hostRelayConnected")
-                : t("models.hostRelayDisconnected")}
-            </Badge>
-
-            {hostState.isGaming && (
+          {/* Quick Host Controls & Status (Desktop only) or Web Mode Indicator */}
+          {isDesktop ? (
+            <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant="outline"
-                className="bg-amber-500/10 text-amber-400 border-amber-500/30"
+                className={
+                  hostState.isConnected
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                    : "bg-slate-800 text-slate-400 border-slate-700"
+                }
               >
-                <Gamepad2 className="w-3.5 h-3.5 mr-1.5" />
-                Gaming (Auto-Paused)
+                <Radio
+                  className={`w-3.5 h-3.5 mr-1.5 ${hostState.isConnected ? "animate-pulse" : ""}`}
+                />
+                {hostState.isConnected
+                  ? t("models.hostRelayConnected")
+                  : t("models.hostRelayDisconnected")}
               </Badge>
-            )}
 
-            <Button
-              variant={hostState.masterPaused ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                const next = !hostState.masterPaused;
-                modelsHostRelay.setMasterPaused(next);
-              }}
-              className={
-                hostState.masterPaused
-                  ? "bg-amber-600 hover:bg-amber-700 text-white"
-                  : "border-slate-700 hover:bg-slate-800"
-              }
-            >
-              {hostState.masterPaused ? (
-                <>
-                  <Play className="w-4 h-4 mr-1.5" />
-                  {t("models.resumeSharing")}
-                </>
-              ) : (
-                <>
-                  <Pause className="w-4 h-4 mr-1.5" />
-                  {t("models.masterPauseSharing")}
-                </>
+              {hostState.isGaming && (
+                <Badge
+                  variant="outline"
+                  className="bg-amber-500/10 text-amber-400 border-amber-500/30"
+                >
+                  <Gamepad2 className="w-3.5 h-3.5 mr-1.5" />
+                  Gaming (Auto-Paused)
+                </Badge>
               )}
-            </Button>
-          </div>
+
+              <Button
+                variant={hostState.masterPaused ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  const next = !hostState.masterPaused;
+                  modelsHostRelay.setMasterPaused(next);
+                }}
+                className={
+                  hostState.masterPaused
+                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                    : "border-slate-700 hover:bg-slate-800"
+                }
+              >
+                {hostState.masterPaused ? (
+                  <>
+                    <Play className="w-4 h-4 mr-1.5" />
+                    {t("models.resumeSharing")}
+                  </>
+                ) : (
+                  <>
+                    <Pause className="w-4 h-4 mr-1.5" />
+                    {t("models.masterPauseSharing")}
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className="bg-sky-500/10 text-sky-400 border-sky-500/30 text-xs"
+              >
+                <Globe className="w-3.5 h-3.5 mr-1.5" />
+                {t("models.webModeBadge")}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="border-sky-500/30 text-sky-400 hover:bg-sky-500/10 text-xs h-8"
+              >
+                <Link to="/download">
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  {t("models.downloadDesktopApp")}
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -608,6 +642,14 @@ export function Models() {
           >
             <Server className="w-4 h-4 mr-2" />
             {t("models.hostTab")}
+            {!isDesktop && (
+              <Badge
+                variant="secondary"
+                className="ml-1.5 text-[10px] px-1 py-0 h-4 bg-slate-800 text-slate-400"
+              >
+                Desktop
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger
             value="pinned"
@@ -911,8 +953,46 @@ export function Models() {
         {/* TAB 2: HOST LOCAL MODELS                                          */}
         {/* ------------------------------------------------------------------ */}
         <TabsContent value="host" className="space-y-6 pt-4">
-          {/* Host Protection & Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {!isDesktop ? (
+            <div className="w-full min-h-[460px] flex items-center justify-center p-4 sm:p-8">
+              <Card className="max-w-xl w-full bg-slate-900/90 border-slate-800 text-center backdrop-blur shadow-2xl p-6 sm:p-10">
+                <div className="mx-auto w-20 h-20 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center mb-6 text-sky-400 shadow-[0_0_30px_rgba(14,165,233,0.15)]">
+                  <Cpu className="w-10 h-10 animate-pulse" />
+                </div>
+
+                <CardTitle className="text-2xl sm:text-3xl font-bold text-white mb-3 tracking-tight">
+                  {t("models.desktopRequiredHostTitle")}
+                </CardTitle>
+
+                <CardDescription className="text-slate-400 text-sm sm:text-base leading-relaxed mb-8 max-w-md mx-auto">
+                  {t("models.desktopRequiredHostDesc")}
+                </CardDescription>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Button
+                    asChild
+                    className="w-full sm:w-auto px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-medium shadow-lg shadow-sky-500/20 text-sm rounded-lg"
+                  >
+                    <Link to="/download">
+                      <Download className="w-4 h-4 mr-2" />
+                      {t("models.downloadDesktopApp")}
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setActiveTab("browse")}
+                    className="w-full sm:w-auto px-6 py-2.5 border-slate-700 hover:bg-slate-800 text-slate-300 text-sm rounded-lg"
+                  >
+                    <Layers className="w-4 h-4 mr-2" />
+                    {t("models.browseModelsAction")}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          ) : (
+            <>
+              {/* Host Protection & Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="bg-slate-900/60 border-slate-800">
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs">
@@ -1156,6 +1236,8 @@ export function Models() {
               </ScrollArea>
             </CardContent>
           </Card>
+            </>
+          )}
         </TabsContent>
 
         {/* ------------------------------------------------------------------ */}

@@ -2421,5 +2421,12 @@ notificationsTitle: "通知",
     noModelsFound: "未找到符合条件的共享模型。",
     noPinnedModels: "您尚未固定任何共享模型。",
     hostNotConfigured: "可从桌面应用程序或在运行本地引擎时进行托管。",
+    desktopRequiredHostTitle: "托管模型需要桌面客户端",
+    desktopRequiredHostDesc:
+      "模型托管是桌面端专属功能。需要 Oxygen Low's Software 桌面客户端连接您的本地 AI 引擎（Ollama、LM Studio、KoboldCPP）并建立加密中继隧道。您仍然可以在 Web 端浏览、固定和使用共享模型。",
+    downloadDesktopApp: "下载桌面客户端",
+    browseModelsAction: "浏览共享模型",
+    desktopFeatureBadge: "桌面端功能",
+    webModeBadge: "Web 模式",
   },
 } as const;

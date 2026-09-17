@@ -2531,5 +2531,12 @@ export const es = {
     noModelsFound: "No se encontraron modelos compartidos que coincidan con tus criterios.",
     noPinnedModels: "Aún no has fijado ningún modelo compartido.",
     hostNotConfigured: "El alojamiento está disponible desde la aplicación de escritorio o con motores locales en ejecución.",
+    desktopRequiredHostTitle: "Se requiere la aplicación de escritorio para alojar modelos",
+    desktopRequiredHostDesc:
+      "El alojamiento de modelos es una función exclusiva de escritorio. Requiere la aplicación de escritorio Oxygen Low's Software para conectarse a sus motores locales de IA (Ollama, LM Studio, KoboldCPP) y establecer un túnel de retransmisión cifrado. Aún puede descubrir, anclar y usar modelos compartidos directamente en la web.",
+    downloadDesktopApp: "Descargar aplicación de escritorio",
+    browseModelsAction: "Explorar modelos compartidos",
+    desktopFeatureBadge: "Función de escritorio",
+    webModeBadge: "Modo web",
   },
 } as const;
