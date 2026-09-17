@@ -24,6 +24,7 @@ import { adminWebdefenderRouter } from "./routes/adminWebdefender.ts";
 import { browserRouter } from "./routes/browser.ts";
 import { webmasterRouter } from "./routes/webmaster.ts";
 import { chatRouter } from "./routes/chat.ts";
+import { modelsRouter } from "./routes/models.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -1093,6 +1094,7 @@ app.route("/api/admin/banned-ips", adminWebdefenderRouter);
 app.route("/api/browser", browserRouter);
 app.route("/api/webmaster", webmasterRouter);
 app.route("/api/chat", chatRouter);
+app.route("/api/models", modelsRouter);
 
 app.get("/bot", (c) => {
   return c.html(`

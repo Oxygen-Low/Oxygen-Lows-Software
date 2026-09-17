@@ -36,6 +36,7 @@ import {
   Scissors,
   Search,
   X,
+  Cpu,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ import { WebBrowserApp } from "@/components/apps/WebBrowser";
 import { WebmasterApp } from "@/components/apps/Webmaster";
 import { DeveloperAuthApp } from "@/components/apps/DeveloperAuth";
 import { ChatApp } from "@/components/apps/Chat";
+import { ModelsApp } from "@/components/apps/Models";
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -419,6 +421,18 @@ const APPS: AppMetadata[] = [
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: WebmasterApp,
     authRequired: true,
+  },
+  {
+    id: "models",
+    nameKey: "apps.modelsTitle",
+    defaultName: "Models",
+    descKey: "apps.modelsDesc",
+    defaultDesc:
+      "Share your local AI models with the community or other devices, and discover shared models.",
+    categories: ["All", "LLM/AI", "Utility"],
+    availability: "web-and-desktop",
+    icon: <Cpu className="w-8 h-8 text-cyan-500" />,
+    component: ModelsApp,
   },
 ];
 

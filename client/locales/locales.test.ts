@@ -354,5 +354,13 @@ type _AssertKoGames = AssertTrue<ExactKeys<typeof en.games, typeof ko.games>>;
 type _AssertRuGames = AssertTrue<ExactKeys<typeof en.games, typeof ru.games>>;
 type _AssertZhGames = AssertTrue<ExactKeys<typeof en.games, typeof zhCN.games>>;
 
+// 10. models leaf keys exact parity across all 6 locales
+type _AssertEsModels = AssertTrue<ExactKeys<typeof en.models, typeof es.models>>;
+type _AssertJaModels = AssertTrue<ExactKeys<typeof en.models, typeof ja.models>>;
+type _AssertKoModels = AssertTrue<ExactKeys<typeof en.models, typeof ko.models>>;
+type _AssertRuModels = AssertTrue<ExactKeys<typeof en.models, typeof ru.models>>;
+type _AssertZhModels = AssertTrue<ExactKeys<typeof en.models, typeof zhCN.models>>;
+
+
 
 

@@ -13,6 +13,7 @@ export interface Model {
   name?: string;
   isCustom?: boolean;
   isLocal?: boolean;
+  isShared?: boolean;
 }
 
 export interface LocalProviderStatus {
@@ -321,6 +322,30 @@ export const useAiModels = (
         }
       } catch {}
 
+      const sharedModelsTask = Promise.all([
+        fetch("/api/models/pinned")
+          .then((r) => (r.ok ? r.json() : { pinned: [] }))
+          .catch(() => ({ pinned: [] })),
+        fetch("/api/models/shared")
+          .then((r) => (r.ok ? r.json() : { models: [] }))
+          .catch(() => ({ models: [] })),
+      ])
+        .then(([pinData, sharedData]) => {
+          const pinned = new Set(pinData.pinned || []);
+          const models = sharedData.models || [];
+          return models
+            .filter((m: any) => pinned.has(m.id))
+            .map((m: any) => ({
+              id: m.id,
+              provider: "shared-model",
+              model_id: m.id,
+              name: `${m.name} (${m.hostUsername})`,
+              isCustom: true,
+              isShared: true,
+            }));
+        })
+        .catch(() => []);
+
       const fetchTasks = [
         db
           .from("user_models")
@@ -331,6 +356,7 @@ export const useAiModels = (
           .catch(() => []),
         bridgeTask,
         directLocalTask,
+        sharedModelsTask,
       ];
 
       const results = await Promise.allSettled(fetchTasks);
@@ -357,6 +383,10 @@ export const useAiModels = (
               models: [],
               status: { ollama: false, lmstudio: false, kobold: false },
             };
+      const sharedPinnedModels =
+        results[4].status === "fulfilled"
+          ? (results[4].value as Model[]) || []
+          : [];
 
       const directModels = directLocalResult.models || [];
       const localStatusResult = directLocalResult.status || {
@@ -401,6 +431,7 @@ export const useAiModels = (
         ...guestModels,
         ...(localServerModels || []),
         ...discoveredLocalModels,
+        ...sharedPinnedModels,
       ];
 
       const allModels: Model[] = [];

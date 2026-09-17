@@ -422,6 +422,30 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         const data = await hordeResponse.json();
         return c.json(data);
       }
+    } else if (provider === "shared-model") {
+      const targetModelId = model;
+      const origin = new URL(c.req.url).origin;
+      const sharedUrl = `${origin}/api/models/shared/${encodeURIComponent(targetModelId)}/chat`;
+      const sharedRes = await fetch(sharedUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(c.req.header("Authorization")
+            ? { Authorization: c.req.header("Authorization")! }
+            : {}),
+        },
+        body: JSON.stringify({ messages: finalMessages, stream }),
+        signal: c.req.raw.signal,
+      });
+      if (stream) {
+        c.header("Content-Type", "text/event-stream");
+        c.header("Cache-Control", "no-cache");
+        c.header("Connection", "keep-alive");
+        return c.body(sharedRes.body as any);
+      } else {
+        const data = await sharedRes.json();
+        return c.json(data);
+      }
     } else {
       return c.json({ error: "Unsupported provider" }, 400);
     }

@@ -110,6 +110,7 @@ export function initBridgeListener() {
 }
 
 export function isDesktopBridgeAvailable(): boolean {
+  if (typeof window === "undefined") return false;
   return !!(window as any).chrome?.webview;
 }
 
