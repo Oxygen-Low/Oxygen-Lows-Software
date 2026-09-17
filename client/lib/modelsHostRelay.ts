@@ -1,4 +1,8 @@
-import { isDesktopBridgeAvailable, callDesktopBridge } from "./desktopBridge";
+import {
+  isDesktopBridgeAvailable,
+  isDesktopHostAvailable,
+  callDesktopBridge,
+} from "./desktopBridge";
 
 export interface LocalSharedModelConfig {
   id: string;
@@ -8,6 +12,7 @@ export interface LocalSharedModelConfig {
   customUrl?: string;
   modality: "text" | "vision" | "embeddings";
   sharing_mode: "public" | "friends" | "private" | "password";
+  enabled?: boolean;
   password?: string;
   max_tokens: number;
   max_concurrent: number;
@@ -126,11 +131,11 @@ class ModelsHostRelayManager {
   }
 
   public isHostingAvailable(): boolean {
-    return isDesktopBridgeAvailable();
+    return isDesktopHostAvailable();
   }
 
   public async startHosting(token: string, models: LocalSharedModelConfig[]) {
-    if (!isDesktopBridgeAvailable()) {
+    if (!isDesktopHostAvailable()) {
       throw new Error("Model hosting is only available in the Oxygen Low's Software desktop app.");
     }
     this.authToken = token;
@@ -177,7 +182,7 @@ class ModelsHostRelayManager {
   }
 
   private async connectTunnel(token: string, signal: AbortSignal) {
-    if (!isDesktopBridgeAvailable()) {
+    if (!isDesktopHostAvailable()) {
       this.isConnected = false;
       this.notify();
       return;
@@ -365,11 +370,30 @@ class ModelsHostRelayManager {
       };
     }
 
-    const res = await fetch(targetUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(targetUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      if (targetUrl.includes("127.0.0.1")) {
+        res = await fetch(targetUrl.replace("127.0.0.1", "localhost"), {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+      } else if (targetUrl.includes("localhost")) {
+        res = await fetch(targetUrl.replace("localhost", "127.0.0.1"), {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+      } else {
+        throw err;
+      }
+    }
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
@@ -381,18 +405,23 @@ class ModelsHostRelayManager {
 
     const decoder = new TextDecoder();
     let accumulatedTokens = 0;
+    let lineBuffer = "";
 
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
 
-      const raw = decoder.decode(value, { stream: true });
-      if (provider === "ollama") {
-        // Ollama ndjson
-        const lines = raw.split("\n").filter((l) => l.trim());
-        for (const line of lines) {
+      lineBuffer += decoder.decode(value, { stream: true });
+      const lines = lineBuffer.split("\n");
+      lineBuffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        if (provider === "ollama") {
           try {
-            const parsed = JSON.parse(line);
+            const parsed = JSON.parse(trimmed);
             const chunkText = parsed.message?.content || "";
             if (chunkText) {
               accumulatedTokens++;
@@ -404,21 +433,20 @@ class ModelsHostRelayManager {
               return;
             }
           } catch {}
-        }
-      } else {
-        // SSE standard data: {...}
-        const lines = raw.split("\n");
-        for (const line of lines) {
-          const trimmed = line.trim();
+        } else {
+          // SSE standard data: {...}
           if (trimmed.startsWith("data: ")) {
-            const payload = trimmed.slice(6);
+            const payload = trimmed.slice(6).trim();
             if (payload === "[DONE]") {
               await this.sendChunk(job.jobId, { done: true, tokens: accumulatedTokens });
               return;
             }
             try {
               const parsed = JSON.parse(payload);
-              const deltaContent = parsed.choices?.[0]?.delta?.content || "";
+              const deltaContent =
+                parsed.choices?.[0]?.delta?.content ||
+                parsed.choices?.[0]?.text ||
+                "";
               if (deltaContent) {
                 accumulatedTokens++;
                 this.totalTokens++;
@@ -426,6 +454,38 @@ class ModelsHostRelayManager {
               }
             } catch {}
           }
+        }
+      }
+    }
+
+    // Process any remaining line in lineBuffer
+    if (lineBuffer.trim()) {
+      const trimmed = lineBuffer.trim();
+      if (provider === "ollama") {
+        try {
+          const parsed = JSON.parse(trimmed);
+          const chunkText = parsed.message?.content || "";
+          if (chunkText) {
+            accumulatedTokens++;
+            this.totalTokens++;
+            await this.sendChunk(job.jobId, { chunk: chunkText });
+          }
+        } catch {}
+      } else if (trimmed.startsWith("data: ")) {
+        const payload = trimmed.slice(6).trim();
+        if (payload !== "[DONE]") {
+          try {
+            const parsed = JSON.parse(payload);
+            const deltaContent =
+              parsed.choices?.[0]?.delta?.content ||
+              parsed.choices?.[0]?.text ||
+              "";
+            if (deltaContent) {
+              accumulatedTokens++;
+              this.totalTokens++;
+              await this.sendChunk(job.jobId, { chunk: deltaContent });
+            }
+          } catch {}
         }
       }
     }

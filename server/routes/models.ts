@@ -17,6 +17,7 @@ export interface SharedModelDefinition {
   provider: "ollama" | "lmstudio" | "kobold" | "python" | "custom";
   modality: "text" | "vision" | "embeddings";
   sharing_mode: "public" | "friends" | "private" | "password";
+  enabled: boolean;
   password?: string;
   has_password?: boolean;
   max_tokens: number;
@@ -159,7 +160,7 @@ function processNextInQueue(modelId: string) {
   if (!queue || queue.length === 0) return;
 
   const modelDef = findSharedModel(modelId);
-  if (!modelDef) return;
+  if (!modelDef || !modelDef.enabled) return;
 
   const host = activeHosts.get(modelDef.hostUserId);
   if (!host || host.masterPaused || (modelDef.auto_pause_gaming && host.isGaming)) return;
@@ -265,6 +266,7 @@ modelsRouter.post("/relay/register", async (c) => {
       provider: m.provider || "ollama",
       modality: m.modality || "text",
       sharing_mode: m.sharing_mode || "public",
+      enabled: m.enabled !== false,
       password: m.password || undefined,
       has_password: !!m.password,
       max_tokens: Number(m.max_tokens) || 2048,
@@ -465,21 +467,27 @@ modelsRouter.get("/shared", async (c) => {
 
   for (const host of activeHosts.values()) {
     for (const model of host.models.values()) {
+      const isOwner = requesterUserId === model.hostUserId;
+      const isFriend = requesterUserId ? checkIsFriend(model.hostUserId, requesterUserId) : false;
+
+      // When sharing is disabled, only the owner can see the model (marked as disabled)
+      if (model.enabled === false && !isOwner) {
+        continue;
+      }
+
       // Permission checks
       if (model.sharing_mode === "private") {
-        if (!requesterUserId || requesterUserId !== model.hostUserId) {
+        if (!requesterUserId || !isOwner) {
           continue; // Private models only visible to the owner
         }
       } else if (model.sharing_mode === "friends") {
         if (!requesterUserId) continue;
-        if (requesterUserId !== model.hostUserId && !checkIsFriend(model.hostUserId, requesterUserId)) {
+        if (!isOwner && !isFriend) {
           continue;
         }
       }
 
       const queue = modelQueues.get(model.id) || [];
-      const isOwner = requesterUserId === model.hostUserId;
-      const isFriend = requesterUserId ? checkIsFriend(model.hostUserId, requesterUserId) : false;
 
       result.push({
         id: model.id,
@@ -494,7 +502,9 @@ modelsRouter.get("/shared", async (c) => {
         max_tokens: model.max_tokens,
         max_concurrent: model.max_concurrent,
         context_length: model.context_length,
-        status: model.is_paused
+        status: !model.enabled
+          ? "disabled"
+          : model.is_paused
           ? "paused"
           : host.activeRequests >= model.max_concurrent
           ? "busy"
@@ -525,6 +535,10 @@ modelsRouter.post("/shared/:id/chat", async (c) => {
   const host = activeHosts.get(model.hostUserId);
   if (!host) {
     return c.json({ error: "Host is currently offline" }, 503);
+  }
+
+  if (!model.enabled) {
+    return c.json({ error: "This model is currently disabled by the host" }, 403);
   }
 
   const token = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
@@ -753,6 +767,10 @@ modelsRouter.post("/shared/:id/embeddings", async (c) => {
   const host = activeHosts.get(model.hostUserId);
   if (!host) {
     return c.json({ error: "Host is currently offline" }, 503);
+  }
+
+  if (!model.enabled) {
+    return c.json({ error: "This model is currently disabled by the host" }, 403);
   }
 
   const token = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");

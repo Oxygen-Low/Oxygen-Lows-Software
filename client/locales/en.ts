@@ -2457,6 +2457,8 @@ export const en = {
     statusOnline: "Online",
     statusBusy: "Busy",
     statusPaused: "Paused",
+    statusDisabled: "Disabled",
+    modelDisabledNotice: "This model is currently disabled and not accepting requests.",
     queuePosition: "In Queue ({position}/{total})",
     pinToMyModels: "Pin to My Models",
     unpinModel: "Unpin Model",

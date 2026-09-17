@@ -2476,6 +2476,8 @@ export const es = {
     statusOnline: "En línea",
     statusBusy: "Ocupado",
     statusPaused: "En pausa",
+    statusDisabled: "Desactivado",
+    modelDisabledNotice: "Este modelo está desactivado actualmente y no acepta solicitudes.",
     queuePosition: "En cola ({position}/{total})",
     pinToMyModels: "Fijar a Mis Modelos",
     unpinModel: "Desfijar Modelo",

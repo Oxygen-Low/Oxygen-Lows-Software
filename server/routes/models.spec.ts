@@ -326,4 +326,81 @@ describe("Models Server Relay Routes", () => {
     const target = listData.models.find((m: any) => m.id === "700_model");
     expect(target.status).toBe("paused");
   });
+
+  it("should show status 'disabled' to owner when model has enabled: false and hide it from non-owners", async () => {
+    vi.spyOn(auth, "resolveUserFromToken").mockResolvedValue({
+      id: "800",
+      username: "Host800",
+      role: "user",
+    } as any);
+
+    await app.request("/api/models/relay/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer token-800",
+        "x-oxygen-client": "desktop",
+      },
+      body: JSON.stringify({
+        models: [
+          {
+            id: "800_disabled_model",
+            name: "Disabled Model",
+            model_id: "llama3:latest",
+            enabled: false,
+          },
+          {
+            id: "800_enabled_model",
+            name: "Enabled Model",
+            model_id: "mistral:latest",
+            enabled: true,
+          },
+        ],
+      }),
+    });
+
+    // Owner checks directory: should see disabled model with status: "disabled"
+    const ownerRes = await app.request("/api/models/shared", {
+      headers: { Authorization: "Bearer token-800" },
+    });
+    const ownerData = await ownerRes.json();
+    const disabledForOwner = ownerData.models.find(
+      (m: any) => m.id === "800_disabled_model",
+    );
+    expect(disabledForOwner).toBeDefined();
+    expect(disabledForOwner.status).toBe("disabled");
+
+    // Non-owner checks directory: should NOT see disabled model at all
+    vi.spyOn(auth, "resolveUserFromToken").mockResolvedValue({
+      id: "900",
+      username: "User900",
+      role: "user",
+    } as any);
+    const nonOwnerRes = await app.request("/api/models/shared", {
+      headers: { Authorization: "Bearer token-900" },
+    });
+    const nonOwnerData = await nonOwnerRes.json();
+    expect(
+      nonOwnerData.models.some((m: any) => m.id === "800_disabled_model"),
+    ).toBe(false);
+    expect(
+      nonOwnerData.models.some((m: any) => m.id === "800_enabled_model"),
+    ).toBe(true);
+
+    // Chat request on disabled model should return 403
+    const chatRes = await app.request(
+      "/api/models/shared/800_disabled_model/chat",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer token-800",
+        },
+        body: JSON.stringify({ prompt: "Hello" }),
+      },
+    );
+    expect(chatRes.status).toBe(403);
+    const chatData = await chatRes.json();
+    expect(chatData.error).toContain("disabled");
+  });
 });

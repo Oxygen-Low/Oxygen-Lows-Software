@@ -114,6 +114,18 @@ export function isDesktopBridgeAvailable(): boolean {
   return !!(window as any).chrome?.webview;
 }
 
+export function isDesktopHostAvailable(): boolean {
+  if (typeof window === "undefined") return false;
+  if ((window as any).chrome?.webview) return true;
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("desktop") === "1" || sessionStorage.getItem("desktopMode") === "1") {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 export function isMobileApp(): boolean {
   if (typeof window === "undefined") return false;
   if ((window as any).AndroidApp) return true;

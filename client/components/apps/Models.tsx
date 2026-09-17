@@ -69,7 +69,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useToast } from "@/components/ui/use-toast";
-import { isDesktopBridgeAvailable } from "@/lib/desktopBridge";
+import { isDesktopHostAvailable } from "@/lib/desktopBridge";
 import {
   modelsHostRelay,
   LocalSharedModelConfig,
@@ -90,7 +90,7 @@ export interface SharedModelItem {
   max_tokens: number;
   max_concurrent: number;
   context_length?: number;
-  status: "online" | "busy" | "paused";
+  status: "online" | "busy" | "paused" | "disabled";
   activeRequests: number;
   queueLength: number;
   isOwner: boolean;
@@ -118,7 +118,7 @@ export function Models() {
   const [isLoadingShared, setIsLoadingShared] = useState(false);
 
   // Desktop bridge detection: model hosting is a desktop-only capability
-  const isDesktop = isDesktopBridgeAvailable();
+  const isDesktop = isDesktopHostAvailable();
 
   // Host configuration state
   const [hostState, setHostState] = useState<HostRelayState>(
@@ -163,6 +163,13 @@ export function Models() {
   >(null);
   const [embeddingInput, setEmbeddingInput] = useState("");
   const [embeddingResult, setEmbeddingResult] = useState<number[] | null>(null);
+
+  const selectedPlaygroundModel = useMemo(
+    () => sharedModels.find((m) => m.id === playgroundModelId),
+    [sharedModels, playgroundModelId],
+  );
+  const isPlaygroundModelDisabled =
+    selectedPlaygroundModel?.status === "disabled";
 
   // Copy helper
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -214,7 +221,12 @@ export function Models() {
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           if (data) {
-            if (Array.isArray(data.models)) setConfiguredModels(data.models);
+            if (Array.isArray(data.models)) {
+              setConfiguredModels(data.models);
+              if (data.models.length > 0) {
+                modelsHostRelay.startHosting(session.access_token, data.models);
+              }
+            }
             if (Array.isArray(data.customEndpoints))
               setCustomEndpoints(data.customEndpoints);
             if (data.masterPaused !== undefined) {
@@ -248,6 +260,7 @@ export function Models() {
               model_id: d.model_id,
               provider: d.provider,
               customUrl: d.customUrl,
+              enabled: true,
               modality: "text",
               sharing_mode: "public",
               max_tokens: 2048,
@@ -318,7 +331,7 @@ export function Models() {
       if (m.model_id === modelId) {
         return {
           ...m,
-          sharing_mode: enabled ? ("public" as const) : ("private" as const),
+          enabled,
         };
       }
       return m;
@@ -399,7 +412,7 @@ export function Models() {
   const handleRunPlayground = async () => {
     if (!playgroundModelId) return;
     const targetModel = sharedModels.find((m) => m.id === playgroundModelId);
-    if (!targetModel) return;
+    if (!targetModel || targetModel.status === "disabled") return;
 
     const password = unlockedPasswords[playgroundModelId];
 
@@ -795,7 +808,7 @@ export function Models() {
                               <Lock className="w-3.5 h-3.5 text-amber-400" />
                             )}
                           </CardTitle>
-                          <CardDescription className="text-xs text-slate-400 flex items-center gap-1.5">
+                          <div className="text-xs text-slate-400 flex items-center gap-1.5">
                             <span>by {model.hostUsername}</span>
                             {model.isOwner && (
                               <Badge className="text-[10px] px-1 py-0 bg-sky-500/20 text-sky-400 border-none">
@@ -807,14 +820,16 @@ export function Models() {
                                 Friend
                               </Badge>
                             )}
-                          </CardDescription>
+                          </div>
                         </div>
 
                         {/* Status Badge */}
                         <Badge
                           variant="outline"
                           className={
-                            model.status === "online"
+                            model.status === "disabled"
+                              ? "bg-rose-500/10 text-rose-400 border-rose-500/30 text-xs"
+                              : model.status === "online"
                               ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs"
                               : model.status === "busy"
                                 ? "bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs"
@@ -823,14 +838,18 @@ export function Models() {
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                              model.status === "online"
+                              model.status === "disabled"
+                                ? "bg-rose-400"
+                                : model.status === "online"
                                 ? "bg-emerald-400 animate-pulse"
                                 : model.status === "busy"
                                   ? "bg-amber-400"
                                   : "bg-slate-500"
                             }`}
                           />
-                          {model.status === "online"
+                          {model.status === "disabled"
+                            ? t("models.statusDisabled")
+                            : model.status === "online"
                             ? t("models.statusOnline")
                             : model.status === "busy"
                               ? t("models.statusBusy")
@@ -918,6 +937,7 @@ export function Models() {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={model.status === "disabled"}
                         onClick={() => {
                           if (needsPassword) {
                             setUnlockingModel(model);
@@ -927,7 +947,11 @@ export function Models() {
                             setActiveTab("playground");
                           }
                         }}
-                        className="h-8 border-sky-500/30 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300"
+                        className={
+                          model.status === "disabled"
+                            ? "h-8 border-slate-800 bg-slate-900 text-slate-500 cursor-not-allowed opacity-60"
+                            : "h-8 border-sky-500/30 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300"
+                        }
                       >
                         {needsPassword ? (
                           <>
@@ -1109,7 +1133,7 @@ export function Models() {
                   </div>
                 ) : (
                   configuredModels.map((model) => {
-                    const isShared = model.sharing_mode !== "private";
+                    const isShared = model.enabled !== false;
 
                     return (
                       <div
@@ -1288,12 +1312,22 @@ export function Models() {
                         <Badge
                           variant="outline"
                           className={
-                            model.status === "online"
+                            model.status === "disabled"
+                              ? "bg-rose-500/10 text-rose-400 border-rose-500/30 text-xs"
+                              : model.status === "online"
                               ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs"
+                              : model.status === "busy"
+                              ? "bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs"
                               : "bg-slate-800 text-slate-400 border-slate-700 text-xs"
                           }
                         >
-                          {model.status}
+                          {model.status === "disabled"
+                            ? t("models.statusDisabled")
+                            : model.status === "online"
+                            ? t("models.statusOnline")
+                            : model.status === "busy"
+                            ? t("models.statusBusy")
+                            : t("models.statusPaused")}
                         </Badge>
                       </div>
                       <CardDescription className="text-xs text-slate-400">
@@ -1313,11 +1347,16 @@ export function Models() {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={model.status === "disabled"}
                         onClick={() => {
                           setPlaygroundModelId(model.id);
                           setActiveTab("playground");
                         }}
-                        className="h-8 text-xs border-sky-500/30 text-sky-400 hover:bg-sky-500/20"
+                        className={
+                          model.status === "disabled"
+                            ? "h-8 text-xs border-slate-800 bg-slate-900 text-slate-500 cursor-not-allowed opacity-60"
+                            : "h-8 text-xs border-sky-500/30 text-sky-400 hover:bg-sky-500/20"
+                        }
                       >
                         <Play className="w-3.5 h-3.5 mr-1" />
                         {t("models.testInPlayground")}
@@ -1363,39 +1402,39 @@ export function Models() {
             <CardContent className="space-y-4">
               {/* Selected Model Details */}
               {playgroundModelId && (
-                <div className="text-xs text-slate-400 flex items-center gap-3 p-2.5 rounded bg-slate-950/50 border border-slate-800">
-                  <span>
-                    Host:{" "}
-                    <strong className="text-white">
-                      {
-                        sharedModels.find((m) => m.id === playgroundModelId)
-                          ?.hostUsername
-                      }
-                    </strong>
-                  </span>
-                  <span>
-                    Modality:{" "}
-                    <strong className="text-sky-400">
-                      {sharedModels
-                        .find((m) => m.id === playgroundModelId)
-                        ?.modality.toUpperCase()}
-                    </strong>
-                  </span>
-                  <span>
-                    Tokens:{" "}
-                    <strong className="text-white">
-                      {
-                        sharedModels.find((m) => m.id === playgroundModelId)
-                          ?.max_tokens
-                      }
-                    </strong>
-                  </span>
+                <div className="space-y-3">
+                  <div className="text-xs text-slate-400 flex items-center gap-3 p-2.5 rounded bg-slate-950/50 border border-slate-800">
+                    <span>
+                      Host:{" "}
+                      <strong className="text-white">
+                        {selectedPlaygroundModel?.hostUsername}
+                      </strong>
+                    </span>
+                    <span>
+                      Modality:{" "}
+                      <strong className="text-sky-400">
+                        {selectedPlaygroundModel?.modality.toUpperCase()}
+                      </strong>
+                    </span>
+                    <span>
+                      Tokens:{" "}
+                      <strong className="text-white">
+                        {selectedPlaygroundModel?.max_tokens}
+                      </strong>
+                    </span>
+                  </div>
+
+                  {isPlaygroundModelDisabled && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{t("models.modelDisabledNotice")}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Chat Interface or Embeddings Test */}
-              {sharedModels.find((m) => m.id === playgroundModelId)?.modality ===
-              "embeddings" ? (
+              {selectedPlaygroundModel?.modality === "embeddings" ? (
                 <div className="space-y-3">
                   <Label className="text-xs text-slate-300">
                     {t("models.inputEmbeddingText")}
@@ -1404,11 +1443,16 @@ export function Models() {
                     value={embeddingInput}
                     onChange={(e) => setEmbeddingInput(e.target.value)}
                     placeholder="Enter sentence to convert to vector embedding..."
+                    disabled={isPlaygroundRunning || isPlaygroundModelDisabled}
                     className="bg-slate-950/60 border-slate-800"
                   />
                   <Button
                     onClick={handleRunPlayground}
-                    disabled={isPlaygroundRunning || !embeddingInput.trim()}
+                    disabled={
+                      isPlaygroundRunning ||
+                      isPlaygroundModelDisabled ||
+                      !embeddingInput.trim()
+                    }
                     className="bg-sky-600 hover:bg-sky-700 text-white"
                   >
                     {isPlaygroundRunning ? (
@@ -1473,12 +1517,16 @@ export function Models() {
                         }
                       }}
                       placeholder={t("models.playgroundPromptPlaceholder")}
-                      disabled={isPlaygroundRunning}
+                      disabled={isPlaygroundRunning || isPlaygroundModelDisabled}
                       className="bg-slate-950/60 border-slate-800"
                     />
                     <Button
                       onClick={handleRunPlayground}
-                      disabled={isPlaygroundRunning || !playgroundPrompt.trim()}
+                      disabled={
+                        isPlaygroundRunning ||
+                        isPlaygroundModelDisabled ||
+                        !playgroundPrompt.trim()
+                      }
                       className="bg-sky-600 hover:bg-sky-700 text-white"
                     >
                       {isPlaygroundRunning ? (
@@ -1545,6 +1593,27 @@ export function Models() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Enable / Disable Sharing */}
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                <div>
+                  <Label className="text-xs">{t("models.shareLocalModel")}</Label>
+                  <p className="text-[10px] text-slate-500">
+                    {editingModel.enabled !== false
+                      ? t("models.sharingEnabled")
+                      : t("models.sharingDisabled")}
+                  </p>
+                </div>
+                <Switch
+                  checked={editingModel.enabled !== false}
+                  onCheckedChange={(checked) =>
+                    setEditingModel({
+                      ...editingModel,
+                      enabled: checked,
+                    })
+                  }
+                />
               </div>
 
               {/* Sharing Mode */}

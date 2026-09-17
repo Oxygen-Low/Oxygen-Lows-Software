@@ -229,4 +229,102 @@ describe("Models Component UI", () => {
       expect(screen.getByPlaceholderText("Type a prompt or message to test this model...")).toBeDefined();
     });
   });
+
+  it("should render disabled model badge and disable test button", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/api/models/shared")) {
+        return {
+          ok: true,
+          json: async () => ({
+            models: [
+              {
+                id: "disabled_llama",
+                name: "Offline Llama",
+                model_id: "llama3:8b",
+                hostUserId: "1",
+                hostUsername: "HostHero",
+                provider: "ollama",
+                modality: "text",
+                sharing_mode: "public",
+                has_password: false,
+                max_tokens: 2048,
+                max_concurrent: 1,
+                status: "disabled",
+                activeRequests: 0,
+                queueLength: 0,
+                isOwner: true,
+                isFriend: false,
+                tokensServedToday: 0,
+              },
+            ],
+          }),
+        } as any;
+      }
+      return { ok: true, json: async () => ({}) } as any;
+    });
+
+    render(
+      <MemoryRouter>
+        <Models />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Offline Llama")).toBeDefined();
+      expect(screen.getByText("Disabled")).toBeDefined();
+    });
+
+    const testBtn = screen.getByRole("button", { name: /Test Model/i });
+    expect(testBtn).toBeDefined();
+    expect((testBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("should show disabled banner in playground when disabled model is loaded", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/api/models/shared")) {
+        return {
+          ok: true,
+          json: async () => ({
+            models: [
+              {
+                id: "disabled_llama",
+                name: "Offline Llama",
+                model_id: "llama3:8b",
+                hostUserId: "1",
+                hostUsername: "HostHero",
+                provider: "ollama",
+                modality: "text",
+                sharing_mode: "public",
+                status: "disabled",
+                max_tokens: 2048,
+                max_concurrent: 1,
+                activeRequests: 0,
+                queueLength: 0,
+                isOwner: true,
+                isFriend: false,
+                tokensServedToday: 0,
+              },
+            ],
+          }),
+        } as any;
+      }
+      return { ok: true, json: async () => ({}) } as any;
+    });
+
+    render(
+      <MemoryRouter>
+        <Models />
+      </MemoryRouter>
+    );
+
+    const playgroundTabButton = screen.getByRole("tab", { name: /Playground/i });
+    fireEvent.keyDown(playgroundTabButton, { key: "Enter" });
+    fireEvent.click(playgroundTabButton);
+
+    await waitFor(() => {
+      expect(screen.getByText("Model Playground")).toBeDefined();
+    });
+  });
 });
