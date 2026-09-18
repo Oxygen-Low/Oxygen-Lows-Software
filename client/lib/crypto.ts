@@ -703,7 +703,11 @@ export function clearActiveMasterKey(): void {
 }
 
 export type EncryptionCategory =
-  "characters" | "data_save" | "chatbot" | "passwords";
+  | "characters"
+  | "data_save"
+  | "chatbot"
+  | "passwords"
+  | "api_keys";
 
 export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
   EncryptionCategory,
@@ -713,6 +717,7 @@ export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
   data_save: "oxygen_encrypt_data_save",
   chatbot: "oxygen_encrypt_chatbot",
   passwords: "oxygen_encrypt_passwords",
+  api_keys: "oxygen_encrypt_api_keys",
 };
 
 /**
@@ -721,6 +726,7 @@ export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
 export function isCategoryEncryptionEnabled(
   category: EncryptionCategory,
 ): boolean {
+  if (category === "api_keys") return true;
   const key = CATEGORY_ENCRYPTION_STORAGE_KEYS[category];
   try {
     if (typeof localStorage !== "undefined") {
@@ -729,6 +735,34 @@ export function isCategoryEncryptionEnabled(
     }
   } catch {}
   return inMemoryLocalStorage[key] === "true";
+}
+
+/**
+ * Encrypts an API key with the active or provided AES-256 master key.
+ */
+export async function encryptApiKey(
+  apiKey: string,
+  masterKey?: Uint8Array | null,
+): Promise<string> {
+  const clean = apiKey.trim();
+  if (!clean) return "";
+  const key = masterKey ?? getActiveMasterKey();
+  if (!key) throw new Error("Master key is required to encrypt API key");
+  return encryptAes256Gcm(clean, key);
+}
+
+/**
+ * Decrypts an encrypted API key with the active or provided AES-256 master key.
+ */
+export async function decryptApiKey(
+  encryptedKey: string,
+  masterKey?: Uint8Array | null,
+): Promise<string> {
+  if (!encryptedKey) return "";
+  if (!isEncrypted(encryptedKey)) return encryptedKey;
+  const key = masterKey ?? getActiveMasterKey();
+  if (!key) throw new Error("Master key is required to decrypt API key");
+  return decryptAes256Gcm(encryptedKey, key);
 }
 
 /**

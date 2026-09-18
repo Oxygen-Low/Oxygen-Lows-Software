@@ -204,7 +204,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     user = await resolveUserFromToken(token);
   }
 
-  if (!user && provider !== "horde") {
+  if (!user && provider !== "horde" && provider !== "pollinations") {
     return c.json({ error: "Authentication required for this model." }, 401);
   }
 
@@ -239,7 +239,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     }
   }
 
-  if (!integration?.api_key && provider !== "horde") {
+  if (!integration?.api_key && provider !== "horde" && provider !== "pollinations") {
     return c.json({ error: "Provider not configured" }, 400);
   }
 
@@ -303,7 +303,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       };
       fetchOptions.headers["x-api-key"] = integration?.api_key;
       fetchOptions.headers["anthropic-version"] = "2023-06-01";
-    } else if (provider === "google") {
+    } else if (provider === "google" || provider === "gemini") {
       const action = stream
         ? "streamGenerateContent?alt=sse&"
         : "generateContent?";
@@ -328,10 +328,16 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       targetUrl = "https://openrouter.ai/api/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
-    } else if (provider === "grok") {
+    } else if (provider === "grok" || provider === "xai") {
       targetUrl = "https://api.x.ai/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
+    } else if (provider === "pollinations") {
+      targetUrl = "https://text.pollinations.ai/openai/chat/completions";
+      requestBody = { ...requestBody, model, messages: finalMessages };
+      if (integration?.api_key) {
+        fetchOptions.headers["Authorization"] = `Bearer ${integration.api_key}`;
+      }
     } else if (provider === "horde") {
       let actualModel = resolveHordeModel(model);
       const hordeHeaders: Record<string, string> = {
@@ -482,5 +488,151 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     // A09: log full error server-side; return generic message to client
     console.error("AI Proxy Error", err);
     return c.json({ error: "An internal error occurred" }, 500);
+  }
+});
+
+aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
+  try {
+    const { provider, apiKey } = await c.req.json();
+    const cleanProvider = (provider || "").toLowerCase();
+
+    if (cleanProvider === "pollinations") {
+      try {
+        const res = await fetch("https://text.pollinations.ai/models");
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) {
+            const models = list.map((m: any) => ({
+              id: typeof m === "string" ? m : (m.name || m.id),
+              name: typeof m === "string" ? m : (m.description || m.name || m.id),
+            }));
+            return c.json({ models });
+          }
+        }
+      } catch {}
+      return c.json({
+        models: [
+          { id: "openai", name: "OpenAI GPT-4o Mini (Pollinations)" },
+          { id: "mistral", name: "Mistral Nemo (Pollinations)" },
+          { id: "deepseek", name: "DeepSeek V3 (Pollinations)" },
+          { id: "deepseek-r1", name: "DeepSeek R1 (Pollinations)" },
+          { id: "qwen", name: "Qwen 2.5 72B (Pollinations)" },
+          { id: "claude-hybrid", name: "Claude 3.5 Sonnet (Hybrid)" },
+          { id: "karma", name: "Karma (Pollinations)" },
+        ],
+      });
+    }
+
+    if (!apiKey && cleanProvider !== "openrouter") {
+      return c.json(
+        { error: "API key is required to fetch models for this provider" },
+        400,
+      );
+    }
+
+    if (cleanProvider === "openai") {
+      const res = await fetch("https://api.openai.com/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        return c.json({ error: `OpenAI returned ${res.status}: ${err}` }, 400);
+      }
+      const json = await res.json();
+      const models = (json.data || [])
+        .filter(
+          (m: any) =>
+            m.id &&
+            !m.id.includes("whisper") &&
+            !m.id.includes("tts") &&
+            !m.id.includes("dall-e") &&
+            !m.id.includes("embedding") &&
+            !m.id.includes("babbage") &&
+            !m.id.includes("davinci"),
+        )
+        .map((m: any) => ({ id: m.id, name: m.id }))
+        .sort((a: any, b: any) => a.id.localeCompare(b.id));
+      return c.json({ models });
+    }
+
+    if (cleanProvider === "openrouter") {
+      const headers: Record<string, string> = {};
+      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      const res = await fetch("https://openrouter.ai/api/v1/models", { headers });
+      if (!res.ok) {
+        const err = await res.text();
+        return c.json(
+          { error: `OpenRouter returned ${res.status}: ${err}` },
+          400,
+        );
+      }
+      const json = await res.json();
+      const models = (json.data || []).map((m: any) => ({
+        id: m.id,
+        name: m.name ? `${m.name} (${m.id})` : m.id,
+      }));
+      return c.json({ models });
+    }
+
+    if (cleanProvider === "grok" || cleanProvider === "xai") {
+      const res = await fetch("https://api.x.ai/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        return c.json({ error: `xAI returned ${res.status}: ${err}` }, 400);
+      }
+      const json = await res.json();
+      const models = (json.data || []).map((m: any) => ({
+        id: m.id,
+        name: m.id,
+      }));
+      return c.json({ models });
+    }
+
+    if (cleanProvider === "google" || cleanProvider === "gemini") {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
+          apiKey,
+        )}`,
+      );
+      if (!res.ok) {
+        const err = await res.text();
+        return c.json({ error: `Google returned ${res.status}: ${err}` }, 400);
+      }
+      const json = await res.json();
+      const models = (json.models || [])
+        .filter((m: any) =>
+          (m.supportedGenerationMethods || []).includes("generateContent"),
+        )
+        .map((m: any) => ({
+          id: (m.name || "").replace(/^models\//, ""),
+          name: m.displayName
+            ? `${m.displayName} (${(m.name || "").replace(/^models\//, "")})`
+            : (m.name || "").replace(/^models\//, ""),
+        }));
+      return c.json({ models });
+    }
+
+    if (cleanProvider === "anthropic") {
+      return c.json({
+        models: [
+          { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
+          { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet v2" },
+          { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+          { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+        ],
+      });
+    }
+
+    return c.json(
+      { error: "Unsupported provider for remote model fetching" },
+      400,
+    );
+  } catch (err: any) {
+    return c.json(
+      { error: err?.message || "Failed to fetch provider models" },
+      500,
+    );
   }
 });

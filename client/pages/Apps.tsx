@@ -428,7 +428,7 @@ const APPS: AppMetadata[] = [
     defaultName: "Models",
     descKey: "apps.modelsDesc",
     defaultDesc:
-      "Share your local AI models with the community or other devices, and discover shared models.",
+      "Configure and manage custom AI models across top providers (OpenAI, Anthropic, Gemini, OpenRouter, Grok, Pollinations) with zero-knowledge encrypted API keys, or connect local & shared models.",
     categories: ["All", "LLM/AI", "Utility"],
     availability: "web-and-desktop",
     icon: <Cpu className="w-8 h-8 text-cyan-500" />,

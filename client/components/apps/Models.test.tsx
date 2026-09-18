@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Models, ModelsApp } from "./Models";
 
 // Mock ResizeObserver
@@ -9,6 +10,16 @@ global.ResizeObserver = class {
   observe() {}
   unobserve() {}
   disconnect() {}
+};
+
+const renderWithTheme = (ui: React.ReactElement) => {
+  return render(
+    <ThemeProvider>
+      <MemoryRouter>
+        {ui}
+      </MemoryRouter>
+    </ThemeProvider>
+  );
 };
 
 describe("Models Component UI", () => {
@@ -101,28 +112,36 @@ describe("Models Component UI", () => {
     cleanup();
   });
 
-  it("should render header and tab navigation", async () => {
-    render(
-      <MemoryRouter>
-        <Models />
-      </MemoryRouter>
-    );
+  it("should render header and tab navigation including Custom Models", async () => {
+    renderWithTheme(<Models />);
 
     expect(screen.getByRole("heading", { level: 1, name: /Models/i })).toBeDefined();
     expect(screen.queryByText("P2P Relay")).toBeNull();
     expect(screen.queryByText("Web Mode")).toBeNull();
+    expect(screen.getByRole("tab", { name: /Custom Models/i })).toBeDefined();
     expect(screen.getByRole("tab", { name: /Browse Shared/i })).toBeDefined();
     expect(screen.getByRole("tab", { name: /Host Models/i })).toBeDefined();
     expect(screen.getByRole("tab", { name: /Pinned Models/i })).toBeDefined();
     expect(screen.getByRole("tab", { name: /Playground/i })).toBeDefined();
   });
 
+  it("should render custom model provider cards by default", async () => {
+    renderWithTheme(<Models />);
+
+    expect(screen.getAllByText(/OpenAI/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Anthropic/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Google Gemini/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/OpenRouter/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/xAI/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Pollinations/i).length).toBeGreaterThanOrEqual(1);
+  });
+
   it("should display shared community models in Browse tab", async () => {
-    render(
-      <MemoryRouter>
-        <Models />
-      </MemoryRouter>
-    );
+    renderWithTheme(<Models />);
+
+    const browseTabButton = screen.getByRole("tab", { name: /Browse Shared/i });
+    fireEvent.keyDown(browseTabButton, { key: "Enter" });
+    fireEvent.click(browseTabButton);
 
     await waitFor(() => {
       expect(screen.getByText("Community Llama 3")).toBeDefined();
@@ -131,12 +150,12 @@ describe("Models Component UI", () => {
     });
   });
 
-  it("should filter models by search term", async () => {
-    render(
-      <MemoryRouter>
-        <Models />
-      </MemoryRouter>
-    );
+  it("should filter models by search term in Browse tab", async () => {
+    renderWithTheme(<Models />);
+
+    const browseTabButton = screen.getByRole("tab", { name: /Browse Shared/i });
+    fireEvent.keyDown(browseTabButton, { key: "Enter" });
+    fireEvent.click(browseTabButton);
 
     await waitFor(() => {
       expect(screen.getByText("Community Llama 3")).toBeDefined();
@@ -154,11 +173,7 @@ describe("Models Component UI", () => {
   it("should show desktop required gate on Host tab when running in web mode", async () => {
     delete (window as any).chrome;
 
-    render(
-      <MemoryRouter>
-        <ModelsApp />
-      </MemoryRouter>
-    );
+    renderWithTheme(<ModelsApp />);
 
     const hostTabButton = screen.getByRole("tab", { name: /Host Models/i });
     fireEvent.keyDown(hostTabButton, { key: "Enter" });
@@ -178,13 +193,9 @@ describe("Models Component UI", () => {
       },
     };
 
-    render(
-      <MemoryRouter>
-        <ModelsApp />
-      </MemoryRouter>
-    );
+    renderWithTheme(<ModelsApp />);
 
-    const hostTabButton = screen.getByRole("tab", { name: /Host Models/i });
+    const hostTabButton = screen.getByRole("tab", { name: /^Host Models/i });
     fireEvent.keyDown(hostTabButton, { key: "Enter" });
     fireEvent.click(hostTabButton);
 
@@ -197,11 +208,7 @@ describe("Models Component UI", () => {
   });
 
   it("should switch to Pinned tab", async () => {
-    render(
-      <MemoryRouter>
-        <Models />
-      </MemoryRouter>
-    );
+    renderWithTheme(<Models />);
 
     const pinnedTabButton = screen.getByRole("tab", { name: /Pinned Models/i });
     fireEvent.keyDown(pinnedTabButton, { key: "Enter" });
@@ -216,11 +223,7 @@ describe("Models Component UI", () => {
   });
 
   it("should switch to Playground tab and show playground interface", async () => {
-    render(
-      <MemoryRouter>
-        <Models />
-      </MemoryRouter>
-    );
+    renderWithTheme(<Models />);
 
     const playgroundTabButton = screen.getByRole("tab", { name: /Playground/i });
     fireEvent.keyDown(playgroundTabButton, { key: "Enter" });
@@ -266,11 +269,11 @@ describe("Models Component UI", () => {
       return { ok: true, json: async () => ({}) } as any;
     });
 
-    render(
-      <MemoryRouter>
-        <Models />
-      </MemoryRouter>
-    );
+    renderWithTheme(<Models />);
+
+    const browseTabButton = screen.getByRole("tab", { name: /Browse Shared/i });
+    fireEvent.keyDown(browseTabButton, { key: "Enter" });
+    fireEvent.click(browseTabButton);
 
     await waitFor(() => {
       expect(screen.getByText("Offline Llama")).toBeDefined();
@@ -315,11 +318,7 @@ describe("Models Component UI", () => {
       return { ok: true, json: async () => ({}) } as any;
     });
 
-    render(
-      <MemoryRouter>
-        <Models />
-      </MemoryRouter>
-    );
+    renderWithTheme(<Models />);
 
     const playgroundTabButton = screen.getByRole("tab", { name: /Playground/i });
     fireEvent.keyDown(playgroundTabButton, { key: "Enter" });

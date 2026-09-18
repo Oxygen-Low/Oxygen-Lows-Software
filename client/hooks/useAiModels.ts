@@ -1,10 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { db, supabase } from "@/lib/db";
 import { useTheme } from "@/hooks/useTheme";
 import {
   callDesktopBridge,
   isDesktopBridgeAvailable,
 } from "@/lib/desktopBridge";
+import {
+  encryptApiKey,
+  decryptApiKey,
+  getActiveMasterKey,
+  isEncrypted,
+} from "@/lib/crypto";
 
 export interface Model {
   id?: string;
@@ -23,6 +29,66 @@ export interface LocalProviderStatus {
   desktopBridge: boolean;
   totalLocal: number;
 }
+
+export interface ProviderInfo {
+  id: string;
+  name: string;
+  description: string;
+  requiresKey: boolean;
+  keyPlaceholder?: string;
+  docsUrl?: string;
+}
+
+export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
+  {
+    id: "openai",
+    name: "OpenAI",
+    description: "GPT-4o, o1, o3-mini, GPT-4.5 & custom fine-tunes",
+    requiresKey: true,
+    keyPlaceholder: "sk-...",
+    docsUrl: "https://platform.openai.com/api-keys",
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    description: "Claude 3.7 Sonnet, Claude 3.5 Haiku & Claude 3 Opus",
+    requiresKey: true,
+    keyPlaceholder: "sk-ant-...",
+    docsUrl: "https://console.anthropic.com/settings/keys",
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    description: "Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash & 1.5 Pro",
+    requiresKey: true,
+    keyPlaceholder: "AIzaSy...",
+    docsUrl: "https://aistudio.google.com/app/apikey",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    description: "DeepSeek, Llama 3.3, Mistral, Qwen & 100+ models",
+    requiresKey: true,
+    keyPlaceholder: "sk-or-...",
+    docsUrl: "https://openrouter.ai/keys",
+  },
+  {
+    id: "grok",
+    name: "xAI / Grok",
+    description: "Grok 2, Grok 2 Vision & reasoning models",
+    requiresKey: true,
+    keyPlaceholder: "xai-...",
+    docsUrl: "https://console.x.ai/",
+  },
+  {
+    id: "pollinations",
+    name: "Pollinations AI",
+    description: "Free & keyless AI text models (optional priority key)",
+    requiresKey: false,
+    keyPlaceholder: "Optional secret or priority key",
+    docsUrl: "https://pollinations.ai/",
+  },
+];
 
 export const BUILTIN_MODELS: Model[] = [
   {
@@ -46,7 +112,16 @@ export const POPULAR_PRESETS: Record<
     { model_id: "gpt-4o-mini", name: "GPT-4o Mini" },
     { model_id: "o1", name: "o1 Reasoning" },
     { model_id: "o3-mini", name: "o3-mini Fast Reasoning" },
+    { model_id: "gpt-4.5-preview", name: "GPT-4.5 Preview" },
     { model_id: "gpt-4-turbo", name: "GPT-4 Turbo" },
+  ],
+  pollinations: [
+    { model_id: "openai", name: "GPT-4o Mini (Pollinations)" },
+    { model_id: "mistral", name: "Mistral Nemo (Pollinations)" },
+    { model_id: "deepseek", name: "DeepSeek V3 (Pollinations)" },
+    { model_id: "deepseek-r1", name: "DeepSeek R1 (Pollinations)" },
+    { model_id: "qwen", name: "Qwen 2.5 72B (Pollinations)" },
+    { model_id: "claude-hybrid", name: "Claude 3.5 Sonnet Hybrid (Pollinations)" },
   ],
   anthropic: [
     { model_id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
@@ -240,12 +315,29 @@ export const useAiModels = (
   const [selectedModel, setSelectedModel] = useState<string>(initialModel);
   const [selectedProvider, setSelectedProvider] = useState<string>(initialProvider);
   const [isLoading, setIsLoading] = useState(true);
-  const [configuredProviders, setConfiguredProviders] = useState<string[]>([
-    "horde",
-    "local-ollama",
-    "local-lmstudio",
-    "local-kobold",
-  ]);
+
+  // Encrypted & Decrypted API Keys state
+  const [encryptedKeys, setEncryptedKeys] = useState<Record<string, string>>({});
+  const [decryptedKeys, setDecryptedKeys] = useState<Record<string, string>>({});
+  const [isMasterKeyActive, setIsMasterKeyActive] = useState<boolean>(() => !!getActiveMasterKey());
+
+  const configuredProviders = useMemo(() => {
+    const set = new Set<string>([
+      "horde",
+      "pollinations",
+      "local-ollama",
+      "local-lmstudio",
+      "local-kobold",
+    ]);
+    for (const p of Object.keys(encryptedKeys)) {
+      set.add(p.toLowerCase());
+    }
+    for (const p of Object.keys(decryptedKeys)) {
+      set.add(p.toLowerCase());
+    }
+    return Array.from(set);
+  }, [encryptedKeys, decryptedKeys]);
+
   const [localStatus, setLocalStatus] = useState<LocalProviderStatus>({
     ollama: false,
     lmstudio: false,
@@ -253,6 +345,61 @@ export const useAiModels = (
     desktopBridge: false,
     totalLocal: 0,
   });
+
+  const loadApiKeys = useCallback(async () => {
+    try {
+      const activeMasterKey = getActiveMasterKey();
+      setIsMasterKeyActive(!!activeMasterKey);
+
+      let storedMap: Record<string, string> = {};
+      try {
+        const rawLocal = localStorage.getItem("oxygen_encrypted_api_keys");
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (parsed && typeof parsed === "object") storedMap = parsed;
+        }
+      } catch {}
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const sessionUser = sessionData?.session?.user;
+        if (sessionUser?.id) {
+          const { data: dbKeys } = await db
+            .from("user_api_keys")
+            .select("provider, encrypted_key")
+            .eq("user_id", sessionUser.id);
+          if (Array.isArray(dbKeys)) {
+            for (const row of dbKeys) {
+              if (row.provider && row.encrypted_key) {
+                storedMap[row.provider.toLowerCase()] = row.encrypted_key;
+              }
+            }
+          }
+        }
+      } catch {}
+
+      setEncryptedKeys(storedMap);
+
+      if (activeMasterKey) {
+        const decrypted: Record<string, string> = {};
+        for (const [prov, enc] of Object.entries(storedMap)) {
+          try {
+            const dec = await decryptApiKey(enc, activeMasterKey);
+            if (dec) decrypted[prov.toLowerCase()] = dec;
+          } catch {}
+        }
+        setDecryptedKeys(decrypted);
+      } else {
+        setDecryptedKeys({});
+      }
+    } catch (e) {
+      console.error("Failed to load API keys", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadApiKeys();
+  }, [loadApiKeys]);
 
   // Use refs to track current values for the fetch callback
   const selectedModelRef = useRef(selectedModel);
@@ -655,6 +802,168 @@ export const useAiModels = (
     [fetchModels],
   );
 
+  const saveProviderApiKey = useCallback(
+    async (
+      provider: string,
+      rawKey: string,
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const cleanKey = rawKey.trim();
+        const cleanProvider = provider.toLowerCase().trim();
+        const masterKey = getActiveMasterKey();
+
+        if (!masterKey) {
+          return {
+            success: false,
+            error:
+              "Master Key is locked. Please unlock your master key to encrypt API keys.",
+          };
+        }
+
+        const encrypted = await encryptApiKey(cleanKey, masterKey);
+
+        const updatedEncrypted = {
+          ...encryptedKeys,
+          [cleanProvider]: encrypted,
+        };
+        const updatedDecrypted = {
+          ...decryptedKeys,
+          [cleanProvider]: cleanKey,
+        };
+        setEncryptedKeys(updatedEncrypted);
+        setDecryptedKeys(updatedDecrypted);
+
+        try {
+          localStorage.setItem(
+            "oxygen_encrypted_api_keys",
+            JSON.stringify(updatedEncrypted),
+          );
+        } catch {}
+
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const sessionUser = sessionData?.session?.user;
+          if (sessionUser?.id) {
+            await db
+              .from("user_api_keys")
+              .delete()
+              .eq("user_id", sessionUser.id)
+              .eq("provider", cleanProvider);
+
+            await db.from("user_api_keys").insert({
+              user_id: sessionUser.id,
+              provider: cleanProvider,
+              encrypted_key: encrypted,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        } catch {}
+
+        await fetchModels();
+        return { success: true };
+      } catch (err: any) {
+        return {
+          success: false,
+          error: err?.message || "Failed to save API key",
+        };
+      }
+    },
+    [encryptedKeys, decryptedKeys, fetchModels],
+  );
+
+  const removeProviderApiKey = useCallback(
+    async (
+      provider: string,
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const cleanProvider = provider.toLowerCase().trim();
+        const updatedEncrypted = { ...encryptedKeys };
+        delete updatedEncrypted[cleanProvider];
+        const updatedDecrypted = { ...decryptedKeys };
+        delete updatedDecrypted[cleanProvider];
+
+        setEncryptedKeys(updatedEncrypted);
+        setDecryptedKeys(updatedDecrypted);
+
+        try {
+          localStorage.setItem(
+            "oxygen_encrypted_api_keys",
+            JSON.stringify(updatedEncrypted),
+          );
+        } catch {}
+
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const sessionUser = sessionData?.session?.user;
+          if (sessionUser?.id) {
+            await db
+              .from("user_api_keys")
+              .delete()
+              .eq("user_id", sessionUser.id)
+              .eq("provider", cleanProvider);
+          }
+        } catch {}
+
+        await fetchModels();
+        return { success: true };
+      } catch (err: any) {
+        return {
+          success: false,
+          error: err?.message || "Failed to remove API key",
+        };
+      }
+    },
+    [encryptedKeys, decryptedKeys, fetchModels],
+  );
+
+  const getDecryptedApiKey = useCallback(
+    (provider: string): string | null => {
+      const clean = provider.toLowerCase().trim();
+      return decryptedKeys[clean] || null;
+    },
+    [decryptedKeys],
+  );
+
+  const fetchProviderModels = useCallback(
+    async (
+      provider: string,
+      explicitKey?: string,
+    ): Promise<{
+      models?: Array<{ id: string; name: string }>;
+      error?: string;
+    }> => {
+      try {
+        const cleanProvider = provider.toLowerCase().trim();
+        const key = explicitKey || decryptedKeys[cleanProvider];
+
+        if (
+          !key &&
+          cleanProvider !== "pollinations" &&
+          cleanProvider !== "openrouter"
+        ) {
+          return {
+            error: "API key is required to query models for this provider.",
+          };
+        }
+
+        const res = await fetch("/api/ai/fetch-provider-models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider: cleanProvider, apiKey: key }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          return { error: data?.error || "Failed to fetch models" };
+        }
+        return { models: data.models || [] };
+      } catch (err: any) {
+        return { error: err?.message || "Network error fetching models" };
+      }
+    },
+    [decryptedKeys],
+  );
+
   const isProviderConfigured = useCallback(
     (provider: string) => {
       const lower = provider.toLowerCase();
@@ -678,6 +987,15 @@ export const useAiModels = (
     isProviderConfigured,
     addCustomModel,
     removeCustomModel,
+    // API Key & Provider helpers
+    encryptedKeys,
+    decryptedKeys,
+    isMasterKeyActive,
+    loadApiKeys,
+    saveProviderApiKey,
+    removeProviderApiKey,
+    getDecryptedApiKey,
+    fetchProviderModels,
     chatbotDefaultModel,
     chatbotDefaultProvider,
     setChatbotDefault,
