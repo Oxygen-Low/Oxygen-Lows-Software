@@ -107,9 +107,12 @@ describe("Server", () => {
       expect(body).toHaveProperty("paths");
       expect(body.paths).toHaveProperty("/health");
       expect(body.paths).toHaveProperty("/.well-known/api-catalog");
+      expect(body.paths).toHaveProperty("/v1/chat/completions");
+      expect(body.paths).toHaveProperty("/v1/images/generations");
+      expect(body.paths).toHaveProperty("/v1/models");
     });
 
-    it("GET /api/docs should return API documentation HTML", async () => {
+    it("GET /api/docs should return API documentation HTML with Free AI API section", async () => {
       const response = await app.request("/api/docs");
       expect(response.status).toBe(200);
       expect(response.headers.get("Content-Type")).toContain("text/html");
@@ -117,6 +120,9 @@ describe("Server", () => {
       expect(body).toContain("API Documentation");
       expect(body).toContain("/.well-known/api-catalog");
       expect(body).toContain("/api/openapi.json");
+      expect(body).toContain("Free OpenAI-Compatible AI API");
+      expect(body).toContain("/v1/chat/completions");
+      expect(body).toContain("/v1/images/generations");
     });
 
     it("GET /llms.txt should return 200 plain text", async () => {

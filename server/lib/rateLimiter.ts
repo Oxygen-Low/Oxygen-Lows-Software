@@ -40,6 +40,7 @@ export function rateLimiter(
   maxRequests: number,
   windowMs: number,
   prefix = "global",
+  customError?: (retryAfter: number, c: Context) => any,
 ) {
   return async (c: Context, next: Next) => {
     cleanup();
@@ -62,6 +63,9 @@ export function rateLimiter(
     if (entry.count > maxRequests) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       c.header("Retry-After", String(retryAfter));
+      if (customError) {
+        return c.json(customError(retryAfter, c), 429);
+      }
       return c.json(
         { error: "Too many requests. Please try again later." },
         429,

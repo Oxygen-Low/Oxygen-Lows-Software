@@ -25,6 +25,7 @@ import { browserRouter } from "./routes/browser.ts";
 import { webmasterRouter } from "./routes/webmaster.ts";
 import { chatRouter } from "./routes/chat.ts";
 import { modelsRouter } from "./routes/models.ts";
+import { v1Router } from "./routes/v1.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -64,6 +65,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/data") ||
     c.req.path.startsWith("/api/surveys") ||
     c.req.path.startsWith("/api/ai") ||
+    c.req.path.startsWith("/api/v1") ||
+    c.req.path.startsWith("/v1") ||
     c.req.path.startsWith("/api/realtime") ||
     c.req.path.startsWith("/api/browser") ||
     c.req.path.startsWith("/api/webmaster") ||
@@ -76,7 +79,13 @@ app.use("*", async (c, next) => {
       {
         apiKey: process.env.DEFENDER_API_KEY || "",
         apiUrl: process.env.DEFENDER_API_URL || "https://oxygenlow.com",
-        skipBodyScanPaths: ["/api/ai", "/api/data", "/api/storage"],
+        skipBodyScanPaths: [
+          "/api/ai",
+          "/api/data",
+          "/api/storage",
+          "/api/v1",
+          "/v1",
+        ],
       },
       app,
     );
@@ -784,6 +793,77 @@ app.get("/api/openapi.json", (c) => {
           },
         },
       },
+      "/v1/chat/completions": {
+        post: {
+          summary: "Free AI Chat Completions",
+          description: "OpenAI-compatible text completion completely accessible for free without API keys. Rate limited to 60 requests per minute per IP.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    model: { type: "string", example: "Fast", description: "Model name or alias (Fast, Smart, llama-3.2-3b, gpt-3.5-turbo, etc.)" },
+                    messages: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          role: { type: "string", example: "user" },
+                          content: { type: "string", example: "Hello!" }
+                        }
+                      }
+                    },
+                    stream: { type: "boolean", example: false }
+                  },
+                  required: ["messages"]
+                }
+              }
+            }
+          },
+          responses: {
+            "200": { description: "OpenAI-compatible completion object or SSE stream" },
+            "429": { description: "Rate limit exceeded (60 requests per minute per IP)" }
+          }
+        }
+      },
+      "/v1/images/generations": {
+        post: {
+          summary: "Free AI Image Generation",
+          description: "OpenAI-compatible image generation completely accessible for free without API keys. Rate limited to 60 requests per minute per IP.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    prompt: { type: "string", example: "A cute red panda wearing glasses" },
+                    model: { type: "string", example: "quality", description: "quality, fast, anime, pixel_art, realistic, cartoon, simplistic, dall-e-3" },
+                    size: { type: "string", example: "512x512" },
+                    response_format: { type: "string", example: "url", enum: ["url", "b64_json"] }
+                  },
+                  required: ["prompt"]
+                }
+              }
+            }
+          },
+          responses: {
+            "200": { description: "OpenAI-compatible image generation response with URLs or base64 JSON" },
+            "429": { description: "Rate limit exceeded (60 requests per minute per IP)" }
+          }
+        }
+      },
+      "/v1/models": {
+        get: {
+          summary: "List Free AI Models",
+          description: "Returns the list of free text and image generation models available via /v1 and /api/v1.",
+          responses: {
+            "200": { description: "OpenAI-compatible model list" }
+          }
+        }
+      },
       "/api/vpn": {
         get: {
           summary: "VPN Status",
@@ -1037,6 +1117,35 @@ app.get("/api/docs", (c) => {
       </div>
       <div class="desc">Agent registration and identity assertion exchange endpoint.</div>
     </div>
+
+    <h2 style="margin-top: 2rem; margin-bottom: 1rem; font-size: 1.3rem;">Free OpenAI-Compatible AI API (Keyless &middot; 60 RPM/IP)</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem;">
+      Completely free endpoints for text generation and image generation. Compatible with standard OpenAI SDKs and curl without requiring an API key. Shared rate limit of 60 requests per minute per IP.
+    </p>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/v1/models <span style="color: var(--text-muted); font-size: 0.85rem;">(or /api/v1/models)</span></span>
+      </div>
+      <div class="desc">Discover available free text models (Fast, Smart, llama-3.2-3b, etc.) and image models (quality, fast, anime, pixel_art, etc.).</div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method post">POST</span>
+        <span class="path">/v1/chat/completions <span style="color: var(--text-muted); font-size: 0.85rem;">(or /api/v1/chat/completions)</span></span>
+      </div>
+      <div class="desc">Free OpenAI-compatible chat completion supporting both streaming (SSE) and non-streaming responses. Zero authentication required.</div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method post">POST</span>
+        <span class="path">/v1/images/generations <span style="color: var(--text-muted); font-size: 0.85rem;">(or /api/v1/images/generations)</span></span>
+      </div>
+      <div class="desc">Free OpenAI-compatible image generation returning image URLs or base64 JSON. Synchronously completed via server-side polling.</div>
+    </div>
   </div>
 </body>
 </html>`;
@@ -1095,6 +1204,8 @@ app.route("/api/browser", browserRouter);
 app.route("/api/webmaster", webmasterRouter);
 app.route("/api/chat", chatRouter);
 app.route("/api/models", modelsRouter);
+app.route("/v1", v1Router);
+app.route("/api/v1", v1Router);
 
 app.get("/bot", (c) => {
   return c.html(`
