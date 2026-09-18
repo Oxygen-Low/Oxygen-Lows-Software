@@ -36,6 +36,35 @@ jobs:
       - name: Build project
         run: pnpm run build
 
+      - name: Rewrite workspace deps for npm compatibility
+        run: |
+          # Replace workspace:* references with file: paths so npm can resolve them
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            for (const section of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+              if (!pkg[section]) continue;
+              for (const [name, version] of Object.entries(pkg[section])) {
+                if (version.startsWith('workspace:')) {
+                  // Find the matching package folder
+                  const fs2 = require('fs');
+                  const path = require('path');
+                  const pkgsDir = 'packages';
+                  const dirs = fs2.readdirSync(pkgsDir);
+                  for (const dir of dirs) {
+                    const subPkg = JSON.parse(fs2.readFileSync(path.join(pkgsDir, dir, 'package.json'), 'utf8'));
+                    if (subPkg.name === name) {
+                      pkg[section][name] = 'file:packages/' + dir;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+            console.log('Rewrote workspace: deps to file: paths');
+          "
+
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"

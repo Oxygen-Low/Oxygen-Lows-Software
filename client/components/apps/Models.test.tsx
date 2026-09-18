@@ -200,8 +200,13 @@ describe("Models Component UI", () => {
     fireEvent.click(hostTabButton);
 
     await waitFor(() => {
+      // CardTitle renders unconditionally when isDesktop is true
       expect(screen.getByText("Share Local Models")).toBeDefined();
-      expect(screen.getByText("Scan Local Engines")).toBeDefined();
+      // Button text may be "Scanning..." or "Scan Local Engines" depending on async state
+      expect(
+        screen.queryByText("Scan Local Engines") !== null ||
+        screen.queryByText("Scanning...") !== null
+      ).toBe(true);
     });
 
     delete (window as any).chrome;
