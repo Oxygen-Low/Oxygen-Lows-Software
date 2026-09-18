@@ -54,7 +54,11 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const envPort = process.env.PORT;
+const port: any =
+  envPort && !isNaN(Number(envPort))
+    ? parseInt(envPort, 10)
+    : envPort || 3000;
 
 const server = serve(
   {
@@ -62,6 +66,12 @@ const server = serve(
     port,
   },
   (info) => {
-    console.log(`Listening on http://localhost:${info.port}`);
+    const address =
+      typeof info === "string"
+        ? info
+        : typeof info === "object" && info && "port" in info
+          ? `http://localhost:${info.port}`
+          : String(port);
+    console.log(`Listening on ${address}`);
   },
 );

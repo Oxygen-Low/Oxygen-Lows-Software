@@ -4,10 +4,11 @@ let nodeHttps: any = null;
 
 try {
   if (typeof process !== "undefined" && process.versions?.node) {
-    const importedHttp = await import("http");
-    nodeHttp = importedHttp.default || importedHttp;
-    const importedHttps = await import("https");
-    nodeHttps = importedHttps.default || importedHttps;
+    const req = typeof require === "function" ? require : null;
+    if (req) {
+      nodeHttp = req("http");
+      nodeHttps = req("https");
+    }
   }
 } catch (_) {
   // In non-Node or edge runtimes (e.g., Cloudflare Workers), http/https are unavailable
@@ -32,6 +33,27 @@ export class OutboundMonitor {
   }
 
   install(): void {
+    if (typeof process !== "undefined" && process.versions?.node && (!nodeHttp || !nodeHttps)) {
+      try {
+        import("http")
+          .then((m) => {
+            nodeHttp = m.default || m;
+            this.applyPatches();
+          })
+          .catch(() => {});
+        import("https")
+          .then((m) => {
+            nodeHttps = m.default || m;
+            this.applyPatches();
+          })
+          .catch(() => {});
+      } catch (_) {}
+    }
+
+    this.applyPatches();
+  }
+
+  private applyPatches(): void {
     if (this.originalHttpRequest || (this.originalFetch && !nodeHttp)) return; // already installed
 
     this.originalHttpRequest = nodeHttp?.request;
