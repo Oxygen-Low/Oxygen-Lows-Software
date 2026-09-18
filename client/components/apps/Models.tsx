@@ -31,7 +31,6 @@ import {
   Loader2,
   ChevronRight,
   Sliders,
-  Globe,
   Download,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -547,19 +546,13 @@ export function Models() {
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
                   {t("models.title")}
-                  <Badge
-                    variant="outline"
-                    className="border-sky-500/30 text-sky-400 bg-sky-500/10 text-xs"
-                  >
-                    P2P Relay
-                  </Badge>
                 </h1>
                 <p className="text-sm text-slate-400">{t("models.subtitle")}</p>
               </div>
             </div>
           </div>
 
-          {/* Quick Host Controls & Status (Desktop only) or Web Mode Indicator */}
+          {/* Quick Host Controls & Status (Desktop only) */}
           {isDesktop ? (
             <div className="flex flex-wrap items-center gap-2">
               <Badge
@@ -616,13 +609,6 @@ export function Models() {
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className="bg-sky-500/10 text-sky-400 border-sky-500/30 text-xs"
-              >
-                <Globe className="w-3.5 h-3.5 mr-1.5" />
-                {t("models.webModeBadge")}
-              </Badge>
               <Button
                 variant="outline"
                 size="sm"

@@ -7,6 +7,7 @@ export interface DefenderConfig {
   syncIntervalMs?: number; // Config sync interval in milliseconds (default 60000ms, 0 to disable)
   excludePaths?: (string | RegExp)[]; // Paths completely bypassed by Defender middleware
   skipBodyScanPaths?: (string | RegExp)[]; // Paths where body injection scanning is skipped (e.g. AI chat, encrypted data)
+  allowlistIps?: string[]; // IPs or CIDR subnets that bypass all WAF protections, bot detection, and rate limits
   autoBlockSensitivePaths?: boolean;
   sensitivePathThreshold?: number;
   sensitivePathWindowSeconds?: number;
@@ -36,6 +37,9 @@ export type EventType =
   | "shell_injection"
   | "path_traversal"
   | "ssrf"
+  | "xss"
+  | "nosql_injection"
+  | "prototype_pollution"
   | "sensitive_path"
   | "tor"
   | "vpn"
@@ -60,6 +64,13 @@ export type BotCategory =
 export type ThreatActorCategory =
   "bruteforce" | "http_dos" | "http_exploit" | "botnet";
 
+export interface RateLimitInfo {
+  limit: number;
+  remaining: number;
+  resetAt: number;
+  retryAfterSeconds: number;
+}
+
 export interface AppConfig {
   appId: string;
   blockModeEnabled: boolean;
@@ -67,6 +78,9 @@ export interface AppConfig {
   blockShellInjection: boolean;
   blockPathTraversal: boolean;
   blockSsrf: boolean;
+  blockXss: boolean;
+  blockNosqlInjection: boolean;
+  blockPrototypePollution: boolean;
   blockSensitivePaths: boolean;
   autoBlockSensitivePaths: boolean;
   sensitivePathThreshold: number;
@@ -76,6 +90,7 @@ export interface AppConfig {
   blockVpn: boolean;
   blockCountries: string[];
   blockIps: string[];
+  allowlistIps: string[];
   /** Platform-wide administrator bans enabled for this protected app. */
   blockAdminBannedIps: boolean;
   adminBannedIps: { ip: string; reason: string; bannedAt: string }[];

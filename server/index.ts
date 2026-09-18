@@ -24,6 +24,7 @@ import { adminWebdefenderRouter } from "./routes/adminWebdefender.ts";
 import { browserRouter } from "./routes/browser.ts";
 import { webmasterRouter } from "./routes/webmaster.ts";
 import { chatRouter } from "./routes/chat.ts";
+import { chessRouter } from "./routes/chess.ts";
 import { modelsRouter } from "./routes/models.ts";
 import { v1Router } from "./routes/v1.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
@@ -70,7 +71,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/realtime") ||
     c.req.path.startsWith("/api/browser") ||
     c.req.path.startsWith("/api/webmaster") ||
-    c.req.path.startsWith("/api/chat")
+    c.req.path.startsWith("/api/chat") ||
+    c.req.path.startsWith("/api/chess")
   ) {
     return next();
   }
@@ -1203,6 +1205,7 @@ app.route("/api/admin/banned-ips", adminWebdefenderRouter);
 app.route("/api/browser", browserRouter);
 app.route("/api/webmaster", webmasterRouter);
 app.route("/api/chat", chatRouter);
+app.route("/api/chess", chessRouter);
 app.route("/api/models", modelsRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);

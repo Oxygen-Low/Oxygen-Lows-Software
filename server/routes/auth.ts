@@ -28,6 +28,26 @@ import {
   approveQuickSignInSession,
   rejectQuickSignInSession,
 } from "../lib/quickSignIn.ts";
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} from "@simplewebauthn/server";
+import {
+  getRpId,
+  getExpectedOrigin,
+  RP_NAME,
+  saveChallenge,
+  consumeChallenge,
+  getUserPasskeys,
+  saveUserPasskey,
+  renameUserPasskey,
+  deleteUserPasskey,
+  updatePasskeyCounter,
+  findUserByPasskeyId,
+  type StoredPasskey,
+} from "../lib/passkeys.ts";
 
 export const authRouter = new Hono();
 
@@ -1146,5 +1166,391 @@ authRouter.post("/quick-sign-in/reject", localAuthMiddleware, async (c: any) => 
       { error: err.message || "Failed to reject quick sign-in" },
       500,
     );
+  }
+});
+
+/**
+ * Passkey Registration: Generate creation options
+ */
+authRouter.post(
+  "/passkey/register-options",
+  localAuthMiddleware,
+  async (c: any) => {
+    try {
+      const user = c.get("user");
+      const body = await c.req.json().catch(() => ({}));
+      const { password, authToken } = body;
+
+      const tokenInput = authToken || password;
+      if (!tokenInput) {
+        return c.json(
+          { error: "Password is required to register a passkey" },
+          400,
+        );
+      }
+
+      const dbUser = getUserById(user.id);
+      if (!dbUser) {
+        return c.json({ error: "User not found" }, 404);
+      }
+
+      if (dbUser.auth_verifier) {
+        const valid = verifyAuthToken(
+          tokenInput,
+          dbUser.auth_verifier,
+          dbUser.auth_salt,
+        );
+        if (!valid) {
+          return c.json({ error: "Incorrect password" }, 400);
+        }
+      }
+
+      const userPasskeys = getUserPasskeys(user.id);
+      const excludeCredentials = userPasskeys.map((pk) => ({
+        id: pk.id,
+        transports: pk.transports as any,
+      }));
+
+      const rpID = getRpId(c);
+      const options = await generateRegistrationOptions({
+        rpName: RP_NAME,
+        rpID,
+        userName: dbUser.username || dbUser.email,
+        userID: new TextEncoder().encode(String(user.id)),
+        userDisplayName: dbUser.username || dbUser.email,
+        attestationType: "none",
+        excludeCredentials,
+        authenticatorSelection: {
+          residentKey: "preferred",
+          userVerification: "preferred",
+        },
+      });
+
+      saveChallenge(options.challenge, String(user.id));
+
+      return c.json({ options });
+    } catch (err: any) {
+      return c.json(
+        {
+          error:
+            err.message || "Failed to generate passkey registration options",
+        },
+        500,
+      );
+    }
+  },
+);
+
+/**
+ * Passkey Registration: Verify attestation response and save credential
+ */
+authRouter.post(
+  "/passkey/register-verify",
+  localAuthMiddleware,
+  async (c: any) => {
+    try {
+      const user = c.get("user");
+      const body = await c.req.json().catch(() => ({}));
+      const { response, nickname } = body;
+
+      if (!response) {
+        return c.json({ error: "Registration response is required" }, 400);
+      }
+
+      const rpID = getRpId(c);
+      const expectedOrigin = getExpectedOrigin(c);
+
+      let clientChallenge: string | undefined;
+      try {
+        const clientData = JSON.parse(
+          Buffer.from(response.response.clientDataJSON, "base64url").toString(
+            "utf-8",
+          ),
+        );
+        clientChallenge = clientData.challenge;
+      } catch {
+        // Fallback
+      }
+
+      if (
+        !clientChallenge ||
+        !consumeChallenge(clientChallenge, String(user.id))
+      ) {
+        return c.json(
+          { error: "Invalid or expired registration challenge" },
+          400,
+        );
+      }
+
+      const verification = await verifyRegistrationResponse({
+        response,
+        expectedChallenge: clientChallenge,
+        expectedOrigin,
+        expectedRPID: rpID,
+        requireUserVerification: false,
+      });
+
+      if (!verification.verified || !verification.registrationInfo) {
+        return c.json(
+          { error: "Passkey registration verification failed" },
+          400,
+        );
+      }
+
+      const { credential, credentialDeviceType, credentialBackedUp, aaguid } =
+        verification.registrationInfo;
+
+      const defaultName = `Passkey (${new Date().toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      })})`;
+      const cleanName =
+        typeof nickname === "string" && nickname.trim().length > 0
+          ? nickname.trim()
+          : defaultName;
+
+      const newPasskey: StoredPasskey = {
+        id: credential.id,
+        name: cleanName,
+        publicKey: Buffer.from(credential.publicKey).toString("base64url"),
+        counter: credential.counter,
+        deviceType: credentialDeviceType,
+        backedUp: credentialBackedUp,
+        transports: response.response?.transports || credential.transports,
+        aaguid,
+        createdAt: new Date().toISOString(),
+        lastUsedAt: null,
+      };
+
+      saveUserPasskey(user.id, newPasskey);
+
+      return c.json({
+        success: true,
+        passkey: {
+          id: newPasskey.id,
+          name: newPasskey.name,
+          createdAt: newPasskey.createdAt,
+          lastUsedAt: newPasskey.lastUsedAt,
+        },
+      });
+    } catch (err: any) {
+      return c.json(
+        { error: err.message || "Failed to verify passkey registration" },
+        500,
+      );
+    }
+  },
+);
+
+/**
+ * Passkey Login: Generate authentication options
+ */
+authRouter.get("/passkey/login-options", async (c) => {
+  try {
+    const rpID = getRpId(c);
+    const options = await generateAuthenticationOptions({
+      rpID,
+      userVerification: "preferred",
+      allowCredentials: [],
+    });
+
+    saveChallenge(options.challenge);
+
+    return c.json({ options });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to generate login options" },
+      500,
+    );
+  }
+});
+
+/**
+ * Passkey Login: Verify assertion response and issue session
+ */
+authRouter.post("/passkey/login-verify", async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const { response } = body;
+
+    if (!response || !response.id) {
+      return c.json({ error: "Passkey response is required" }, 400);
+    }
+
+    const match = findUserByPasskeyId(response.id);
+    if (!match) {
+      return c.json({ error: "Passkey not recognized on this device" }, 400);
+    }
+
+    const { user, passkey } = match;
+    const rpID = getRpId(c);
+    const expectedOrigin = getExpectedOrigin(c);
+
+    let clientChallenge: string | undefined;
+    try {
+      const clientData = JSON.parse(
+        Buffer.from(response.response.clientDataJSON, "base64url").toString(
+          "utf-8",
+        ),
+      );
+      clientChallenge = clientData.challenge;
+    } catch {
+      // Fallback
+    }
+
+    if (!clientChallenge || !consumeChallenge(clientChallenge)) {
+      return c.json({ error: "Invalid or expired login challenge" }, 400);
+    }
+
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge: clientChallenge,
+      expectedOrigin,
+      expectedRPID: rpID,
+      credential: {
+        id: passkey.id,
+        publicKey: Buffer.from(passkey.publicKey, "base64url"),
+        counter: passkey.counter,
+        transports: passkey.transports as any,
+      },
+      requireUserVerification: false,
+    });
+
+    if (!verification.verified) {
+      return c.json({ error: "Passkey verification failed" }, 400);
+    }
+
+    updatePasskeyCounter(
+      user.id,
+      passkey.id,
+      verification.authenticationInfo.newCounter,
+    );
+
+    const token = generateToken(user);
+    const session = {
+      access_token: token,
+      token_type: "bearer",
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: String(user.id) === "1" ? "admin" : user.role || "user",
+        user_metadata: {
+          username: user.username,
+          full_name: user.username,
+          role: String(user.id) === "1" ? "admin" : user.role || "user",
+        },
+      },
+    };
+
+    return c.json({
+      user: session.user,
+      token,
+      session,
+      requires_unlock: true,
+      error: null,
+    });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Passkey sign in failed" },
+      500,
+    );
+  }
+});
+
+/**
+ * List Passkeys (Authenticated)
+ */
+authRouter.get("/passkey/list", localAuthMiddleware, async (c: any) => {
+  try {
+    const user = c.get("user");
+    const passkeys = getUserPasskeys(user.id).map(
+      ({ id, name, createdAt, lastUsedAt, deviceType, backedUp }) => ({
+        id,
+        name,
+        createdAt,
+        lastUsedAt,
+        deviceType,
+        backedUp,
+      }),
+    );
+    return c.json({ passkeys });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to list passkeys" }, 500);
+  }
+});
+
+/**
+ * Rename Passkey (Authenticated)
+ */
+authRouter.post("/passkey/rename", localAuthMiddleware, async (c: any) => {
+  try {
+    const user = c.get("user");
+    const body = await c.req.json().catch(() => ({}));
+    const { credentialId, name } = body;
+
+    if (!credentialId || typeof credentialId !== "string") {
+      return c.json({ error: "Credential ID is required" }, 400);
+    }
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return c.json({ error: "Passkey name is required" }, 400);
+    }
+
+    const updated = renameUserPasskey(user.id, credentialId, name.trim());
+    if (!updated) {
+      return c.json({ error: "Passkey not found" }, 404);
+    }
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to rename passkey" }, 500);
+  }
+});
+
+/**
+ * Delete Passkey (Authenticated + Password Verification)
+ */
+authRouter.post("/passkey/delete", localAuthMiddleware, async (c: any) => {
+  try {
+    const user = c.get("user");
+    const body = await c.req.json().catch(() => ({}));
+    const { credentialId, password, authToken } = body;
+
+    if (!credentialId || typeof credentialId !== "string") {
+      return c.json({ error: "Credential ID is required" }, 400);
+    }
+
+    const tokenInput = authToken || password;
+    if (!tokenInput) {
+      return c.json(
+        { error: "Password is required to delete a passkey" },
+        400,
+      );
+    }
+
+    const dbUser = getUserById(user.id);
+    if (!dbUser) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    if (dbUser.auth_verifier) {
+      const valid = verifyAuthToken(
+        tokenInput,
+        dbUser.auth_verifier,
+        dbUser.auth_salt,
+      );
+      if (!valid) {
+        return c.json({ error: "Incorrect password" }, 400);
+      }
+    }
+
+    const deleted = deleteUserPasskey(user.id, credentialId);
+    if (!deleted) {
+      return c.json({ error: "Passkey not found" }, 404);
+    }
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to delete passkey" }, 500);
   }
 });

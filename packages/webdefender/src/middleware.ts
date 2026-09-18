@@ -58,7 +58,20 @@ export function createExpressMiddleware(client: DefenderClient) {
       const result = await client.handleRequest(defenderReq);
 
       if (result.blocked) {
-        return res.status(403).json({
+        const status = result.statusCode || 403;
+        if (result.rateLimitInfo) {
+          res.setHeader(
+            "Retry-After",
+            String(result.rateLimitInfo.retryAfterSeconds),
+          );
+          res.setHeader("RateLimit-Limit", String(result.rateLimitInfo.limit));
+          res.setHeader(
+            "RateLimit-Remaining",
+            String(result.rateLimitInfo.remaining),
+          );
+          res.setHeader("RateLimit-Reset", String(result.rateLimitInfo.resetAt));
+        }
+        return res.status(status).json({
           blocked: true,
           reason: result.reason || "Request blocked by Defender",
         });

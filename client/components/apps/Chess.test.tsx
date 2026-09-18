@@ -129,4 +129,103 @@ describe("ChessApp Component", () => {
     expect(screen.getByText("White to move")).toBeDefined();
     expect(screen.getByText("No moves yet")).toBeDefined();
   });
+
+  it("switches to Play Online tab and renders the multiplayer lobby", async () => {
+    render(
+      <LanguageProvider>
+        <ChessApp />
+      </LanguageProvider>,
+    );
+
+    const onlineTabBtn = screen.getByRole("button", { name: /Play Online/i });
+    fireEvent.click(onlineTabBtn);
+
+    expect(screen.getAllByText("Create Game")[0]).toBeDefined();
+    expect(screen.getAllByText("Join Game")[0]).toBeDefined();
+    expect(screen.getByText("Time Control")).toBeDefined();
+    expect(screen.getByText("Room Code")).toBeDefined();
+    expect(screen.getByPlaceholderText(/Enter 6-character/i)).toBeDefined();
+  });
+
+  it("creates a room and shows waiting screen with room code", async () => {
+    const mockRoomId = "XYZ789";
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes("/api/chess/room/create")) {
+        return {
+          ok: true,
+          json: async () => ({
+            roomId: mockRoomId,
+            hostColor: "w",
+            guestColor: "b",
+            timeLimit: 5,
+            peerId: "host_1",
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <LanguageProvider>
+        <ChessApp />
+      </LanguageProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Play Online/i }));
+
+    const createBtn = screen.getAllByRole("button", { name: /Create Game/i })[0];
+    await act(async () => {
+      fireEvent.click(createBtn);
+    });
+
+    expect(screen.getByText("Waiting for opponent to connect...")).toBeDefined();
+    expect(screen.getByText(mockRoomId)).toBeDefined();
+    expect(screen.getByRole("button", { name: /Copy Link/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Leave Room/i })).toBeDefined();
+  });
+
+  it("joins a room and enters playing state with clocks and in-game controls", async () => {
+    const mockRoomId = "ABC123";
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes("/api/chess/room/join")) {
+        return {
+          ok: true,
+          json: async () => ({
+            roomId: mockRoomId,
+            yourColor: "b",
+            opponentColor: "w",
+            timeLimit: 5,
+            isHost: false,
+            status: "playing",
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <LanguageProvider>
+        <ChessApp />
+      </LanguageProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Play Online/i }));
+
+    const codeInput = screen.getByPlaceholderText(/Enter 6-character/i);
+    fireEvent.change(codeInput, { target: { value: "ABC123" } });
+
+    const joinBtn = screen.getByRole("button", { name: /Join/i });
+    await act(async () => {
+      fireEvent.click(joinBtn);
+    });
+
+    // In playing state
+    expect(screen.getByText("Offer Draw")).toBeDefined();
+    expect(screen.getByText("Takeback")).toBeDefined();
+    expect(screen.getByText("Resign")).toBeDefined();
+    expect(screen.getByText("Chat")).toBeDefined();
+    expect(screen.getByText("You")).toBeDefined();
+    expect(screen.getByText("Opponent")).toBeDefined();
+  });
 });
+

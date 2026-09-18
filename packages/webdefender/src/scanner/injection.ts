@@ -54,10 +54,43 @@ const SSRF_PATTERNS = [
   /\[::1\]/,
 ];
 
+const XSS_PATTERNS = [
+  /<script\b[^>]*>/i,
+  /<\/script>/i,
+  /javascript:\s*[^"'\s]+/i,
+  /vbscript:\s*[^"'\s]+/i,
+  /data:text\/(?:html|javascript)/i,
+  /\bon(?:load|error|click|mouseover|mouseenter|focus|blur|change|submit|keydown|keypress|keyup)\s*=/i,
+  /<(?:iframe|object|embed|applet)\b/i,
+  /<(?:img|svg)\b[^>]*\bon[a-z]+\s*=/i,
+  /(?:document|window)\.(?:cookie|location|localStorage|sessionStorage)/i,
+];
+
+const NOSQL_PATTERNS = [
+  /\$where\b/i,
+  /\$(?:gt|gte|lt|lte|ne|nin|in|regex|exists|all|size|or|and|nor|not)\s*[:=]/i,
+  /["']\$(?:gt|gte|lt|lte|ne|nin|in|regex|exists|all|size|or|and|nor|not)["']\s*:/i,
+  /\[\$(?:gt|gte|lt|lte|ne|nin|in|regex|exists|all|size|or|and|nor|not)\]/i,
+  /\btojson\s*\(/i,
+];
+
+const PROTOTYPE_POLLUTION_PATTERNS = [
+  /__proto__/i,
+  /constructor\s*\.\s*prototype/i,
+  /prototype\s*\[\s*["']?[a-zA-Z0-9_$]+["']?\s*\]/i,
+  /__defineGetter__/i,
+  /__defineSetter__/i,
+  /__lookupGetter__/i,
+  /__lookupSetter__/i,
+];
+
 const SQLI_COMPILED = compilePatterns(SQLI_PATTERNS, "i");
 const SHELL_COMPILED = compilePatterns(SHELL_PATTERNS, "i");
 const TRAVERSAL_COMPILED = compilePatterns(TRAVERSAL_PATTERNS, "i");
 const SSRF_COMPILED = compilePatterns(SSRF_PATTERNS);
+const XSS_COMPILED = compilePatterns(XSS_PATTERNS, "i");
+const NOSQL_COMPILED = compilePatterns(NOSQL_PATTERNS, "i");
+const PROTOTYPE_POLLUTION_COMPILED = compilePatterns(PROTOTYPE_POLLUTION_PATTERNS, "i");
 
 function detectThreat(
   input: string,
@@ -109,6 +142,27 @@ export function detectSsrf(input: string): {
   return detectThreat(input, SSRF_COMPILED);
 }
 
+export function detectXss(input: string): {
+  detected: boolean;
+  pattern?: string;
+} {
+  return detectThreat(input, XSS_COMPILED);
+}
+
+export function detectNoSqlInjection(input: string): {
+  detected: boolean;
+  pattern?: string;
+} {
+  return detectThreat(input, NOSQL_COMPILED);
+}
+
+export function detectPrototypePollution(input: string): {
+  detected: boolean;
+  pattern?: string;
+} {
+  return detectThreat(input, PROTOTYPE_POLLUTION_COMPILED);
+}
+
 export interface ScanResult {
   threats: Array<{ type: EventType; pattern: string }>;
 }
@@ -125,6 +179,7 @@ export function scanRequest(
   const inputs: string[] = [path, body];
 
   for (const key in query) {
+    inputs.push(key);
     const val = query[key];
     if (Array.isArray(val)) {
       for (let i = 0; i < val.length; i++) {
@@ -166,6 +221,18 @@ export function scanRequest(
   const ssrfCheck = detectSsrf(combinedInput);
   if (ssrfCheck.detected && ssrfCheck.pattern)
     threats.push({ type: "ssrf", pattern: ssrfCheck.pattern });
+
+  const xssCheck = detectXss(combinedInput);
+  if (xssCheck.detected && xssCheck.pattern)
+    threats.push({ type: "xss", pattern: xssCheck.pattern });
+
+  const nosqlCheck = detectNoSqlInjection(combinedInput);
+  if (nosqlCheck.detected && nosqlCheck.pattern)
+    threats.push({ type: "nosql_injection", pattern: nosqlCheck.pattern });
+
+  const protoCheck = detectPrototypePollution(combinedInput);
+  if (protoCheck.detected && protoCheck.pattern)
+    threats.push({ type: "prototype_pollution", pattern: protoCheck.pattern });
 
   return { threats };
 }

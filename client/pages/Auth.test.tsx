@@ -23,6 +23,14 @@ vi.mock("@/lib/db", () => {
   };
 });
 
+// Mock @simplewebauthn/browser
+vi.mock("@simplewebauthn/browser", () => ({
+  browserSupportsWebAuthn: vi.fn(() => true),
+  browserSupportsWebAuthnAutofill: vi.fn(() => Promise.resolve(true)),
+  startRegistration: vi.fn(),
+  startAuthentication: vi.fn(),
+}));
+
 describe("Auth Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -376,5 +384,39 @@ describe("Auth Component", () => {
     } finally {
       globalThis.fetch = origFetch;
     }
+  });
+
+  it("should trigger signInWithPasskey when clicking Sign in with a Passkey button", async () => {
+    const mockSignInWithPasskey = vi
+      .fn()
+      .mockImplementation(({ conditional }) => {
+        if (conditional) return new Promise(() => {});
+        return Promise.resolve({
+          session: { user: { id: "1", username: "test" } },
+        });
+      });
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signInWithPasskey: mockSignInWithPasskey,
+      signUp: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/auth"]}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const passkeyBtn = await screen.findByRole("button", {
+      name: /Sign in with a Passkey/i,
+    });
+    expect(passkeyBtn).toBeDefined();
+
+    fireEvent.click(passkeyBtn);
+    expect(mockSignInWithPasskey).toHaveBeenCalledWith({ conditional: false });
   });
 });

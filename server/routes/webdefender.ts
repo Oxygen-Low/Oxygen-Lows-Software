@@ -783,6 +783,9 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "block_shell_injection",
     "block_path_traversal",
     "block_ssrf",
+    "block_xss",
+    "block_nosql_injection",
+    "block_prototype_pollution",
     "block_sensitive_paths",
     "auto_block_sensitive_paths",
     "sensitive_path_threshold",
@@ -792,6 +795,7 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "block_vpn",
     "block_countries",
     "block_ips",
+    "allowlist_ips",
     "block_admin_banned_ips",
     "block_ad_bots",
     "block_ai_assistants",
@@ -844,6 +848,10 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
         key === "log_unique_ips_only"
       ) {
         updatePayload[key] = Boolean(body[key]);
+      } else if (key === "allowlist_ips" || key === "block_ips" || key === "block_countries") {
+        updatePayload[key] = Array.isArray(body[key])
+          ? body[key].map((item: any) => String(item).trim()).filter(Boolean)
+          : [];
       } else {
         updatePayload[key] = body[key];
       }

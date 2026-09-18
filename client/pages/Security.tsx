@@ -23,7 +23,15 @@ import {
   Laptop,
   Globe,
   Clock,
+  Fingerprint,
+  Plus,
+  Trash2,
+  Edit3,
 } from "lucide-react";
+import {
+  startRegistration,
+  browserSupportsWebAuthn,
+} from "@simplewebauthn/browser";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
 import { GithubIcon } from "@/components/ui/GithubIcon";
 import { toast } from "sonner";
@@ -200,6 +208,248 @@ export default function Security() {
     useState<boolean>(false);
   const [quickApproving, setQuickApproving] = useState<boolean>(false);
   const [quickRejecting, setQuickRejecting] = useState<boolean>(false);
+
+  // Passkeys State
+  const [passkeys, setPasskeys] = useState<
+    Array<{
+      id: string;
+      name: string;
+      createdAt: string;
+      lastUsedAt: string | null;
+      deviceType?: string;
+      backedUp?: boolean;
+    }>
+  >([]);
+  const [passkeysLoading, setPasskeysLoading] = useState<boolean>(true);
+  const [passkeysSupported, setPasskeysSupported] = useState<boolean>(false);
+
+  // Register Passkey Dialog
+  const [showRegisterPasskeyDialog, setShowRegisterPasskeyDialog] =
+    useState<boolean>(false);
+  const [registerNickname, setRegisterNickname] = useState<string>("");
+  const [registerPassword, setRegisterPassword] = useState<string>("");
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [isRegisteringPasskey, setIsRegisteringPasskey] =
+    useState<boolean>(false);
+
+  // Rename Passkey Dialog
+  const [showRenamePasskeyDialog, setShowRenamePasskeyDialog] =
+    useState<boolean>(false);
+  const [passkeyToRename, setPasskeyToRename] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [newPasskeyName, setNewPasskeyName] = useState<string>("");
+  const [isRenamingPasskey, setIsRenamingPasskey] = useState<boolean>(false);
+
+  // Delete Passkey Dialog
+  const [showDeletePasskeyDialog, setShowDeletePasskeyDialog] =
+    useState<boolean>(false);
+  const [passkeyToDelete, setPasskeyToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deletePasskeyPassword, setDeletePasskeyPassword] =
+    useState<string>("");
+  const [deletePasskeyError, setDeletePasskeyError] = useState<string | null>(
+    null,
+  );
+  const [isDeletingPasskey, setIsDeletingPasskey] = useState<boolean>(false);
+
+  const fetchPasskeys = async () => {
+    if (!session?.access_token) return;
+    try {
+      const res = await fetch("/api/auth/passkey/list", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.passkeys) {
+        setPasskeys(data.passkeys);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPasskeysLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    try {
+      setPasskeysSupported(browserSupportsWebAuthn());
+    } catch {
+      setPasskeysSupported(false);
+    }
+    fetchPasskeys();
+  }, [session?.access_token]);
+
+  const handleRegisterPasskey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterError(null);
+    if (!registerPassword) {
+      setRegisterError(
+        t("auth.passwordRequired", undefined, "Password is required"),
+      );
+      return;
+    }
+    setIsRegisteringPasskey(true);
+    try {
+      // 1. Get registration options with password confirmation
+      const optRes = await fetch("/api/auth/passkey/register-options", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          password: registerPassword,
+          nickname: registerNickname,
+        }),
+      });
+      const optData = await optRes.json();
+      if (!optRes.ok || optData.error) {
+        throw new Error(
+          optData.error ||
+            t(
+              "security.failedToGetRegisterOptions",
+              undefined,
+              "Failed to get registration options",
+            ),
+        );
+      }
+
+      // 2. Perform WebAuthn registration ceremony with browser
+      const attResp = await startRegistration({
+        optionsJSON: optData.options,
+      });
+
+      // 3. Verify attestation response with server
+      const verRes = await fetch("/api/auth/passkey/register-verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          response: attResp,
+          nickname: registerNickname,
+        }),
+      });
+      const verData = await verRes.json();
+      if (!verRes.ok || verData.error) {
+        throw new Error(
+          verData.error ||
+            t(
+              "security.failedToVerifyPasskey",
+              undefined,
+              "Failed to verify passkey",
+            ),
+        );
+      }
+
+      toast.success(
+        t(
+          "security.passkeyRegisteredSuccess",
+          undefined,
+          "Passkey registered successfully!",
+        ),
+      );
+      setShowRegisterPasskeyDialog(false);
+      setRegisterNickname("");
+      setRegisterPassword("");
+      await fetchPasskeys();
+    } catch (err: any) {
+      if (err.name !== "NotAllowedError" && err.name !== "AbortError") {
+        setRegisterError(err.message || "Failed to register passkey");
+        toast.error(err.message || "Failed to register passkey");
+      }
+    } finally {
+      setIsRegisteringPasskey(false);
+    }
+  };
+
+  const handleRenamePasskey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passkeyToRename || !newPasskeyName.trim()) return;
+    setIsRenamingPasskey(true);
+    try {
+      const res = await fetch("/api/auth/passkey/rename", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          credentialId: passkeyToRename.id,
+          name: newPasskeyName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to rename passkey");
+      }
+      toast.success(
+        t(
+          "security.passkeyRenamedSuccess",
+          undefined,
+          "Passkey renamed successfully!",
+        ),
+      );
+      setShowRenamePasskeyDialog(false);
+      setPasskeyToRename(null);
+      setNewPasskeyName("");
+      await fetchPasskeys();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to rename passkey");
+    } finally {
+      setIsRenamingPasskey(false);
+    }
+  };
+
+  const handleDeletePasskey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passkeyToDelete) return;
+    setDeletePasskeyError(null);
+    if (!deletePasskeyPassword) {
+      setDeletePasskeyError(
+        t("auth.passwordRequired", undefined, "Password is required"),
+      );
+      return;
+    }
+    setIsDeletingPasskey(true);
+    try {
+      const res = await fetch("/api/auth/passkey/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          credentialId: passkeyToDelete.id,
+          password: deletePasskeyPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to delete passkey");
+      }
+      toast.success(
+        t(
+          "security.passkeyDeletedSuccess",
+          undefined,
+          "Passkey deleted successfully!",
+        ),
+      );
+      setShowDeletePasskeyDialog(false);
+      setPasskeyToDelete(null);
+      setDeletePasskeyPassword("");
+      await fetchPasskeys();
+    } catch (err: any) {
+      setDeletePasskeyError(err.message || "Failed to delete passkey");
+      toast.error(err.message || "Failed to delete passkey");
+    } finally {
+      setIsDeletingPasskey(false);
+    }
+  };
 
   const handleVerifyQuickCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1444,6 +1694,155 @@ export default function Security() {
           </CardContent>
         </Card>
 
+        {/* Card 4: Passkeys */}
+        <Card className="bg-slate-900/50 border-slate-800">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <CardTitle className="text-lg sm:text-xl text-white flex items-center gap-2">
+                  <Fingerprint className="w-5 h-5 text-cyan-400" />
+                  <span>
+                    {t("security.passkeysTitle", undefined, "Passkeys")}
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-slate-400">
+                  {t(
+                    "security.passkeysDesc",
+                    undefined,
+                    "Sign in securely using your device biometrics, Touch ID, Face ID, Windows Hello, or hardware security keys.",
+                  )}
+                </CardDescription>
+              </div>
+              <Button
+                id="add-passkey-btn"
+                size="sm"
+                onClick={() => {
+                  setRegisterNickname("");
+                  setRegisterPassword("");
+                  setRegisterError(null);
+                  setShowRegisterPasskeyDialog(true);
+                }}
+                className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs gap-1.5 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>
+                  {t(
+                    "security.registerPasskeyBtn",
+                    undefined,
+                    "Add Passkey",
+                  )}
+                </span>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {passkeysLoading ? (
+              <div className="flex items-center justify-center py-6 text-slate-500 gap-2 text-xs">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{t("common.loading", undefined, "Loading...")}</span>
+              </div>
+            ) : passkeys.length === 0 ? (
+              <div className="p-5 rounded-xl border border-slate-800 bg-slate-950/40 text-center space-y-2">
+                <div className="w-10 h-10 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
+                  <Fingerprint className="w-5 h-5" />
+                </div>
+                <p className="text-sm font-medium text-white">
+                  {t(
+                    "security.noPasskeys",
+                    undefined,
+                    "No passkeys registered yet",
+                  )}
+                </p>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  {t(
+                    "security.passkeysDesc",
+                    undefined,
+                    "Add a passkey to sign in faster and more securely without typing your password.",
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {passkeys.map((pk) => (
+                  <div
+                    key={pk.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-xl border border-slate-800 bg-slate-950/50 hover:border-slate-700/80 transition-all gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                        <Fingerprint className="w-4 h-4" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">
+                            {pk.name}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] uppercase font-mono px-1.5 py-0 bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                          >
+                            Passkey
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-3">
+                          <span>
+                            {t("security.passkeyCreated", undefined, "Created")}:{" "}
+                            {new Date(pk.createdAt).toLocaleDateString()}
+                          </span>
+                          {pk.lastUsedAt && (
+                            <span>
+                              {t(
+                                "security.passkeyLastUsed",
+                                undefined,
+                                "Last used",
+                              )}:{" "}
+                              {new Date(pk.lastUsedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setPasskeyToRename(pk);
+                          setNewPasskeyName(pk.name);
+                          setShowRenamePasskeyDialog(true);
+                        }}
+                        className="text-slate-400 hover:text-white text-xs h-8 px-2.5 gap-1.5"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>
+                          {t("security.renamePasskey", undefined, "Rename")}
+                        </span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setPasskeyToDelete(pk);
+                          setDeletePasskeyPassword("");
+                          setDeletePasskeyError(null);
+                          setShowDeletePasskeyDialog(true);
+                        }}
+                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 text-xs h-8 px-2.5 gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>
+                          {t("security.deletePasskey", undefined, "Delete")}
+                        </span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Card 5: Quick Sign In */}
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
@@ -2131,6 +2530,280 @@ export default function Security() {
                 </span>
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Register Passkey */}
+        <Dialog
+          open={showRegisterPasskeyDialog}
+          onOpenChange={(open) => {
+            if (!isRegisteringPasskey) setShowRegisterPasskeyDialog(open);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <Fingerprint className="w-5 h-5 text-cyan-400" />
+                <span>
+                  {t(
+                    "security.registerPasskey",
+                    undefined,
+                    "Register a Passkey",
+                  )}
+                </span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.registerPasskeyDesc",
+                  undefined,
+                  "Provide a friendly nickname and confirm your password to register your biometric or hardware security key.",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleRegisterPasskey} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="register-passkey-nickname"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.passkeyNickname",
+                    undefined,
+                    "Passkey Nickname (Optional)",
+                  )}
+                </Label>
+                <Input
+                  id="register-passkey-nickname"
+                  type="text"
+                  value={registerNickname}
+                  onChange={(e) => setRegisterNickname(e.target.value)}
+                  placeholder={t(
+                    "security.passkeyNicknamePlaceholder",
+                    undefined,
+                    "e.g. MacBook Touch ID, Work YubiKey",
+                  )}
+                  className="bg-slate-950 border-slate-800 text-xs text-white placeholder:text-slate-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="register-passkey-password"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.confirmPasswordToRegisterPasskey",
+                    undefined,
+                    "Account Password (Required)",
+                  )}
+                </Label>
+                <Input
+                  id="register-passkey-password"
+                  type="password"
+                  required
+                  value={registerPassword}
+                  onChange={(e) => {
+                    setRegisterPassword(e.target.value);
+                    if (registerError) setRegisterError(null);
+                  }}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white placeholder:text-slate-500"
+                />
+              </div>
+
+              {registerError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {registerError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isRegisteringPasskey}
+                  onClick={() => setShowRegisterPasskeyDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-register-passkey-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={isRegisteringPasskey || !registerPassword.trim()}
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium gap-2"
+                >
+                  {isRegisteringPasskey ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Fingerprint className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t(
+                      "security.registerPasskeyBtn",
+                      undefined,
+                      "Register Passkey",
+                    )}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Rename Passkey */}
+        <Dialog
+          open={showRenamePasskeyDialog}
+          onOpenChange={(open) => {
+            if (!isRenamingPasskey) setShowRenamePasskeyDialog(open);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <Edit3 className="w-5 h-5 text-cyan-400" />
+                <span>
+                  {t("security.renamePasskey", undefined, "Rename Passkey")}
+                </span>
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleRenamePasskey} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="rename-passkey-input"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t("security.passkeyNickname", undefined, "Passkey Name")}
+                </Label>
+                <Input
+                  id="rename-passkey-input"
+                  type="text"
+                  required
+                  value={newPasskeyName}
+                  onChange={(e) => setNewPasskeyName(e.target.value)}
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isRenamingPasskey}
+                  onClick={() => setShowRenamePasskeyDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-rename-passkey-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={isRenamingPasskey || !newPasskeyName.trim()}
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium gap-2"
+                >
+                  {isRenamingPasskey ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>{t("common.save", undefined, "Save")}</span>
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Delete Passkey */}
+        <Dialog
+          open={showDeletePasskeyDialog}
+          onOpenChange={(open) => {
+            if (!isDeletingPasskey) setShowDeletePasskeyDialog(open);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-rose-400">
+                <Trash2 className="w-5 h-5 text-rose-400" />
+                <span>
+                  {t("security.deletePasskey", undefined, "Delete Passkey")}
+                </span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {t(
+                  "security.deletePasskeyConfirm",
+                  undefined,
+                  "Are you sure you want to delete this passkey? Enter your account password to confirm.",
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleDeletePasskey} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="delete-passkey-password"
+                  className="text-xs font-medium text-slate-300"
+                >
+                  {t(
+                    "security.confirmPasswordToDeletePasskey",
+                    undefined,
+                    "Confirm Account Password",
+                  )}
+                </Label>
+                <Input
+                  id="delete-passkey-password"
+                  type="password"
+                  required
+                  value={deletePasskeyPassword}
+                  onChange={(e) => {
+                    setDeletePasskeyPassword(e.target.value);
+                    if (deletePasskeyError) setDeletePasskeyError(null);
+                  }}
+                  placeholder="••••••••"
+                  className="bg-slate-950 border-slate-800 text-xs text-white"
+                />
+              </div>
+
+              {deletePasskeyError && (
+                <p className="text-xs text-rose-400 font-medium">
+                  {deletePasskeyError}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isDeletingPasskey}
+                  onClick={() => setShowDeletePasskeyDialog(false)}
+                  className="border-slate-800 text-slate-400 hover:text-white"
+                >
+                  {t("common.cancel", undefined, "Cancel")}
+                </Button>
+                <Button
+                  id="submit-delete-passkey-btn"
+                  type="submit"
+                  size="sm"
+                  disabled={isDeletingPasskey || !deletePasskeyPassword.trim()}
+                  className="bg-rose-600 hover:bg-rose-500 text-white font-medium gap-2"
+                >
+                  {isDeletingPasskey ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  <span>
+                    {t("security.deletePasskey", undefined, "Delete Passkey")}
+                  </span>
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

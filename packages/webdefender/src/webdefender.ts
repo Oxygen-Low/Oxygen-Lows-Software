@@ -5,9 +5,10 @@ import {
   EventType,
   OutboundConnection,
   RouteConfig,
+  RateLimitInfo,
 } from "./types.js";
 import { TorDetector } from "./tor.js";
-import { VpnDetector } from "./vpn.js";
+import { VpnDetector, matchesIpOrCidr } from "./vpn.js";
 import { ThreatActorDetector } from "./threatActors.js";
 import { OutboundMonitor } from "./outbound.js";
 import { RateLimiter } from "./rateLimiter.js";
@@ -39,8 +40,10 @@ function isPathMatch(path: string, patterns?: (string | RegExp)[]): boolean {
 
 export interface RequestResult {
   blocked: boolean;
+  statusCode?: number;
   reason?: string;
   eventType?: EventType;
+  rateLimitInfo?: RateLimitInfo;
   logPromise?: Promise<any>;
 }
 
@@ -149,6 +152,9 @@ export class DefenderClient {
       blockShellInjection: cfg.block_shell_injection ?? true,
       blockPathTraversal: cfg.block_path_traversal ?? true,
       blockSsrf: cfg.block_ssrf ?? true,
+      blockXss: cfg.block_xss ?? true,
+      blockNosqlInjection: cfg.block_nosql_injection ?? true,
+      blockPrototypePollution: cfg.block_prototype_pollution ?? true,
       blockSensitivePaths: cfg.block_sensitive_paths ?? true,
       autoBlockSensitivePaths:
         this.config.autoBlockSensitivePaths ??
@@ -170,6 +176,7 @@ export class DefenderClient {
       blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
       blockIps: cfg.block_ips ?? [],
+      allowlistIps: Array.isArray(cfg.allowlist_ips) ? cfg.allowlist_ips : [],
       blockAdminBannedIps: cfg.block_admin_banned_ips ?? true,
       adminBannedIps: Array.isArray(raw.admin_banned_ips)
         ? raw.admin_banned_ips.map((ban: any) => ({
@@ -634,6 +641,15 @@ export class DefenderClient {
     const { ip, method, path, query, body, headers, userAgent } = req;
     const cleanIp = (ip || "").trim().toLowerCase();
 
+    // -1. IP Allowlist (Trusted IPs & CIDR subnets bypass all WAF rules, bots, and rate limits)
+    const combinedAllowlist = [
+      ...(this.config.allowlistIps || []),
+      ...(this.appConfig.allowlistIps || []),
+    ];
+    if (cleanIp && matchesIpOrCidr(cleanIp, combinedAllowlist)) {
+      return { blocked: false, eventType: "allowed" };
+    }
+
     let isBlocked = false;
     let blockReason = "";
     let eventType: EventType = "allowed";
@@ -656,33 +672,33 @@ export class DefenderClient {
       }
     }
 
-    // 0. Platform-wide administrator IP bans
+    // 0. Platform-wide administrator IP bans (supports CIDR notation)
     if (
       !isBlocked &&
       this.appConfig.blockAdminBannedIps &&
-      this.appConfig.adminBannedIps.length > 0
+      this.appConfig.adminBannedIps.length > 0 &&
+      cleanIp
     ) {
-      const cleanIp = (ip || "").trim().toLowerCase();
-      const ban = this.appConfig.adminBannedIps.find(
-        (item) => (item.ip || "").trim().toLowerCase() === cleanIp,
-      );
-      if (ban) {
-        fail("ip_block", `Administrator-banned IP: ${ban.reason}`);
+      const bannedIpsList = this.appConfig.adminBannedIps.map((item) => item.ip);
+      if (matchesIpOrCidr(cleanIp, bannedIpsList)) {
+        const matchedBan = this.appConfig.adminBannedIps.find((item) =>
+          matchesIpOrCidr(cleanIp, [item.ip]),
+        );
+        fail(
+          "ip_block",
+          `Administrator-banned IP: ${matchedBan?.reason || "Restricted by platform admin"}`,
+        );
       }
     }
 
-    // 1. Individual IP Check
+    // 1. Individual IP & CIDR Check
     if (
       !isBlocked &&
       this.appConfig.blockIps &&
-      this.appConfig.blockIps.length > 0
+      this.appConfig.blockIps.length > 0 &&
+      cleanIp
     ) {
-      const cleanIp = (ip || "").trim().toLowerCase();
-      if (
-        this.appConfig.blockIps.some(
-          (blocked) => (blocked || "").trim().toLowerCase() === cleanIp,
-        )
-      ) {
+      if (matchesIpOrCidr(cleanIp, this.appConfig.blockIps)) {
         fail("ip_block", `IP blocked: ${ip}`);
       }
     }
@@ -805,6 +821,15 @@ export class DefenderClient {
           case "ssrf":
             shouldBlock = this.appConfig.blockSsrf;
             break;
+          case "xss":
+            shouldBlock = this.appConfig.blockXss;
+            break;
+          case "nosql_injection":
+            shouldBlock = this.appConfig.blockNosqlInjection;
+            break;
+          case "prototype_pollution":
+            shouldBlock = this.appConfig.blockPrototypePollution;
+            break;
         }
 
         if (shouldBlock) {
@@ -857,19 +882,31 @@ export class DefenderClient {
       }
     }
 
+    let rateLimitInfo: RateLimitInfo | undefined;
+
     // 6. Global DDoS Check
     if (
       !isBlocked &&
       this.appConfig.ddosProtection &&
       this.appConfig.ddosThresholdRpm > 0
     ) {
-      const { allowed } = this.rateLimiter.check(
+      const { allowed, resetAt } = this.rateLimiter.check(
         `global:${ip}`,
         this.appConfig.ddosThresholdRpm,
         60,
       );
       if (!allowed) {
         fail("ddos", "Global DDoS rate limit exceeded");
+        const retryAfterSeconds = Math.max(
+          1,
+          Math.ceil((resetAt - Date.now()) / 1000),
+        );
+        rateLimitInfo = {
+          limit: this.appConfig.ddosThresholdRpm,
+          remaining: 0,
+          resetAt,
+          retryAfterSeconds,
+        };
       }
     }
 
@@ -877,13 +914,23 @@ export class DefenderClient {
     if (!isBlocked) {
       const route = this.getMatchingRoute(method, path);
       if (route && route.rateLimitEnabled) {
-        const { allowed } = this.rateLimiter.check(
+        const { allowed, resetAt } = this.rateLimiter.check(
           `route:${route.id}:${ip}`,
           route.rateLimitRequests,
           route.rateLimitWindowSeconds,
         );
         if (!allowed) {
           fail("rate_limit", `Route rate limit exceeded for ${path}`);
+          const retryAfterSeconds = Math.max(
+            1,
+            Math.ceil((resetAt - Date.now()) / 1000),
+          );
+          rateLimitInfo = {
+            limit: route.rateLimitRequests,
+            remaining: 0,
+            resetAt,
+            retryAfterSeconds,
+          };
         }
       }
     }
@@ -891,6 +938,15 @@ export class DefenderClient {
     // Determine final block action
     const actualBlock =
       isBlocked && this.appConfig.blockModeEnabled && !this.config.logOnly;
+
+    const isRateLimit =
+      (eventType as any) === "rate_limit" || (eventType as any) === "ddos";
+    const statusCode =
+      actualBlock && isRateLimit
+        ? 429
+        : actualBlock
+          ? 403
+          : undefined;
 
     const logPromise = this.logEvent(
       {
@@ -906,8 +962,10 @@ export class DefenderClient {
 
     return {
       blocked: actualBlock,
+      statusCode,
       reason: isBlocked ? blockReason : undefined,
       eventType,
+      rateLimitInfo: actualBlock ? rateLimitInfo : undefined,
       logPromise: logPromise instanceof Promise ? logPromise : undefined,
     };
   }

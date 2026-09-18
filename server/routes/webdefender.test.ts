@@ -444,6 +444,29 @@ describe("WebDefender with local/migrated accounts", () => {
     expect(enableRes.status).toBe(200);
   });
 
+  it("should update and persist WebDefender 1.9.0 security settings (XSS, NoSQL, Prototype Pollution, and IP allowlist)", async () => {
+    const res = await app.request(`/api/webdefender/apps/${createdAppId}/config`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        block_xss: false,
+        block_nosql_injection: true,
+        block_prototype_pollution: true,
+        allowlist_ips: ["10.0.0.0/8", "192.168.1.50"],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.block_xss).toBe(false);
+    expect(json.block_nosql_injection).toBe(true);
+    expect(json.block_prototype_pollution).toBe(true);
+    expect(json.allowlist_ips).toEqual(["10.0.0.0/8", "192.168.1.50"]);
+  });
+
   it("should rotate the API key", async () => {
     const res = await app.request(
       `/api/webdefender/apps/${createdAppId}/rotate-key`,

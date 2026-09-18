@@ -109,6 +109,8 @@ describe("Models Component UI", () => {
     );
 
     expect(screen.getByRole("heading", { level: 1, name: /Models/i })).toBeDefined();
+    expect(screen.queryByText("P2P Relay")).toBeNull();
+    expect(screen.queryByText("Web Mode")).toBeNull();
     expect(screen.getByRole("tab", { name: /Browse Shared/i })).toBeDefined();
     expect(screen.getByRole("tab", { name: /Host Models/i })).toBeDefined();
     expect(screen.getByRole("tab", { name: /Pinned Models/i })).toBeDefined();

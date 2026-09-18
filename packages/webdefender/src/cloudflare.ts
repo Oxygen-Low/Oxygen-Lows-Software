@@ -190,16 +190,33 @@ export function createCloudflareDefender(
           return await config.customBlockResponse(result, request, env, ctx);
         }
 
+        const status = result.statusCode || 403;
+        const responseHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (result.rateLimitInfo) {
+          responseHeaders["Retry-After"] = String(
+            result.rateLimitInfo.retryAfterSeconds,
+          );
+          responseHeaders["RateLimit-Limit"] = String(
+            result.rateLimitInfo.limit,
+          );
+          responseHeaders["RateLimit-Remaining"] = String(
+            result.rateLimitInfo.remaining,
+          );
+          responseHeaders["RateLimit-Reset"] = String(
+            result.rateLimitInfo.resetAt,
+          );
+        }
+
         return new Response(
           JSON.stringify({
             blocked: true,
             reason: result.reason || "Request blocked by Defender",
           }),
           {
-            status: 403,
-            headers: {
-              "Content-Type": "application/json",
-            },
+            status,
+            headers: responseHeaders,
           },
         );
       }

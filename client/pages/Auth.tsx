@@ -19,7 +19,12 @@ import {
   RefreshCw,
   Clock,
   Sparkles,
+  Fingerprint,
 } from "lucide-react";
+import {
+  browserSupportsWebAuthn,
+  browserSupportsWebAuthnAutofill,
+} from "@simplewebauthn/browser";
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
 import { GithubIcon } from "@/components/ui/GithubIcon";
@@ -36,7 +41,8 @@ import { isMobileApp, openExternalBrowser } from "@/lib/desktopBridge";
 
 export default function Auth() {
   const location = useLocation();
-  const { session, loading, signIn, signUp, migrateAccount } = useAuth();
+  const { session, loading, signIn, signInWithPasskey, signUp, migrateAccount } =
+    useAuth();
   const { t, language, setLanguage } = useTranslation();
   usePageTitle(t("titles.auth", undefined, "Sign In"), {
     description: t("auth.welcomeBack", undefined, "Welcome back!"),
@@ -51,6 +57,8 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeySupported, setPasskeySupported] = useState(false);
 
   // Quick Sign In state
   const [quickSessionId, setQuickSessionId] = useState<string | null>(null);
@@ -180,6 +188,37 @@ export default function Auth() {
         });
     }
   }, [location]);
+
+  useEffect(() => {
+    let active = true;
+    try {
+      const supported = browserSupportsWebAuthn();
+      setPasskeySupported(supported);
+
+      if (supported && mode === "signin" && !session?.user && !requiresUnlock) {
+        browserSupportsWebAuthnAutofill()
+          .then((autofillSupported) => {
+            if (active && autofillSupported) {
+              signInWithPasskey?.({ conditional: true })
+                ?.then((res) => {
+                  if (active && res?.session) {
+                    setRequiresUnlock(true);
+                  }
+                })
+                ?.catch(() => {
+                  // Ignore conditional UI cancellation
+                });
+            }
+          })
+          .catch(() => {});
+      }
+    } catch {
+      setPasskeySupported(false);
+    }
+    return () => {
+      active = false;
+    };
+  }, [mode, session, requiresUnlock]);
 
   const fetchQuickSignInCode = async () => {
     setQuickLoading(true);
@@ -325,6 +364,30 @@ export default function Auth() {
       const origin = window.location.origin;
       const targetUrl = `${origin}/api/auth/oauth/${provider}/login?platform=mobile&returnTo=${encodeURIComponent(returnTo)}`;
       openExternalBrowser(targetUrl);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    try {
+      setError(null);
+      setPasskeyLoading(true);
+      const res = await signInWithPasskey?.({ conditional: false });
+      if (res?.session) {
+        setRequiresUnlock(true);
+      }
+    } catch (err: any) {
+      if (
+        err.name !== "NotAllowedError" &&
+        err.name !== "AbortError" &&
+        err.name !== "WebAuthnAbortError"
+      ) {
+        setError(
+          err.message ||
+            t("auth.passkeySignInFailed", undefined, "Passkey sign in failed"),
+        );
+      }
+    } finally {
+      setPasskeyLoading(false);
     }
   };
 
@@ -910,6 +973,7 @@ export default function Auth() {
                             required
                             value={login}
                             onChange={(e) => setLogin(e.target.value)}
+                            autoComplete="username webauthn"
                             placeholder={t(
                               "auth.enterUsernameOrEmail",
                               undefined,
@@ -1031,7 +1095,9 @@ export default function Auth() {
                   </form>
 
                   {mode === "signin" &&
-                    (googleOAuthConfigured || githubOAuthConfigured) && (
+                    (passkeySupported ||
+                      googleOAuthConfigured ||
+                      githubOAuthConfigured) && (
                       <div className="mt-4">
                         <div className="relative my-4">
                           <div className="absolute inset-0 flex items-center">
@@ -1049,6 +1115,29 @@ export default function Auth() {
                         </div>
 
                         <div className="space-y-2.5">
+                          {passkeySupported && (
+                            <button
+                              id="sign-in-with-passkey-btn"
+                              type="button"
+                              onClick={handlePasskeySignIn}
+                              disabled={passkeyLoading || submitting}
+                              className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-600/90 to-blue-600/90 hover:from-cyan-500 hover:to-blue-500 border border-cyan-500/40 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm cursor-pointer disabled:opacity-50"
+                            >
+                              {passkeyLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Fingerprint className="w-4 h-4 text-cyan-200" />
+                              )}
+                              <span>
+                                {t(
+                                  "auth.signInPasskey",
+                                  undefined,
+                                  "Sign in with a Passkey",
+                                )}
+                              </span>
+                            </button>
+                          )}
+
                           {googleOAuthConfigured && (
                             <a
                               id="sign-in-with-google-btn"

@@ -14,6 +14,7 @@ import {
   migrateMasterKeyDataToPassword,
   rotateMasterKey,
 } from "@/lib/crypto";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 export const useAuth = () => {
   const [session, setSession] = useState<LocalSession | null>(() =>
@@ -360,11 +361,76 @@ export const useAuth = () => {
     return { success: true };
   };
 
+  const signInWithPasskey = async (options?: { conditional?: boolean }) => {
+    try {
+      setError(null);
+      if (!options?.conditional) {
+        setLoading(true);
+      }
+
+      // 1. Fetch authentication options from server
+      const optRes = await fetch("/api/auth/passkey/login-options");
+      const optJson = await optRes.json();
+      if (!optRes.ok || optJson.error) {
+        throw new Error(optJson.error || "Failed to get passkey login options");
+      }
+
+      // 2. Perform WebAuthn authentication ceremony with browser
+      const asseResp = await startAuthentication({
+        optionsJSON: optJson.options,
+        useBrowserAutofill: options?.conditional,
+      });
+
+      // 3. Verify authentication response with server
+      const verRes = await fetch("/api/auth/passkey/login-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ response: asseResp }),
+      });
+
+      const verJson = await verRes.json();
+      if (!verRes.ok || verJson.error) {
+        throw new Error(verJson.error || "Passkey verification failed");
+      }
+
+      setLocalSession(verJson.session);
+      setSession(verJson.session);
+
+      return {
+        session: verJson.session,
+        user: verJson.user,
+        token: verJson.token,
+        requiresUnlock: true,
+      };
+    } catch (err: any) {
+      if (
+        options?.conditional &&
+        (err.name === "AbortError" ||
+          err.name === "WebAuthnAbortError" ||
+          err.message?.includes("conditional"))
+      ) {
+        // Ignored for background conditional UI mediation cancellation
+        return null;
+      }
+      const message =
+        err instanceof Error ? err.message : "Passkey sign in failed";
+      if (!options?.conditional) {
+        setError(message);
+      }
+      throw err;
+    } finally {
+      if (!options?.conditional) {
+        setLoading(false);
+      }
+    }
+  };
+
   return {
     session,
     loading,
     error,
     signIn,
+    signInWithPasskey,
     signUp,
     migrateAccount,
     changePassword,

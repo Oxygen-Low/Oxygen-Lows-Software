@@ -61,12 +61,25 @@ export async function createDefender(
       const result = await client.handleRequest(reqInfo);
 
       if (result.blocked) {
+        const status = (result.statusCode || 403) as any;
+        const headers: Record<string, string> = {};
+        if (result.rateLimitInfo) {
+          headers["Retry-After"] = String(
+            result.rateLimitInfo.retryAfterSeconds,
+          );
+          headers["RateLimit-Limit"] = String(result.rateLimitInfo.limit);
+          headers["RateLimit-Remaining"] = String(
+            result.rateLimitInfo.remaining,
+          );
+          headers["RateLimit-Reset"] = String(result.rateLimitInfo.resetAt);
+        }
         return c.json(
           {
             blocked: true,
             reason: result.reason || "Request blocked by Defender",
           },
-          403,
+          status,
+          headers,
         );
       }
 

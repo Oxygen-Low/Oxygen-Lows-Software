@@ -26,6 +26,8 @@
     "@hono/node-server": "^2.1.1",
     "@monaco-editor/react": "^4.7.0",
     "@oxygenlow/webdefender": "workspace:*",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.2",
     "@types/leaflet": "^1.9.22",
     "@types/ping": "^0.4.4",
     "axios": "^1.20.0",

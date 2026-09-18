@@ -1,7 +1,17 @@
 export { DefenderClient } from "./webdefender.js";
 export { ThreatActorDetector } from "./threatActors.js";
-export { VpnDetector } from "./vpn.js";
+export { VpnDetector, matchesIpOrCidr, parseCidr, isIpInCidr } from "./vpn.js";
 export { TorDetector } from "./tor.js";
+export {
+  detectSqlInjection,
+  detectShellInjection,
+  detectPathTraversal,
+  detectSsrf,
+  detectXss,
+  detectNoSqlInjection,
+  detectPrototypePollution,
+  scanRequest,
+} from "./scanner/injection.js";
 export { createExpressMiddleware } from "./middleware.js";
 export { createCloudflareDefender, withDefender } from "./cloudflare.js";
 export type {
@@ -15,6 +25,7 @@ export type {
   EventType,
   AppConfig,
   RouteConfig,
+  RateLimitInfo,
   ThreatActorCategory,
 } from "./types.js";
 import { DefenderClient } from "./webdefender.js";

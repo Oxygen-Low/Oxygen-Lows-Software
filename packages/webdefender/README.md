@@ -11,11 +11,12 @@ Protect your Node.js, Express, Hono, Next.js, or Cloudflare Worker applications 
 
 ## Features
 
-- **DDoS Protection**: In-memory token bucket rate limiting globally and per-route.
+- **DDoS Protection & Rate Limiting**: In-memory token bucket rate limiting globally and per-route with standard RFC 6585 / IETF headers (`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, `Retry-After`) and HTTP 429 status code.
 - **Bot Detection**: Identify and block malicious bots, ad scrapers, AI assistants, AI scrapers, and data harvesters using user-agent signatures.
-- **Injection Scanning**: Heuristic detection of SQL injection, shell injection, path traversal, and Server-Side Request Forgery (SSRF) payloads in URL parameters, body, and headers.
+- **Advanced Threat & Injection Scanning**: Heuristic detection of SQL injection, shell injection, path traversal, Server-Side Request Forgery (SSRF), Cross-Site Scripting (XSS), NoSQL injection (MongoDB operators), and Prototype Pollution in URL parameters, body, and headers.
+- **CIDR Subnet & Individual IP Blocking**: Block requests from specific IP addresses or entire CIDR subnet ranges (e.g. `192.168.1.0/24`, `10.0.0.0/8`).
+- **IP Allowlisting**: Whitelist trusted IPs and CIDR subnets to completely bypass WAF rules, bot detection, and rate limits.
 - **Geo-IP Blocking**: Block requests originating from specific countries.
-- **Individual IP Blocking**: Block requests originating from specific individual IP addresses.
 - **TOR Exit Node Detection**: Identify and optionally block traffic coming from known TOR exit nodes.
 - **VPN IP Blocking**: Identify and block traffic from known VPN providers (VPNBook, NordVPN, Surfshark, ProtonVPN, Mullvad, etc.) to prevent bypassing geo-blocks and IP restrictions.
 - **Outbound Connection Monitoring**: Track and log outbound HTTP/HTTPS connections made by your application.
@@ -137,6 +138,7 @@ export default {
 | Option           | Type       | Default      | Description                                                                                          |
 | ---------------- | ---------- | ------------ | ---------------------------------------------------------------------------------------------------- |
 | `apiKey`         | `string`   | **Required** | Your Oxygen Low's Software project API key.                                                          |
+| `allowlistIps`   | `string[]` | `[]`         | Trusted IPs or CIDR subnets that bypass all WAF protections, bot detection, and rate limits.        |
 | `logOnly`        | `boolean`  | `false`      | If true, overrides the server config to only log threats, never block.                               |
 | `syncIntervalMs` | `number`   | `60000`      | Interval in ms to automatically sync security configuration from the dashboard. Set to 0 to disable. |
 | `onBlocked`      | `function` | `undefined`  | Callback fired when a request is blocked locally.                                                    |
@@ -148,15 +150,17 @@ When initialized, the middleware fetches its configuration from the central API 
 
 On every incoming request, it executes the following pipeline:
 
-1. **Individual IP Check**: Verifies if the request IP is in your blocked IP list.
-2. **IP Geo Check**: Verifies if the request originates from a blocked country using ultra-fast CDN / edge headers (Cloudflare, Vercel, AWS CloudFront, Fastly, Netlify, etc.).
-3. **TOR Check**: Checks if the IP is a known TOR exit node.
-4. **VPN Check**: Checks if the IP is a known commercial VPN exit node / server.
-5. **Known Threat Actor Check**: Cross-references with real-time threat intelligence feeds.
-6. **Bot Detection**: Scans the User-Agent string against known bot signatures.
-7. **Injection Scanning**: Analyzes the request method, path, query parameters, headers, and body for SQLi, Shell Injection, Path Traversal, and SSRF patterns.
-8. **DDoS Protection**: Enforces global API rate limits.
-9. **Route Rate Limiting**: Applies route-specific token-bucket rate limiting based on central configuration.
+1. **Allowlist Bypass Check**: Checks if the request IP matches your trusted IP allowlist (exact or CIDR subnet).
+2. **Individual & CIDR IP Check**: Verifies if the request IP is in your blocked IP / CIDR list or admin bans.
+3. **IP Geo Check**: Verifies if the request originates from a blocked country using ultra-fast CDN / edge headers (Cloudflare, Vercel, AWS CloudFront, Fastly, Netlify, etc.).
+4. **TOR Check**: Checks if the IP is a known TOR exit node.
+5. **VPN Check**: Checks if the IP is a known commercial VPN exit node / server.
+6. **Known Threat Actor Check**: Cross-references with real-time threat intelligence feeds.
+7. **Bot Detection**: Scans the User-Agent string against known bot signatures.
+8. **Threat & Injection Scanning**: Analyzes the request method, path, query parameters, headers, and body for SQLi, Shell Injection, Path Traversal, SSRF, XSS, NoSQL injection, and Prototype Pollution.
+9. **Sensitive Path Auto-Block**: Detects probes to credentials, config files, and debug endpoints.
+10. **DDoS Protection**: Enforces global API rate limits (returns HTTP 429 with IETF rate-limit headers).
+11. **Route Rate Limiting**: Applies route-specific token-bucket rate limiting based on central configuration (returns HTTP 429 with IETF rate-limit headers).
 
 ## License
 

@@ -478,6 +478,7 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "chatbot", "character_likes.json"), []);
   writeJsonFile(path.join(userDir, "chatbot", "public_characters.json"), []);
   writeJsonFile(path.join(userDir, "passwords", "passwords.json"), []);
+  writeJsonFile(path.join(userDir, "passkeys.json"), []);
   writeJsonFile(path.join(userDir, "vpn", "configs.json"), []);
   writeJsonFile(path.join(userDir, "support", "tickets.json"), []);
   writeJsonFile(path.join(userDir, "support", "messages.json"), []);

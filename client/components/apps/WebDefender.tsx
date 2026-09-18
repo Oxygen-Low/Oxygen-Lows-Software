@@ -237,6 +237,9 @@ type AppConfig = {
   block_shell_injection: boolean;
   block_path_traversal: boolean;
   block_ssrf: boolean;
+  block_xss: boolean;
+  block_nosql_injection: boolean;
+  block_prototype_pollution: boolean;
   block_sensitive_paths: boolean;
   auto_block_sensitive_paths: boolean;
   sensitive_path_threshold: number;
@@ -248,6 +251,7 @@ type AppConfig = {
   ddos_threshold_rpm: number;
   block_countries: string[];
   block_ips: string[];
+  allowlist_ips: string[];
   block_admin_banned_ips: boolean;
   block_ad_bots: boolean;
   block_ai_assistants: boolean;
@@ -1493,6 +1497,18 @@ function EventBadge({ type }: { type: string }) {
       color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
       label: "SSRF",
     },
+    xss: {
+      color: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+      label: "XSS",
+    },
+    nosql_injection: {
+      color: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+      label: "NoSQLi",
+    },
+    prototype_pollution: {
+      color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+      label: "Proto Poll",
+    },
     tor: {
       color: "bg-purple-500/10 text-purple-500 border-purple-500/20",
       label: "TOR",
@@ -1872,6 +1888,9 @@ const defaultDefenderConfig: AppConfig = {
   block_shell_injection: true,
   block_path_traversal: true,
   block_ssrf: true,
+  block_xss: true,
+  block_nosql_injection: true,
+  block_prototype_pollution: true,
   block_sensitive_paths: true,
   auto_block_sensitive_paths: true,
   sensitive_path_threshold: 3,
@@ -1883,6 +1902,7 @@ const defaultDefenderConfig: AppConfig = {
   ddos_threshold_rpm: 1000,
   block_countries: [],
   block_ips: [],
+  allowlist_ips: [],
   block_admin_banned_ips: true,
   block_ad_bots: false,
   block_ai_assistants: false,
@@ -1956,6 +1976,7 @@ export function SettingsTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [newIpInput, setNewIpInput] = useState("");
+  const [newAllowlistIpInput, setNewAllowlistIpInput] = useState("");
   const [abuseIpDbKey, setAbuseIpDbKey] = useState("");
   const [isSavingAbuseIpDbKey, setIsSavingAbuseIpDbKey] = useState(false);
 
@@ -1978,6 +1999,24 @@ export function SettingsTab({
   const handleRemoveIp = (ipToRemove: string) => {
     updateConfig({
       block_ips: (config.block_ips || []).filter((ip) => ip !== ipToRemove),
+    });
+  };
+
+  const handleAddAllowlistIp = () => {
+    const trimmed = newAllowlistIpInput.trim();
+    if (!trimmed) return;
+    const currentIps = config.allowlist_ips || [];
+    if (currentIps.includes(trimmed)) {
+      toast.error("IP or subnet is already allowlisted");
+      return;
+    }
+    updateConfig({ allowlist_ips: [...currentIps, trimmed] });
+    setNewAllowlistIpInput("");
+  };
+
+  const handleRemoveAllowlistIp = (ipToRemove: string) => {
+    updateConfig({
+      allowlist_ips: (config.allowlist_ips || []).filter((ip) => ip !== ipToRemove),
     });
   };
 
@@ -2286,6 +2325,45 @@ export function SettingsTab({
               id: "block_ssrf",
               label: "SSRF",
               desc: "Prevent Server-Side Request Forgery.",
+            },
+            {
+              id: "block_xss",
+              label: t(
+                "apps.webDefenderXss",
+                undefined,
+                "Cross-Site Scripting (XSS)",
+              ),
+              desc: t(
+                "apps.webDefenderXssDesc",
+                undefined,
+                "Detect and block script tags, inline event handlers, and javascript injection vectors.",
+              ),
+            },
+            {
+              id: "block_nosql_injection",
+              label: t(
+                "apps.webDefenderNosql",
+                undefined,
+                "NoSQL Injection",
+              ),
+              desc: t(
+                "apps.webDefenderNosqlDesc",
+                undefined,
+                "Prevent MongoDB operator injection and parameter tampering attacks.",
+              ),
+            },
+            {
+              id: "block_prototype_pollution",
+              label: t(
+                "apps.webDefenderProtoPollution",
+                undefined,
+                "Prototype Pollution",
+              ),
+              desc: t(
+                "apps.webDefenderProtoPollutionDesc",
+                undefined,
+                "Block object prototype tampering attempts (__proto__, constructor.prototype).",
+              ),
             },
             {
               id: "block_sensitive_paths",
@@ -2718,7 +2796,7 @@ export function SettingsTab({
         <CardHeader>
           <CardTitle>IP Blocking</CardTitle>
           <CardDescription>
-            Block requests from specific IP addresses.
+            Block requests from specific IP addresses or CIDR subnet ranges (e.g. 192.168.1.0/24).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -2735,6 +2813,11 @@ export function SettingsTab({
                   className="bg-slate-800 hover:bg-slate-700 flex items-center gap-2 py-1 px-2.5 font-mono text-xs"
                 >
                   <span>{ip}</span>
+                  {ip.includes("/") && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-sans font-medium">
+                      {t("apps.webDefenderCidrBadge", undefined, "Subnet")}
+                    </span>
+                  )}
                   <button
                     onClick={() => handleRemoveIp(ip)}
                     className="ml-1 text-slate-400 hover:text-white"
@@ -2748,7 +2831,7 @@ export function SettingsTab({
           </div>
           <div className="flex gap-2">
             <Input
-              placeholder="e.g. 192.0.2.1 or 2001:db8::1"
+              placeholder="e.g. 192.0.2.1 or 192.168.1.0/24"
               value={newIpInput}
               onChange={(e) => setNewIpInput(e.target.value)}
               onKeyDown={(e) => {
@@ -2766,6 +2849,91 @@ export function SettingsTab({
               className="border-slate-700 hover:bg-slate-800 shrink-0"
             >
               <Plus className="w-4 h-4 mr-2" /> Block IP
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle>
+            {t(
+              "apps.webDefenderAllowlistIps",
+              undefined,
+              "IP Allowlist (Trusted IPs)",
+            )}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              "apps.webDefenderAllowlistIpsDesc",
+              undefined,
+              "Trusted IP addresses or CIDR subnets that bypass all WAF protections, bot detection, and rate limits.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {(config.allowlist_ips || []).length === 0 ? (
+              <p className="text-xs text-slate-500 italic">
+                {t(
+                  "apps.webDefenderAllowlistEmpty",
+                  undefined,
+                  "No IP addresses or subnets currently allowlisted.",
+                )}
+              </p>
+            ) : (
+              (config.allowlist_ips || []).map((ip) => (
+                <Badge
+                  key={ip}
+                  variant="secondary"
+                  className="bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 hover:bg-emerald-900/60 flex items-center gap-2 py-1 px-2.5 font-mono text-xs"
+                >
+                  <span>{ip}</span>
+                  {ip.includes("/") && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-sans font-medium">
+                      {t("apps.webDefenderCidrBadge", undefined, "Subnet")}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleRemoveAllowlistIp(ip)}
+                    className="ml-1 text-slate-400 hover:text-white"
+                    aria-label={`Remove ${ip}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder={t(
+                "apps.webDefenderAllowlistPlaceholder",
+                undefined,
+                "e.g. 192.0.2.1 or 10.0.0.0/8",
+              )}
+              value={newAllowlistIpInput}
+              onChange={(e) => setNewAllowlistIpInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddAllowlistIp();
+                }
+              }}
+              className="bg-slate-950 border-slate-800 font-mono text-sm"
+            />
+            <Button
+              variant="outline"
+              onClick={handleAddAllowlistIp}
+              disabled={!newAllowlistIpInput.trim()}
+              className="border-slate-700 hover:bg-slate-800 shrink-0"
+            >
+              <Plus className="w-4 h-4 mr-2" />{" "}
+              {t(
+                "apps.webDefenderAddAllowlistIp",
+                undefined,
+                "Allowlist IP",
+              )}
             </Button>
           </div>
         </CardContent>

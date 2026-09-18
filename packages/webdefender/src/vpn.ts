@@ -27,6 +27,36 @@ export function parseCidr(cidr: string): CidrBlock | null {
   return { network, mask };
 }
 
+export function isIpInCidr(ipNum: number, cidr: CidrBlock): boolean {
+  return (ipNum & cidr.mask) >>> 0 === cidr.network;
+}
+
+export function matchesIpOrCidr(ip: string, patterns: string[]): boolean {
+  if (!ip || !patterns || patterns.length === 0) return false;
+  const cleanIp = (ip || "").trim().toLowerCase();
+  const ipNum = ipToNumber(cleanIp);
+
+  for (let i = 0; i < patterns.length; i++) {
+    const rawPattern = (patterns[i] || "").trim();
+    if (!rawPattern) continue;
+
+    if (rawPattern.includes("/")) {
+      if (ipNum !== null) {
+        const cidr = parseCidr(rawPattern);
+        if (cidr && isIpInCidr(ipNum, cidr)) {
+          return true;
+        }
+      }
+    } else {
+      if (rawPattern.toLowerCase() === cleanIp) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 // Curated seed list of known commercial VPN server IPs and CIDRs (VPNBook, NordVPN, Surfshark, Mullvad, ProtonVPN, etc.)
 const SEED_VPN_IPS = [
   // VPNBook known server IPs
