@@ -3,7 +3,7 @@
 ![npm version](https://img.shields.io/npm/v/@oxygenlow/webdefender.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-Protect your Node.js, Express, Hono, or Next.js applications from DDoS, injection attacks, bots, and malicious traffic with an intelligent, cloud-managed Web Application Firewall (WAF) and middleware by Oxygen Low's Software.
+Protect your Node.js, Express, Hono, Next.js, or Cloudflare Worker applications from DDoS, injection attacks, bots, and malicious traffic with an intelligent, cloud-managed Web Application Firewall (WAF) and middleware by Oxygen Low's Software.
 
 ## Description
 
@@ -90,6 +90,46 @@ const defender = createNextDefender({
 export async function middleware(request) {
   return defender(request, NextResponse);
 }
+```
+
+### Cloudflare Workers
+
+#### Using `withDefender` (Higher-Order Wrapper)
+
+Wrap your Cloudflare Worker export with `withDefender`. If `DEFENDER_API_KEY` (or `WEBDEFENDER_API_KEY`) is set in your worker environment secrets/vars, you can even omit the config object!
+
+```javascript
+import { withDefender } from "@oxygenlow/webdefender/cloudflare";
+
+export default withDefender({
+  async fetch(request, env, ctx) {
+    return new Response("Hello Secure Worker!");
+  },
+}, {
+  // Optional if DEFENDER_API_KEY is defined in your Cloudflare environment
+  apiKey: "your_api_key_here",
+});
+```
+
+#### Using `createCloudflareDefender` (Direct Guard)
+
+Inspect requests manually inside your `fetch` handler using `defender.protect(request, env, ctx)`:
+
+```javascript
+import { createCloudflareDefender } from "@oxygenlow/webdefender/cloudflare";
+
+const defender = createCloudflareDefender();
+
+export default {
+  async fetch(request, env, ctx) {
+    const blockedResponse = await defender.protect(request, env, ctx);
+    if (blockedResponse) {
+      return blockedResponse;
+    }
+
+    return new Response("Hello Secure Worker!");
+  },
+};
 ```
 
 ## Configuration Options

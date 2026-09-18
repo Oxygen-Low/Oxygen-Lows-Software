@@ -1,6 +1,6 @@
 {
   "name": "@oxygenlow/webdefender",
-  "version": "1.7.2",
+  "version": "1.8.0",
   "author": "Oxygen Low's Software",
   "description": "Oxygen Low's Software Web Defender: Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
   "type": "module",
@@ -18,6 +18,14 @@
     "./next": {
       "import": "./dist/next.js",
       "types": "./dist/next.d.ts"
+    },
+    "./cloudflare": {
+      "import": "./dist/cloudflare.js",
+      "types": "./dist/cloudflare.d.ts"
+    },
+    "./worker": {
+      "import": "./dist/cloudflare.js",
+      "types": "./dist/cloudflare.d.ts"
     }
   },
   "scripts": {

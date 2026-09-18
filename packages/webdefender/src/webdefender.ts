@@ -41,6 +41,7 @@ export interface RequestResult {
   blocked: boolean;
   reason?: string;
   eventType?: EventType;
+  logPromise?: Promise<any>;
 }
 
 class RouteTrieNode {
@@ -73,19 +74,22 @@ export class DefenderClient {
   constructor(config: DefenderConfig) {
     this.config = config;
     this.apiUrl = config.apiUrl || "https://oxygenlow.com";
-    this.torDetector = new TorDetector();
-    this.vpnDetector = new VpnDetector();
-    this.threatActorDetector = new ThreatActorDetector();
-    this.rateLimiter = new RateLimiter();
+    const autoRefresh = !config.deferRefresh && !config.edgeMode;
+    this.torDetector = new TorDetector({ autoRefresh });
+    this.vpnDetector = new VpnDetector({ autoRefresh });
+    this.threatActorDetector = new ThreatActorDetector({ autoRefresh });
+    this.rateLimiter = new RateLimiter({ autoCleanup: autoRefresh });
     this.outboundMonitor = new OutboundMonitor(
       (conn) => this.reportOutbound(conn),
       new URL(this.apiUrl).hostname,
     );
-    this.uniqueIpPruneInterval = setInterval(() => {
-      this.pruneUniqueIpCache();
-    }, 60000);
-    if (typeof this.uniqueIpPruneInterval.unref === "function") {
-      this.uniqueIpPruneInterval.unref();
+    if (autoRefresh) {
+      this.uniqueIpPruneInterval = setInterval(() => {
+        this.pruneUniqueIpCache();
+      }, 60000);
+      if (typeof this.uniqueIpPruneInterval.unref === "function") {
+        this.uniqueIpPruneInterval.unref();
+      }
     }
   }
 
@@ -278,9 +282,18 @@ export class DefenderClient {
       this.syncOutboundMonitor();
       this.isInitialized = true;
 
-      // 6. Start real-time config stream and periodic sync
-      this.startRealtimeSync();
-      this.startConfigSync();
+      // In edge/deferred mode, start detectors' initial data fetch now that we are initialized
+      if (this.config.deferRefresh || this.config.edgeMode) {
+        this.torDetector.startRefreshInterval();
+        this.vpnDetector.startRefreshInterval();
+        this.threatActorDetector.startRefreshInterval();
+      }
+
+      // 6. Start real-time config stream and periodic sync (disabled in edgeMode)
+      if (!this.config.edgeMode) {
+        this.startRealtimeSync();
+        this.startConfigSync();
+      }
     } catch (error) {
       if (this.config.onError && error instanceof Error) {
         this.config.onError(error);
@@ -460,7 +473,11 @@ export class DefenderClient {
     }
   }
 
-  flushBatch(): void {
+  hasPendingLogs(): boolean {
+    return this.batchBuffer.length > 0;
+  }
+
+  async flushBatchAsync(): Promise<void> {
     if (this.batchTimer) {
       clearTimeout(this.batchTimer);
       this.batchTimer = undefined;
@@ -475,14 +492,20 @@ export class DefenderClient {
       return;
     }
 
-    fetch(`${this.apiUrl}/api/webdefender/event`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`,
-      },
-      body: JSON.stringify(eventsToSend),
-    }).catch(() => {});
+    try {
+      await fetch(`${this.apiUrl}/api/webdefender/event`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+        body: JSON.stringify(eventsToSend),
+      });
+    } catch (_) {}
+  }
+
+  flushBatch(): void {
+    this.flushBatchAsync().catch(() => {});
   }
 
   private logEvent(event: BlockedEvent, req?: Partial<IncomingRequest>) {
@@ -537,8 +560,8 @@ export class DefenderClient {
     if (this.appConfig?.batchLoggingEnabled) {
       this.batchBuffer.push(payload);
       if (this.batchBuffer.length >= 500) {
-        this.flushBatch();
-      } else if (!this.batchTimer) {
+        return this.flushBatchAsync();
+      } else if (!this.batchTimer && !this.config.edgeMode) {
         const intervalMs =
           Math.max(1, this.appConfig.batchLoggingIntervalSeconds || 20) * 1000;
         this.batchTimer = setTimeout(() => {
@@ -552,7 +575,7 @@ export class DefenderClient {
       return;
     }
 
-    fetch(`${this.apiUrl}/api/webdefender/event`, {
+    return fetch(`${this.apiUrl}/api/webdefender/event`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -869,7 +892,7 @@ export class DefenderClient {
     const actualBlock =
       isBlocked && this.appConfig.blockModeEnabled && !this.config.logOnly;
 
-    this.logEvent(
+    const logPromise = this.logEvent(
       {
         type: eventType,
         ip,
@@ -885,6 +908,7 @@ export class DefenderClient {
       blocked: actualBlock,
       reason: isBlocked ? blockReason : undefined,
       eventType,
+      logPromise: logPromise instanceof Promise ? logPromise : undefined,
     };
   }
 

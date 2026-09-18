@@ -16,6 +16,8 @@ export interface DefenderConfig {
   onlyLogThreats?: boolean;
   logUniqueIpsOnly?: boolean;
   uniqueIpCooldownSeconds?: number;
+  edgeMode?: boolean; // Set true in serverless/edge environments (e.g. Cloudflare Workers) to disable persistent background timers
+  deferRefresh?: boolean; // Set true to defer initial fetches until request handling or explicit init
   onBlocked?: (event: BlockedEvent) => void;
   onError?: (error: Error) => void;
 }

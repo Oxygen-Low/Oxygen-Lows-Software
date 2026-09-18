@@ -1,11 +1,20 @@
 export class RateLimiter {
   private buckets: Map<string, { tokens: number; lastRefill: number }>;
-  private cleanupInterval: ReturnType<typeof setInterval>;
+  private cleanupInterval?: ReturnType<typeof setInterval>;
 
-  constructor() {
+  constructor(options?: { autoCleanup?: boolean }) {
     this.buckets = new Map();
     // Cleanup expired entries every 60 seconds
-    this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+    if (options?.autoCleanup !== false) {
+      this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+      if (
+        this.cleanupInterval &&
+        typeof this.cleanupInterval === "object" &&
+        "unref" in this.cleanupInterval
+      ) {
+        (this.cleanupInterval as any).unref();
+      }
+    }
   }
 
   check(
@@ -57,7 +66,10 @@ export class RateLimiter {
   }
 
   destroy() {
-    clearInterval(this.cleanupInterval);
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+    }
     this.buckets.clear();
   }
 }

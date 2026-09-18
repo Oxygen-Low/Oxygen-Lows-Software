@@ -3,6 +3,12 @@ export { ThreatActorDetector } from "./threatActors.js";
 export { VpnDetector } from "./vpn.js";
 export { TorDetector } from "./tor.js";
 export { createExpressMiddleware } from "./middleware.js";
+export { createCloudflareDefender, withDefender } from "./cloudflare.js";
+export type {
+  CloudflareDefenderConfig,
+  CloudflareWorkerHandler,
+  CloudflareDefenderInstance,
+} from "./cloudflare.js";
 export type {
   DefenderConfig,
   BlockedEvent,

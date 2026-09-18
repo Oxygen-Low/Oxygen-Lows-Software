@@ -1,5 +1,17 @@
-import http from "http";
-import https from "https";
+// Safely obtain Node http/https modules if running in an environment where they exist
+let nodeHttp: any = null;
+let nodeHttps: any = null;
+
+try {
+  if (typeof process !== "undefined" && process.versions?.node) {
+    const importedHttp = await import("http");
+    nodeHttp = importedHttp.default || importedHttp;
+    const importedHttps = await import("https");
+    nodeHttps = importedHttps.default || importedHttps;
+  }
+} catch (_) {
+  // In non-Node or edge runtimes (e.g., Cloudflare Workers), http/https are unavailable
+}
 import { OutboundConnection } from "./types.js";
 
 export class OutboundMonitor {
@@ -20,12 +32,12 @@ export class OutboundMonitor {
   }
 
   install(): void {
-    if (this.originalHttpRequest) return; // already installed
+    if (this.originalHttpRequest || (this.originalFetch && !nodeHttp)) return; // already installed
 
-    this.originalHttpRequest = http.request;
-    this.originalHttpGet = http.get;
-    this.originalHttpsRequest = https.request;
-    this.originalHttpsGet = https.get;
+    this.originalHttpRequest = nodeHttp?.request;
+    this.originalHttpGet = nodeHttp?.get;
+    this.originalHttpsRequest = nodeHttps?.request;
+    this.originalHttpsGet = nodeHttps?.get;
     this.originalFetch = globalThis.fetch;
 
     const self = this;
@@ -57,14 +69,18 @@ export class OutboundMonitor {
       };
     }
 
-    // @ts-ignore
-    http.request = patchMethod(this.originalHttpRequest, "http:");
-    // @ts-ignore
-    http.get = patchMethod(this.originalHttpGet, "http:");
-    // @ts-ignore
-    https.request = patchMethod(this.originalHttpsRequest, "https:");
-    // @ts-ignore
-    https.get = patchMethod(this.originalHttpsGet, "https:");
+    if (nodeHttp) {
+      // @ts-ignore
+      nodeHttp.request = patchMethod(this.originalHttpRequest, "http:");
+      // @ts-ignore
+      nodeHttp.get = patchMethod(this.originalHttpGet, "http:");
+    }
+    if (nodeHttps) {
+      // @ts-ignore
+      nodeHttps.request = patchMethod(this.originalHttpsRequest, "https:");
+      // @ts-ignore
+      nodeHttps.get = patchMethod(this.originalHttpsGet, "https:");
+    }
 
     if (this.originalFetch) {
       globalThis.fetch = async function (this: any, ...args: any[]) {
@@ -108,12 +124,16 @@ export class OutboundMonitor {
   }
 
   uninstall(): void {
-    if (!this.originalHttpRequest) return;
+    if (!this.originalHttpRequest && !this.originalFetch) return;
 
-    http.request = this.originalHttpRequest;
-    http.get = this.originalHttpGet;
-    https.request = this.originalHttpsRequest;
-    https.get = this.originalHttpsGet;
+    if (nodeHttp && this.originalHttpRequest) {
+      nodeHttp.request = this.originalHttpRequest;
+      nodeHttp.get = this.originalHttpGet;
+    }
+    if (nodeHttps && this.originalHttpsRequest) {
+      nodeHttps.request = this.originalHttpsRequest;
+      nodeHttps.get = this.originalHttpsGet;
+    }
     if (this.originalFetch) {
       globalThis.fetch = this.originalFetch;
     }

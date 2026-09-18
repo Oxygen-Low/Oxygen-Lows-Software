@@ -48,11 +48,14 @@ export class ThreatActorDetector {
   private intervalId?: ReturnType<typeof setInterval>;
   private isRefreshing = false;
 
-  constructor() {
-    this.startRefreshInterval();
+  constructor(options?: { autoRefresh?: boolean }) {
+    if (options?.autoRefresh !== false) {
+      this.startRefreshInterval();
+    }
   }
 
-  private startRefreshInterval() {
+  startRefreshInterval(): void {
+    if (this.intervalId) return;
     this.refresh();
     // Refresh every hour
     this.intervalId = setInterval(() => this.refresh(), 3600000);

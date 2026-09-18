@@ -34,9 +34,11 @@ export class TorDetector {
   private intervalId?: ReturnType<typeof setInterval>;
   private isRefreshing = false;
 
-  constructor() {
+  constructor(options?: { autoRefresh?: boolean }) {
     this.initSeedData();
-    this.startRefreshInterval();
+    if (options?.autoRefresh !== false) {
+      this.startRefreshInterval();
+    }
   }
 
   private initSeedData() {
@@ -51,7 +53,8 @@ export class TorDetector {
     }
   }
 
-  private startRefreshInterval() {
+  startRefreshInterval(): void {
+    if (this.intervalId) return;
     this.refresh();
     // Refresh every hour
     this.intervalId = setInterval(() => this.refresh(), 3600000);
