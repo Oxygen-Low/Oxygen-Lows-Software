@@ -6,10 +6,11 @@
   "scripts": {
     "dev:client": "vite",
     "dev:server": "tsx watch server/serve.ts",
-    "dev": "pnpm dev:client & pnpm dev:server",
+    "dev": "pnpm build:packages && (pnpm dev:client & pnpm dev:server)",
+    "build:packages": "pnpm --filter \"./packages/*\" run build",
     "build:client": "vite build",
     "build:server": "esbuild server/serve.ts --bundle --platform=node --format=esm --packages=external --outdir=dist/server",
-    "build": "npm run build:client && npm run build:server",
+    "build": "pnpm run build:packages && npm run build:client && npm run build:server",
     "start": "cross-env NODE_ENV=production node dist/server/serve.js",
     "test": "vitest --run --maxWorkers=4",
     "format.fix": "prettier --write .",
