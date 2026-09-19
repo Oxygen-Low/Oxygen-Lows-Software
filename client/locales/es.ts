@@ -1031,6 +1031,8 @@ export const es = {
     noTrackPlaying: "No hay ninguna pista en reproducción",
     startPlaylist: "Iniciar lista de reproducción",
     tracksCount: "pistas",
+    trackVolume: "Volumen de la pista",
+    resetVolume: "Restablecer al 100%",
     background3DTitle: "Fondo 3D",
     background3DDesc: "Renderiza una habitación 3D interactiva detrás de la interfaz de usuario",
     enable3DBackground: "Activar fondo 3D",

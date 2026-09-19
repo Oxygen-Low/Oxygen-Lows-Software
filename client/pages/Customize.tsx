@@ -7,13 +7,26 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { Button } from "@/components/ui/button";
-import { Music, Trash2, Play, Pause, Type, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Music,
+  Trash2,
+  Play,
+  Pause,
+  Type,
+  ChevronUp,
+  ChevronDown,
+  Volume2,
+  RotateCcw,
+} from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlaylistTrack {
   id?: string;
   name: string;
   fileName: string;
+  volume?: number;
 }
 
 const THEMES = [
@@ -101,6 +114,7 @@ export default function Customize() {
     toggleShuffle,
     loop,
     toggleLoop,
+    setTrackVolume,
   } = useMusicContext();
 
   const { toast } = useToast();
@@ -499,6 +513,55 @@ export default function Customize() {
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
+
+                        {/* Track Volume Popover */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              aria-label={t(
+                                "customize.trackVolume",
+                                undefined,
+                                "Track Volume",
+                              )}
+                              title={t(
+                                "customize.trackVolume",
+                                undefined,
+                                "Track Volume",
+                              )}
+                              className="p-1.5 hover:bg-muted-foreground/10 rounded text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-3 space-y-3" align="end">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-medium text-foreground">
+                                {t("customize.trackVolume", undefined, "Track Volume")}
+                              </span>
+                              <span className="font-mono text-muted-foreground font-semibold">
+                                {Math.round((track.volume ?? 1) * 100)}%
+                              </span>
+                            </div>
+                            <Slider
+                              value={[Math.round((track.volume ?? 1) * 100)]}
+                              min={0}
+                              max={100}
+                              step={1}
+                              onValueChange={([val]) => setTrackVolume(index, val / 100)}
+                              aria-label={`${track.name} ${t("customize.trackVolume", undefined, "Track Volume")}`}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs h-7"
+                              onClick={() => setTrackVolume(index, 1)}
+                              disabled={(track.volume ?? 1) === 1}
+                            >
+                              <RotateCcw className="w-3 h-3 mr-1.5" />
+                              {t("customize.resetVolume", undefined, "Reset to 100%")}
+                            </Button>
+                          </PopoverContent>
+                        </Popover>
 
                         {/* Play/Pause Button */}
                         <button

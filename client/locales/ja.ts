@@ -1018,6 +1018,8 @@ export const ja = {
     noTrackPlaying: "再生中のトラックはありません",
     startPlaylist: "プレイリストを開始",
     tracksCount: "曲",
+    trackVolume: "トラックの音量",
+    resetVolume: "100%にリセット",
     background3DTitle: "3D背景",
     background3DDesc: "UIの背後にインタラクティブな3Dルームをレンダリングします",
     enable3DBackground: "3D背景を有効にする",

@@ -1007,6 +1007,8 @@ export const ko = {
     noTrackPlaying: "재생 중인 트랙 없음",
     startPlaylist: "재생 목록 시작",
     tracksCount: "개 트랙",
+    trackVolume: "트랙 음량",
+    resetVolume: "100%로 재설정",
     background3DTitle: "3D 배경",
     background3DDesc: "사용자 인터페이스 뒤에 실시간 3D 룸을 렌더링합니다",
     enable3DBackground: "3D 배경 사용",

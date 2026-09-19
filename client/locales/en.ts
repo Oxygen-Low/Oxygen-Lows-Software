@@ -1015,6 +1015,8 @@ export const en = {
     noTrackPlaying: "No track playing",
     startPlaylist: "Start Playlist",
     tracksCount: "tracks",
+    trackVolume: "Track Volume",
+    resetVolume: "Reset to 100%",
     background3DTitle: "3D Background",
     background3DDesc: "Render an interactive 3D room behind the user interface",
     enable3DBackground: "Enable 3D Background",

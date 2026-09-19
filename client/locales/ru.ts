@@ -1022,6 +1022,8 @@ export const ru = {
     noTrackPlaying: "Нет играющего трека",
     startPlaylist: "Запустить плейлист",
     tracksCount: "треков",
+    trackVolume: "Громкость трека",
+    resetVolume: "Сбросить на 100%",
     background3DTitle: "3D-фон",
     background3DDesc: "Отображение интерактивной 3D-комнаты под интерфейсом приложения",
     enable3DBackground: "Включить 3D-фон",

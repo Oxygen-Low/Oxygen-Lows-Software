@@ -17,6 +17,7 @@ export interface PlaylistTrack {
   name: string;
   artist?: string;
   fileName: string;
+  volume?: number;
 }
 
 export interface MusicContextType {
@@ -41,6 +42,7 @@ export interface MusicContextType {
   playPrev: () => Promise<void>;
   seek: (positionMs: number) => void;
   setVolume: (vol: number) => void;
+  setTrackVolume: (index: number, volume: number) => void;
   toggleMute: () => void;
   addTrack: (track: PlaylistTrack) => Promise<void>;
   removeTrack: (trackFileName: string) => Promise<void>;
@@ -98,6 +100,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const currentPositionRef = useRef(0);
   const playNextRef = useRef<(() => void) | undefined>(undefined);
   const playTokenRef = useRef(0);
+  const volumeRef = useRef(volume);
+  const isMutedRef = useRef(isMuted);
 
   useEffect(() => {
     playlistRef.current = playlist;
@@ -105,9 +109,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     isPlayingRef.current = isPlaying;
     shuffleRef.current = shuffle;
     loopRef.current = loop;
+    volumeRef.current = volume;
+    isMutedRef.current = isMuted;
     if (audioRef.current) {
       audioRef.current.loop = loop;
-      audioRef.current.volume = isMuted ? 0 : volume;
+      const trackVol = currentTrack?.volume ?? 1;
+      audioRef.current.volume = isMuted ? 0 : Math.max(0, Math.min(1, volume * trackVol));
       audioRef.current.muted = isMuted;
     }
   }, [playlist, currentTrack, isPlaying, shuffle, loop, volume, isMuted]);
@@ -359,8 +366,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (audioRef.current) {
           audioRef.current.loop = loopEnabled;
-          audioRef.current.volume = isMuted ? 0 : volume;
-          audioRef.current.muted = isMuted;
+          audioRef.current.volume = isMutedRef.current ? 0 : volumeRef.current;
+          audioRef.current.muted = isMutedRef.current;
         }
 
         if (loadedPlaylist.length > 0) {
@@ -379,6 +386,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
             const url = await resolvePlaybackUrl(track.fileName);
             if (url && audioRef.current) {
+              const trackVol = track.volume ?? 1;
+              audioRef.current.volume = isMutedRef.current
+                ? 0
+                : Math.max(0, Math.min(1, volumeRef.current * trackVol));
               const { shouldResume, position } = getAutoResumeState();
               const seekTo = shouldResume ? position : savedPosition;
 
@@ -447,7 +458,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadMusicPreferences();
-  }, [session?.user?.id, resolvePlaybackUrl, getAutoResumeState, isMuted, volume]);
+  }, [session?.user?.id, resolvePlaybackUrl, getAutoResumeState]);
 
   const playTrack = useCallback(
     async (track: PlaylistTrack, overridePlaylist?: PlaylistTrack[]) => {
@@ -478,6 +489,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
       audioRef.current.src = url;
       audioRef.current.currentTime = 0;
+      const trackVol = track.volume ?? 1;
+      audioRef.current.volume = isMuted ? 0 : Math.max(0, Math.min(1, volume * trackVol));
       try {
         await audioRef.current.play();
         setIsPlayingState(true);
@@ -680,7 +693,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       const clamped = Math.max(0, Math.min(1, vol));
       setVolumeState(clamped);
       if (audioRef.current) {
-        audioRef.current.volume = isMuted ? 0 : clamped;
+        const trackVol = currentTrackRef.current?.volume ?? 1;
+        audioRef.current.volume = isMuted ? 0 : Math.max(0, Math.min(1, clamped * trackVol));
       }
       try {
         localStorage.setItem(VOLUME_STORAGE_KEY, String(clamped));
@@ -689,12 +703,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     [isMuted],
   );
 
+  const setTrackVolume = useCallback(
+    (index: number, newVolume: number) => {
+      const clamped = Math.max(0, Math.min(1, newVolume));
+      setPlaylistState((prev) => {
+        if (index < 0 || index >= prev.length) return prev;
+        const targetTrack = prev[index];
+        const updatedTrack = { ...targetTrack, volume: clamped };
+        const updatedPlaylist = [...prev];
+        updatedPlaylist[index] = updatedTrack;
+
+        const isCurrent =
+          currentTrackRef.current?.fileName === targetTrack.fileName ||
+          currentTrackRef.current?.fileName.endsWith("/" + targetTrack.fileName) ||
+          targetTrack.fileName.endsWith("/" + currentTrackRef.current?.fileName);
+
+        if (isCurrent) {
+          setCurrentTrackState(updatedTrack);
+          currentTrackRef.current = updatedTrack;
+          if (audioRef.current) {
+            audioRef.current.volume = isMuted
+              ? 0
+              : Math.max(0, Math.min(1, volume * clamped));
+          }
+        }
+
+        savePreferences({
+          playlist: updatedPlaylist,
+          currentTrack: isCurrent ? updatedTrack : currentTrackRef.current,
+        });
+        return updatedPlaylist;
+      });
+    },
+    [isMuted, volume, savePreferences],
+  );
+
   const toggleMute = useCallback(() => {
     setIsMutedState((prev) => {
       const next = !prev;
       if (audioRef.current) {
         audioRef.current.muted = next;
-        audioRef.current.volume = next ? 0 : volume;
+        const trackVol = currentTrackRef.current?.volume ?? 1;
+        audioRef.current.volume = next
+          ? 0
+          : Math.max(0, Math.min(1, volume * trackVol));
       }
       try {
         localStorage.setItem(MUTED_STORAGE_KEY, String(next));
@@ -921,6 +973,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playPrev,
       seek,
       setVolume,
+      setTrackVolume,
       toggleMute,
       addTrack,
       removeTrack,
@@ -948,6 +1001,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playPrev,
       seek,
       setVolume,
+      setTrackVolume,
       toggleMute,
       addTrack,
       removeTrack,
@@ -986,6 +1040,7 @@ const defaultFallbackMusicContext: MusicContextType = {
   playPrev: async () => {},
   seek: () => {},
   setVolume: () => {},
+  setTrackVolume: () => {},
   toggleMute: () => {},
   addTrack: async () => {},
   removeTrack: async () => {},

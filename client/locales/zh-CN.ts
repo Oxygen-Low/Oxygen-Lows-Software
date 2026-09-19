@@ -975,6 +975,8 @@ export const zhCN = {
     noTrackPlaying: "没有正在播放的曲目",
     startPlaylist: "开始播放列表",
     tracksCount: "首曲目",
+    trackVolume: "曲目音量",
+    resetVolume: "重置为 100%",
     background3DTitle: "3D背景",
     background3DDesc: "在应用界面后方渲染互动式3D房间",
     enable3DBackground: "启用3D背景",

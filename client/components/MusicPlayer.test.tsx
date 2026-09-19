@@ -548,6 +548,7 @@ describe("MusicContext playlist management and playback features", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mockUpsert = vi.fn().mockResolvedValue({ data: null, error: null });
     mockSupabase.from = vi.fn(() => ({
       select: vi.fn(() => ({
@@ -585,6 +586,7 @@ describe("MusicContext playlist management and playback features", () => {
       volume,
       isMuted,
       setVolume,
+      setTrackVolume,
       toggleMute,
       moveTrack,
       clearPlaylist,
@@ -598,6 +600,8 @@ describe("MusicContext playlist management and playback features", () => {
         <span data-testid="current-track">{currentTrack?.name || "none"}</span>
         <span data-testid="position">{currentPosition}</span>
         <span data-testid="volume">{volume}</span>
+        <span data-testid="track-0-volume">{playlist[0]?.volume ?? 1}</span>
+        <span data-testid="track-1-volume">{playlist[1]?.volume ?? 1}</span>
         <span data-testid="muted">{isMuted ? "muted" : "unmuted"}</span>
         <div data-testid="playlist-order">
           {playlist.map((t) => t.name).join(",")}
@@ -607,6 +611,12 @@ describe("MusicContext playlist management and playback features", () => {
         </button>
         <button data-testid="volume-btn" onClick={() => setVolume(0.5)}>
           Set Volume
+        </button>
+        <button
+          data-testid="track-vol-btn"
+          onClick={() => setTrackVolume(0, 0.6)}
+        >
+          Set Track 0 Volume
         </button>
         <button data-testid="mute-btn" onClick={toggleMute}>
           Toggle Mute
@@ -689,6 +699,68 @@ describe("MusicContext playlist management and playback features", () => {
     await waitFor(() => {
       expect(screen.getByTestId("track-count").textContent).toBe("0");
       expect(screen.getByTestId("current-track").textContent).toBe("none");
+    });
+  });
+
+  it("allows setting individual track volume and scales audio volume proportionally", async () => {
+    render(
+      <MusicProvider>
+        <PlaylistConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("current-track").textContent).toBe("Song A");
+      expect(screen.getByTestId("track-0-volume").textContent).toBe("1");
+    });
+
+    const audioElement = document.querySelector("audio");
+    expect(audioElement?.volume).toBe(1);
+
+    // Set Track 0 volume to 0.6
+    fireEvent.click(screen.getByTestId("track-vol-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("track-0-volume").textContent).toBe("0.6");
+      // Since Song A is currently playing, audio volume should immediately be master(1) * track(0.6) = 0.6
+      expect(audioElement?.volume).toBeCloseTo(0.6);
+    });
+
+    // When master volume changes to 0.5, audio volume scales to 0.5 * 0.6 = 0.3
+    fireEvent.click(screen.getByTestId("volume-btn"));
+    expect(audioElement?.volume).toBeCloseTo(0.3);
+
+    // Verify persistence includes updated track volume
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: "test-user-id",
+        music_playlist: expect.arrayContaining([
+          expect.objectContaining({ name: "Song A", volume: 0.6 }),
+        ]),
+      }),
+      { onConflict: "user_id" },
+    );
+
+    // Play next track (Song B, with default volume 1.0)
+    fireEvent.click(screen.getByTestId("next-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("current-track").textContent).toBe("Song B");
+      // Master volume is 0.5, Track B volume is 1.0 -> audio volume is 0.5 * 1.0 = 0.5
+      expect(audioElement?.volume).toBeCloseTo(0.5);
+    });
+
+    // Play next track twice to loop back to Song A (or prev)
+    fireEvent.click(screen.getByTestId("next-btn")); // Song C
+    await waitFor(() => {
+      expect(screen.getByTestId("current-track").textContent).toBe("Song C");
+    });
+
+    fireEvent.click(screen.getByTestId("next-btn")); // Back to Song A
+    await waitFor(() => {
+      expect(screen.getByTestId("current-track").textContent).toBe("Song A");
+      // Master volume is 0.5, Track A volume is 0.6 -> audio volume is 0.5 * 0.6 = 0.3
+      expect(audioElement?.volume).toBeCloseTo(0.3);
     });
   });
 });
