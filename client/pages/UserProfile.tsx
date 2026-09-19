@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate, Link } from "react-router-dom";
 import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import Layout from "@/components/Layout";
@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Globe,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -501,6 +502,18 @@ export default function UserProfile() {
                           </>
                         )}
                       </Button>
+
+                      {friendship?.status === "accepted" && !isBlocked && (
+                        <Button
+                          asChild
+                          className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium"
+                        >
+                          <Link to="/chat">
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            {t("chat.messageFriend", undefined, "Message")}
+                          </Link>
+                        </Button>
+                      )}
 
                       <Button
                         variant="outline"

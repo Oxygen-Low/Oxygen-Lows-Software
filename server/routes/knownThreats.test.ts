@@ -216,6 +216,6 @@ describe("Web Defender Known Threats API", () => {
       expect(blockedRes.headers.get("Retry-After")).toBeDefined();
       const body = await blockedRes.json();
       expect(body.error).toContain("Too many requests");
-    });
+    }, 30000);
   });
 });

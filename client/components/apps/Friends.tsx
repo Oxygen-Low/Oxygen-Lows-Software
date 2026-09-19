@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db, supabase } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
 import {
   Users,
   UserPlus,
@@ -13,6 +14,7 @@ import {
   ShieldAlert,
   Loader2,
   Gift,
+  MessageSquare,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,6 +57,7 @@ interface Friendship {
 
 export function FriendsApp() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<Friendship[]>([]);
   const [pendingOutgoing, setPendingOutgoing] = useState<Friendship[]>([]);
@@ -349,6 +352,15 @@ export function FriendsApp() {
                           >
                             <ExternalLink className="w-4 h-4" />
                             View Profile
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          asChild
+                          className="text-cyan-400 focus:bg-cyan-500/10 focus:text-cyan-400 cursor-pointer"
+                        >
+                          <Link to="/chat" className="flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            {t("chat.messageFriend", undefined, "Message")}
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem

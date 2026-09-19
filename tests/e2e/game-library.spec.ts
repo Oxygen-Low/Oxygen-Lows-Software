@@ -522,8 +522,14 @@ class GameServerTestEngine {
     const friendships = getTableRows("friendships", userId).filter(
       (f: any) => f.status === "accepted",
     );
-    const friendIds = friendships.map((f: any) =>
-      f.user_id === userId ? f.friend_id : f.user_id,
+    const friendIds = Array.from(
+      new Set(
+        friendships.map((f: any) =>
+          String(f.user_id) === String(userId)
+            ? String(f.friend_id)
+            : String(f.user_id),
+        ),
+      ),
     );
 
     const result: FriendGameActivity[] = [];
@@ -576,8 +582,14 @@ class GameServerTestEngine {
     const friendships = getTableRows("friendships", userId).filter(
       (f: any) => f.status === "accepted",
     );
-    const friendIds = friendships.map((f: any) =>
-      f.user_id === userId ? f.friend_id : f.user_id,
+    const friendIds = Array.from(
+      new Set(
+        friendships.map((f: any) =>
+          String(f.user_id) === String(userId)
+            ? String(f.friend_id)
+            : String(f.user_id),
+        ),
+      ),
     );
     const result: any[] = [];
 

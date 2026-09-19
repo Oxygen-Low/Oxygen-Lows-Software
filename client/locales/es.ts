@@ -2471,6 +2471,11 @@ export const es = {
     title: "Chat",
     subtitle:
       "Chatea con amigos, pasa el rato en servidores y realiza llamadas directas de voz y video.",
+    noFriendChats:
+      "Aún no hay chats de amigos. Agrega amigos para comenzar a chatear automáticamente.",
+    findFriends: "Buscar amigos",
+    messageFriend: "Mensaje",
+    selectFriend: "Selecciona un amigo para enviar un mensaje",
   },
   developerAuth: {
     title: "Autenticación para Desarrolladores",

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useChat } from "@/contexts/ChatContext";
 import { CallControls } from "./CallControls";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MicOff, VideoOff, ShieldCheck, Radio } from "lucide-react";
+import { MicOff, VideoOff, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function VideoStreamTile({
@@ -71,11 +71,6 @@ function VideoStreamTile({
         {isVideoOff && <VideoOff className="h-3 w-3 text-amber-400 ml-0.5" />}
       </div>
 
-      {/* P2P Direct WebRTC badge */}
-      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-emerald-950/80 border border-emerald-500/30 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] text-emerald-300 font-mono shadow-sm">
-        <ShieldCheck className="h-3 w-3 text-emerald-400" />
-        <span>Direct P2P</span>
-      </div>
     </div>
   );
 }

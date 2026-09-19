@@ -2452,6 +2452,11 @@ export const en = {
     title: "Chat",
     subtitle:
       "Chat with friends, hang out in servers, and make direct voice & video calls.",
+    noFriendChats:
+      "No friend chats yet. Add friends to start chatting automatically.",
+    findFriends: "Find Friends",
+    messageFriend: "Message",
+    selectFriend: "Select a friend to message",
   },
   developerAuth: {
     title: "Developer Auth",

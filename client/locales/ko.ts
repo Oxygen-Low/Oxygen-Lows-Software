@@ -2432,6 +2432,11 @@ notificationsTitle: "알림",
     title: "채팅",
     subtitle:
       "친구와 채팅하고, 서버에서 어울리며, 직접 음성 및 영상 통화를 할 수 있습니다.",
+    noFriendChats:
+      "아직 친구 채팅이 없습니다. 친구를 추가하면 자동으로 채팅이 시작됩니다.",
+    findFriends: "친구 찾기",
+    messageFriend: "메시지",
+    selectFriend: "메시지를 보낼 친구 선택",
   },
   developerAuth: {
     title: "개발자 인증",

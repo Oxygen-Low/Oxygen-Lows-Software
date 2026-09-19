@@ -1,6 +1,13 @@
 import { Hono } from "hono";
 import { resolveUserFromToken } from "../lib/auth.ts";
-import { queryTable, insertTable, updateTable } from "../lib/dataStore.ts";
+import {
+  queryTable,
+  insertTable,
+  updateTable,
+  syncFriendDms,
+  isBlockedBidirectional,
+  getAcceptedFriendIds,
+} from "../lib/dataStore.ts";
 import { broadcastChange } from "../lib/realtime.ts";
 import crypto from "node:crypto";
 
@@ -37,9 +44,8 @@ chatRouter.get("/state", async (c) => {
   const allChannels = (queryTable({ table: "chat_channels" }) as any[]) || [];
   const channels = allChannels.filter((ch: any) => serverIds.includes(ch.server_id));
 
-  // Get DMs where user is a participant
-  const allDms = (queryTable({ table: "chat_dms" }) as any[]) || [];
-  const dms = allDms.filter((dm: any) => dm.participants && dm.participants.includes(userId));
+  // Get DMs where user is a participant (auto-synced with accepted friends and non-blocked)
+  const dms = syncFriendDms(userId);
 
   return c.json({
     user: { id: userId, username: user.username, display_name: (user as any).display_name || user.username },
@@ -137,13 +143,25 @@ chatRouter.post("/dms", async (c) => {
     return c.json({ error: "Invalid recipient" }, 400);
   }
 
-  const allDms = (queryTable({ table: "chat_dms" }) as any[]) || [];
-  const existing = allDms.find(
+  // Check if recipient is an accepted friend and neither user has blocked the other
+  const acceptedFriends = getAcceptedFriendIds(userId);
+  if (
+    !acceptedFriends.includes(recipientId) ||
+    isBlockedBidirectional(userId, recipientId)
+  ) {
+    return c.json(
+      { error: "Cannot start chat: users must be friends and not blocked" },
+      403,
+    );
+  }
+
+  const dms = syncFriendDms(userId);
+  const existing = dms.find(
     (dm: any) =>
       dm.participants &&
       dm.participants.length === 2 &&
       dm.participants.includes(userId) &&
-      dm.participants.includes(recipientId)
+      dm.participants.includes(recipientId),
   );
 
   if (existing) {
@@ -154,7 +172,7 @@ chatRouter.post("/dms", async (c) => {
     id: `dm_${crypto.randomUUID()}`,
     participants: [userId, recipientId],
     recipient_names: {
-      [userId]: user.username,
+      [userId]: (user as any).display_name || user.username,
       [recipientId]: body.recipientName || "Friend",
     },
     created_at: new Date().toISOString(),
@@ -205,6 +223,29 @@ chatRouter.post("/messages", async (c) => {
     return c.json({ error: "Invalid message payload" }, 400);
   }
 
+  // Validate DM permissions (must be friend and not blocked)
+  if (targetId.startsWith("dm_")) {
+    const allDms = (queryTable({ table: "chat_dms" }) as any[]) || [];
+    const dm = allDms.find(
+      (d: any) =>
+        d.id === targetId &&
+        d.participants &&
+        d.participants.includes(userId),
+    );
+    if (!dm) {
+      return c.json(
+        { error: "Direct chat not found or friend removed" },
+        403,
+      );
+    }
+    const otherParticipant = dm.participants.find(
+      (p: any) => String(p) !== userId,
+    );
+    if (otherParticipant && isBlockedBidirectional(userId, otherParticipant)) {
+      return c.json({ error: "Cannot send message: user is blocked" }, 403);
+    }
+  }
+
   const message = {
     id: `msg_${crypto.randomUUID()}`,
     target_id: targetId,
@@ -246,6 +287,10 @@ chatRouter.post("/calls/signal", async (c) => {
 
   const body = await c.req.json();
   const { type, targetUserId, roomId, isVideo, data } = body;
+
+  if (targetUserId && isBlockedBidirectional(userId, targetUserId)) {
+    return c.json({ error: "Cannot signal: user is blocked" }, 403);
+  }
 
   const eventPayload = {
     type,

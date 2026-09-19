@@ -2455,6 +2455,11 @@ notificationsTitle: "通知",
     title: "チャット",
     subtitle:
       "友達とチャットしたり、サーバーで交流したり、直接音声・ビデオ通話を行えます。",
+    noFriendChats:
+      "フレンドチャットはまだありません。フレンドを追加すると自動的にチャットが開始されます。",
+    findFriends: "フレンドを探す",
+    messageFriend: "メッセージ",
+    selectFriend: "メッセージを送るフレンドを選択",
   },
   developerAuth: {
     title: "開発者認証",

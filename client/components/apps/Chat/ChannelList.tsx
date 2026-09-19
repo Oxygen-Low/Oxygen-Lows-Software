@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useChat, ChatChannel } from "@/contexts/ChatContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { supabase } from "@/lib/db";
 import {
   Hash,
   Volume2,
@@ -48,6 +51,7 @@ export function ChannelList() {
     toggleDeafen,
   } = useChat();
 
+  const { t } = useTranslation();
   const { session } = useAuth();
   const userId = session?.user?.id ? String(session.user.id) : null;
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split("@")[0] || "User";
@@ -59,6 +63,24 @@ export function ChannelList() {
   const [isNewDmOpen, setIsNewDmOpen] = useState(false);
   const [dmFriendId, setDmFriendId] = useState("");
   const [dmFriendName, setDmFriendName] = useState("");
+  const [friendsList, setFriendsList] = useState<any[]>([]);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
+
+  useEffect(() => {
+    if (isNewDmOpen && session?.user?.id) {
+      setIsLoadingFriends(true);
+      supabase
+        .rpc("get_my_friendships")
+        .then(({ data }) => {
+          if (data) {
+            const accepted = data.filter((f: any) => f.status === "accepted");
+            setFriendsList(accepted);
+          }
+          setIsLoadingFriends(false);
+        })
+        .catch(() => setIsLoadingFriends(false));
+    }
+  }, [isNewDmOpen, session?.user?.id]);
 
   const activeServer = servers.find((s) => s.id === activeServerId);
   const serverChannels = channels.filter((c) => c.server_id === activeServerId);
@@ -121,8 +143,25 @@ export function ChannelList() {
             </div>
 
             {dms.length === 0 ? (
-              <div className="px-3 py-6 text-xs text-slate-500 text-center border border-dashed border-slate-800/80 rounded-xl my-2">
-                No direct chats yet. Click the + icon to start a secure conversation.
+              <div className="px-3 py-6 text-xs text-slate-500 text-center border border-dashed border-slate-800/80 rounded-xl my-2 flex flex-col items-center gap-2">
+                <span>
+                  {t(
+                    "chat.noFriendChats",
+                    undefined,
+                    "No friend chats yet. Add friends to start chatting automatically.",
+                  )}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="h-7 text-xs border-slate-700 bg-slate-800/60 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300"
+                >
+                  <Link to="/friends">
+                    <Users className="h-3 w-3 mr-1.5" />
+                    {t("chat.findFriends", undefined, "Find Friends")}
+                  </Link>
+                </Button>
               </div>
             ) : (
               dms.map((dm) => {
@@ -390,17 +429,78 @@ export function ChannelList() {
           <div className="space-y-4 py-3">
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Friend User ID
+                {t("chat.selectFriend", undefined, "Select a friend to message")}
+              </Label>
+              {isLoadingFriends ? (
+                <p className="text-xs text-slate-400">
+                  {t("common.loading", undefined, "Loading...")}
+                </p>
+              ) : friendsList.length === 0 ? (
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 text-center space-y-2">
+                  <p>
+                    {t(
+                      "chat.noFriendChats",
+                      undefined,
+                      "No friend chats yet. Add friends to start chatting automatically.",
+                    )}
+                  </p>
+                  <Button asChild size="sm" variant="outline" className="text-xs">
+                    <Link to="/friends" onClick={() => setIsNewDmOpen(false)}>
+                      <Users className="h-3 w-3 mr-1.5" />
+                      {t("chat.findFriends", undefined, "Find Friends")}
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                  {friendsList.map((f: any) => {
+                    const friendId =
+                      f.friend_id === userId ? f.user_id : f.friend_id;
+                    const name =
+                      f.profile?.display_name || f.profile?.username || "Friend";
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 transition text-left"
+                        onClick={async () => {
+                          await startDm(String(friendId), name);
+                          setIsNewDmOpen(false);
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-[10px] bg-slate-800 text-cyan-300">
+                              {name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium text-white">
+                            {name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-cyan-400 font-semibold">
+                          {t("chat.messageFriend", undefined, "Message")}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800/80 space-y-2">
+              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Or Friend User ID
               </Label>
               <Input
                 placeholder="e.g. user_12345"
                 value={dmFriendId}
                 onChange={(e) => setDmFriendId(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white focus-visible:ring-cyan-500"
+                className="bg-slate-950 border-slate-800 text-white focus-visible:ring-cyan-500 text-xs"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <Label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 Display Name (Optional)
               </Label>
               <Input
@@ -408,7 +508,7 @@ export function ChannelList() {
                 value={dmFriendName}
                 onChange={(e) => setDmFriendName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleStartDm()}
-                className="bg-slate-950 border-slate-800 text-white focus-visible:ring-cyan-500"
+                className="bg-slate-950 border-slate-800 text-white focus-visible:ring-cyan-500 text-xs"
               />
             </div>
           </div>

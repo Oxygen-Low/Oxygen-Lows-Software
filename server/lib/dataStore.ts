@@ -14,6 +14,8 @@ const REALTIME_TABLES = new Set([
   "support_messages",
   "notifications",
   "user_notification_state",
+  "chat_dms",
+  "chat_messages",
 ]);
 
 type BroadcastFn = (event: {
@@ -340,29 +342,29 @@ export function getNextUserId(): string {
 
   if (fs.existsSync(metaPath)) {
     const meta = readJsonFile(metaPath, { nextUserId: 1 });
-    nextId = typeof meta.nextUserId === "number" ? meta.nextUserId : 1;
-  } else {
-    // Scan existing user directory names if meta.json didn't exist
-    try {
-      const items = fs.readdirSync(DATA_DIR, { withFileTypes: true });
-      for (const item of items) {
-        const resolvedBase = path.resolve(DATA_DIR);
-        const resolvedTarget = path.resolve(DATA_DIR, item.name);
-        const relative = path.relative(resolvedBase, resolvedTarget);
-        if (relative.startsWith("..") || path.isAbsolute(relative)) {
-          continue;
-        }
-        if (item.isDirectory() && /^\d+$/.test(item.name)) {
-          const num = parseInt(item.name, 10);
-          if (num >= nextId) {
-            nextId = num + 1;
-          }
-        }
-      }
-    } catch {}
+    if (typeof meta.nextUserId === "number" && meta.nextUserId > 0) {
+      nextId = meta.nextUserId;
+    }
   }
 
-  writeJsonFile(metaPath, { nextUserId: nextId + 1 });
+  // Atomically claim the candidate directory so concurrent processes/workers never receive the same ID
+  while (true) {
+    const candidateDir = path.join(DATA_DIR, String(nextId));
+    try {
+      fs.mkdirSync(candidateDir);
+      break;
+    } catch (err: any) {
+      if (err.code === "EEXIST") {
+        nextId++;
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  try {
+    writeJsonFile(metaPath, { nextUserId: nextId + 1 });
+  } catch {}
   return String(nextId);
 }
 
@@ -568,7 +570,8 @@ export function wipeServerPasswordsAndMigrateSchema(): {
 
 let cachedUserIds: string[] | null = null;
 let lastCacheTime = 0;
-const CACHE_TTL = 30000; // 30 seconds
+const CACHE_TTL =
+  process.env.NODE_ENV === "test" || process.env.VITEST ? 0 : 30000;
 
 export function getAllUserIds(): string[] {
   const now = Date.now();
@@ -712,7 +715,8 @@ export function getUserOAuthStatus(userId: string | number) {
 }
 
 const profileCache = new Map<string, { data: any; timestamp: number }>();
-const PROFILE_CACHE_TTL = 30000; // 30 seconds
+const PROFILE_CACHE_TTL =
+  process.env.NODE_ENV === "test" || process.env.VITEST ? 0 : 30000;
 
 export function getProfileByUserId(userId: string | number) {
   if (userId === undefined || userId === null || String(userId).trim() === "")
@@ -748,6 +752,20 @@ export function getTableFilePath(
   userId?: string | number,
 ): string | null {
   const normTable = table.toLowerCase();
+
+  // Global chat tables stored under DATA_DIR/chat/
+  if (normTable === "chat_servers") {
+    return path.join(DATA_DIR, "chat", "servers.json");
+  }
+  if (normTable === "chat_channels") {
+    return path.join(DATA_DIR, "chat", "channels.json");
+  }
+  if (normTable === "chat_dms") {
+    return path.join(DATA_DIR, "chat", "dms.json");
+  }
+  if (normTable === "chat_user_keys") {
+    return path.join(DATA_DIR, "chat", "keys.json");
+  }
 
   // If userId is provided, map user-specific tables
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
@@ -970,6 +988,19 @@ export function getTableRows(table: string, userId?: string | number): any[] {
     return [];
   }
 
+  // Global chat tables
+  if (
+    normTable === "chat_servers" ||
+    normTable === "chat_channels" ||
+    normTable === "chat_dms" ||
+    normTable === "chat_user_keys"
+  ) {
+    const filePath = getTableFilePath(normTable);
+    return filePath && fs.existsSync(filePath)
+      ? readJsonFile<any[]>(filePath, [])
+      : [];
+  }
+
   // If table is a single object file (profile / preferences)
   if (normTable === "profiles" || normTable === "profile_pictures") {
     if (userIdStr) {
@@ -1114,11 +1145,17 @@ function sanitizePreferences(pref: any): any {
     const seenIds = new Set<string>();
 
     if (userIdStr) {
+      const seenOtherUsers = new Set<string>();
       const ownFilePath = getTableFilePath(table, userIdStr);
       if (ownFilePath && fs.existsSync(ownFilePath)) {
         const own = readJsonFile<any[]>(ownFilePath, []);
         for (const f of own) {
           if (f && f.id && !seenIds.has(String(f.id))) {
+            const otherUser =
+              String(f.friend_id) === userIdStr
+                ? String(f.user_id)
+                : String(f.friend_id);
+            seenOtherUsers.add(otherUser);
             seenIds.add(String(f.id));
             all.push(f);
           }
@@ -1135,8 +1172,15 @@ function sanitizePreferences(pref: any): any {
                 String(f.user_id) === userIdStr ||
                 String(f.friend_id) === userIdStr
               ) {
-                seenIds.add(String(f.id));
-                all.push(f);
+                const otherUser =
+                  String(f.friend_id) === userIdStr
+                    ? String(f.user_id)
+                    : String(f.friend_id);
+                if (!seenOtherUsers.has(otherUser)) {
+                  seenOtherUsers.add(otherUser);
+                  seenIds.add(String(f.id));
+                  all.push(f);
+                }
               }
             }
           }
@@ -1145,14 +1189,21 @@ function sanitizePreferences(pref: any): any {
       return all;
     }
 
+    const seenPairs = new Set<string>();
     for (const id of userIds) {
       const filePath = getTableFilePath(table, id);
       if (filePath && fs.existsSync(filePath)) {
         const rows = readJsonFile<any[]>(filePath, []);
         for (const f of rows) {
           if (f && f.id && !seenIds.has(String(f.id))) {
-            seenIds.add(String(f.id));
-            all.push(f);
+            const pairKey = [String(f.user_id), String(f.friend_id)]
+              .sort()
+              .join(":");
+            if (!seenPairs.has(pairKey)) {
+              seenPairs.add(pairKey);
+              seenIds.add(String(f.id));
+              all.push(f);
+            }
           }
         }
       }
@@ -1191,13 +1242,26 @@ function sanitizePreferences(pref: any): any {
  */
 export function saveTableRows(
   table: string,
-  userId: string | number,
+  userId: string | number | undefined,
   rows: any[],
 ) {
+  const normTable = table.toLowerCase();
+  if (
+    normTable === "chat_servers" ||
+    normTable === "chat_channels" ||
+    normTable === "chat_dms" ||
+    normTable === "chat_user_keys"
+  ) {
+    const filePath = getTableFilePath(normTable);
+    if (filePath) {
+      writeJsonFile(filePath, rows);
+    }
+    return;
+  }
+
   if (userId === undefined || userId === null || String(userId).trim() === "")
     return;
   const userIdStr = String(userId);
-  const normTable = table.toLowerCase();
   if (normTable === "profiles" || normTable === "profile_pictures") {
     const profilePath = path.join(DATA_DIR, userIdStr, "profile.json");
     const existing = readJsonFile(profilePath, {});
@@ -1531,6 +1595,39 @@ export function insertTable(
           saveTableRows(table, otherId, otherUpdated);
         }
       }
+      if (item.status === "accepted") {
+        try {
+          syncFriendDms(userIdStr);
+          if (otherId && otherId !== userIdStr) {
+            syncFriendDms(otherId);
+          }
+        } catch {}
+      }
+    }
+  }
+
+  if (normTable === "blocks") {
+    for (const item of prepared) {
+      const blockerId = String(item.blocker_id || item.user_id || userIdStr);
+      const blockedId = String(
+        item.blocked_id || item.blocked_user_id || item.target_id || "",
+      );
+      if (blockerId && blockedId) {
+        try {
+          // Remove any friendship between blocker and blocked user
+          deleteTable(
+            "friendships",
+            [],
+            blockerId,
+            [
+              `and(user_id.eq.${blockerId},friend_id.eq.${blockedId})`,
+              `and(user_id.eq.${blockedId},friend_id.eq.${blockerId})`,
+            ],
+          );
+          syncFriendDms(blockerId);
+          syncFriendDms(blockedId);
+        } catch {}
+      }
     }
   }
 
@@ -1629,6 +1726,12 @@ export function updateTable(
             saveTableRows(table, otherId, otherUpdated);
           }
         }
+        try {
+          syncFriendDms(userIdStr);
+          if (otherId && otherId !== userIdStr) {
+            syncFriendDms(otherId);
+          }
+        } catch {}
       }
     }
 
@@ -1807,6 +1910,27 @@ export function deleteTable(
             );
             saveTableRows(table, otherId, otherUpdated);
           }
+        }
+        try {
+          syncFriendDms(userIdStr);
+          if (otherId && otherId !== userIdStr) {
+            syncFriendDms(otherId);
+          }
+        } catch {}
+      }
+    }
+
+    if (normTable === "blocks") {
+      for (const item of matched) {
+        const blockerId = String(item.blocker_id || item.user_id || userIdStr);
+        const blockedId = String(
+          item.blocked_id || item.blocked_user_id || item.target_id || "",
+        );
+        if (blockerId && blockedId) {
+          try {
+            syncFriendDms(blockerId);
+            syncFriendDms(blockedId);
+          } catch {}
         }
       }
     }
@@ -3546,3 +3670,192 @@ export function getAcceptedFriendIds(userId: string | number): string[] {
     (id) => !blockedIds.has(id) && id !== userIdStr,
   );
 }
+
+/**
+ * Checks if either user has blocked the other.
+ */
+export function isBlockedBidirectional(
+  userAId: string | number,
+  userBId: string | number,
+): boolean {
+  if (
+    userAId === undefined ||
+    userBId === undefined ||
+    userAId === null ||
+    userBId === null
+  ) {
+    return false;
+  }
+  const aStr = String(userAId);
+  const bStr = String(userBId);
+  if (!aStr || !bStr || aStr === bStr) return false;
+
+  const aBlocks = [
+    ...getTableRows("blocks", aStr),
+    ...readJsonFile<any[]>(
+      path.join(DATA_DIR, aStr, "friends", "blocks.json"),
+      [],
+    ),
+  ];
+  for (const b of aBlocks) {
+    const target = String(
+      b.blocked_id || b.blocked_user_id || b.target_id || "",
+    );
+    if (target === bStr) return true;
+  }
+
+  const bBlocks = [
+    ...getTableRows("blocks", bStr),
+    ...readJsonFile<any[]>(
+      path.join(DATA_DIR, bStr, "friends", "blocks.json"),
+      [],
+    ),
+  ];
+  for (const b of bBlocks) {
+    const target = String(
+      b.blocked_id || b.blocked_user_id || b.target_id || "",
+    );
+    if (target === aStr) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Synchronizes direct chat channels (DMs) for a user with their accepted friends:
+ * - Automatically creates a chat for any accepted friend who is not blocked.
+ * - Automatically removes any chat for users who are no longer friends or who are blocked.
+ */
+export function syncFriendDms(userId: string | number): any[] {
+  if (userId === undefined || userId === null || String(userId).trim() === "") {
+    return [];
+  }
+  const userIdStr = String(userId);
+  const currentUser = getUserById(userIdStr);
+  const currentProfile = getProfileByUserId(userIdStr);
+  const currentName =
+    currentProfile?.display_name ||
+    currentProfile?.username ||
+    currentUser?.username ||
+    "User";
+
+  // 1. Get all accepted friend IDs (already filters out blocked users bidirectionally)
+  const acceptedFriendIds = new Set(getAcceptedFriendIds(userIdStr));
+
+  // 2. Load all current DMs from chat_dms
+  const allDms: any[] = getTableRows("chat_dms") || [];
+  let modified = false;
+
+  // 3. Find and remove any invalid DMs involving userIdStr
+  const remainingDms: any[] = [];
+  const existingFriendDms = new Map<string, any>(); // friendId -> DM
+
+  for (const dm of allDms) {
+    if (!dm || !Array.isArray(dm.participants)) continue;
+    const isUserParticipant = dm.participants.some(
+      (p: any) => String(p) === userIdStr,
+    );
+
+    if (!isUserParticipant) {
+      remainingDms.push(dm);
+      continue;
+    }
+
+    const otherParticipant = dm.participants.find(
+      (p: any) => String(p) !== userIdStr,
+    );
+    const otherIdStr = otherParticipant ? String(otherParticipant) : null;
+
+    if (
+      otherIdStr &&
+      acceptedFriendIds.has(otherIdStr) &&
+      !isBlockedBidirectional(userIdStr, otherIdStr)
+    ) {
+      // Keep valid DM
+      existingFriendDms.set(otherIdStr, dm);
+      remainingDms.push(dm);
+    } else {
+      // Remove invalid DM (unfriended or blocked)
+      modified = true;
+      if (_broadcast) {
+        _broadcast({
+          table: "chat_dms",
+          event: "DELETE",
+          schema: "public",
+          new: null,
+          old: dm,
+          targetUserId: userIdStr,
+        });
+        if (otherIdStr) {
+          _broadcast({
+            table: "chat_dms",
+            event: "DELETE",
+            schema: "public",
+            new: null,
+            old: dm,
+            targetUserId: otherIdStr,
+          });
+        }
+      }
+    }
+  }
+
+  // 4. Create missing DMs for any accepted friend that does not have one yet
+  for (const friendId of acceptedFriendIds) {
+    if (!existingFriendDms.has(friendId)) {
+      const friendProfile = getProfileByUserId(friendId);
+      const friendUser = getUserById(friendId);
+      const friendName =
+        friendProfile?.display_name ||
+        friendProfile?.username ||
+        friendUser?.username ||
+        "Friend";
+
+      const newDm = {
+        id: `dm_${crypto.randomUUID()}`,
+        participants: [userIdStr, friendId],
+        recipient_names: {
+          [userIdStr]: currentName,
+          [friendId]: friendName,
+        },
+        created_at: new Date().toISOString(),
+      };
+
+      existingFriendDms.set(friendId, newDm);
+      remainingDms.push(newDm);
+      modified = true;
+
+      if (_broadcast) {
+        _broadcast({
+          table: "chat_dms",
+          event: "INSERT",
+          schema: "public",
+          new: newDm,
+          old: null,
+          targetUserId: userIdStr,
+        });
+        _broadcast({
+          table: "chat_dms",
+          event: "INSERT",
+          schema: "public",
+          new: newDm,
+          old: null,
+          targetUserId: friendId,
+        });
+      }
+    }
+  }
+
+  // 5. Persist if any DM was added or removed
+  if (modified) {
+    saveTableRows("chat_dms", userIdStr, remainingDms);
+  }
+
+  // 6. Return user's DMs
+  return remainingDms.filter(
+    (dm) =>
+      dm.participants &&
+      dm.participants.some((p: any) => String(p) === userIdStr),
+  );
+}
+

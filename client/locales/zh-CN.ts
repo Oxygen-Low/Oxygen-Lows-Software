@@ -2362,6 +2362,10 @@ notificationsTitle: "通知",
   chat: {
     title: "聊天",
     subtitle: "与朋友聊天，在服务器中聚会，并进行直接语音和视频通话。",
+    noFriendChats: "暂无好友聊天。添加好友即可自动开始聊天。",
+    findFriends: "寻找好友",
+    messageFriend: "发消息",
+    selectFriend: "选择要发送消息的好友",
   },
   developerAuth: {
     title: "开发者身份验证",

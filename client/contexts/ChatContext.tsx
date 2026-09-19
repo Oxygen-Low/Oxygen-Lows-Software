@@ -150,6 +150,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setActiveServerId(data.servers[0]?.id || "dms");
             setActiveChannelId(data.channels[0].id);
           }
+        } else if (activeChannelId.startsWith("dm_")) {
+          if (!data.dms?.some((d: any) => d.id === activeChannelId)) {
+            setActiveChannelId(data.dms?.[0]?.id || null);
+          }
         }
       }
     } catch (err) {
@@ -161,6 +165,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadState();
+  }, [loadState]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      loadState();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [loadState]);
 
   // Load messages when active channel/DM changes
@@ -324,6 +336,47 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             data: data.data,
           });
         }
+      }
+    );
+
+    channel.on(
+      "postgres_changes" as any,
+      { event: "*", schema: "public", table: "chat_dms" },
+      (payload: any) => {
+        const evt = payload.eventType || payload.event;
+        if (evt === "INSERT" && payload.new) {
+          const newDm = payload.new;
+          if (newDm.participants && newDm.participants.includes(userId)) {
+            setDms((prev) => {
+              if (prev.some((d) => d.id === newDm.id)) return prev;
+              return [...prev, newDm];
+            });
+          }
+        } else if (evt === "DELETE" && payload.old) {
+          const deletedId = payload.old.id;
+          if (deletedId) {
+            setDms((prev) => prev.filter((d) => d.id !== deletedId));
+            setActiveChannelId((cur) => (cur === deletedId ? null : cur));
+          }
+        } else {
+          loadState();
+        }
+      }
+    );
+
+    channel.on(
+      "postgres_changes" as any,
+      { event: "*", schema: "public", table: "friendships" },
+      () => {
+        loadState();
+      }
+    );
+
+    channel.on(
+      "postgres_changes" as any,
+      { event: "*", schema: "public", table: "blocks" },
+      () => {
+        loadState();
       }
     );
 

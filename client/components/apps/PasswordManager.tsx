@@ -772,8 +772,17 @@ function OtpLiveDisplay({
 
   const handleCopyOtp = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!code) return;
-    await navigator.clipboard.writeText(code);
+    let currentCode = code;
+    if (!currentCode && secret) {
+      try {
+        currentCode = await generateTotp(secret);
+        setCode(currentCode);
+      } catch {
+        return;
+      }
+    }
+    if (!currentCode) return;
+    await navigator.clipboard.writeText(currentCode);
     setCopied(true);
     toast.success(
       t(
