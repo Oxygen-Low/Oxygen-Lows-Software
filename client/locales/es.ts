@@ -360,6 +360,10 @@ export const es = {
     chatbotCopyReasoning: "Copiar razonamiento",
     chatbotReasoningCopied: "Razonamiento copiado al portapapeles",
     chatbotCopied: "Copiado",
+    chatbotProviderNotConfigured:
+      'El proveedor "{provider}" no está configurado con una clave API. Añade una clave API en la configuración de Modelos o Cuenta.',
+    chatbotMasterKeyLocked:
+      "Tu clave maestra está bloqueada. Desbloquéala en la configuración de Cuenta o Modelos para usar las claves API configuradas.",
     agentSearchTitle: "Búsqueda Agente",
     agentSearchDesc:
       "Búsqueda agéntica impulsada por IA que investiga la web y sintetiza respuestas.",

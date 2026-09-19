@@ -351,6 +351,10 @@ export const ja = {
     chatbotCopyReasoning: "推論をコピー",
     chatbotReasoningCopied: "推論をクリップボードにコピーしました",
     chatbotCopied: "コピー完了",
+    chatbotProviderNotConfigured:
+      'プロバイダー「{provider}」にAPIキーが設定されていません。モデルまたはアカウント設定でAPIキーを追加してください。',
+    chatbotMasterKeyLocked:
+      "マスターキーがロックされています。設定されたAPIキーを使用するには、アカウントまたはモデル設定でロックを解除してください。",
     agentSearchTitle: "エージェント検索",
     agentSearchDesc: "ウェブを調査し、回答を合成するAI搭載のエージェント検索。",
     agentSearchPlaceholder: "何を調べたいですか？",

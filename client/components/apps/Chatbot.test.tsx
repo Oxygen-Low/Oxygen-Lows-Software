@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { ChatbotApp } from "./Chatbot";
 import { setLocalSession } from "@/lib/localSession";
+import { toast } from "sonner";
 
 // Mock i18next
 
@@ -1301,5 +1302,53 @@ describe("ChatbotApp", () => {
       global.fetch = originalFetch;
     }
   });
+
+  it("displays localized error when proxy returns Provider not configured", async () => {
+    const originalFetch = global.fetch;
+    const toastSpy = vi.spyOn(toast, "error");
+    try {
+      (global as any).fetch = vi.fn((url: any) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/api/ai/proxy")) {
+          return Promise.resolve({
+            ok: false,
+            status: 400,
+            headers: {
+              get: (header: string) =>
+                header.toLowerCase() === "content-type"
+                  ? "application/json"
+                  : null,
+            },
+            json: () => Promise.resolve({ error: "Provider not configured" }),
+          } as unknown as Response);
+        }
+        return originalFetch(url);
+      });
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, {
+        target: { value: "Hello" },
+      });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      await waitFor(() => {
+        expect(toastSpy).toHaveBeenCalledWith(
+          expect.stringContaining("is not configured with an API key"),
+        );
+      });
+    } finally {
+      global.fetch = originalFetch;
+      toastSpy.mockRestore();
+    }
+  });
 });
+
 

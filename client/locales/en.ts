@@ -347,6 +347,10 @@ export const en = {
     chatbotCopyReasoning: "Copy Reasoning",
     chatbotReasoningCopied: "Reasoning copied to clipboard",
     chatbotCopied: "Copied",
+    chatbotProviderNotConfigured:
+      'Provider "{provider}" is not configured with an API key. Please add an API key in Models or Account settings.',
+    chatbotMasterKeyLocked:
+      "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",

@@ -328,6 +328,10 @@ export const zhCN = {
     chatbotCopyReasoning: "复制推理过程",
     chatbotReasoningCopied: "推理过程已复制到剪贴板",
     chatbotCopied: "已复制",
+    chatbotProviderNotConfigured:
+      '提供商 "{provider}" 未配置 API 密钥。请在模型或账户设置中添加 API 密钥。',
+    chatbotMasterKeyLocked:
+      "主密钥已锁定。请在账户或模型设置中解锁，以使用已配置的 API 密钥。",
     agentSearchTitle: "智能搜索",
     agentSearchDesc: "由AI驱动的智能搜索，研究网络并综合答案。",
     agentSearchPlaceholder: "您想研究什么？",

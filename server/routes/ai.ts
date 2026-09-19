@@ -208,7 +208,21 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     return c.json({ error: "Authentication required for this model." }, 401);
   }
 
-  let integration: any = apiKey ? { api_key: apiKey } : null;
+  let envKey = "";
+  if (provider === "openrouter") {
+    envKey = process.env.OPENROUTER_API_KEY || "";
+  } else if (provider === "openai") {
+    envKey = process.env.OPENAI_API_KEY || "";
+  } else if (provider === "anthropic") {
+    envKey = process.env.ANTHROPIC_API_KEY || "";
+  } else if (provider === "google" || provider === "gemini") {
+    envKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+  } else if (provider === "grok" || provider === "xai") {
+    envKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || "";
+  }
+
+  const effectiveApiKey = apiKey || envKey;
+  let integration: any = effectiveApiKey ? { api_key: effectiveApiKey } : null;
   if (baseUrl) {
     try {
       const parsed = new URL(baseUrl);
@@ -239,7 +253,12 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     }
   }
 
-  if (!integration?.api_key && provider !== "horde" && provider !== "pollinations") {
+  if (
+    !integration?.api_key &&
+    provider !== "horde" &&
+    provider !== "pollinations" &&
+    provider !== "shared-model"
+  ) {
     return c.json({ error: "Provider not configured" }, 400);
   }
 

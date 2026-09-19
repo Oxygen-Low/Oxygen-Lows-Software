@@ -1509,6 +1509,7 @@ export function LLMAgentApp() {
     setSelection,
     isLoading: modelsLoading,
     refreshModels,
+    getDecryptedApiKey,
   } = useAiModels("Fast", "horde");
 
   // Agent state
@@ -1680,6 +1681,7 @@ export function LLMAgentApp() {
           model: selectedModel,
           messages: apiMessages,
           stream: true,
+          apiKey: getDecryptedApiKey(selectedProvider) || undefined,
           ...(supportsNativeTools ? { tools: AGENT_TOOLS } : {}),
         }),
       };

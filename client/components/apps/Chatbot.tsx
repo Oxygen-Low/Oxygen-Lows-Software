@@ -753,6 +753,10 @@ export function ChatbotApp() {
     researchAgentDefaultProvider,
     researchSummarizerDefaultModel,
     researchSummarizerDefaultProvider,
+    getDecryptedApiKey,
+    isProviderConfigured,
+    encryptedKeys,
+    isMasterKeyActive,
   } = useAiModels();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -987,8 +991,11 @@ export function ChatbotApp() {
         horde.push(m);
       } else if (m.provider.startsWith("local-")) {
         local.push(m);
-      } else if (m.provider === "custom") {
+      } else if (m.isCustom || m.provider === "custom") {
         custom.push(m);
+        if (m.provider === "openrouter") {
+          hasOpenRouter = true;
+        }
       } else if (m.provider === "openrouter") {
         hasOpenRouter = true;
         if (!(
@@ -1002,8 +1009,21 @@ export function ChatbotApp() {
     }
 
     const finalCustom = session?.user?.id ? [...custom] : [];
-    if (session?.user?.id && hasOpenRouter) {
-      finalCustom.push({ provider: "openrouter", model_id: "openrouter/free" });
+    const openRouterAvailable =
+      hasOpenRouter || isProviderConfigured("openrouter");
+    if (
+      session?.user?.id &&
+      openRouterAvailable &&
+      !finalCustom.some(
+        (m) => m.provider === "openrouter" && m.model_id === "openrouter/free",
+      )
+    ) {
+      finalCustom.push({
+        provider: "openrouter",
+        model_id: "openrouter/free",
+        name: "Auto Select - Free Model",
+        isCustom: true,
+      });
     }
 
     return {
@@ -1012,7 +1032,7 @@ export function ChatbotApp() {
       customModels: finalCustom,
       otherModels: session?.user?.id ? other : [],
     };
-  }, [models, session?.user?.id]);
+  }, [models, session?.user?.id, isProviderConfigured]);
   const hasHordeModels = hordeModels.length > 0;
   const hasLocalModels = localModels.length > 0;
   const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
@@ -1260,6 +1280,8 @@ export function ChatbotApp() {
     signal: AbortSignal,
     streamCallback: (content: string, reasoning?: string) => void,
   ) => {
+    const apiKey = getDecryptedApiKey(provider);
+
     let url = "/api/ai/proxy";
     let fetchOptions: RequestInit = {
       method: "POST",
@@ -1273,6 +1295,7 @@ export function ChatbotApp() {
         model: model,
         messages: msgs,
         stream: true,
+        apiKey: apiKey || undefined,
       }),
     };
 
@@ -1314,7 +1337,28 @@ export function ChatbotApp() {
     }
 
     if (!response.ok) {
-      throw new Error(await parseAiProxyError(response));
+      const errText = await parseAiProxyError(response);
+      if (errText.includes("Provider not configured")) {
+        const cleanProv = provider.toLowerCase().trim();
+        const hasEncrypted = Boolean(encryptedKeys[cleanProv]);
+        if (hasEncrypted && !isMasterKeyActive) {
+          throw new Error(
+            t(
+              "apps.chatbotMasterKeyLocked",
+              undefined,
+              "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
+            ),
+          );
+        }
+        throw new Error(
+          t(
+            "apps.chatbotProviderNotConfigured",
+            { provider },
+            `Provider "${provider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
+          ),
+        );
+      }
+      throw new Error(errText);
     }
 
     const reader = response.body?.getReader();
@@ -1667,6 +1711,9 @@ export function ChatbotApp() {
         throw new Error("Please sign in to use Web Search.");
       }
 
+      const agentApiKey = getDecryptedApiKey(
+        selectedProvider || researchAgentDefaultProvider || "",
+      );
       const agentRes = await fetch("/api/ai/agent-search", {
         method: "POST",
         headers: {
@@ -1686,6 +1733,7 @@ export function ChatbotApp() {
             selectedModel || researchSummarizerDefaultModel || undefined,
           summarizerProvider:
             selectedProvider || researchSummarizerDefaultProvider || undefined,
+          apiKey: agentApiKey || undefined,
         }),
         signal,
       });

@@ -346,6 +346,10 @@ export const ko = {
     chatbotCopyReasoning: "추론 복사",
     chatbotReasoningCopied: "추론이 클립보드에 복사되었습니다",
     chatbotCopied: "복사됨",
+    chatbotProviderNotConfigured:
+      '"{provider}" 제공업체에 API 키가 설정되지 않았습니다. 모델 또는 계정 설정에서 API 키를 추가해 주세요.',
+    chatbotMasterKeyLocked:
+      "마스터 키가 잠겨 있습니다. 설정된 API 키를 사용하려면 계정 또는 모델 설정에서 잠금을 해제하세요.",
     agentSearchTitle: "에이전트 검색",
     agentSearchDesc: "웹을 조사하고 답변을 합성하는 AI 기반 에이전트 검색.",
     agentSearchPlaceholder: "무엇을 조사하시겠습니까?",
