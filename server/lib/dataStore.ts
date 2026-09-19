@@ -1108,6 +1108,58 @@ function sanitizePreferences(pref: any): any {
     return allTickets;
   }
 
+  if (normTable === "friendships" || normTable === "friends") {
+    const userIds = getAllUserIds();
+    const all: any[] = [];
+    const seenIds = new Set<string>();
+
+    if (userIdStr) {
+      const ownFilePath = getTableFilePath(table, userIdStr);
+      if (ownFilePath && fs.existsSync(ownFilePath)) {
+        const own = readJsonFile<any[]>(ownFilePath, []);
+        for (const f of own) {
+          if (f && f.id && !seenIds.has(String(f.id))) {
+            seenIds.add(String(f.id));
+            all.push(f);
+          }
+        }
+      }
+      for (const id of userIds) {
+        if (id === userIdStr) continue;
+        const otherFilePath = getTableFilePath(table, id);
+        if (otherFilePath && fs.existsSync(otherFilePath)) {
+          const rows = readJsonFile<any[]>(otherFilePath, []);
+          for (const f of rows) {
+            if (f && f.id && !seenIds.has(String(f.id))) {
+              if (
+                String(f.user_id) === userIdStr ||
+                String(f.friend_id) === userIdStr
+              ) {
+                seenIds.add(String(f.id));
+                all.push(f);
+              }
+            }
+          }
+        }
+      }
+      return all;
+    }
+
+    for (const id of userIds) {
+      const filePath = getTableFilePath(table, id);
+      if (filePath && fs.existsSync(filePath)) {
+        const rows = readJsonFile<any[]>(filePath, []);
+        for (const f of rows) {
+          if (f && f.id && !seenIds.has(String(f.id))) {
+            seenIds.add(String(f.id));
+            all.push(f);
+          }
+        }
+      }
+    }
+    return all;
+  }
+
   // User-scoped table
   if (userIdStr) {
     const filePath = getTableFilePath(table, userIdStr);
@@ -1176,8 +1228,22 @@ export function matchesFilter(row: any, filter: DataFilter): boolean {
 
   switch (operator) {
     case "eq":
+      if (
+        (field === "username" || field === "email") &&
+        typeof rowVal === "string" &&
+        typeof value === "string"
+      ) {
+        return rowVal.toLowerCase() === value.toLowerCase();
+      }
       return String(rowVal) === String(value);
     case "neq":
+      if (
+        (field === "username" || field === "email") &&
+        typeof rowVal === "string" &&
+        typeof value === "string"
+      ) {
+        return rowVal.toLowerCase() !== value.toLowerCase();
+      }
       return String(rowVal) !== String(value);
     case "gt":
       return rowVal > value;
@@ -1281,7 +1347,35 @@ export function queryTable(options: QueryOptions): any {
     head = false,
   } = options;
 
-  let rows = getTableRows(table, userId);
+  const normTable = table.trim().toLowerCase();
+  const isGlobalTable =
+    normTable === "profiles" ||
+    normTable === "profile_pictures" ||
+    normTable === "follows";
+
+  let rows: any[];
+  if (isGlobalTable) {
+    rows = getTableRows(table);
+  } else if (normTable === "friendships" || normTable === "friends") {
+    const filterStrings = [
+      ...filters.map((f) => `${f.field}.${f.operator}.${f.value}`),
+      ...orFilters,
+    ].join(" ");
+    const hasOtherUserFilter =
+      userId &&
+      (filterStrings.includes("user_id.eq.") ||
+        filterStrings.includes("friend_id.eq.")) &&
+      !filterStrings.includes(`user_id.eq.${userId}`) &&
+      !filterStrings.includes(`friend_id.eq.${userId}`);
+
+    if (hasOtherUserFilter) {
+      rows = getTableRows(table);
+    } else {
+      rows = getTableRows(table, userId);
+    }
+  } else {
+    rows = getTableRows(table, userId);
+  }
 
   // Apply filters
   if (filters && filters.length > 0) {
@@ -1420,6 +1514,26 @@ export function insertTable(
   const updated = [...prepared, ...existing];
   saveTableRows(table, userIdStr, updated);
 
+  if (normTable === "friendships" || normTable === "friends") {
+    for (const item of prepared) {
+      const otherId =
+        String(item.friend_id) === userIdStr
+          ? String(item.user_id)
+          : String(item.friend_id);
+      if (otherId && otherId !== userIdStr) {
+        const otherFilePath = getTableFilePath(table, otherId);
+        if (otherFilePath) {
+          const otherExisting = readJsonFile<any[]>(otherFilePath, []);
+          const otherUpdated = [
+            item,
+            ...otherExisting.filter((x: any) => String(x.id) !== String(item.id)),
+          ];
+          saveTableRows(table, otherId, otherUpdated);
+        }
+      }
+    }
+  }
+
   // Broadcast real-time events for support tables
   if (_broadcast && REALTIME_TABLES.has(normTable)) {
     for (const item of prepared) {
@@ -1495,6 +1609,28 @@ export function updateTable(
     });
 
     saveTableRows(table, userIdStr, updated);
+
+    if (normTable === "friendships" || normTable === "friends") {
+      for (const item of matched) {
+        const otherId =
+          String(item.friend_id) === userIdStr
+            ? String(item.user_id)
+            : String(item.friend_id);
+        if (otherId && otherId !== userIdStr) {
+          const otherFilePath = getTableFilePath(table, otherId);
+          if (otherFilePath) {
+            const otherExisting = readJsonFile<any[]>(otherFilePath, []);
+            const otherUpdated = otherExisting.map((r: any) => {
+              if (String(r.id) === String(item.id)) {
+                return { ...r, ...data, updated_at: now };
+              }
+              return r;
+            });
+            saveTableRows(table, otherId, otherUpdated);
+          }
+        }
+      }
+    }
 
     // Broadcast real-time events for support tables
     if (_broadcast && REALTIME_TABLES.has(normTable)) {
@@ -1595,6 +1731,35 @@ export function upsertTable(
   const allRows = Array.from(existingMap.values());
   saveTableRows(table, userIdStr, allRows);
 
+  if (normTable === "friendships" || normTable === "friends") {
+    for (const item of result) {
+      const otherId =
+        String(item.friend_id) === userIdStr
+          ? String(item.user_id)
+          : String(item.friend_id);
+      if (otherId && otherId !== userIdStr) {
+        const otherFilePath = getTableFilePath(table, otherId);
+        if (otherFilePath) {
+          const otherExisting = readJsonFile<any[]>(otherFilePath, []);
+          const existingItem = otherExisting.find(
+            (x: any) => String(x[onConflict]) === String(item[onConflict]),
+          );
+          let otherUpdated: any[];
+          if (existingItem) {
+            otherUpdated = otherExisting.map((x: any) =>
+              String(x[onConflict]) === String(item[onConflict])
+                ? { ...x, ...item, updated_at: now }
+                : x,
+            );
+          } else {
+            otherUpdated = [item, ...otherExisting];
+          }
+          saveTableRows(table, otherId, otherUpdated);
+        }
+      }
+    }
+  }
+
   return Array.isArray(data) ? result : result[0];
 }
 
@@ -1626,6 +1791,25 @@ export function deleteTable(
     });
 
     saveTableRows(table, userIdStr, remaining);
+
+    if (normTable === "friendships" || normTable === "friends") {
+      for (const item of matched) {
+        const otherId =
+          String(item.friend_id) === userIdStr
+            ? String(item.user_id)
+            : String(item.friend_id);
+        if (otherId && otherId !== userIdStr) {
+          const otherFilePath = getTableFilePath(table, otherId);
+          if (otherFilePath) {
+            const otherExisting = readJsonFile<any[]>(otherFilePath, []);
+            const otherUpdated = otherExisting.filter(
+              (r: any) => String(r.id) !== String(item.id),
+            );
+            saveTableRows(table, otherId, otherUpdated);
+          }
+        }
+      }
+    }
 
     // Broadcast real-time DELETE events for support tables
     if (_broadcast && REALTIME_TABLES.has(normTable)) {
@@ -2138,7 +2322,8 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
       if (!userId) return [];
       const friends = getTableRows("friendships", userId);
       return friends.map((f) => {
-        const friendId = f.friend_id === userId ? f.user_id : f.friend_id;
+        const friendId =
+          String(f.friend_id) === String(userId) ? f.user_id : f.friend_id;
         const prof = getProfileByUserId(friendId);
         return {
           ...f,
@@ -2157,6 +2342,25 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
           profile: prof,
         };
       });
+    }
+    case "get_my_followers": {
+      if (!userId) return [];
+      const userIds = getAllUserIds();
+      const followers: any[] = [];
+      const userIdStr = String(userId);
+      for (const id of userIds) {
+        const userFollows = getTableRows("follows", id);
+        for (const f of userFollows) {
+          if (String(f.following_id) === userIdStr) {
+            const prof = getProfileByUserId(f.follower_id || id);
+            followers.push({
+              ...f,
+              profile: prof,
+            });
+          }
+        }
+      }
+      return followers;
     }
     case "get_my_blocks": {
       if (!userId) return [];

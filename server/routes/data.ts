@@ -152,7 +152,8 @@ dataRouter.post("/delete", localAuthMiddleware, async (c) => {
 dataRouter.post("/rpc", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { fn, args = {} } = body;
+    const fn = body.fn || body.functionName;
+    const args = body.args || {};
 
     if (!fn) {
       return c.json({ data: null, error: "Function name is required" }, 400);

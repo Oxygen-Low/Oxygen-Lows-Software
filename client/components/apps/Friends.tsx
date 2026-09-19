@@ -131,13 +131,14 @@ export function FriendsApp() {
   }, [session]);
 
   const handleSendRequest = async () => {
-    if (!searchQuery.trim() || !session?.user?.id) return;
+    const query = searchQuery.trim();
+    if (!query || !session?.user?.id) return;
     try {
       // Find user by username
       const { data: targetUser, error: findError } = await supabase
         .from("profiles")
         .select("user_id")
-        .eq("username", searchQuery.trim().toLowerCase())
+        .eq("username", query)
         .single();
 
       if (findError || !targetUser) {
