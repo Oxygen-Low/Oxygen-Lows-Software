@@ -158,7 +158,7 @@ vi.mock("@/lib/db", () => {
     from: vi.fn((table) => {
       if (table === "chats") return createChatsChain();
       if (table === "user_models") return mockSupabaseChain(mockUserModels);
-      if (table === "chat_messages") {
+      if (table === "chatbot_messages") {
         const builder: any = {
           insert: vi.fn(() => builder),
           update: vi.fn(() => builder),

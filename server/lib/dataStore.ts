@@ -75,7 +75,6 @@ export interface UserPreferencesRecord {
   volume?: number;
   font?: string;
   use_gradient?: boolean;
-  points?: number;
   profile_picture_path?: string;
   chatbot_default_model?: string;
   chatbot_default_provider?: string;
@@ -381,7 +380,6 @@ export function initUserFolder(
     authVerifier?: string;
     authSalt?: string;
     role?: string;
-    last_points_usage?: string | null;
   },
 ) {
   const resolvedBase = path.resolve(DATA_DIR);
@@ -424,7 +422,6 @@ export function initUserFolder(
     auth_verifier: authVerifier,
     auth_salt: authSalt,
     role,
-    points: 100,
     custom_models: [],
     oauth: {},
     created_at: now,
@@ -442,7 +439,6 @@ export function initUserFolder(
     language: "English",
     additional_languages: [],
     avatar_url: null,
-    last_points_usage: userInitialData.last_points_usage || null,
     created_at: now,
     updated_at: now,
   };
@@ -453,7 +449,6 @@ export function initUserFolder(
     user_id: userId,
     theme: "dark",
     volume: 80,
-    points: 100,
     share_game_activity: true,
     show_online_status: true,
     chatbot_default_model: "Fast",
@@ -497,8 +492,6 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "games", "sync_config.json"), []);
   writeJsonFile(path.join(userDir, "games", "snapshots.json"), []);
   writeJsonFile(path.join(userDir, "games", "conflicts.json"), []);
-  writeJsonFile(path.join(userDir, "points", "transactions.json"), []);
-  writeJsonFile(path.join(userDir, "points", "gifts.json"), []);
 
   return userData;
 }
@@ -766,6 +759,9 @@ export function getTableFilePath(
   if (normTable === "chat_user_keys") {
     return path.join(DATA_DIR, "chat", "keys.json");
   }
+  if (normTable === "chat_messages") {
+    return path.join(DATA_DIR, "chat", "messages.json");
+  }
 
   // If userId is provided, map user-specific tables
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
@@ -790,7 +786,7 @@ export function getTableFilePath(
       case "chats":
         filePath = path.join(userDir, "chatbot", "chats.json");
         break;
-      case "chat_messages":
+      case "chatbot_messages":
         filePath = path.join(userDir, "chatbot", "messages.json");
         break;
       case "characters":
@@ -921,16 +917,6 @@ export function getTableFilePath(
       case "game_sync_conflicts":
         filePath = path.join(userDir, "games", "conflicts.json");
         break;
-      case "points_transactions":
-      case "point_transactions":
-      case "user_points_transactions":
-        filePath = path.join(userDir, "points", "transactions.json");
-        break;
-      case "point_gifts":
-      case "user_point_gifts":
-      case "points_gifts":
-        filePath = path.join(userDir, "points", "gifts.json");
-        break;
       default:
         return null;
     }
@@ -993,7 +979,8 @@ export function getTableRows(table: string, userId?: string | number): any[] {
     normTable === "chat_servers" ||
     normTable === "chat_channels" ||
     normTable === "chat_dms" ||
-    normTable === "chat_user_keys"
+    normTable === "chat_user_keys" ||
+    normTable === "chat_messages"
   ) {
     const filePath = getTableFilePath(normTable);
     return filePath && fs.existsSync(filePath)
@@ -1250,7 +1237,8 @@ export function saveTableRows(
     normTable === "chat_servers" ||
     normTable === "chat_channels" ||
     normTable === "chat_dms" ||
-    normTable === "chat_user_keys"
+    normTable === "chat_user_keys" ||
+    normTable === "chat_messages"
   ) {
     const filePath = getTableFilePath(normTable);
     if (filePath) {
@@ -2037,189 +2025,6 @@ export function cleanupExpiredClosedTickets(
   return totalCleaned;
 }
 
-/**
- * Dynamic Points System
- */
-export const DAILY_POINTS_POOL = 10000;
-
-export function getStartOfTodayUtc(): number {
-  const now = new Date();
-  return Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    0,
-    0,
-    0,
-    0,
-  );
-}
-
-export function getActiveUserIds(): string[] {
-  const allIds = getAllUserIds();
-  if (allIds.length === 0) return [];
-  const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
-  const activeIds: string[] = [];
-
-  for (const id of allIds) {
-    const profile = getProfileByUserId(id);
-    if (profile?.last_points_usage) {
-      const lastUsage = new Date(profile.last_points_usage).getTime();
-      if (!isNaN(lastUsage) && lastUsage >= twoDaysAgo) {
-        activeIds.push(id);
-      }
-    }
-  }
-
-  return activeIds;
-}
-
-export function getPointsSpentToday(userId: string): number {
-  const transactions = getTableRows("points_transactions", userId);
-  const startToday = getStartOfTodayUtc();
-  let total = 0;
-  for (const tx of transactions) {
-    if (tx && tx.amount && new Date(tx.created_at).getTime() >= startToday) {
-      total += Number(tx.amount) || 0;
-    }
-  }
-  return total;
-}
-
-export function getTotalPointsSpentToday(activeUserIds?: string[]): number {
-  const userFilter =
-    activeUserIds && activeUserIds.length > 0
-      ? new Set(activeUserIds.map(String))
-      : null;
-  const transactions = getTableRows("points_transactions");
-  const startToday = getStartOfTodayUtc();
-  const seen = new Set<string>();
-  let total = 0;
-  for (const tx of transactions) {
-    if (tx && tx.id && !seen.has(String(tx.id))) {
-      seen.add(String(tx.id));
-      if (userFilter && tx.user_id && !userFilter.has(String(tx.user_id))) {
-        continue;
-      }
-      if (tx.amount && new Date(tx.created_at).getTime() >= startToday) {
-        total += Number(tx.amount) || 0;
-      }
-    }
-  }
-  return total;
-}
-
-export function getGiftsSentToday(userId: string): number {
-  const gifts = getTableRows("point_gifts", userId);
-  const startToday = getStartOfTodayUtc();
-  const seen = new Set<string>();
-  let total = 0;
-  for (const g of gifts) {
-    if (g && g.id && !seen.has(String(g.id))) {
-      seen.add(String(g.id));
-      if (
-        String(g.sender_id) === String(userId) &&
-        g.amount &&
-        new Date(g.created_at).getTime() >= startToday
-      ) {
-        total += Number(g.amount) || 0;
-      }
-    }
-  }
-  return total;
-}
-
-export function getGiftsReceivedToday(
-  userId: string,
-  activeUserIds?: string[],
-): number {
-  const userFilter =
-    activeUserIds && activeUserIds.length > 0
-      ? new Set(activeUserIds.map(String))
-      : null;
-  const allGifts = getTableRows("point_gifts");
-  const startToday = getStartOfTodayUtc();
-  const seen = new Set<string>();
-  let total = 0;
-  for (const g of allGifts) {
-    if (g && g.id && !seen.has(String(g.id))) {
-      seen.add(String(g.id));
-      if (userFilter && g.sender_id && !userFilter.has(String(g.sender_id))) {
-        continue;
-      }
-      if (
-        String(g.receiver_id) === String(userId) &&
-        g.amount &&
-        new Date(g.created_at).getTime() >= startToday
-      ) {
-        total += Number(g.amount) || 0;
-      }
-    }
-  }
-  return total;
-}
-
-export function getPointsStatus(
-  userId?: string,
-  activeUserIdsOverride?: string[],
-): {
-  available: number;
-  given: number;
-  points: number;
-  daily_claim_available: boolean;
-  streak_days: number;
-} {
-  if (!userId) {
-    return {
-      available: 0,
-      given: DAILY_POINTS_POOL,
-      points: 0,
-      daily_claim_available: true,
-      streak_days: 1,
-    };
-  }
-
-  const userIdStr = String(userId);
-  const profile = getProfileByUserId(userIdStr);
-  if (profile && !profile.last_points_usage) {
-    saveTableRows("profiles", userIdStr, [
-      { ...profile, last_points_usage: new Date().toISOString() },
-    ]);
-  }
-
-  const activeUserIds =
-    activeUserIdsOverride && activeUserIdsOverride.length > 0
-      ? activeUserIdsOverride
-      : getActiveUserIds();
-  const activeSet = new Set(activeUserIds.map(String));
-  activeSet.add(userIdStr);
-  const activeCount = Math.max(1, activeSet.size);
-
-  const baseQuota = Math.floor(DAILY_POINTS_POOL / activeCount);
-
-  const spentToday = getPointsSpentToday(userIdStr);
-  const giftsSent = getGiftsSentToday(userIdStr);
-  const giftsReceived = getGiftsReceivedToday(userIdStr, activeUserIdsOverride);
-
-  const totalSpentToday = getTotalPointsSpentToday(activeUserIdsOverride);
-  const remainingGlobalPool = Math.max(0, DAILY_POINTS_POOL - totalSpentToday);
-
-  // The given quota for this user today (base + gifts received - gifts sent)
-  const given = Math.max(0, baseQuota - giftsSent + giftsReceived);
-
-  // Available points: fair share minus user's spent points minus gifts sent plus gifts received
-  const availableBase = baseQuota - spentToday - giftsSent + giftsReceived;
-  // Clamped between 0 and remaining global pool
-  const available = Math.max(0, Math.min(availableBase, remainingGlobalPool));
-
-  return {
-    available,
-    given,
-    points: available,
-    daily_claim_available: true,
-    streak_days: 1,
-  };
-}
 
 /**
  * Prunes expired auto-sync game snapshots across a specific user or all users.
@@ -2324,119 +2129,6 @@ export function callRpc(name: string, param2?: any, param3?: any): any {
   }
 
   switch (name) {
-    case "spend_points": {
-      if (!userId) return { success: false, error: "Unauthorized" };
-      const amount = Number(args?.p_amount ?? args?.amount ?? 0);
-      if (isNaN(amount) || amount <= 0) {
-        return { success: false, error: "Invalid amount" };
-      }
-      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
-      const status = getPointsStatus(userId, activeOverride);
-      if (status.available < amount) {
-        return { success: false, error: "Insufficient points" };
-      }
-      const now = new Date().toISOString();
-      const tx = {
-        id: crypto.randomUUID(),
-        user_id: userId,
-        amount,
-        created_at: now,
-      };
-      insertTable("points_transactions", tx, userId);
-
-      // Update last_points_usage on profile
-      const profile = getProfileByUserId(userId);
-      if (profile) {
-        saveTableRows("profiles", userId, [
-          { ...profile, last_points_usage: now },
-        ]);
-      }
-
-      const updatedStatus = getPointsStatus(userId, activeOverride);
-      const pref = getTableRows("user_preferences", userId)[0] || {};
-      saveTableRows("user_preferences", userId, [
-        { ...pref, points: updatedStatus.available },
-      ]);
-
-      return {
-        success: true,
-        points: updatedStatus.points,
-        available: updatedStatus.available,
-        given: updatedStatus.given,
-      };
-    }
-    case "get_points_status": {
-      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
-      return getPointsStatus(userId, activeOverride);
-    }
-    case "get_available_points": {
-      const targetUser = args?.p_user_id || args?.user_id || userId;
-      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
-      return getPointsStatus(targetUser, activeOverride).available;
-    }
-    case "give_points": {
-      if (!userId) return { success: false, error: "Unauthorized" };
-      const receiverId = String(args?.p_receiver_id ?? args?.receiver_id ?? "");
-      const amount = Number(args?.p_amount ?? args?.amount ?? 0);
-      if (!receiverId)
-        return { success: false, error: "Receiver ID is required" };
-      if (String(receiverId) === String(userId)) {
-        return { success: false, error: "Cannot give points to yourself" };
-      }
-      if (isNaN(amount) || amount <= 0) {
-        return { success: false, error: "Amount must be a positive integer" };
-      }
-
-      const receiverUser = getUserById(receiverId);
-      if (!receiverUser) {
-        return { success: false, error: "Receiver not found" };
-      }
-
-      const friendships = getTableRows("friendships", userId);
-      const isFriend = friendships.some(
-        (f) =>
-          f.status === "accepted" &&
-          ((String(f.user_id) === String(userId) &&
-            String(f.friend_id) === String(receiverId)) ||
-            (String(f.friend_id) === String(userId) &&
-              String(f.user_id) === String(receiverId))),
-      );
-      if (!isFriend) {
-        return { success: false, error: "You can only give points to friends" };
-      }
-
-      const activeOverride = args?.p_active_user_ids || args?.active_user_ids;
-      const status = getPointsStatus(userId, activeOverride);
-      if (status.available < amount) {
-        return { success: false, error: "Insufficient points to give" };
-      }
-
-      const now = new Date().toISOString();
-      const gift = {
-        id: crypto.randomUUID(),
-        sender_id: userId,
-        receiver_id: receiverId,
-        amount,
-        created_at: now,
-      };
-      insertTable("point_gifts", gift, userId);
-      insertTable("point_gifts", gift, receiverId);
-
-      const updatedStatus = getPointsStatus(userId, activeOverride);
-      return {
-        success: true,
-        available: updatedStatus.available,
-        given: updatedStatus.given,
-      };
-    }
-    case "adjust_points": {
-      if (!userId) return { success: false, error: "Unauthorized" };
-      const amount = Number(args?.p_amount ?? args?.amount ?? 0);
-      if (amount < 0) {
-        return callRpc("spend_points", { p_amount: Math.abs(amount) }, userId);
-      }
-      return { success: true };
-    }
     case "upsert_user_preferences": {
       if (!userId) throw new Error("Unauthorized");
       const normalized = normalizeUserPreferences(args);
@@ -3771,7 +3463,28 @@ export function syncFriendDms(userId: string | number): any[] {
       acceptedFriendIds.has(otherIdStr) &&
       !isBlockedBidirectional(userIdStr, otherIdStr)
     ) {
-      // Keep valid DM
+      // Keep valid DM and refresh recipient names
+      const otherProfile = getProfileByUserId(otherIdStr);
+      const otherUser = getUserById(otherIdStr);
+      const otherName =
+        otherProfile?.display_name ||
+        otherProfile?.username ||
+        otherUser?.username ||
+        "Friend";
+
+      if (
+        !dm.recipient_names ||
+        dm.recipient_names[userIdStr] !== currentName ||
+        dm.recipient_names[otherIdStr] !== otherName
+      ) {
+        dm.recipient_names = {
+          ...(dm.recipient_names || {}),
+          [userIdStr]: currentName,
+          [otherIdStr]: otherName,
+        };
+        modified = true;
+      }
+
       existingFriendDms.set(otherIdStr, dm);
       remainingDms.push(dm);
     } else {

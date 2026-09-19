@@ -270,7 +270,7 @@ export default function Storage() {
       const tables = [
         "characters",
         "chats",
-        "chat_messages",
+        "chatbot_messages",
         "user_preferences",
         "data_saves",
         "data_save_categories",
@@ -595,7 +595,7 @@ export default function Storage() {
     const tableNames: Record<string, string> = {
       characters: "Characters",
       chats: "Chats",
-      chat_messages: "Chat Messages",
+      chatbot_messages: "Chatbot Messages",
       user_preferences: "Preferences",
       data_saves: "Data Saves",
       data_save_categories: "Data Save Categories",

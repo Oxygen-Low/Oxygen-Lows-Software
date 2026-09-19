@@ -7,6 +7,8 @@ import {
   syncFriendDms,
   isBlockedBidirectional,
   getAcceptedFriendIds,
+  getProfileByUserId,
+  getUserById,
 } from "../lib/dataStore.ts";
 import { broadcastChange } from "../lib/realtime.ts";
 import crypto from "node:crypto";
@@ -21,7 +23,14 @@ async function authenticate(c: any) {
 
   if (!token) return null;
   const user = await resolveUserFromToken(token);
-  return user || null;
+  if (!user) return null;
+  const profile = getProfileByUserId(user.id);
+  const displayName =
+    profile?.display_name || profile?.username || user.username;
+  return {
+    ...user,
+    display_name: displayName,
+  };
 }
 
 /**
@@ -36,19 +45,29 @@ chatRouter.get("/state", async (c) => {
   // Get servers where user is member or public servers
   const allServers = (queryTable({ table: "chat_servers" }) as any[]) || [];
   const servers = allServers.filter(
-    (s: any) => s.owner_id === userId || (s.members && s.members.includes(userId)) || s.is_public !== false
+    (s: any) =>
+      String(s.owner_id) === userId ||
+      (Array.isArray(s.members) &&
+        s.members.some((m: any) => String(m) === userId)) ||
+      s.is_public !== false,
   );
 
   // Get channels for these servers
   const serverIds = servers.map((s: any) => s.id);
   const allChannels = (queryTable({ table: "chat_channels" }) as any[]) || [];
-  const channels = allChannels.filter((ch: any) => serverIds.includes(ch.server_id));
+  const channels = allChannels.filter((ch: any) =>
+    serverIds.includes(ch.server_id),
+  );
 
   // Get DMs where user is a participant (auto-synced with accepted friends and non-blocked)
   const dms = syncFriendDms(userId);
 
   return c.json({
-    user: { id: userId, username: user.username, display_name: (user as any).display_name || user.username },
+    user: {
+      id: userId,
+      username: user.username,
+      display_name: user.display_name || user.username,
+    },
     servers,
     channels,
     dms,
@@ -160,20 +179,29 @@ chatRouter.post("/dms", async (c) => {
     (dm: any) =>
       dm.participants &&
       dm.participants.length === 2 &&
-      dm.participants.includes(userId) &&
-      dm.participants.includes(recipientId),
+      dm.participants.some((p: any) => String(p) === userId) &&
+      dm.participants.some((p: any) => String(p) === recipientId),
   );
 
   if (existing) {
     return c.json({ dm: existing });
   }
 
+  const recipientProfile = getProfileByUserId(recipientId);
+  const recipientUser = getUserById(recipientId);
+  const recipientName =
+    body.recipientName ||
+    recipientProfile?.display_name ||
+    recipientProfile?.username ||
+    recipientUser?.username ||
+    "Friend";
+
   const dm = {
     id: `dm_${crypto.randomUUID()}`,
     participants: [userId, recipientId],
     recipient_names: {
-      [userId]: (user as any).display_name || user.username,
-      [recipientId]: body.recipientName || "Friend",
+      [userId]: user.display_name || user.username,
+      [recipientId]: recipientName,
     },
     created_at: new Date().toISOString(),
   };
@@ -224,13 +252,14 @@ chatRouter.post("/messages", async (c) => {
   }
 
   // Validate DM permissions (must be friend and not blocked)
+  let recipientUserId = body.targetUserId ? String(body.targetUserId) : undefined;
   if (targetId.startsWith("dm_")) {
     const allDms = (queryTable({ table: "chat_dms" }) as any[]) || [];
     const dm = allDms.find(
       (d: any) =>
         d.id === targetId &&
         d.participants &&
-        d.participants.includes(userId),
+        d.participants.some((p: any) => String(p) === userId),
     );
     if (!dm) {
       return c.json(
@@ -241,8 +270,11 @@ chatRouter.post("/messages", async (c) => {
     const otherParticipant = dm.participants.find(
       (p: any) => String(p) !== userId,
     );
-    if (otherParticipant && isBlockedBidirectional(userId, otherParticipant)) {
+    if (otherParticipant && isBlockedBidirectional(userId, String(otherParticipant))) {
       return c.json({ error: "Cannot send message: user is blocked" }, 403);
+    }
+    if (otherParticipant) {
+      recipientUserId = String(otherParticipant);
     }
   }
 
@@ -250,7 +282,7 @@ chatRouter.post("/messages", async (c) => {
     id: `msg_${crypto.randomUUID()}`,
     target_id: targetId,
     sender_id: userId,
-    sender_name: (user as any).display_name || user.username,
+    sender_name: user.display_name || user.username,
     content: isEncrypted ? "[Encrypted Message]" : content,
     is_encrypted: isEncrypted,
     encrypted_payload: encryptedPayload,
@@ -261,16 +293,38 @@ chatRouter.post("/messages", async (c) => {
 
   insertTable("chat_messages", message, userId);
 
-  // Broadcast to target
-  if (body.targetUserId) {
+  // Broadcast to target recipient
+  if (recipientUserId) {
     broadcastChange({
       table: "chat_messages",
       event: "INSERT",
       schema: "public",
       new: message,
       old: null,
-      targetUserId: String(body.targetUserId),
+      targetUserId: recipientUserId,
     });
+  } else if (targetId.startsWith("chan_")) {
+    // Broadcast to server members
+    const allChannels = (queryTable({ table: "chat_channels" }) as any[]) || [];
+    const channel = allChannels.find((ch: any) => ch.id === targetId);
+    if (channel) {
+      const allServers = (queryTable({ table: "chat_servers" }) as any[]) || [];
+      const server = allServers.find((s: any) => s.id === channel.server_id);
+      if (server && Array.isArray(server.members)) {
+        for (const memberId of server.members) {
+          if (String(memberId) !== userId) {
+            broadcastChange({
+              table: "chat_messages",
+              event: "INSERT",
+              schema: "public",
+              new: message,
+              old: null,
+              targetUserId: String(memberId),
+            });
+          }
+        }
+      }
+    }
   }
 
   return c.json({ message });
@@ -295,7 +349,7 @@ chatRouter.post("/calls/signal", async (c) => {
   const eventPayload = {
     type,
     senderId: userId,
-    senderName: (user as any).display_name || user.username,
+    senderName: user.display_name || user.username,
     targetUserId,
     roomId,
     isVideo: !!isVideo,

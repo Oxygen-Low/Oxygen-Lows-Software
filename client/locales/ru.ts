@@ -369,7 +369,6 @@ export const ru = {
     agentSearchComplete: "Поиск завершён",
     agentSearchError: "Ошибка поиска",
     agentSearchAttachImage: "Прикрепить изображение",
-    agentSearchPointsUsed: "очков использовано",
     agentSearchAbort: "Остановить поиск",
     agentSearchSignIn: "Войдите, чтобы использовать Агентский поиск",
     vpnTitle: "VPN",

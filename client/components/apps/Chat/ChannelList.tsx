@@ -166,8 +166,8 @@ export function ChannelList() {
             ) : (
               dms.map((dm) => {
                 const isActive = activeChannelId === dm.id;
-                const otherUserId = dm.participants.find((p) => p !== userId) || dm.participants[0];
-                const recipientName = dm.recipient_names?.[otherUserId] || `User ${otherUserId.slice(0, 4)}`;
+                const otherUserId = dm.participants.find((p) => String(p) !== String(userId)) || dm.participants[0];
+                const recipientName = dm.recipient_names?.[String(otherUserId)] || `User ${String(otherUserId).slice(0, 4)}`;
 
                 return (
                   <div

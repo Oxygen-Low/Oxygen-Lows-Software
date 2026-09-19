@@ -102,8 +102,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [dms, setDms] = useState<ChatDM[]>([]);
   const [activeServerId, setActiveServerId] = useState<string | "dms">("dms");
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const activeChannelIdRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    activeChannelIdRef.current = activeChannelId;
+  }, [activeChannelId]);
 
   const [keyPair, setKeyPair] = useState<KeyPairData | null>(null);
   const [activeCall, setActiveCall] = useState<ActiveCallState | null>(null);
@@ -142,7 +146,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setChannels(data.channels || []);
         setDms(data.dms || []);
 
-        if (!activeChannelId) {
+        if (!activeChannelIdRef.current) {
           if (data.dms?.length > 0) {
             setActiveChannelId(data.dms[0].id);
             setActiveServerId("dms");
@@ -150,8 +154,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setActiveServerId(data.servers[0]?.id || "dms");
             setActiveChannelId(data.channels[0].id);
           }
-        } else if (activeChannelId.startsWith("dm_")) {
-          if (!data.dms?.some((d: any) => d.id === activeChannelId)) {
+        } else if (activeChannelIdRef.current?.startsWith("dm_")) {
+          if (!data.dms?.some((d: any) => d.id === activeChannelIdRef.current)) {
             setActiveChannelId(data.dms?.[0]?.id || null);
           }
         }
@@ -161,7 +165,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [session?.access_token, activeChannelId]);
+  }, [session?.access_token]);
 
   useEffect(() => {
     loadState();
@@ -196,7 +200,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 try {
                   // In DM, decrypt using shared key with other participant
                   const dm = dms.find((d) => d.id === msg.target_id);
-                  const otherUserId = dm?.participants?.find((p) => p !== userId);
+                  const otherUserId = dm?.participants?.find((p) => String(p) !== String(userId));
                   if (otherUserId) {
                     const pubKeyRes = await fetch(`/api/chat/users/keys/${otherUserId}`, {
                       headers: { Authorization: `Bearer ${session.access_token}` },
@@ -284,7 +288,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           if (newMsg.is_encrypted && newMsg.encrypted_payload && keyPair) {
             try {
               const dm = dms.find((d) => d.id === newMsg.target_id);
-              const otherUserId = dm?.participants?.find((p) => p !== userId);
+              const otherUserId = dm?.participants?.find((p) => String(p) !== String(userId));
               if (otherUserId) {
                 const pubKeyRes = await fetch(`/api/chat/users/keys/${otherUserId}`, {
                   headers: { Authorization: `Bearer ${session?.access_token}` },
@@ -298,7 +302,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               }
             } catch {}
           }
-          setMessages((prev) => [...prev, newMsg]);
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
         }
       }
     );
@@ -346,7 +353,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const evt = payload.eventType || payload.event;
         if (evt === "INSERT" && payload.new) {
           const newDm = payload.new;
-          if (newDm.participants && newDm.participants.includes(userId)) {
+          if (newDm.participants && newDm.participants.some((p: any) => String(p) === String(userId))) {
             setDms((prev) => {
               if (prev.some((d) => d.id === newDm.id)) return prev;
               return [...prev, newDm];
@@ -474,22 +481,24 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const currentDm = dms.find((d) => d.id === activeChannelId);
     let targetUserId: string | undefined;
 
-    if (currentDm && keyPair) {
-      const otherUserId = currentDm.participants.find((p) => p !== userId);
+    if (currentDm) {
+      const otherUserId = currentDm.participants.find((p) => String(p) !== String(userId));
       if (otherUserId) {
-        targetUserId = otherUserId;
-        try {
-          const pubKeyRes = await fetch(`/api/chat/users/keys/${otherUserId}`, {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          if (pubKeyRes.ok) {
-            const { publicKey } = await pubKeyRes.json();
-            const sharedKey = await ChatCrypto.deriveSharedKey(keyPair.privateKey, publicKey);
-            encryptedPayload = await ChatCrypto.encryptMessage(content, sharedKey);
-            isEncrypted = true;
+        targetUserId = String(otherUserId);
+        if (keyPair) {
+          try {
+            const pubKeyRes = await fetch(`/api/chat/users/keys/${otherUserId}`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            if (pubKeyRes.ok) {
+              const { publicKey } = await pubKeyRes.json();
+              const sharedKey = await ChatCrypto.deriveSharedKey(keyPair.privateKey, publicKey);
+              encryptedPayload = await ChatCrypto.encryptMessage(content, sharedKey);
+              isEncrypted = true;
+            }
+          } catch (err) {
+            console.warn("E2EE key exchange unavailable for peer, falling back to transport encryption", err);
           }
-        } catch (err) {
-          console.warn("E2EE key exchange unavailable for peer, falling back to transport encryption", err);
         }
       }
     }
@@ -517,7 +526,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (isEncrypted) {
           msg.content = content; // render locally decrypted
         }
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
       }
     } catch (err) {
       toast.error("Failed to send message");
@@ -546,7 +558,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       // Send call invitation signaling to target recipient
       const currentDm = dms.find((d) => d.id === targetId);
-      const otherUserId = currentDm?.participants.find((p) => p !== userId) || targetId;
+      const otherUserId = currentDm?.participants.find((p) => String(p) !== String(userId)) || targetId;
 
       await fetch("/api/chat/calls/signal", {
         method: "POST",

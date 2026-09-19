@@ -848,10 +848,6 @@ export function ChatbotApp() {
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
-  const [pointsStatus, setPointsStatus] = useState<{
-    available: number;
-    given: number;
-  } | null>(null);
 
   const [availableCharacters, setAvailableCharacters] = useState<Character[]>(
     [],
@@ -1032,23 +1028,6 @@ export function ChatbotApp() {
     }
   }, [session?.user?.id, selectedProvider, hordeModels, setSelection]);
 
-  const fetchPoints = useCallback(async () => {
-    if (!session?.user?.id) {
-      setPointsStatus(null);
-      return;
-    }
-    try {
-      const { data } = await supabase.rpc("get_points_status");
-      if (data) setPointsStatus(data as any);
-    } catch {
-      // ignore
-    }
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    fetchPoints();
-  }, [fetchPoints, messages]);
-
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
@@ -1135,7 +1114,7 @@ export function ChatbotApp() {
       if (isTypingRef.current) return;
 
       const { data } = await supabase
-        .from("chat_messages")
+        .from("chatbot_messages")
         .select("*")
         .eq("chat_id", currentChatId)
         .order("created_at", { ascending: true });
@@ -2083,7 +2062,7 @@ export function ChatbotApp() {
         }
 
         const { data, error: userInsertError } = await supabase
-          .from("chat_messages")
+          .from("chatbot_messages")
           .insert(userInsertPayload)
           .select()
           .single();
@@ -2175,7 +2154,7 @@ export function ChatbotApp() {
           }
 
           const { data, error: assistantInsertError } = await supabase
-            .from("chat_messages")
+            .from("chatbot_messages")
             .insert(assistantInsertPayload)
             .select()
             .single();
@@ -2188,7 +2167,7 @@ export function ChatbotApp() {
               content: `![${originalInput}](${imgResult.url})`,
             };
             const { data: retryData, error: retryError } = await supabase
-              .from("chat_messages")
+              .from("chatbot_messages")
               .insert(fallbackPayload)
               .select()
               .single();
@@ -2267,7 +2246,7 @@ export function ChatbotApp() {
           }
 
           const { data, error: assistantInsertError } = await supabase
-            .from("chat_messages")
+            .from("chatbot_messages")
             .insert(assistantInsertPayload)
             .select()
             .single();
@@ -2291,7 +2270,7 @@ export function ChatbotApp() {
             }
             if (hasAdjusted) {
               const { data: retryData, error: retryError } = await supabase
-                .from("chat_messages")
+                .from("chatbot_messages")
                 .insert(retryPayload)
                 .select()
                 .single();
@@ -2422,7 +2401,7 @@ export function ChatbotApp() {
         }
 
         const { data, error: assistantInsertError } = await supabase
-          .from("chat_messages")
+          .from("chatbot_messages")
           .insert(assistantInsertPayload)
           .select()
           .single();
@@ -2446,7 +2425,7 @@ export function ChatbotApp() {
           }
           if (hasAdjusted) {
             const { data: retryData, error: retryError } = await supabase
-              .from("chat_messages")
+              .from("chatbot_messages")
               .insert(retryPayload)
               .select()
               .single();
@@ -3251,11 +3230,10 @@ export function ChatbotApp() {
                     className="relative shrink-0 flex items-center gap-1"
                     ref={modelDropdownRef}
                   >
-                  <button
+                    <button
                     onClick={() => {
                       if (!modelDropdownOpen) {
                         refreshModels?.();
-                        fetchPoints();
                       }
                       setModelDropdownOpen(!modelDropdownOpen);
                       setOptionsDropdownOpen(false);

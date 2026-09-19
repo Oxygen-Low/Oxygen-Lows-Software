@@ -39,7 +39,6 @@ export interface ToolCallRecord {
 export interface AgentSearchResult {
   result: string;
   searches: SearchRecord[];
-  totalPointsUsed: number;
 }
 
 export interface UseAgentSearchReturn {
@@ -49,7 +48,6 @@ export interface UseAgentSearchReturn {
   toolCalls: ToolCallRecord[];
   result: string | null;
   error: string | null;
-  totalPointsUsed: number;
   abort: () => void;
 }
 
@@ -87,7 +85,6 @@ export function useAgentSearch(): UseAgentSearchReturn {
   const [toolCalls, setToolCalls] = useState<ToolCallRecord[]>([]);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [totalPointsUsed, setTotalPointsUsed] = useState(0);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -105,14 +102,12 @@ export function useAgentSearch(): UseAgentSearchReturn {
       setToolCalls([]);
       setResult("");
       setError(null);
-      setTotalPointsUsed(0);
 
       abortControllerRef.current = new AbortController();
 
       let finalResult: AgentSearchResult = {
         result: "",
         searches: [],
-        totalPointsUsed: 0,
       };
 
       try {
@@ -182,7 +177,6 @@ export function useAgentSearch(): UseAgentSearchReturn {
         if (!streamMode) {
           finalResult = await res.json();
           setResult(finalResult.result);
-          setTotalPointsUsed(finalResult.totalPointsUsed || 0);
           setIsSearching(false);
           return finalResult;
         }
@@ -250,10 +244,8 @@ export function useAgentSearch(): UseAgentSearchReturn {
                   finalResult = {
                     result: data.content,
                     searches: data.searches || [],
-                    totalPointsUsed: data.totalPointsUsed || 0,
                   };
                   setResult(data.content);
-                  setTotalPointsUsed(data.totalPointsUsed || 0);
                   break;
               }
             } catch (err) {
@@ -291,7 +283,6 @@ export function useAgentSearch(): UseAgentSearchReturn {
     toolCalls,
     result,
     error,
-    totalPointsUsed,
     abort,
   };
 }

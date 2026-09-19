@@ -361,7 +361,6 @@ export const en = {
     agentSearchComplete: "Search complete",
     agentSearchError: "Search failed",
     agentSearchAttachImage: "Attach image",
-    agentSearchPointsUsed: "points used",
     agentSearchAbort: "Stop search",
     agentSearchSignIn: "Sign in to use Agent Search",
     vpnTitle: "VPN",

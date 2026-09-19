@@ -630,37 +630,6 @@ describe("Milestone 5 Deep Adversarial Native Architecture Stress Test", () => {
       expect(checkDel).toEqual([]);
     });
 
-    it("should execute RPC calls: get_points_status and spend_points", async () => {
-      // 1. Check points status
-      const { data: statusData, error: statusErr } =
-        await db.rpc("get_points_status");
-      expect(statusErr).toBeNull();
-      expect(statusData.points).toBeGreaterThan(0);
-      expect(statusData.available).toBeGreaterThan(0);
-      expect(statusData.given).toBeGreaterThan(0);
-      expect(statusData.daily_claim_available).toBe(true);
-
-      const initialPoints = statusData.points;
-
-      // 2. Spend points
-      const { data: spendData, error: spendErr } = await db.rpc(
-        "spend_points",
-        { amount: 30 },
-      );
-      expect(spendErr).toBeNull();
-      expect(spendData.success).toBe(true);
-      expect(spendData.points).toBeGreaterThanOrEqual(0);
-
-      // 3. Attempt spending more points than available
-      const { data: overspendData, error: overspendErr } = await db.rpc(
-        "spend_points",
-        { amount: 1000000 },
-      );
-      expect(overspendErr).toBeNull();
-      expect(overspendData.success).toBe(false);
-      expect(overspendData.error).toMatch(/insufficient points/i);
-    });
-
     it("should return error for unknown RPC function", async () => {
       const { data, error } = await db.rpc("unknown_nonexistent_rpc_fn");
       expect(data).toBeNull();

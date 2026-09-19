@@ -1006,7 +1006,6 @@ Guidelines:
             context: researchContext,
             searches: allSearches,
             pages: fetchedPages,
-            totalPointsUsed: 0,
           });
         }
 
@@ -1054,7 +1053,6 @@ Guidelines:
         return c.json({
           result: finalResult,
           searches: allSearches,
-          totalPointsUsed: 0,
         });
       }
 
@@ -1282,7 +1280,6 @@ Guidelines:
                 type: "result",
                 content: researchContext,
                 searches: allSearches,
-                totalPointsUsed: 0,
               }),
             );
             await write(sseEvent("[DONE]"));
@@ -1365,7 +1362,6 @@ Guidelines:
               type: "result",
               content: finalContent,
               searches: allSearches,
-              totalPointsUsed: 0,
             }),
           );
           await write(sseEvent("[DONE]"));

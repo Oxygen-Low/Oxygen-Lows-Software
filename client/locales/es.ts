@@ -374,7 +374,6 @@ export const es = {
     agentSearchComplete: "Búsqueda completa",
     agentSearchError: "Búsqueda fallida",
     agentSearchAttachImage: "Adjuntar imagen",
-    agentSearchPointsUsed: "puntos usados",
     agentSearchAbort: "Detener búsqueda",
     agentSearchSignIn: "Inicia sesión para usar Búsqueda Agente",
     vpnTitle: "VPN",

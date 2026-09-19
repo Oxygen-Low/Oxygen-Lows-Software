@@ -156,6 +156,51 @@ describe("Chat Server Routes", () => {
       expect(msgRes.status).toBe(200);
       const msgJson = await msgRes.json();
       expect(msgJson.message.content).toBe("Hello friend!");
+      expect(msgJson.message.sender_name).toBe(userA);
+      expect(msgJson.message.sender_id).toBe(userIdA);
+
+      // Verify User B can fetch this message
+      const fetchRes = await app.request(
+        `/api/chat/messages?targetId=${createdDmId}`,
+        {
+          headers: { Authorization: `Bearer ${tokenB}` },
+        },
+      );
+      expect(fetchRes.status).toBe(200);
+      const fetchJson = await fetchRes.json();
+      expect(fetchJson.messages).toHaveLength(1);
+      expect(fetchJson.messages[0].content).toBe("Hello friend!");
+      expect(fetchJson.messages[0].sender_name).toBe(userA);
+      expect(fetchJson.messages[0].sender_id).toBe(userIdA);
+
+      // User B replies
+      const replyRes = await app.request("/api/chat/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokenB}`,
+        },
+        body: JSON.stringify({
+          targetId: createdDmId,
+          content: "Hello back!",
+        }),
+      });
+      expect(replyRes.status).toBe(200);
+      const replyJson = await replyRes.json();
+      expect(replyJson.message.sender_name).toBe(userB);
+
+      // User A fetches and sees both messages in order
+      const fetchResA = await app.request(
+        `/api/chat/messages?targetId=${createdDmId}`,
+        {
+          headers: { Authorization: `Bearer ${tokenA}` },
+        },
+      );
+      expect(fetchResA.status).toBe(200);
+      const fetchJsonA = await fetchResA.json();
+      expect(fetchJsonA.messages).toHaveLength(2);
+      expect(fetchJsonA.messages[0].content).toBe("Hello friend!");
+      expect(fetchJsonA.messages[1].content).toBe("Hello back!");
     });
 
     it("automatically removes chat when friendship is deleted (unfriended)", async () => {

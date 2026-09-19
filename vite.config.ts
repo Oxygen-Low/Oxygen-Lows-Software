@@ -60,7 +60,13 @@ export default defineConfig(({ mode }) => ({
     },
     chunkSizeWarningLimit: 1000,
   },
-  plugins: [react(), tailwindcss(), expressPlugin()],
+  // Do not mount the dev API proxy plugin during tests, as initializing the server
+  // and its middleware hooks on Vitest's internal Vite dev servers prevents them from exiting.
+  plugins: [
+    react(),
+    tailwindcss(),
+    ...(mode !== "test" && !process.env.VITEST ? [expressPlugin()] : []),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./client"),

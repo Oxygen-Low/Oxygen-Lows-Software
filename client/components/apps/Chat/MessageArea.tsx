@@ -36,8 +36,8 @@ export function MessageArea() {
   const activeChannel = channels.find((c) => c.id === activeChannelId);
   const activeDm = dms.find((d) => d.id === activeChannelId);
 
-  const otherUserId = activeDm?.participants.find((p) => p !== userId) || activeDm?.participants[0];
-  const dmRecipientName = otherUserId ? activeDm?.recipient_names?.[otherUserId] || `User ${otherUserId.slice(0, 4)}` : "Friend";
+  const otherUserId = activeDm?.participants.find((p) => String(p) !== String(userId)) || activeDm?.participants[0];
+  const dmRecipientName = otherUserId ? activeDm?.recipient_names?.[String(otherUserId)] || `User ${String(otherUserId).slice(0, 4)}` : "Friend";
 
   const isDm = activeServerId === "dms" || !!activeDm;
   const title = isDm ? dmRecipientName : activeChannel?.name || "general";
@@ -120,7 +120,7 @@ export function MessageArea() {
 
         {/* Messages List */}
         {messages.map((msg) => {
-          const isMe = msg.sender_id === userId;
+          const isMe = String(msg.sender_id) === String(userId);
           const formattedTime = msg.created_at
             ? format(new Date(msg.created_at), "HH:mm")
             : "";

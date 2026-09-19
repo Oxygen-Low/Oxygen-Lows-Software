@@ -37,7 +37,6 @@ describe("useAgentSearch Hook", () => {
           Promise.resolve({
             result: "mock result",
             searches: [],
-            totalPointsUsed: 5,
           }),
         body: null,
       });

@@ -364,7 +364,6 @@ export const ja = {
     agentSearchComplete: "検索完了",
     agentSearchError: "検索に失敗しました",
     agentSearchAttachImage: "画像を添付",
-    agentSearchPointsUsed: "ポイント使用",
     agentSearchAbort: "検索を停止",
     agentSearchSignIn: "エージェント検索を使用するにはサインインしてください",
     vpnTitle: "VPN",

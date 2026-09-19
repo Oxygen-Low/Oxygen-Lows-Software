@@ -341,7 +341,6 @@ export const zhCN = {
     agentSearchComplete: "搜索完成",
     agentSearchError: "搜索失败",
     agentSearchAttachImage: "附加图片",
-    agentSearchPointsUsed: "积分已使用",
     agentSearchAbort: "停止搜索",
     agentSearchSignIn: "登录以使用智能搜索",
     vpnTitle: "VPN",

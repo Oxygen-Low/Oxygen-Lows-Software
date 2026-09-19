@@ -1190,18 +1190,12 @@ function AnimatedBackground() {
 
 // ─── Model Selector Dropdown ───────────────────────────────────────────
 
-interface PointsStatus {
-  available: number;
-  given: number;
-}
-
 function ModelSelector({
   models,
   selectedModel,
   selectedProvider,
   onSelect,
   compact = false,
-  pointsStatus,
   onOpen,
 }: {
   models: Model[];
@@ -1209,7 +1203,6 @@ function ModelSelector({
   selectedProvider: string;
   onSelect: (model: string, provider: string) => void;
   compact?: boolean;
-  pointsStatus?: PointsStatus | null;
   onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1507,10 +1500,6 @@ function AgentMarkdown({ content }: { content: string }) {
 export function LLMAgentApp() {
   // Auth
   const [session, setSession] = useState<any>(null);
-  const [pointsStatus, setPointsStatus] = useState<{
-    available: number;
-    given: number;
-  } | null>(null);
 
   // Models
   const {
@@ -1557,28 +1546,9 @@ export function LLMAgentApp() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch points
-  const fetchPoints = useCallback(async () => {
-    if (!session?.user?.id) {
-      setPointsStatus(null);
-      return;
-    }
-    try {
-      const { data } = await supabase.rpc("get_points_status");
-      if (data) setPointsStatus(data as any);
-    } catch {
-      // ignore
-    }
-  }, [session?.user?.id]);
-
   const handleModelSelectorOpen = useCallback(() => {
-    fetchPoints();
     refreshModels?.();
-  }, [fetchPoints, refreshModels]);
-
-  useEffect(() => {
-    fetchPoints();
-  }, [fetchPoints, messages]);
+  }, [refreshModels]);
 
   // Load sessions from localStorage
   useEffect(() => {
@@ -2176,8 +2146,6 @@ export function LLMAgentApp() {
             50,
           ),
         );
-
-        fetchPoints();
       }
     },
     [
@@ -2191,7 +2159,6 @@ export function LLMAgentApp() {
       selectedProvider,
       sessions,
       saveSessions,
-      fetchPoints,
     ],
   );
 
@@ -2358,7 +2325,6 @@ export function LLMAgentApp() {
                     models={models}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
-                    pointsStatus={pointsStatus}
                     onOpen={handleModelSelectorOpen}
                     onSelect={(m, p) => {
                       setSelection(m, p);
@@ -2557,7 +2523,6 @@ export function LLMAgentApp() {
                     models={models}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
-                    pointsStatus={pointsStatus}
                     onOpen={handleModelSelectorOpen}
                     compact
                     onSelect={(m, p) => {

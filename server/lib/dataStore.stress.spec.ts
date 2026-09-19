@@ -567,9 +567,9 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
         callRpc("upsert_user_preferences", { p_theme: "dark" }, undefined);
       }).toThrow("Unauthorized");
 
-      const pointsRes = callRpc("spend_points", { amount: 10 }, undefined);
-      expect(pointsRes.success).toBe(false);
-      expect(pointsRes.error).toBe("Unauthorized");
+      const res = callRpc("add_custom_game", { title: "Test" }, undefined);
+      expect(res.success).toBe(false);
+      expect(res.error).toBe("Unauthorized");
     });
   });
 

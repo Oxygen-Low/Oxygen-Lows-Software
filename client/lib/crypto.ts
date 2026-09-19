@@ -1402,7 +1402,7 @@ export async function migrateCategoryEncryption({
 
       if (chatIds.length > 0) {
         const { data: msgs, error: msgsError } = await db
-          .from("chat_messages")
+          .from("chatbot_messages")
           .select("*")
           .in("chat_id", chatIds);
         if (msgsError) throw msgsError;
@@ -1412,7 +1412,7 @@ export async function migrateCategoryEncryption({
             if (enable) {
               const enc = await encryptChatMessageData(msg, keyBytes);
               const { error: updateError } = await db
-                .from("chat_messages")
+                .from("chatbot_messages")
                 .update({
                   content: enc.content,
                   reasoning: enc.reasoning,
@@ -1423,7 +1423,7 @@ export async function migrateCategoryEncryption({
             } else {
               const dec = await decryptChatMessageData(msg, keyBytes);
               const { error: updateError } = await db
-                .from("chat_messages")
+                .from("chatbot_messages")
                 .update({
                   content: dec.content,
                   reasoning: dec.reasoning,
@@ -1599,7 +1599,7 @@ export async function rotateMasterKey({
 
         if (chatIds.length > 0) {
           const { data: msgs, error: msgsError } = await db
-            .from("chat_messages")
+            .from("chatbot_messages")
             .select("*")
             .in("chat_id", chatIds);
           if (msgsError) throw msgsError;
@@ -1609,7 +1609,7 @@ export async function rotateMasterKey({
               const dec = await decryptChatMessageData(msg, oldKeyBytes);
               const enc = await encryptChatMessageData(dec, newKeyBytes);
               const { error: updateError } = await db
-                .from("chat_messages")
+                .from("chatbot_messages")
                 .update({
                   content: enc.content,
                   reasoning: enc.reasoning,

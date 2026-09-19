@@ -359,7 +359,6 @@ export const ko = {
     agentSearchComplete: "검색 완료",
     agentSearchError: "검색 실패",
     agentSearchAttachImage: "이미지 첨부",
-    agentSearchPointsUsed: "포인트 사용",
     agentSearchAbort: "검색 중지",
     agentSearchSignIn: "에이전트 검색을 사용하려면 로그인하세요",
     vpnTitle: "VPN",
