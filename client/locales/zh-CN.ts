@@ -2559,4 +2559,13 @@ notificationsTitle: "通知",
     browseModelsAction: "浏览共享模型",
     desktopFeatureBadge: "桌面端功能",
   },
+  safety: {
+    selfHarmBlocked: "内容因违反安全政策已被拦截。",
+    selfHarmSupportNotice:
+      "如果您或您认识的人正在经历困难，随时可以获取支持。正在新标签页中打开 Find A Helpline 援助资源。",
+    contentPolicyBlocked:
+      "内容因违反安全政策已被拦截（{category}）。",
+    childSafetyBlocked:
+      "内容因违反儿童安全保护政策已被永久拦截。",
+  },
 } as const;

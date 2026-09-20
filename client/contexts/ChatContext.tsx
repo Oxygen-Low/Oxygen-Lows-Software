@@ -5,6 +5,7 @@ import { WebRTCManager, PeerStreamInfo, SignalingMessage } from "@/services/webr
 import { ringingService } from "@/services/ringing";
 import { supabase } from "@/lib/db";
 import { toast } from "sonner";
+import { handleSafetyModeration } from "@/lib/safetyModeration";
 
 export interface ChatServer {
   id: string;
@@ -530,6 +531,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           if (prev.some((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        if (!handleSafetyModeration(errorData)) {
+          toast.error(errorData.error || "Failed to send message");
+        }
       }
     } catch (err) {
       toast.error("Failed to send message");

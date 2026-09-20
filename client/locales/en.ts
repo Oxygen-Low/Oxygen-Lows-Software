@@ -2651,6 +2651,14 @@ export const en = {
     browseModelsAction: "Browse Shared Models",
     desktopFeatureBadge: "Desktop Feature",
   },
+  safety: {
+    selfHarmBlocked: "Content blocked by safety policy.",
+    selfHarmSupportNotice:
+      "If you or someone you know is struggling, support is available. Opening Find A Helpline in a new tab.",
+    contentPolicyBlocked: "Content blocked due to safety policy violation ({category}).",
+    childSafetyBlocked:
+      "Content permanently blocked due to child safety policy violation.",
+  },
 } as const;
 
 export type TranslationSchema = typeof en;

@@ -2653,4 +2653,13 @@ notificationsTitle: "通知",
     browseModelsAction: "共有モデルを探す",
     desktopFeatureBadge: "デスクトップ機能",
   },
+  safety: {
+    selfHarmBlocked: "安全ポリシーによりコンテンツがブロックされました。",
+    selfHarmSupportNotice:
+      "つらい思いをしている場合は相談窓口があります。新しいタブで Find A Helpline を開いています。",
+    contentPolicyBlocked:
+      "安全ポリシー違反によりコンテンツがブロックされました ({category})。",
+    childSafetyBlocked:
+      "児童安全ポリシー違反によりコンテンツが永久にブロックされました。",
+  },
 } as const;

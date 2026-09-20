@@ -1,4 +1,5 @@
 import { getLocalSession } from "./localSession";
+import { handleSafetyModeration } from "./safetyModeration";
 
 export interface StorageFileItem {
   id: string | null;
@@ -50,6 +51,9 @@ async function parseResponse<T = any>(
   }
 
   if (!isOk || (json && json.error)) {
+    if (json) {
+      handleSafetyModeration(json);
+    }
     let errorMsg = json?.error;
     if (!errorMsg) {
       if (res.status === 413) {

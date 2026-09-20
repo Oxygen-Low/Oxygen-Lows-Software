@@ -12,6 +12,13 @@ import {
   fetchHordeNonStreamWithContinuation,
 } from "../lib/hordeContinuation.ts";
 import { IMAGE_GENERATOR_PRESETS } from "./imageGen.ts";
+import { scanText, scanImage } from "../lib/safety/csamGuard.ts";
+import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
+import {
+  moderateText,
+  moderateImage,
+  handleModerationEnforcement,
+} from "../lib/safety/openAiModeration.ts";
 
 export const v1Router = new Hono();
 
@@ -287,6 +294,66 @@ v1Router.post("/chat/completions", async (c) => {
         : m.content,
   }));
 
+  // Safety Scanning: CSAM followed by OpenAI Text Moderation
+  const latestUserMessages = processedMessages
+    .filter((m: any) => m.role === "user")
+    .map((m: any) => (typeof m.content === "string" ? m.content : ""))
+    .join(" ");
+
+  if (latestUserMessages.trim().length > 0) {
+    const textSafety = await scanText(latestUserMessages);
+    if (!textSafety.safe && textSafety.severity >= 2) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const lockdown = await executeZeroToleranceLockdown({
+        ip,
+        userAgent,
+        surface: "v1_chat",
+        promptText: latestUserMessages,
+        severity: textSafety.severity,
+        reason: textSafety.reason || "CSAM / Child safety violation in API prompt",
+      });
+      return c.json(
+        {
+          error: {
+            message: lockdown.clientResponse.error,
+            type: "policy_violation_error",
+            param: null,
+            code: lockdown.clientResponse.code,
+          },
+        },
+        400,
+      );
+    }
+
+    const openAiTextCheck = await moderateText(latestUserMessages);
+    if (!openAiTextCheck.allowed) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const enforcement = await handleModerationEnforcement(openAiTextCheck, {
+        ip,
+        userAgent,
+        surface: "v1_chat",
+        promptText: latestUserMessages,
+      });
+      if (enforcement) {
+        return c.json(
+          {
+            error: {
+              message: enforcement.clientResponse.error,
+              type: "policy_violation_error",
+              param: null,
+              code: enforcement.clientResponse.code,
+              category: enforcement.clientResponse.category,
+              redirect_url: enforcement.clientResponse.redirectUrl,
+            },
+          },
+          400,
+        );
+      }
+    }
+  }
+
   let actualModel = resolveV1TextModel(model);
 
   // Strictly keyless: all requests use anonymous worker tier
@@ -538,6 +605,60 @@ v1Router.post("/images/generations", async (c) => {
   const maxStepsAllowed = matchedPreset ? matchedPreset.maxSteps : 30;
   const defaultSteps = matchedPreset ? matchedPreset.defaultSteps : 25;
 
+  // Pre-generation CSAM & OpenAI Moderation Prompt Scanning
+  const combinedText = `${prompt} ${negativePrompt}`;
+  const textSafetyResult = await scanText(combinedText);
+  if (!textSafetyResult.safe && textSafetyResult.severity >= 2) {
+    const ip = extractClientIp(c);
+    const userAgent = c.req.header("user-agent");
+    const lockdown = await executeZeroToleranceLockdown({
+      ip,
+      userAgent,
+      surface: "v1_image_prompt",
+      promptText: prompt,
+      severity: textSafetyResult.severity,
+      reason: textSafetyResult.reason || "Prohibited minor safety or child exploitation pattern in prompt",
+    });
+    return c.json(
+      {
+        error: {
+          message: lockdown.clientResponse.error,
+          type: "policy_violation_error",
+          param: null,
+          code: lockdown.clientResponse.code,
+        },
+      },
+      400,
+    );
+  }
+
+  const openAiMod = await moderateText(combinedText);
+  if (!openAiMod.allowed) {
+    const ip = extractClientIp(c);
+    const userAgent = c.req.header("user-agent");
+    const enforcement = await handleModerationEnforcement(openAiMod, {
+      ip,
+      userAgent,
+      surface: "v1_image_prompt",
+      promptText: prompt,
+    });
+    if (enforcement) {
+      return c.json(
+        {
+          error: {
+            message: enforcement.clientResponse.error,
+            type: "policy_violation_error",
+            param: null,
+            code: enforcement.clientResponse.code,
+            category: enforcement.clientResponse.category,
+            redirect_url: enforcement.clientResponse.redirectUrl,
+          },
+        },
+        400,
+      );
+    }
+  }
+
   const hordePayload = {
     prompt: fullPrompt,
     params: {
@@ -764,6 +885,79 @@ v1Router.post("/images/generations", async (c) => {
         },
         500,
       );
+    }
+
+    // Safety Inspection: CSAM followed by OpenAI Image Moderation
+    let imageBuffer: Buffer | null = null;
+    if (rawImg.startsWith("http")) {
+      try {
+        const imgRes = await fetch(rawImg);
+        if (imgRes.ok) {
+          imageBuffer = Buffer.from(await imgRes.arrayBuffer());
+        }
+      } catch {
+        // Continue if remote CDN is not mock-intercepted or temporarily unavailable
+      }
+    } else {
+      const commaIdx = rawImg.indexOf(",");
+      const b64Data = commaIdx !== -1 ? rawImg.slice(commaIdx + 1) : rawImg;
+      try {
+        imageBuffer = Buffer.from(b64Data, "base64");
+      } catch {}
+    }
+
+    if (imageBuffer) {
+      const safetyCheck = await scanImage(imageBuffer);
+      if (!safetyCheck.safe && safetyCheck.severity >= 2) {
+        const ip = extractClientIp(c);
+        const userAgent = c.req.header("user-agent");
+        const lockdown = await executeZeroToleranceLockdown({
+          ip,
+          userAgent,
+          surface: "v1_image_output",
+          fileHash: safetyCheck.details?.hash,
+          severity: safetyCheck.severity,
+          reason: safetyCheck.reason || "Generated image failed safety inspection",
+        });
+        return c.json(
+          {
+            error: {
+              message: lockdown.clientResponse.error,
+              type: "policy_violation_error",
+              param: null,
+              code: lockdown.clientResponse.code,
+            },
+          },
+          400,
+        );
+      }
+
+      const openAiImgMod = await moderateImage(imageBuffer);
+      if (!openAiImgMod.allowed) {
+        const ip = extractClientIp(c);
+        const userAgent = c.req.header("user-agent");
+        const enforcement = await handleModerationEnforcement(openAiImgMod, {
+          ip,
+          userAgent,
+          surface: "v1_image_output",
+          fileHash: safetyCheck.details?.hash,
+        });
+        if (enforcement) {
+          return c.json(
+            {
+              error: {
+                message: enforcement.clientResponse.error,
+                type: "policy_violation_error",
+                param: null,
+                code: enforcement.clientResponse.code,
+                category: enforcement.clientResponse.category,
+                redirect_url: enforcement.clientResponse.redirectUrl,
+              },
+            },
+            400,
+          );
+        }
+      }
     }
 
     const createdTime = Math.floor(Date.now() / 1000);

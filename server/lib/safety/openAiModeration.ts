@@ -1,0 +1,261 @@
+import {
+  executeZeroToleranceLockdown,
+  type EnforcementParams,
+  type EnforcementResult,
+} from "./enforcement.ts";
+
+export const SELF_HARM_HELP_URL = "https://findahelpline.com/";
+
+export interface OpenAiModerationResult {
+  allowed: boolean;
+  category?: string;
+  isSelfHarm?: boolean;
+  isCsamMinorViolation?: boolean;
+  redirectUrl?: string;
+  reason?: string;
+  details?: Record<string, any>;
+}
+
+export interface ModerationClientResponse {
+  error: string;
+  code: "CHILD_SAFETY_POLICY_VIOLATION" | "SELF_HARM_DETECTED" | "CONTENT_POLICY_VIOLATION" | string;
+  category?: string;
+  redirectUrl?: string;
+}
+
+/**
+ * Moderation categories policy mapping:
+ * harassment: Blocked
+ * harassment/threatening: Blocked
+ * hate: Blocked
+ * hate/threatening: Blocked
+ * illicit: Blocked
+ * illicit/violent: Blocked
+ * self-harm: Blocked + redirect to help website
+ * self-harm/intent: Blocked + redirect to help website
+ * self-harm/instructions: Blocked + redirect to help website
+ * sexual: Blocked
+ * sexual/minors: Blocked + do everything CSAM detection does
+ * violence: Allowed
+ * violence/graphic: Blocked
+ */
+export function evaluateModerationCategories(
+  categories: Record<string, boolean>,
+  details?: Record<string, any>,
+): OpenAiModerationResult {
+  if (!categories) {
+    return { allowed: true };
+  }
+
+  // 1. sexual/minors: Blocked + escalate to CSAM lockdown
+  if (categories["sexual/minors"]) {
+    return {
+      allowed: false,
+      category: "sexual/minors",
+      isCsamMinorViolation: true,
+      reason: "Matched prohibited child exploitation or minor safety policy (sexual/minors)",
+      details,
+    };
+  }
+
+  // 2. self-harm categories: Blocked + redirect to help website
+  const selfHarmCategories = ["self-harm", "self-harm/intent", "self-harm/instructions"];
+  for (const cat of selfHarmCategories) {
+    if (categories[cat]) {
+      return {
+        allowed: false,
+        category: cat,
+        isSelfHarm: true,
+        redirectUrl: SELF_HARM_HELP_URL,
+        reason: "Content flagged under self-harm policy. Crisis support resources provided.",
+        details,
+      };
+    }
+  }
+
+  // 3. Other blocked categories
+  const blockedCategories = [
+    "harassment",
+    "harassment/threatening",
+    "hate",
+    "hate/threatening",
+    "illicit",
+    "illicit/violent",
+    "sexual",
+    "violence/graphic",
+  ];
+
+  for (const cat of blockedCategories) {
+    if (categories[cat]) {
+      return {
+        allowed: false,
+        category: cat,
+        reason: `Content violates safety policy: ${cat}`,
+        details,
+      };
+    }
+  }
+
+  // General "violence" is explicitly allowed if "violence/graphic" is false
+  return { allowed: true, details };
+}
+
+/**
+ * Returns the effective OpenAI API key from environment variables.
+ */
+export function getOpenAiApiKey(): string {
+  return (
+    process.env.OPENAI_MODERATION_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    ""
+  ).trim();
+}
+
+/**
+ * Calls OpenAI Moderation API with omni-moderation-latest.
+ * Fail-open design: if key is absent or API call fails, logs a warning and returns { allowed: true }.
+ */
+export async function checkOpenAiModeration(
+  input: string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>,
+): Promise<OpenAiModerationResult> {
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) {
+    console.warn(
+      "[OpenAI Moderation] OPENAI_API_KEY is not configured; failing open (allowing request).",
+    );
+    return { allowed: true };
+  }
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/moderations", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "omni-moderation-latest",
+        input,
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn(
+        `[OpenAI Moderation] API returned HTTP ${res.status}; failing open with warning.`,
+      );
+      return { allowed: true };
+    }
+
+    const data: any = await res.json();
+    const results = data.results;
+    if (!Array.isArray(results) || results.length === 0) {
+      return { allowed: true, details: data };
+    }
+
+    // Combine flagged results across all inputs if multiple items
+    for (const result of results) {
+      const evaluation = evaluateModerationCategories(result.categories || {}, data);
+      if (!evaluation.allowed) {
+        return evaluation;
+      }
+    }
+
+    return { allowed: true, details: data };
+  } catch (err) {
+    console.warn("[OpenAI Moderation] Request failed; failing open with warning:", err);
+    return { allowed: true };
+  }
+}
+
+/**
+ * Moderate text string using OpenAI Moderation API.
+ */
+export async function moderateText(text: string): Promise<OpenAiModerationResult> {
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    return { allowed: true };
+  }
+
+  return checkOpenAiModeration(text);
+}
+
+/**
+ * Moderate image buffer using OpenAI Moderation API via base64 data URI.
+ */
+export async function moderateImage(
+  buffer: Buffer,
+  mimeType: string = "image/png",
+): Promise<OpenAiModerationResult> {
+  if (!buffer || buffer.length === 0) {
+    return { allowed: true };
+  }
+
+  const base64 = buffer.toString("base64");
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  return checkOpenAiModeration([
+    {
+      type: "image_url",
+      image_url: {
+        url: dataUrl,
+      },
+    },
+  ]);
+}
+
+/**
+ * Convenience helper to handle moderation result across routes.
+ * If sexual/minors is detected, triggers executeZeroToleranceLockdown.
+ * Returns null if allowed, or an object ready to send back to client via c.json(response, 400).
+ */
+export async function handleModerationEnforcement(
+  result: OpenAiModerationResult,
+  enforcementContext: Omit<EnforcementParams, "severity" | "reason">,
+): Promise<{ clientResponse: ModerationClientResponse; isLockdown: boolean } | null> {
+  if (result.allowed) {
+    return null;
+  }
+
+  // 1. sexual/minors escalation -> Execute Zero Tolerance Lockdown
+  if (result.isCsamMinorViolation) {
+    const lockdown = await executeZeroToleranceLockdown({
+      ...enforcementContext,
+      severity: 3,
+      reason: result.reason || "Prohibited minor safety violation detected by OpenAI Moderation",
+      details: result.details,
+    });
+    return {
+      clientResponse: lockdown.clientResponse,
+      isLockdown: true,
+    };
+  }
+
+  // 2. self-harm redirect
+  if (result.isSelfHarm) {
+    console.warn(
+      `[Safety Enforcement] Self-harm content blocked on ${enforcementContext.surface}. Redirecting user to helpline.`,
+    );
+    return {
+      clientResponse: {
+        error:
+          "Content blocked by safety policy. If you or someone you know is struggling, support is available.",
+        code: "SELF_HARM_DETECTED",
+        category: result.category,
+        redirectUrl: result.redirectUrl || SELF_HARM_HELP_URL,
+      },
+      isLockdown: false,
+    };
+  }
+
+  // 3. General blocked category
+  console.warn(
+    `[Safety Enforcement] Blocked ${result.category} on ${enforcementContext.surface}.`,
+  );
+  return {
+    clientResponse: {
+      error: `Content blocked due to safety policy violation: ${result.category}.`,
+      code: "CONTENT_POLICY_VIOLATION",
+      category: result.category,
+    },
+    isLockdown: false,
+  };
+}

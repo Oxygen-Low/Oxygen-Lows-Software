@@ -14,6 +14,10 @@ import { broadcastChange } from "../lib/realtime.ts";
 import crypto from "node:crypto";
 import { scanText } from "../lib/safety/csamGuard.ts";
 import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
+import {
+  moderateText,
+  handleModerationEnforcement,
+} from "../lib/safety/openAiModeration.ts";
 
 export const chatRouter = new Hono();
 
@@ -269,6 +273,23 @@ chatRouter.post("/messages", async (c) => {
         reason: textCheck.reason || "CSAM / Child safety violation in chat message",
       });
       return c.json(lockdown.clientResponse, 400);
+    }
+
+    // Post-CSAM OpenAI Text Moderation
+    const openAiCheck = await moderateText(content);
+    if (!openAiCheck.allowed) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const enforcement = await handleModerationEnforcement(openAiCheck, {
+        ip,
+        user,
+        userAgent,
+        surface: "chat",
+        promptText: content,
+      });
+      if (enforcement) {
+        return c.json(enforcement.clientResponse, 400);
+      }
     }
   }
 

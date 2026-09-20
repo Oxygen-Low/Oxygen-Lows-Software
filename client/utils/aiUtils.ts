@@ -1,3 +1,5 @@
+import { handleSafetyModeration } from "@/lib/safetyModeration";
+
 export const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "horde") {
     const labels: Record<string, string> = {
@@ -43,6 +45,7 @@ export const parseAiProxyError = async (response: Response) => {
     const contentType = response.headers.get("content-type");
     if (contentType?.includes("application/json")) {
       const errorData = await response.json();
+      handleSafetyModeration(errorData);
       errorMessage =
         errorData?.error?.message ||
         errorData?.error ||

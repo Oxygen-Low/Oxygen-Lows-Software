@@ -12,6 +12,10 @@ import {
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { scanImage } from "../lib/safety/csamGuard.ts";
 import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
+import {
+  moderateImage,
+  handleModerationEnforcement,
+} from "../lib/safety/openAiModeration.ts";
 
 export const storageRouter = new Hono();
 
@@ -112,6 +116,25 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
           reason: scanResult.reason || "Uploaded image flagged by child safety scanner",
         });
         return c.json(lockdown.clientResponse, 400);
+      }
+
+      // Post-CSAM OpenAI Image Moderation
+      const openAiImgResult = await moderateImage(buffer, mime);
+      if (!openAiImgResult.allowed) {
+        const ip = extractClientIp(c);
+        const userAgent = c.req.header("user-agent");
+        const enforcement = await handleModerationEnforcement(openAiImgResult, {
+          ip,
+          user,
+          userAgent,
+          surface: "storage_upload",
+          fileName: filePath,
+          fileHash: scanResult.details?.hash,
+          mimeType: mime,
+        });
+        if (enforcement) {
+          return c.json(enforcement.clientResponse, 400);
+        }
       }
     }
 
@@ -245,6 +268,28 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
             reason: scanResult.reason || "Uploaded chunked image flagged by child safety scanner",
           });
           return c.json(lockdown.clientResponse, 400);
+        }
+
+        // Post-CSAM OpenAI Image Moderation
+        const openAiChunkScan = await moderateImage(completeBuffer, mime);
+        if (!openAiChunkScan.allowed) {
+          try {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+          } catch {}
+          const ip = extractClientIp(c);
+          const userAgent = c.req.header("user-agent");
+          const enforcement = await handleModerationEnforcement(openAiChunkScan, {
+            ip,
+            user,
+            userAgent,
+            surface: "storage_chunked_upload",
+            fileName: filePath,
+            fileHash: scanResult.details?.hash,
+            mimeType: mime,
+          });
+          if (enforcement) {
+            return c.json(enforcement.clientResponse, 400);
+          }
         }
       }
 

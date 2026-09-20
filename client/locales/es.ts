@@ -2670,4 +2670,13 @@ export const es = {
     browseModelsAction: "Explorar modelos compartidos",
     desktopFeatureBadge: "Función de escritorio",
   },
+  safety: {
+    selfHarmBlocked: "Contenido bloqueado por la política de seguridad.",
+    selfHarmSupportNotice:
+      "Si tú o alguien que conoces necesita ayuda, hay apoyo disponible. Abriendo Find A Helpline en una nueva pestaña.",
+    contentPolicyBlocked:
+      "Contenido bloqueado debido a una infracción de la política de seguridad ({category}).",
+    childSafetyBlocked:
+      "Contenido bloqueado permanentemente debido a una infracción de la política de seguridad infantil.",
+  },
 } as const;

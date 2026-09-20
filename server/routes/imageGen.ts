@@ -6,6 +6,11 @@ import { serverStorage } from "../lib/storage.ts";
 import { extractBearerToken, stripHtmlTags } from "./ai.ts";
 import { scanText, scanImage } from "../lib/safety/csamGuard.ts";
 import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
+import {
+  moderateText,
+  moderateImage,
+  handleModerationEnforcement,
+} from "../lib/safety/openAiModeration.ts";
 
 export const imageGenRouter = new Hono();
 
@@ -248,6 +253,23 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
     return c.json(lockdown.clientResponse, 400);
   }
 
+  // Post-CSAM OpenAI Text Moderation Scanning
+  const openAiMod = await moderateText(combinedText);
+  if (!openAiMod.allowed) {
+    const ip = extractClientIp(c);
+    const userAgent = c.req.header("user-agent");
+    const enforcement = await handleModerationEnforcement(openAiMod, {
+      ip,
+      user,
+      userAgent,
+      surface: "image_gen_prompt",
+      promptText: prompt,
+    });
+    if (enforcement) {
+      return c.json(enforcement.clientResponse, 400);
+    }
+  }
+
   if (provider === "horde") {
     let hordeApiKey = "0000000000";
 
@@ -465,6 +487,39 @@ imageGenRouter.get("/status/:id", imageLimiter, async (c) => {
             400,
           );
         }
+
+        // Post-CSAM OpenAI Image Moderation Scanning
+        const openAiImgMod = await moderateImage(imageBuffer);
+        if (!openAiImgMod.allowed) {
+          const ip = extractClientIp(c);
+          const userAgent = c.req.header("user-agent");
+          const authHeader = c.req.header("authorization");
+          const token = extractBearerToken(authHeader);
+          let user: any = null;
+          if (token && token !== "undefined" && token !== "null") {
+            user = await resolveUserFromToken(token);
+          }
+
+          const enforcement = await handleModerationEnforcement(openAiImgMod, {
+            ip,
+            user,
+            userAgent,
+            surface: "image_gen_output",
+            fileHash: safetyCheck.details?.hash,
+          });
+
+          return c.json(
+            {
+              done: true,
+              faulted: true,
+              error:
+                enforcement?.clientResponse.error ||
+                "Generated image was blocked by safety moderation.",
+              ...enforcement?.clientResponse,
+            },
+            400,
+          );
+        }
       }
     }
 
@@ -555,6 +610,24 @@ imageGenRouter.post("/save-to-storage", imageLimiter, async (c) => {
         reason: saveCheck.reason || "Attempted to persist prohibited image to storage",
       });
       return c.json(lockdown.clientResponse, 400);
+    }
+
+    // Post-CSAM OpenAI Image Moderation
+    const openAiSaveMod = await moderateImage(buffer, `image/${ext}`);
+    if (!openAiSaveMod.allowed) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const enforcement = await handleModerationEnforcement(openAiSaveMod, {
+        ip,
+        user,
+        userAgent,
+        surface: "image_gen_save",
+        fileHash: saveCheck.details?.hash,
+        mimeType: `image/${ext}`,
+      });
+      if (enforcement) {
+        return c.json(enforcement.clientResponse, 400);
+      }
     }
 
     const timestamp = Date.now();

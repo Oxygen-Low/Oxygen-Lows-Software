@@ -9,6 +9,10 @@ import {
 } from "../lib/hordeContinuation.ts";
 import { scanText } from "../lib/safety/csamGuard.ts";
 import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
+import {
+  moderateText,
+  handleModerationEnforcement,
+} from "../lib/safety/openAiModeration.ts";
 
 export const aiRouter = new Hono();
 
@@ -296,6 +300,23 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         reason: textSafety.reason || "CSAM / Child safety violation in AI prompt",
       });
       return c.json(lockdown.clientResponse, 400);
+    }
+
+    // Post-CSAM OpenAI Text Moderation
+    const openAiTextCheck = await moderateText(latestUserMessages);
+    if (!openAiTextCheck.allowed) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const enforcement = await handleModerationEnforcement(openAiTextCheck, {
+        ip,
+        user,
+        userAgent,
+        surface: "ai_chat",
+        promptText: latestUserMessages,
+      });
+      if (enforcement) {
+        return c.json(enforcement.clientResponse, 400);
+      }
     }
   }
 

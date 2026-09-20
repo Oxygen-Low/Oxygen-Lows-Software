@@ -1,4 +1,5 @@
 import { getLocalSession } from "@/lib/localSession";
+import { handleSafetyModeration } from "@/lib/safetyModeration";
 
 export interface ImageModelInfo {
   provider: "horde";
@@ -181,6 +182,7 @@ export async function generateImage(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    handleSafetyModeration(errorData);
     throw new Error(
       errorData.error || `Generation failed with status ${response.status}`,
     );
@@ -219,6 +221,7 @@ export async function generateImage(
       const statusData = await statusRes.json();
 
       if (statusData.faulted) {
+        handleSafetyModeration(statusData);
         throw new Error(statusData.error || "Generation faulted on remote worker");
       }
 

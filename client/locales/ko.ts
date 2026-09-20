@@ -2630,4 +2630,13 @@ notificationsTitle: "알림",
     browseModelsAction: "공유 모델 둘러보기",
     desktopFeatureBadge: "데스크톱 기능",
   },
+  safety: {
+    selfHarmBlocked: "안전 정책에 의해 콘텐츠가 차단되었습니다.",
+    selfHarmSupportNotice:
+      "도움이 필요하시면 언제든 지원을 받으실 수 있습니다. 새 탭에서 Find A Helpline을 엽니다.",
+    contentPolicyBlocked:
+      "안전 정책 위반으로 인해 콘텐츠가 차단되었습니다 ({category}).",
+    childSafetyBlocked:
+      "아동 안전 정책 위반으로 인해 콘텐츠가 영구적으로 차단되었습니다.",
+  },
 } as const;

@@ -2658,4 +2658,13 @@ notificationsTitle: "Уведомления",
     browseModelsAction: "Обзор общих моделей",
     desktopFeatureBadge: "Функция для ПК",
   },
+  safety: {
+    selfHarmBlocked: "Контент заблокирован политикой безопасности.",
+    selfHarmSupportNotice:
+      "Если вы или кто-то из ваших близких переживает трудности, помощь доступна. Открываем Find A Helpline в новой вкладке.",
+    contentPolicyBlocked:
+      "Контент заблокирован из-за нарушения политики безопасности ({category}).",
+    childSafetyBlocked:
+      "Контент навсегда заблокирован из-за нарушения политики безопасности детей.",
+  },
 } as const;
