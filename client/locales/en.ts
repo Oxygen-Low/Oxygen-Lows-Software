@@ -2659,6 +2659,28 @@ export const en = {
     childSafetyBlocked:
       "Content permanently blocked due to child safety policy violation.",
   },
+  contentTest: {
+    title: "Content Moderation Test",
+    subtitle:
+      "Test text prompts and images against the tiered safety pipeline (CSAM Guard + OpenAI Multimodal Moderation).",
+    tabText: "Text Moderation",
+    tabImage: "Image Moderation",
+    textLabel: "Text Content",
+    textPlaceholder: "Type or paste text to test against the moderation pipeline...",
+    imageLabel: "Image Upload",
+    imageDropzone: "Click or drag an image here to upload (PNG, JPEG, WebP, GIF up to 10MB)",
+    testTextButton: "Test Text Content",
+    testImageButton: "Test Image",
+    testing: "Analyzing Content...",
+    verdictTitle: "Moderation Verdict",
+    safeVerdict: "Safe",
+    unsafeVerdict: "Unsafe",
+    safeDescription: "This content passed all safety and moderation filters.",
+    unsafeDescription: "This content was flagged by policy enforcement.",
+    categoryLabel: "Flagged Category",
+    reasonLabel: "Policy Reason",
+    clear: "Clear",
+  },
 } as const;
 
 export type TranslationSchema = typeof en;

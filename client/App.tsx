@@ -58,6 +58,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
 const Support = lazyWithRetry(() => import("./pages/Support"));
 const SupportTicket = lazyWithRetry(() => import("./pages/SupportTicket"));
+const ContentTest = lazyWithRetry(() => import("./pages/ContentTest"));
 const AdminSupport = lazyWithRetry(() => import("./pages/AdminSupport"));
 const AdminTicket = lazyWithRetry(() => import("./pages/AdminTicket"));
 const AdminVerification = lazyWithRetry(
@@ -195,6 +196,14 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <SupportTicket />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/contenttest"
+                      element={
+                        <ProtectedRoute>
+                          <ContentTest />
                         </ProtectedRoute>
                       }
                     />

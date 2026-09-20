@@ -28,6 +28,7 @@ import { chatRouter } from "./routes/chat.ts";
 import { chessRouter } from "./routes/chess.ts";
 import { modelsRouter } from "./routes/models.ts";
 import { v1Router } from "./routes/v1.ts";
+import { contentTestRouter } from "./routes/contentTest.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -1211,6 +1212,8 @@ app.route("/api/chess", chessRouter);
 app.route("/api/models", modelsRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
+app.route("/api/contenttest", contentTestRouter);
+app.post("/contenttest", (c) => contentTestRouter.fetch(c.req.raw));
 
 app.get("/bot", (c) => {
   return c.html(`

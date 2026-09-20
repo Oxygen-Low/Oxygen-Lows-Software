@@ -2679,4 +2679,26 @@ export const es = {
     childSafetyBlocked:
       "Contenido bloqueado permanentemente debido a una infracción de la política de seguridad infantil.",
   },
+  contentTest: {
+    title: "Prueba de Moderación de Contenido",
+    subtitle:
+      "Prueba textos e imágenes contra la canalización de seguridad por niveles (CSAM Guard + Moderación Multimodal de OpenAI).",
+    tabText: "Moderación de Texto",
+    tabImage: "Moderación de Imágenes",
+    textLabel: "Contenido de Texto",
+    textPlaceholder: "Escribe o pega texto para probar contra la moderación...",
+    imageLabel: "Subida de Imagen",
+    imageDropzone: "Haz clic o arrastra una imagen aquí (PNG, JPEG, WebP, GIF hasta 10MB)",
+    testTextButton: "Probar Texto",
+    testImageButton: "Probar Imagen",
+    testing: "Analizando contenido...",
+    verdictTitle: "Veredicto de Moderación",
+    safeVerdict: "Seguro",
+    unsafeVerdict: "Inseguro",
+    safeDescription: "Este contenido superó todos los filtros de seguridad.",
+    unsafeDescription: "Este contenido fue señalado por infracción de políticas.",
+    categoryLabel: "Categoría Detectada",
+    reasonLabel: "Motivo de la Política",
+    clear: "Limpiar",
+  },
 } as const;
