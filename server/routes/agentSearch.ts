@@ -3,6 +3,7 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable } from "../lib/dataStore.ts";
 import { validateAiUrl } from "../lib/safeAiUrl.ts";
+import { getRobotsRules, isPathAllowed } from "../lib/oxylowCrawler.ts";
 import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
@@ -50,21 +51,16 @@ function extractBearerToken(header: string | undefined): string | null {
   return match ? match[1].trim() : null;
 }
 
-const BROWSER_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+export const AI_SEARCH_USER_AGENT =
+  "Mozilla/5.0 (compatible; oxylow-aisearch/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)";
+export const AI_SEARCH_CONTACT_EMAIL = "support@oxygenlow.com";
+
+const AI_SEARCH_HEADERS = {
+  "User-Agent": AI_SEARCH_USER_AGENT,
+  From: AI_SEARCH_CONTACT_EMAIL,
   Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Sec-Ch-Ua":
-    '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
-  "Sec-Ch-Ua-Mobile": "?0",
-  "Sec-Ch-Ua-Platform": '"Windows"',
-  "Sec-Fetch-Dest": "document",
-  "Sec-Fetch-Mode": "navigate",
-  "Sec-Fetch-Site": "none",
-  "Sec-Fetch-User": "?1",
-  "Upgrade-Insecure-Requests": "1",
+    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.5",
 };
 
 function decodeHtmlEntities(text: string): string {
@@ -186,7 +182,7 @@ async function performWebSearch(query: string) {
     const res = await fetch(
       `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
       {
-        headers: BROWSER_HEADERS,
+        headers: AI_SEARCH_HEADERS,
         signal: AbortSignal.timeout(4000),
       },
     );
@@ -249,9 +245,22 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
     return "Error: Invalid or blocked URL. Cannot fetch localhost or internal IPs.";
   }
 
+  // Check robots.txt before fetching
+  try {
+    const parsedUrl = new URL(cleanUrl);
+    const origin = parsedUrl.origin;
+    const domain = parsedUrl.hostname.toLowerCase();
+    const robots = await getRobotsRules(origin, domain);
+    if (!isPathAllowed(parsedUrl.pathname, robots)) {
+      return `Error: Fetching ${cleanUrl} is disallowed by robots.txt for oxylow-aisearch.`;
+    }
+  } catch {
+    // If robots.txt check itself fails, proceed cautiously
+  }
+
   try {
     const res = await fetch(cleanUrl, {
-      headers: BROWSER_HEADERS,
+      headers: AI_SEARCH_HEADERS,
       signal: AbortSignal.timeout(6000),
     });
 
@@ -281,7 +290,8 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
               apiEndpoints.map(async (endpoint) => {
                 const apiRes = await fetch(endpoint, {
                   headers: {
-                    "User-Agent": BROWSER_HEADERS["User-Agent"],
+                    "User-Agent": AI_SEARCH_USER_AGENT,
+                    From: AI_SEARCH_CONTACT_EMAIL,
                     Accept: "application/json,text/html,*/*",
                   },
                   signal: AbortSignal.timeout(4000),
@@ -325,6 +335,7 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
     return `Error: Failed to fetch page content from ${cleanUrl} (${err.message || "network failed"}).`;
   }
 }
+
 
 function sseEvent(data: string): string {
   return `data: ${data}\n\n`;
