@@ -7,6 +7,7 @@ import {
   moderateText,
   moderateImage,
   handleModerationEnforcement,
+  isOpenAiConfigured,
 } from "../lib/safety/openAiModeration.ts";
 
 export const contentTestRouter = new Hono();
@@ -22,6 +23,22 @@ async function authenticate(c: any): Promise<any | null> {
   }
   return resolveUserFromToken(token);
 }
+
+/**
+ * GET /status
+ * Returns whether OpenAI Moderation API key is currently detected and active.
+ */
+contentTestRouter.get("/status", async (c) => {
+  const user = await authenticate(c);
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+  const configured = isOpenAiConfigured();
+  return c.json({
+    openAiConfigured: configured,
+    model: "omni-moderation-latest",
+  });
+});
 
 /**
  * POST /

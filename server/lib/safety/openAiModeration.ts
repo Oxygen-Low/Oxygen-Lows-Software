@@ -101,14 +101,39 @@ export function evaluateModerationCategories(
 }
 
 /**
- * Returns the effective OpenAI API key from environment variables.
+ * Returns the effective OpenAI API key from environment variables or optional override.
+ * Checks OPENAI_MODERATION_API_KEY, OPENAI_API_KEY, and case-insensitive matches in process.env.
  */
-export function getOpenAiApiKey(): string {
-  return (
-    process.env.OPENAI_MODERATION_API_KEY ||
-    process.env.OPENAI_API_KEY ||
-    ""
-  ).trim();
+export function getOpenAiApiKey(overrideKey?: string): string {
+  if (overrideKey && typeof overrideKey === "string" && overrideKey.trim().length > 0) {
+    return overrideKey.trim().replace(/^['"]|['"]$/g, "");
+  }
+
+  // Exact matches
+  const direct = process.env.OPENAI_MODERATION_API_KEY || process.env.OPENAI_API_KEY;
+  if (direct && typeof direct === "string" && direct.trim().length > 0) {
+    return direct.trim().replace(/^['"]|['"]$/g, "");
+  }
+
+  // Case-insensitive / alias scan across process.env
+  for (const [key, val] of Object.entries(process.env)) {
+    if (
+      typeof val === "string" &&
+      val.trim().length > 0 &&
+      (/^openai[_-]?(moderation[_-]?)?api[_-]?key$/i.test(key) || /^openai[_-]?key$/i.test(key))
+    ) {
+      return val.trim().replace(/^['"]|['"]$/g, "");
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Returns true if an OpenAI API key is detected.
+ */
+export function isOpenAiConfigured(overrideKey?: string): boolean {
+  return getOpenAiApiKey(overrideKey).length > 0;
 }
 
 /**
@@ -117,8 +142,9 @@ export function getOpenAiApiKey(): string {
  */
 export async function checkOpenAiModeration(
   input: string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>,
+  overrideApiKey?: string,
 ): Promise<OpenAiModerationResult> {
-  const apiKey = getOpenAiApiKey();
+  const apiKey = getOpenAiApiKey(overrideApiKey);
   if (!apiKey) {
     console.warn(
       "[OpenAI Moderation] OPENAI_API_KEY is not configured; failing open (allowing request).",
@@ -170,12 +196,15 @@ export async function checkOpenAiModeration(
 /**
  * Moderate text string using OpenAI Moderation API.
  */
-export async function moderateText(text: string): Promise<OpenAiModerationResult> {
+export async function moderateText(
+  text: string,
+  overrideApiKey?: string,
+): Promise<OpenAiModerationResult> {
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     return { allowed: true };
   }
 
-  return checkOpenAiModeration(text);
+  return checkOpenAiModeration(text, overrideApiKey);
 }
 
 /**
@@ -184,6 +213,7 @@ export async function moderateText(text: string): Promise<OpenAiModerationResult
 export async function moderateImage(
   buffer: Buffer,
   mimeType: string = "image/png",
+  overrideApiKey?: string,
 ): Promise<OpenAiModerationResult> {
   if (!buffer || buffer.length === 0) {
     return { allowed: true };
@@ -192,14 +222,17 @@ export async function moderateImage(
   const base64 = buffer.toString("base64");
   const dataUrl = `data:${mimeType};base64,${base64}`;
 
-  return checkOpenAiModeration([
-    {
-      type: "image_url",
-      image_url: {
-        url: dataUrl,
+  return checkOpenAiModeration(
+    [
+      {
+        type: "image_url",
+        image_url: {
+          url: dataUrl,
+        },
       },
-    },
-  ]);
+    ],
+    overrideApiKey,
+  );
 }
 
 /**
