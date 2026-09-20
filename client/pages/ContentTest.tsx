@@ -1,9 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -20,6 +21,8 @@ import {
   AlertTriangle,
   UploadCloud,
   X,
+  Key,
+  Info,
 } from "lucide-react";
 
 interface ModerationVerdict {
@@ -49,6 +52,23 @@ export default function ContentTest() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [verdict, setVerdict] = useState<ModerationVerdict | null>(null);
+  const [openAiConfigured, setOpenAiConfigured] = useState<boolean | null>(null);
+  const [customApiKey, setCustomApiKey] = useState("");
+  const [showKeyInput, setShowKeyInput] = useState(false);
+
+  useEffect(() => {
+    if (!session?.access_token) return;
+    fetch("/api/contenttest/status", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data.openAiConfigured === "boolean") {
+          setOpenAiConfigured(data.openAiConfigured);
+        }
+      })
+      .catch(() => {});
+  }, [session?.access_token]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
