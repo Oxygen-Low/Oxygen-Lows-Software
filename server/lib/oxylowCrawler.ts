@@ -9,7 +9,7 @@ export const SITES_FILE = path.join(DATA_DIR, "webmaster_sites.json");
 export const INDEX_FILE = path.join(DATA_DIR, "oxylow_index.json");
 
 export const OXYLOW_USER_AGENT =
-  "Mozilla/5.0 (compatible; oxylow/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)";
+  "Mozilla/5.0 (compatible; oxylow-search/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)";
 export const OXYLOW_CONTACT_EMAIL = "support@oxygenlow.com";
 export let DEFAULT_DOMAIN_DELAY_MS = 1000;
 export const MAX_SITE_INDEX_PAGES = 1000;
@@ -218,14 +218,14 @@ export async function validateCrawlUrl(urlString: string): Promise<URL> {
 
 /**
  * Checks DNS TXT records for a domain to verify ownership.
- * Checks both root hostname and _oxylow-challenge.<hostname>.
+ * Checks both root hostname and _oxylow-search-challenge.<hostname>.
  */
 export async function verifyDomainDns(
   domain: string,
   expectedToken: string
 ): Promise<{ verified: boolean; message: string; foundRecords?: string[] }> {
   const cleanDomain = domain.split(":")[0].toLowerCase();
-  const hostnamesToTry = [cleanDomain, `_oxylow-challenge.${cleanDomain}`];
+  const hostnamesToTry = [cleanDomain, `_oxylow-search-challenge.${cleanDomain}`];
   const allFoundRecords: string[] = [];
 
   for (const host of hostnamesToTry) {
@@ -235,9 +235,9 @@ export async function verifyDomainDns(
         const fullTxt = recordChunks.join("");
         allFoundRecords.push(fullTxt);
         if (
-          fullTxt === `oxylow-verification=${expectedToken}` ||
+          fullTxt === `oxylow-search-verification=${expectedToken}` ||
           fullTxt === expectedToken ||
-          fullTxt.includes(`oxylow-verification=${expectedToken}`)
+          fullTxt.includes(`oxylow-search-verification=${expectedToken}`)
         ) {
           return { verified: true, message: `Domain ownership verified on ${host}` };
         }
@@ -249,7 +249,7 @@ export async function verifyDomainDns(
 
   return {
     verified: false,
-    message: `Verification TXT record not found. Please add a TXT record with value "oxylow-verification=${expectedToken}" to ${cleanDomain} or _oxylow-challenge.${cleanDomain}`,
+    message: `Verification TXT record not found. Please add a TXT record with value "oxylow-search-verification=${expectedToken}" to ${cleanDomain} or _oxylow-search-challenge.${cleanDomain}`,
     foundRecords: allFoundRecords,
   };
 }
@@ -313,13 +313,13 @@ export async function getRobotsRules(
       if (key === "user-agent") {
         currentUserAgents.push(val.toLowerCase());
       } else if (key === "disallow") {
-        if (currentUserAgents.some((ua) => ua === "oxylow")) {
+        if (currentUserAgents.some((ua) => ua === "oxylow-search")) {
           if (val) oxylowDisallow.push(val);
         } else if (currentUserAgents.some((ua) => ua === "*")) {
           if (val) starDisallow.push(val);
         }
       } else if (key === "allow") {
-        if (currentUserAgents.some((ua) => ua === "oxylow")) {
+        if (currentUserAgents.some((ua) => ua === "oxylow-search")) {
           if (val) oxylowAllow.push(val);
         } else if (currentUserAgents.some((ua) => ua === "*")) {
           if (val) starAllow.push(val);
@@ -544,11 +544,11 @@ export function isCrawlScheduled(siteId: string): boolean {
 }
 
 /**
- * Crawls a submitted site with the "oxylow" bot:
- * - Checks robots.txt (supports User-agent: oxylow and Crawl-delay)
+ * Crawls a submitted site with the "oxylow-search" bot:
+ * - Checks robots.txt (supports User-agent: oxylow-search and Crawl-delay)
  * - Uses sitemap if provided or discovered
  * - Enforces per-domain delay between requests
- * - Identifies with oxylow user agent & contact email support@oxygenlow.com
+ * - Identifies with oxylow-search user agent & contact email support@oxygenlow.com
  * - Saves extracted pages into the search index
  * - Batch size: 20 pages per run. If > 20 pages found, re-queues the next batch immediately, up to 1000 pages max.
  */
@@ -569,7 +569,7 @@ export async function crawlSite(
     site.error = "DNS verification required before crawling.";
     site.logs.push({
       timestamp: new Date().toISOString(),
-      message: `Crawl prevented: Domain ${site.domain || site.url} is unverified. Add TXT record "oxylow-verification=${site.verificationToken || ''}" to verify ownership.`,
+      message: `Crawl prevented: Domain ${site.domain || site.url} is unverified. Add TXT record "oxylow-search-verification=${site.verificationToken || ''}" to verify ownership.`,
       level: "warn",
     });
     saveSites(sites);
@@ -605,7 +605,7 @@ export async function crawlSite(
   log(
     isContinuation
       ? `Resuming crawl batch for ${site.domain || site.url} (${existingPages.length} pages already indexed, ${site.pendingUrls?.length || 0} queued)...`
-      : `Starting crawl with oxylow bot (contact: ${OXYLOW_CONTACT_EMAIL})...`,
+      : `Starting crawl with oxylow-search bot (contact: ${OXYLOW_CONTACT_EMAIL})...`,
     "info"
   );
 
@@ -985,7 +985,7 @@ async function processNextInQueue(): Promise<void> {
         site.status = "crawling";
         site.logs.push({
           timestamp: new Date().toISOString(),
-          message: "Crawling started by oxylow bot from crawl queue.",
+          message: "Crawling started by oxylow-search bot from crawl queue.",
           level: "info",
         });
         saveSites(sites);

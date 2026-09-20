@@ -145,7 +145,7 @@ webmasterRouter.post("/sites", async (c) => {
     logs: [
       {
         timestamp: new Date().toISOString(),
-        message: `Submitted. DNS verification required: Add TXT record "oxylow-verification=${verificationToken}" to ${domain} or _oxylow-challenge.${domain}`,
+        message: `Submitted. DNS verification required: Add TXT record "oxylow-search-verification=${verificationToken}" to ${domain} or _oxylow-search-challenge.${domain}`,
         level: "info",
       },
     ],
@@ -195,7 +195,7 @@ webmasterRouter.post("/sites/:id/verify", async (c) => {
     enqueueCrawl(site.id, 20);
 
     return c.json({
-      message: "Domain verified successfully! oxylow bot queued for crawling.",
+      message: "Domain verified successfully! oxylow-search bot queued for crawling.",
       verified: true,
       site: attachQueuePosition(site),
     });

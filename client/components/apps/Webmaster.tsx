@@ -368,7 +368,7 @@ export function WebmasterApp() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to trigger re-crawl");
       }
-      toast.success("Re-crawl triggered! oxylow bot is indexing the site.");
+      toast.success("Re-crawl triggered! oxylow-search bot is indexing the site.");
       fetchSitesAndStats();
       if (isAdmin) fetchAdminSites();
     } catch (err: any) {
@@ -548,7 +548,7 @@ export function WebmasterApp() {
             <CardTitle className="text-2xl font-bold text-cyan-500">{stats?.totalPagesIndexed ?? 0}</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-muted-foreground">
-            Searchable pages in the oxylow index
+            Searchable pages in the oxylow-search index
           </CardContent>
         </Card>
 
@@ -557,11 +557,11 @@ export function WebmasterApp() {
             <CardDescription className="text-xs font-semibold uppercase">Crawler Bot</CardDescription>
             <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-emerald-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Robots.txt & Rate-Limited
+              Robots.txt &amp; Rate-Limited
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-muted-foreground space-y-1">
-            <div>User-Agent: <code className="text-cyan-400 font-mono">oxylow/1.0</code></div>
+            <div>User-Agent: <code className="text-cyan-400 font-mono">oxylow-search/1.0</code></div>
             <div>Contact: <span className="text-foreground">support@oxygenlow.com</span></div>
           </CardContent>
         </Card>
@@ -750,7 +750,7 @@ export function WebmasterApp() {
                 Submit Website for Indexing
               </CardTitle>
               <CardDescription className="text-xs">
-                Provide your website URL and optional sitemap. A DNS TXT verification record must be configured to verify ownership before the oxylow crawler indexes your pages.
+                Provide your website URL and optional sitemap. A DNS TXT verification record must be configured to verify ownership before the oxylow-search crawler indexes your pages.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 pt-0">
@@ -943,19 +943,19 @@ export function WebmasterApp() {
                               </div>
                               <div>
                                 <span className="text-muted-foreground block text-[10px] font-sans">Host:</span>
-                                <span>@ or _oxylow-challenge</span>
+                                <span>@ or _oxylow-search-challenge</span>
                               </div>
                               <div className="flex items-center justify-between sm:col-span-1">
                                 <div className="truncate mr-1">
                                   <span className="text-muted-foreground block text-[10px] font-sans">Value:</span>
                                   <span className="text-cyan-400 truncate block">
-                                    oxylow-verification={site.verificationToken}
+                                    oxylow-search-verification={site.verificationToken}
                                   </span>
                                 </div>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => copyToClipboard(`oxylow-verification=${site.verificationToken}`, site.id)}
+                                  onClick={() => copyToClipboard(`oxylow-search-verification=${site.verificationToken}`, site.id)}
                                   className="h-6 w-6 p-0 shrink-0"
                                   title="Copy TXT value"
                                 >
@@ -1058,7 +1058,7 @@ export function WebmasterApp() {
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold flex items-center gap-2 border-b border-border pb-2">
                   <Terminal className="w-4 h-4 text-cyan-500" />
-                  oxylow Crawler Logs
+                  oxylow-search Crawler Logs
                 </h3>
                 <div className="bg-muted/70 font-mono text-[11px] p-3 rounded-lg max-h-56 overflow-y-auto space-y-1.5 border border-border">
                   {selectedSite.logs && selectedSite.logs.length > 0 ? (

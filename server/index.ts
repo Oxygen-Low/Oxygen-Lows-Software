@@ -1217,7 +1217,7 @@ app.get("/bot", (c) => {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>oxylow Bot - Oxygen Low's Software Crawler</title>
+        <title>oxylow-search Bot - Oxygen Low's Software Crawler</title>
         <style>
           body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; max-width: 700px; margin: 0 auto; line-height: 1.6; }
           h1 { color: #38bdf8; }
@@ -1227,15 +1227,15 @@ app.get("/bot", (c) => {
         </style>
       </head>
       <body>
-        <h1>oxylow Crawler Bot</h1>
-        <p>You have received a visit from <code>oxylow</code>, the official web crawler and search indexer for <strong>Oxygen Low's Software</strong>.</p>
+        <h1>oxylow-search Crawler Bot</h1>
+        <p>You have received a visit from <code>oxylow-search</code>, the official web crawler and search indexer for <strong>Oxygen Low's Software</strong>.</p>
         <div class="card">
-          <h2>Bot Identity & Compliance</h2>
+          <h2>Bot Identity &amp; Compliance</h2>
           <ul>
-            <li><strong>User-Agent:</strong> <code>Mozilla/5.0 (compatible; oxylow/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)</code></li>
-            <li><strong>Robots.txt:</strong> oxylow strictly respects <code>robots.txt</code> rules (both <code>User-agent: oxylow</code> and <code>User-agent: *</code>), including <code>Disallow</code> directives and <code>Crawl-delay</code> rate limiting.</li>
-            <li><strong>Politeness:</strong> oxylow enforces minimum delays between requests to the same domain.</li>
-            <li><strong>Contact & Abuse:</strong> If you have questions, feedback, or need to report crawler issues, please contact us at <a href="mailto:support@oxygenlow.com">support@oxygenlow.com</a>.</li>
+            <li><strong>User-Agent:</strong> <code>Mozilla/5.0 (compatible; oxylow-search/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)</code></li>
+            <li><strong>Robots.txt:</strong> oxylow-search strictly respects <code>robots.txt</code> rules (both <code>User-agent: oxylow-search</code> and <code>User-agent: *</code>), including <code>Disallow</code> directives and <code>Crawl-delay</code> rate limiting.</li>
+            <li><strong>Politeness:</strong> oxylow-search enforces minimum delays between requests to the same domain.</li>
+            <li><strong>Contact &amp; Abuse:</strong> If you have questions, feedback, or need to report crawler issues, please contact us at <a href="mailto:support@oxygenlow.com">support@oxygenlow.com</a>.</li>
           </ul>
         </div>
       </body>

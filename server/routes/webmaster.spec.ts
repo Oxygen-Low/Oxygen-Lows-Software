@@ -11,8 +11,8 @@ vi.mock("node:dns/promises", async (importOriginal) => {
       return { address: "93.184.216.34", family: 4 };
     }),
     resolveTxt: vi.fn().mockImplementation(async (host: string) => {
-      if (host === "verified-example.com" || host === "_oxylow-challenge.verified-example.com") {
-        return [["oxylow-verification=abc123secrettoken"]];
+      if (host === "verified-example.com" || host === "_oxylow-search-challenge.verified-example.com") {
+        return [["oxylow-search-verification=abc123secrettoken"]];
       }
       return [];
     }),

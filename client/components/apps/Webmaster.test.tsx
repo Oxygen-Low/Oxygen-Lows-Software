@@ -46,7 +46,7 @@ describe("WebmasterApp", () => {
               totalSites: 0,
               totalPagesIndexed: 5,
               globalIndexCount: 5,
-              botUserAgent: "oxylow/1.0",
+              botUserAgent: "oxylow-search/1.0",
               botContactEmail: "support@oxygenlow.com",
             }),
         });
@@ -113,7 +113,7 @@ describe("WebmasterApp", () => {
               totalSites: 2,
               totalPagesIndexed: 0,
               globalIndexCount: 0,
-              botUserAgent: "oxylow/1.0",
+              botUserAgent: "oxylow-search/1.0",
               botContactEmail: "support@oxygenlow.com",
             }),
         });

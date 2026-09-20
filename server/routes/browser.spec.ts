@@ -11,9 +11,9 @@ import {
   OXYLOW_CONTACT_EMAIL,
 } from "../lib/oxylowCrawler";
 
-describe("Browser Router & oxylow crawler", () => {
+describe("Browser Router & oxylow-search crawler", () => {
   it("has compliant user agent and support contact email", () => {
-    expect(OXYLOW_USER_AGENT).toContain("oxylow/1.0");
+    expect(OXYLOW_USER_AGENT).toContain("oxylow-search/1.0");
     expect(OXYLOW_USER_AGENT).toContain("support@oxygenlow.com");
     expect(OXYLOW_CONTACT_EMAIL).toBe("support@oxygenlow.com");
   });
