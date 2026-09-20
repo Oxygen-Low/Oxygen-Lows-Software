@@ -7,6 +7,8 @@ import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
 } from "../lib/hordeContinuation.ts";
+import { scanText } from "../lib/safety/csamGuard.ts";
+import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
 
 export const aiRouter = new Hono();
 
@@ -272,6 +274,30 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         : m.content,
   }));
   let finalMessages = [...processedMessages];
+
+  // Pre-dispatch CSAM & Child Safety Scanning on User Messages
+  const latestUserMessages = (processedMessages || [])
+    .filter((m: any) => m.role === "user")
+    .map((m: any) => (typeof m.content === "string" ? m.content : ""))
+    .join(" ");
+
+  if (latestUserMessages.trim().length > 0) {
+    const textSafety = await scanText(latestUserMessages);
+    if (!textSafety.safe && textSafety.severity >= 2) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const lockdown = await executeZeroToleranceLockdown({
+        ip,
+        user,
+        userAgent,
+        surface: "ai_chat",
+        promptText: latestUserMessages,
+        severity: textSafety.severity,
+        reason: textSafety.reason || "CSAM / Child safety violation in AI prompt",
+      });
+      return c.json(lockdown.clientResponse, 400);
+    }
+  }
 
   const hasWebsiteKnowledge = finalMessages.some(
     (m: any) =>

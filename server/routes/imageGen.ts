@@ -4,6 +4,8 @@ import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable } from "../lib/dataStore.ts";
 import { serverStorage } from "../lib/storage.ts";
 import { extractBearerToken, stripHtmlTags } from "./ai.ts";
+import { scanText, scanImage } from "../lib/safety/csamGuard.ts";
+import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
 
 export const imageGenRouter = new Hono();
 
@@ -228,6 +230,24 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
     user = await resolveUserFromToken(token);
   }
 
+  // Pre-generation CSAM & Child Safety Scanning
+  const combinedText = `${prompt} ${negative_prompt}`;
+  const textSafetyResult = await scanText(combinedText);
+  if (!textSafetyResult.safe && textSafetyResult.severity >= 2) {
+    const ip = extractClientIp(c);
+    const userAgent = c.req.header("user-agent");
+    const lockdown = await executeZeroToleranceLockdown({
+      ip,
+      user,
+      userAgent,
+      surface: "image_gen_prompt",
+      promptText: prompt,
+      severity: textSafetyResult.severity,
+      reason: textSafetyResult.reason || "Prohibited minor safety or child exploitation pattern in prompt",
+    });
+    return c.json(lockdown.clientResponse, 400);
+  }
+
   if (provider === "horde") {
     let hordeApiKey = "0000000000";
 
@@ -250,14 +270,19 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
       enhancedPrompt = `${prompt}, ${matchedPreset.stylePrompt}`;
     }
 
-    // Enhance negative prompt with preset exclusions if applicable
+    // Enhance negative prompt with preset exclusions and server-enforced child safety exclusions
+    const SERVER_SAFETY_NEGATIVE = "child, minor, underage, infant, sexual, nsfw";
     let enhancedNegativePrompt = negative_prompt;
     if (matchedPreset?.negativePromptAdditions) {
       if (enhancedNegativePrompt) {
-        enhancedNegativePrompt = `${enhancedNegativePrompt}, ${matchedPreset.negativePromptAdditions}`;
+        enhancedNegativePrompt = `${enhancedNegativePrompt}, ${matchedPreset.negativePromptAdditions}, ${SERVER_SAFETY_NEGATIVE}`;
       } else {
-        enhancedNegativePrompt = matchedPreset.negativePromptAdditions;
+        enhancedNegativePrompt = `${matchedPreset.negativePromptAdditions}, ${SERVER_SAFETY_NEGATIVE}`;
       }
+    } else {
+      enhancedNegativePrompt = enhancedNegativePrompt
+        ? `${enhancedNegativePrompt}, ${SERVER_SAFETY_NEGATIVE}`
+        : SERVER_SAFETY_NEGATIVE;
     }
 
     const fullPrompt = enhancedNegativePrompt
@@ -397,6 +422,52 @@ imageGenRouter.get("/status/:id", imageLimiter, async (c) => {
     }
 
     let imageUrl = gen.img;
+    // Inspect generated image buffer for CSAM / child safety violations before serving
+    if (typeof imageUrl === "string" && imageUrl.length > 0) {
+      let imageBuffer: Buffer | null = null;
+      if (imageUrl.startsWith("data:")) {
+        const commaIdx = imageUrl.indexOf(",");
+        if (commaIdx !== -1) {
+          imageBuffer = Buffer.from(imageUrl.slice(commaIdx + 1), "base64");
+        }
+      } else if (!imageUrl.startsWith("http")) {
+        imageBuffer = Buffer.from(imageUrl, "base64");
+      }
+
+      if (imageBuffer) {
+        const safetyCheck = await scanImage(imageBuffer);
+        if (!safetyCheck.safe && safetyCheck.severity >= 2) {
+          const ip = extractClientIp(c);
+          const userAgent = c.req.header("user-agent");
+          const authHeader = c.req.header("authorization");
+          const token = extractBearerToken(authHeader);
+          let user: any = null;
+          if (token && token !== "undefined" && token !== "null") {
+            user = await resolveUserFromToken(token);
+          }
+
+          await executeZeroToleranceLockdown({
+            ip,
+            user,
+            userAgent,
+            surface: "image_gen_output",
+            fileHash: safetyCheck.details?.hash,
+            severity: safetyCheck.severity,
+            reason: safetyCheck.reason || "Generated image failed safety inspection",
+          });
+
+          return c.json(
+            {
+              done: true,
+              faulted: true,
+              error: "Generated image was permanently blocked due to safety policy violation.",
+            },
+            400,
+          );
+        }
+      }
+    }
+
     // If it's pure base64 without prefix, prepend data URL
     if (
       typeof imageUrl === "string" &&
@@ -467,6 +538,23 @@ imageGenRouter.post("/save-to-storage", imageLimiter, async (c) => {
       ext = contentType.includes("webp") ? "webp" : contentType.includes("jpeg") ? "jpg" : "png";
     } else {
       buffer = Buffer.from(image, "base64");
+    }
+
+    // Pre-save safety inspection
+    const saveCheck = await scanImage(buffer, `image/${ext}`);
+    if (!saveCheck.safe && saveCheck.severity >= 2) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const lockdown = await executeZeroToleranceLockdown({
+        ip,
+        user,
+        userAgent,
+        surface: "image_gen_save",
+        fileHash: saveCheck.details?.hash,
+        severity: saveCheck.severity,
+        reason: saveCheck.reason || "Attempted to persist prohibited image to storage",
+      });
+      return c.json(lockdown.clientResponse, 400);
     }
 
     const timestamp = Date.now();

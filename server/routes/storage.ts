@@ -10,6 +10,8 @@ import {
   STORAGE_DIR,
 } from "../lib/storage.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
+import { scanImage } from "../lib/safety/csamGuard.ts";
+import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
 
 export const storageRouter = new Hono();
 
@@ -89,6 +91,28 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
         { error: "Quota exceeded. Maximum 500MB allowed per user." },
         400,
       );
+    }
+
+    // Safety Inspection for Uploaded Media
+    const mime = getMimeType(filePath);
+    if (mime.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(filePath)) {
+      const scanResult = await scanImage(buffer, mime);
+      if (!scanResult.safe && scanResult.severity >= 2) {
+        const ip = extractClientIp(c);
+        const userAgent = c.req.header("user-agent");
+        const lockdown = await executeZeroToleranceLockdown({
+          ip,
+          user,
+          userAgent,
+          surface: "storage_upload",
+          fileName: filePath,
+          fileHash: scanResult.details?.hash,
+          mimeType: mime,
+          severity: scanResult.severity,
+          reason: scanResult.reason || "Uploaded image flagged by child safety scanner",
+        });
+        return c.json(lockdown.clientResponse, 400);
+      }
     }
 
     const { data, error } = await serverStorage.upload(
@@ -198,6 +222,32 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
 
       const assembledChunks = await Promise.all(readPromises);
       const completeBuffer = Buffer.concat(assembledChunks);
+
+      // Safety Inspection for Uploaded Media
+      const mime = getMimeType(filePath);
+      if (mime.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(filePath)) {
+        const scanResult = await scanImage(completeBuffer, mime);
+        if (!scanResult.safe && scanResult.severity >= 2) {
+          try {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+          } catch {}
+          const ip = extractClientIp(c);
+          const userAgent = c.req.header("user-agent");
+          const lockdown = await executeZeroToleranceLockdown({
+            ip,
+            user,
+            userAgent,
+            surface: "storage_chunked_upload",
+            fileName: filePath,
+            fileHash: scanResult.details?.hash,
+            mimeType: mime,
+            severity: scanResult.severity,
+            reason: scanResult.reason || "Uploaded chunked image flagged by child safety scanner",
+          });
+          return c.json(lockdown.clientResponse, 400);
+        }
+      }
+
       const { data, error } = await serverStorage.upload(
         bucket,
         filePath,

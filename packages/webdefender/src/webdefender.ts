@@ -568,7 +568,12 @@ export class DefenderClient {
       this.batchBuffer.push(payload);
       if (this.batchBuffer.length >= 500) {
         return this.flushBatchAsync();
-      } else if (!this.batchTimer && !this.config.edgeMode) {
+      } else if (this.config.edgeMode) {
+        // In edge mode (e.g. Cloudflare Workers) there are no persistent
+        // background timers. Flush immediately and return the promise so the
+        // caller can pass it to ctx.waitUntil for non-blocking telemetry.
+        return this.flushBatchAsync();
+      } else if (!this.batchTimer) {
         const intervalMs =
           Math.max(1, this.appConfig.batchLoggingIntervalSeconds || 20) * 1000;
         this.batchTimer = setTimeout(() => {

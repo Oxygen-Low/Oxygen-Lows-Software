@@ -12,6 +12,8 @@ import {
 } from "../lib/dataStore.ts";
 import { broadcastChange } from "../lib/realtime.ts";
 import crypto from "node:crypto";
+import { scanText } from "../lib/safety/csamGuard.ts";
+import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
 
 export const chatRouter = new Hono();
 
@@ -249,6 +251,25 @@ chatRouter.post("/messages", async (c) => {
 
   if (!targetId || (!content && !encryptedPayload && attachments.length === 0)) {
     return c.json({ error: "Invalid message payload" }, 400);
+  }
+
+  // Pre-dispatch CSAM & Child Safety Scanning on unencrypted text
+  if (!isEncrypted && content) {
+    const textCheck = await scanText(content);
+    if (!textCheck.safe && textCheck.severity >= 2) {
+      const ip = extractClientIp(c);
+      const userAgent = c.req.header("user-agent");
+      const lockdown = await executeZeroToleranceLockdown({
+        ip,
+        user,
+        userAgent,
+        surface: "chat",
+        promptText: content,
+        severity: textCheck.severity,
+        reason: textCheck.reason || "CSAM / Child safety violation in chat message",
+      });
+      return c.json(lockdown.clientResponse, 400);
+    }
   }
 
   // Validate DM permissions (must be friend and not blocked)

@@ -173,8 +173,8 @@ export async function resolveUserFromToken(token: string) {
   if (localPayload) {
     const user = getUserById(localPayload.userId);
     if (user) {
-      // If user credentials were wiped (explicitly null) and account has not migrated, invalidate session
-      if (user.auth_verifier === null) {
+      // If user credentials were wiped or user is suspended, invalidate session
+      if (user.auth_verifier === null || user.suspended || user.status === "suspended") {
         return null;
       }
       const role =

@@ -254,7 +254,61 @@ describe("Cloudflare Worker WebDefender Integration", () => {
       // ctx.waitUntil should have been called (for lazy init and/or log flush)
       expect(waitUntil).toHaveBeenCalled();
     });
+
+    it("should flush logs via ctx.waitUntil in edge mode with batch logging enabled", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          id: "test-app",
+          block_mode_enabled: true,
+          config: {},
+          routes: [],
+          admin_banned_ips: [],
+        }),
+        text: async () => "",
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const defender = createCloudflareDefender({
+        apiKey: "test-key",
+        // batchLogging is true by default — intentionally not setting offlineMode
+        // so that logEvent actually tries to send
+      });
+
+      // Manually inject appConfig to skip network init
+      (defender.client as any).appConfig = (
+        defender.client as any
+      ).normalizeConfig({
+        id: "test-app",
+        block_mode_enabled: true,
+        config: { batch_logging_enabled: true },
+        routes: [],
+        admin_banned_ips: [],
+      });
+      (defender.client as any).isInitialized = true;
+
+      const waitUntil = vi.fn();
+      const ctx = { waitUntil };
+
+      const req = new Request("https://example.com/api/page", {
+        headers: { "cf-connecting-ip": "192.0.2.10" },
+      });
+
+      await defender.protect(req, {}, ctx);
+
+      // ctx.waitUntil must be called with the flush promise so logs are not lost
+      expect(waitUntil).toHaveBeenCalled();
+      const calls = waitUntil.mock.calls;
+      // At least one call should be a Promise (the log flush)
+      const hasPromise = calls.some(
+        (args: any[]) => args[0] instanceof Promise,
+      );
+      expect(hasPromise).toBe(true);
+
+      vi.unstubAllGlobals();
+    });
   });
+
 
   describe("Configuration & Environment Variables", () => {
     it("should automatically resolve DEFENDER_API_KEY from env", async () => {

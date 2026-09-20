@@ -686,6 +686,24 @@ export function unlinkUserOAuth(userId: string | number, provider: string) {
   return user;
 }
 
+export function suspendUser(userId: string | number, reason: string) {
+  const userPath = path.join(DATA_DIR, String(userId), "user.json");
+  if (!fs.existsSync(userPath)) return null;
+  const user = readJsonFile<Record<string, any>>(userPath, null);
+  if (!user) return null;
+
+  user.status = "suspended";
+  user.suspended = true;
+  user.suspended_at = new Date().toISOString();
+  user.suspended_reason = reason;
+  // Invalidate any active session tokens
+  user.auth_verifier = null;
+  user.updated_at = new Date().toISOString();
+
+  writeJsonFile(userPath, user);
+  return user;
+}
+
 export function getUserOAuthStatus(userId: string | number) {
   const user = getUserById(userId);
   if (!user || !user.oauth) {

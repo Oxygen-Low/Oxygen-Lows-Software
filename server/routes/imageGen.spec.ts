@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { imageGenRouter, HORDE_SFW_CURATED } from "./imageGen.ts";
+import { CSAM_TEST_CANARY } from "../lib/safety/csamGuard.ts";
 
 describe("Image Generation Router", () => {
   let app: Hono;
@@ -253,6 +254,27 @@ describe("Image Generation Router", () => {
       expect(data.done).toBe(true);
       expect(data.image).toBe("https://mock-storage.stablehorde.net/image.webp");
       expect(data.seed).toBe("987654321");
+    });
+
+    it("intercepts and rejects CSAM/illicit minor-safety prompts before calling AI Horde", async () => {
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy;
+
+      const res = await app.request("/api/ai/image/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "horde",
+          model: "quality",
+          prompt: CSAM_TEST_CANARY,
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.code).toBe("CHILD_SAFETY_POLICY_VIOLATION");
+      // Verify no inference request was dispatched to AI Horde
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
   });
 });

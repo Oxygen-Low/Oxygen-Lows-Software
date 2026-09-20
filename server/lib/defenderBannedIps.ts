@@ -1,4 +1,5 @@
-import { getTableRows } from "./dataStore.ts";
+import { randomUUID } from "node:crypto";
+import { getTableRows, saveTableRows } from "./dataStore.ts";
 
 /** A reserved datastore owner keeps platform bans separate from customer data. */
 export const DEFENDER_BANS_OWNER_ID = "__system__";
@@ -30,4 +31,36 @@ export function publicDefenderBannedIp(record: DefenderBannedIp) {
     reason: record.reason,
     banned_at: record.created_at,
   };
+}
+
+export function addDefenderBannedIp(
+  ip: string,
+  reason: string,
+  createdBy: string = "__system__",
+): DefenderBannedIp {
+  const records = getTableRows("defender_banned_ips", DEFENDER_BANS_OWNER_ID);
+  const cleanIp = (ip || "").trim().toLowerCase();
+  const existing = records.find(
+    (record: DefenderBannedIp) =>
+      record.active !== false && record.ip.toLowerCase() === cleanIp,
+  );
+  if (existing) {
+    return existing;
+  }
+
+  const now = new Date().toISOString();
+  const newBan: DefenderBannedIp = {
+    id: randomUUID(),
+    ip: cleanIp,
+    reason: reason.trim(),
+    active: true,
+    created_by: createdBy,
+    created_at: now,
+    updated_at: now,
+    revoked_at: null,
+    revoked_by: null,
+  };
+
+  saveTableRows("defender_banned_ips", DEFENDER_BANS_OWNER_ID, [newBan, ...records]);
+  return newBan;
 }
