@@ -18,11 +18,11 @@ import {
   normalizeGameId,
 } from "./supportedGames";
 
-import {
-  type GameSyncConfigRecord,
-  type GameSnapshotRecord,
-  type GameConflictRecord,
-  type GameConflictVersion,
+import type {
+  GameSyncConfigRecord,
+  GameSnapshotRecord,
+  GameConflictRecord,
+  GameConflictVersion,
 } from "../../server/lib/dataStore";
 
 import { db } from "./db";

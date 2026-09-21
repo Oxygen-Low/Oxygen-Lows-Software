@@ -131,6 +131,16 @@ describe("OpenAI Moderation Engine", () => {
       );
     });
 
+    it("blocks direct violent threats via baseline heuristic even if API key is missing", async () => {
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_MODERATION_API_KEY;
+
+      const res = await moderateText("I'm going to hunt you down and harm you.");
+      expect(res.allowed).toBe(false);
+      expect(res.category).toBe("harassment/threatening");
+      expect(res.reason).toContain("threat of violence");
+    });
+
     it("successfully evaluates flagged text from OpenAI response", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       vi.spyOn(global, "fetch").mockResolvedValueOnce({

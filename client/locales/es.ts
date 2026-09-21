@@ -2700,5 +2700,14 @@ export const es = {
     categoryLabel: "Categoría Detectada",
     reasonLabel: "Motivo de la Política",
     clear: "Limpiar",
+    cloudActive: "Moderación en la nube de OpenAI: Conectada y activa (omni-moderation-latest)",
+    cloudInactive: "Clave de API de moderación de OpenAI no detectada",
+    cloudInactiveHelp:
+      "El servidor Node.js no puede detectar OPENAI_API_KEY. Si la configuró en Plesk Node.js, haga clic en 'Reiniciar aplicación' en el panel de Plesk Node.js para recargar las variables de entorno en el proceso en ejecución.",
+    useTemporaryKey: "O ingrese una clave de API de OpenAI temporal para realizar pruebas:",
+    temporaryKeyPlaceholder: "Pegar clave de API de OpenAI (sk-...)",
+    keyActiveBadge: "Usando clave de API de sesión",
+    cloudBypassedNotice:
+      "Aviso: La moderación en la nube de OpenAI se omitió porque el servidor no detectó OPENAI_API_KEY. Solo se evaluaron las comprobaciones locales.",
   },
 } as const;

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, Shield, Lock, Users, Sparkles, Radio } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { ChatProvider } from "@/contexts/ChatContext";
+
 export function ChatApp() {
   const { session } = useAuth();
 
@@ -49,11 +51,13 @@ export function ChatApp() {
   }
 
   return (
-    <div className="flex w-full h-[780px] bg-slate-950/90 border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-2xl">
-      <ServerList />
-      <ChannelList />
-      <MessageArea />
-      <IncomingCallModal />
-    </div>
+    <ChatProvider>
+      <div className="flex w-full h-[780px] bg-slate-950/90 border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-2xl">
+        <ServerList />
+        <ChannelList />
+        <MessageArea />
+        <IncomingCallModal />
+      </div>
+    </ChatProvider>
   );
 }

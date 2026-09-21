@@ -2683,5 +2683,14 @@ notificationsTitle: "通知",
     categoryLabel: "検出カテゴリ",
     reasonLabel: "ポリシー理由",
     clear: "クリア",
+    cloudActive: "OpenAI クラウドモデレーション: 接続済み・アクティブ (omni-moderation-latest)",
+    cloudInactive: "OpenAI モデレーション API キーが検出されません",
+    cloudInactiveHelp:
+      "Node.js サーバーで OPENAI_API_KEY が検出されません。Plesk Node.js で設定した場合は、Plesk Node.js パネルの「アプリを再起動」をクリックして環境変数を実行中のプロセスに再読み込みしてください。",
+    useTemporaryKey: "またはテスト用に一時的な OpenAI API キーを入力してください:",
+    temporaryKeyPlaceholder: "OpenAI API キーを貼り付け (sk-...)",
+    keyActiveBadge: "セッション API キーを使用中",
+    cloudBypassedNotice:
+      "注意: サーバーで OPENAI_API_KEY が検出されなかったため、OpenAI クラウドモデレーションはスキップされました。ローカルチェックのみ評価されました。",
   },
 } as const;

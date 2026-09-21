@@ -2660,5 +2660,14 @@ notificationsTitle: "알림",
     categoryLabel: "감지된 카테고리",
     reasonLabel: "정책 사유",
     clear: "지우기",
+    cloudActive: "OpenAI 클라우드 검수: 연결됨 및 활성 (omni-moderation-latest)",
+    cloudInactive: "OpenAI 검수 API 키가 감지되지 않음",
+    cloudInactiveHelp:
+      "Node.js 서버가 OPENAI_API_KEY를 감지할 수 없습니다. Plesk Node.js에서 설정한 경우 실행 중인 프로세스에 환경 변수를 다시 로드하려면 Plesk Node.js 패널에서 '앱 재시작'을 클릭하세요.",
+    useTemporaryKey: "또는 테스트를 위해 임시 OpenAI API 키를 입력하세요:",
+    temporaryKeyPlaceholder: "OpenAI API 키 붙여넣기 (sk-...)",
+    keyActiveBadge: "세션 API 키 사용 중",
+    cloudBypassedNotice:
+      "알림: 서버에서 OPENAI_API_KEY가 감지되지 않아 OpenAI 클라우드 검수를 건너뛰었습니다. 로컬 검사만 평가되었습니다.",
   },
 } as const;

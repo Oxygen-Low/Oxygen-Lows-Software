@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense, lazy } from "react";
 import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,12 +28,37 @@ import {
   Swords,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MinesweeperApp } from "@/components/apps/Minesweeper";
-import { SolitaireApp } from "@/components/apps/Solitaire";
-import { ChessApp } from "@/components/apps/Chess";
-import { PokerApp } from "@/components/apps/Poker";
-import { SudokuApp } from "@/components/apps/Sudoku";
-import { WordSearchApp } from "@/components/apps/WordSearch";
+
+const MinesweeperApp = lazy(() =>
+  import("@/components/apps/Minesweeper").then((m) => ({
+    default: m.MinesweeperApp,
+  })),
+);
+const SolitaireApp = lazy(() =>
+  import("@/components/apps/Solitaire").then((m) => ({
+    default: m.SolitaireApp,
+  })),
+);
+const ChessApp = lazy(() =>
+  import("@/components/apps/Chess").then((m) => ({
+    default: m.ChessApp,
+  })),
+);
+const PokerApp = lazy(() =>
+  import("@/components/apps/Poker").then((m) => ({
+    default: m.PokerApp,
+  })),
+);
+const SudokuApp = lazy(() =>
+  import("@/components/apps/Sudoku").then((m) => ({
+    default: m.SudokuApp,
+  })),
+);
+const WordSearchApp = lazy(() =>
+  import("@/components/apps/WordSearch").then((m) => ({
+    default: m.WordSearchApp,
+  })),
+);
 
 export type GameMode = "Multiplayer" | "Singleplayer";
 export type GameGenre =
@@ -403,7 +428,15 @@ export default function Games() {
                   "pointer-events-none select-none opacity-20 blur-sm transition-all",
               )}
             >
-              <AppComponent />
+              <Suspense
+                fallback={
+                  <div className="flex h-64 items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
+                  </div>
+                }
+              >
+                <AppComponent />
+              </Suspense>
             </div>
           </div>
         </div>

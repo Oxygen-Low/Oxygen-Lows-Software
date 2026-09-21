@@ -55,6 +55,28 @@ interface ThemeProviderProps {
   children: ReactNode;
 }
 
+const GOOGLE_FONT_URLS: Record<string, string> = {
+  "font-indie": "https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap",
+  "font-zilla": "https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;700&display=swap",
+  "font-vt323": "https://fonts.googleapis.com/css2?family=VT323&display=swap",
+  "font-cabin": "https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&display=swap",
+  "font-londrina": "https://fonts.googleapis.com/css2?family=Londrina+Sketch&display=swap",
+};
+
+function ensureGoogleFontLoaded(fontClass: string) {
+  if (typeof document === "undefined") return;
+  const url = GOOGLE_FONT_URLS[fontClass];
+  if (!url) return;
+  const id = `gfont-${fontClass}`;
+  if (!document.getElementById(id)) {
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = url;
+    document.head.appendChild(link);
+  }
+}
+
 export function hexToHSL(hex: string): { h: number; s: number; l: number } {
   let r = 0,
     g = 0,
@@ -333,6 +355,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         const validatedFont = VALID_FONTS.includes(newFont)
           ? newFont
           : "font-zilla";
+        ensureGoogleFontLoaded(validatedFont);
         document.documentElement.classList.add(validatedFont);
       }
     },

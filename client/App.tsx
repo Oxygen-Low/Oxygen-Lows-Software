@@ -82,7 +82,6 @@ const License = lazyWithRetry(() => import("./pages/License"));
 const Download = lazyWithRetry(() => import("./pages/Download"));
 const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { ChatProvider } from "./contexts/ChatContext";
 
 const queryClient = new QueryClient();
 
@@ -93,10 +92,9 @@ const App = () => (
         <ThemeProvider>
           <BrowserRouter>
             <MusicProvider>
-              <ChatProvider>
-                <Toaster />
-                <Sonner />
-                <ErrorBoundary>
+              <Toaster />
+              <Sonner />
+              <ErrorBoundary>
                   <Suspense
                     fallback={
                       <div className="flex h-screen items-center justify-center">
@@ -294,9 +292,8 @@ const App = () => (
                   </Routes>
                 </Suspense>
               </ErrorBoundary>
-            </ChatProvider>
-          </MusicProvider>
-        </BrowserRouter>
+            </MusicProvider>
+          </BrowserRouter>
         </ThemeProvider>
       </LanguageProvider>
     </TooltipProvider>

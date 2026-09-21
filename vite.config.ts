@@ -37,9 +37,9 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: (id) => {
           if (
-            id.includes("node_modules/react") ||
-            id.includes("node_modules/react-dom") ||
-            id.includes("node_modules/react-router-dom")
+            /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(
+              id,
+            )
           ) {
             return "vendor-react";
           }
@@ -54,6 +54,46 @@ export default defineConfig(({ mode }) => ({
             id.includes("node_modules/@react-three")
           ) {
             return "vendor-three";
+          }
+          if (
+            id.includes("node_modules/leaflet") ||
+            id.includes("node_modules/react-leaflet")
+          ) {
+            return "vendor-leaflet";
+          }
+          if (
+            id.includes("node_modules/chess.js") ||
+            id.includes("node_modules/react-chessboard")
+          ) {
+            return "vendor-chess";
+          }
+          if (
+            id.includes("node_modules/diff2html") ||
+            id.includes("node_modules/diff")
+          ) {
+            return "vendor-diff";
+          }
+          if (
+            id.includes("node_modules/react-syntax-highlighter") ||
+            id.includes("node_modules/refractor") ||
+            id.includes("node_modules/prismjs")
+          ) {
+            return "vendor-syntax";
+          }
+          if (
+            id.includes("node_modules/react-markdown") ||
+            id.includes("node_modules/micromark") ||
+            id.includes("node_modules/mdast-util-") ||
+            id.includes("node_modules/unist-util-") ||
+            id.includes("node_modules/remark-gfm")
+          ) {
+            return "vendor-markdown";
+          }
+          if (
+            id.includes("node_modules/@monaco-editor") ||
+            id.includes("node_modules/monaco-editor")
+          ) {
+            return "vendor-monaco";
           }
         },
       },

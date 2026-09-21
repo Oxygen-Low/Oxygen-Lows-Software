@@ -23,6 +23,13 @@ import {
   Download,
   Maximize2,
   Layers,
+  Wrench,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  RotateCw,
+  Square,
+  ArrowUp,
 } from "lucide-react";
 import {
   fetchImageModels,
@@ -351,9 +358,7 @@ const ChatMessage = React.memo(
         <div className="flex gap-4 w-full mt-4 animate-[fade-in_0.3s_ease-out_0.2s_both] ai-message-container mb-4 opacity-80 hover:opacity-100 transition-opacity">
           <div className="shrink-0 pt-7">
             <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[16px] text-slate-400 font-family-material">
-                build
-              </span>
+              <Wrench className="w-4 h-4 text-slate-400" />
             </div>
           </div>
           <div className="flex flex-col gap-2 max-w-[85%] w-full">
@@ -468,14 +473,12 @@ const ChatMessage = React.memo(
                         </>
                       )}
                     </button>
-                    <span
+                    <ChevronDown
                       className={cn(
-                        "material-symbols-outlined text-[18px] transition-transform duration-200 font-family-material",
+                        "w-4 h-4 text-slate-400 transition-transform duration-200",
                         reasoningExpanded && "rotate-180",
                       )}
-                    >
-                      expand_more
-                    </span>
+                    />
                   </div>
                 </div>
                 {reasoningExpanded && (
@@ -664,9 +667,7 @@ const ChatMessage = React.memo(
                   disabled={activeSiblingIndex === 0}
                   className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[16px] font-family-material">
-                    chevron_left
-                  </span>
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="font-mono select-none">
                   {activeSiblingIndex + 1} / {siblings.length}
@@ -686,11 +687,11 @@ const ChatMessage = React.memo(
                       : "Regenerate"
                   }
                 >
-                  <span className="material-symbols-outlined text-[16px] font-family-material">
-                    {activeSiblingIndex < siblings.length - 1
-                      ? "chevron_right"
-                      : "refresh"}
-                  </span>
+                  {activeSiblingIndex < siblings.length - 1 ? (
+                    <ChevronRight className="w-4 h-4" />
+                  ) : (
+                    <RotateCw className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             )}
@@ -2688,10 +2689,6 @@ export function ChatbotApp() {
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        
-        .font-family-material {
-            font-family: 'Material Symbols Outlined';
-        }
       `}</style>
 
       <InteractiveBackground />
@@ -2994,9 +2991,7 @@ export function ChatbotApp() {
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white/70 transition-all duration-200"
                     title="Toggle Options"
                   >
-                    <span className="material-symbols-outlined text-[20px] font-family-material">
-                      add
-                    </span>
+                    <Plus className="w-5 h-5 text-white/70" />
                   </button>
                   <div
                     className={cn(
@@ -3215,9 +3210,7 @@ export function ChatbotApp() {
                           (m) => m.id === chatImageModel,
                         )?.name || "SDXL 1.0 (Horde)"}
                       </span>
-                      <span className="material-symbols-outlined text-[16px] font-family-material">
-                        expand_more
-                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-cyan-400" />
                     </button>
                     <div
                       className={cn(
@@ -3295,9 +3288,7 @@ export function ChatbotApp() {
                         )[0]
                       }
                     </span>
-                    <span className="material-symbols-outlined text-[18px] font-family-material">
-                      expand_more
-                    </span>
+                    <ChevronDown className="w-4 h-4 text-white/70" />
                   </button>
                   <div
                     className={cn(
@@ -3505,9 +3496,7 @@ export function ChatbotApp() {
                     className="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center text-red-400 transition-colors duration-200 mr-2 flex-shrink-0"
                     aria-label="Stop generation"
                   >
-                    <span className="material-symbols-outlined text-[20px] font-family-material">
-                      stop
-                    </span>
+                    <Square className="w-4 h-4 fill-current" />
                   </button>
                 ) : (
                   <button
@@ -3516,9 +3505,7 @@ export function ChatbotApp() {
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white transition-colors duration-200 mr-2 flex-shrink-0 disabled:opacity-50"
                     aria-label="Send message"
                   >
-                    <span className="material-symbols-outlined text-[20px] font-family-material">
-                      arrow_upward
-                    </span>
+                    <ArrowUp className="w-5 h-5" />
                   </button>
                 )}
               </div>

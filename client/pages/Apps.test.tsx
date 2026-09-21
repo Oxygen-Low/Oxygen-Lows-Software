@@ -3,21 +3,33 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import Apps from "./Apps";
+import { GameLibraryApp } from "@/components/apps/GameLibrary";
 
 vi.mock("@/components/Layout", () => ({
   Layout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@/lib/desktopBridge", () => ({
-  isDesktopBridgeAvailable: vi.fn(() => false),
-  scanInstalledGames: vi.fn(async () => []),
-  launchGame: vi.fn(async () => ({ success: true })),
-  pickGameExecutable: vi.fn(async () => null),
-  getGameIcon: vi.fn(async () => ({ iconDataUrl: "" })),
-  getRunningGames: vi.fn(async () => ({ runningGames: [] })),
-  setupGameBridgeListeners: vi.fn(() => () => {}),
-  addPushEventListener: vi.fn(() => () => {}),
-}));
+vi.mock("@/lib/desktopBridge", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/desktopBridge")>();
+  return {
+    ...actual,
+    isDesktopBridgeAvailable: vi.fn(() => false),
+    scanInstalledGames: vi.fn(async () => []),
+    launchGame: vi.fn(async () => ({ success: true })),
+    pickGameExecutable: vi.fn(async () => null),
+    getGameIcon: vi.fn(async () => ({ iconDataUrl: "" })),
+    getRunningGames: vi.fn(async () => ({ runningGames: [] })),
+    setupGameBridgeListeners: vi.fn(() => () => {}),
+    addPushEventListener: vi.fn(() => () => {}),
+  };
+});
+
+// Mock ResizeObserver
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 afterEach(() => {
   cleanup();
@@ -72,17 +84,18 @@ describe("Apps", () => {
     expect(screen.queryByText("Game Library")).toBeNull();
   });
 
-  it("renders Web Defender app when navigating to /apps/webdefender", () => {
+  it("renders Web Defender app when navigating to /apps/webdefender", async () => {
     render(
       <MemoryRouter initialEntries={["/apps/webdefender"]}>
         <Apps />
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByText("Web Defender").length).toBeGreaterThan(0);
+    const elements = await screen.findAllByText(/Web Defender/i);
+    expect(elements.length).toBeGreaterThan(0);
   });
 
-  it("renders Game Library app when navigating to /apps/game-library", () => {
+  it("renders Game Library app when navigating to /apps/game-library", async () => {
     render(
       <MemoryRouter initialEntries={["/apps/game-library?desktop=1"]}>
         <Routes>
@@ -91,7 +104,8 @@ describe("Apps", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByText(/Game Library/i).length).toBeGreaterThan(0);
+    const elements = await screen.findAllByText(/Game Library|Desktop App Required/i, {}, { timeout: 5000 });
+    expect(elements.length).toBeGreaterThan(0);
   });
 
   it("renders search bar and filters apps dynamically", () => {

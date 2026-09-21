@@ -2589,5 +2589,14 @@ notificationsTitle: "通知",
     categoryLabel: "触发分类",
     reasonLabel: "政策原因",
     clear: "清空",
+    cloudActive: "OpenAI 云端审核：已连接并处于活动状态 (omni-moderation-latest)",
+    cloudInactive: "未检测到 OpenAI 审核 API 密钥",
+    cloudInactiveHelp:
+      "Node.js 服务器未检测到 OPENAI_API_KEY。如果您在 Plesk Node.js 中进行了设置，请在 Plesk Node.js 面板中单击“重启应用”以将环境变量重新加载到运行中的进程。",
+    useTemporaryKey: "或输入用于测试的临时 OpenAI API 密钥：",
+    temporaryKeyPlaceholder: "粘贴 OpenAI API 密钥 (sk-...)",
+    keyActiveBadge: "正在使用会话 API 密钥",
+    cloudBypassedNotice:
+      "提示：由于服务器未检测到 OPENAI_API_KEY，已跳过 OpenAI 云端审核。仅评估了本地安全规则。",
   },
 } as const;

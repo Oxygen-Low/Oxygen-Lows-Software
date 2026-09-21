@@ -2688,5 +2688,14 @@ notificationsTitle: "Уведомления",
     categoryLabel: "Обнаруженная категория",
     reasonLabel: "Причина политики",
     clear: "Очистить",
+    cloudActive: "Облачная модерация OpenAI: подключена и активна (omni-moderation-latest)",
+    cloudInactive: "API-ключ модерации OpenAI не обнаружен",
+    cloudInactiveHelp:
+      "Сервер Node.js не может обнаружить OPENAI_API_KEY. Если вы указали его в Plesk Node.js, нажмите «Перезапустить приложение» в панели Plesk Node.js, чтобы перезагрузить переменные среды в работающий процесс.",
+    useTemporaryKey: "Или введите временный API-ключ OpenAI для тестирования:",
+    temporaryKeyPlaceholder: "Вставьте API-ключ OpenAI (sk-...)",
+    keyActiveBadge: "Используется ключ сессии",
+    cloudBypassedNotice:
+      "Примечание: Облачная модерация OpenAI была пропущена, так как OPENAI_API_KEY не обнаружен сервером. Были проверены только локальные фильтры.",
   },
 } as const;

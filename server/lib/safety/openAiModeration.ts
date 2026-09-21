@@ -3,6 +3,9 @@ import {
   type EnforcementParams,
   type EnforcementResult,
 } from "./enforcement.ts";
+import dotenv from "dotenv";
+import path from "node:path";
+import fs from "node:fs";
 
 export const SELF_HARM_HELP_URL = "https://findahelpline.com/";
 
@@ -14,6 +17,8 @@ export interface OpenAiModerationResult {
   redirectUrl?: string;
   reason?: string;
   details?: Record<string, any>;
+  bypassed?: boolean;
+  apiError?: string;
 }
 
 export interface ModerationClientResponse {
@@ -101,29 +106,66 @@ export function evaluateModerationCategories(
 }
 
 /**
+ * Direct violent threat heuristics as an immediate baseline guard.
+ * Ensures severe threats of harm or hunting someone down are flagged as harassment/threatening
+ * even if cloud moderation is temporarily offline or unconfigured.
+ */
+const DIRECT_THREAT_PATTERNS = [
+  /\b(hunt|track|stalk)\s+(you|u)\s+down\b/i,
+  /\b(going\s+to|gonna|will)\s+(kill|murder|slaughter|harm|shoot|stab)\s+(you|u)\b/i,
+  /\bi('ll|\s+will)\s+(kill|murder|harm|end)\s+(you|u)\b/i,
+];
+
+/**
  * Returns the effective OpenAI API key from environment variables or optional override.
  * Checks OPENAI_MODERATION_API_KEY, OPENAI_API_KEY, and case-insensitive matches in process.env.
+ * If not found, attempts to locate and load a .env file from common deployment paths.
  */
 export function getOpenAiApiKey(overrideKey?: string): string {
   if (overrideKey && typeof overrideKey === "string" && overrideKey.trim().length > 0) {
     return overrideKey.trim().replace(/^['"]|['"]$/g, "");
   }
 
-  // Exact matches
-  const direct = process.env.OPENAI_MODERATION_API_KEY || process.env.OPENAI_API_KEY;
-  if (direct && typeof direct === "string" && direct.trim().length > 0) {
-    return direct.trim().replace(/^['"]|['"]$/g, "");
+  // Helper to extract candidate key from current process.env
+  const extractFromEnv = (): string => {
+    const direct = process.env.OPENAI_MODERATION_API_KEY || process.env.OPENAI_API_KEY;
+    if (direct && typeof direct === "string" && direct.trim().length > 0) {
+      return direct.trim().replace(/^['"]|['"]$/g, "");
+    }
+
+    for (const [key, val] of Object.entries(process.env)) {
+      if (
+        typeof val === "string" &&
+        val.trim().length > 0 &&
+        (/^openai[_-]?(moderation[_-]?)?api[_-]?key$/i.test(key) || /^openai[_-]?key$/i.test(key))
+      ) {
+        return val.trim().replace(/^['"]|['"]$/g, "");
+      }
+    }
+    return "";
+  };
+
+  const keyFromEnv = extractFromEnv();
+  if (keyFromEnv) {
+    return keyFromEnv;
   }
 
-  // Case-insensitive / alias scan across process.env
-  for (const [key, val] of Object.entries(process.env)) {
-    if (
-      typeof val === "string" &&
-      val.trim().length > 0 &&
-      (/^openai[_-]?(moderation[_-]?)?api[_-]?key$/i.test(key) || /^openai[_-]?key$/i.test(key))
-    ) {
-      return val.trim().replace(/^['"]|['"]$/g, "");
+  // Fallback: try loading .env if not yet loaded in process.env (e.g. Plesk / PM2 custom cwd)
+  try {
+    const possibleEnvPaths = [
+      path.resolve(process.cwd(), ".env"),
+      path.resolve(process.cwd(), "../.env"),
+    ];
+
+    for (const envPath of possibleEnvPaths) {
+      if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath, override: false });
+        const found = extractFromEnv();
+        if (found) return found;
+      }
     }
+  } catch {
+    // Non-fatal, continue with empty key
   }
 
   return "";
@@ -149,7 +191,7 @@ export async function checkOpenAiModeration(
     console.warn(
       "[OpenAI Moderation] OPENAI_API_KEY is not configured; failing open (allowing request).",
     );
-    return { allowed: true };
+    return { allowed: true, bypassed: true, reason: "OPENAI_API_KEY is not configured" };
   }
 
   try {
@@ -166,10 +208,19 @@ export async function checkOpenAiModeration(
     });
 
     if (!res.ok) {
+      const errText =
+        typeof (res as any).text === "function"
+          ? await (res as any).text().catch(() => "")
+          : "";
+      const errorMsg = errText ? `HTTP ${res.status}: ${errText}` : `HTTP ${res.status}`;
       console.warn(
-        `[OpenAI Moderation] API returned HTTP ${res.status}; failing open with warning.`,
+        `[OpenAI Moderation] API returned ${errorMsg}; failing open with warning.`,
       );
-      return { allowed: true };
+      return {
+        allowed: true,
+        bypassed: true,
+        apiError: `OpenAI API returned ${errorMsg}`,
+      };
     }
 
     const data: any = await res.json();
@@ -187,9 +238,13 @@ export async function checkOpenAiModeration(
     }
 
     return { allowed: true, details: data };
-  } catch (err) {
+  } catch (err: any) {
     console.warn("[OpenAI Moderation] Request failed; failing open with warning:", err);
-    return { allowed: true };
+    return {
+      allowed: true,
+      bypassed: true,
+      apiError: err?.message || String(err),
+    };
   }
 }
 
@@ -202,6 +257,17 @@ export async function moderateText(
 ): Promise<OpenAiModerationResult> {
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     return { allowed: true };
+  }
+
+  // Fast baseline check for direct violent threats
+  for (const pattern of DIRECT_THREAT_PATTERNS) {
+    if (pattern.test(text)) {
+      return {
+        allowed: false,
+        category: "harassment/threatening",
+        reason: "Matched prohibited threat of violence or physical harm",
+      };
+    }
   }
 
   return checkOpenAiModeration(text, overrideApiKey);

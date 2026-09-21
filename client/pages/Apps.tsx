@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense, lazy } from "react";
 import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,30 +40,127 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { FileCompressorApp } from "@/components/apps/FileCompressor";
-import { FileConverterApp } from "@/components/apps/FileConverter";
-import { FileTrimmerApp } from "@/components/apps/FileTrimmer";
-import { ChatbotApp } from "@/components/apps/Chatbot";
-import { ImageGeneratorApp } from "@/components/apps/ImageGenerator";
-import { PublicAssetsApp } from "@/components/apps/PublicAssets";
-import { DataSaveApp } from "@/components/apps/DataSave";
-import { QRCodeGeneratorApp } from "@/components/apps/QRCodeGenerator";
-import { LLMAgentApp } from "@/components/apps/LLMAgent";
-import { VPNApp } from "@/components/apps/VPN";
-import { Base64EncoderApp } from "@/components/apps/Base64Encoder";
-import { JsonFormatterApp } from "@/components/apps/JsonFormatter";
-import { DefenderApp } from "@/components/apps/WebDefender";
-import { PasswordManagerApp } from "@/components/apps/PasswordManager";
-import { GameLibraryApp } from "@/components/apps/GameLibrary";
-import { SurveysApp } from "@/components/apps/Surveys";
-import { ImageStudioApp } from "@/components/apps/ImageStudio";
-import { PixelArtStudioApp } from "@/components/apps/PixelArtStudio";
-import { ThreeDStudioApp } from "@/components/studio3d/ThreeDStudioApp";
-import { WebBrowserApp } from "@/components/apps/WebBrowser";
-import { WebmasterApp } from "@/components/apps/Webmaster";
-import { DeveloperAuthApp } from "@/components/apps/DeveloperAuth";
-import { ChatApp } from "@/components/apps/Chat";
-import { ModelsApp } from "@/components/apps/Models";
+
+const FileCompressorApp = lazy(() =>
+  import("@/components/apps/FileCompressor").then((m) => ({
+    default: m.FileCompressorApp,
+  })),
+);
+const FileConverterApp = lazy(() =>
+  import("@/components/apps/FileConverter").then((m) => ({
+    default: m.FileConverterApp,
+  })),
+);
+const FileTrimmerApp = lazy(() =>
+  import("@/components/apps/FileTrimmer").then((m) => ({
+    default: m.FileTrimmerApp,
+  })),
+);
+const ChatbotApp = lazy(() =>
+  import("@/components/apps/Chatbot").then((m) => ({
+    default: m.ChatbotApp,
+  })),
+);
+const ImageGeneratorApp = lazy(() =>
+  import("@/components/apps/ImageGenerator").then((m) => ({
+    default: m.ImageGeneratorApp,
+  })),
+);
+const PublicAssetsApp = lazy(() =>
+  import("@/components/apps/PublicAssets").then((m) => ({
+    default: m.PublicAssetsApp,
+  })),
+);
+const DataSaveApp = lazy(() =>
+  import("@/components/apps/DataSave").then((m) => ({
+    default: m.DataSaveApp,
+  })),
+);
+const QRCodeGeneratorApp = lazy(() =>
+  import("@/components/apps/QRCodeGenerator").then((m) => ({
+    default: m.QRCodeGeneratorApp,
+  })),
+);
+const LLMAgentApp = lazy(() =>
+  import("@/components/apps/LLMAgent").then((m) => ({
+    default: m.LLMAgentApp,
+  })),
+);
+const VPNApp = lazy(() =>
+  import("@/components/apps/VPN").then((m) => ({
+    default: m.VPNApp,
+  })),
+);
+const Base64EncoderApp = lazy(() =>
+  import("@/components/apps/Base64Encoder").then((m) => ({
+    default: m.Base64EncoderApp,
+  })),
+);
+const JsonFormatterApp = lazy(() =>
+  import("@/components/apps/JsonFormatter").then((m) => ({
+    default: m.JsonFormatterApp,
+  })),
+);
+const DefenderApp = lazy(() =>
+  import("@/components/apps/WebDefender").then((m) => ({
+    default: m.DefenderApp,
+  })),
+);
+const PasswordManagerApp = lazy(() =>
+  import("@/components/apps/PasswordManager").then((m) => ({
+    default: m.PasswordManagerApp,
+  })),
+);
+const GameLibraryApp = lazy(() =>
+  import("@/components/apps/GameLibrary").then((m) => ({
+    default: m.GameLibraryApp,
+  })),
+);
+const SurveysApp = lazy(() =>
+  import("@/components/apps/Surveys").then((m) => ({
+    default: m.SurveysApp,
+  })),
+);
+const ImageStudioApp = lazy(() =>
+  import("@/components/apps/ImageStudio").then((m) => ({
+    default: m.ImageStudioApp,
+  })),
+);
+const PixelArtStudioApp = lazy(() =>
+  import("@/components/apps/PixelArtStudio").then((m) => ({
+    default: m.PixelArtStudioApp,
+  })),
+);
+const ThreeDStudioApp = lazy(() =>
+  import("@/components/studio3d/ThreeDStudioApp").then((m) => ({
+    default: m.ThreeDStudioApp,
+  })),
+);
+const WebBrowserApp = lazy(() =>
+  import("@/components/apps/WebBrowser").then((m) => ({
+    default: m.WebBrowserApp,
+  })),
+);
+const WebmasterApp = lazy(() =>
+  import("@/components/apps/Webmaster").then((m) => ({
+    default: m.WebmasterApp,
+  })),
+);
+const DeveloperAuthApp = lazy(() =>
+  import("@/components/apps/DeveloperAuth").then((m) => ({
+    default: m.DeveloperAuthApp,
+  })),
+);
+const ChatApp = lazy(() =>
+  import("@/components/apps/Chat").then((m) => ({
+    default: m.ChatApp,
+  })),
+);
+const ModelsApp = lazy(() =>
+  import("@/components/apps/Models").then((m) => ({
+    default: m.ModelsApp,
+  })),
+);
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -689,7 +786,15 @@ export default function Apps() {
                   "pointer-events-none select-none opacity-20 blur-sm transition-all",
               )}
             >
-              <AppComponent />
+              <Suspense
+                fallback={
+                  <div className="flex h-64 items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
+                  </div>
+                }
+              >
+                <AppComponent />
+              </Suspense>
             </div>
           </div>
         </div>

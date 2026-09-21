@@ -119,7 +119,7 @@ contentTestRouter.post("/", async (c) => {
     }
 
     // Step 2: OpenAI Multimodal Moderation
-    const openAiTextMod = await moderateText(text, apiKeyOverride);
+    var openAiTextMod = await moderateText(text, apiKeyOverride);
     if (!openAiTextMod.allowed) {
       const enforcement = await handleModerationEnforcement(openAiTextMod, {
         ip,
@@ -186,7 +186,7 @@ contentTestRouter.post("/", async (c) => {
     }
 
     // Step 2: OpenAI Image Moderation
-    const openAiImgMod = await moderateImage(imageBuf, mime, apiKeyOverride);
+    var openAiImgMod = await moderateImage(imageBuf, mime, apiKeyOverride);
     if (!openAiImgMod.allowed) {
       const enforcement = await handleModerationEnforcement(openAiImgMod, {
         ip,
@@ -210,11 +210,16 @@ contentTestRouter.post("/", async (c) => {
     }
   }
 
+  const detectedApiError = openAiTextMod?.apiError || openAiImgMod?.apiError;
+
   return c.json({
     safe: true,
     openAiConfigured: isCloudActive,
+    apiError: detectedApiError,
     message: isCloudActive
-      ? "Content passed all safety checks (CSAM Guard + OpenAI Multimodal Moderation)."
-      : "Content passed local CSAM check. Notice: OpenAI cloud moderation was bypassed because OPENAI_API_KEY is not detected by Node.",
+      ? detectedApiError
+        ? `Content passed local checks, but OpenAI API reported: ${detectedApiError}`
+        : "Content passed all safety checks (CSAM Guard + OpenAI Multimodal Moderation)."
+      : "Content passed local safety check. Notice: OpenAI cloud moderation was bypassed because OPENAI_API_KEY is not detected by Node.",
   });
 });

@@ -41,6 +41,7 @@ describe("Content Moderation Test Route (/contenttest & /api/contenttest)", () =
 
   it("passes completely benign text with safe: true", async () => {
     vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue(mockUser);
+    vi.spyOn(openAiMod, "isOpenAiConfigured").mockReturnValue(true);
     vi.spyOn(openAiMod, "moderateText").mockResolvedValue({ allowed: true });
 
     const res = await app.request("/api/contenttest", {
@@ -55,6 +56,7 @@ describe("Content Moderation Test Route (/contenttest & /api/contenttest)", () =
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.safe).toBe(true);
+    expect(json.openAiConfigured).toBe(true);
     expect(json.message).toContain("passed all safety checks");
   });
 

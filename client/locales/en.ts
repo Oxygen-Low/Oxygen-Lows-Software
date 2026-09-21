@@ -2680,6 +2680,15 @@ export const en = {
     categoryLabel: "Flagged Category",
     reasonLabel: "Policy Reason",
     clear: "Clear",
+    cloudActive: "OpenAI Cloud Moderation: Connected & Active (omni-moderation-latest)",
+    cloudInactive: "OpenAI Moderation API Key Not Detected",
+    cloudInactiveHelp:
+      "The Node.js server cannot detect OPENAI_API_KEY. If you set it in Plesk Node.js, click 'Restart App' in the Plesk Node.js panel to reload environment variables into the running process.",
+    useTemporaryKey: "Or enter a temporary OpenAI API key for testing:",
+    temporaryKeyPlaceholder: "Paste OpenAI API Key (sk-...)",
+    keyActiveBadge: "Using Session API Key",
+    cloudBypassedNotice:
+      "Notice: OpenAI cloud moderation was bypassed because OPENAI_API_KEY is not detected by the server. Only local checks were evaluated.",
   },
 } as const;
 
