@@ -293,33 +293,49 @@ function ensureDir(dirPath: string) {
   }
 }
 
+export function assertSafeDataPath(filePath: string): string {
+  const base = path.resolve(DATA_DIR);
+  const resolved = path.resolve(base, filePath);
+  const rel = path.relative(base, resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error(`Path traversal attempt detected: ${filePath}`);
+  }
+  return resolved;
+}
+
 function readJsonFile<T = any>(filePath: string, defaultValue: T): T {
   try {
-    if (!fs.existsSync(filePath)) {
+    const safePath = assertSafeDataPath(filePath);
+    if (!fs.existsSync(safePath)) {
       return defaultValue;
     }
-    const content = fs.readFileSync(filePath, "utf-8");
+    const content = fs.readFileSync(safePath, "utf-8");
     return JSON.parse(content);
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message?.includes("Path traversal attempt detected")) {
+      console.warn(`[Security] Blocked unauthorized file read attempt: ${filePath}`);
+      return defaultValue;
+    }
     console.error(`Error reading ${filePath}:`, err);
     return defaultValue;
   }
 }
 
 function writeJsonFile(filePath: string, data: any) {
-  ensureDir(path.dirname(filePath));
-  const tempPath = `${filePath}.${Date.now()}.${Math.random().toString(36).substring(2, 8)}.tmp`;
+  const safePath = assertSafeDataPath(filePath);
+  ensureDir(path.dirname(safePath));
+  const tempPath = `${safePath}.${Date.now()}.${Math.random().toString(36).substring(2, 8)}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), "utf-8");
   let renamed = false;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      fs.renameSync(tempPath, filePath);
+      fs.renameSync(tempPath, safePath);
       renamed = true;
       break;
     } catch (err: any) {
       if (attempt === 4 || !["EPERM", "ENOENT", "EBUSY"].includes(err?.code)) {
         // Fallback to direct write if rename fails
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+        fs.writeFileSync(safePath, JSON.stringify(data, null, 2), "utf-8");
         try { fs.unlinkSync(tempPath); } catch {}
         renamed = true;
         break;

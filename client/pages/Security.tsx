@@ -63,6 +63,7 @@ import {
   deriveEncryptionKeyFromPassword,
   type EncryptionCategory,
 } from "@/lib/crypto";
+import { getSafeReturnPath } from "./Auth";
 
 const STORAGE_KEYS = {
   ENCRYPT_CHARACTERS: "oxygen_encrypt_characters",
@@ -85,7 +86,8 @@ export default function Security() {
   });
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const returnTo = searchParams.get("returnTo");
+  const rawReturnTo = searchParams.get("returnTo");
+  const returnTo = rawReturnTo ? getSafeReturnPath(rawReturnTo) : null;
 
   // Active key in memory & session
   const [keyBytes, setKeyBytes] = useState<Uint8Array | null>(() =>

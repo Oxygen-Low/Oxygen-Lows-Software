@@ -109,7 +109,17 @@ const credentialIndex = new Map<string, string>(); // credentialID -> userId
 let indexInitialized = false;
 
 function getUserPasskeysPath(userId: string | number): string {
-  return path.join(DATA_DIR, String(userId), "passkeys.json");
+  const safeId = String(userId).replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safeId) {
+    throw new Error("Invalid user ID");
+  }
+  const base = path.resolve(DATA_DIR);
+  const resolved = path.resolve(base, safeId, "passkeys.json");
+  const rel = path.relative(base, resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error("Path traversal detected");
+  }
+  return resolved;
 }
 
 function ensureIndexInitialized(): void {
@@ -117,9 +127,9 @@ function ensureIndexInitialized(): void {
   try {
     const userIds = getAllUserIds();
     for (const uid of userIds) {
-      const p = getUserPasskeysPath(uid);
-      if (fs.existsSync(p)) {
-        try {
+      try {
+        const p = getUserPasskeysPath(uid);
+        if (fs.existsSync(p)) {
           const list: StoredPasskey[] = JSON.parse(fs.readFileSync(p, "utf-8"));
           if (Array.isArray(list)) {
             for (const item of list) {
@@ -128,9 +138,9 @@ function ensureIndexInitialized(): void {
               }
             }
           }
-        } catch {
-          // ignore corrupted user passkey file
         }
+      } catch {
+        // ignore corrupted or invalid user passkey file
       }
     }
   } catch {
@@ -145,9 +155,9 @@ export function invalidatePasskeyIndex(): void {
 }
 
 export function getUserPasskeys(userId: string | number): StoredPasskey[] {
-  const p = getUserPasskeysPath(userId);
-  if (!fs.existsSync(p)) return [];
   try {
+    const p = getUserPasskeysPath(userId);
+    if (!fs.existsSync(p)) return [];
     const data = JSON.parse(fs.readFileSync(p, "utf-8"));
     return Array.isArray(data) ? data : [];
   } catch {
@@ -159,11 +169,11 @@ function writeUserPasskeys(
   userId: string | number,
   passkeys: StoredPasskey[],
 ): void {
-  const userDir = path.join(DATA_DIR, String(userId));
+  const p = getUserPasskeysPath(userId);
+  const userDir = path.dirname(p);
   if (!fs.existsSync(userDir)) {
     fs.mkdirSync(userDir, { recursive: true });
   }
-  const p = getUserPasskeysPath(userId);
   fs.writeFileSync(p, JSON.stringify(passkeys, null, 2), "utf-8");
 }
 

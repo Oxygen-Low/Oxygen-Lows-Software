@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { authRouter } from "./auth.ts";
+import { authRouter, getSafeReturnTo, sanitizeOAuthError } from "./auth.ts";
 
 const app = new Hono();
 app.route("/api/auth", authRouter);
@@ -837,6 +837,81 @@ describe("authRouter", () => {
       } finally {
         globalThis.fetch = originalFetch;
       }
+    });
+  });
+
+  describe("Open Redirect Protections", () => {
+    it("should validate and sanitize OAuth error codes against allowlist", () => {
+      expect(sanitizeOAuthError("access_denied")).toBe("access_denied");
+      expect(sanitizeOAuthError("invalid_request")).toBe("invalid_request");
+      expect(sanitizeOAuthError("unauthorized_client")).toBe("unauthorized_client");
+      expect(sanitizeOAuthError("server_error")).toBe("server_error");
+
+      // Malicious or unrecognized errors must map to 'oauth_failed'
+      expect(sanitizeOAuthError("https://evil.com")).toBe("oauth_failed");
+      expect(sanitizeOAuthError("//evil.com")).toBe("oauth_failed");
+      expect(sanitizeOAuthError("<script>alert(1)</script>")).toBe("oauth_failed");
+      expect(sanitizeOAuthError("arbitrary_unknown_error")).toBe("oauth_failed");
+      expect(sanitizeOAuthError(null)).toBe("oauth_failed");
+      expect(sanitizeOAuthError(undefined)).toBe("oauth_failed");
+    });
+
+    it("should sanitize returnTo paths and disallow external domains, schemes, or UNC paths", () => {
+      // Allowed paths
+      expect(getSafeReturnTo("/apps")).toBe("/apps");
+      expect(getSafeReturnTo("/apps?desktop=1")).toBe("/apps?desktop=1");
+      expect(getSafeReturnTo("/characters")).toBe("/characters");
+      expect(getSafeReturnTo("/security")).toBe("/security");
+      expect(getSafeReturnTo("/security?returnTo=%2Fcharacters")).toBe("/security?returnTo=%2Fcharacters");
+      expect(getSafeReturnTo("/passwords")).toBe("/passwords");
+
+      // Disallowed open redirect attempts -> must fall back to /apps
+      expect(getSafeReturnTo("https://evil.com")).toBe("/apps");
+      expect(getSafeReturnTo("http://evil.com/apps")).toBe("/apps");
+      expect(getSafeReturnTo("//evil.com")).toBe("/apps");
+      expect(getSafeReturnTo("/\\evil.com")).toBe("/apps");
+      expect(getSafeReturnTo("\\evil.com")).toBe("/apps");
+      expect(getSafeReturnTo("javascript:alert(1)")).toBe("/apps");
+      expect(getSafeReturnTo("/malicious-route")).toBe("/apps");
+      expect(getSafeReturnTo("")).toBe("/apps");
+      expect(getSafeReturnTo(null)).toBe("/apps");
+      expect(getSafeReturnTo(undefined)).toBe("/apps");
+    });
+
+    it("should sanitize malicious error param in Google OAuth callback redirect", async () => {
+      const res = await app.request(
+        "/api/auth/oauth/google/callback?error=https://evil.com",
+      );
+      expect(res.status).toBe(302);
+      const loc = res.headers.get("location");
+      expect(loc).toBe("/auth?error=oauth_failed");
+    });
+
+    it("should preserve valid error param in Google OAuth callback redirect", async () => {
+      const res = await app.request(
+        "/api/auth/oauth/google/callback?error=access_denied",
+      );
+      expect(res.status).toBe(302);
+      const loc = res.headers.get("location");
+      expect(loc).toBe("/auth?error=access_denied");
+    });
+
+    it("should sanitize malicious error param in GitHub OAuth callback redirect", async () => {
+      const res = await app.request(
+        "/api/auth/oauth/github/callback?error=https://evil.com",
+      );
+      expect(res.status).toBe(302);
+      const loc = res.headers.get("location");
+      expect(loc).toBe("/auth?error=oauth_failed&provider=github");
+    });
+
+    it("should preserve valid error param in GitHub OAuth callback redirect", async () => {
+      const res = await app.request(
+        "/api/auth/oauth/github/callback?error=access_denied",
+      );
+      expect(res.status).toBe(302);
+      const loc = res.headers.get("location");
+      expect(loc).toBe("/auth?error=access_denied&provider=github");
     });
   });
 });

@@ -1219,7 +1219,13 @@ export default function Auth() {
 
 /** Only allow same-origin, in-app paths to survive an OAuth round trip. */
 export function getSafeReturnPath(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.startsWith("/\\") ||
+    value.includes("\\")
+  ) {
     return "/apps";
   }
 

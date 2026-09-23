@@ -101,7 +101,16 @@ export function checkIsFriend(hostUserId: string, requesterUserId: string): bool
 
 // Helper: Ensure user models storage folder exists
 function getUserModelsDir(userId: string): string {
-  const dir = path.join(DATA_DIR, String(userId), "models");
+  const safeId = String(userId).replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safeId) {
+    throw new Error("Invalid user ID");
+  }
+  const base = path.resolve(DATA_DIR);
+  const dir = path.resolve(base, safeId, "models");
+  const rel = path.relative(base, dir);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error("Path traversal detected");
+  }
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -110,39 +119,46 @@ function getUserModelsDir(userId: string): string {
 
 // Read/write host config
 export function getHostConfig(userId: string): any {
-  const file = path.join(getUserModelsDir(userId), "host_config.json");
-  if (!fs.existsSync(file)) {
-    return {
-      enabled: false,
-      masterPaused: false,
-      autoPauseGaming: true,
-      models: [],
-      customEndpoints: [],
-    };
-  }
+  const defaultConfig = {
+    enabled: false,
+    masterPaused: false,
+    autoPauseGaming: true,
+    models: [],
+    customEndpoints: [],
+  };
   try {
+    const dir = getUserModelsDir(userId);
+    const file = path.resolve(dir, "host_config.json");
+    if (!file.startsWith(dir + path.sep) && file !== dir) {
+      return defaultConfig;
+    }
+    if (!fs.existsSync(file)) {
+      return defaultConfig;
+    }
     return JSON.parse(fs.readFileSync(file, "utf-8"));
   } catch {
-    return {
-      enabled: false,
-      masterPaused: false,
-      autoPauseGaming: true,
-      models: [],
-      customEndpoints: [],
-    };
+    return defaultConfig;
   }
 }
 
 export function saveHostConfig(userId: string, config: any): void {
-  const file = path.join(getUserModelsDir(userId), "host_config.json");
+  const dir = getUserModelsDir(userId);
+  const file = path.resolve(dir, "host_config.json");
+  if (!file.startsWith(dir + path.sep)) {
+    throw new Error("Invalid path");
+  }
   fs.writeFileSync(file, JSON.stringify(config, null, 2), "utf-8");
 }
 
 // Read/write pinned models
 export function getPinnedModels(userId: string): string[] {
-  const file = path.join(getUserModelsDir(userId), "pinned.json");
-  if (!fs.existsSync(file)) return [];
   try {
+    const dir = getUserModelsDir(userId);
+    const file = path.resolve(dir, "pinned.json");
+    if (!file.startsWith(dir + path.sep) && file !== dir) {
+      return [];
+    }
+    if (!fs.existsSync(file)) return [];
     return JSON.parse(fs.readFileSync(file, "utf-8"));
   } catch {
     return [];
@@ -150,7 +166,11 @@ export function getPinnedModels(userId: string): string[] {
 }
 
 export function savePinnedModels(userId: string, pinned: string[]): void {
-  const file = path.join(getUserModelsDir(userId), "pinned.json");
+  const dir = getUserModelsDir(userId);
+  const file = path.resolve(dir, "pinned.json");
+  if (!file.startsWith(dir + path.sep)) {
+    throw new Error("Invalid path");
+  }
   fs.writeFileSync(file, JSON.stringify(pinned, null, 2), "utf-8");
 }
 

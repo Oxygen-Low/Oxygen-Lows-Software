@@ -49,6 +49,16 @@ export function getMimeType(filePath: string): string {
   return MIME_MAP[ext] || "application/octet-stream";
 }
 
+export function assertSafeStoragePath(baseDir: string, ...segments: string[]): string {
+  const root = path.resolve(baseDir);
+  const resolved = path.resolve(root, ...segments);
+  const relative = path.relative(root, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Invalid path: path traversal detected");
+  }
+  return resolved;
+}
+
 export function sanitizePath(rawPath: string): string {
   if (!rawPath) return "";
   let clean = decodeURIComponent(rawPath);
@@ -124,14 +134,14 @@ export const serverStorage = {
     try {
       const cleanBucket = sanitizePath(bucket);
       const filePath = sanitizePath(rawFilePath);
-      const targetDir = path.join(
+      const targetDir = assertSafeStoragePath(
         STORAGE_DIR,
         cleanBucket,
         path.dirname(filePath),
       );
       fs.mkdirSync(targetDir, { recursive: true });
 
-      const fullPath = path.join(STORAGE_DIR, cleanBucket, filePath);
+      const fullPath = assertSafeStoragePath(STORAGE_DIR, cleanBucket, filePath);
       let buffer: Buffer;
 
       if (data instanceof Buffer) {
@@ -161,7 +171,7 @@ export const serverStorage = {
     try {
       const cleanBucket = sanitizePath(bucket);
       const filePath = sanitizePath(rawFilePath);
-      let fullPath = path.join(STORAGE_DIR, cleanBucket, filePath);
+      const fullPath = assertSafeStoragePath(STORAGE_DIR, cleanBucket, filePath);
 
       if (!fs.existsSync(fullPath)) {
         // Fallback: check if filePath contains a duplicated/nested user directory
@@ -170,14 +180,14 @@ export const serverStorage = {
         if (parts.length > 2) {
           // Try removing middle UUID/segment: "1/uuid/file.mp3" -> "1/file.mp3"
           const withoutMiddle = [parts[0], ...parts.slice(2)].join("/");
-          const tryPath1 = path.join(STORAGE_DIR, cleanBucket, withoutMiddle);
+          const tryPath1 = assertSafeStoragePath(STORAGE_DIR, cleanBucket, withoutMiddle);
           if (fs.existsSync(tryPath1)) {
             const buffer = fs.readFileSync(tryPath1);
             return { data: buffer, error: null };
           }
           // Try removing first part: "1/uuid/file.mp3" -> "uuid/file.mp3"
           const withoutFirst = parts.slice(1).join("/");
-          const tryPath2 = path.join(STORAGE_DIR, cleanBucket, withoutFirst);
+          const tryPath2 = assertSafeStoragePath(STORAGE_DIR, cleanBucket, withoutFirst);
           if (fs.existsSync(tryPath2)) {
             const buffer = fs.readFileSync(tryPath2);
             return { data: buffer, error: null };
@@ -199,7 +209,7 @@ export const serverStorage = {
     try {
       const cleanBucket = sanitizePath(bucket);
       const prefixPath = rawPrefixPath ? sanitizePath(rawPrefixPath) : "";
-      const targetDir = path.join(STORAGE_DIR, cleanBucket, prefixPath);
+      const targetDir = assertSafeStoragePath(STORAGE_DIR, cleanBucket, prefixPath);
 
       if (!fs.existsSync(targetDir)) {
         return { data: [], error: null };
@@ -207,7 +217,7 @@ export const serverStorage = {
 
       const files = fs.readdirSync(targetDir, { withFileTypes: true });
       const result: StorageListItem[] = files.map((f) => {
-        const fullPath = path.join(targetDir, f.name);
+        const fullPath = assertSafeStoragePath(targetDir, f.name);
         const stats = fs.statSync(fullPath);
         return {
           id: f.isDirectory()
@@ -242,7 +252,7 @@ export const serverStorage = {
       for (const raw of rawPaths) {
         try {
           const p = sanitizePath(raw);
-          const fullPath = path.join(STORAGE_DIR, cleanBucket, p);
+          const fullPath = assertSafeStoragePath(STORAGE_DIR, cleanBucket, p);
           if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath);
             removed.push(p);
@@ -270,19 +280,19 @@ export const serverStorage = {
       const cleanToBucket = sanitizePath(toBucket);
       const toPath = sanitizePath(rawToPath);
 
-      const srcFullPath = path.join(STORAGE_DIR, cleanFromBucket, fromPath);
+      const srcFullPath = assertSafeStoragePath(STORAGE_DIR, cleanFromBucket, fromPath);
       if (!fs.existsSync(srcFullPath)) {
         return { data: null, error: new Error("Source file not found") };
       }
 
-      const destTargetDir = path.join(
+      const destTargetDir = assertSafeStoragePath(
         STORAGE_DIR,
         cleanToBucket,
         path.dirname(toPath),
       );
       fs.mkdirSync(destTargetDir, { recursive: true });
 
-      const destFullPath = path.join(STORAGE_DIR, cleanToBucket, toPath);
+      const destFullPath = assertSafeStoragePath(STORAGE_DIR, cleanToBucket, toPath);
       try {
         fs.renameSync(srcFullPath, destFullPath);
       } catch {

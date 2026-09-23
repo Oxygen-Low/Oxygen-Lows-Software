@@ -52,6 +52,97 @@ import {
 export const authRouter = new Hono();
 
 /**
+ * Allowed OAuth error query parameters according to RFC 6749 and common provider specs.
+ */
+export const ALLOWED_OAUTH_ERRORS = [
+  "access_denied",
+  "invalid_request",
+  "unauthorized_client",
+  "unsupported_response_type",
+  "invalid_scope",
+  "server_error",
+  "temporarily_unavailable",
+  "application_suspended",
+  "redirect_uri_mismatch",
+  "interaction_required",
+  "login_required",
+  "account_selection_required",
+  "consent_required",
+];
+
+/**
+ * Sanitizes OAuth error parameters by verifying against an allowlist to prevent open redirect and parameter injection.
+ */
+export function sanitizeOAuthError(error: unknown): string {
+  if (typeof error === "string" && ALLOWED_OAUTH_ERRORS.includes(error)) {
+    return error;
+  }
+  return "oauth_failed";
+}
+
+/**
+ * Allowed application route prefixes for safe post-auth redirection.
+ */
+export const ALLOWED_RETURN_PREFIXES = [
+  "/apps",
+  "/characters",
+  "/security",
+  "/passwords",
+  "/games",
+  "/friends",
+  "/chat",
+  "/account",
+  "/storage",
+  "/customize",
+  "/support",
+  "/privacy",
+  "/terms",
+  "/download",
+  "/admin",
+  "/users",
+];
+
+/**
+ * Validates and sanitizes a returnTo path to prevent open redirect vulnerabilities.
+ * Ensures the destination is a safe, relative internal path matching allowed application routes.
+ */
+export function getSafeReturnTo(value: unknown): string {
+  if (typeof value !== "string" || !value) {
+    return "/apps";
+  }
+  const trimmed = value.trim();
+  // Disallow non-relative paths, protocol-relative paths, backslashes, UNC paths, and schemes
+  if (
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("/\\") ||
+    trimmed.includes("\\") ||
+    trimmed.includes(":")
+  ) {
+    return "/apps";
+  }
+  const segment = "/" + trimmed.slice(1).split(/[/?#]/)[0];
+  if (ALLOWED_RETURN_PREFIXES.includes(segment)) {
+    return trimmed;
+  }
+  return "/apps";
+}
+
+export const ALLOWED_REDIRECT_BASES = [
+  "oxygenlows://auth",
+  "/auth",
+  "oxygenlows://security",
+  "/security",
+];
+
+export function getSafeRedirectBase(
+  base: string,
+  fallback: "/auth" | "/security" = "/auth",
+): string {
+  return ALLOWED_REDIRECT_BASES.includes(base) ? base : fallback;
+}
+
+/**
  * Register a new local account using client-derived zero-knowledge auth token
  */
 authRouter.post("/register", async (c) => {
@@ -503,7 +594,7 @@ authRouter.get("/oauth/google/login", (c) => {
     return c.redirect(errorTarget);
   }
 
-  const returnTo = c.req.query("returnTo") || "/apps";
+  const returnTo = getSafeReturnTo(c.req.query("returnTo"));
   const state = generateOAuthState({
     action: "login",
     returnTo,
@@ -543,7 +634,9 @@ authRouter.get("/oauth/google/callback", async (c) => {
     if (state?.action === "link") {
       return c.redirect(`${securityBase}?error=oauth_failed`);
     }
-    return c.redirect(`${authBase}?error=${encodeURIComponent(errorParam)}`);
+    const safeError = sanitizeOAuthError(errorParam);
+    const targetBase = getSafeRedirectBase(authBase, "/auth");
+    return c.redirect(`${targetBase}?error=${encodeURIComponent(safeError)}`);
   }
 
   if (!code || !stateParam || !state) {
@@ -624,9 +717,10 @@ authRouter.get("/oauth/google/callback", async (c) => {
       }
 
       const token = generateToken(linkedUser);
-      const returnTo = state.returnTo || "/apps";
+      const safeReturnTo = getSafeReturnTo(state.returnTo);
+      const targetBase = getSafeRedirectBase(authBase, "/auth");
       return c.redirect(
-        `${authBase}?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
+        `${targetBase}?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(safeReturnTo)}`,
       );
     }
 
@@ -776,7 +870,7 @@ authRouter.get("/oauth/github/login", (c) => {
     return c.redirect(errorTarget);
   }
 
-  const returnTo = c.req.query("returnTo") || "/apps";
+  const returnTo = getSafeReturnTo(c.req.query("returnTo"));
   const state = generateOAuthState({
     action: "login",
     returnTo,
@@ -813,8 +907,10 @@ authRouter.get("/oauth/github/callback", async (c) => {
     if (state?.action === "link") {
       return c.redirect(`${securityBase}?error=oauth_failed&provider=github`);
     }
+    const safeError = sanitizeOAuthError(errorParam);
+    const targetBase = getSafeRedirectBase(authBase, "/auth");
     return c.redirect(
-      `${authBase}?error=${encodeURIComponent(errorParam)}&provider=github`,
+      `${targetBase}?error=${encodeURIComponent(safeError)}&provider=github`,
     );
   }
 
@@ -928,9 +1024,10 @@ authRouter.get("/oauth/github/callback", async (c) => {
       }
 
       const token = generateToken(linkedUser);
-      const returnTo = state.returnTo || "/apps";
+      const safeReturnTo = getSafeReturnTo(state.returnTo);
+      const targetBase = getSafeRedirectBase(authBase, "/auth");
       return c.redirect(
-        `${authBase}?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`,
+        `${targetBase}?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(safeReturnTo)}`,
       );
     }
 

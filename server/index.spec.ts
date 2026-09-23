@@ -140,5 +140,20 @@ describe("Server", () => {
       const body = await response.text();
       expect(body).toContain("auth.md");
     });
+
+    it("should not emit Strict-Transport-Security header by default to prevent reverse-proxy duplication", async () => {
+      const response = await app.request("/");
+      expect(response.headers.get("Strict-Transport-Security")).toBeNull();
+    });
+
+    it("should emit Strict-Transport-Security header when ENABLE_APP_HSTS is set to true", async () => {
+      process.env.ENABLE_APP_HSTS = "true";
+      const hstsApp = createServer();
+      const response = await hstsApp.request("/");
+      expect(response.headers.get("Strict-Transport-Security")).toBe(
+        "max-age=63072000; includeSubDomains; preload",
+      );
+      delete process.env.ENABLE_APP_HSTS;
+    });
   });
 });

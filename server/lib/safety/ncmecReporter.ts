@@ -164,12 +164,16 @@ export async function createNcmecIncidentReport(params: {
 export function getAllQuarantinedIncidents(): NcmecIncidentReport[] {
   ensureQuarantineDirs();
   try {
-    const files = fs.readdirSync(CSAM_INCIDENTS_DIR);
+    const baseDir = path.resolve(CSAM_INCIDENTS_DIR);
+    const files = fs.readdirSync(baseDir);
     const reports: NcmecIncidentReport[] = [];
 
     for (const file of files) {
       if (file.endsWith(".json")) {
-        const fullPath = path.join(CSAM_INCIDENTS_DIR, file);
+        const fullPath = path.resolve(baseDir, path.basename(file));
+        if (!fullPath.startsWith(baseDir + path.sep)) {
+          continue;
+        }
         try {
           const content = fs.readFileSync(fullPath, "utf-8");
           reports.push(JSON.parse(content));
@@ -193,8 +197,16 @@ export function getAllQuarantinedIncidents(): NcmecIncidentReport[] {
  */
 export function getQuarantinedIncidentById(reportId: string): NcmecIncidentReport | null {
   ensureQuarantineDirs();
-  const safeId = path.basename(reportId);
-  const filePath = path.join(CSAM_INCIDENTS_DIR, `${safeId}.json`);
+  const safeId = reportId.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safeId) {
+    return null;
+  }
+  const baseDir = path.resolve(CSAM_INCIDENTS_DIR);
+  const filePath = path.resolve(baseDir, `${safeId}.json`);
+  const rel = path.relative(baseDir, filePath);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    return null;
+  }
   if (!fs.existsSync(filePath)) {
     return null;
   }

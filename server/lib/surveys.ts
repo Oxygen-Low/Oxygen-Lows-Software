@@ -120,10 +120,21 @@ export function getPast12MonthKeys(refDate: Date = new Date()): { key: string; l
   return months;
 }
 
+function assertSafeSurveyPath(filePath: string): string {
+  const base = path.resolve(SURVEYS_DIR);
+  const resolved = path.resolve(base, filePath);
+  const rel = path.relative(base, resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error(`Path traversal attempt detected: ${filePath}`);
+  }
+  return resolved;
+}
+
 function readJson<T>(filePath: string, fallback: T): T {
   try {
-    if (!fs.existsSync(filePath)) return fallback;
-    const content = fs.readFileSync(filePath, "utf-8").trim();
+    const safePath = assertSafeSurveyPath(filePath);
+    if (!fs.existsSync(safePath)) return fallback;
+    const content = fs.readFileSync(safePath, "utf-8").trim();
     if (!content) return fallback;
     return JSON.parse(content) as T;
   } catch {
@@ -133,9 +144,10 @@ function readJson<T>(filePath: string, fallback: T): T {
 
 function writeJson(filePath: string, data: any): void {
   ensureSurveysDir();
-  const tempPath = `${filePath}.${crypto.randomUUID()}.tmp`;
+  const safePath = assertSafeSurveyPath(filePath);
+  const tempPath = `${safePath}.${crypto.randomUUID()}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), "utf-8");
-  fs.renameSync(tempPath, filePath);
+  fs.renameSync(tempPath, safePath);
 }
 
 export const PREDEFINED_SURVEYS: SurveyDefinition[] = [

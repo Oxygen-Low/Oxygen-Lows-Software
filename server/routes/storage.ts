@@ -7,6 +7,7 @@ import {
   MAX_USER_QUOTA,
   getMimeType,
   sanitizePath,
+  assertSafeStoragePath,
   STORAGE_DIR,
 } from "../lib/storage.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
@@ -222,10 +223,11 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
       return c.json({ error: "Invalid file format" }, 400);
     }
 
-    const tmpDir = path.join(STORAGE_DIR, ".tmp", safeUploadId);
+    const tmpBase = assertSafeStoragePath(STORAGE_DIR, ".tmp");
+    const tmpDir = assertSafeStoragePath(tmpBase, safeUploadId);
     fs.mkdirSync(tmpDir, { recursive: true });
 
-    const chunkPath = path.join(tmpDir, `chunk_${chunkIndex}`);
+    const chunkPath = assertSafeStoragePath(tmpDir, `chunk_${chunkIndex}`);
     fs.writeFileSync(chunkPath, buffer);
 
     // If this is the last chunk
@@ -233,7 +235,7 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
       // Check if all chunks from 0 to totalChunks - 1 exist
       const readPromises: Promise<Buffer>[] = [];
       for (let i = 0; i < totalChunks; i++) {
-        const p = path.join(tmpDir, `chunk_${i}`);
+        const p = assertSafeStoragePath(tmpDir, `chunk_${i}`);
         if (!fs.existsSync(p)) {
           return c.json({
             data: { chunkIndex, status: "pending" },

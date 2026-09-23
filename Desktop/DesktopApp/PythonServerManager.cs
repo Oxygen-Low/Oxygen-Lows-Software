@@ -82,11 +82,13 @@ public class PythonServerManager
             SetStatus("StartingServer");
             _readyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
+            string canonicalPython = Path.GetFullPath(pythonExecutable);
+            string canonicalScript = Path.GetFullPath(serverScriptPath);
+
             var startInfo = new ProcessStartInfo
             {
-                FileName = pythonExecutable,
-                Arguments = $"\"{serverScriptPath}\" --parent-pid {Environment.ProcessId} --port {Port} --watch-stdin",
-                WorkingDirectory = Path.GetDirectoryName(serverScriptPath)!,
+                FileName = canonicalPython,
+                WorkingDirectory = Path.GetDirectoryName(canonicalScript)!,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -94,6 +96,13 @@ public class PythonServerManager
                 RedirectStandardError = true,
                 RedirectStandardInput = true
             };
+
+            startInfo.ArgumentList.Add(canonicalScript);
+            startInfo.ArgumentList.Add("--parent-pid");
+            startInfo.ArgumentList.Add(Environment.ProcessId.ToString());
+            startInfo.ArgumentList.Add("--port");
+            startInfo.ArgumentList.Add(Port.ToString());
+            startInfo.ArgumentList.Add("--watch-stdin");
 
             _serverProcess = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
 
@@ -261,14 +270,19 @@ public class PythonServerManager
             return null;
         }
 
+        string canonicalSystemPython = Path.GetFullPath(systemPython);
+        if (!File.Exists(canonicalSystemPython) || !canonicalSystemPython.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
         Directory.CreateDirectory(Path.GetDirectoryName(VenvPath)!);
 
         var venvProcess = new Process
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = systemPython,
-                Arguments = $"-m venv \"{VenvPath}\"",
+                FileName = canonicalSystemPython,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -276,6 +290,10 @@ public class PythonServerManager
                 RedirectStandardError = true
             }
         };
+
+        venvProcess.StartInfo.ArgumentList.Add("-m");
+        venvProcess.StartInfo.ArgumentList.Add("venv");
+        venvProcess.StartInfo.ArgumentList.Add(Path.GetFullPath(VenvPath));
 
         venvProcess.Start();
         await venvProcess.WaitForExitAsync();
@@ -309,17 +327,23 @@ public class PythonServerManager
         }
 
         SetStatus("InstallingDependencies");
-        string pipExecutable = Path.Combine(VenvPath, "Scripts", "pip.exe");
-        if (!File.Exists(pipExecutable))
+        string canonicalPython = Path.GetFullPath(pythonExecutable);
+        if (!File.Exists(canonicalPython) || !canonicalPython.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
-            pipExecutable = pythonExecutable;
+            throw new InvalidOperationException($"Invalid Python executable path: {canonicalPython}");
+        }
+
+        string canonicalReqFile = Path.GetFullPath(reqFile);
+        if (!File.Exists(canonicalReqFile))
+        {
+            throw new FileNotFoundException("requirements.txt not found", canonicalReqFile);
         }
 
         var pipProcess = new Process
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = pipExecutable,
+                FileName = canonicalPython,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -328,22 +352,12 @@ public class PythonServerManager
             }
         };
 
-        if (pipExecutable == pythonExecutable)
-        {
-            pipProcess.StartInfo.ArgumentList.Add("-m");
-            pipProcess.StartInfo.ArgumentList.Add("pip");
-            pipProcess.StartInfo.ArgumentList.Add("install");
-            pipProcess.StartInfo.ArgumentList.Add("-r");
-            pipProcess.StartInfo.ArgumentList.Add(reqFile);
-            pipProcess.StartInfo.ArgumentList.Add("--disable-pip-version-check");
-        }
-        else
-        {
-            pipProcess.StartInfo.ArgumentList.Add("install");
-            pipProcess.StartInfo.ArgumentList.Add("-r");
-            pipProcess.StartInfo.ArgumentList.Add(reqFile);
-            pipProcess.StartInfo.ArgumentList.Add("--disable-pip-version-check");
-        }
+        pipProcess.StartInfo.ArgumentList.Add("-m");
+        pipProcess.StartInfo.ArgumentList.Add("pip");
+        pipProcess.StartInfo.ArgumentList.Add("install");
+        pipProcess.StartInfo.ArgumentList.Add("-r");
+        pipProcess.StartInfo.ArgumentList.Add(canonicalReqFile);
+        pipProcess.StartInfo.ArgumentList.Add("--disable-pip-version-check");
 
         pipProcess.Start();
         await pipProcess.WaitForExitAsync();
@@ -364,13 +378,16 @@ public class PythonServerManager
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "py.exe",
-                    Arguments = "-3 -c \"import sys; print(sys.executable)\"",
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 }
             };
+            pyCheck.StartInfo.ArgumentList.Add("-3");
+            pyCheck.StartInfo.ArgumentList.Add("-c");
+            pyCheck.StartInfo.ArgumentList.Add("import sys; print(sys.executable)");
+
             if (pyCheck.Start())
             {
                 string output = pyCheck.StandardOutput.ReadToEnd().Trim();
@@ -391,13 +408,15 @@ public class PythonServerManager
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "python.exe",
-                    Arguments = "-c \"import sys; print(sys.executable)\"",
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 }
             };
+            pythonCheck.StartInfo.ArgumentList.Add("-c");
+            pythonCheck.StartInfo.ArgumentList.Add("import sys; print(sys.executable)");
+
             if (pythonCheck.Start())
             {
                 string output = pythonCheck.StandardOutput.ReadToEnd().Trim();

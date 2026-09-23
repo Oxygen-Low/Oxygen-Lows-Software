@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DesktopApp.Models;
@@ -14,6 +15,46 @@ public class GameProcessMonitor
 {
     private static readonly Lazy<GameProcessMonitor> _instance = new(() => new GameProcessMonitor());
     public static GameProcessMonitor Instance => _instance.Value;
+
+    // Allowed URI schemes for launching games via registered protocol handlers
+    private static readonly HashSet<string> AllowedLaunchUriSchemes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "steam",
+        "com.epicgames.launcher",
+        "epic",
+        "origin",
+        "origin2",
+        "uplay",
+        "upc",
+        "battlenet",
+        "riotclient",
+        "goggalaxy",
+        "xbox",
+        "ms-gamepass",
+        "ea",
+        "lutris",
+        "heroic"
+    };
+
+    // System shells and dangerous utilities that must never be launched directly as games
+    private static readonly HashSet<string> BlockedExecutableNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "cmd.exe",
+        "powershell.exe",
+        "pwsh.exe",
+        "wscript.exe",
+        "cscript.exe",
+        "mshta.exe",
+        "bash.exe",
+        "sh.exe",
+        "wt.exe",
+        "rundll32.exe",
+        "regsvr32.exe",
+        "certutil.exe",
+        "bitsadmin.exe",
+        "msiexec.exe",
+        "conhost.exe"
+    };
 
     private readonly ConcurrentDictionary<string, InstalledGame> _gamesByExeName = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, InstalledGame> _gamesById = new(StringComparer.OrdinalIgnoreCase);
@@ -149,27 +190,97 @@ public class GameProcessMonitor
             // 1. Launch via LaunchUri if provided
             if (!string.IsNullOrWhiteSpace(request.LaunchUri))
             {
+                if (!Uri.TryCreate(request.LaunchUri.Trim(), UriKind.Absolute, out var uri))
+                {
+                    return new LaunchGameResult
+                    {
+                        Success = false,
+                        Message = "Invalid launch URI format."
+                    };
+                }
+
+                if (!AllowedLaunchUriSchemes.Contains(uri.Scheme))
+                {
+                    return new LaunchGameResult
+                    {
+                        Success = false,
+                        Message = $"Launch URI scheme '{uri.Scheme}' is not permitted."
+                    };
+                }
+
                 var psi = new ProcessStartInfo
                 {
-                    FileName = request.LaunchUri,
+                    FileName = uri.AbsoluteUri,
                     UseShellExecute = true
                 };
                 startedProcess = Process.Start(psi);
             }
             // 2. Launch via direct ExecutablePath
-            else if (!string.IsNullOrWhiteSpace(request.ExecutablePath) && File.Exists(request.ExecutablePath))
+            else if (!string.IsNullOrWhiteSpace(request.ExecutablePath))
             {
-                var workingDir = !string.IsNullOrWhiteSpace(request.WorkingDirectory) && Directory.Exists(request.WorkingDirectory)
-                    ? request.WorkingDirectory
-                    : Path.GetDirectoryName(request.ExecutablePath);
+                if (!Path.IsPathRooted(request.ExecutablePath))
+                {
+                    return new LaunchGameResult
+                    {
+                        Success = false,
+                        Message = "Executable path must be an absolute path."
+                    };
+                }
+
+                string fullExePath = Path.GetFullPath(request.ExecutablePath);
+                if (!File.Exists(fullExePath))
+                {
+                    return new LaunchGameResult
+                    {
+                        Success = false,
+                        Message = $"Executable file not found: {fullExePath}"
+                    };
+                }
+
+                string extension = Path.GetExtension(fullExePath);
+                if (!string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new LaunchGameResult
+                    {
+                        Success = false,
+                        Message = "Only .exe files can be launched directly."
+                    };
+                }
+
+                string exeName = Path.GetFileName(fullExePath);
+                if (BlockedExecutableNames.Contains(exeName))
+                {
+                    return new LaunchGameResult
+                    {
+                        Success = false,
+                        Message = $"Launching '{exeName}' is not permitted for security reasons."
+                    };
+                }
+
+                string? workingDir = null;
+                if (!string.IsNullOrWhiteSpace(request.WorkingDirectory) &&
+                    Path.IsPathRooted(request.WorkingDirectory) &&
+                    Directory.Exists(request.WorkingDirectory))
+                {
+                    workingDir = Path.GetFullPath(request.WorkingDirectory);
+                }
+                else
+                {
+                    workingDir = Path.GetDirectoryName(fullExePath);
+                }
 
                 var psi = new ProcessStartInfo
                 {
-                    FileName = request.ExecutablePath,
-                    Arguments = request.Arguments ?? string.Empty,
-                    WorkingDirectory = workingDir,
-                    UseShellExecute = true
+                    FileName = fullExePath,
+                    WorkingDirectory = workingDir ?? string.Empty,
+                    UseShellExecute = false
                 };
+
+                foreach (var arg in ParseCommandLineArguments(request.Arguments))
+                {
+                    psi.ArgumentList.Add(arg);
+                }
+
                 startedProcess = Process.Start(psi);
             }
             else
@@ -376,5 +487,39 @@ public class GameProcessMonitor
                 }
             }
         }
+    }
+
+    private static List<string> ParseCommandLineArguments(string? arguments)
+    {
+        var list = new List<string>();
+        if (string.IsNullOrWhiteSpace(arguments)) return list;
+
+        var current = new StringBuilder();
+        bool inQuotes = false;
+        for (int i = 0; i < arguments.Length; i++)
+        {
+            char c = arguments[i];
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (char.IsWhiteSpace(c) && !inQuotes)
+            {
+                if (current.Length > 0)
+                {
+                    list.Add(current.ToString());
+                    current.Clear();
+                }
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+        if (current.Length > 0)
+        {
+            list.Add(current.ToString());
+        }
+        return list;
     }
 }

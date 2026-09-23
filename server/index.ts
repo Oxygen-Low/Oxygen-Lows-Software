@@ -167,9 +167,23 @@ app.use(
     xFrameOptions: "SAMEORIGIN",
     xContentTypeOptions: "nosniff",
     referrerPolicy: "strict-origin-when-cross-origin",
-    strictTransportSecurity: "max-age=31536000; includeSubDomains",
+    // Strict-Transport-Security is managed at the web server / reverse proxy layer (Plesk / Nginx),
+    // which injects `max-age=63072000; includeSubDomains`. Emitting it here in the app layer causes
+    // duplicate HSTS headers in HTTP responses, violating RFC 6797 and causing security scanners
+    // (such as Aikido and hstspreload) to reject the header as invalid / missing.
+    strictTransportSecurity: false,
   }),
 );
+
+app.use("*", async (c, next) => {
+  await next();
+  if (process.env.ENABLE_APP_HSTS === "true") {
+    c.header(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+  }
+});
 
 app.use(
   cors({
