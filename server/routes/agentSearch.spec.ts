@@ -553,4 +553,85 @@ describe("Agent Search Route", () => {
     // 1 tool call + 2 synthesis calls = 3 horde calls
     expect(hordeCallCount).toBe(3);
   });
+
+  test("Allows OpenRouter when OPENROUTER_API_KEY environment variable is configured", async () => {
+    process.env.OPENROUTER_API_KEY = "sk-or-env-test-key";
+    let capturedHeaders: any = null;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      const urlStr = String(url);
+      if (urlStr.includes("openrouter.ai")) {
+        capturedHeaders = init?.headers;
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"action": "done"}' } }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+      });
+    });
+
+    try {
+      const res = await app.request("/api/ai/agent-search", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${validToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: "Test search",
+          responseFormat: "summary",
+          researchOnly: true,
+          stream: false,
+          researchModel: "openrouter/free",
+          researchProvider: "openrouter",
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(capturedHeaders["Authorization"]).toBe("Bearer sk-or-env-test-key");
+      expect(capturedHeaders["HTTP-Referer"]).toBe("https://oxygenlow.com");
+      expect(capturedHeaders["X-Title"]).toBe("Oxygen Low's Software");
+    } finally {
+      delete process.env.OPENROUTER_API_KEY;
+    }
+  });
+
+  test("Allows keyless Pollinations AI provider without requiring API key", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const urlStr = String(url);
+      if (urlStr.includes("pollinations.ai")) {
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"action": "done"}' } }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+      });
+    });
+
+    const res = await app.request("/api/ai/agent-search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${validToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "Test search",
+        responseFormat: "summary",
+        researchOnly: true,
+        stream: false,
+        researchModel: "deepseek",
+        researchProvider: "pollinations",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+  });
 });
