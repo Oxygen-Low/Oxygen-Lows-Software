@@ -213,6 +213,8 @@ public partial class MainWindow : Window
             var cmd = cmdProp.GetString();
             string id = doc.RootElement.TryGetProperty("id", out var idProp) ? idProp.GetString() ?? "" : "";
 
+            try
+            {
                 if (cmd == "show_call_notification")
                 {
                     string callerName = doc.RootElement.TryGetProperty("callerName", out var cn) ? cn.GetString() ?? "Someone" : "Someone";
