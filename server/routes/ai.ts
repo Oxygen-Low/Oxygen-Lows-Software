@@ -394,6 +394,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       targetUrl = "https://openrouter.ai/api/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
+      fetchOptions.headers["HTTP-Referer"] = "https://oxygenlow.com";
+      fetchOptions.headers["X-Title"] = "Oxygen Low's Software";
     } else if (provider === "grok" || provider === "xai") {
       targetUrl = "https://api.x.ai/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };

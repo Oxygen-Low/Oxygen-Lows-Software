@@ -83,6 +83,10 @@ export function AiGenerateDialog({
     models = [],
     selectedModel: hookModel = "Fast",
     selectedProvider: hookProvider = "horde",
+    getDecryptedApiKey,
+    isProviderConfigured,
+    encryptedKeys = {},
+    isMasterKeyActive = false,
   } = hookData;
 
   const [targetType, setTargetType] = useState<
@@ -166,6 +170,43 @@ export function AiGenerateDialog({
         model_id: selectedModelId,
       };
 
+      const modelApiKey = getDecryptedApiKey
+        ? getDecryptedApiKey(chosenModel.provider)
+        : undefined;
+
+      const cleanProv = chosenModel.provider.toLowerCase().trim();
+      const isKeyless =
+        cleanProv === "horde" ||
+        cleanProv === "pollinations" ||
+        cleanProv.startsWith("local-") ||
+        (chosenModel as any).isLocal;
+
+      if (!isKeyless && !modelApiKey) {
+        const hasEncrypted = Boolean(encryptedKeys[cleanProv]);
+        if (hasEncrypted && !isMasterKeyActive) {
+          setErrorMessage(
+            t(
+              "apps.chatbotMasterKeyLocked",
+              undefined,
+              "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
+            ),
+          );
+          setIsGenerating(false);
+          return;
+        }
+        if (!isProviderConfigured || !isProviderConfigured(cleanProv)) {
+          setErrorMessage(
+            t(
+              "apps.chatbotProviderNotConfigured",
+              { provider: chosenModel.provider },
+              `Provider "${chosenModel.provider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
+            ),
+          );
+          setIsGenerating(false);
+          return;
+        }
+      }
+
       const generator = generateEntityFn || executeEntityGeneration;
 
       const result = await generator({
@@ -175,6 +216,7 @@ export function AiGenerateDialog({
         model: chosenModel,
         universe: chosenUniverse,
         race: chosenRace,
+        apiKey: modelApiKey || undefined,
         onProgress: (step: GenerationStep, detail?: string) => {
           setCurrentStep(step);
           if (detail) setStatusMessage(detail);
@@ -441,6 +483,34 @@ export function AiGenerateDialog({
                 </option>
               ))}
             </select>
+            {(() => {
+              const cleanSelectedProv = selectedProvider.toLowerCase().trim();
+              const isSelectedConfigured =
+                cleanSelectedProv === "horde" ||
+                cleanSelectedProv === "pollinations" ||
+                cleanSelectedProv.startsWith("local-") ||
+                (isProviderConfigured
+                  ? isProviderConfigured(cleanSelectedProv)
+                  : true);
+              if (!isSelectedConfigured) {
+                return (
+                  <p
+                    data-testid="unconfigured-provider-warning"
+                    className="text-xs text-amber-400 flex items-center gap-1.5 mt-1.5"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {t(
+                        "apps.chatbotProviderNotConfigured",
+                        { provider: selectedProvider },
+                        `Provider "${selectedProvider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
+                      )}
+                    </span>
+                  </p>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           {/* Prompt / Concept Input */}

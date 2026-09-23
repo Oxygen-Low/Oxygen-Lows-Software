@@ -22,6 +22,7 @@ export interface AgentSearchOptions {
   researchProvider?: string;
   summarizerModel?: string;
   summarizerProvider?: string;
+  apiKey?: string;
 }
 
 export interface SearchRecord {

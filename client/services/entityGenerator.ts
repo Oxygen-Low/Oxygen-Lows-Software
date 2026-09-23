@@ -34,6 +34,7 @@ export interface EntityGenerationOptions {
   } | null;
   onProgress?: (step: GenerationStep, detail?: string) => void;
   signal?: AbortSignal;
+  apiKey?: string;
 }
 
 export type GenerationStep =
@@ -333,6 +334,7 @@ async function callModel(
   model: EntityGenerationOptions["model"],
   messages: Array<{ role: string; content: string }>,
   signal?: AbortSignal,
+  apiKey?: string,
 ): Promise<string> {
   const isLocalOllama = model.isLocal && model.provider === "local-ollama";
   const isLocalLmStudio = model.isLocal && model.provider === "local-lmstudio";
@@ -353,6 +355,7 @@ async function callModel(
     model: model.model_id,
     provider: model.provider,
     messages,
+    apiKey: apiKey || undefined,
   };
 
   if (isLocalOllama) {
@@ -409,7 +412,12 @@ async function callModel(
   }
 
   if (!res.ok) {
-    const err: any = new Error(`Generation failed with status ${res.status}`);
+    let errMsg = `Generation failed with status ${res.status}`;
+    try {
+      const errJson = await res.json();
+      errMsg = errJson.error || errJson.message || errMsg;
+    } catch {}
+    const err: any = new Error(errMsg);
     err.status = res.status;
     err.statusText = res.statusText;
     throw err;
@@ -467,6 +475,7 @@ export async function executeEntityGeneration(
           { role: "user", content: briefInput },
         ],
         signal,
+        options.apiKey,
       );
     } catch (err: any) {
       if (signal?.aborted) throw err;
@@ -515,6 +524,16 @@ export async function executeEntityGeneration(
       }
     } catch {}
 
+    const isModelFreeOrKeyless =
+      model?.provider === "horde" ||
+      model?.provider === "pollinations" ||
+      model?.isLocal ||
+      model?.provider?.startsWith("local-");
+    const researchProvider =
+      options.apiKey || isModelFreeOrKeyless ? model?.provider : "horde";
+    const researchModel =
+      options.apiKey || isModelFreeOrKeyless ? model?.model_id : "Fast";
+
     const searchRes = await fetch("/api/ai/agent-search", {
       method: "POST",
       headers: searchHeaders,
@@ -523,10 +542,11 @@ export async function executeEntityGeneration(
         responseFormat: "summary",
         researchOnly: true,
         stream: false,
-        researchModel: model?.model_id,
-        researchProvider: model?.provider,
-        summarizerModel: model?.model_id,
-        summarizerProvider: model?.provider,
+        researchModel,
+        researchProvider,
+        summarizerModel: researchModel,
+        summarizerProvider: researchProvider,
+        apiKey: options.apiKey || undefined,
       }),
       signal,
     });
@@ -588,6 +608,7 @@ export async function executeEntityGeneration(
       { role: "user", content: promptBundle.user },
     ],
     signal,
+    options.apiKey,
   );
 
   const parsedRaw = extractJsonPayload(rawContent);

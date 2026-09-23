@@ -917,5 +917,106 @@ Let me know if you want any modifications!`;
       expect(capturedSearchBody.summarizerModel).toBe("Smart");
       expect(capturedSearchBody.summarizerProvider).toBe("horde");
     });
+
+    it("T4-03: Forwards apiKey to both agent-search and proxy when provided", async () => {
+      let capturedSearchBody: any = null;
+      let capturedProxyBody: any = null;
+
+      global.fetch = vi.fn().mockImplementation((url: string, init: any) => {
+        if (url === "/api/ai/agent-search") {
+          capturedSearchBody = JSON.parse(init.body);
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Lore findings" }),
+          });
+        }
+        if (url === "/api/ai/proxy") {
+          capturedProxyBody = JSON.parse(init.body);
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({
+                        name: "OpenRouter Entity",
+                        display_name: "Entity",
+                        short_description: "A free model entity",
+                        appearance: "Shimmering aura",
+                        personality: "Curious",
+                        backstory: "Generated via OpenRouter",
+                        hidden_description: "Top secret",
+                      }),
+                    },
+                  },
+                ],
+              }),
+          });
+        }
+        return Promise.reject(new Error("Unexpected"));
+      });
+
+      await executeEntityGeneration({
+        type: "character",
+        prompt: "A test character",
+        model: { provider: "openrouter", model_id: "openrouter/free" },
+        apiKey: "sk-or-test-key-12345",
+      });
+
+      expect(capturedSearchBody.apiKey).toBe("sk-or-test-key-12345");
+      expect(capturedSearchBody.researchProvider).toBe("openrouter");
+      expect(capturedSearchBody.researchModel).toBe("openrouter/free");
+      expect(capturedProxyBody.apiKey).toBe("sk-or-test-key-12345");
+      expect(capturedProxyBody.provider).toBe("openrouter");
+      expect(capturedProxyBody.model).toBe("openrouter/free");
+    });
+
+    it("T4-04: Falls back to horde for agent-search when model is unconfigured and apiKey is not provided", async () => {
+      let capturedSearchBody: any = null;
+
+      global.fetch = vi.fn().mockImplementation((url: string, init: any) => {
+        if (url === "/api/ai/agent-search") {
+          capturedSearchBody = JSON.parse(init.body);
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ result: "Horde fallback findings" }),
+          });
+        }
+        if (url === "/api/ai/proxy") {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  {
+                    message: {
+                      content: JSON.stringify({
+                        name: "Fallback Entity",
+                        display_name: "Fallback",
+                        short_description: "Desc",
+                        appearance: "App",
+                        personality: "Pers",
+                        backstory: "Back",
+                        hidden_description: "Hide",
+                      }),
+                    },
+                  },
+                ],
+              }),
+          });
+        }
+        return Promise.reject(new Error("Unexpected"));
+      });
+
+      await executeEntityGeneration({
+        type: "character",
+        prompt: "A test character",
+        model: { provider: "openrouter", model_id: "openrouter/free" },
+      });
+
+      expect(capturedSearchBody.researchProvider).toBe("horde");
+      expect(capturedSearchBody.researchModel).toBe("Fast");
+    });
   });
 });

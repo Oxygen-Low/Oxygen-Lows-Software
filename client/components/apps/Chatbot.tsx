@@ -1010,8 +1010,7 @@ export function ChatbotApp() {
     }
 
     const finalCustom = session?.user?.id ? [...custom] : [];
-    const openRouterAvailable =
-      hasOpenRouter || isProviderConfigured("openrouter");
+    const openRouterAvailable = isProviderConfigured("openrouter");
     if (
       session?.user?.id &&
       openRouterAvailable &&
@@ -1712,9 +1711,35 @@ export function ChatbotApp() {
         throw new Error("Please sign in to use Web Search.");
       }
 
-      const agentApiKey = getDecryptedApiKey(
-        selectedProvider || researchAgentDefaultProvider || "",
-      );
+      const searchTargetProvider =
+        selectedProvider || researchAgentDefaultProvider || "horde";
+      const agentApiKey = getDecryptedApiKey(searchTargetProvider);
+
+      const isSearchProviderKeyless =
+        searchTargetProvider === "horde" ||
+        searchTargetProvider === "pollinations" ||
+        searchTargetProvider.startsWith("local-");
+
+      const finalResearchProvider =
+        agentApiKey || isSearchProviderKeyless
+          ? searchTargetProvider
+          : researchAgentDefaultProvider &&
+              (isProviderConfigured(researchAgentDefaultProvider) ||
+                researchAgentDefaultProvider === "horde" ||
+                researchAgentDefaultProvider === "pollinations")
+            ? researchAgentDefaultProvider
+            : "horde";
+
+      const finalResearchModel =
+        (finalResearchProvider === searchTargetProvider
+          ? selectedModel || researchAgentDefaultModel
+          : researchAgentDefaultModel) || "Fast";
+
+      const finalApiKey =
+        finalResearchProvider === searchTargetProvider
+          ? agentApiKey || undefined
+          : getDecryptedApiKey(finalResearchProvider) || undefined;
+
       const agentRes = await fetch("/api/ai/agent-search", {
         method: "POST",
         headers: {
@@ -1726,21 +1751,41 @@ export function ChatbotApp() {
           responseFormat: parsedFormat,
           researchOnly: true,
           stream: true,
-          researchModel:
-            selectedModel || researchAgentDefaultModel || undefined,
-          researchProvider:
-            selectedProvider || researchAgentDefaultProvider || undefined,
-          summarizerModel:
-            selectedModel || researchSummarizerDefaultModel || undefined,
-          summarizerProvider:
-            selectedProvider || researchSummarizerDefaultProvider || undefined,
-          apiKey: agentApiKey || undefined,
+          researchModel: finalResearchModel,
+          researchProvider: finalResearchProvider,
+          summarizerModel: finalResearchModel,
+          summarizerProvider: finalResearchProvider,
+          apiKey: finalApiKey,
         }),
         signal,
       });
 
       if (!agentRes.ok) {
-        throw new Error(await parseAiProxyError(agentRes));
+        const errText = await parseAiProxyError(agentRes);
+        if (
+          errText.includes("Provider not configured") ||
+          errText.includes("is not configured")
+        ) {
+          const cleanProv = (finalResearchProvider || "").toLowerCase().trim();
+          const hasEncrypted = Boolean(encryptedKeys[cleanProv]);
+          if (hasEncrypted && !isMasterKeyActive) {
+            throw new Error(
+              t(
+                "apps.chatbotMasterKeyLocked",
+                undefined,
+                "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
+              ),
+            );
+          }
+          throw new Error(
+            t(
+              "apps.chatbotProviderNotConfigured",
+              { provider: finalResearchProvider },
+              `Provider "${finalResearchProvider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
+            ),
+          );
+        }
+        throw new Error(errText);
       }
 
       const reader = agentRes.body?.getReader();

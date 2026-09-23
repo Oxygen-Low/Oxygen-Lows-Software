@@ -477,7 +477,8 @@ async function callModelProvider({
   if (
     !apiKey &&
     provider !== "horde" &&
-    !provider.includes("horde")
+    !provider.includes("horde") &&
+    provider !== "pollinations"
   ) {
     throw new Error(
       `Provider '${provider}' is not configured.`,
@@ -575,6 +576,14 @@ async function callModelProvider({
     targetUrl = "https://openrouter.ai/api/v1/chat/completions";
     requestBody = { ...requestBody, model, messages };
     headers["Authorization"] = `Bearer ${apiKey}`;
+    headers["HTTP-Referer"] = "https://oxygenlow.com";
+    headers["X-Title"] = "Oxygen Low's Software";
+  } else if (provider === "pollinations") {
+    targetUrl = "https://text.pollinations.ai/openai/chat/completions";
+    requestBody = { ...requestBody, model, messages };
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
   } else if (provider === "grok") {
     targetUrl = "https://api.x.ai/v1/chat/completions";
     requestBody = { ...requestBody, model, messages };
@@ -744,10 +753,27 @@ agentSearchRouter.post(
           ? rawSummarizerModel
           : effectiveResearchModel;
 
+      const resolveEnvKey = (prov: string): string => {
+        if (prov === "openrouter") return process.env.OPENROUTER_API_KEY || "";
+        if (prov === "openai") return process.env.OPENAI_API_KEY || "";
+        if (prov === "anthropic") return process.env.ANTHROPIC_API_KEY || "";
+        if (prov === "google" || prov === "gemini")
+          return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+        if (prov === "grok" || prov === "xai")
+          return process.env.GROK_API_KEY || process.env.XAI_API_KEY || "";
+        return "";
+      };
+
+      const effectiveResearchApiKey =
+        apiKey || resolveEnvKey(effectiveResearchProvider);
+      const effectiveSummarizerApiKey =
+        apiKey || resolveEnvKey(effectiveSummarizerProvider);
+
       if (
-        !apiKey &&
+        !effectiveResearchApiKey &&
         effectiveResearchProvider !== "horde" &&
-        !effectiveResearchProvider.includes("horde")
+        !effectiveResearchProvider.includes("horde") &&
+        effectiveResearchProvider !== "pollinations"
       ) {
         return c.json(
           {
@@ -759,9 +785,10 @@ agentSearchRouter.post(
 
       if (
         !researchOnly &&
-        !apiKey &&
+        !effectiveSummarizerApiKey &&
         effectiveSummarizerProvider !== "horde" &&
-        !effectiveSummarizerProvider.includes("horde")
+        !effectiveSummarizerProvider.includes("horde") &&
+        effectiveSummarizerProvider !== "pollinations"
       ) {
         return c.json(
           {
@@ -930,7 +957,7 @@ Guidelines:
               tools: SEARCH_TOOLS,
               userId: user.id,
               hordeApiKey,
-              apiKey,
+              apiKey: effectiveResearchApiKey,
               signal: AbortSignal.timeout(10000),
             });
             const data = await res.json();
@@ -1031,7 +1058,7 @@ Guidelines:
             stream: false,
             userId: user.id,
             hordeApiKey,
-            apiKey,
+            apiKey: effectiveSummarizerApiKey,
             signal: AbortSignal.timeout(60000),
           });
         } catch (e: any) {
@@ -1124,7 +1151,7 @@ Guidelines:
                 tools: SEARCH_TOOLS,
                 userId: user.id,
                 hordeApiKey,
-                apiKey,
+                apiKey: effectiveResearchApiKey,
                 signal: AbortSignal.timeout(10000),
               });
               const data = await res.json();
@@ -1315,7 +1342,7 @@ Guidelines:
               stream: true,
               userId: user.id,
               hordeApiKey,
-              apiKey,
+              apiKey: effectiveSummarizerApiKey,
               signal: AbortSignal.timeout(60000),
             });
           } catch (e: any) {
