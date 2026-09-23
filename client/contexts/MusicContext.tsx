@@ -3,6 +3,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useLayoutEffect,
   useRef,
   useCallback,
   useMemo,
@@ -102,6 +103,26 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const playTokenRef = useRef(0);
   const volumeRef = useRef(volume);
   const isMutedRef = useRef(isMuted);
+
+  // Synchronously keep refs updated during render so that any callbacks or event handlers
+  // executed before passive effects run have the latest state values.
+  playlistRef.current = playlist;
+  currentTrackRef.current = currentTrack;
+  isPlayingRef.current = isPlaying;
+  shuffleRef.current = shuffle;
+  loopRef.current = loop;
+  volumeRef.current = volume;
+  isMutedRef.current = isMuted;
+
+  useLayoutEffect(() => {
+    playlistRef.current = playlist;
+    currentTrackRef.current = currentTrack;
+    isPlayingRef.current = isPlaying;
+    shuffleRef.current = shuffle;
+    loopRef.current = loop;
+    volumeRef.current = volume;
+    isMutedRef.current = isMuted;
+  }, [playlist, currentTrack, isPlaying, shuffle, loop, volume, isMuted]);
 
   useEffect(() => {
     playlistRef.current = playlist;
@@ -220,7 +241,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       const music_playlist =
         overrides.playlist !== undefined
           ? overrides.playlist
-          : playlistRef.current;
+          : playlistRef.current.length > 0
+            ? playlistRef.current
+            : playlist;
       const current_music_track =
         overrides.currentTrack !== undefined
           ? overrides.currentTrack?.fileName || null
@@ -360,6 +383,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         const shuffleEnabled = data?.shuffle_enabled || false;
         const loopEnabled = data?.loop_enabled || false;
 
+        playlistRef.current = loadedPlaylist;
         setPlaylistState(loadedPlaylist);
         setShuffleState(shuffleEnabled);
         setLoopState(loopEnabled);
@@ -506,15 +530,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       savePreferences({
         currentTrack: track,
         currentPosition: 0,
-        playlist: overridePlaylist || playlistRef.current,
+        playlist:
+          overridePlaylist ||
+          (playlistRef.current.length > 0 ? playlistRef.current : playlist),
       });
     },
-    [resolvePlaybackUrl, savePreferences, saveExitState],
+    [playlist, resolvePlaybackUrl, savePreferences, saveExitState],
   );
 
   const playNext = useCallback(async () => {
     const currentT = currentTrackRef.current;
-    const playlistArr = playlistRef.current;
+    const playlistArr =
+      playlistRef.current.length > 0 ? playlistRef.current : playlist;
     const isShuffle = shuffleRef.current;
 
     if (playlistArr.length === 0) return;
@@ -712,6 +739,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         const updatedTrack = { ...targetTrack, volume: clamped };
         const updatedPlaylist = [...prev];
         updatedPlaylist[index] = updatedTrack;
+        playlistRef.current = updatedPlaylist;
 
         const isCurrent =
           currentTrackRef.current?.fileName === targetTrack.fileName ||
@@ -757,7 +785,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const playPrev = useCallback(async () => {
     const currentT = currentTrackRef.current;
-    const playlistArr = playlistRef.current;
+    const playlistArr =
+      playlistRef.current.length > 0 ? playlistRef.current : playlist;
 
     if (playlistArr.length === 0) return;
 
@@ -783,13 +812,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     const prevTrack = playlistArr[prevIndex];
 
     await playTrack(prevTrack);
-  }, [playTrack, seek]);
+  }, [playlist, playTrack, seek]);
 
   const addTrack = useCallback(
     async (track: PlaylistTrack) => {
       if (!session?.user?.id) return;
       setPlaylistState((prev) => {
         const updatedPlaylist = [...prev, track];
+        playlistRef.current = updatedPlaylist;
         savePreferences({
           playlist: updatedPlaylist,
           currentTrack: currentTrackRef.current || track,
@@ -807,19 +837,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
     },
-    [session?.user?.id, resolvePlaybackUrl, savePreferences],
+    [playlist, session?.user?.id, resolvePlaybackUrl, savePreferences],
   );
 
   const removeTrack = useCallback(
     async (trackFileName: string) => {
       if (!session?.user?.id) return;
 
-      const updatedPlaylist = playlistRef.current.filter(
+      const currentList =
+        playlistRef.current.length > 0 ? playlistRef.current : playlist;
+      const updatedPlaylist = currentList.filter(
         (t) =>
           t.fileName !== trackFileName &&
           !t.fileName.endsWith("/" + trackFileName) &&
           !trackFileName.endsWith("/" + t.fileName),
       );
+      playlistRef.current = updatedPlaylist;
       setPlaylistState(updatedPlaylist);
 
       const isCurrent =
@@ -873,6 +906,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     },
     [
+      playlist,
       session?.user?.id,
       playTrack,
       resolvePlaybackUrl,
@@ -883,6 +917,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const reorderPlaylist = useCallback(
     async (newPlaylist: PlaylistTrack[]) => {
+      playlistRef.current = newPlaylist;
       setPlaylistState(newPlaylist);
       savePreferences({ playlist: newPlaylist });
     },
@@ -891,27 +926,31 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const moveTrack = useCallback(
     async (fromIndex: number, toIndex: number) => {
+      const currentList =
+        playlistRef.current.length > 0 ? playlistRef.current : playlist;
       if (
         fromIndex < 0 ||
-        fromIndex >= playlistRef.current.length ||
+        fromIndex >= currentList.length ||
         toIndex < 0 ||
-        toIndex >= playlistRef.current.length ||
+        toIndex >= currentList.length ||
         fromIndex === toIndex
       ) {
         return;
       }
 
-      const updated = [...playlistRef.current];
+      const updated = [...currentList];
       const [movedItem] = updated.splice(fromIndex, 1);
       updated.splice(toIndex, 0, movedItem);
 
+      playlistRef.current = updated;
       setPlaylistState(updated);
       savePreferences({ playlist: updated });
     },
-    [savePreferences],
+    [playlist, savePreferences],
   );
 
   const clearPlaylist = useCallback(async () => {
+    playlistRef.current = [];
     setPlaylistState([]);
     setCurrentTrackState(null);
     currentTrackRef.current = null;
