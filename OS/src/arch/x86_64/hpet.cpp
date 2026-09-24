@@ -1,5 +1,6 @@
 #include "arch/x86_64/hpet.h"
 #include "arch/x86_64/acpi.h"
+#include "arch/x86_64/pit.h"
 #include "mm/vmm.h"
 #include "arch/x86_64/io.h"
 #include "drivers/serial.h"
@@ -61,7 +62,7 @@ bool hpet_init(void) {
     }
 
     g_hpet_frequency = 1000000000000000ULL / g_hpet_period_fs;
-    serial_printf("[HPET] Capabilities: Period=%u fs, Frequency=%llu Hz\n",
+    serial_printf("[HPET] Capabilities: Period=%u fs, Frequency=%lu Hz\n",
                   g_hpet_period_fs, g_hpet_frequency);
 
     // 4. Enable HPET Main Counter
