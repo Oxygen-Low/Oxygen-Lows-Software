@@ -77,6 +77,7 @@ ISR_NOERRCODE 44                            ; IRQ12: PS/2 Mouse
 ISR_NOERRCODE 45                            ; IRQ13: FPU / Coprocessor
 ISR_NOERRCODE 46                            ; IRQ14: Primary ATA Hard Disk
 ISR_NOERRCODE 47                            ; IRQ15: Secondary ATA Hard Disk
+ISR_NOERRCODE 48                            ; Vector 48: Software Task Yield
 
 ; ------------------------------------------------------------------------------
 ; Common ISR Entry and Exit Stub
@@ -146,7 +147,7 @@ section .rodata
 global isr_stub_table
 isr_stub_table:
 %assign i 0
-%rep 48
+%rep 49
     dq isr_stub_%+i
 %assign i i+1
 %endrep

@@ -27,8 +27,8 @@ void str_copy_n(char* dest, const char* src, size_t max_len) {
 void sys_monitor_worker(void* arg) {
     UNUSED(arg);
     while (true) {
-        // Periodic background telemetry
-        pit_sleep_ms(2000);
+        // Periodic background telemetry (non-blocking scheduler sleep)
+        sched_sleep(2000);
         // serial_printf("[SYSMON] Heartbeat tick\n");
     }
 }
@@ -72,6 +72,9 @@ void sched_init(void) {
     g_current_task = main_task;
     g_last_cpu_calc_tick = pit_get_ticks();
     g_total_recent_ticks = 0;
+
+    // Register Vector 48 for software yield (clean context switch without PIC EOI)
+    register_interrupt_handler(48, sched_schedule);
 
     // Create system background worker task
     sched_create_task("System Monitor", sys_monitor_worker, nullptr, 3);
@@ -206,8 +209,8 @@ void sched_schedule(InterruptFrame* frame) {
 }
 
 void sched_yield(void) {
-    // Trigger timer interrupt or pause
-    __asm__ volatile ("int $32");
+    // Trigger clean software yield interrupt (Vector 48)
+    __asm__ volatile ("int $48");
 }
 
 void sched_sleep(uint64_t ms) {

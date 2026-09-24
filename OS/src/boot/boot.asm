@@ -212,21 +212,57 @@ setup_page_tables:
     jne .map_all_pd
     ret
 
-; Fatal error halt routines (writes error character to VGA memory 0xB8000)
+early_serial_puts:
+    mov al, [esi]
+    test al, al
+    jz .done
+    mov ah, al
+.wait_tx:
+    mov dx, 0x3FD
+    in al, dx
+    test al, 0x20
+    jz .wait_tx
+    mov dx, 0x3F8
+    mov al, ah
+    out dx, al
+    inc esi
+    jmp early_serial_puts
+.done:
+    ret
+
+str_err_no_mb:    db 0x0D, 0x0A, "[BOOT FATAL] Invalid Multiboot2 magic number!", 0x0D, 0x0A, 0
+str_err_no_cpuid: db 0x0D, 0x0A, "[BOOT FATAL] CPUID instruction not supported by CPU!", 0x0D, 0x0A, 0
+str_err_no_lm:    db 0x0D, 0x0A, "[BOOT FATAL] 64-bit Long Mode not supported! Please enable 64-bit (x86_64) & PAE in VirtualBox / VM settings.", 0x0D, 0x0A, 0
+
+; Fatal error halt routines (writes error character to VGA memory 0xB8000 and COM1 serial)
 error_no_multiboot:
     mov dword [0xB8000], 0x4F324F4D         ; "M2" in red
+    mov esi, str_err_no_mb
+    call early_serial_puts
     cli
     hlt
     jmp error_no_multiboot
 
 error_no_cpuid:
     mov dword [0xB8000], 0x4F434F4E         ; "NC" in red
+    mov esi, str_err_no_cpuid
+    call early_serial_puts
     cli
     hlt
     jmp error_no_cpuid
 
 error_no_long_mode:
+    ; Reset Bochs / VirtualBox VBE Dispi adapter to disabled so text mode 0xB8000 is visible
+    mov dx, 0x1CE
+    mov ax, 0x0004                           ; VBE_DISPI_INDEX_ENABLE
+    out dx, ax
+    mov dx, 0x1CF
+    mov ax, 0x0000                           ; VBE_DISPI_DISABLED
+    out dx, ax
+
     mov dword [0xB8000], 0x4F4C4F4E         ; "NL" in red
+    mov esi, str_err_no_lm
+    call early_serial_puts
     cli
     hlt
     jmp error_no_long_mode

@@ -96,3 +96,10 @@ scratch/
 tmp/
 temp/
 uploads_backup/
+
+# OS build artifacts
+OS/*.iso
+OS/*.elf
+OS/Output/
+*.iso
+

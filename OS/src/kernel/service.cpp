@@ -66,8 +66,8 @@ void system_core_worker(void* arg) {
     serial_printf("[SYSCORE] Oxygen Low's System Service worker active\n");
 
     while (g_system_core_running) {
-        // Heartbeat & health check every 2 seconds
-        pit_sleep_ms(2000);
+        // Heartbeat & health check every 2 seconds (non-blocking scheduler sleep)
+        sched_sleep(2000);
 
         // Verify physical frame allocator and heap sanity
         size_t free_frames = pmm_get_free_frames();

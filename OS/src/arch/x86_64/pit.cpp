@@ -74,15 +74,20 @@ void pit_sleep_ms(uint64_t ms) {
         return;
     }
 
+    // If hardware interrupts are disabled (IF = 0), IRQ0 cannot fire and g_system_ticks will not advance.
+    // Use calibrated I/O port 0x80 delay (~1 microsecond per outb) for early boot pauses.
+    if ((read_rflags() & 0x200) == 0) {
+        for (uint64_t i = 0; i < ms; ++i) {
+            for (uint32_t count = 0; count < 1000; ++count) {
+                io_wait();
+            }
+        }
+        return;
+    }
+
     uint64_t start_ms = pit_get_uptime_ms();
     while ((pit_get_uptime_ms() - start_ms) < ms) {
-        // If hardware interrupts are active, halt CPU until next timer tick (IRQ0) or I/O event
-        // This drops host CPU usage in QEMU/VM from 100% to near 0%.
-        if ((read_rflags() & 0x200) != 0) {
-            hlt();
-        } else {
-            __asm__ volatile ("pause");
-        }
+        hlt();
     }
 }
 

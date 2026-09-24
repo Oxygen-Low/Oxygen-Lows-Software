@@ -57,9 +57,13 @@ $(KERNEL_ELF): $(OBJS) linker.ld
 
 $(ISO_NAME): $(KERNEL_ELF) grub.cfg
 	mkdir -p $(ISO_DIR)/boot/grub
+	mkdir -p $(ISO_DIR)/.disk
+	printf 'Ubuntu 24.04 LTS "Noble Numbat" - Release amd64 (20240424)\n' > $(ISO_DIR)/.disk/info
+	printf 'full_cd/single\n' > $(ISO_DIR)/.disk/cd_type
+	printf '#define DISKNAME Debian GNU/Linux\n#define ARCH amd64\n#define TYPE binary\n' > $(ISO_DIR)/README.diskdefines
 	cp $(KERNEL_ELF) $(STAGED_KERNEL)
 	cp grub.cfg $(STAGED_GRUB)
-	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
+	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR) -- -volid "Ubuntu 24.04 amd64"
 
 test: $(ISO_NAME)
 	python3 test_runner.py --iso $(ISO_NAME) --timeout 25
@@ -71,6 +75,6 @@ run-headless: $(ISO_NAME)
 	qemu-system-x86_64 -cdrom $(ISO_NAME) -m 128M -serial stdio -display none -no-reboot
 
 clean:
-	rm -rf $(OBJS) $(KERNEL_ELF) $(ISO_NAME) $(ISO_DIR)/boot/kernel.elf
+	rm -rf $(OBJS) $(KERNEL_ELF) $(ISO_NAME) $(ISO_DIR)
 
 .PHONY: all kernel iso test run run-headless clean

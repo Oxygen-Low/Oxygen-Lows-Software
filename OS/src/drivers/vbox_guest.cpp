@@ -97,7 +97,7 @@ bool vbox_guest_init(void) {
     g_info_req.header.reserved1 = 0;
     g_info_req.header.reserved2 = 0;
     g_info_req.interfaceVersion = 0x00010004;
-    g_info_req.osType = 0x00010000; // Unknown 64-bit OS
+    g_info_req.osType = 0x00050000; // 64-bit OS (Linux 2.6+/64-bit)
     vbox_guest_send_request(&g_info_req);
 
     // Initial Host Time Synchronization

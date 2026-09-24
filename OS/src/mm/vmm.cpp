@@ -49,13 +49,13 @@ void vmm_init_pat(void) {
         // Program IA32_PAT (0x277) to:
         // PA0: WB  (0x06) - Standard caching for RAM
         // PA1: WC  (0x01) - Write-Combining for VRAM framebuffer (PWT=1, PCD=0, PAT=0)
-        // PA2: UC- (0x02) - Uncached minus
+        // PA2: UC- (0x07) - Uncached minus (0x02 is reserved/illegal in x86 architecture)
         // PA3: UC  (0x00) - Uncached for MMIO
         // PA4: WB  (0x06)
         // PA5: WC  (0x01)
-        // PA6: UC- (0x02)
+        // PA6: UC- (0x07)
         // PA7: UC  (0x00)
-        uint64_t pat_value = 0x0002010600020106ULL;
+        uint64_t pat_value = 0x0007010600070106ULL;
         wrmsr(0x277, pat_value);
         serial_printf("[VMM] CPU PAT (Page Attribute Table) configured: Write-Combining (WC) enabled\n");
     } else {

@@ -153,7 +153,14 @@ uint32_t* fb_get_frontbuffer(void) {
 // Bypasses CPU cache hierarchy directly into VRAM write-combining buffers
 static inline void sse2_streaming_store_row(uint32_t* dst, const uint32_t* src, size_t count) {
     size_t i = 0;
-    // Process 64-byte chunks (16 pixels) with 4 x 128-bit streaming stores
+
+    // 1. Align dst to 16-byte boundary using scalar stores (movntdq requires 16-byte alignment)
+    while (i < count && (reinterpret_cast<uintptr_t>(dst + i) & 0x0F) != 0) {
+        dst[i] = src[i];
+        i++;
+    }
+
+    // 2. Process 64-byte chunks (16 pixels) with 4 x 128-bit streaming stores
     for (; i + 16 <= count; i += 16) {
         __asm__ volatile (
             "movdqu 0(%1), %%xmm0\n\t"
@@ -169,7 +176,7 @@ static inline void sse2_streaming_store_row(uint32_t* dst, const uint32_t* src, 
             : "memory", "xmm0", "xmm1", "xmm2", "xmm3"
         );
     }
-    // Process 16-byte chunks (4 pixels) with 1 x 128-bit streaming store
+    // 3. Process 16-byte chunks (4 pixels) with 1 x 128-bit streaming store
     for (; i + 4 <= count; i += 4) {
         __asm__ volatile (
             "movdqu 0(%1), %%xmm0\n\t"
@@ -179,7 +186,7 @@ static inline void sse2_streaming_store_row(uint32_t* dst, const uint32_t* src, 
             : "memory", "xmm0"
         );
     }
-    // Scalar tail pixels
+    // 4. Scalar tail pixels
     for (; i < count; ++i) {
         dst[i] = src[i];
     }

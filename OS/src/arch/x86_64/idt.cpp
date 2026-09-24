@@ -4,8 +4,9 @@
 #include "drivers/serial.h"
 #include "gui/framebuffer.h"
 #include "gui/font.h"
+#include "gui/gfx.h"
 
-extern "C" void* isr_stub_table[48];
+extern "C" void* isr_stub_table[49];
 
 namespace {
 
@@ -84,8 +85,8 @@ void idt_init(void) {
         g_interrupt_handlers[i] = nullptr;
     }
 
-    // Register CPU Exceptions (0-31) and IRQs (32-47)
-    for (uint8_t i = 0; i < 48; ++i) {
+    // Register CPU Exceptions (0-31), IRQs (32-47), and Software Yield (48)
+    for (uint8_t i = 0; i < 49; ++i) {
         uint8_t ist = (i == 8) ? 1 : 0; // Use IST1 for Double Fault
         idt_set_gate(i, isr_stub_table[i], 0x08, IDT_FLAG_INTERRUPT_GATE, ist);
     }
@@ -153,13 +154,16 @@ void idt_dispatch_interrupt(InterruptFrame* frame) {
         if (fb && fb->is_initialized && fb->virt_addr) {
             uint32_t screen_w = fb->width;
             uint32_t screen_h = fb->height;
-            uint32_t* vram = fb->virt_addr;
+            uint32_t* backbuf = fb_get_backbuffer();
             uint32_t blue_color = 0xFF003366; // Deep Blue
 
-            // Clear screen directly in VRAM
+            // Clear screen in backbuffer
             for (uint32_t i = 0; i < screen_w * screen_h; ++i) {
-                vram[i] = blue_color;
+                backbuf[i] = blue_color;
             }
+
+            // Ensure drawing is not clipped by an active window clip rect
+            gfx_reset_clip_rect();
 
             int32_t y = 40;
             font_draw_string(40, y, ":( Oxygen Low's Software encountered a fatal kernel problem", COLOR_WHITE);
@@ -181,6 +185,8 @@ void idt_dispatch_interrupt(InterruptFrame* frame) {
             font_printf(40, y, Color(180, 200, 230, 255), COLOR_TRANSPARENT, "RSI: 0x%p  RDI: 0x%p  R8:  0x%p  R9:  0x%p", (void*)frame->rsi, (void*)frame->rdi, (void*)frame->r8, (void*)frame->r9);
             y += 36;
             font_draw_string(40, y, "Please report this issue to Oxygen Low's Software Support. System halted.", COLOR_WHITE);
+
+            fb_swap_buffers();
         }
 
         // Halt CPU
