@@ -77,14 +77,12 @@ export function sanitizePath(rawPath: string): string {
   let clean = decodeURIComponent(rawPath);
   clean = clean.replace(/\\/g, "/");
   clean = clean.replace(/^\/+/, "");
-  // Disallow directory traversal, null bytes, and absolute Windows/POSIX drives
+  // Disallow directory traversal, null bytes, and Windows drive letters
   if (
     clean.includes("..") ||
     clean.startsWith("/") ||
     clean.includes("\0") ||
-    /^[a-zA-Z]:/.test(clean) ||
-    path.win32.isAbsolute(rawPath) ||
-    path.posix.isAbsolute(rawPath)
+    /^[a-zA-Z]:/.test(clean)
   ) {
     throw new Error("Invalid path");
   }
