@@ -580,7 +580,7 @@ export function wipeServerPasswordsAndMigrateSchema(): {
 let cachedUserIds: string[] | null = null;
 let lastCacheTime = 0;
 const CACHE_TTL =
-  process.env.NODE_ENV === "test" || process.env.VITEST ? 0 : 30000;
+  process.env.NODE_ENV === "test" || process.env.VITEST ? 5000 : 30000;
 
 export function getAllUserIds(): string[] {
   const now = Date.now();
@@ -1182,25 +1182,27 @@ function sanitizePreferences(pref: any): any {
           }
         }
       }
-      for (const id of userIds) {
-        if (id === userIdStr) continue;
-        const otherFilePath = getTableFilePath(table, id);
-        if (otherFilePath && fs.existsSync(otherFilePath)) {
-          const rows = readJsonFile<any[]>(otherFilePath, []);
-          for (const f of rows) {
-            if (f && f.id && !seenIds.has(String(f.id))) {
-              if (
-                String(f.user_id) === userIdStr ||
-                String(f.friend_id) === userIdStr
-              ) {
-                const otherUser =
+      if (all.length === 0) {
+        for (const id of userIds) {
+          if (id === userIdStr) continue;
+          const otherFilePath = getTableFilePath(table, id);
+          if (otherFilePath && fs.existsSync(otherFilePath)) {
+            const rows = readJsonFile<any[]>(otherFilePath, []);
+            for (const f of rows) {
+              if (f && f.id && !seenIds.has(String(f.id))) {
+                if (
+                  String(f.user_id) === userIdStr ||
                   String(f.friend_id) === userIdStr
-                    ? String(f.user_id)
-                    : String(f.friend_id);
-                if (!seenOtherUsers.has(otherUser)) {
-                  seenOtherUsers.add(otherUser);
-                  seenIds.add(String(f.id));
-                  all.push(f);
+                ) {
+                  const otherUser =
+                    String(f.friend_id) === userIdStr
+                      ? String(f.user_id)
+                      : String(f.friend_id);
+                  if (!seenOtherUsers.has(otherUser)) {
+                    seenOtherUsers.add(otherUser);
+                    seenIds.add(String(f.id));
+                    all.push(f);
+                  }
                 }
               }
             }
@@ -3314,13 +3316,9 @@ export function getAcceptedFriendIds(userId: string | number): string[] {
     return [];
   const userIdStr = String(userId);
   const friendSet = new Set<string>();
-  const userIds = getAllUserIds();
 
-  // 1. Check user's own friendships / friends table
-  const userFriends = [
-    ...getTableRows("friendships", userIdStr),
-    ...getTableRows("friends", userIdStr),
-  ];
+  // 1. Check user's own friendships table (getTableRows already resolves friendships)
+  const userFriends = getTableRows("friendships", userIdStr);
   const seenFriendIds = new Set<string>();
   for (const f of userFriends) {
     if (f && f.id && seenFriendIds.has(f.id)) continue;
@@ -3335,39 +3333,7 @@ export function getAcceptedFriendIds(userId: string | number): string[] {
     }
   }
 
-  // 2. Also check all other users' friendship tables in case the record was stored on the other party's side
-  for (const uid of userIds) {
-    if (uid === userIdStr) continue;
-    const friendships = [
-      ...readJsonFile<any[]>(
-        path.join(DATA_DIR, uid, "friends", "friends.json"),
-        [],
-      ),
-      ...readJsonFile<any[]>(
-        path.join(DATA_DIR, uid, "friends", "friendships.json"),
-        [],
-      ),
-    ];
-    for (const f of friendships) {
-      if (f && f.status === "accepted") {
-        if (
-          String(f.user_id) === userIdStr &&
-          f.friend_id &&
-          String(f.friend_id) !== userIdStr
-        ) {
-          friendSet.add(String(f.friend_id));
-        } else if (
-          String(f.friend_id) === userIdStr &&
-          f.user_id &&
-          String(f.user_id) !== userIdStr
-        ) {
-          friendSet.add(String(f.user_id));
-        }
-      }
-    }
-  }
-
-  // 3. Filter out any blocked users (bidirectional block check)
+  // 2. Filter out any blocked users (bidirectional block check)
   const myBlocks = getTableRows("blocks", userIdStr);
   const blockedIds = new Set<string>();
   for (const b of myBlocks) {
@@ -3377,10 +3343,7 @@ export function getAcceptedFriendIds(userId: string | number): string[] {
   }
 
   for (const fid of Array.from(friendSet)) {
-    const friendBlocks = readJsonFile<any[]>(
-      path.join(DATA_DIR, fid, "friends", "blocks.json"),
-      [],
-    );
+    const friendBlocks = getTableRows("blocks", fid);
     for (const b of friendBlocks) {
       if (
         String(b.blocked_id) === userIdStr ||
@@ -3416,13 +3379,7 @@ export function isBlockedBidirectional(
   const bStr = String(userBId);
   if (!aStr || !bStr || aStr === bStr) return false;
 
-  const aBlocks = [
-    ...getTableRows("blocks", aStr),
-    ...readJsonFile<any[]>(
-      path.join(DATA_DIR, aStr, "friends", "blocks.json"),
-      [],
-    ),
-  ];
+  const aBlocks = getTableRows("blocks", aStr);
   for (const b of aBlocks) {
     const target = String(
       b.blocked_id || b.blocked_user_id || b.target_id || "",
@@ -3430,13 +3387,7 @@ export function isBlockedBidirectional(
     if (target === bStr) return true;
   }
 
-  const bBlocks = [
-    ...getTableRows("blocks", bStr),
-    ...readJsonFile<any[]>(
-      path.join(DATA_DIR, bStr, "friends", "blocks.json"),
-      [],
-    ),
-  ];
+  const bBlocks = getTableRows("blocks", bStr);
   for (const b of bBlocks) {
     const target = String(
       b.blocked_id || b.blocked_user_id || b.target_id || "",

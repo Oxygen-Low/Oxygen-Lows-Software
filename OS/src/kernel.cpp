@@ -35,8 +35,10 @@
 #include "gui/theme.h"
 #include "apps/taskmgr_app.h"
 #include "apps/paint_app.h"
+#include "apps/services_app.h"
 #include "arch/x86_64/acpi.h"
 #include "arch/x86_64/hpet.h"
+#include "kernel/service.h"
 
 extern "C" void call_global_constructors(void);
 
@@ -179,7 +181,35 @@ static bool run_selftests(void) {
     serial_printf("[SELFTEST] 14. Audio Subsystem (PC Speaker ACTIVE, AC'97 %s): OK\n",
                   ac97_found ? "DETECTED" : "FALLBACK_SPEAKER");
 
-    serial_printf("[SELFTEST] All 14 kernel, storage, audio & GUI sanity checks PASSED\n");
+    // 15. Kernel Service Manager & Critical System Service Test
+    size_t svc_count = service_get_count();
+    if (svc_count == 0) {
+        serial_printf("[SELFTEST] FAILED: Service Manager has 0 services\n");
+        return false;
+    }
+    ServiceInfo sys_core_info;
+    if (!service_get_by_name("system-core", &sys_core_info)) {
+        serial_printf("[SELFTEST] FAILED: system-core service not found\n");
+        return false;
+    }
+    if (!sys_core_info.is_critical || sys_core_info.status != SERVICE_RUNNING ||
+        sys_core_info.startup_type != SERVICE_STARTUP_AUTOMATIC) {
+        serial_printf("[SELFTEST] FAILED: system-core service state invalid\n");
+        return false;
+    }
+    char test_err[SERVICE_ERR_MAX];
+    if (service_stop("system-core", test_err, sizeof(test_err))) {
+        serial_printf("[SELFTEST] FAILED: Critical service allowed stop\n");
+        return false;
+    }
+    if (service_set_startup("system-core", SERVICE_STARTUP_DISABLED, test_err, sizeof(test_err))) {
+        serial_printf("[SELFTEST] FAILED: Critical service allowed disable\n");
+        return false;
+    }
+    serial_printf("[SELFTEST] 15. Service Manager & Critical System Service (%u services, system-core RUNNING/PROTECTED): OK\n",
+                  (uint32_t)svc_count);
+
+    serial_printf("[SELFTEST] All 15 kernel, storage, audio, GUI & service sanity checks PASSED\n");
     return true;
 }
 
@@ -232,9 +262,10 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
     vbox_hgcm_init();
     vbox_shared_folders_init();
 
-    // 9. Dynamic Theme Engine & Preemptive Multitasking Scheduler
+    // 9. Dynamic Theme Engine, Preemptive Multitasking Scheduler & Service Manager
     theme_init();
     sched_init();
+    service_mgr_init();
 
     // 10. Linear Framebuffer & 2D Graphics Engine
     bool has_fb = fb_init(multiboot_info_addr);
@@ -242,11 +273,62 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
         gfx_init(fb_get_config());
         cursor_init();
 
+        // Ubuntu/Linux-style autostart service initialization display on Framebuffer
+        gfx_fill_screen(Color(10, 15, 26, 255));
+        int32_t boot_y = 40;
+        font_draw_string(40, boot_y, "Oxygen Low's Software OS (x86_64 Long Mode)", Color(0, 229, 255, 255));
+        boot_y += 24;
+        font_draw_string(40, boot_y, "System Core Monolithic Kernel v1.4.0", Color(148, 163, 184, 255));
+        boot_y += 36;
+
+        auto print_boot_line = [&](const char* tag, Color tag_col, const char* msg) {
+            font_draw_string(40, boot_y, "[", COLOR_WHITE);
+            font_draw_string(48, boot_y, tag, tag_col);
+            font_draw_string(104, boot_y, "]", COLOR_WHITE);
+            font_draw_string(118, boot_y, msg, COLOR_WHITE);
+            boot_y += 22;
+            fb_mark_dirty_all();
+            fb_present_dirty();
+        };
+
+        print_boot_line("  OK  ", Color(34, 197, 94, 255), "Reached target System Memory & 4-Level Paging.");
+        print_boot_line("  OK  ", Color(34, 197, 94, 255), "Reached target Virtual File System (RamFS).");
+        print_boot_line("  OK  ", Color(34, 197, 94, 255), "Reached target Storage Subsystem & Audio Drivers.");
+        print_boot_line("  OK  ", Color(34, 197, 94, 255), "Started Preemptive Multitasking Scheduler.");
+
+        // Start autostart services functionally and report at machine speed (pure real-time)
+        service_boot_start_autostart_services([](const char* display_name, bool success) {
+            serial_printf("[BOOT] %s %s\n", success ? "Started" : "Failed to start", display_name);
+        });
+
+        // Display started services on boot console
+        size_t boot_svc_count = service_get_count();
+        for (size_t i = 0; i < boot_svc_count; ++i) {
+            ServiceInfo s_info;
+            if (service_get_info(i, &s_info) && s_info.startup_type == SERVICE_STARTUP_AUTOMATIC) {
+                char s_msg[128];
+                const char* prefix = (s_info.status == SERVICE_RUNNING) ? "Started " : "Failed to start ";
+                size_t p_len = 0; while (prefix[p_len]) { s_msg[p_len] = prefix[p_len]; p_len++; }
+                size_t d_idx = 0;
+                while (s_info.display_name[d_idx] && p_len < sizeof(s_msg) - 2) {
+                    s_msg[p_len++] = s_info.display_name[d_idx++];
+                }
+                s_msg[p_len++] = '.';
+                s_msg[p_len] = '\0';
+
+                Color s_col = (s_info.status == SERVICE_RUNNING) ? Color(34, 197, 94, 255) : Color(239, 68, 68, 255);
+                print_boot_line((s_info.status == SERVICE_RUNNING) ? "  OK  " : "FAILED", s_col, s_msg);
+            }
+        }
+
+        print_boot_line("  OK  ", Color(34, 197, 94, 255), "Reached target System Services.");
+        print_boot_line("  OK  ", Color(34, 197, 94, 255), "Starting Graphical Desktop Interface...");
+
         // Window Manager & Desktop Shell
         wm_init();
         desktop_init();
 
-        // Launch 7 Desktop Applications
+        // Launch 8 Desktop Applications
         auto* term_app = new TerminalApp();
         wm_create_window("Terminal - Oxygen Low's Software",
                           40, 40, 640, 400,
@@ -282,7 +364,12 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
                           220, 170, 560, 440,
                           WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, paint_app);
 
-        serial_printf("[APPS] 7 desktop applications loaded (Terminal, SysInfo, Notepad, Calculator, Explorer, TaskMgr, Paint)\n");
+        auto* services_app = new ServicesApp();
+        wm_create_window("Services - Oxygen Low's Software",
+                          260, 130, 680, 440,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, services_app);
+
+        serial_printf("[APPS] 8 desktop applications loaded (Terminal, SysInfo, Notepad, Calculator, Explorer, TaskMgr, Paint, Services)\n");
 
         // Play Oxygen Low's Software startup sound chime
         speaker_play_startup_chime();

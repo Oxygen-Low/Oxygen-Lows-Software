@@ -17,6 +17,8 @@
 #include "arch/x86_64/hpet.h"
 #include "fs/vfs.h"
 #include "kernel/sched.h"
+#include "kernel/service.h"
+#include "apps/services_app.h"
 #include "gui/theme.h"
 
 static const Color COLOR_TERM_BG     = Color(0, 0, 0, 255);
@@ -207,6 +209,8 @@ void TerminalApp::execute_command(const char* cmd) {
         print_line("  lspci     - Enumerate PCI bus hardware devices");
         print_line("  vbox      - Show VirtualBox Guest Integration status");
         print_line("  res <w h> - Change display resolution (e.g. res 1024 768)");
+        print_line("  service   - Manage background services (list, start, stop, startup)");
+        print_line("  services  - Open the Services desktop application");
         print_line("  poweroff  - Clean ACPI guest shutdown");
         print_line("  reboot    - Reboot the operating system");
         print_line("  exit      - Close terminal window");
@@ -564,6 +568,126 @@ void TerminalApp::execute_command(const char* cmd) {
             } else {
                 print_line("Error: Resolution minimum is 640x480.");
             }
+        }
+    } else if (str_equals(cmd, "services") || str_equals(cmd, "services.msc")) {
+        // Try restoring existing Services window first
+        Window* w = wm_get_bottom_window();
+        bool found = false;
+        while (w) {
+            if (w->title[0] == 'S' && w->title[1] == 'e' && w->title[2] == 'r' && w->title[3] == 'v') {
+                wm_restore_window(w);
+                found = true;
+                break;
+            }
+            w = w->next;
+        }
+        if (!found) {
+            wm_create_window("Services - Oxygen Low's Software",
+                             180, 100, 680, 440,
+                             WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, new ServicesApp());
+        }
+        print_line("Launched Services application.");
+    } else if (str_starts_with(cmd, "service")) {
+        const char* sub = cmd + 7;
+        while (*sub == ' ') sub++;
+        if (*sub == '\0' || str_equals(sub, "list")) {
+            print_line("Oxygen Low's Software Background Services:");
+            print_line("NAME             STATUS    STARTUP   CRITICAL  PID  DISPLAY NAME");
+            print_line("----             ------    -------   --------  ---  ------------");
+            size_t count = service_get_count();
+            for (size_t i = 0; i < count; ++i) {
+                ServiceInfo info;
+                if (!service_get_info(i, &info)) continue;
+                print_string(info.name);
+                size_t nl = 0; while (info.name[nl]) nl++;
+                for (size_t s = nl; s < 17; ++s) print_char(' ');
+
+                if (info.status == SERVICE_RUNNING) {
+                    print_string("RUNNING   ");
+                } else if (info.status == SERVICE_STARTING) {
+                    print_string("STARTING  ");
+                } else {
+                    print_string("STOPPED   ");
+                }
+
+                if (info.startup_type == SERVICE_STARTUP_AUTOMATIC) {
+                    print_string("Automatic ");
+                } else if (info.startup_type == SERVICE_STARTUP_MANUAL) {
+                    print_string("Manual    ");
+                } else {
+                    print_string("Disabled  ");
+                }
+
+                if (info.is_critical) {
+                    print_string("YES       ");
+                } else {
+                    print_string("NO        ");
+                }
+
+                print_char('0' + (info.task_id / 10) % 10);
+                print_char('0' + (info.task_id % 10));
+                print_string("   ");
+                print_line(info.display_name);
+            }
+        } else if (str_starts_with(sub, "start")) {
+            const char* target = sub + 5;
+            while (*target == ' ') target++;
+            if (*target == '\0') {
+                print_line("Usage: service start <service-name>");
+            } else {
+                char err[SERVICE_ERR_MAX];
+                if (service_start(target, err, sizeof(err))) {
+                    print_string("Service '");
+                    print_string(target);
+                    print_line("' started successfully.");
+                } else {
+                    print_string("Error: ");
+                    print_line(err[0] ? err : "Failed to start service.");
+                }
+            }
+        } else if (str_starts_with(sub, "stop")) {
+            const char* target = sub + 4;
+            while (*target == ' ') target++;
+            if (*target == '\0') {
+                print_line("Usage: service stop <service-name>");
+            } else {
+                char err[SERVICE_ERR_MAX];
+                if (service_stop(target, err, sizeof(err))) {
+                    print_string("Service '");
+                    print_string(target);
+                    print_line("' stopped successfully.");
+                } else {
+                    print_string("Error: ");
+                    print_line(err[0] ? err : "Failed to stop service.");
+                }
+            }
+        } else if (str_starts_with(sub, "startup")) {
+            const char* p = sub + 7;
+            while (*p == ' ') p++;
+            char name_buf[32];
+            size_t ni = 0;
+            while (*p && *p != ' ' && ni < 31) {
+                name_buf[ni++] = *p++;
+            }
+            name_buf[ni] = '\0';
+            while (*p == ' ') p++;
+            if (ni == 0 || *p == '\0') {
+                print_line("Usage: service startup <service-name> <auto|disabled>");
+            } else {
+                ServiceStartupType st = str_equals(p, "auto") ? SERVICE_STARTUP_AUTOMATIC : SERVICE_STARTUP_DISABLED;
+                char err[SERVICE_ERR_MAX];
+                if (service_set_startup(name_buf, st, err, sizeof(err))) {
+                    print_string("Service '");
+                    print_string(name_buf);
+                    print_string("' startup set to ");
+                    print_line((st == SERVICE_STARTUP_AUTOMATIC) ? "Automatic." : "Disabled.");
+                } else {
+                    print_string("Error: ");
+                    print_line(err[0] ? err : "Failed to update service startup setting.");
+                }
+            }
+        } else {
+            print_line("Usage: service [list | start <name> | stop <name> | startup <name> <auto|disabled>]");
         }
     } else if (str_equals(cmd, "poweroff") || str_equals(cmd, "shutdown")) {
         print_line("Shutting down Oxygen Low's Software cleanly via ACPI...");

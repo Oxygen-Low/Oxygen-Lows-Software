@@ -75,3 +75,24 @@ env/
 package-lock.json
 .data/
 Data/
+
+# Test & coverage artifacts
+coverage/
+*.lcov
+.nyc_output
+test-results/
+test-report/
+playwright-report/
+blob-report/
+.vitest/
+vitest-results/
+.pytest_cache/
+
+# Temporary test & scratch files
+*.tmp
+*.tmp.*
+*.temp
+scratch/
+tmp/
+temp/
+uploads_backup/

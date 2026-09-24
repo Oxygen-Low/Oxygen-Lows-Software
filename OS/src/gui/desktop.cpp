@@ -10,6 +10,7 @@
 #include "drivers/mouse.h"
 #include "drivers/keyboard.h"
 #include "drivers/serial.h"
+#include "apps/services_app.h"
 
 // Desktop Icon Structure
 struct DesktopIcon {
@@ -151,6 +152,21 @@ void desktop_launch_app(uint8_t app_id) {
     char match = ' ';
     if (app_id < DESKTOP_ICON_COUNT) {
         match = g_desktop_icons[app_id].app_match_char;
+    }
+
+    if (app_id == 7) {
+        Window* w = wm_get_bottom_window();
+        while (w) {
+            if (w->title[0] == 'S' && w->title[1] == 'e' && w->title[2] == 'r' && w->title[3] == 'v') {
+                wm_restore_window(w);
+                return;
+            }
+            w = w->next;
+        }
+        wm_create_window("Services - Oxygen Low's Software",
+                         180, 100, 680, 440,
+                         WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, new ServicesApp());
+        return;
     }
 
     // Try finding existing window and restore/focus it
@@ -366,21 +382,22 @@ static void render_start_menu(int32_t screen_w, int32_t screen_h) {
         "[F] File Explorer",
         "[T] Task Manager",
         "[P] Paint Studio",
+        "[S] Services",
         "---------------------",
         "[R] Reboot System"
     };
 
-    int32_t item_y = sm_y + 44;
-    for (size_t i = 0; i < 9; ++i) {
-        if (i == 7) {
-            gfx_fill_rect(sm_x + 8, item_y + 6, sm_w - 16, 1, Color(51, 65, 85, 255));
-            item_y += 16;
+    int32_t item_y = sm_y + 42;
+    for (size_t i = 0; i < 10; ++i) {
+        if (i == 8) {
+            gfx_fill_rect(sm_x + 8, item_y + 5, sm_w - 16, 1, Color(51, 65, 85, 255));
+            item_y += 14;
             continue;
         }
 
-        gfx_fill_rounded_rect(sm_x + 6, item_y, sm_w - 12, 24, 3, Color(28, 37, 65, 180));
-        font_draw_string(sm_x + 12, item_y + 4, items[i], COLOR_WHITE);
-        item_y += 28;
+        gfx_fill_rounded_rect(sm_x + 6, item_y, sm_w - 12, 23, 3, Color(28, 37, 65, 180));
+        font_draw_string(sm_x + 12, item_y + 3, items[i], COLOR_WHITE);
+        item_y += 26;
     }
 }
 
@@ -496,10 +513,11 @@ bool desktop_handle_mouse(int32_t x, int32_t y, uint8_t buttons) {
 
         if (start_menu.contains(x, y)) {
             if (buttons & 1) {
-                int32_t item_idx = (y - (sm_y + 44)) / 28;
-                if (item_idx >= 0 && item_idx <= 6) {
+                int32_t rel_y = y - (sm_y + 42);
+                int32_t item_idx = (rel_y >= 0) ? (rel_y / 26) : -1;
+                if (item_idx >= 0 && item_idx <= 7) {
                     desktop_launch_app(static_cast<uint8_t>(item_idx));
-                } else if (item_idx >= 8) {
+                } else if (item_idx >= 9) {
                     // Reboot
                     outb(0x64, 0xFE);
                 }

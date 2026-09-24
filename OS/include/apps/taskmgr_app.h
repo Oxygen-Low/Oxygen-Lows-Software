@@ -3,6 +3,7 @@
 
 #include "apps/app.h"
 #include "kernel/sched.h"
+#include "kernel/service.h"
 
 #define TASKMGR_MAX_HISTORY 32
 
@@ -20,8 +21,11 @@ public:
 
 private:
     Window*  m_window;
-    uint8_t  m_current_tab; // 0: Processes, 1: Performance
+    uint8_t  m_current_tab; // 0: Processes, 1: Performance, 2: Services
     int32_t  m_selected_index;
+    int32_t  m_service_selected_index;
+    char     m_service_status_msg[128];
+    Color    m_service_status_color;
     uint64_t m_last_refresh_ms;
     
     // CPU history for performance sparkline graph
@@ -30,6 +34,7 @@ private:
 
     void draw_processes_view(const Rect& client_area);
     void draw_performance_view(const Rect& client_area);
+    void draw_services_view(const Rect& client_area);
 };
 
 #endif // OXYGEN_APPS_TASKMGR_APP_H
