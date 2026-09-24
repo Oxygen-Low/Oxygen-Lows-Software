@@ -274,7 +274,7 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
         cursor_init();
 
         // Ubuntu/Linux-style autostart service initialization display on Framebuffer
-        gfx_fill_screen(Color(10, 15, 26, 255));
+        gfx_clear(Color(10, 15, 26, 255));
         int32_t boot_y = 40;
         font_draw_string(40, boot_y, "Oxygen Low's Software OS (x86_64 Long Mode)", Color(0, 229, 255, 255));
         boot_y += 24;

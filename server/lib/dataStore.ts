@@ -294,8 +294,21 @@ function ensureDir(dirPath: string) {
 }
 
 export function assertSafeDataPath(filePath: string): string {
+  if (!filePath) {
+    throw new Error("Path traversal attempt detected: empty path");
+  }
   const base = path.resolve(DATA_DIR);
-  const resolved = path.resolve(base, filePath);
+
+  if (/^[a-zA-Z]:/.test(filePath)) {
+    const drive = filePath.slice(0, 2).toLowerCase();
+    const baseDrive = base.slice(0, 2).toLowerCase();
+    if (drive !== baseDrive) {
+      throw new Error(`Path traversal attempt detected: ${filePath}`);
+    }
+  }
+
+  const normalizedInput = filePath.replace(/[/\\]/g, path.sep);
+  const resolved = path.resolve(base, normalizedInput);
   const rel = path.relative(base, resolved);
   if (rel.startsWith("..") || path.isAbsolute(rel)) {
     throw new Error(`Path traversal attempt detected: ${filePath}`);

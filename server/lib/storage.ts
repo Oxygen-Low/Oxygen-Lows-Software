@@ -51,7 +51,20 @@ export function getMimeType(filePath: string): string {
 
 export function assertSafeStoragePath(baseDir: string, ...segments: string[]): string {
   const root = path.resolve(baseDir);
-  const resolved = path.resolve(root, ...segments);
+  const baseDrive = root.slice(0, 2).toLowerCase();
+
+  for (const seg of segments) {
+    if (!seg) continue;
+    if (/^[a-zA-Z]:/.test(seg)) {
+      const drive = seg.slice(0, 2).toLowerCase();
+      if (drive !== baseDrive) {
+        throw new Error("Invalid path: path traversal detected");
+      }
+    }
+  }
+
+  const normalizedSegments = segments.map((s) => s.replace(/[/\\]/g, path.sep));
+  const resolved = path.resolve(root, ...normalizedSegments);
   const relative = path.relative(root, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Invalid path: path traversal detected");
@@ -64,8 +77,15 @@ export function sanitizePath(rawPath: string): string {
   let clean = decodeURIComponent(rawPath);
   clean = clean.replace(/\\/g, "/");
   clean = clean.replace(/^\/+/, "");
-  // Disallow directory traversal
-  if (clean.includes("..") || clean.startsWith("/") || clean.includes("\0")) {
+  // Disallow directory traversal, null bytes, and absolute Windows/POSIX drives
+  if (
+    clean.includes("..") ||
+    clean.startsWith("/") ||
+    clean.includes("\0") ||
+    /^[a-zA-Z]:/.test(clean) ||
+    path.win32.isAbsolute(rawPath) ||
+    path.posix.isAbsolute(rawPath)
+  ) {
     throw new Error("Invalid path");
   }
   return clean;

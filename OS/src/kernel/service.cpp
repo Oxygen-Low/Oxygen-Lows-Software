@@ -70,7 +70,7 @@ void system_core_worker(void* arg) {
         pit_sleep_ms(2000);
 
         // Verify physical frame allocator and heap sanity
-        size_t free_frames = pmm_get_free_frame_count();
+        size_t free_frames = pmm_get_free_frames();
         if (free_frames == 0) {
             serial_printf("[SYSCORE] WARNING: Critical physical memory exhaustion!\n");
         }
