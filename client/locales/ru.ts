@@ -31,6 +31,9 @@ export const ru = {
     noData: "Нет данных",
     reload: "Перезагрузить",
     refresh: "Обновить",
+    page: "Страница",
+    previous: "Назад",
+    next: "Вперед",
     somethingWentWrong: "Что-то пошло не так",
     chunkLoadError:
       "Возможно, доступна новая версия приложения. Пожалуйста, обновите страницу.",

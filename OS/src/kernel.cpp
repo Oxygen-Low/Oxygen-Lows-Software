@@ -387,6 +387,10 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
     }
 
     // 11. Enable Hardware Interrupts for Keyboard & Mouse & Timer
+    while (inb(0x64) & 1) {
+        inb(0x60);
+    }
+    mouse_flush();
     sti();
 
     // 12. Main Desktop Event & Compositor Loop

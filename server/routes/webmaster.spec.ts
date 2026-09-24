@@ -402,7 +402,12 @@ describe("Webmaster Router & DNS Verification", () => {
       const siteId = data.site.id;
 
       // Wait for batch 1 (up to 20 pages) to finish (delay is 120ms, so batch 2 won't fire yet)
-      await new Promise((r) => setTimeout(r, 40));
+      const startB1 = Date.now();
+      while (Date.now() - startB1 < 2000) {
+        const s = getSites().find((item) => item.id === siteId);
+        if (s && s.pageCount >= 20) break;
+        await new Promise((r) => setTimeout(r, 10));
+      }
 
       const sitesAfterBatch1 = getSites();
       const siteAfter1 = sitesAfterBatch1.find((s) => s.id === siteId);
@@ -412,7 +417,12 @@ describe("Webmaster Router & DNS Verification", () => {
       expect(siteAfter1?.nextCrawlScheduledAt).toBeDefined();
 
       // Wait for the scheduled timer (120ms) to fire and batch 2 to complete the remaining pages
-      await new Promise((r) => setTimeout(r, 160));
+      const startB2 = Date.now();
+      while (Date.now() - startB2 < 3000) {
+        const s = getSites().find((item) => item.id === siteId);
+        if (s && s.pageCount >= 36) break;
+        await new Promise((r) => setTimeout(r, 20));
+      }
 
       const sitesAfterBatch2 = getSites();
       const siteAfter2 = sitesAfterBatch2.find((s) => s.id === siteId);
@@ -473,7 +483,12 @@ describe("Webmaster Router & DNS Verification", () => {
       const siteId = data.site.id;
 
       // Wait for batch 1 to complete (20 pages)
-      await new Promise((r) => setTimeout(r, 60));
+      const startCap = Date.now();
+      while (Date.now() - startCap < 3000) {
+        const s = getSites().find((item) => item.id === siteId);
+        if (s && s.pageCount >= 20) break;
+        await new Promise((r) => setTimeout(r, 10));
+      }
 
       const sites = getSites();
       const site = sites.find((s) => s.id === siteId);
@@ -543,6 +558,133 @@ describe("Webmaster Router & DNS Verification", () => {
     expect(getQueuePosition("stuck-pending")).toBeNull();
     expect(getQueuePosition("stuck-queued")).toBe(1);
     expect(resumeInterruptedCrawls()).toBe(0);
+
+    clearCrawlQueue();
+  });
+
+  it("clears logs when a recrawl is triggered", async () => {
+    vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+      id: "user-recrawl",
+      email: "recrawl@example.com",
+      role: "user",
+    } as any);
+
+    saveSites([
+      {
+        id: "site-with-logs",
+        userId: "user-recrawl",
+        url: "https://recrawl-test.com",
+        domain: "recrawl-test.com",
+        status: "indexed",
+        verified: true,
+        verificationToken: "token-recrawl",
+        pageCount: 15,
+        createdAt: new Date().toISOString(),
+        logs: [
+          { timestamp: "2026-01-01T00:00:00.000Z", message: "Old log 1", level: "info" },
+          { timestamp: "2026-01-01T00:01:00.000Z", message: "Old log 2", level: "warn" },
+          { timestamp: "2026-01-01T00:02:00.000Z", message: "Old log 3", level: "error" },
+        ],
+      },
+    ]);
+
+    const req = new Request("http://localhost/sites/site-with-logs/crawl", {
+      method: "POST",
+      headers: { Authorization: "Bearer test-token" },
+    });
+    const res = await webmasterRouter.fetch(req);
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.site).toBeDefined();
+    // Old logs should be cleared and start with recrawl initiation log
+    expect(body.site.logs.length).toBeGreaterThanOrEqual(1);
+    expect(body.site.logs[0].message).toContain("Re-crawl initiated");
+    expect(body.site.logs.some((l: any) => l.message === "Old log 1")).toBe(false);
+    expect(body.site.logs.some((l: any) => l.message === "Old log 2")).toBe(false);
+    expect(body.site.logs.some((l: any) => l.message === "Old log 3")).toBe(false);
+
+    clearCrawlQueue();
+  });
+
+  it("paginates site indexed pages in /sites/:id/pages", async () => {
+    vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+      id: "user-pages",
+      email: "pages@example.com",
+      role: "user",
+    } as any);
+
+    saveSites([
+      {
+        id: "site-pages-test",
+        userId: "user-pages",
+        url: "https://pages-test.com",
+        domain: "pages-test.com",
+        status: "indexed",
+        verified: true,
+        verificationToken: "token-pages",
+        pageCount: 120,
+        createdAt: new Date().toISOString(),
+        logs: [],
+      },
+    ]);
+
+    const dummyPages: any[] = [];
+    for (let i = 0; i < 120; i++) {
+      dummyPages.push({
+        id: `p-${i}`,
+        siteId: "site-pages-test",
+        url: `https://pages-test.com/page-${i}`,
+        domain: "pages-test.com",
+        title: `Page Title ${i}`,
+        description: `Description for page ${i}`,
+        headings: ["Heading 1"],
+        keywords: ["test"],
+        bodyPreview: `Body preview text for page ${i}`,
+        indexedAt: new Date().toISOString(),
+      });
+    }
+    // Also add another site's page to make sure it filters
+    dummyPages.push({
+      id: "other-site-p",
+      siteId: "other-site-id",
+      url: "https://other.com/page",
+      domain: "other.com",
+      title: "Other Page",
+      description: "Other",
+      headings: [],
+      keywords: [],
+      bodyPreview: "Other body",
+      indexedAt: new Date().toISOString(),
+    });
+
+    const { saveIndex: saveIndexFn } = await import("../lib/oxylowCrawler");
+    saveIndexFn(dummyPages, true);
+
+    // Fetch page 1 (default limit 50)
+    const req1 = new Request("http://localhost/sites/site-pages-test/pages?page=1&limit=50", {
+      headers: { Authorization: "Bearer test-token" },
+    });
+    const res1 = await webmasterRouter.fetch(req1);
+    expect(res1.status).toBe(200);
+    const body1 = await res1.json();
+    expect(body1.pages).toHaveLength(50);
+    expect(body1.total).toBe(120);
+    expect(body1.page).toBe(1);
+    expect(body1.limit).toBe(50);
+    expect(body1.totalPages).toBe(3);
+    expect(body1.pages[0].title).toBe("Page Title 0");
+
+    // Fetch page 3 (remaining 20 items)
+    const req3 = new Request("http://localhost/sites/site-pages-test/pages?page=3&limit=50", {
+      headers: { Authorization: "Bearer test-token" },
+    });
+    const res3 = await webmasterRouter.fetch(req3);
+    expect(res3.status).toBe(200);
+    const body3 = await res3.json();
+    expect(body3.pages).toHaveLength(20);
+    expect(body3.page).toBe(3);
+    expect(body3.pages[0].title).toBe("Page Title 100");
 
     clearCrawlQueue();
   });

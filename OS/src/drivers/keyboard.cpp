@@ -42,6 +42,13 @@ extern "C" {
 void keyboard_handler(InterruptFrame* frame) {
     UNUSED(frame);
 
+    uint8_t status = inb(0x64);
+    if (!(status & 0x01) || (status & 0x20)) {
+        // Buffer empty or data belongs to auxiliary (mouse) device
+        pic_send_eoi(IRQ_KEYBOARD);
+        return;
+    }
+
     uint8_t scancode = inb(0x60);
     pic_send_eoi(IRQ_KEYBOARD);
 

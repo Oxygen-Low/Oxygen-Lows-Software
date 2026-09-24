@@ -118,6 +118,9 @@ export function WebmasterApp() {
   // Selected site modal
   const [selectedSite, setSelectedSite] = useState<WebmasterSite | null>(null);
   const [sitePages, setSitePages] = useState<IndexedPage[]>([]);
+  const [pagesTotal, setPagesTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loadingPages, setLoadingPages] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -131,18 +134,24 @@ export function WebmasterApp() {
   isDetailsOpenRef.current = isDetailsOpen;
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchSitePages = useCallback(async (siteId: string) => {
+  const fetchSitePages = useCallback(async (siteId: string, page = 1) => {
     if (!token) return;
+    setLoadingPages(true);
     try {
-      const res = await fetch(`/api/webmaster/sites/${siteId}/pages`, {
+      const res = await fetch(`/api/webmaster/sites/${siteId}/pages?page=${page}&limit=50`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
         setSitePages(data.pages || []);
+        setPagesTotal(data.total || (data.pages || []).length);
+        setCurrentPage(data.page || page);
+        setTotalPages(data.totalPages || 1);
       }
     } catch {
       // ignore
+    } finally {
+      setLoadingPages(false);
     }
   }, [token]);
 
@@ -218,15 +227,12 @@ export function WebmasterApp() {
       if (hasCrawlingUser || isModalBusy) {
         fetchSitesAndStats(false);
       }
-      if (isAdmin && (hasCrawlingUser || hasCrawlingAdmin || isModalBusy)) {
+      if (isAdmin && (hasCrawlingAdmin || (activeTab === "admin" && (hasCrawlingUser || isModalBusy)))) {
         fetchAdminSites(false);
       }
-      if (isDetailsOpenRef.current && (selectedSiteRef.current?.status === "crawling" || selectedSiteRef.current?.queuePosition === 1)) {
-        fetchSitePages(selectedSiteRef.current.id);
-      }
-    }, 1500);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [fetchSitesAndStats, fetchAdminSites, fetchSitePages, isAdmin]);
+  }, [fetchSitesAndStats, fetchAdminSites, isAdmin, activeTab]);
 
   useEffect(() => {
     if (isDetailsOpen && logsEndRef.current) {
@@ -369,6 +375,11 @@ export function WebmasterApp() {
         throw new Error(data.error || "Failed to trigger re-crawl");
       }
       toast.success("Re-crawl triggered! oxylow-search bot is indexing the site.");
+      if (data.site) {
+        setSelectedSite((prev) => (prev?.id === siteId ? data.site : prev));
+        setSites((prev) => prev.map((s) => (s.id === siteId ? data.site : s)));
+        setAdminSites((prev) => prev.map((s) => (s.id === siteId ? data.site : s)));
+      }
       fetchSitesAndStats();
       if (isAdmin) fetchAdminSites();
     } catch (err: any) {
@@ -401,12 +412,11 @@ export function WebmasterApp() {
     }
   };
 
-  const handleOpenDetails = async (site: WebmasterSite) => {
+  const handleOpenDetails = (site: WebmasterSite) => {
     setSelectedSite(site);
     setIsDetailsOpen(true);
-    setLoadingPages(true);
-    await fetchSitePages(site.id);
-    setLoadingPages(false);
+    setCurrentPage(1);
+    fetchSitePages(site.id, 1);
   };
 
   const copyToClipboard = (text: string, id: string) => {
@@ -1010,18 +1020,20 @@ export function WebmasterApp() {
               {/* Indexed Pages Section */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold flex items-center justify-between border-b border-border pb-2">
-                  <span>Indexed Pages ({loadingPages ? "..." : sitePages.length})</span>
-                  {selectedSite.verified && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isSiteBusy(selectedSite)}
-                      onClick={() => handleRecrawl(selectedSite.id)}
-                      className="h-7 text-xs gap-1.5"
-                    >
-                      <RotateCw className={`w-3 h-3 ${isSiteBusy(selectedSite) ? "animate-spin" : ""}`} /> Re-crawl
-                    </Button>
-                  )}
+                  <span>Indexed Pages ({loadingPages ? "..." : pagesTotal})</span>
+                  <div className="flex items-center gap-2">
+                    {selectedSite.verified && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isSiteBusy(selectedSite)}
+                        onClick={() => handleRecrawl(selectedSite.id)}
+                        className="h-7 text-xs gap-1.5"
+                      >
+                        <RotateCw className={`w-3 h-3 ${isSiteBusy(selectedSite) ? "animate-spin" : ""}`} /> Re-crawl
+                      </Button>
+                    )}
+                  </div>
                 </h3>
 
                 {loadingPages ? (
@@ -1035,22 +1047,55 @@ export function WebmasterApp() {
                       : "Domain ownership must be verified before pages can be indexed."}
                   </p>
                 ) : (
-                  <div className="max-h-60 overflow-y-auto divide-y divide-border border rounded-lg">
-                    {sitePages.map((p) => (
-                      <div key={p.id} className="p-3 text-xs space-y-1">
-                        <div className="font-semibold text-foreground truncate">{p.title}</div>
-                        <a
-                          href={p.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-cyan-500 hover:underline truncate block font-mono"
-                        >
-                          {p.url}
-                        </a>
-                        <p className="text-muted-foreground line-clamp-2">{p.description}</p>
+                  <>
+                    <div className="max-h-60 overflow-y-auto divide-y divide-border border rounded-lg">
+                      {sitePages.map((p) => (
+                        <div key={p.id} className="p-3 text-xs space-y-1">
+                          <div className="font-semibold text-foreground truncate">{p.title}</div>
+                          <a
+                            href={p.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-cyan-500 hover:underline truncate block font-mono"
+                          >
+                            {p.url}
+                          </a>
+                          <p className="text-muted-foreground line-clamp-2">{p.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
+                        <span>
+                          {t("common.page", "Page")} {currentPage} / {totalPages} ({pagesTotal} total)
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={currentPage <= 1 || loadingPages}
+                            onClick={() => {
+                              if (selectedSite) fetchSitePages(selectedSite.id, currentPage - 1);
+                            }}
+                            className="h-6 px-2 text-[11px]"
+                          >
+                            {t("common.previous", "Previous")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={currentPage >= totalPages || loadingPages}
+                            onClick={() => {
+                              if (selectedSite) fetchSitePages(selectedSite.id, currentPage + 1);
+                            }}
+                            className="h-6 px-2 text-[11px]"
+                          >
+                            {t("common.next", "Next")}
+                          </Button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
 

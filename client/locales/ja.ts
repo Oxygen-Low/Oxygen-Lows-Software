@@ -31,6 +31,9 @@ export const ja = {
     noData: "データがありません",
     reload: "再読み込み",
     refresh: "更新",
+    page: "ページ",
+    previous: "前へ",
+    next: "次へ",
     somethingWentWrong: "問題が発生しました",
     chunkLoadError:
       "アプリの新しいバージョンが利用可能な場合があります。ページを更新してください。",

@@ -31,6 +31,9 @@ export const en = {
     noData: "No data available",
     reload: "Reload",
     refresh: "Refresh",
+    page: "Page",
+    previous: "Previous",
+    next: "Next",
     somethingWentWrong: "Something went wrong",
     chunkLoadError:
       "A new version of the app may be available. Please refresh the page.",

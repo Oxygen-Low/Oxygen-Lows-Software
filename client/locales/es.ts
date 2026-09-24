@@ -31,6 +31,9 @@ export const es = {
     noData: "No hay datos disponibles",
     reload: "Recargar",
     refresh: "Actualizar",
+    page: "Página",
+    previous: "Anterior",
+    next: "Siguiente",
     somethingWentWrong: "Algo salió mal",
     chunkLoadError:
       "Es posible que haya una nueva versión de la aplicación disponible. Por favor, actualice la página.",

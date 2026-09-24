@@ -1,6 +1,7 @@
 #include "drivers/mouse.h"
 #include "arch/x86_64/idt.h"
 #include "arch/x86_64/pic.h"
+#include "arch/x86_64/pit.h"
 #include "arch/x86_64/io.h"
 #include "drivers/serial.h"
 
@@ -8,6 +9,7 @@ namespace {
 
 uint8_t g_mouse_cycle = 0;
 uint8_t g_mouse_packet[3] = { 0, 0, 0 };
+uint64_t g_last_packet_time = 0;
 
 int32_t g_screen_width = 1024;
 int32_t g_screen_height = 768;
@@ -48,12 +50,21 @@ uint8_t mouse_read_data(void) {
 
 extern "C" {
 
+void mouse_flush(void) {
+    uint32_t timeout = 1000;
+    while (timeout-- && (inb(0x64) & 0x01)) {
+        inb(0x60);
+    }
+    g_mouse_cycle = 0;
+}
+
 void mouse_handler(InterruptFrame* frame) {
     UNUSED(frame);
 
     uint8_t status = inb(0x64);
-    if (!(status & 0x20)) {
-        // Data not from mouse; acknowledge PIC anyway
+    // Ensure output buffer is full and that data originates from auxiliary (mouse) device
+    if (!(status & 0x01) || !(status & 0x20)) {
+        // Data not ready or not from mouse; acknowledge PIC anyway
         pic_send_eoi(IRQ_MOUSE);
         return;
     }
@@ -61,11 +72,19 @@ void mouse_handler(InterruptFrame* frame) {
     uint8_t data = inb(0x60);
     pic_send_eoi(IRQ_MOUSE);
 
+    // If an inter-packet gap exceeds 50ms, the previous packet was incomplete/dropped.
+    // Reset the cycle so this new incoming byte is treated as start of packet.
+    uint64_t now = pit_get_uptime_ms();
+    if (g_mouse_cycle > 0 && (now - g_last_packet_time > 50)) {
+        g_mouse_cycle = 0;
+    }
+    g_last_packet_time = now;
+
     switch (g_mouse_cycle) {
         case 0:
-            // Sync check: Bit 3 of byte 0 must be 1
-            if ((data & 0x08) == 0) {
-                // Out of sync; discard and re-sync
+            // Sync check: Bit 3 of byte 0 must be 1, and overflow bits 6 & 7 must be 0
+            if ((data & 0x08) == 0 || (data & 0xC0) != 0) {
+                // Out of sync; discard and wait for valid start-of-packet
                 g_mouse_cycle = 0;
                 return;
             }
@@ -82,18 +101,41 @@ void mouse_handler(InterruptFrame* frame) {
             g_mouse_packet[2] = data;
             g_mouse_cycle = 0;
 
-            // Extract movement deltas with sign bit expansion
-            int32_t delta_x = (int32_t)g_mouse_packet[1] - ((g_mouse_packet[0] & 0x10) ? 256 : 0);
-            int32_t delta_y = (int32_t)g_mouse_packet[2] - ((g_mouse_packet[0] & 0x20) ? 256 : 0);
+            // Packet header sanity verification
+            if ((g_mouse_packet[0] & 0x08) == 0 || (g_mouse_packet[0] & 0xC0) != 0) {
+                return;
+            }
+
+            // Extract movement deltas with accurate 9-bit sign expansion
+            int32_t delta_x = 0;
+            int32_t delta_y = 0;
+
+            if (g_mouse_packet[0] & 0x10) {
+                // Negative X delta
+                delta_x = (int32_t)(int8_t)g_mouse_packet[1];
+                if (delta_x > 0) delta_x -= 256;
+            } else {
+                // Positive X delta
+                delta_x = (int32_t)(uint8_t)g_mouse_packet[1];
+                if (delta_x > 127) delta_x = 0;
+            }
+
+            if (g_mouse_packet[0] & 0x20) {
+                // Negative Y delta
+                delta_y = (int32_t)(int8_t)g_mouse_packet[2];
+                if (delta_y > 0) delta_y -= 256;
+            } else {
+                // Positive Y delta
+                delta_y = (int32_t)(uint8_t)g_mouse_packet[2];
+                if (delta_y > 127) delta_y = 0;
+            }
 
             // Screen Y axis increases downward, mouse delta Y increases upward
             delta_y = -delta_y;
 
-            // Discard overflow packets
-            if ((g_mouse_packet[0] & 0x80) || (g_mouse_packet[0] & 0x40)) {
-                delta_x = 0;
-                delta_y = 0;
-            }
+            // Clamp deltas to prevent erratic jumps
+            delta_x = CLAMP(delta_x, -100, 100);
+            delta_y = CLAMP(delta_y, -100, 100);
 
             g_mouse_state.delta_x = delta_x;
             g_mouse_state.delta_y = delta_y;
@@ -119,6 +161,11 @@ void mouse_init(uint32_t screen_w, uint32_t screen_h) {
     g_screen_height = (screen_h > 0) ? screen_h : 768;
     g_mouse_state.x = g_screen_width / 2;
     g_mouse_state.y = g_screen_height / 2;
+    g_mouse_cycle = 0;
+    g_last_packet_time = 0;
+
+    // Flush any pending data before device configuration
+    mouse_flush();
 
     // Enable auxiliary mouse device on 8042 controller
     mouse_wait_input();
@@ -146,6 +193,9 @@ void mouse_init(uint32_t screen_w, uint32_t screen_h) {
     // Enable data packet streaming (0xF4)
     mouse_write_command(0xF4);
     mouse_read_data(); // ACK (0xFA)
+
+    // Flush any residual bytes after enabling data streaming
+    mouse_flush();
 
     // Register IRQ12 in IDT (Vector 44 = PIC2_VECTOR_OFFSET + (12 - 8) = 40 + 4 = 44)
     register_interrupt_handler(PIC2_VECTOR_OFFSET + (IRQ_MOUSE - 8), mouse_handler);

@@ -14,7 +14,8 @@ export const OXYLOW_CONTACT_EMAIL = "support@oxygenlow.com";
 export let DEFAULT_DOMAIN_DELAY_MS = 1000;
 export const MAX_SITE_INDEX_PAGES = 1000;
 export const CRAWL_BATCH_SIZE = 20;
-export let BATCH_CRAWL_DELAY_MS = 0;
+export let BATCH_CRAWL_DELAY_MS = 500;
+export const MAX_SITE_LOGS = 100;
 
 export function setDefaultDomainDelayMs(ms: number) {
   DEFAULT_DOMAIN_DELAY_MS = ms;
@@ -84,27 +85,71 @@ function ensureDataFiles() {
   }
 
   if (!fs.existsSync(INDEX_FILE)) {
-    fs.writeFileSync(INDEX_FILE, JSON.stringify([], null, 2), "utf8");
+    fs.writeFileSync(INDEX_FILE, JSON.stringify([]), "utf8");
   }
 }
 
 let cachedSites: WebmasterSite[] | null = null;
 let cachedIndex: IndexedPage[] | null = null;
 let saveSitesTimeout: NodeJS.Timeout | null = null;
+let saveIndexTimeout: NodeJS.Timeout | null = null;
+let isWritingSites = false;
+let pendingSitesWrite = false;
+let isWritingIndex = false;
+let pendingIndexWrite = false;
 const activeCrawlAbortControllers = new Map<string, AbortController>();
 const activeCrawlingSiteIds = new Set<string>();
 const activeCrawlingDomains = new Map<string, string>();
 export const MAX_CONCURRENT_CRAWLS = 2;
 
-export function flushSitesToDisk(): void {
+async function safeWriteFileAsync(filePath: string, content: string): Promise<void> {
+  const tempFile = `${filePath}.${Date.now()}.${Math.random().toString(36).substring(2, 8)}.tmp`;
+  await fs.promises.writeFile(tempFile, content, "utf8");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await fs.promises.rename(tempFile, filePath);
+      return;
+    } catch (err: any) {
+      if (attempt === 4 || !["EPERM", "ENOENT", "EBUSY", "EACCES"].includes(err?.code)) {
+        await fs.promises.writeFile(filePath, content, "utf8");
+        try {
+          await fs.promises.unlink(tempFile);
+        } catch {}
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 25 * (attempt + 1)));
+    }
+  }
+}
+
+export async function flushSitesToDiskAsync(): Promise<void> {
   if (saveSitesTimeout) {
     clearTimeout(saveSitesTimeout);
     saveSitesTimeout = null;
   }
-  if (cachedSites) {
-    ensureDataFiles();
-    fs.writeFileSync(SITES_FILE, JSON.stringify(cachedSites, null, 2), "utf8");
+  if (!cachedSites) return;
+  if (isWritingSites) {
+    pendingSitesWrite = true;
+    return;
   }
+  isWritingSites = true;
+  ensureDataFiles();
+  try {
+    const dataToWrite = JSON.stringify(cachedSites, null, 2);
+    await safeWriteFileAsync(SITES_FILE, dataToWrite);
+  } catch (err) {
+    console.error("[Crawler] Failed to flush sites to disk:", err);
+  } finally {
+    isWritingSites = false;
+    if (pendingSitesWrite) {
+      pendingSitesWrite = false;
+      flushSitesToDiskAsync().catch(() => {});
+    }
+  }
+}
+
+export function flushSitesToDisk(): void {
+  flushSitesToDiskAsync().catch(() => {});
 }
 
 export function getSites(): WebmasterSite[] {
@@ -136,6 +181,37 @@ export function saveSites(sites: WebmasterSite[], immediate = true): void {
   }
 }
 
+export async function flushIndexToDiskAsync(): Promise<void> {
+  if (saveIndexTimeout) {
+    clearTimeout(saveIndexTimeout);
+    saveIndexTimeout = null;
+  }
+  if (!cachedIndex) return;
+  if (isWritingIndex) {
+    pendingIndexWrite = true;
+    return;
+  }
+  isWritingIndex = true;
+  ensureDataFiles();
+  try {
+    // Compact JSON eliminates massive string allocation overhead and drastically reduces file size
+    const dataToWrite = JSON.stringify(cachedIndex);
+    await safeWriteFileAsync(INDEX_FILE, dataToWrite);
+  } catch (err) {
+    console.error("[Crawler] Failed to flush index to disk:", err);
+  } finally {
+    isWritingIndex = false;
+    if (pendingIndexWrite) {
+      pendingIndexWrite = false;
+      flushIndexToDiskAsync().catch(() => {});
+    }
+  }
+}
+
+export function flushIndexToDisk(): void {
+  flushIndexToDiskAsync().catch(() => {});
+}
+
 export function getIndex(): IndexedPage[] {
   if (cachedIndex) {
     return cachedIndex;
@@ -151,10 +227,18 @@ export function getIndex(): IndexedPage[] {
   }
 }
 
-export function saveIndex(index: IndexedPage[]): void {
+export function saveIndex(index: IndexedPage[], immediate = false): void {
   cachedIndex = index;
-  ensureDataFiles();
-  fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2), "utf8");
+  if (immediate) {
+    flushIndexToDisk();
+  } else {
+    if (!saveIndexTimeout) {
+      saveIndexTimeout = setTimeout(() => {
+        saveIndexTimeout = null;
+        flushIndexToDisk();
+      }, 500);
+    }
+  }
 }
 
 /**
@@ -469,12 +553,13 @@ export function extractPageData(
     );
   }
 
-  // Clean body text preview
-  const cleanBody = html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
-    .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, " ")
-    .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, " ")
+  // Clean body text preview with linear-time safe regexes
+  const safeHtml = html.length > 2 * 1024 * 1024 ? html.slice(0, 2 * 1024 * 1024) : html;
+  const cleanBody = safeHtml
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, " ")
+    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -588,6 +673,9 @@ export async function crawlSite(
     const currentSite = currentSites.find((s) => s.id === siteId);
     if (!currentSite) return null;
     fn(currentSite);
+    if (currentSite.logs && currentSite.logs.length > MAX_SITE_LOGS) {
+      currentSite.logs = currentSite.logs.slice(-MAX_SITE_LOGS);
+    }
     saveSites(currentSites, immediate);
     return currentSite;
   };
@@ -666,6 +754,9 @@ export async function crawlSite(
       if (crawledUrls.has(currentUrl)) continue;
       crawledUrls.add(currentUrl);
 
+      // Yield to the event loop so other concurrent requests/apps process smoothly
+      await new Promise((r) => setImmediate(r));
+
       let parsedCurrent: URL;
       try {
         parsedCurrent = await validateCrawlUrl(currentUrl);
@@ -726,7 +817,12 @@ export async function crawlSite(
         };
 
         newIndexedPages.push(pageItem);
-        baseIndex.push(pageItem);
+        const existingIdx = baseIndex.findIndex((p) => p.url === pageItem.url);
+        if (existingIdx !== -1) {
+          baseIndex[existingIdx] = pageItem;
+        } else {
+          baseIndex.push(pageItem);
+        }
         cachedIndex = baseIndex;
 
         pagesCrawled++;
@@ -1048,8 +1144,16 @@ export function clearCrawlQueue(): void {
     clearTimeout(saveSitesTimeout);
     saveSitesTimeout = null;
   }
+  if (saveIndexTimeout) {
+    clearTimeout(saveIndexTimeout);
+    saveIndexTimeout = null;
+  }
   cachedSites = null;
   cachedIndex = null;
+  isWritingSites = false;
+  pendingSitesWrite = false;
+  isWritingIndex = false;
+  pendingIndexWrite = false;
   for (const timer of scheduledBatchTimers.values()) {
     clearTimeout(timer);
   }

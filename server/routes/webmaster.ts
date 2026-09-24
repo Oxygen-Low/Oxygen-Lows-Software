@@ -256,6 +256,13 @@ webmasterRouter.post("/sites/:id/crawl", async (c) => {
   cancelScheduledCrawl(site.id);
   site.pendingUrls = undefined;
   site.nextCrawlScheduledAt = null;
+  site.logs = [
+    {
+      timestamp: new Date().toISOString(),
+      message: `Re-crawl initiated by ${user.username || user.email || user.id}. Previous logs cleared.`,
+      level: "info",
+    },
+  ];
   saveSites(sites);
 
   enqueueCrawl(site.id, 20);
@@ -314,10 +321,25 @@ webmasterRouter.get("/sites/:id/pages", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const index = getIndex();
-  const pages = index.filter((p) => p.siteId === siteId);
+  const page = parseInt(c.req.query("page") || "1", 10);
+  const limit = parseInt(c.req.query("limit") || "50", 10);
+  const safePage = isNaN(page) || page < 1 ? 1 : page;
+  const safeLimit = isNaN(limit) || limit < 1 ? 50 : Math.min(limit, 200);
 
-  return c.json({ site: attachQueuePosition(site), pages });
+  const index = getIndex();
+  const allSitePages = index.filter((p) => p.siteId === siteId);
+  const total = allSitePages.length;
+  const start = (safePage - 1) * safeLimit;
+  const pages = allSitePages.slice(start, start + safeLimit);
+
+  return c.json({
+    site: attachQueuePosition(site),
+    pages,
+    total,
+    page: safePage,
+    limit: safeLimit,
+    totalPages: Math.ceil(total / safeLimit) || 1,
+  });
 });
 
 // ==========================================
