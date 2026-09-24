@@ -9,8 +9,9 @@ alignas(16) GDTEntry g_gdt[7];
 alignas(16) TSS64 g_tss;
 GDTPointer g_gdtr;
 
-// Dedicated Interrupt Stack Table 1 (Double Fault) stack
-alignas(16) uint8_t g_df_stack[8192];
+// Dedicated Interrupt Stack Table 1 (Double Fault) stack and Ring 0 stack
+alignas(16) uint8_t g_df_stack[16384];
+alignas(16) uint8_t g_rsp0_stack[16384];
 
 void set_standard_entry(int index, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran) {
     g_gdt[index].base_low = (uint16_t)(base & 0xFFFF);
@@ -58,6 +59,7 @@ void gdt_init(void) {
         ((uint8_t*)&g_tss)[i] = 0;
     }
     g_tss.iomap_base = sizeof(TSS64); // Disable I/O permission bitmap
+    g_tss.rsp0 = (uint64_t)g_rsp0_stack + sizeof(g_rsp0_stack);
 
     // Setup IST1 for Double Fault handler
     uint64_t df_stack_top = (uint64_t)g_df_stack + sizeof(g_df_stack);

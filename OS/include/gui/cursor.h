@@ -18,6 +18,14 @@ void    cursor_render(int32_t x, int32_t y);
 int32_t cursor_get_width(void);
 int32_t cursor_get_height(void);
 
+// Software Cursor Save-Behind Buffer API
+void    cursor_save_behind(int32_t x, int32_t y);
+void    cursor_restore_behind(void);
+bool    cursor_update_position(int32_t new_x, int32_t new_y);
+int32_t cursor_get_current_x(void);
+int32_t cursor_get_current_y(void);
+bool    cursor_has_saved(void);
+
 #ifdef __cplusplus
 }
 #endif

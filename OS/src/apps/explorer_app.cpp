@@ -13,10 +13,9 @@ static const Color COLOR_EXP_SELECTED = Color(8, 131, 149, 255);
 
 ExplorerApp::ExplorerApp()
     : m_window(nullptr), m_item_count(0), m_selected_index(-1),
-      m_preview_is_valid(false) {
+      m_preview_ptr(nullptr), m_preview_size(0), m_preview_is_valid(false) {
     m_current_path[0] = '/';
     m_current_path[1] = '\0';
-    m_preview_text[0] = '\0';
 }
 
 ExplorerApp::~ExplorerApp() {}
@@ -30,7 +29,8 @@ void ExplorerApp::refresh_list(void) {
     m_item_count = 0;
     m_selected_index = -1;
     m_preview_is_valid = false;
-    m_preview_text[0] = '\0';
+    m_preview_ptr = nullptr;
+    m_preview_size = 0;
 
     VFSNode* dir = vfs_resolve_path(m_current_path);
     if (!dir) {
@@ -89,7 +89,8 @@ void ExplorerApp::navigate_up(void) {
 
 void ExplorerApp::load_preview(const char* filename) {
     m_preview_is_valid = false;
-    m_preview_text[0] = '\0';
+    m_preview_ptr = nullptr;
+    m_preview_size = 0;
 
     char full_path[EXPLORER_MAX_PATH];
     size_t p = 0;
@@ -108,9 +109,9 @@ void ExplorerApp::load_preview(const char* filename) {
 
     VFSNode* node = vfs_resolve_path(full_path);
     if (node && node->type == VFS_TYPE_FILE) {
-        size_t bytes_read = vfs_read(node, 0, EXPLORER_PREVIEW_BUF - 1, reinterpret_cast<uint8_t*>(m_preview_text));
-        m_preview_text[bytes_read] = '\0';
-        m_preview_is_valid = true;
+        // Zero-copy direct buffer reference
+        m_preview_ptr = vfs_get_data_ptr(node, &m_preview_size);
+        m_preview_is_valid = (m_preview_ptr != nullptr && m_preview_size > 0);
     }
 }
 
@@ -122,7 +123,8 @@ void ExplorerApp::select_item(int32_t index) {
         load_preview(m_items[index].name);
     } else {
         m_preview_is_valid = false;
-        m_preview_text[0] = '\0';
+        m_preview_ptr = nullptr;
+        m_preview_size = 0;
     }
 }
 
@@ -270,11 +272,11 @@ void ExplorerApp::on_paint(const Rect& client_area) {
 
     font_draw_string(client_area.x + 8, preview_y + 6, "FILE PREVIEW:", Color(8, 131, 149, 255));
 
-    if (m_preview_is_valid) {
+    if (m_preview_is_valid && m_preview_ptr) {
         font_draw_string_bounded(
             Rect(client_area.x + 8, preview_y + 24, client_area.width - 16, preview_h - 28),
             client_area.x + 8, preview_y + 24,
-            m_preview_text,
+            m_preview_ptr,
             COLOR_WHITE
         );
     } else if (m_selected_index >= 0 && m_items[m_selected_index].type == VFS_TYPE_DIRECTORY) {

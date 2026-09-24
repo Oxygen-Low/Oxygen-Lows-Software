@@ -23,6 +23,9 @@ public:
     virtual void on_key_down(uint8_t scancode, char ascii) {
         UNUSED(scancode); UNUSED(ascii);
     }
+    virtual void on_resize(int32_t width, int32_t height) {
+        UNUSED(width); UNUSED(height);
+    }
     virtual void on_close() {}
     virtual void on_update() {}
 };

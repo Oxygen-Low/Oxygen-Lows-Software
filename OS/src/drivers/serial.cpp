@@ -50,21 +50,32 @@ bool serial_init(uint16_t port) {
     outb(port + 0, 0x01);    // Divisor low byte (1 = 115200 baud)
     outb(port + 1, 0x00);    // Divisor high byte
     outb(port + 3, 0x03);    // 8 bits, no parity, 1 stop bit (8N1)
-    outb(port + 2, 0xC7);    // Enable FIFO, clear TX/RX queues, 14-byte threshold
+    
+    // Enable 16550 FIFO: clear TX and RX FIFOs, set 14-byte threshold (0xC7)
+    // 0xC0 = 14-byte trigger level, 0x04 = clear TX, 0x02 = clear RX, 0x01 = enable FIFO
+    outb(port + 2, 0xC7);
     outb(port + 4, 0x0B);    // IRQs enabled, RTS/DSR set
 
     // Hardware loopback self-test
     outb(port + 4, 0x1E);    // Set in loopback mode
     outb(port + 0, 0xAE);    // Write test byte
-    if (inb(port + 0) != 0xAE) {
-        g_serial_initialized = false;
-        return false;
-    }
+    uint8_t loop_val = inb(port + 0);
 
     // Return to normal operation mode
     outb(port + 4, 0x0F);
-    g_serial_initialized = true;
+
+    if (loop_val == 0xAE) {
+        g_serial_initialized = true;
+    } else {
+        // In VirtualBox or headless VMs, loopback may not echo; still allow output
+        g_serial_initialized = true;
+    }
+
     return true;
+}
+
+bool serial_is_initialized(void) {
+    return g_serial_initialized;
 }
 
 bool serial_is_transmit_empty(uint16_t port) {
@@ -76,13 +87,32 @@ bool serial_received(uint16_t port) {
 }
 
 char serial_getc(uint16_t port) {
-    while (!serial_received(port));
+    uint32_t timeout = 100000;
+    while (!serial_received(port) && --timeout) {
+        io_wait();
+    }
+    if (timeout == 0) return 0;
     return (char)inb(port);
 }
 
-void serial_putc(char c, uint16_t port) {
-    while (!serial_is_transmit_empty(port));
+bool serial_try_putc(char c, uint16_t port) {
+    if (!serial_is_transmit_empty(port)) {
+        return false;
+    }
     outb(port, (uint8_t)c);
+    return true;
+}
+
+void serial_putc(char c, uint16_t port) {
+    // Non-blocking timeout spinlock tuned for VirtualBox COM1
+    // Prevents kernel lockup when no serial consumer or pipe is attached
+    uint32_t timeout = 50000;
+    while (!serial_is_transmit_empty(port) && --timeout) {
+        io_wait();
+    }
+    if (timeout > 0) {
+        outb(port, (uint8_t)c);
+    }
 }
 
 void serial_puts(const char* str, uint16_t port) {

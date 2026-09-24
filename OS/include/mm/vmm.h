@@ -13,6 +13,7 @@
 #define PAGE_DIRTY         (1ULL << 6)
 #define PAGE_HUGE_2MB      (1ULL << 7)
 #define PAGE_GLOBAL        (1ULL << 8)
+#define PAGE_WRITE_COMBINING (1ULL << 3) // Write-Combining via programmed IA32_PAT entry 1
 #define PAGE_NO_EXECUTE    (1ULL << 63)
 
 #define PAGE_FRAME_MASK    0x000FFFFFFFFFF000ULL
@@ -29,6 +30,8 @@ extern "C" {
 #endif
 
 void vmm_init(void);
+void vmm_init_pat(void);
+bool vmm_has_pat(void);
 bool vmm_map_page(uint64_t virt, uint64_t phys, uint64_t flags);
 bool vmm_unmap_page(uint64_t virt);
 uint64_t vmm_virt_to_phys(uint64_t virt);

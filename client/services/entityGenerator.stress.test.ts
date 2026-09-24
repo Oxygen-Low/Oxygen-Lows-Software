@@ -261,7 +261,7 @@ describe("entityGenerator Adversarial & Stress Test Suite", () => {
       expect(parsed.appearance).toContain("Obsidian armor");
     });
 
-    it("2.3: throws clear error for truncated, incomplete JSON outputs", () => {
+    it("2.3: automatically recovers and repairs truncated, incomplete JSON outputs", () => {
       const truncatedOutputs = [
         `{"name": "Incomplete`,
         `{"name": "Incomplete", "display_name": "Truncated", "short_description": `,
@@ -269,9 +269,10 @@ describe("entityGenerator Adversarial & Stress Test Suite", () => {
       ];
 
       for (const raw of truncatedOutputs) {
-        expect(() => extractJsonPayload(raw)).toThrow(
-          "Failed to parse structured JSON from generator output",
-        );
+        const parsed = extractJsonPayload(raw) as any;
+        expect(parsed).toBeDefined();
+        expect(typeof parsed).toBe("object");
+        expect(parsed.name).toBeTruthy();
       }
     });
 

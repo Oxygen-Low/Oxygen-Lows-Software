@@ -102,7 +102,7 @@ void keyboard_handler(InterruptFrame* frame) {
     size_t next_head = (g_buf_head + 1) % KEY_BUFFER_SIZE;
     if (next_head != g_buf_tail) {
         KeyEvent evt;
-        evt.scancode = scancode;
+        evt.scancode = code; // Canonical scancode (0-127) matching KEY_SCAN_*
         evt.ascii = ascii;
         evt.pressed = !released;
         evt.modifiers = g_modifiers | (g_extended ? KEY_MOD_EXTENDED : 0);

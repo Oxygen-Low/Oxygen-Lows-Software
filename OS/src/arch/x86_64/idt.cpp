@@ -2,6 +2,8 @@
 #include "arch/x86_64/pic.h"
 #include "arch/x86_64/io.h"
 #include "drivers/serial.h"
+#include "gui/framebuffer.h"
+#include "gui/font.h"
 
 extern "C" void* isr_stub_table[48];
 
@@ -108,6 +110,18 @@ void idt_dispatch_interrupt(InterruptFrame* frame) {
         return;
     }
 
+    // Spurious IRQ detection for Master (IRQ7, vector 39) and Slave (IRQ15, vector 47)
+    if (vector == 39) {
+        if (!(pic_get_isr() & (1 << 7))) {
+            return; // Spurious IRQ7 on Master PIC: do not send EOI
+        }
+    } else if (vector == 47) {
+        if (!(pic_get_isr() & (1 << 15))) {
+            pic_send_eoi(IRQ_CASCADE); // Spurious IRQ15 on Slave PIC: send EOI only to master
+            return;
+        }
+    }
+
     // CPU Exception handling (Vectors 0 - 31)
     if (vector < 32) {
         const char* name = (vector < 32) ? g_exception_messages[vector] : "Unknown Exception";
@@ -117,8 +131,9 @@ void idt_dispatch_interrupt(InterruptFrame* frame) {
         serial_printf("RIP: 0x%p | CS: 0x%x | RFLAGS: 0x%p\n", (void*)frame->rip, (uint32_t)frame->cs, (void*)frame->rflags);
         serial_printf("RSP: 0x%p | SS: 0x%x\n", (void*)frame->rsp, (uint32_t)frame->ss);
 
+        uint64_t cr2 = 0;
         if (vector == 14) { // Page Fault
-            uint64_t cr2 = read_cr2();
+            cr2 = read_cr2();
             serial_printf("CR2 (Fault Address): 0x%p\n", (void*)cr2);
             serial_printf("Page Fault Cause: %s | %s | %s\n",
                 (frame->error_code & 1) ? "Protection Violation" : "Non-Present Page",
@@ -132,6 +147,41 @@ void idt_dispatch_interrupt(InterruptFrame* frame) {
         serial_printf("R10: 0x%p | R11: 0x%p | R12: 0x%p\n", (void*)frame->r10, (void*)frame->r11, (void*)frame->r12);
         serial_printf("R13: 0x%p | R14: 0x%p | R15: 0x%p\n", (void*)frame->r13, (void*)frame->r14, (void*)frame->r15);
         serial_printf("=======================================================\n");
+
+        // Graphical Panic Screen (Blue Screen of Death)
+        FramebufferConfig* fb = fb_get_config();
+        if (fb && fb->is_initialized && fb->virt_addr) {
+            uint32_t screen_w = fb->width;
+            uint32_t screen_h = fb->height;
+            uint32_t* vram = fb->virt_addr;
+            uint32_t blue_color = 0xFF003366; // Deep Blue
+
+            // Clear screen directly in VRAM
+            for (uint32_t i = 0; i < screen_w * screen_h; ++i) {
+                vram[i] = blue_color;
+            }
+
+            int32_t y = 40;
+            font_draw_string(40, y, ":( Oxygen Low's Software encountered a fatal kernel problem", COLOR_WHITE);
+            y += 24;
+            font_draw_string(40, y, "and needs to halt to protect data integrity.", Color(200, 220, 255, 255));
+            y += 36;
+            font_printf(40, y, COLOR_WHITE, COLOR_TRANSPARENT, "Stop Code: %s (Vector %u, Code 0x%x)", name, (uint32_t)vector, (uint32_t)frame->error_code);
+            y += 20;
+            font_printf(40, y, Color(200, 220, 255, 255), COLOR_TRANSPARENT, "Fault Address (RIP): 0x%p | CS: 0x%x | RFLAGS: 0x%p", (void*)frame->rip, (uint32_t)frame->cs, (void*)frame->rflags);
+            y += 20;
+            if (vector == 14) {
+                font_printf(40, y, Color(255, 100, 100, 255), COLOR_TRANSPARENT, "Page Fault Address (CR2): 0x%p", (void*)cr2);
+                y += 20;
+            }
+            font_printf(40, y, Color(200, 220, 255, 255), COLOR_TRANSPARENT, "Stack Pointer (RSP): 0x%p | Base Pointer (RBP): 0x%p", (void*)frame->rsp, (void*)frame->rbp);
+            y += 20;
+            font_printf(40, y, Color(180, 200, 230, 255), COLOR_TRANSPARENT, "RAX: 0x%p  RBX: 0x%p  RCX: 0x%p  RDX: 0x%p", (void*)frame->rax, (void*)frame->rbx, (void*)frame->rcx, (void*)frame->rdx);
+            y += 20;
+            font_printf(40, y, Color(180, 200, 230, 255), COLOR_TRANSPARENT, "RSI: 0x%p  RDI: 0x%p  R8:  0x%p  R9:  0x%p", (void*)frame->rsi, (void*)frame->rdi, (void*)frame->r8, (void*)frame->r9);
+            y += 36;
+            font_draw_string(40, y, "Please report this issue to Oxygen Low's Software Support. System halted.", COLOR_WHITE);
+        }
 
         // Halt CPU
         cli();

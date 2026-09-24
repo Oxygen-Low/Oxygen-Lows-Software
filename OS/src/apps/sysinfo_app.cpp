@@ -4,7 +4,12 @@
 #include "gui/framebuffer.h"
 #include "mm/pmm.h"
 #include "mm/heap.h"
+#include "mm/vmm.h"
 #include "arch/x86_64/pit.h"
+#include "arch/x86_64/acpi.h"
+#include "arch/x86_64/hpet.h"
+#include "drivers/pci.h"
+#include "drivers/vbox_guest.h"
 
 SysInfoApp::SysInfoApp() : m_window(nullptr), m_last_refresh_ms(0) {}
 SysInfoApp::~SysInfoApp() {}
@@ -46,9 +51,16 @@ void SysInfoApp::on_paint(const Rect& client_area) {
 
     font_draw_string(x + 8, y, "Kernel Architecture : x86_64 AMD64 Long Mode (CR0.PG, CR4.PAE)", COLOR_WHITE);
     y += 18;
-    font_draw_string(x + 8, y, "Interrupt Routing   : 8259 PIC Remapped (Vectors 32-47), IDT 256 Gates", COLOR_WHITE);
+    font_printf(x + 8, y, COLOR_WHITE, COLOR_TRANSPARENT,
+                "Virtualization      : %s (PCI: %u devs, PAT %s)",
+                pci_is_virtualbox_present() ? "VirtualBox VMMDev (Absolute Mouse Active)" : "QEMU / KVM / Bare-Metal",
+                static_cast<unsigned int>(pci_get_device_count()),
+                vmm_has_pat() ? "WC Active" : "Disabled");
     y += 18;
-    font_draw_string(x + 8, y, "System Timer        : 8254 PIT Channel 0 @ 1000Hz (1ms Tick)", COLOR_WHITE);
+    font_printf(x + 8, y, COLOR_WHITE, COLOR_TRANSPARENT,
+                "Timers & Power      : %s | %s",
+                hpet_is_available() ? "HPET Precision Drift-Compensated" : "PIT 8254 1000Hz",
+                acpi_is_available() ? "ACPI Clean Poweroff" : "Legacy");
     y += 18;
     font_draw_string(x + 8, y, "Display Video Mode  : 1024x768 @ 32bpp Direct RGB Linear Framebuffer", COLOR_WHITE);
     y += 28;

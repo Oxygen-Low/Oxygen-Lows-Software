@@ -546,9 +546,15 @@ Let me know if you want any modifications!`;
       expect(parsed.appearance).toContain("Mandalorian");
     });
 
-    it("T2-08: throws descriptive error on malformed JSON response from LLM", () => {
+    it("T2-08: automatically repairs unclosed or malformed JSON response from LLM", () => {
       const invalidJson = `Here is your character: { "name": "Broken JSON without close brace...`;
-      expect(() => extractJsonPayload(invalidJson)).toThrow(
+      const parsed = extractJsonPayload(invalidJson) as any;
+      expect(parsed.name).toBe("Broken JSON without close brace...");
+    });
+
+    it("T2-08b: throws descriptive error when LLM output has no JSON structure", () => {
+      const nonJson = "I cannot fulfill this request as an AI assistant.";
+      expect(() => extractJsonPayload(nonJson)).toThrow(
         "Failed to parse structured JSON from generator output",
       );
     });

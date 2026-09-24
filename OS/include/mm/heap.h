@@ -14,6 +14,8 @@ struct HeapBlockHeader {
     size_t   size;               // Size of usable payload in bytes
     HeapBlockHeader* next;       // Next block in physical layout
     HeapBlockHeader* prev;       // Previous block in physical layout
+    HeapBlockHeader* free_next;  // Next block in segregated free bin
+    HeapBlockHeader* free_prev;  // Previous block in segregated free bin
 };
 
 #pragma pack(pop)

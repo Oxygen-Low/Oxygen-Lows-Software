@@ -155,10 +155,13 @@ describe("AI Search Intent Parsing Security", () => {
     });
   });
 
-  it("should safely handle malformed JSON without throwing", () => {
+  it("should automatically repair malformed JSON or return null without throwing", () => {
     expect(
       parseSearchIntent('{"search": true, "query": "unterminated'),
-    ).toBeNull();
+    ).toEqual({ search: true, query: "unterminated" });
+    expect(
+      parseSearchIntent('{ search: True, query: "weather forecast" }'),
+    ).toEqual({ search: true, query: "weather forecast" });
     expect(parseSearchIntent("{invalid: json}")).toBeNull();
     expect(parseSearchIntent('{ "search": true, }')).toBeNull();
   });

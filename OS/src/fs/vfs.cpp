@@ -118,8 +118,12 @@ VFSNode* vfs_resolve_path(const char* path) {
 
     while (*p) {
         size_t t_idx = 0;
-        while (*p && *p != '/' && t_idx < VFS_MAX_NAME_LEN - 1) {
-            token[t_idx++] = *p++;
+        while (*p && *p != '/') {
+            if (t_idx < VFS_MAX_NAME_LEN - 1) {
+                token[t_idx++] = *p++;
+            } else {
+                return nullptr; // Path component exceeds max name length
+            }
         }
         token[t_idx] = '\0';
         if (*p == '/') p++;
@@ -247,6 +251,13 @@ size_t vfs_write(VFSNode* node, size_t offset, size_t size, const uint8_t* buffe
         node->capacity = new_cap;
     }
 
+    // Zero-fill gap if writing past current size (B04)
+    if (offset > node->size) {
+        for (size_t i = node->size; i < offset; ++i) {
+            node->data[i] = 0;
+        }
+    }
+
     for (size_t i = 0; i < size; ++i) {
         node->data[offset + i] = buffer[i];
     }
@@ -259,6 +270,39 @@ size_t vfs_write(VFSNode* node, size_t offset, size_t size, const uint8_t* buffe
     return size;
 }
 
+bool vfs_delete(const char* path) {
+    if (!path || str_equal(path, "/") || str_equal(path, "")) return false;
+
+    VFSNode* target = vfs_resolve_path(path);
+    if (!target) return false;
+
+    // Cannot delete a directory that still contains items
+    if (target->type == VFS_TYPE_DIRECTORY && target->child_count > 0) {
+        return false;
+    }
+
+    VFSNode* parent = target->parent;
+    if (!parent) return false;
+
+    // Remove from parent's children array
+    for (size_t i = 0; i < parent->child_count; ++i) {
+        if (parent->children[i] == target) {
+            for (size_t j = i; j < parent->child_count - 1; ++j) {
+                parent->children[j] = parent->children[j + 1];
+            }
+            parent->child_count--;
+            break;
+        }
+    }
+
+    if (target->data) {
+        kfree(target->data);
+        target->data = nullptr;
+    }
+    kfree(target);
+    return true;
+}
+
 bool vfs_readdir(VFSNode* node, size_t index, VFSDirectoryEntry* entry_out) {
     if (!node || node->type != VFS_TYPE_DIRECTORY || !entry_out) return false;
     if (index >= node->child_count) return false;
@@ -269,6 +313,15 @@ bool vfs_readdir(VFSNode* node, size_t index, VFSDirectoryEntry* entry_out) {
     entry_out->size = child->size;
     entry_out->node = child;
     return true;
+}
+
+const char* vfs_get_data_ptr(VFSNode* node, size_t* out_size) {
+    if (!node || node->type != VFS_TYPE_FILE || !node->data) {
+        if (out_size) *out_size = 0;
+        return nullptr;
+    }
+    if (out_size) *out_size = node->size;
+    return (const char*)node->data;
 }
 
 } // extern "C"

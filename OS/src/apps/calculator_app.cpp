@@ -96,11 +96,23 @@ void CalculatorApp::append_decimal(void) {
         m_new_number_entry = false;
         m_has_decimal = true;
     } else if (!m_has_decimal) {
-        size_t len = 0;
-        while (m_display_str[len]) len++;
-        if (len < 15) {
-            m_display_str[len] = '.';
-            m_display_str[len + 1] = '\0';
+        // Check string directly to ensure dot is not duplicated (B19)
+        bool dot_found = false;
+        for (size_t i = 0; m_display_str[i] != '\0'; ++i) {
+            if (m_display_str[i] == '.') {
+                dot_found = true;
+                break;
+            }
+        }
+        if (!dot_found) {
+            size_t len = 0;
+            while (m_display_str[len]) len++;
+            if (len < 15) {
+                m_display_str[len] = '.';
+                m_display_str[len + 1] = '\0';
+                m_has_decimal = true;
+            }
+        } else {
             m_has_decimal = true;
         }
     }

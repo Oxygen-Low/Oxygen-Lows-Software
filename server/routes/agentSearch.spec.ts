@@ -6,6 +6,7 @@ import {
   agentSearchRouter,
   HORDE_FAST_MODEL,
   HORDE_URL,
+  parseHordeAction,
 } from "./agentSearch.ts";
 import { generateToken } from "../lib/auth.ts";
 import {
@@ -633,5 +634,82 @@ describe("Agent Search Route", () => {
     });
 
     expect(res.status).toBe(200);
+  });
+
+  describe("parseHordeAction resilient JSON repair", () => {
+    test("repairs malformed tool_call arguments with trailing commas and unquoted keys", () => {
+      const data = {
+        choices: [
+          {
+            message: {
+              tool_calls: [
+                {
+                  function: {
+                    name: "web_search",
+                    arguments: "{ query: 'deep sea exploration', count: 5, }",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+      const action = parseHordeAction(data);
+      expect(action).toEqual({
+        tool: "web_search",
+        args: { query: "deep sea exploration", count: 5 },
+      });
+    });
+
+    test("extracts action from text content with unquoted keys and single quotes", () => {
+      const data = {
+        choices: [
+          {
+            message: {
+              content: "{ action: 'web_search', query: 'quantum computing' }",
+            },
+          },
+        ],
+      };
+      const action = parseHordeAction(data);
+      expect(action).toEqual({
+        tool: "web_search",
+        args: { query: "quantum computing" },
+      });
+    });
+
+    test("extracts action from markdown fenced block with conversational text", () => {
+      const data = {
+        choices: [
+          {
+            message: {
+              content: "I will fetch this page now:\n```json\n{\n  \"action\": \"fetch_page\",\n  \"url\": \"https://example.com/info\"\n}\n```",
+            },
+          },
+        ],
+      };
+      const action = parseHordeAction(data);
+      expect(action).toEqual({
+        tool: "fetch_page",
+        args: { url: "https://example.com/info" },
+      });
+    });
+
+    test("handles unterminated action content gracefully", () => {
+      const data = {
+        choices: [
+          {
+            message: {
+              content: '{"action": "web_search", "query": "unterminated query string',
+            },
+          },
+        ],
+      };
+      const action = parseHordeAction(data);
+      expect(action).toEqual({
+        tool: "web_search",
+        args: { query: "unterminated query string" },
+      });
+    });
   });
 });

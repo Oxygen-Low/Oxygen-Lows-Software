@@ -98,9 +98,12 @@ void mouse_handler(InterruptFrame* frame) {
             g_mouse_state.delta_x = delta_x;
             g_mouse_state.delta_y = delta_y;
 
-            // Update clamped screen coordinates
-            g_mouse_state.x = CLAMP(g_mouse_state.x + delta_x, 0, g_screen_width - 1);
-            g_mouse_state.y = CLAMP(g_mouse_state.y + delta_y, 0, g_screen_height - 1);
+            // Only update relative coordinates if absolute pointing device is not active
+            extern bool vbox_guest_is_absolute_mouse_enabled(void);
+            if (!vbox_guest_is_absolute_mouse_enabled()) {
+                g_mouse_state.x = CLAMP(g_mouse_state.x + delta_x, 0, g_screen_width - 1);
+                g_mouse_state.y = CLAMP(g_mouse_state.y + delta_y, 0, g_screen_height - 1);
+            }
 
             // Update button states
             g_mouse_state.left_button = (g_mouse_packet[0] & 0x01) != 0;
@@ -155,7 +158,11 @@ void mouse_init(uint32_t screen_w, uint32_t screen_h) {
 }
 
 MouseState mouse_get_state(void) {
-    return g_mouse_state;
+    uint64_t rflags;
+    __asm__ volatile ("pushfq; pop %0; cli" : "=r"(rflags) :: "memory");
+    MouseState state = g_mouse_state;
+    __asm__ volatile ("push %0; popfq" :: "r"(rflags) : "memory");
+    return state;
 }
 
 void mouse_set_bounds(uint32_t screen_w, uint32_t screen_h) {
@@ -164,8 +171,11 @@ void mouse_set_bounds(uint32_t screen_w, uint32_t screen_h) {
 }
 
 void mouse_set_position(int32_t x, int32_t y) {
+    uint64_t rflags;
+    __asm__ volatile ("pushfq; pop %0; cli" : "=r"(rflags) :: "memory");
     g_mouse_state.x = CLAMP(x, 0, g_screen_width - 1);
     g_mouse_state.y = CLAMP(y, 0, g_screen_height - 1);
+    __asm__ volatile ("push %0; popfq" :: "r"(rflags) : "memory");
 }
 
 } // extern "C"

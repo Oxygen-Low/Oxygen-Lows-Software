@@ -3,6 +3,7 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable } from "../lib/dataStore.ts";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "../../shared/websiteKnowledge.ts";
+import { safeParseJson } from "../../shared/jsonRepair.ts";
 import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
@@ -95,13 +96,8 @@ export function parseSearchIntent(content: unknown): SearchIntent | null {
     return null;
   }
 
-  const match = trimmed.match(/\{[\s\S]*\}/);
-  if (!match) {
-    return null;
-  }
-
   try {
-    const parsed = JSON.parse(match[0]);
+    const parsed = safeParseJson<any>(trimmed);
     if (
       typeof parsed !== "object" ||
       parsed === null ||

@@ -17,9 +17,11 @@ LDFLAGS = -n -T linker.ld -nostdlib -z max-page-size=0x1000 -m elf_x86_64
 
 # Recursive source file discovery
 SRC_ASM := $(wildcard src/boot/*.asm) \
-           $(wildcard src/arch/x86_64/*.asm)
+           $(wildcard src/arch/x86_64/*.asm) \
+           $(wildcard src/kernel/*.asm)
 
 SRC_CXX := $(wildcard src/*.cpp) \
+           $(wildcard src/kernel/*.cpp) \
            $(wildcard src/arch/x86_64/*.cpp) \
            $(wildcard src/drivers/*.cpp) \
            $(wildcard src/mm/*.cpp) \

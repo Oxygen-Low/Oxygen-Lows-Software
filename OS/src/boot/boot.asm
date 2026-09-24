@@ -198,21 +198,13 @@ setup_page_tables:
     ; Fill all 2048 PD entries (4 tables x 512) with 2MB huge pages
     ; pd_table_0..3 are contiguous in BSS, so iterate from pd_table_0
     ; Entry physical address = ecx * 2MB = ecx << 21
-    ; Flags: 0x83 = Present | Writable | Huge (2MB)
-    ; For ecx >= 1024 (phys >= 2GB, MMIO/VRAM region), add PCD (bit 4)
-    ; PCD flag: 0x93 = Present | Writable | PCD | Huge
+    ; Flags: 0x83 = Present | Writable | Huge (2MB) - Cache enabled for all RAM
     mov edi, pd_table_0
     mov ecx, 0
 .map_all_pd:
     mov eax, ecx
     shl eax, 21                             ; EAX = ecx * 2MB (physical base)
-    cmp ecx, 1024                           ; 1024 * 2MB = 2GB boundary
-    jb .map_normal
-    or eax, 0x93                            ; Present | Writable | PCD | Huge (MMIO)
-    jmp .map_store
-.map_normal:
-    or eax, 0x83                            ; Present | Writable | Huge (RAM)
-.map_store:
+    or eax, 0x83                            ; Present | Writable | Huge (Cacheable RAM)
     mov [edi + ecx * 8], eax
     mov dword [edi + ecx * 8 + 4], 0        ; Upper 32 bits = 0
     inc ecx

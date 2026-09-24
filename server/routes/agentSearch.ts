@@ -8,6 +8,7 @@ import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
 } from "../lib/hordeContinuation.ts";
+import { safeParseJson } from "../../shared/jsonRepair.ts";
 
 export const agentSearchRouter = new Hono();
 
@@ -361,7 +362,7 @@ function getTotalResearchChars(
   return total;
 }
 
-function parseHordeAction(data: any): { tool: string; args: any } | null {
+export function parseHordeAction(data: any): { tool: string; args: any } | null {
   if (!data) return null;
   const msg = data.result || data.choices?.[0]?.message;
 
@@ -374,7 +375,7 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
     const rawArgs = tc.arguments || tc.function?.arguments;
     if (typeof rawArgs === "string") {
       try {
-        args = JSON.parse(rawArgs);
+        args = safeParseJson(rawArgs, {});
       } catch {}
     } else if (rawArgs && typeof rawArgs === "object") {
       args = rawArgs;
@@ -409,9 +410,8 @@ function parseHordeAction(data: any): { tool: string; args: any } | null {
   if (!content) return null;
 
   try {
-    const match = content.match(/\{[\s\S]*\}/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
+    const parsed = safeParseJson<any>(content, null);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const toolName = parsed.action || parsed.tool || parsed.name;
       if (
         toolName === "done" ||

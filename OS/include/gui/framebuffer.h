@@ -33,6 +33,13 @@ uint32_t*          fb_get_frontbuffer(void);
 void               fb_swap_buffers(void);
 void               fb_swap_rect(int32_t x, int32_t y, int32_t w, int32_t h);
 
+// Dirty region tracking
+void               fb_mark_dirty(int32_t x, int32_t y, int32_t w, int32_t h);
+void               fb_mark_dirty_all(void);
+bool               fb_is_dirty(void);
+void               fb_clear_dirty(void);
+void               fb_present_dirty(void);
+
 #ifdef __cplusplus
 }
 #endif

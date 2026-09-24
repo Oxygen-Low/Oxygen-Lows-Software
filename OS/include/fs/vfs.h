@@ -42,7 +42,9 @@ VFSNode* vfs_create_file(const char* path, const char* initial_content = nullptr
 VFSNode* vfs_create_directory(const char* path);
 size_t   vfs_read(VFSNode* node, size_t offset, size_t size, uint8_t* buffer);
 size_t   vfs_write(VFSNode* node, size_t offset, size_t size, const uint8_t* buffer);
+bool     vfs_delete(const char* path);
 bool     vfs_readdir(VFSNode* node, size_t index, VFSDirectoryEntry* entry_out);
+const char* vfs_get_data_ptr(VFSNode* node, size_t* out_size = nullptr);
 
 #ifdef __cplusplus
 }

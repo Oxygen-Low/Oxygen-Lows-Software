@@ -94,4 +94,28 @@ static inline void invlpg_asm(uint64_t addr) {
     __asm__ volatile ("invlpg (%0)" : : "r"(addr) : "memory");
 }
 
+static inline void cpuid(uint32_t leaf, uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* edx) {
+    __asm__ volatile ("cpuid"
+                      : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
+                      : "a"(leaf), "c"(0));
+}
+
+static inline uint64_t rdmsr(uint32_t msr) {
+    uint32_t low, high;
+    __asm__ volatile ("rdmsr" : "=a"(low), "=d"(high) : "c"(msr));
+    return ((uint64_t)high << 32) | low;
+}
+
+static inline void wrmsr(uint32_t msr, uint64_t val) {
+    uint32_t low = (uint32_t)val;
+    uint32_t high = (uint32_t)(val >> 32);
+    __asm__ volatile ("wrmsr" : : "a"(low), "d"(high), "c"(msr));
+}
+
+static inline uint64_t read_rflags(void) {
+    uint64_t rflags;
+    __asm__ volatile ("pushfq; popq %0" : "=r"(rflags));
+    return rflags;
+}
+
 #endif // OXYGEN_ARCH_IO_H

@@ -37,7 +37,8 @@ private:
     size_t       m_item_count;
     int32_t      m_selected_index;
     
-    char         m_preview_text[EXPLORER_PREVIEW_BUF];
+    const char*  m_preview_ptr;
+    size_t       m_preview_size;
     bool         m_preview_is_valid;
     
     void load_preview(const char* filename);

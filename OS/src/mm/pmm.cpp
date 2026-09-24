@@ -130,6 +130,15 @@ void pmm_init(uint64_t multiboot_info_addr) {
         pmm_mark_region_used(multiboot_info_addr, mbi->total_size);
     }
 
+    // Set total frames based on highest detected memory address
+    if (g_highest_address > 0) {
+        g_total_frames = ALIGN_UP(g_highest_address, PMM_PAGE_SIZE) / PMM_PAGE_SIZE;
+        if (g_total_frames > PMM_MAX_FRAMES) {
+            g_total_frames = PMM_MAX_FRAMES;
+        }
+        g_used_frames = (g_total_frames > g_free_frames) ? (g_total_frames - g_free_frames) : 0;
+    }
+
     serial_printf("[PMM] Physical frame bitmap allocator initialized\n");
     serial_printf("[PMM] Total: %u MB | Free: %u MB | Used: %u MB\n",
         (uint32_t)(pmm_get_total_memory() / (1024 * 1024)),
@@ -137,8 +146,13 @@ void pmm_init(uint64_t multiboot_info_addr) {
         (uint32_t)(pmm_get_used_memory() / (1024 * 1024)));
 }
 
+static size_t g_last_alloc_word = 0;
+
 uint64_t pmm_alloc_frame(void) {
-    for (size_t i = 0; i < PMM_BITMAP_WORDS; ++i) {
+    if (g_free_frames == 0) return 0;
+
+    for (size_t attempt = 0; attempt < PMM_BITMAP_WORDS; ++attempt) {
+        size_t i = (g_last_alloc_word + attempt) % PMM_BITMAP_WORDS;
         if (g_pmm_bitmap[i] != 0xFFFFFFFFFFFFFFFFULL) {
             uint64_t free_word = ~g_pmm_bitmap[i];
             int bit = __builtin_ctzll(free_word);
@@ -147,6 +161,7 @@ uint64_t pmm_alloc_frame(void) {
             pmm_set_bit(frame);
             g_free_frames--;
             g_used_frames++;
+            g_last_alloc_word = i;
 
             return frame * PMM_PAGE_SIZE;
         }
@@ -158,11 +173,42 @@ uint64_t pmm_alloc_frame(void) {
 uint64_t pmm_alloc_frames(size_t count) {
     if (count == 0) return 0;
     if (count == 1) return pmm_alloc_frame();
+    if (count > g_free_frames) return 0;
 
     size_t consecutive = 0;
     size_t start_frame = 0;
+    size_t f = 0;
 
-    for (size_t f = 0; f < PMM_MAX_FRAMES; ++f) {
+    while (f < PMM_MAX_FRAMES) {
+        // Fast 64-bit word skipping on word boundary
+        if ((f % 64 == 0)) {
+            uint64_t word = g_pmm_bitmap[f / 64];
+            if (word == 0xFFFFFFFFFFFFFFFFULL) {
+                // All 64 frames in this word are allocated; reset consecutive run and skip entire word
+                consecutive = 0;
+                f += 64;
+                continue;
+            }
+            if (word == 0ULL && (consecutive + 64 <= count)) {
+                // All 64 frames in this word are free!
+                if (consecutive == 0) {
+                    start_frame = f;
+                }
+                consecutive += 64;
+                f += 64;
+                if (consecutive == count) {
+                    for (size_t k = 0; k < count; ++k) {
+                        pmm_set_bit(start_frame + k);
+                    }
+                    g_free_frames -= count;
+                    g_used_frames += count;
+                    return start_frame * PMM_PAGE_SIZE;
+                }
+                continue;
+            }
+        }
+
+        // Bit-by-bit check for partial words or final remainder frames
         if (!pmm_test_bit(f)) {
             if (consecutive == 0) start_frame = f;
             consecutive++;
@@ -177,7 +223,9 @@ uint64_t pmm_alloc_frames(size_t count) {
         } else {
             consecutive = 0;
         }
+        f++;
     }
+
     return 0; // Not enough contiguous frames
 }
 

@@ -90,13 +90,14 @@ bool fb_init(uint64_t multiboot_info_addr) {
 
     g_fb_config.virt_addr = reinterpret_cast<uint32_t*>(g_fb_config.phys_addr);
 
-    // Map physical framebuffer pages with PCD (cache-disable) for MMIO
+    // Map physical framebuffer pages with PAT Write-Combining (or PCD fallback)
+    uint64_t vram_flags = PAGE_PRESENT | PAGE_WRITABLE | (vmm_has_pat() ? PAGE_WRITE_COMBINING : PAGE_CACHE_DISABLE);
     size_t fb_total_bytes = static_cast<size_t>(g_fb_config.pitch) * g_fb_config.height;
     for (size_t offset = 0; offset < fb_total_bytes; offset += 4096) {
         vmm_map_page(
             g_fb_config.phys_addr + offset,
             g_fb_config.phys_addr + offset,
-            PAGE_PRESENT | PAGE_WRITABLE | PAGE_CACHE_DISABLE
+            vram_flags
         );
     }
 
@@ -148,6 +149,104 @@ uint32_t* fb_get_frontbuffer(void) {
     return g_fb_config.virt_addr;
 }
 
+// P02: SIMD (SSE2) Non-Temporal Streaming Stores for Framebuffer Swaps
+// Bypasses CPU cache hierarchy directly into VRAM write-combining buffers
+static inline void sse2_streaming_store_row(uint32_t* dst, const uint32_t* src, size_t count) {
+    size_t i = 0;
+    // Process 64-byte chunks (16 pixels) with 4 x 128-bit streaming stores
+    for (; i + 16 <= count; i += 16) {
+        __asm__ volatile (
+            "movdqu 0(%1), %%xmm0\n\t"
+            "movdqu 16(%1), %%xmm1\n\t"
+            "movdqu 32(%1), %%xmm2\n\t"
+            "movdqu 48(%1), %%xmm3\n\t"
+            "movntdq %%xmm0, 0(%0)\n\t"
+            "movntdq %%xmm1, 16(%0)\n\t"
+            "movntdq %%xmm2, 32(%0)\n\t"
+            "movntdq %%xmm3, 48(%0)\n\t"
+            :
+            : "r"(dst + i), "r"(src + i)
+            : "memory", "xmm0", "xmm1", "xmm2", "xmm3"
+        );
+    }
+    // Process 16-byte chunks (4 pixels) with 1 x 128-bit streaming store
+    for (; i + 4 <= count; i += 4) {
+        __asm__ volatile (
+            "movdqu 0(%1), %%xmm0\n\t"
+            "movntdq %%xmm0, 0(%0)\n\t"
+            :
+            : "r"(dst + i), "r"(src + i)
+            : "memory", "xmm0"
+        );
+    }
+    // Scalar tail pixels
+    for (; i < count; ++i) {
+        dst[i] = src[i];
+    }
+}
+
+// P01: Dirty-Region Tracking State
+static struct {
+    int32_t x1, y1, x2, y2;
+    bool is_dirty;
+} g_fb_dirty = {0, 0, 0, 0, false};
+
+void fb_mark_dirty(int32_t x, int32_t y, int32_t w, int32_t h) {
+    if (w <= 0 || h <= 0) return;
+    int32_t right = x + w;
+    int32_t bottom = y + h;
+
+    if (!g_fb_dirty.is_dirty) {
+        g_fb_dirty.x1 = x;
+        g_fb_dirty.y1 = y;
+        g_fb_dirty.x2 = right;
+        g_fb_dirty.y2 = bottom;
+        g_fb_dirty.is_dirty = true;
+    } else {
+        if (x < g_fb_dirty.x1) g_fb_dirty.x1 = x;
+        if (y < g_fb_dirty.y1) g_fb_dirty.y1 = y;
+        if (right > g_fb_dirty.x2) g_fb_dirty.x2 = right;
+        if (bottom > g_fb_dirty.y2) g_fb_dirty.y2 = bottom;
+    }
+}
+
+void fb_mark_dirty_all(void) {
+    g_fb_dirty.x1 = 0;
+    g_fb_dirty.y1 = 0;
+    g_fb_dirty.x2 = static_cast<int32_t>(g_fb_config.width);
+    g_fb_dirty.y2 = static_cast<int32_t>(g_fb_config.height);
+    g_fb_dirty.is_dirty = true;
+}
+
+bool fb_is_dirty(void) {
+    return g_fb_dirty.is_dirty;
+}
+
+void fb_clear_dirty(void) {
+    g_fb_dirty.is_dirty = false;
+    g_fb_dirty.x1 = 0;
+    g_fb_dirty.y1 = 0;
+    g_fb_dirty.x2 = 0;
+    g_fb_dirty.y2 = 0;
+}
+
+void fb_present_dirty(void) {
+    if (!g_fb_dirty.is_dirty) return;
+
+    int32_t x = g_fb_dirty.x1;
+    int32_t y = g_fb_dirty.y1;
+    int32_t w = g_fb_dirty.x2 - g_fb_dirty.x1;
+    int32_t h = g_fb_dirty.y2 - g_fb_dirty.y1;
+
+    fb_clear_dirty();
+
+    if (w >= static_cast<int32_t>(g_fb_config.width) && h >= static_cast<int32_t>(g_fb_config.height)) {
+        fb_swap_buffers();
+    } else {
+        fb_swap_rect(x, y, w, h);
+    }
+}
+
 void fb_swap_buffers(void) {
     if (!g_fb_config.is_initialized || !g_fb_config.backbuffer || !g_fb_config.virt_addr) return;
     if (g_fb_config.backbuffer == g_fb_config.virt_addr) return;
@@ -162,10 +261,9 @@ void fb_swap_buffers(void) {
         for (uint32_t y = 0; y < g_fb_config.height; ++y) {
             const uint32_t* src_row = &g_fb_config.backbuffer[y * pixels_per_row];
             uint32_t* dst_row = reinterpret_cast<uint32_t*>(vram_base + y * pitch);
-            for (size_t x = 0; x < pixels_per_row; ++x) {
-                dst_row[x] = src_row[x];
-            }
+            sse2_streaming_store_row(dst_row, src_row, pixels_per_row);
         }
+        __asm__ volatile ("sfence" ::: "memory");
     } else if (bytes_per_pixel == 3) {
         for (uint32_t y = 0; y < g_fb_config.height; ++y) {
             const uint32_t* src_row = &g_fb_config.backbuffer[y * pixels_per_row];
@@ -177,9 +275,8 @@ void fb_swap_buffers(void) {
                 dst_row[x * 3 + 2] = (pixel >> 16) & 0xFF;
             }
         }
+        __asm__ volatile ("mfence" ::: "memory");
     }
-
-    __asm__ volatile ("mfence" ::: "memory");
 }
 
 void fb_swap_rect(int32_t x, int32_t y, int32_t w, int32_t h) {
@@ -202,10 +299,9 @@ void fb_swap_rect(int32_t x, int32_t y, int32_t w, int32_t h) {
         for (int32_t row = y; row < y + h; ++row) {
             const uint32_t* src = &g_fb_config.backbuffer[row * pixels_per_row + x];
             uint32_t* dst = reinterpret_cast<uint32_t*>(vram_base + row * pitch) + x;
-            for (int32_t col = 0; col < w; ++col) {
-                dst[col] = src[col];
-            }
+            sse2_streaming_store_row(dst, src, static_cast<size_t>(w));
         }
+        __asm__ volatile ("sfence" ::: "memory");
     } else if (bytes_per_pixel == 3) {
         for (int32_t row = y; row < y + h; ++row) {
             const uint32_t* src = &g_fb_config.backbuffer[row * pixels_per_row + x];
@@ -217,7 +313,6 @@ void fb_swap_rect(int32_t x, int32_t y, int32_t w, int32_t h) {
                 dst[col * 3 + 2] = (pixel >> 16) & 0xFF;
             }
         }
+        __asm__ volatile ("mfence" ::: "memory");
     }
-
-    __asm__ volatile ("mfence" ::: "memory");
 }

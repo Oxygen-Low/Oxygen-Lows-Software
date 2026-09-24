@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/db";
+import { safeParseJson } from "@shared/jsonRepair";
 
 export interface EntityGenerationOptions {
   type: "character" | "universe" | "race";
@@ -65,37 +66,14 @@ export interface GeneratedEntityResult {
 
 /**
  * Resilient JSON Extraction Algorithm
- * Extracts valid JSON payloads from markdown codeblocks, conversational preambles, and outermost braces.
+ * Extracts valid JSON payloads from markdown codeblocks, conversational preambles, and outermost braces,
+ * automatically repairing malformed, unquoted, single-quoted, or truncated JSON.
  */
 export function extractJsonPayload(raw: string): unknown {
-  if (!raw || typeof raw !== "string") {
+  if (!raw || typeof raw !== "string" || !raw.trim()) {
     throw new Error("Empty response received from generator");
   }
-  const trimmed = raw.trim();
-
-  // 1. Direct JSON parse
-  try {
-    return JSON.parse(trimmed);
-  } catch {}
-
-  // 2. Markdown ```json ... ``` codeblock extraction
-  const mdMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (mdMatch) {
-    try {
-      return JSON.parse(mdMatch[1].trim());
-    } catch {}
-  }
-
-  // 3. Outermost brace matching { ... }
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    try {
-      return JSON.parse(trimmed.substring(firstBrace, lastBrace + 1));
-    } catch {}
-  }
-
-  throw new Error("Failed to parse structured JSON from generator output");
+  return safeParseJson(raw);
 }
 
 /**

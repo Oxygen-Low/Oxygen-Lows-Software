@@ -7,6 +7,17 @@
 #include "mm/heap.h"
 #include "drivers/serial.h"
 #include "drivers/keyboard.h"
+#include "drivers/speaker.h"
+#include "drivers/ata.h"
+#include "drivers/pci.h"
+#include "drivers/vbox_guest.h"
+#include "drivers/vbox_hgcm.h"
+#include "drivers/vbe.h"
+#include "arch/x86_64/acpi.h"
+#include "arch/x86_64/hpet.h"
+#include "fs/vfs.h"
+#include "kernel/sched.h"
+#include "gui/theme.h"
 
 static const Color COLOR_TERM_BG     = Color(0, 0, 0, 255);
 static const Color COLOR_TERM_PROMPT = Color(0, 229, 255, 255); // Cyan
@@ -73,7 +84,12 @@ void TerminalApp::scroll_up(void) {
 void TerminalApp::new_line(void) {
     m_cursor_col = 0;
     m_cursor_row++;
-    if (m_cursor_row >= 20) { // Screen visible rows
+    int32_t visible_rows = 22;
+    if (m_window && m_window->client_bounds.height > 0) {
+        visible_rows = (m_window->client_bounds.height - 12) / FONT_LINE_SPACING;
+        if (visible_rows <= 0) visible_rows = 22;
+    }
+    if (m_cursor_row >= visible_rows) {
         scroll_up();
     }
 }
@@ -178,6 +194,20 @@ void TerminalApp::execute_command(const char* cmd) {
         print_line("  uptime    - Print system uptime");
         print_line("  mem       - Print physical memory allocation stats");
         print_line("  calc      - Evaluate simple arithmetic expression");
+        print_line("  ps        - List running scheduler tasks");
+        print_line("  kill <id> - Terminate a running task");
+        print_line("  ls [path] - List directory files and folders");
+        print_line("  cat <file>- Print contents of a file");
+        print_line("  mkdir <d> - Create a directory");
+        print_line("  touch <f> - Create an empty file");
+        print_line("  disk      - Show IDE/ATA storage devices");
+        print_line("  beep [f d]- Play tone on PC Speaker");
+        print_line("  chime     - Play startup chime melody");
+        print_line("  theme <t> - Switch theme (cyan, dark, matrix, purple, light)");
+        print_line("  lspci     - Enumerate PCI bus hardware devices");
+        print_line("  vbox      - Show VirtualBox Guest Integration status");
+        print_line("  res <w h> - Change display resolution (e.g. res 1024 768)");
+        print_line("  poweroff  - Clean ACPI guest shutdown");
         print_line("  reboot    - Reboot the operating system");
         print_line("  exit      - Close terminal window");
     } else if (str_equals(cmd, "clear")) {
@@ -284,9 +314,263 @@ void TerminalApp::execute_command(const char* cmd) {
             for (int i = idx - 1; i >= 0; --i) print_char(buf[i]);
         }
         new_line();
+    } else if (str_equals(cmd, "ps") || str_equals(cmd, "tasks")) {
+        print_line("PID  NAME             STATE    PRIO  CPU%   STACK");
+        print_line("---  ---------------  -------  ----  ----   -----");
+        size_t count = sched_get_task_count();
+        for (size_t i = 0; i < count; ++i) {
+            TaskInfo info;
+            if (sched_get_task_info(i, &info)) {
+                print_char('0' + (info.id / 10) % 10);
+                print_char('0' + (info.id % 10));
+                print_string("   ");
+                print_string(info.name);
+                size_t nlen = 0; while (info.name[nlen]) nlen++;
+                for (size_t s = nlen; s < 17; ++s) print_char(' ');
+                
+                const char* st = (info.state == TASK_RUNNING) ? "RUNNING" :
+                                 ((info.state == TASK_SLEEPING) ? "SLEEP" :
+                                 ((info.state == TASK_TERMINATED) ? "DEAD" : "READY"));
+                print_string(st);
+                size_t slen = 0; while (st[slen]) slen++;
+                for (size_t s = slen; s < 9; ++s) print_char(' ');
+
+                print_char('0' + (info.priority % 10));
+                print_string("     ");
+                print_char('0' + (info.cpu_usage_pct / 10) % 10);
+                print_char('0' + (info.cpu_usage_pct % 10));
+                print_string("%    ");
+                print_char('0' + (info.stack_size / 10240) % 10);
+                print_char('0' + (info.stack_size / 1024) % 10);
+                print_line(" KB");
+            }
+        }
+    } else if (str_starts_with(cmd, "kill")) {
+        const char* p = cmd + 4;
+        while (*p == ' ') p++;
+        uint32_t pid = 0;
+        while (*p >= '0' && *p <= '9') { pid = pid * 10 + (*p - '0'); p++; }
+        if (pid == 0) {
+            print_line("Usage: kill <pid>");
+        } else if (sched_kill_task(pid)) {
+            print_line("Task terminated successfully.");
+        } else {
+            print_line("Error: Invalid PID or cannot kill task.");
+        }
+    } else if (str_starts_with(cmd, "ls")) {
+        const char* p = cmd + 2;
+        while (*p == ' ') p++;
+        const char* path = (*p == '\0') ? "/" : p;
+        VFSNode* node = vfs_resolve_path(path);
+        if (!node) {
+            print_line("Error: Path not found.");
+        } else if (node->type != VFS_TYPE_DIRECTORY) {
+            print_line("Error: Path is not a directory.");
+        } else {
+            print_string("Directory listing of: ");
+            print_line(path);
+            for (size_t i = 0; i < node->child_count; ++i) {
+                VFSDirectoryEntry e;
+                if (vfs_readdir(node, i, &e)) {
+                    if (e.type == VFS_TYPE_DIRECTORY) {
+                        print_string("  [DIR]  ");
+                    } else {
+                        print_string("  [FILE] ");
+                    }
+                    print_string(e.name);
+                    if (e.type == VFS_TYPE_FILE) {
+                        print_string(" (");
+                        print_char('0' + (e.size / 100) % 10);
+                        print_char('0' + (e.size / 10) % 10);
+                        print_char('0' + e.size % 10);
+                        print_string(" B)");
+                    }
+                    new_line();
+                }
+            }
+        }
+    } else if (str_starts_with(cmd, "cat")) {
+        const char* p = cmd + 3;
+        while (*p == ' ') p++;
+        if (*p == '\0') {
+            print_line("Usage: cat <file_path>");
+        } else {
+            VFSNode* node = vfs_resolve_path(p);
+            if (!node || node->type != VFS_TYPE_FILE) {
+                print_line("Error: File not found.");
+            } else {
+                char buf[512];
+                size_t rd = vfs_read(node, 0, sizeof(buf) - 1, (uint8_t*)buf);
+                buf[rd] = '\0';
+                print_line(buf);
+            }
+        }
+    } else if (str_starts_with(cmd, "mkdir")) {
+        const char* p = cmd + 5;
+        while (*p == ' ') p++;
+        if (*p == '\0') {
+            print_line("Usage: mkdir <directory_path>");
+        } else if (vfs_create_directory(p)) {
+            print_line("Directory created successfully.");
+        } else {
+            print_line("Error: Failed to create directory.");
+        }
+    } else if (str_starts_with(cmd, "touch")) {
+        const char* p = cmd + 5;
+        while (*p == ' ') p++;
+        if (*p == '\0') {
+            print_line("Usage: touch <file_path>");
+        } else if (vfs_create_file(p, "")) {
+            print_line("File created successfully.");
+        } else {
+            print_line("Error: Failed to create file.");
+        }
+    } else if (str_equals(cmd, "disk") || str_equals(cmd, "ata")) {
+        print_line("IDE / ATA Storage Devices:");
+        for (uint8_t d = 0; d < 4; ++d) {
+            const ATADriveInfo* info = ata_get_drive_info(d);
+            if (info && info->present) {
+                print_string("Drive ");
+                print_char('0' + d);
+                print_string(": ");
+                print_string(info->model);
+                print_string(" | ");
+                print_char('0' + (info->size_in_mb / 100) % 10);
+                print_char('0' + (info->size_in_mb / 10) % 10);
+                print_char('0' + info->size_in_mb % 10);
+                print_line(" MB");
+            }
+        }
+    } else if (str_starts_with(cmd, "beep")) {
+        const char* p = cmd + 4;
+        while (*p == ' ') p++;
+        uint32_t freq = 1000;
+        uint32_t dur = 200;
+        if (*p >= '0' && *p <= '9') {
+            freq = 0;
+            while (*p >= '0' && *p <= '9') { freq = freq * 10 + (*p - '0'); p++; }
+            while (*p == ' ') p++;
+            if (*p >= '0' && *p <= '9') {
+                dur = 0;
+                while (*p >= '0' && *p <= '9') { dur = dur * 10 + (*p - '0'); p++; }
+            }
+        }
+        speaker_beep(freq, dur);
+        print_line("Beep played on PC Speaker.");
+    } else if (str_equals(cmd, "chime")) {
+        speaker_play_startup_chime();
+        print_line("Played Oxygen Low's Software chime.");
+    } else if (str_starts_with(cmd, "theme")) {
+        const char* p = cmd + 5;
+        while (*p == ' ') p++;
+        if (*p == '\0') {
+            print_string("Current theme: ");
+            print_line(theme_get_current()->name);
+            print_line("Available: cyan, dark, matrix, purple, light");
+        } else if (theme_set_by_name(p)) {
+            print_string("Switched desktop theme to: ");
+            print_line(theme_get_current()->name);
+        } else {
+            print_line("Unknown theme. Choices: cyan, dark, matrix, purple, light");
+        }
+    } else if (str_equals(cmd, "history")) {
+        print_line("Command History:");
+        for (size_t i = 0; i < m_history_count; ++i) {
+            print_char('0' + ((i + 1) / 10) % 10);
+            print_char('0' + ((i + 1) % 10));
+            print_string("  ");
+            print_line(m_history[i]);
+        }
+    } else if (str_equals(cmd, "lspci")) {
+        print_line("PCI Hardware Bus Enumeration:");
+        print_line("BUS:SL.FN  VENDOR DEVICE CLASS SUB  IRQ");
+        print_line("---------  ------ ------ ----- ---  ---");
+        size_t count = pci_get_device_count();
+        for (size_t i = 0; i < count; ++i) {
+            const PCIDevice* dev = pci_get_device(i);
+            if (!dev) continue;
+            // Bus:Slot.Func
+            print_char('0' + (dev->bus / 10) % 10);
+            print_char('0' + (dev->bus % 10));
+            print_char(':');
+            print_char('0' + (dev->slot / 10) % 10);
+            print_char('0' + (dev->slot % 10));
+            print_char('.');
+            print_char('0' + (dev->func % 10));
+            print_string("    0x");
+            // Vendor hex
+            const char* hex = "0123456789ABCDEF";
+            print_char(hex[(dev->vendor_id >> 12) & 0xF]);
+            print_char(hex[(dev->vendor_id >> 8) & 0xF]);
+            print_char(hex[(dev->vendor_id >> 4) & 0xF]);
+            print_char(hex[dev->vendor_id & 0xF]);
+            print_string(" 0x");
+            // Device hex
+            print_char(hex[(dev->device_id >> 12) & 0xF]);
+            print_char(hex[(dev->device_id >> 8) & 0xF]);
+            print_char(hex[(dev->device_id >> 4) & 0xF]);
+            print_char(hex[dev->device_id & 0xF]);
+            print_string("  ");
+            print_char(hex[(dev->class_code >> 4) & 0xF]);
+            print_char(hex[dev->class_code & 0xF]);
+            print_string("    ");
+            print_char(hex[(dev->subclass >> 4) & 0xF]);
+            print_char(hex[dev->subclass & 0xF]);
+            print_string("   ");
+            print_char('0' + (dev->irq_line / 10) % 10);
+            print_char('0' + (dev->irq_line % 10));
+            if (dev->vendor_id == PCI_VENDOR_VBOX && dev->device_id == PCI_DEVICE_VBOX_GUEST) {
+                print_string(" [VirtualBox VMMDev]");
+            } else if (dev->vendor_id == PCI_VENDOR_VBOX && dev->device_id == PCI_DEVICE_VBOX_VGA) {
+                print_string(" [VirtualBox VGA]");
+            }
+            new_line();
+        }
+    } else if (str_equals(cmd, "vbox")) {
+        print_line("VirtualBox Guest Additions Status:");
+        if (vbox_guest_is_available()) {
+            print_line("  Status:        CONNECTED (Device 0x80EE:0xCAFE)");
+            print_line("  Pointer Mode:  Absolute Mouse Integration ACTIVE");
+            print_string("  Shared Folders: ");
+            if (vbox_shared_folders_is_available()) {
+                print_line("ONLINE (Host HGCM Connected)");
+            } else {
+                print_line("NOT MOUNTED (No folders shared)");
+            }
+            uint64_t last_time = vbox_guest_get_last_sync_time();
+            if (last_time > 0) {
+                print_line("  Host Time Sync: UTC Heartbeat Synchronized");
+            }
+        } else {
+            print_line("  Status: NOT CONNECTED (Running on QEMU / KVM / Bare-metal)");
+            print_line("  Pointer Mode: PS/2 Relative Mouse Fallback Active");
+        }
+    } else if (str_starts_with(cmd, "res")) {
+        const char* p = cmd + 3;
+        while (*p == ' ') p++;
+        if (*p == '\0') {
+            print_line("Usage: res <width> <height> (e.g. res 1024 768 or res 1280 720)");
+        } else {
+            uint32_t w = 0, h = 0;
+            while (*p >= '0' && *p <= '9') { w = w * 10 + (*p++ - '0'); }
+            while (*p == ' ') p++;
+            while (*p >= '0' && *p <= '9') { h = h * 10 + (*p++ - '0'); }
+            if (w >= 640 && h >= 480) {
+                if (vbe_set_resolution(w, h, 32)) {
+                    print_line("Display resolution successfully changed.");
+                } else {
+                    print_line("Error: VBE dynamic video switching failed.");
+                }
+            } else {
+                print_line("Error: Resolution minimum is 640x480.");
+            }
+        }
+    } else if (str_equals(cmd, "poweroff") || str_equals(cmd, "shutdown")) {
+        print_line("Shutting down Oxygen Low's Software cleanly via ACPI...");
+        acpi_poweroff();
     } else if (str_equals(cmd, "reboot")) {
         print_line("Rebooting Oxygen Low's Software...");
-        outb(0x64, 0xFE);
+        acpi_reboot();
     } else if (str_equals(cmd, "exit")) {
         if (m_window) wm_close_window(m_window);
     } else {
@@ -356,7 +640,7 @@ void TerminalApp::on_paint(const Rect& client_area) {
     int32_t start_y = client_area.y + 6;
 
     int32_t visible_rows = (client_area.height - 12) / FONT_LINE_SPACING;
-    if (visible_rows > 22) visible_rows = 22;
+    if (visible_rows <= 0) visible_rows = 22;
 
     for (int32_t r = 0; r < visible_rows && r < TERMINAL_BUFFER_ROWS; ++r) {
         int32_t draw_y = start_y + r * FONT_LINE_SPACING;

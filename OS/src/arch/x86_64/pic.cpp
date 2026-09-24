@@ -45,6 +45,12 @@ void pic_send_eoi(uint8_t irq) {
     outb(PIC1_COMMAND_PORT, PIC_EOI_COMMAND);
 }
 
+uint16_t pic_get_isr(void) {
+    outb(PIC1_COMMAND_PORT, 0x0B); // OCW3 read ISR
+    outb(PIC2_COMMAND_PORT, 0x0B);
+    return ((uint16_t)inb(PIC2_COMMAND_PORT) << 8) | inb(PIC1_COMMAND_PORT);
+}
+
 void pic_set_mask(uint8_t irq) {
     uint16_t port;
     if (irq < 8) {

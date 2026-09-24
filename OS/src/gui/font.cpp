@@ -1,4 +1,5 @@
 #include "gui/font.h"
+#include "gui/framebuffer.h"
 #include <stdarg.h>
 
 // Standard IBM VGA / CP437 8x16 Font Bitmap (256 Glyphs x 16 Bytes = 4096 Bytes)
@@ -276,6 +277,63 @@ void font_draw_char(int32_t x, int32_t y, char c, Color fg, Color bg) {
     uint8_t u = static_cast<uint8_t>(c);
     const uint8_t* glyph = g_font8x16[u];
 
+    Rect clip = gfx_get_clip_rect();
+
+    // Early culling: completely outside active clip rectangle
+    if (x + FONT_CHAR_WIDTH <= clip.x || x >= clip.x + clip.width ||
+        y + FONT_CHAR_HEIGHT <= clip.y || y >= clip.y + clip.height) {
+        return;
+    }
+
+    // Fast-path: glyph is completely inside active clip rect, framebuffer is 32bpp, and fg is opaque
+    FramebufferConfig* fb = fb_get_config();
+    if (fb && fb->is_initialized && fb->backbuffer && fb->bpp == 32 &&
+        fg.a == 255 &&
+        x >= clip.x && (x + FONT_CHAR_WIDTH) <= (clip.x + clip.width) &&
+        y >= clip.y && (y + FONT_CHAR_HEIGHT) <= (clip.y + clip.height)) {
+
+        uint32_t* backbuffer = fb->backbuffer;
+        uint32_t pitch_pixels = fb->width;
+        uint32_t fg_val = fg.to_u32();
+        uint32_t* dst_row = &backbuffer[static_cast<size_t>(y) * pitch_pixels + x];
+
+        if (bg.a == 0) {
+            // Transparent background fast-path: write fg pixels directly, skip transparent bg
+            for (int32_t row = 0; row < FONT_CHAR_HEIGHT; ++row) {
+                uint8_t bits = glyph[row];
+                if (bits) {
+                    if (bits & 0x80) dst_row[0] = fg_val;
+                    if (bits & 0x40) dst_row[1] = fg_val;
+                    if (bits & 0x20) dst_row[2] = fg_val;
+                    if (bits & 0x10) dst_row[3] = fg_val;
+                    if (bits & 0x08) dst_row[4] = fg_val;
+                    if (bits & 0x04) dst_row[5] = fg_val;
+                    if (bits & 0x02) dst_row[6] = fg_val;
+                    if (bits & 0x01) dst_row[7] = fg_val;
+                }
+                dst_row += pitch_pixels;
+            }
+            return;
+        } else if (bg.a == 255) {
+            // Opaque background fast-path: fully unrolled 8 stores per scanline
+            uint32_t bg_val = bg.to_u32();
+            for (int32_t row = 0; row < FONT_CHAR_HEIGHT; ++row) {
+                uint8_t bits = glyph[row];
+                dst_row[0] = (bits & 0x80) ? fg_val : bg_val;
+                dst_row[1] = (bits & 0x40) ? fg_val : bg_val;
+                dst_row[2] = (bits & 0x20) ? fg_val : bg_val;
+                dst_row[3] = (bits & 0x10) ? fg_val : bg_val;
+                dst_row[4] = (bits & 0x08) ? fg_val : bg_val;
+                dst_row[5] = (bits & 0x04) ? fg_val : bg_val;
+                dst_row[6] = (bits & 0x02) ? fg_val : bg_val;
+                dst_row[7] = (bits & 0x01) ? fg_val : bg_val;
+                dst_row += pitch_pixels;
+            }
+            return;
+        }
+    }
+
+    // Fallback: per-pixel blitting with alpha blending and boundary clipping
     for (int32_t row = 0; row < FONT_CHAR_HEIGHT; ++row) {
         uint8_t bits = glyph[row];
         for (int32_t col = 0; col < FONT_CHAR_WIDTH; ++col) {

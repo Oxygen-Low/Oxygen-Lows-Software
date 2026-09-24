@@ -102,11 +102,19 @@ isr_common_stub:
     ; Pass pointer to InterruptFrame (RSP) in RDI (System V ABI)
     mov rdi, rsp
 
+    ; Save SSE / FPU state (512 bytes, 16-byte aligned)
+    sub rsp, 512
+    fxsave [rsp]
+
     ; Ensure 16-byte stack alignment before calling C++ dispatcher
-    mov rbp, rsp
+    mov rbx, rsp
     and rsp, -16
     call idt_dispatch_interrupt
-    mov rsp, rbp
+    mov rsp, rbx
+
+    ; Restore SSE / FPU state
+    fxrstor [rsp]
+    add rsp, 512
 
     ; Restore registers in reverse order
     pop r15

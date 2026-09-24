@@ -35,9 +35,43 @@ uint64_t* get_or_create_table(uint64_t* parent_entry, uint64_t flags) {
 
 } // anonymous namespace
 
+static bool g_pat_supported = false;
+
 extern "C" {
 
+void vmm_init_pat(void) {
+    uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+    cpuid(1, &eax, &ebx, &ecx, &edx);
+
+    // EDX bit 16 indicates PAT support
+    if (edx & (1 << 16)) {
+        g_pat_supported = true;
+        // Program IA32_PAT (0x277) to:
+        // PA0: WB  (0x06) - Standard caching for RAM
+        // PA1: WC  (0x01) - Write-Combining for VRAM framebuffer (PWT=1, PCD=0, PAT=0)
+        // PA2: UC- (0x02) - Uncached minus
+        // PA3: UC  (0x00) - Uncached for MMIO
+        // PA4: WB  (0x06)
+        // PA5: WC  (0x01)
+        // PA6: UC- (0x02)
+        // PA7: UC  (0x00)
+        uint64_t pat_value = 0x0002010600020106ULL;
+        wrmsr(0x277, pat_value);
+        serial_printf("[VMM] CPU PAT (Page Attribute Table) configured: Write-Combining (WC) enabled\n");
+    } else {
+        g_pat_supported = false;
+        serial_printf("[VMM] CPU does not support PAT, using standard caching\n");
+    }
+}
+
+bool vmm_has_pat(void) {
+    return g_pat_supported;
+}
+
 void vmm_init(void) {
+    // 0. Initialize PAT Write-Combining if available
+    vmm_init_pat();
+
     // Zero all early tables
     for (size_t i = 0; i < 512; ++i) {
         g_kernel_pml4[i] = 0;
@@ -55,11 +89,6 @@ void vmm_init(void) {
         g_kernel_pdpt_low[gb] = ((uint64_t)&g_kernel_pd[gb]) | PAGE_PRESENT | PAGE_WRITABLE;
         for (size_t i = 0; i < 512; ++i) {
             uint64_t flags = PAGE_PRESENT | PAGE_WRITABLE | PAGE_HUGE_2MB;
-            // Mark 2-4GB range (MMIO/VRAM) as uncacheable (PCD)
-            // VirtualBox, VMware, and bare-metal VRAM lives in this range
-            if (gb >= 2) {
-                flags |= PAGE_CACHE_DISABLE;
-            }
             g_kernel_pd[gb][i] = ((gb * 0x40000000ULL) + (i * 0x200000ULL)) | flags;
         }
     }

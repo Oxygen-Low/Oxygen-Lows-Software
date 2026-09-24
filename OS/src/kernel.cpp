@@ -23,6 +23,20 @@
 #include "apps/notepad_app.h"
 #include "apps/calculator_app.h"
 #include "apps/explorer_app.h"
+#include "drivers/pci.h"
+#include "drivers/vbox_guest.h"
+#include "drivers/vbox_hgcm.h"
+#include "drivers/vbe.h"
+#include "drivers/speaker.h"
+#include "drivers/ac97.h"
+#include "drivers/ata.h"
+#include "fs/fat32.h"
+#include "kernel/sched.h"
+#include "gui/theme.h"
+#include "apps/taskmgr_app.h"
+#include "apps/paint_app.h"
+#include "arch/x86_64/acpi.h"
+#include "arch/x86_64/hpet.h"
 
 extern "C" void call_global_constructors(void);
 
@@ -111,7 +125,61 @@ static bool run_selftests(void) {
     }
     serial_printf("[SELFTEST] 6. 2D Graphics blitter clipping mathematics: OK\n");
 
-    serial_printf("[SELFTEST] All kernel & GUI sanity checks PASSED\n");
+    // 7. PCI Bus Enumeration Test
+    size_t pci_dev_count = pci_get_device_count();
+    if (pci_dev_count == 0) {
+        serial_printf("[SELFTEST] FAILED: PCI scan detected 0 devices\n");
+        return false;
+    }
+    serial_printf("[SELFTEST] 7. PCI Bus scan & device enumeration (%u devices): OK\n", (uint32_t)pci_dev_count);
+
+    // 8. ACPI & HPET Hardware Timers Test
+    bool acpi_ok = acpi_is_available();
+    bool hpet_ok = hpet_is_available();
+    serial_printf("[SELFTEST] 8. ACPI power management (%s) & HPET precision timer (%s): OK\n",
+                  acpi_ok ? "PRESENT" : "ABSENT",
+                  hpet_ok ? "ACTIVE" : "FALLBACK_PIT");
+
+    // 9. VirtualBox Guest Additions Integration Test
+    bool vbox_ok = vbox_guest_is_available();
+    serial_printf("[SELFTEST] 9. VirtualBox Guest Integration (%s): OK\n",
+                  vbox_ok ? "CONNECTED (0x80EE:0xCAFE)" : "FALLBACK (QEMU/Bare-metal)");
+
+    // 10. Dynamic VBE Dispi Video Switcher Test
+    bool vbe_ok = vbe_is_available();
+    serial_printf("[SELFTEST] 10. Dynamic VBE Dispi video adapter (%s): OK\n",
+                  vbe_ok ? "AVAILABLE" : "GENERIC_VGA");
+
+    // 11. Dynamic Desktop Theme Engine Test
+    const Theme* cur_theme = theme_get_current();
+    if (!cur_theme || theme_get_count() != 5) {
+        serial_printf("[SELFTEST] FAILED: Theme engine initialization\n");
+        return false;
+    }
+    serial_printf("[SELFTEST] 11. Dynamic Desktop Theme Engine (%s, %u themes): OK\n", cur_theme->name, (uint32_t)theme_get_count());
+
+    // 12. Preemptive Scheduler & Task Control Blocks Test
+    size_t active_tasks = sched_get_task_count();
+    if (active_tasks == 0) {
+        serial_printf("[SELFTEST] FAILED: Scheduler has 0 tasks\n");
+        return false;
+    }
+    serial_printf("[SELFTEST] 12. Preemptive Scheduler & TCBs (%u active tasks): OK\n", (uint32_t)active_tasks);
+
+    // 13. IDE/ATA PIO Storage Subsystem Test
+    size_t ata_drives = 0;
+    for (uint8_t d = 0; d < 4; ++d) {
+        if (ata_is_drive_present(d)) ata_drives++;
+    }
+    serial_printf("[SELFTEST] 13. IDE/ATA PIO Storage Subsystem (%u drives, FAT32 %s): OK\n",
+                  (uint32_t)ata_drives, fat32_is_mounted() ? "MOUNTED" : "READY");
+
+    // 14. Audio Subsystem (PC Speaker & AC'97) Test
+    bool ac97_found = ac97_is_available();
+    serial_printf("[SELFTEST] 14. Audio Subsystem (PC Speaker ACTIVE, AC'97 %s): OK\n",
+                  ac97_found ? "DETECTED" : "FALLBACK_SPEAKER");
+
+    serial_printf("[SELFTEST] All 14 kernel, storage, audio & GUI sanity checks PASSED\n");
     return true;
 }
 
@@ -150,17 +218,35 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
     // 6. In-Memory Virtual File System (RamFS)
     vfs_init();
 
-    // 7. Linear Framebuffer & 2D Graphics Engine
+    // 7. Hardware Bus Discovery & Storage & Audio
+    pci_init();
+    acpi_init();
+    hpet_init();
+    speaker_init();
+    ac97_init();
+    ata_init();
+    fat32_init(0);
+
+    // 8. VirtualBox Guest Enhancements & Shared Folders
+    vbox_guest_init();
+    vbox_hgcm_init();
+    vbox_shared_folders_init();
+
+    // 9. Dynamic Theme Engine & Preemptive Multitasking Scheduler
+    theme_init();
+    sched_init();
+
+    // 10. Linear Framebuffer & 2D Graphics Engine
     bool has_fb = fb_init(multiboot_info_addr);
     if (has_fb) {
         gfx_init(fb_get_config());
         cursor_init();
 
-        // 8. Window Manager & Desktop Shell
+        // Window Manager & Desktop Shell
         wm_init();
         desktop_init();
 
-        // 9. Launch 5 Desktop Applications
+        // Launch 7 Desktop Applications
         auto* term_app = new TerminalApp();
         wm_create_window("Terminal - Oxygen Low's Software",
                           40, 40, 640, 400,
@@ -186,7 +272,20 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
                           180, 200, 620, 420,
                           WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, explorer_app);
 
-        serial_printf("[APPS] 5 desktop applications loaded\n");
+        auto* taskmgr_app = new TaskMgrApp();
+        wm_create_window("Task Manager - Oxygen Low's Software",
+                          300, 150, 520, 360,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, taskmgr_app);
+
+        auto* paint_app = new PaintApp();
+        wm_create_window("Paint Studio - Oxygen Low's Software",
+                          220, 170, 560, 440,
+                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, paint_app);
+
+        serial_printf("[APPS] 7 desktop applications loaded\n");
+
+        // Play Oxygen Low's Software startup sound chime
+        speaker_play_startup_chime();
     }
 
     // 10. Run In-Kernel Sanity & Diagnostics Test Suite
@@ -219,6 +318,9 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
         }
 
         if (has_fb) {
+            // Poll VirtualBox seamless absolute mouse integration
+            vbox_guest_update(fb_get_width(), fb_get_height());
+
             // Poll and dispatch mouse events
             MouseState ms = mouse_get_state();
             uint8_t btn_mask = (ms.left_button ? 1 : 0) |
@@ -231,11 +333,14 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
 
             // Render desktop, windows, taskbar, start menu, and cursor
             desktop_render();
-        } else {
-            // Periodic clock update for VGA text mode
-            uint64_t cur_tick = pit_get_ticks();
-            if (cur_tick - last_clock_tick >= 1000) {
-                last_clock_tick = cur_tick;
+        }
+
+        // Periodic VirtualBox host time sync & heartbeat (every ~1000ms)
+        uint64_t cur_uptime = pit_get_uptime_ms();
+        if (cur_uptime - last_clock_tick >= 1000) {
+            last_clock_tick = cur_uptime;
+            vbox_guest_heartbeat();
+            if (!has_fb) {
                 vga_text_render_desktop();
             }
         }

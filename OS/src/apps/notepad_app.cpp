@@ -1,8 +1,10 @@
 #include "apps/notepad_app.h"
 #include "gui/font.h"
 #include "gui/window.h"
+#include "gui/theme.h"
 #include "arch/x86_64/pit.h"
 #include "drivers/keyboard.h"
+#include "fs/vfs.h"
 
 static const Color COLOR_NOTEPAD_TOOLBAR = Color(226, 232, 240, 255); // Slate 200
 static const Color COLOR_NOTEPAD_MARGIN  = Color(241, 245, 249, 255); // Slate 100
@@ -16,6 +18,8 @@ NotepadApp::NotepadApp()
     : m_window(nullptr), m_buffer_len(0), m_cursor_pos(0),
       m_cursor_line(1), m_cursor_col(1), m_scroll_line(0),
       m_cursor_blink(true), m_last_blink_tick(0) {
+    m_current_filepath[0] = '\0';
+    m_file_dialog.visible = false;
     clear_document();
 }
 
@@ -32,6 +36,7 @@ void NotepadApp::on_init(Window* window) {
         "This is a genuine multi-line text editor\n"
         "running bare-metal on x86_64 Long Mode.\n\n"
         "Features:\n"
+        "- File Open & Save integration with VFS\n"
         "- Contiguous 64KB text buffer\n"
         "- Real-time cursor navigation & line tracking\n"
         "- Built for Oxygen Low's Software OS.\n\n"
@@ -45,6 +50,12 @@ void NotepadApp::on_init(Window* window) {
     update_line_col();
 }
 
+void NotepadApp::on_resize(int32_t width, int32_t height) {
+    UNUSED(width);
+    UNUSED(height);
+    if (m_window) m_window->is_dirty = true;
+}
+
 void NotepadApp::clear_document(void) {
     m_buffer[0] = '\0';
     m_buffer_len = 0;
@@ -52,6 +63,86 @@ void NotepadApp::clear_document(void) {
     m_cursor_line = 1;
     m_cursor_col = 1;
     m_scroll_line = 0;
+    m_current_filepath[0] = '\0';
+}
+
+bool NotepadApp::open_file(const char* path) {
+    if (!path) return false;
+    VFSNode* node = vfs_resolve_path(path);
+    if (!node || node->type != VFS_TYPE_FILE) return false;
+
+    clear_document();
+    size_t rd = vfs_read(node, 0, NOTEPAD_MAX_BUFFER_SIZE - 1, reinterpret_cast<uint8_t*>(m_buffer));
+    m_buffer[rd] = '\0';
+    m_buffer_len = rd;
+    m_cursor_pos = 0;
+    update_line_col();
+
+    // Store filepath
+    size_t i = 0;
+    while (path[i] && i < sizeof(m_current_filepath) - 1) {
+        m_current_filepath[i] = path[i];
+        i++;
+    }
+    m_current_filepath[i] = '\0';
+
+    if (m_window) {
+        // Update title to show opened file
+        const char* p = path;
+        const char* last_slash = path;
+        while (*p) { if (*p == '/') last_slash = p + 1; p++; }
+        
+        char new_title[64] = "Notepad - ";
+        size_t tlen = 10;
+        while (*last_slash && tlen < 63) {
+            new_title[tlen++] = *last_slash++;
+        }
+        new_title[tlen] = '\0';
+        
+        size_t c = 0;
+        while (new_title[c] && c < 63) {
+            m_window->title[c] = new_title[c];
+            c++;
+        }
+        m_window->title[c] = '\0';
+        m_window->is_dirty = true;
+    }
+    return true;
+}
+
+bool NotepadApp::save_file(const char* path) {
+    if (!path) return false;
+    VFSNode* node = vfs_create_file(path, m_buffer);
+    if (!node) return false;
+
+    size_t i = 0;
+    while (path[i] && i < sizeof(m_current_filepath) - 1) {
+        m_current_filepath[i] = path[i];
+        i++;
+    }
+    m_current_filepath[i] = '\0';
+
+    if (m_window) {
+        const char* p = path;
+        const char* last_slash = path;
+        while (*p) { if (*p == '/') last_slash = p + 1; p++; }
+        
+        char new_title[64] = "Notepad - ";
+        size_t tlen = 10;
+        while (*last_slash && tlen < 63) {
+            new_title[tlen++] = *last_slash++;
+        }
+        new_title[tlen] = '\0';
+        
+        size_t c = 0;
+        while (new_title[c] && c < 63) {
+            m_window->title[c] = new_title[c];
+            c++;
+        }
+        m_window->title[c] = '\0';
+        m_window->is_dirty = true;
+    }
+    return true;
 }
 
 void NotepadApp::update_line_col(void) {
@@ -114,25 +205,76 @@ void NotepadApp::new_line(void) {
 }
 
 void NotepadApp::on_mouse_down(int32_t local_x, int32_t local_y, uint8_t buttons) {
-    UNUSED(buttons);
+    // If File Dialog is open, forward mouse events to it
+    if (m_file_dialog.visible && m_window) {
+        int32_t dlg_w = 400;
+        int32_t dlg_h = 240;
+        if (dlg_w > m_window->client_bounds.width - 20) dlg_w = m_window->client_bounds.width - 20;
+        if (dlg_h > m_window->client_bounds.height - 20) dlg_h = m_window->client_bounds.height - 20;
+
+        int32_t dlg_x = (m_window->client_bounds.width - dlg_w) / 2;
+        int32_t dlg_y = (m_window->client_bounds.height - dlg_h) / 2;
+        Rect dlg_rect(dlg_x, dlg_y, dlg_w, dlg_h);
+
+        file_dialog_handle_mouse(&m_file_dialog, local_x, local_y, buttons, dlg_rect);
+
+        if (m_file_dialog.is_done) {
+            if (m_file_dialog.mode == FILE_DIALOG_OPEN) {
+                open_file(m_file_dialog.result_path);
+            } else {
+                save_file(m_file_dialog.result_path);
+            }
+            m_file_dialog.visible = false;
+        }
+        m_window->is_dirty = true;
+        return;
+    }
+
     // Check Toolbar buttons (y: 2 to 24)
     if (local_y >= 2 && local_y <= 24) {
-        if (local_x >= 6 && local_x <= 60) {
+        if (local_x >= 6 && local_x <= 56) {
             // [New]
             clear_document();
-        } else if (local_x >= 66 && local_x <= 126) {
+            if (m_window) {
+                const char* t = "Notepad - Oxygen Low's Software";
+                size_t c = 0;
+                while (t[c] && c < 63) { m_window->title[c] = t[c]; c++; }
+                m_window->title[c] = '\0';
+            }
+        } else if (local_x >= 62 && local_x <= 116) {
+            // [Open]
+            file_dialog_open(&m_file_dialog, FILE_DIALOG_OPEN, "/docs");
+        } else if (local_x >= 122 && local_x <= 176) {
+            // [Save]
+            file_dialog_open(&m_file_dialog, FILE_DIALOG_SAVE, "/docs");
+        } else if (local_x >= 182 && local_x <= 236) {
             // [Clear]
             clear_document();
-        } else if (local_x >= 132 && local_x <= 200) {
+        } else if (local_x >= 242 && local_x <= 296) {
             // [About]
             clear_document();
-            const char* about_text = "Oxygen Low's Software Notepad Text Editor\nBuilt with freestanding C++.";
+            const char* about_text = "Oxygen Low's Software Notepad Text Editor\nBuilt with freestanding C++17.\nIncludes Save & Open File Dialog.";
             while (*about_text) insert_char(*about_text++);
         }
+        if (m_window) m_window->is_dirty = true;
     }
 }
 
 void NotepadApp::on_key_down(uint8_t scancode, char ascii) {
+    if (m_file_dialog.visible) {
+        file_dialog_handle_key(&m_file_dialog, scancode, ascii);
+        if (m_file_dialog.is_done) {
+            if (m_file_dialog.mode == FILE_DIALOG_OPEN) {
+                open_file(m_file_dialog.result_path);
+            } else {
+                save_file(m_file_dialog.result_path);
+            }
+            m_file_dialog.visible = false;
+        }
+        if (m_window) m_window->is_dirty = true;
+        return;
+    }
+
     if (scancode == KEY_SCAN_LEFT) {
         if (m_cursor_pos > 0) {
             m_cursor_pos--;
@@ -146,11 +288,10 @@ void NotepadApp::on_key_down(uint8_t scancode, char ascii) {
         }
         return;
     } else if (scancode == KEY_SCAN_UP) {
-        // Find position on previous line
         int32_t cur = m_cursor_pos;
         while (cur > 0 && m_buffer[cur - 1] != '\n') cur--;
         if (cur > 0) {
-            cur--; // past '\n'
+            cur--;
             int32_t prev_line_start = cur;
             while (prev_line_start > 0 && m_buffer[prev_line_start - 1] != '\n') prev_line_start--;
             int32_t prev_line_len = cur - prev_line_start;
@@ -160,11 +301,10 @@ void NotepadApp::on_key_down(uint8_t scancode, char ascii) {
         }
         return;
     } else if (scancode == KEY_SCAN_DOWN) {
-        // Find position on next line
         int32_t cur = m_cursor_pos;
         while (cur < static_cast<int32_t>(m_buffer_len) && m_buffer[cur] != '\n') cur++;
         if (cur < static_cast<int32_t>(m_buffer_len)) {
-            cur++; // past '\n'
+            cur++;
             int32_t next_line_start = cur;
             while (cur < static_cast<int32_t>(m_buffer_len) && m_buffer[cur] != '\n') cur++;
             int32_t next_line_len = cur - next_line_start;
@@ -212,18 +352,30 @@ void NotepadApp::on_paint(const Rect& client_area) {
     gfx_fill_rect(client_area.x, client_area.y, client_area.width, tb_h, COLOR_NOTEPAD_TOOLBAR);
     gfx_fill_rect(client_area.x, client_area.y + tb_h - 1, client_area.width, 1, Color(203, 213, 225, 255));
 
-    // Toolbar Buttons
-    gfx_fill_rounded_rect(client_area.x + 6, client_area.y + 3, 54, 20, 3, Color(255, 255, 255, 255));
-    gfx_draw_rounded_rect(client_area.x + 6, client_area.y + 3, 54, 20, 3, Color(203, 213, 225, 255));
-    font_draw_string(client_area.x + 14, client_area.y + 5, "New", COLOR_NOTEPAD_TEXT);
+    // [New]
+    gfx_fill_rounded_rect(client_area.x + 6, client_area.y + 3, 50, 20, 3, Color(255, 255, 255, 255));
+    gfx_draw_rounded_rect(client_area.x + 6, client_area.y + 3, 50, 20, 3, Color(203, 213, 225, 255));
+    font_draw_string(client_area.x + 16, client_area.y + 5, "New", COLOR_NOTEPAD_TEXT);
 
-    gfx_fill_rounded_rect(client_area.x + 66, client_area.y + 3, 58, 20, 3, Color(255, 255, 255, 255));
-    gfx_draw_rounded_rect(client_area.x + 66, client_area.y + 3, 58, 20, 3, Color(203, 213, 225, 255));
-    font_draw_string(client_area.x + 72, client_area.y + 5, "Clear", COLOR_NOTEPAD_TEXT);
+    // [Open]
+    gfx_fill_rounded_rect(client_area.x + 62, client_area.y + 3, 54, 20, 3, Color(255, 255, 255, 255));
+    gfx_draw_rounded_rect(client_area.x + 62, client_area.y + 3, 54, 20, 3, Color(203, 213, 225, 255));
+    font_draw_string(client_area.x + 70, client_area.y + 5, "Open", COLOR_NOTEPAD_TEXT);
 
-    gfx_fill_rounded_rect(client_area.x + 130, client_area.y + 3, 60, 20, 3, Color(255, 255, 255, 255));
-    gfx_draw_rounded_rect(client_area.x + 130, client_area.y + 3, 60, 20, 3, Color(203, 213, 225, 255));
-    font_draw_string(client_area.x + 136, client_area.y + 5, "About", COLOR_NOTEPAD_TEXT);
+    // [Save]
+    gfx_fill_rounded_rect(client_area.x + 122, client_area.y + 3, 54, 20, 3, Color(255, 255, 255, 255));
+    gfx_draw_rounded_rect(client_area.x + 122, client_area.y + 3, 54, 20, 3, Color(203, 213, 225, 255));
+    font_draw_string(client_area.x + 130, client_area.y + 5, "Save", COLOR_NOTEPAD_TEXT);
+
+    // [Clear]
+    gfx_fill_rounded_rect(client_area.x + 182, client_area.y + 3, 54, 20, 3, Color(255, 255, 255, 255));
+    gfx_draw_rounded_rect(client_area.x + 182, client_area.y + 3, 54, 20, 3, Color(203, 213, 225, 255));
+    font_draw_string(client_area.x + 190, client_area.y + 5, "Clear", COLOR_NOTEPAD_TEXT);
+
+    // [About]
+    gfx_fill_rounded_rect(client_area.x + 242, client_area.y + 3, 54, 20, 3, Color(255, 255, 255, 255));
+    gfx_draw_rounded_rect(client_area.x + 242, client_area.y + 3, 54, 20, 3, Color(203, 213, 225, 255));
+    font_draw_string(client_area.x + 248, client_area.y + 5, "About", COLOR_NOTEPAD_TEXT);
 
     // 2. Status Bar at Bottom
     int32_t status_h = 22;
@@ -232,8 +384,9 @@ void NotepadApp::on_paint(const Rect& client_area) {
     gfx_fill_rect(client_area.x, status_y, client_area.width, 1, Color(203, 213, 225, 255));
 
     font_printf(client_area.x + 8, status_y + 4, Color(100, 116, 139, 255), COLOR_TRANSPARENT,
-                "Ln %d, Col %d | Length: %u | UTF-8 | Oxygen Low's Software",
-                m_cursor_line, m_cursor_col, static_cast<unsigned int>(m_buffer_len));
+                "Ln %d, Col %d | Length: %u | Oxygen Low's Software%s%s",
+                m_cursor_line, m_cursor_col, static_cast<unsigned int>(m_buffer_len),
+                m_current_filepath[0] ? " | " : "", m_current_filepath);
 
     // 3. Line Numbers Margin (Left)
     int32_t margin_w = 40;
@@ -252,7 +405,6 @@ void NotepadApp::on_paint(const Rect& client_area) {
     int32_t cur_x = text_area_x + 6;
     int32_t cur_y = editor_y + 4;
 
-    // Draw line number 1
     font_printf(client_area.x + 8, cur_y, COLOR_NOTEPAD_MARGIN_TEXT, COLOR_TRANSPARENT, "%3d", cur_line);
 
     int32_t cursor_draw_x = cur_x;
@@ -289,5 +441,19 @@ void NotepadApp::on_paint(const Rect& client_area) {
     // Blinking vertical cursor bar
     if (m_cursor_blink && cursor_draw_y + FONT_CHAR_HEIGHT <= status_y) {
         gfx_fill_rect(cursor_draw_x, cursor_draw_y, 2, FONT_CHAR_HEIGHT, COLOR_NOTEPAD_CURSOR);
+    }
+
+    // 5. Render File Dialog if active
+    if (m_file_dialog.visible) {
+        int32_t dlg_w = 420;
+        int32_t dlg_h = 240;
+        if (dlg_w > client_area.width - 20) dlg_w = client_area.width - 20;
+        if (dlg_h > client_area.height - 20) dlg_h = client_area.height - 20;
+
+        int32_t dlg_x = client_area.x + (client_area.width - dlg_w) / 2;
+        int32_t dlg_y = client_area.y + (client_area.height - dlg_h) / 2;
+        Rect dlg_rect(dlg_x, dlg_y, dlg_w, dlg_h);
+
+        file_dialog_render(&m_file_dialog, dlg_rect);
     }
 }

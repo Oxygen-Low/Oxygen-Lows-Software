@@ -2,6 +2,7 @@
 #include "arch/x86_64/idt.h"
 #include "arch/x86_64/pic.h"
 #include "arch/x86_64/io.h"
+#include "arch/x86_64/hpet.h"
 #include "drivers/serial.h"
 
 namespace {
@@ -13,10 +14,12 @@ uint32_t g_pit_frequency = PIT_DEFAULT_HZ;
 
 extern "C" {
 
+extern "C" void sched_schedule(InterruptFrame* frame);
+
 void pit_timer_handler(InterruptFrame* frame) {
-    UNUSED(frame);
     g_system_ticks++;
     pic_send_eoi(IRQ_TIMER);
+    sched_schedule(frame);
 }
 
 void pit_init(uint32_t frequency_hz) {
@@ -49,17 +52,36 @@ uint64_t pit_get_ticks(void) {
 }
 
 uint64_t pit_get_uptime_ms(void) {
+    if (hpet_is_available()) {
+        uint64_t hpet_ms = hpet_get_milliseconds();
+        // VirtualBox PIT drift compensation: sync PIT tick count to match real elapsed time
+        if (g_pit_frequency > 0) {
+            uint64_t expected_ticks = (hpet_ms * g_pit_frequency) / 1000;
+            if (expected_ticks > g_system_ticks) {
+                g_system_ticks = expected_ticks;
+            }
+        }
+        return hpet_ms;
+    }
+
     if (g_pit_frequency == 0) return 0;
     return (g_system_ticks * 1000) / g_pit_frequency;
 }
 
 void pit_sleep_ms(uint64_t ms) {
+    if (hpet_is_available()) {
+        hpet_sleep_ms(ms);
+        return;
+    }
+
     uint64_t start_ms = pit_get_uptime_ms();
-    uint64_t loops = 0;
     while ((pit_get_uptime_ms() - start_ms) < ms) {
-        __asm__ volatile ("pause");
-        if (++loops > 2000000ULL * (ms > 0 ? ms : 1)) {
-            break;
+        // If hardware interrupts are active, halt CPU until next timer tick (IRQ0) or I/O event
+        // This drops host CPU usage in QEMU/VM from 100% to near 0%.
+        if ((read_rflags() & 0x200) != 0) {
+            hlt();
+        } else {
+            __asm__ volatile ("pause");
         }
     }
 }
