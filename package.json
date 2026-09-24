@@ -89,7 +89,7 @@
     "@swc/core": "^1.16.2",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "4.3.3",
-    "@tanstack/react-query": "^5.103.1",
+    "@tanstack/react-query": "^5.103.2",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
