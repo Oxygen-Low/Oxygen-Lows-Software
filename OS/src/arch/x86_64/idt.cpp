@@ -4,7 +4,7 @@
 #include "drivers/serial.h"
 #include "gui/framebuffer.h"
 #include "gui/font.h"
-#include "gui/gfx.h"
+#include "gui/graphics.h"
 
 extern "C" void* isr_stub_table[49];
 
