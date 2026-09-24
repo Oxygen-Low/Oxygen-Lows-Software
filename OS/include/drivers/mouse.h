@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 void mouse_init(uint32_t screen_w = 1024, uint32_t screen_h = 768);
+void mouse_start(void);
 void mouse_handler(InterruptFrame* frame);
 void mouse_flush(void);
 MouseState mouse_get_state(void);

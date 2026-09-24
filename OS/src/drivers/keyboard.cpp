@@ -42,82 +42,84 @@ extern "C" {
 void keyboard_handler(InterruptFrame* frame) {
     UNUSED(frame);
 
-    uint8_t status = inb(0x64);
-    if (!(status & 0x01) || (status & 0x20)) {
-        // Buffer empty or data belongs to auxiliary (mouse) device
-        pic_send_eoi(IRQ_KEYBOARD);
-        return;
-    }
-
-    uint8_t scancode = inb(0x60);
-    pic_send_eoi(IRQ_KEYBOARD);
-
-    if (scancode == 0xE0) {
-        g_extended = true;
-        return;
-    }
-
-    bool released = (scancode & 0x80) != 0;
-    uint8_t code = scancode & 0x7F;
-
-    // Handle Modifier Keys
-    if (code == 0x2A || code == 0x36) { // Left or Right Shift
-        if (released) {
-            g_modifiers &= ~KEY_MOD_SHIFT;
-        } else {
-            g_modifiers |= KEY_MOD_SHIFT;
+    while (true) {
+        uint8_t status = inb(0x64);
+        if (!(status & 0x01) || (status & 0x20)) {
+            // Buffer empty or data belongs to auxiliary (mouse) device
+            break;
         }
-    } else if (code == 0x1D) { // Ctrl
-        if (released) {
-            g_modifiers &= ~KEY_MOD_CTRL;
-        } else {
-            g_modifiers |= KEY_MOD_CTRL;
+
+        uint8_t scancode = inb(0x60);
+
+        if (scancode == 0xE0) {
+            g_extended = true;
+            continue;
         }
-    } else if (code == 0x38) { // Alt
-        if (released) {
-            g_modifiers &= ~KEY_MOD_ALT;
-        } else {
-            g_modifiers |= KEY_MOD_ALT;
-        }
-    } else if (code == 0x3A && !released) { // CapsLock (toggle on press)
-        g_modifiers ^= KEY_MOD_CAPSLOCK;
-    }
 
-    // Determine ASCII character
-    char ascii = 0;
-    if (code < sizeof(g_scancode_unshifted)) {
-        bool shift_active = (g_modifiers & KEY_MOD_SHIFT) != 0;
-        bool caps_active = (g_modifiers & KEY_MOD_CAPSLOCK) != 0;
+        bool released = (scancode & 0x80) != 0;
+        uint8_t code = scancode & 0x7F;
 
-        char c_unshift = g_scancode_unshifted[code];
-        char c_shift = g_scancode_shifted[code];
-
-        if (c_unshift >= 'a' && c_unshift <= 'z') {
-            // Letter case modified by both Shift and CapsLock
-            if (shift_active ^ caps_active) {
-                ascii = c_shift;
+        // Handle Modifier Keys
+        if (code == 0x2A || code == 0x36) { // Left or Right Shift
+            if (released) {
+                g_modifiers &= ~KEY_MOD_SHIFT;
             } else {
-                ascii = c_unshift;
+                g_modifiers |= KEY_MOD_SHIFT;
             }
-        } else {
-            // Symbols and digits affected only by Shift
-            ascii = shift_active ? c_shift : c_unshift;
+        } else if (code == 0x1D) { // Ctrl
+            if (released) {
+                g_modifiers &= ~KEY_MOD_CTRL;
+            } else {
+                g_modifiers |= KEY_MOD_CTRL;
+            }
+        } else if (code == 0x38) { // Alt
+            if (released) {
+                g_modifiers &= ~KEY_MOD_ALT;
+            } else {
+                g_modifiers |= KEY_MOD_ALT;
+            }
+        } else if (code == 0x3A && !released) { // CapsLock (toggle on press)
+            g_modifiers ^= KEY_MOD_CAPSLOCK;
         }
+
+        // Determine ASCII character
+        char ascii = 0;
+        if (code < sizeof(g_scancode_unshifted)) {
+            bool shift_active = (g_modifiers & KEY_MOD_SHIFT) != 0;
+            bool caps_active = (g_modifiers & KEY_MOD_CAPSLOCK) != 0;
+
+            char c_unshift = g_scancode_unshifted[code];
+            char c_shift = g_scancode_shifted[code];
+
+            if (c_unshift >= 'a' && c_unshift <= 'z') {
+                // Letter case modified by both Shift and CapsLock
+                if (shift_active ^ caps_active) {
+                    ascii = c_shift;
+                } else {
+                    ascii = c_unshift;
+                }
+            } else {
+                // Symbols and digits affected only by Shift
+                ascii = shift_active ? c_shift : c_unshift;
+            }
+        }
+
+        // Push into circular event buffer
+        size_t next_head = (g_buf_head + 1) % KEY_BUFFER_SIZE;
+        if (next_head != g_buf_tail) {
+            KeyEvent evt;
+            evt.scancode = code; // Canonical scancode (0-127) matching KEY_SCAN_*
+            evt.ascii = ascii;
+            evt.pressed = !released;
+            evt.modifiers = g_modifiers | (g_extended ? KEY_MOD_EXTENDED : 0);
+            g_key_buffer[g_buf_head] = evt;
+            g_buf_head = next_head;
+        }
+
+        g_extended = false;
     }
 
-    // Push into circular event buffer
-    size_t next_head = (g_buf_head + 1) % KEY_BUFFER_SIZE;
-    if (next_head != g_buf_tail) {
-        KeyEvent evt;
-        evt.scancode = code; // Canonical scancode (0-127) matching KEY_SCAN_*
-        evt.ascii = ascii;
-        evt.pressed = !released;
-        evt.modifiers = g_modifiers | (g_extended ? KEY_MOD_EXTENDED : 0);
-        g_key_buffer[g_buf_head] = evt;
-        g_buf_head = next_head;
-    }
-
-    g_extended = false;
+    pic_send_eoi(IRQ_KEYBOARD);
 }
 
 void keyboard_init(void) {
