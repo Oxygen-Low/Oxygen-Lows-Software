@@ -11,6 +11,7 @@ bool     g_vbox_is_io = true;
 uint16_t g_vbox_io_port = 0;
 uint64_t g_vbox_mmio_base = 0;
 bool     g_absolute_mouse_enabled = false;
+bool     g_host_has_absolute_pointer = false;
 uint64_t g_last_host_time_ms = 0;
 
 // Statically allocated hypercall request structures (identity-mapped memory)
@@ -32,7 +33,7 @@ uint16_t vbox_guest_get_io_port(void) {
 }
 
 bool vbox_guest_is_absolute_mouse_enabled(void) {
-    return g_absolute_mouse_enabled;
+    return g_absolute_mouse_enabled && g_host_has_absolute_pointer;
 }
 
 uint64_t vbox_guest_get_last_sync_time(void) {
@@ -124,7 +125,7 @@ bool vbox_guest_enable_absolute_mouse(void) {
     g_mouse_req.header.rc = -1;
     g_mouse_req.header.reserved1 = 0;
     g_mouse_req.header.reserved2 = 0;
-    g_mouse_req.mouseFeatures = VMMDEV_MOUSE_GUEST_CAN_ABSOLUTE;
+    g_mouse_req.mouseFeatures = VMMDEV_MOUSE_GUEST_CAN_ABSOLUTE | VMMDEV_MOUSE_GUEST_NEEDS_HOST_CURSOR;
     g_mouse_req.pointerXPos = 0;
     g_mouse_req.pointerYPos = 0;
 
@@ -134,6 +135,7 @@ bool vbox_guest_enable_absolute_mouse(void) {
     }
 
     g_absolute_mouse_enabled = false;
+    g_host_has_absolute_pointer = false;
     return false;
 }
 
@@ -152,11 +154,13 @@ bool vbox_guest_disable_absolute_mouse(void) {
 
     vbox_guest_send_request(&g_mouse_req);
     g_absolute_mouse_enabled = false;
+    g_host_has_absolute_pointer = false;
     return true;
 }
 
 bool vbox_guest_poll_mouse(int32_t screen_w, int32_t screen_h) {
     if (!g_vbox_available || !g_absolute_mouse_enabled) {
+        g_host_has_absolute_pointer = false;
         return false;
     }
 
@@ -171,6 +175,20 @@ bool vbox_guest_poll_mouse(int32_t screen_w, int32_t screen_h) {
     g_mouse_req.pointerYPos = 0;
 
     if (!vbox_guest_send_request(&g_mouse_req)) {
+        g_host_has_absolute_pointer = false;
+        return false;
+    }
+
+    // Only update position if host actually supplied absolute coordinates
+    if (!(g_mouse_req.mouseFeatures & VMMDEV_MOUSE_HOST_WANTS_ABSOLUTE)) {
+        g_host_has_absolute_pointer = false;
+        return false;
+    }
+
+    // Verify pointer position is valid (0 .. 0xFFFF)
+    if (g_mouse_req.pointerXPos < 0 || g_mouse_req.pointerXPos > 0xFFFF ||
+        g_mouse_req.pointerYPos < 0 || g_mouse_req.pointerYPos > 0xFFFF) {
+        g_host_has_absolute_pointer = false;
         return false;
     }
 
@@ -182,6 +200,7 @@ bool vbox_guest_poll_mouse(int32_t screen_w, int32_t screen_h) {
     int32_t y = (int32_t)(((uint64_t)(uint32_t)g_mouse_req.pointerYPos * (uint64_t)screen_h) / 0xFFFF);
 
     mouse_set_position(x, y);
+    g_host_has_absolute_pointer = true;
     return true;
 }
 
