@@ -70,7 +70,7 @@ uint8_t ata_wait_drq(uint16_t io_base) {
     return status;
 }
 
-bool ata_select_drive(uint8_t drive) {
+[[maybe_unused]] bool ata_select_drive(uint8_t drive) {
     uint8_t bus_idx = drive / 2;
     uint8_t slave   = drive % 2;
     uint16_t io_base = g_buses[bus_idx].io_base;

@@ -374,7 +374,6 @@ static void render_start_menu(int32_t screen_w, int32_t screen_h) {
     for (size_t i = 0; i < 9; ++i) {
         if (i == 7) {
             gfx_fill_rect(sm_x + 8, item_y + 6, sm_w - 16, 1, Color(51, 65, 85, 255));
-            iy_step:
             item_y += 16;
             continue;
         }

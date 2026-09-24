@@ -267,4 +267,12 @@ size_t pmm_get_used_memory(void) {
     return g_used_frames * PMM_PAGE_SIZE;
 }
 
+size_t pmm_get_free_frames(void) {
+    return g_free_frames;
+}
+
+size_t pmm_get_total_frames(void) {
+    return g_total_frames;
+}
+
 } // extern "C"

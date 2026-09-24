@@ -29,6 +29,8 @@ PMMStats pmm_get_stats(void);
 size_t pmm_get_total_memory(void);
 size_t pmm_get_free_memory(void);
 size_t pmm_get_used_memory(void);
+size_t pmm_get_free_frames(void);
+size_t pmm_get_total_frames(void);
 
 #ifdef __cplusplus
 }

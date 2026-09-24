@@ -12,7 +12,6 @@ uint16_t g_vbox_io_port = 0;
 uint64_t g_vbox_mmio_base = 0;
 bool     g_absolute_mouse_enabled = false;
 uint64_t g_last_host_time_ms = 0;
-uint64_t g_last_heartbeat_tick = 0;
 
 // Statically allocated hypercall request structures (identity-mapped memory)
 alignas(16) VMMDevReqMouseStatus     g_mouse_req;
@@ -104,7 +103,7 @@ bool vbox_guest_init(void) {
     // Initial Host Time Synchronization
     uint64_t host_time = 0;
     if (vbox_guest_get_host_time(&host_time)) {
-        serial_printf("[VBOX] Host time synchronized: %llu ms (UTC)\n", host_time);
+        serial_printf("[VBOX] Host time synchronized: %lu ms (UTC)\n", host_time);
     }
 
     // Enable Seamless Absolute Mouse Integration

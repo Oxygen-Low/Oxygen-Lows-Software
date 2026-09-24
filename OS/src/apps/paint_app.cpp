@@ -155,7 +155,6 @@ void PaintApp::on_mouse_down(int32_t local_x, int32_t local_y, uint8_t buttons) 
 
     // 1. Tool selection buttons in top toolbar (y: 4 to 28)
     if (local_y >= 4 && local_y <= 28) {
-        const char* tool_names[] = { "Pen", "Brush", "Line", "Rect", "FRect", "Circle", "Eraser", "Clear" };
         int32_t bx = 8;
         for (int i = 0; i < 8; ++i) {
             if (local_x >= bx && local_x <= bx + 48) {

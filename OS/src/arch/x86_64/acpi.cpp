@@ -34,8 +34,8 @@ bool acpi_validate_checksum(const void* ptr, size_t length) {
 
 RSDPDescriptor* acpi_find_rsdp(void) {
     // 1. Search Extended BIOS Data Area (EBDA)
-    uintptr_t ebda_reg_addr = 0x40E;
-    uint16_t ebda_seg = *reinterpret_cast<volatile const uint16_t*>(ebda_reg_addr);
+    uint16_t ebda_seg = 0;
+    __asm__ volatile ("movw (0x40E), %0" : "=r"(ebda_seg));
     uint32_t ebda_addr = static_cast<uint32_t>(ebda_seg) << 4;
     if (ebda_addr >= 0x80000 && ebda_addr < 0xA0000) {
         for (uint32_t addr = ebda_addr; addr < ebda_addr + 1024; addr += 16) {

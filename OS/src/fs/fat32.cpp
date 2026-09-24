@@ -8,7 +8,7 @@ namespace {
 
 static FAT32FSInfo g_fat32_info = { false, 0, 0, 512, 8, 32, 2, 0, 2, 0, 0 };
 
-bool str_equals_case(const char* s1, const char* s2) {
+[[maybe_unused]] bool str_equals_case(const char* s1, const char* s2) {
     if (!s1 || !s2) return false;
     while (*s1 && *s2) {
         char c1 = *s1;

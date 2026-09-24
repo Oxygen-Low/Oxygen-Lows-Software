@@ -46,16 +46,6 @@ uint32_t pci_read_config_32(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offs
     return inl(PCI_CONFIG_DATA);
 }
 
-void pci_write_config_32(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset, uint32_t val) {
-    uint32_t address = (static_cast<uint32_t>(1) << 31) |
-                       (static_cast<uint32_t>(bus) << 16) |
-                       (static_cast<uint32_t>(dev) << 11) |
-                       (static_cast<uint32_t>(func) << 8) |
-                       (offset & 0xFC);
-    outl(PCI_CONFIG_ADDRESS, address);
-    outl(PCI_CONFIG_DATA, val);
-}
-
 void pci_write_config_16(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset, uint16_t val) {
     uint32_t address = (static_cast<uint32_t>(1) << 31) |
                        (static_cast<uint32_t>(bus) << 16) |
