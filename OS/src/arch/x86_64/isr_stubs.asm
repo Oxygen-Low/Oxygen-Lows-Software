@@ -185,3 +185,5 @@ idt_load:
     ; RDI = IDTPointer*
     lidt [rdi]
     ret
+
+section .note.GNU-stack noalloc noexec nowrite progbits

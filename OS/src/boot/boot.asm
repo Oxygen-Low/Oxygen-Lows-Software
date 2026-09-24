@@ -309,3 +309,5 @@ global kernel_stack_top
 kernel_stack_bottom:
     resb 65536                              ; 64 KiB Kernel Stack
 kernel_stack_top:
+
+section .note.GNU-stack noalloc noexec nowrite progbits

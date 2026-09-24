@@ -104,13 +104,24 @@ uint64_t hpet_read_counter(void) {
     return hpet_read_reg(HPET_REG_MAIN_COUNTER);
 }
 
+static inline uint64_t mul_div_64(uint64_t val, uint64_t mult, uint64_t div) {
+    if (div == 0) return 0;
+    uint64_t quot, rem;
+    __asm__ volatile (
+        "mulq %[mult]\n\t"
+        "divq %[div]"
+        : "=a"(quot), "=&d"(rem)
+        : "a"(val), [mult]"r"(mult), [div]"r"(div)
+        : "cc"
+    );
+    return quot;
+}
+
 uint64_t hpet_get_nanoseconds(void) {
     if (!g_hpet_available || g_hpet_period_fs == 0) return 0;
     uint64_t current = hpet_read_counter();
     uint64_t elapsed = current - g_hpet_initial_counter;
-    // 128-bit math prevents overflow: (elapsed * period_fs) / 1,000,000
-    unsigned __int128 total_fs = (unsigned __int128)elapsed * g_hpet_period_fs;
-    return static_cast<uint64_t>(total_fs / 1000000ULL);
+    return mul_div_64(elapsed, g_hpet_period_fs, 1000000ULL);
 }
 
 uint64_t hpet_get_microseconds(void) {
@@ -128,7 +139,7 @@ void hpet_sleep_ns(uint64_t ns) {
     }
 
     uint64_t start_ticks = hpet_read_counter();
-    uint64_t target_ticks = (ns * 1000000ULL) / g_hpet_period_fs;
+    uint64_t target_ticks = mul_div_64(ns, 1000000ULL, g_hpet_period_fs);
 
     while ((hpet_read_counter() - start_ticks) < target_ticks) {
         __asm__ volatile ("pause");

@@ -475,7 +475,7 @@ void TerminalApp::execute_command(const char* cmd) {
         }
     } else if (str_equals(cmd, "history")) {
         print_line("Command History:");
-        for (size_t i = 0; i < m_history_count; ++i) {
+        for (int32_t i = 0; i < m_history_count; ++i) {
             print_char('0' + ((i + 1) / 10) % 10);
             print_char('0' + ((i + 1) % 10));
             print_string("  ");
