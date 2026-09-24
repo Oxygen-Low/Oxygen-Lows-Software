@@ -16,6 +16,11 @@ const REALTIME_TABLES = new Set([
   "user_notification_state",
   "chat_dms",
   "chat_messages",
+  "workspaces",
+  "workspace_members",
+  "workspace_files",
+  "workspace_comments",
+  "workspace_activities",
 ]);
 
 type BroadcastFn = (event: {
@@ -89,6 +94,66 @@ export interface UserPreferencesRecord {
   created_at?: string;
   updated_at?: string;
   [key: string]: any;
+}
+
+export interface WorkspaceRecord {
+  id: string;
+  name: string;
+  description?: string;
+  owner_id: string;
+  invite_code: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceMemberRecord {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  username?: string;
+  avatar_url?: string;
+  role: "owner" | "collaborator";
+  joined_at: string;
+}
+
+export interface WorkspaceFileRecord {
+  id: string;
+  workspace_id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  created_by: string;
+  created_by_username?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceCommentRecord {
+  id: string;
+  workspace_id: string;
+  file_id?: string | null;
+  user_id: string;
+  username: string;
+  avatar_url?: string;
+  content: string;
+  created_at: string;
+}
+
+export interface WorkspaceActivityRecord {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  username: string;
+  action:
+    | "create_workspace"
+    | "join_workspace"
+    | "import_file"
+    | "upload_file"
+    | "edit_file"
+    | "delete_file"
+    | "comment";
+  details?: string;
+  created_at: string;
 }
 
 export interface UserGameRecord {
@@ -810,6 +875,23 @@ export function getTableFilePath(
     return path.join(DATA_DIR, "chat", "messages.json");
   }
 
+  // Global workspace tables stored under DATA_DIR/workspaces/
+  if (normTable === "workspaces") {
+    return path.join(DATA_DIR, "workspaces", "workspaces.json");
+  }
+  if (normTable === "workspace_members") {
+    return path.join(DATA_DIR, "workspaces", "members.json");
+  }
+  if (normTable === "workspace_files") {
+    return path.join(DATA_DIR, "workspaces", "files.json");
+  }
+  if (normTable === "workspace_comments") {
+    return path.join(DATA_DIR, "workspaces", "comments.json");
+  }
+  if (normTable === "workspace_activities") {
+    return path.join(DATA_DIR, "workspaces", "activities.json");
+  }
+
   // If userId is provided, map user-specific tables
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
     const userDir = path.join(DATA_DIR, String(userId));
@@ -1021,13 +1103,18 @@ export function getTableRows(table: string, userId?: string | number): any[] {
     return [];
   }
 
-  // Global chat tables
+  // Global chat and workspace tables
   if (
     normTable === "chat_servers" ||
     normTable === "chat_channels" ||
     normTable === "chat_dms" ||
     normTable === "chat_user_keys" ||
-    normTable === "chat_messages"
+    normTable === "chat_messages" ||
+    normTable === "workspaces" ||
+    normTable === "workspace_members" ||
+    normTable === "workspace_files" ||
+    normTable === "workspace_comments" ||
+    normTable === "workspace_activities"
   ) {
     const filePath = getTableFilePath(normTable);
     return filePath && fs.existsSync(filePath)
@@ -1287,7 +1374,12 @@ export function saveTableRows(
     normTable === "chat_channels" ||
     normTable === "chat_dms" ||
     normTable === "chat_user_keys" ||
-    normTable === "chat_messages"
+    normTable === "chat_messages" ||
+    normTable === "workspaces" ||
+    normTable === "workspace_members" ||
+    normTable === "workspace_files" ||
+    normTable === "workspace_comments" ||
+    normTable === "workspace_activities"
   ) {
     const filePath = getTableFilePath(normTable);
     if (filePath) {
