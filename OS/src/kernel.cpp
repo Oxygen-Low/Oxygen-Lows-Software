@@ -282,7 +282,7 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
                           220, 170, 560, 440,
                           WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, paint_app);
 
-        serial_printf("[APPS] 7 desktop applications loaded\n");
+        serial_printf("[APPS] 7 desktop applications loaded (Terminal, SysInfo, Notepad, Calculator, Explorer, TaskMgr, Paint)\n");
 
         // Play Oxygen Low's Software startup sound chime
         speaker_play_startup_chime();
