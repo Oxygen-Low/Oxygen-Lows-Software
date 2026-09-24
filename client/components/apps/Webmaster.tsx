@@ -1067,7 +1067,7 @@ export function WebmasterApp() {
                     {totalPages > 1 && (
                       <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
                         <span>
-                          {t("common.page", "Page")} {currentPage} / {totalPages} ({pagesTotal} total)
+                          {t("common.page")} {currentPage} / {totalPages} ({pagesTotal} total)
                         </span>
                         <div className="flex items-center gap-1">
                           <Button
@@ -1079,7 +1079,7 @@ export function WebmasterApp() {
                             }}
                             className="h-6 px-2 text-[11px]"
                           >
-                            {t("common.previous", "Previous")}
+                            {t("common.previous")}
                           </Button>
                           <Button
                             size="sm"
@@ -1090,7 +1090,7 @@ export function WebmasterApp() {
                             }}
                             className="h-6 px-2 text-[11px]"
                           >
-                            {t("common.next", "Next")}
+                            {t("common.next")}
                           </Button>
                         </div>
                       </div>
