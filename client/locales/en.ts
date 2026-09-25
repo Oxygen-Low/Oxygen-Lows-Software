@@ -441,6 +441,9 @@ export const en = {
     webDefenderSensitivePaths: "Sensitive Path Probing",
     webDefenderSensitivePathsDesc:
       "Detect and block attempts to access sensitive files, config, credentials, and endpoints.",
+    webDefenderFalseSensitiveFiles: "False Sensitive Files (Decoy Honeypots)",
+    webDefenderFalseSensitiveFilesDesc:
+      "Return realistic decoy credentials and dummy configs for sensitive file requests instead of standard 403 blocked pages, keeping attackers misled.",
     webDefenderAutoBlockSensitivePaths: "Auto-block IP on Repeated Probes",
     webDefenderAutoBlockSensitivePathsDesc:
       "Automatically ban an IP across all application requests after repeated sensitive path attempts within a short time window.",

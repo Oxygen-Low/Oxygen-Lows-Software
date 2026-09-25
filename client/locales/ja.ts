@@ -439,6 +439,9 @@ export const ja = {
     webDefenderSensitivePaths: "機密パスのプローブ検出",
     webDefenderSensitivePathsDesc:
       "機密ファイル、設定、認証情報、エンドポイントへのアクセス試行を検出してブロックします。",
+    webDefenderFalseSensitiveFiles: "偽の機密ファイル（おとりハニーポット）",
+    webDefenderFalseSensitiveFilesDesc:
+      "機密ファイルへのリクエストに対して通常の403ブロックの代わりに偽の認証情報やダミー設定を返し、攻撃者を欺きます。",
     webDefenderAutoBlockSensitivePaths: "プローブ反復時のIP自動ブロック",
     webDefenderAutoBlockSensitivePathsDesc:
       "短時間内に機密パスへのアクセス試行を繰り返したIPを、アプリ全体で自動的にブロックします。",

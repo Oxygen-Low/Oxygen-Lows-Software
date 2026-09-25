@@ -57,6 +57,13 @@ export function createExpressMiddleware(client: DefenderClient) {
 
       const result = await client.handleRequest(defenderReq);
 
+      if (result.isDecoy) {
+        if (result.decoyContentType) {
+          res.setHeader("Content-Type", result.decoyContentType);
+        }
+        return res.status(result.statusCode || 200).send(result.decoyContent ?? "");
+      }
+
       if (result.blocked) {
         const status = result.statusCode || 403;
         if (result.rateLimitInfo) {

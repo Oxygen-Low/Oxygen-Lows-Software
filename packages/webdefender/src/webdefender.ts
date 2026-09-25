@@ -17,6 +17,7 @@ import { scanRequest } from "./scanner/injection.js";
 import { detectBot } from "./scanner/bots.js";
 import { getCountryCode } from "./scanner/geo.js";
 import { detectSensitivePath } from "./scanner/sensitivePaths.js";
+import { generateDecoyContent } from "./scanner/decoyGenerator.js";
 
 export interface IncomingRequest {
   ip: string;
@@ -45,6 +46,9 @@ export interface RequestResult {
   eventType?: EventType;
   rateLimitInfo?: RateLimitInfo;
   logPromise?: Promise<any>;
+  isDecoy?: boolean;
+  decoyContent?: string;
+  decoyContentType?: string;
 }
 
 class RouteTrieNode {
@@ -172,6 +176,10 @@ export class DefenderClient {
         this.config.sensitivePathBanDurationSeconds ??
         cfg.sensitive_path_ban_duration_seconds ??
         600,
+      falseSensitiveFiles:
+        this.config.falseSensitiveFiles ??
+        cfg.false_sensitive_files ??
+        true,
       blockTor: cfg.block_tor ?? true,
       blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
@@ -555,6 +563,7 @@ export class DefenderClient {
       method: event.method,
       path: event.path,
       blocked: event.blocked,
+      status: event.status || (event.blocked ? "blocked" : "allowed"),
       requestBodySnippet: req?.body ? req.body.substring(0, 500) : null,
     };
 
@@ -664,6 +673,77 @@ export class DefenderClient {
       blockReason = reason;
       isBlocked = true;
     };
+
+    // 0. Sensitive Path & Decoy Interception (Runs before IP bans to mislead attackers with false credentials)
+    if (this.appConfig.blockSensitivePaths) {
+      const sensitiveMatch = detectSensitivePath(path);
+      if (sensitiveMatch) {
+        // Track sensitive path attempts for automatic IP auto-block
+        if (this.appConfig.autoBlockSensitivePaths && cleanIp) {
+          const now = Date.now();
+          const windowMs =
+            (this.appConfig.sensitivePathWindowSeconds ?? 20) * 1000;
+          const threshold = this.appConfig.sensitivePathThreshold ?? 3;
+          const banDurationSeconds =
+            this.appConfig.sensitivePathBanDurationSeconds ?? 600;
+
+          const recentAttempts = (
+            this.sensitivePathAttempts.get(cleanIp) || []
+          ).filter((ts) => now - ts <= windowMs);
+          recentAttempts.push(now);
+
+          if (recentAttempts.length >= threshold) {
+            const durationMinutes = Math.round(banDurationSeconds / 60);
+            const durationStr =
+              durationMinutes >= 1
+                ? `${durationMinutes} minute${durationMinutes === 1 ? "" : "s"}`
+                : `${banDurationSeconds} seconds`;
+            this.temporaryBans.set(cleanIp, {
+              expiresAt: now + banDurationSeconds * 1000,
+              reason: `IP temporarily blocked for ${durationStr}: repeated sensitive path attempts`,
+            });
+            this.sensitivePathAttempts.delete(cleanIp);
+          } else {
+            this.sensitivePathAttempts.set(cleanIp, recentAttempts);
+          }
+        }
+
+        const isBlockMode =
+          this.appConfig.blockModeEnabled && !this.config.logOnly;
+
+        if (this.appConfig.falseSensitiveFiles && isBlockMode) {
+          const decoy = generateDecoyContent(path, sensitiveMatch.category);
+          const logPromise = this.logEvent(
+            {
+              type: "sensitive_path",
+              ip,
+              method,
+              path,
+              reason: `Sensitive path intercepted with false credentials: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`,
+              blocked: false,
+              status: "decoy",
+            },
+            req,
+          );
+
+          return {
+            blocked: false,
+            isDecoy: true,
+            decoyContent: decoy.content,
+            decoyContentType: decoy.contentType,
+            statusCode: 200,
+            eventType: "sensitive_path",
+            reason: `Sensitive path probe decoy served: ${sensitiveMatch.path}`,
+            logPromise: logPromise instanceof Promise ? logPromise : undefined,
+          };
+        } else if (!this.appConfig.falseSensitiveFiles) {
+          fail(
+            "sensitive_path",
+            `Sensitive path probe detected: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`,
+          );
+        }
+      }
+    }
 
     // 0a. Temporary IP bans (e.g. repeated sensitive path probe violations)
     if (!isBlocked && cleanIp) {
@@ -843,46 +923,6 @@ export class DefenderClient {
             `Threat detected: ${threat.type} (pattern: ${threat.pattern})`,
           );
           break;
-        }
-      }
-    }
-
-    // 5b. Sensitive Path Probe Detection
-    if (!isBlocked && this.appConfig.blockSensitivePaths) {
-      const sensitiveMatch = detectSensitivePath(path);
-      if (sensitiveMatch) {
-        fail(
-          "sensitive_path",
-          `Sensitive path probe detected: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`,
-        );
-
-        if (this.appConfig.autoBlockSensitivePaths && cleanIp) {
-          const now = Date.now();
-          const windowMs =
-            (this.appConfig.sensitivePathWindowSeconds ?? 20) * 1000;
-          const threshold = this.appConfig.sensitivePathThreshold ?? 3;
-          const banDurationSeconds =
-            this.appConfig.sensitivePathBanDurationSeconds ?? 600;
-
-          const recentAttempts = (
-            this.sensitivePathAttempts.get(cleanIp) || []
-          ).filter((ts) => now - ts <= windowMs);
-          recentAttempts.push(now);
-
-          if (recentAttempts.length >= threshold) {
-            const durationMinutes = Math.round(banDurationSeconds / 60);
-            const durationStr =
-              durationMinutes >= 1
-                ? `${durationMinutes} minute${durationMinutes === 1 ? "" : "s"}`
-                : `${banDurationSeconds} seconds`;
-            this.temporaryBans.set(cleanIp, {
-              expiresAt: now + banDurationSeconds * 1000,
-              reason: `IP temporarily blocked for ${durationStr}: repeated sensitive path attempts`,
-            });
-            this.sensitivePathAttempts.delete(cleanIp);
-          } else {
-            this.sensitivePathAttempts.set(cleanIp, recentAttempts);
-          }
         }
       }
     }

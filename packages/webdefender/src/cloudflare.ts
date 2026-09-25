@@ -185,6 +185,17 @@ export function createCloudflareDefender(
         }
       }
 
+      if (result.isDecoy) {
+        const responseHeaders: Record<string, string> = {};
+        if (result.decoyContentType) {
+          responseHeaders["Content-Type"] = result.decoyContentType;
+        }
+        return new Response(result.decoyContent ?? "", {
+          status: result.statusCode || 200,
+          headers: responseHeaders,
+        });
+      }
+
       if (result.blocked) {
         if (config.customBlockResponse) {
           return await config.customBlockResponse(result, request, env, ctx);

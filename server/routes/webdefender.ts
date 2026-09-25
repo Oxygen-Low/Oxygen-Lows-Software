@@ -516,6 +516,7 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
       method: item.method,
       path: item.path,
       blocked: Boolean(item.blocked),
+      status: item.status || (item.blocked ? "blocked" : "allowed"),
       request_body_snippet: item.requestBodySnippet || null,
       created_at: now,
     };
@@ -643,6 +644,7 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     sensitive_path_threshold: 3,
     sensitive_path_window_seconds: 20,
     sensitive_path_ban_duration_seconds: 600,
+    false_sensitive_files: true,
     block_tor: true,
     block_vpn: true,
     block_countries: [],
@@ -791,6 +793,7 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "sensitive_path_threshold",
     "sensitive_path_window_seconds",
     "sensitive_path_ban_duration_seconds",
+    "false_sensitive_files",
     "block_tor",
     "block_vpn",
     "block_countries",

@@ -435,6 +435,9 @@ export const ko = {
     webDefenderSensitivePaths: "민감한 경로 탐지",
     webDefenderSensitivePathsDesc:
       "민감한 파일, 설정, 자격 증명 및 엔드포인트에 대한 접근 시도를 감지하고 차단합니다.",
+    webDefenderFalseSensitiveFiles: "가짜 민감한 파일 (미끼 허니팟)",
+    webDefenderFalseSensitiveFilesDesc:
+      "민감한 파일 요청에 대해 표준 403 차단 페이지 대신 가짜 자격 증명과 모의 설정을 반환하여 공격자를 속입니다.",
     webDefenderAutoBlockSensitivePaths: "반복 탐색 시 IP 자동 차단",
     webDefenderAutoBlockSensitivePathsDesc:
       "짧은 시간 내에 민감한 경로 접근을 반복 시도한 IP를 애플리케이션 전체에서 자동으로 차단합니다.",

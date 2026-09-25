@@ -12,6 +12,7 @@ export interface DefenderConfig {
   sensitivePathThreshold?: number;
   sensitivePathWindowSeconds?: number;
   sensitivePathBanDurationSeconds?: number;
+  falseSensitiveFiles?: boolean; // When true, returns fake credentials/information for sensitive file probes instead of 403 blocks
   batchLogging?: boolean;
   batchLoggingIntervalSeconds?: number;
   onlyLogThreats?: boolean;
@@ -30,6 +31,7 @@ export interface BlockedEvent {
   path: string;
   reason: string;
   blocked: boolean;
+  status?: string;
 }
 
 export type EventType =
@@ -86,6 +88,7 @@ export interface AppConfig {
   sensitivePathThreshold: number;
   sensitivePathWindowSeconds: number;
   sensitivePathBanDurationSeconds: number;
+  falseSensitiveFiles: boolean;
   blockTor: boolean;
   blockVpn: boolean;
   blockCountries: string[];

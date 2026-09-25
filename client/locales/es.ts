@@ -449,6 +449,9 @@ export const es = {
     webDefenderSensitivePaths: "Sondeo de rutas confidenciales",
     webDefenderSensitivePathsDesc:
       "Detecta y bloquea intentos de acceder a archivos confidenciales, configuraciones, credenciales y extremos protegidos.",
+    webDefenderFalseSensitiveFiles: "Archivos confidenciales falsos (Señuelos Honeypot)",
+    webDefenderFalseSensitiveFilesDesc:
+      "Devuelve credenciales ficticias y configuraciones simuladas realistas en lugar de páginas bloqueadas 403 para engañar a los atacantes.",
     webDefenderAutoBlockSensitivePaths: "Bloqueo automático de IP por sondeos repetidos",
     webDefenderAutoBlockSensitivePathsDesc:
       "Bloquea automáticamente una IP en todas las solicitudes tras repetidos intentos de acceso a rutas confidenciales.",

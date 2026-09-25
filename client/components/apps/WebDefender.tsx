@@ -245,6 +245,7 @@ type AppConfig = {
   sensitive_path_threshold: number;
   sensitive_path_window_seconds: number;
   sensitive_path_ban_duration_seconds: number;
+  false_sensitive_files?: boolean;
   block_tor: boolean;
   block_vpn: boolean;
   ddos_protection: boolean;
@@ -290,6 +291,7 @@ type Event = {
   method: string;
   path: string;
   blocked: boolean;
+  status?: string;
 };
 
 type Outbound = {
@@ -1581,7 +1583,7 @@ export function EventsTab({ events }: { events: Event[] }) {
         .filter((e) => {
           if (filterType !== "all" && e.event_type !== filterType) return false;
           if (filterStatus !== "all") {
-            const status = e.blocked ? "blocked" : "allowed";
+            const status = e.status || (e.blocked ? "blocked" : "allowed");
             if (status !== filterStatus) return false;
           }
           return true;
@@ -1622,6 +1624,7 @@ export function EventsTab({ events }: { events: Event[] }) {
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="allowed">Allowed</SelectItem>
               <SelectItem value="blocked">Blocked</SelectItem>
+              <SelectItem value="decoy">Decoy</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1686,15 +1689,24 @@ export function EventsTab({ events }: { events: Event[] }) {
                     </span>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <Badge
-                      variant={e.blocked ? "destructive" : "default"}
-                      className={cn(
-                        !e.blocked && "bg-emerald-500/10 text-emerald-500",
-                        "whitespace-nowrap",
-                      )}
-                    >
-                      {e.blocked ? "blocked" : "allowed"}
-                    </Badge>
+                    {e.status === "decoy" ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-500/10 text-amber-400 border-amber-500/30 whitespace-nowrap font-medium"
+                      >
+                        Decoy
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant={e.blocked ? "destructive" : "default"}
+                        className={cn(
+                          !e.blocked && "bg-emerald-500/10 text-emerald-500",
+                          "whitespace-nowrap",
+                        )}
+                      >
+                        {e.blocked ? "blocked" : "allowed"}
+                      </Badge>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -2378,6 +2390,19 @@ export function SettingsTab({
                 "Detect and block attempts to access sensitive files, config, credentials, and endpoints.",
               ),
             },
+            {
+              id: "false_sensitive_files",
+              label: t(
+                "apps.webDefenderFalseSensitiveFiles",
+                undefined,
+                "False Sensitive Files (Decoy Honeypots)",
+              ),
+              desc: t(
+                "apps.webDefenderFalseSensitiveFilesDesc",
+                undefined,
+                "Return realistic decoy credentials and dummy configs for sensitive file requests instead of standard 403 blocked pages, keeping attackers misled.",
+              ),
+            },
           ].map((setting) => (
             <div key={setting.id} className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -2385,7 +2410,7 @@ export function SettingsTab({
                 <p className="text-sm text-slate-400">{setting.desc}</p>
               </div>
               <Switch
-                checked={config[setting.id as keyof AppConfig] as boolean}
+                checked={config[setting.id as keyof AppConfig] !== false}
                 onCheckedChange={(c) => updateConfig({ [setting.id]: c })}
               />
             </div>

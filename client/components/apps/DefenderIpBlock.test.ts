@@ -45,7 +45,7 @@ describe("DefenderClient Individual IP blocking", () => {
     const req3 = await client.handleRequest({
       ip: "2001:db8::1",
       method: "GET",
-      path: "/status",
+      path: "/api/status",
       query: {},
       body: "",
       headers: {},

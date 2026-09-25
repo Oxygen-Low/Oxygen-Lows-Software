@@ -412,6 +412,9 @@ export const zhCN = {
     webDefenderSensitivePaths: "敏感路径探测",
     webDefenderSensitivePathsDesc:
       "检测并阻止针对敏感文件、配置文件、凭据及端点的探测尝试。",
+    webDefenderFalseSensitiveFiles: "虚假敏感文件（诱饵蜜罐）",
+    webDefenderFalseSensitiveFilesDesc:
+      "对敏感文件请求返回逼真的虚假凭据和模拟配置，而非标准的 403 拦截页面，从而迷惑攻击者。",
     webDefenderAutoBlockSensitivePaths: "重复探测时自动封禁 IP",
     webDefenderAutoBlockSensitivePathsDesc:
       "在短时间内多次尝试访问敏感路径时，自动在整个应用程序中封禁该 IP。",
