@@ -64,6 +64,8 @@ void cursor_save_behind(int32_t x, int32_t y) {
     }
     g_saved_x = x;
     g_saved_y = y;
+    g_current_cursor_x = x;
+    g_current_cursor_y = y;
     g_has_saved = true;
 }
 

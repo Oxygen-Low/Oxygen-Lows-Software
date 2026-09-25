@@ -113,9 +113,9 @@ void mouse_handler(InterruptFrame* frame) {
         continue;
 
 process_packet:
-        // Canonical 9-bit signed delta calculation using sign bits (bit 4 for X, bit 5 for Y)
-        int32_t delta_x = (g_mouse_packet[0] & 0x10) ? (int32_t)(int8_t)g_mouse_packet[1] : (int32_t)(uint8_t)g_mouse_packet[1];
-        int32_t delta_y = (g_mouse_packet[0] & 0x20) ? (int32_t)(int8_t)g_mouse_packet[2] : (int32_t)(uint8_t)g_mouse_packet[2];
+        // Direct 8-bit two's complement delta conversion (signed int8_t)
+        int32_t delta_x = static_cast<int32_t>(static_cast<int8_t>(g_mouse_packet[1]));
+        int32_t delta_y = static_cast<int32_t>(static_cast<int8_t>(g_mouse_packet[2]));
 
         // If overflow bits are set, discard movement
         if (g_mouse_packet[0] & 0x40) delta_x = 0;
