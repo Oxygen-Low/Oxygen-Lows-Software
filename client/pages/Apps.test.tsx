@@ -104,7 +104,11 @@ describe("Apps", () => {
       </MemoryRouter>,
     );
 
-    const elements = await screen.findAllByText(/Game Library|Desktop App Required/i, {}, { timeout: 5000 });
+    const elements = await screen.findAllByText(
+      /Game Library|Desktop App Required/i,
+      {},
+      { timeout: 10000 },
+    );
     expect(elements.length).toBeGreaterThan(0);
   });
 

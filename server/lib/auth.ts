@@ -29,9 +29,12 @@ export function generateSalt(): string {
   return crypto.randomBytes(16).toString("hex");
 }
 
+const PBKDF2_ITERATIONS =
+  process.env.NODE_ENV === "test" || process.env.VITEST ? 100 : 100000;
+
 export function hashAuthVerifier(authToken: string, salt: string): string {
   return crypto
-    .pbkdf2Sync(authToken, salt, 100000, 64, "sha512")
+    .pbkdf2Sync(authToken, salt, PBKDF2_ITERATIONS, 64, "sha512")
     .toString("hex");
 }
 
