@@ -22,7 +22,6 @@ overrides:
   indent-string: npm:@socketregistry/indent-string@^1
   safer-buffer: npm:@socketregistry/safer-buffer@^1
   side-channel: npm:@socketregistry/side-channel@^1
-  music-metadata@<=11.12.3: 11.12.3
   file-type@16.5.4: https://npm.aikido.io/11e3e0ee71cce3f978d5a/file-type@16.5.4-aikido.1
   file-type@<=21.3.3: 21.3.3
   inline-style-parser@<=0.2.9: 0.2.9
