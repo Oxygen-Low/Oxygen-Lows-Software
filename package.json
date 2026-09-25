@@ -126,7 +126,7 @@
     "react-router-dom": "^7.18.4",
     "recharts": "^3.10.1",
     "sonner": "^2.0.8",
-    "supertest": "^7.2.2",
+    "supertest": "^7.3.0",
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "4.3.3",
     "tailwindcss-animate": "^1.0.7",
