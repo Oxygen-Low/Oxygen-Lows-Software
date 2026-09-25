@@ -86,8 +86,9 @@ void mouse_handler(InterruptFrame* frame) {
         g_last_packet_time = now;
 
         if (g_mouse_cycle == 0) {
-            // Sync check: Bit 3 of byte 0 is ALWAYS 1 in PS/2 mouse protocol
-            if ((data & 0x08) == 0) {
+            // Sync check: Bit 3 of byte 0 is ALWAYS 1 in PS/2 mouse protocol.
+            // Overflow bits 6 and 7 must be 0 for standard packets to avoid framing errors.
+            if ((data & 0x08) == 0 || (data & 0xC0) != 0) {
                 // Out of sync byte; discard and wait for valid start-of-packet
                 continue;
             }
@@ -112,11 +113,11 @@ void mouse_handler(InterruptFrame* frame) {
         continue;
 
 process_packet:
-        // Canonical 9-bit two's complement delta calculation
-        int32_t delta_x = (int32_t)(uint8_t)g_mouse_packet[1] - ((g_mouse_packet[0] & 0x10) ? 256 : 0);
-        int32_t delta_y = (int32_t)(uint8_t)g_mouse_packet[2] - ((g_mouse_packet[0] & 0x20) ? 256 : 0);
+        // Canonical 9-bit signed delta calculation using sign bits (bit 4 for X, bit 5 for Y)
+        int32_t delta_x = (g_mouse_packet[0] & 0x10) ? (int32_t)(int8_t)g_mouse_packet[1] : (int32_t)(uint8_t)g_mouse_packet[1];
+        int32_t delta_y = (g_mouse_packet[0] & 0x20) ? (int32_t)(int8_t)g_mouse_packet[2] : (int32_t)(uint8_t)g_mouse_packet[2];
 
-        // If overflow bits are set, movement exceeded maximum range
+        // If overflow bits are set, discard movement
         if (g_mouse_packet[0] & 0x40) delta_x = 0;
         if (g_mouse_packet[0] & 0x80) delta_y = 0;
 
@@ -218,17 +219,18 @@ void mouse_start(void) {
     // 1. Drain any residual bytes in 8042 controller before streaming
     mouse_flush();
 
-    // 2. Unmask Cascade IRQ2 and Mouse IRQ12 on PIC
-    pic_clear_mask(IRQ_CASCADE);
-    pic_clear_mask(IRQ_MOUSE);
-
-    // 3. Enable data packet streaming (0xF4)
+    // 2. Enable data packet streaming (0xF4) while IRQ is masked to avoid ACK byte race
     mouse_write_command(0xF4);
     mouse_read_data(); // ACK (0xFA)
 
-    // 4. Reset packet synchronization state
+    // 3. Flush any residual bytes and reset synchronization state
+    mouse_flush();
     g_mouse_cycle = 0;
     g_last_packet_time = pit_get_uptime_ms();
+
+    // 4. Unmask Cascade IRQ2 and Mouse IRQ12 on PIC
+    pic_clear_mask(IRQ_CASCADE);
+    pic_clear_mask(IRQ_MOUSE);
 
     serial_printf("[DRV] PS/2 mouse data streaming enabled\n");
 }
