@@ -31,7 +31,9 @@ import {
   handleModerationEnforcement,
 } from "../lib/safety/openAiModeration.ts";
 
-export const workspacesRouter = new Hono();
+export const workspacesRouter = new Hono<{
+  Variables: { user: any; token: string };
+}>();
 
 const authMiddleware = async (c: any, next: any) => {
   let token = c.req.header("Authorization")?.replace(/^Bearer /i, "");
@@ -96,7 +98,7 @@ function logActivity(
       details,
       created_at: new Date().toISOString(),
     };
-    insertTable("workspace_activities", activity);
+    insertTable("workspace_activities", activity, user.id);
   } catch (err) {
     console.error("Failed to log workspace activity:", err);
   }
@@ -164,7 +166,7 @@ workspacesRouter.post("/", authMiddleware, async (c) => {
       updated_at: now,
     };
 
-    insertTable("workspaces", newWorkspace);
+    insertTable("workspaces", newWorkspace, user.id);
 
     // Add creator as owner member
     const newMember: WorkspaceMemberRecord = {
@@ -175,7 +177,7 @@ workspacesRouter.post("/", authMiddleware, async (c) => {
       role: "owner",
       joined_at: now,
     };
-    insertTable("workspace_members", newMember);
+    insertTable("workspace_members", newMember, user.id);
 
     // Ensure storage folder
     getWorkspaceDir(workspaceId);
@@ -261,7 +263,7 @@ workspacesRouter.post("/invite/:code/join", authMiddleware, async (c) => {
       joined_at: new Date().toISOString(),
     };
 
-    insertTable("workspace_members", newMember);
+    insertTable("workspace_members", newMember, user.id);
     logActivity(ws.id, user, "join_workspace", `Joined the workspace`);
 
     return c.json({
@@ -505,7 +507,7 @@ workspacesRouter.post("/:workspaceId/import-file", authMiddleware, async (c) => 
       updated_at: now,
     };
 
-    insertTable("workspace_files", newFileRecord);
+    insertTable("workspace_files", newFileRecord, user.id);
     logActivity(workspaceId, user, "import_file", `Imported "${targetFileName}" from personal storage`);
 
     return c.json({ data: newFileRecord, error: null });
@@ -619,7 +621,7 @@ workspacesRouter.post("/:workspaceId/upload", authMiddleware, async (c) => {
       updated_at: now,
     };
 
-    insertTable("workspace_files", newFileRecord);
+    insertTable("workspace_files", newFileRecord, user.id);
     logActivity(workspaceId, user, "upload_file", `Uploaded "${targetFileName}"`);
 
     return c.json({ data: newFileRecord, error: null });
@@ -897,7 +899,7 @@ workspacesRouter.post("/:workspaceId/comments", authMiddleware, async (c) => {
       created_at: new Date().toISOString(),
     };
 
-    insertTable("workspace_comments", newComment);
+    insertTable("workspace_comments", newComment, user.id);
     logActivity(
       workspaceId,
       user,
