@@ -95,7 +95,7 @@ void InstallerApp::on_paint(const Rect& client_area) {
 
     // Top Header Banner
     int32_t header_h = 56;
-    gfx_fill_gradient_v(client_area.x, client_area.y, client_area.width, header_h,
+    gfx_draw_gradient_v(client_area.x, client_area.y, client_area.width, header_h,
                         Color(28, 37, 65, 255), Color(15, 23, 42, 255));
     gfx_draw_line(client_area.x, client_area.y + header_h,
                   client_area.x + client_area.width, client_area.y + header_h,
@@ -343,7 +343,7 @@ void InstallerApp::on_mouse_down(int32_t local_x, int32_t local_y, uint8_t butto
     if (!(buttons & 1)) return;
     if (!m_window) return;
 
-    Rect ca = m_window->get_client_area();
+    Rect ca = m_window->client_bounds;
     int32_t content_y = 56 + 16;
     int32_t btn_y = ca.height - 48;
 
