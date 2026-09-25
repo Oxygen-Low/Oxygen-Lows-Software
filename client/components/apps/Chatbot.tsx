@@ -48,8 +48,7 @@ import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "@shared/websiteKnowledge";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
@@ -257,14 +256,13 @@ const memoizedMarkdownComponents = {
   code({ node, inline, className, children, ...props }: any) {
     const match = /language-(\w+)/.exec(className || "");
     return !inline && match ? (
-      <SyntaxHighlighter
-        style={vscDarkPlus as any}
+      <CodeHighlighter
         language={match[1]}
         PreTag="div"
         {...props}
       >
         {String(children).replace(/\n$/, "")}
-      </SyntaxHighlighter>
+      </CodeHighlighter>
     ) : (
       <code className={className} {...props}>
         {children}

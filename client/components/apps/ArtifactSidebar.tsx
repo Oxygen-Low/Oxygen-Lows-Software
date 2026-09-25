@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Download, Save, Loader2, FileCode } from "lucide-react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { toast } from "sonner";
@@ -107,9 +106,8 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
       </div>
       <ScrollArea className="flex-1">
         <div className="p-4">
-          <SyntaxHighlighter
+          <CodeHighlighter
             language={artifact.language}
-            style={vscDarkPlus}
             customStyle={{
               margin: 0,
               background: "transparent",
@@ -118,7 +116,7 @@ export function ArtifactSidebar({ artifact, onClose }: ArtifactSidebarProps) {
             }}
           >
             {artifact.content}
-          </SyntaxHighlighter>
+          </CodeHighlighter>
         </div>
       </ScrollArea>
     </div>

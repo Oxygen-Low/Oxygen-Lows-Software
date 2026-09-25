@@ -68,17 +68,10 @@ export default defineConfig(({ mode }) => ({
           ) {
             return "vendor-chess";
           }
-          if (
-            id.includes("node_modules/diff2html") ||
-            id.includes("node_modules/diff")
-          ) {
+          if (id.includes("node_modules/diff")) {
             return "vendor-diff";
           }
-          if (
-            id.includes("node_modules/react-syntax-highlighter") ||
-            id.includes("node_modules/refractor") ||
-            id.includes("node_modules/prismjs")
-          ) {
+          if (id.includes("node_modules/prismjs")) {
             return "vendor-syntax";
           }
           if (
