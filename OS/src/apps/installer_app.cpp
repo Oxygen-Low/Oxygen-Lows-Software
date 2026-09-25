@@ -182,7 +182,6 @@ void InstallerApp::on_paint(const Rect& client_area) {
                     gfx_fill_rounded_rect(client_area.x + 16, list_y, content_w, 42, 4, bg);
                     gfx_draw_rounded_rect(client_area.x + 16, list_y, content_w, 42, 4, bdr);
 
-                    char drive_title[96];
                     const char* bus_name = (i == 0) ? "Primary Master" : (i == 1) ? "Primary Slave" : (i == 2) ? "Secondary Master" : "Secondary Slave";
                     font_printf(client_area.x + 28, list_y + 8, sel ? COLOR_OXYGEN_CYAN : COLOR_WHITE, COLOR_TRANSPARENT,
                                 "Drive %u (%s) — %s", i, bus_name, d->model[0] ? d->model : "Generic Hard Disk");
