@@ -90,12 +90,6 @@ export default defineConfig(({ mode }) => ({
           ) {
             return "vendor-markdown";
           }
-          if (
-            id.includes("node_modules/@monaco-editor") ||
-            id.includes("node_modules/monaco-editor")
-          ) {
-            return "vendor-monaco";
-          }
         },
       },
     },

@@ -24,7 +24,6 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@hono/node-server": "^2.1.1",
-    "@monaco-editor/react": "^4.7.0",
     "@oxygenlow/webdefender": "workspace:*",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.2",
