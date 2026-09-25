@@ -11,6 +11,7 @@
 #include "drivers/keyboard.h"
 #include "drivers/serial.h"
 #include "apps/services_app.h"
+#include "apps/installer_app.h"
 
 // Desktop Icon Structure
 struct DesktopIcon {
@@ -24,7 +25,7 @@ struct DesktopIcon {
     char        app_match_char; // Match first letter of window title
 };
 
-#define DESKTOP_ICON_COUNT 7
+#define DESKTOP_ICON_COUNT 8
 static DesktopIcon g_desktop_icons[DESKTOP_ICON_COUNT] = {
     { "Terminal",  ">_",  Color(15, 23, 42, 255),  24, 24,  64, 68, 'T' },
     { "SysInfo",   "[i]", Color(10, 77, 104, 255), 24, 102, 64, 68, 'S' },
@@ -32,7 +33,8 @@ static DesktopIcon g_desktop_icons[DESKTOP_ICON_COUNT] = {
     { "Notepad",   "[#]", Color(30, 41, 59, 255),  24, 258, 64, 68, 'N' },
     { "Explorer",  "[F]", Color(161, 98, 7, 255),  24, 336, 64, 68, 'F' },
     { "Task Mgr",  "[T]", Color(88, 28, 135, 255), 24, 414, 64, 68, ' ' },
-    { "Paint",     "[P]", Color(190, 24, 93, 255), 24, 492, 64, 68, 'P' }
+    { "Paint",     "[P]", Color(190, 24, 93, 255), 24, 492, 64, 68, 'P' },
+    { "Setup / OS","[+]", Color(13, 148, 136, 255),104, 24,  64, 68, 'O' }
 };
 
 static bool       g_start_menu_open = false;
@@ -154,7 +156,22 @@ void desktop_launch_app(uint8_t app_id) {
         match = g_desktop_icons[app_id].app_match_char;
     }
 
-    if (app_id == 7) {
+    if (app_id == 7) { // Setup / OS
+        Window* w = wm_get_bottom_window();
+        while (w) {
+            if (w->title[0] == 'O' && w->title[1] == 'x' && w->title[2] == 'y' && w->title[3] == 'g') {
+                wm_restore_window(w);
+                return;
+            }
+            w = w->next;
+        }
+        wm_create_window("Oxygen Low's Software Setup & Maintenance",
+                         120, 80, 680, 480,
+                         WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, new InstallerApp());
+        return;
+    }
+
+    if (app_id == 8) { // Services App from start menu
         Window* w = wm_get_bottom_window();
         while (w) {
             if (w->title[0] == 'S' && w->title[1] == 'e' && w->title[2] == 'r' && w->title[3] == 'v') {
@@ -298,55 +315,71 @@ static void render_taskbar(int32_t screen_w, int32_t screen_h) {
     // Gradient taskbar background
     gfx_draw_gradient_v(0, tb_y, screen_w, DESKTOP_TASKBAR_HEIGHT,
                         theme->taskbar_top, theme->taskbar_bottom);
+    gfx_draw_line(0, tb_y, screen_w, tb_y, theme->taskbar_border);
 
-    // Top Highlight Border
-    gfx_fill_rect(0, tb_y, screen_w, 1, theme->taskbar_highlight);
+    // Start Button (Bottom-Left)
+    int32_t btn_x = 4;
+    int32_t btn_y = tb_y + 4;
+    Color btn_bg = g_start_menu_open ? theme->accent : theme->start_btn_bg;
 
-    // 1. Start Button
-    Color start_bg = g_start_menu_open ? theme->start_btn_active : theme->start_btn_bg;
-    gfx_fill_rounded_rect(4, tb_y + 4, DESKTOP_START_BTN_W, DESKTOP_START_BTN_H, 4, start_bg);
-    gfx_draw_rounded_rect(4, tb_y + 4, DESKTOP_START_BTN_W, DESKTOP_START_BTN_H, 4, theme->start_btn_border);
+    gfx_fill_rounded_rect(btn_x, btn_y, DESKTOP_START_BTN_W, DESKTOP_START_BTN_H, 4, btn_bg);
+    gfx_draw_rounded_rect(btn_x, btn_y, DESKTOP_START_BTN_W, DESKTOP_START_BTN_H, 4, theme->accent);
 
-    font_draw_string(10, tb_y + 8, "[O] Oxygen", COLOR_WHITE);
+    int32_t logo_x = btn_x + 8;
+    int32_t logo_y = btn_y + 4;
+    gfx_fill_rect(logo_x,     logo_y,     6, 6, theme->start_btn_fg);
+    gfx_fill_rect(logo_x + 8, logo_y,     6, 6, theme->start_btn_fg);
+    gfx_fill_rect(logo_x,     logo_y + 8, 6, 6, theme->start_btn_fg);
+    gfx_fill_rect(logo_x + 8, logo_y + 8, 6, 6, theme->start_btn_fg);
 
-    // 2. Window Task Tabs
+    font_draw_string(btn_x + 28, btn_y + 4, "Start", theme->start_btn_fg);
+
+    // Window Tabs on Taskbar
     size_t win_count = wm_get_window_count();
-    int32_t tab_x = 98;
+    int32_t tab_x = btn_x + DESKTOP_START_BTN_W + 8;
     int32_t tab_w = 120;
     int32_t tab_h = 24;
 
     for (size_t i = 0; i < win_count; ++i) {
         Window* win = wm_get_window_by_index(i);
         if (!win) continue;
-
         if (tab_x + tab_w > screen_w - 200) break;
 
-        Color tab_bg = win->is_focused ? theme->tab_active : theme->tab_inactive;
+        bool active = (win->is_focused && win->state != WS_MINIMIZED);
+        Color tab_bg = active ? Color(8, 131, 149, 200) : Color(28, 37, 65, 150);
+        Color tab_bdr = active ? theme->accent : Color(51, 65, 85, 255);
+
         gfx_fill_rounded_rect(tab_x, tb_y + 4, tab_w, tab_h, 3, tab_bg);
-        gfx_draw_rounded_rect(tab_x, tb_y + 4, tab_w, tab_h, 3, theme->tab_border);
+        gfx_draw_rounded_rect(tab_x, tb_y + 4, tab_w, tab_h, 3, tab_bdr);
 
-        char short_title[16];
-        size_t c = 0;
-        while (win->title[c] && c < 12) {
-            short_title[c] = win->title[c];
-            c++;
+        char trunc_title[14];
+        size_t t = 0;
+        while (win->title[t] && t < 10) {
+            trunc_title[t] = win->title[t];
+            t++;
         }
-        if (win->title[c]) {
-            short_title[c++] = '.';
-            short_title[c++] = '.';
+        if (win->title[t]) {
+            trunc_title[t++] = '.';
+            trunc_title[t++] = '.';
         }
-        short_title[c] = '\0';
+        trunc_title[t] = '\0';
 
-        font_draw_string(tab_x + 6, tb_y + 8, short_title, COLOR_WHITE);
+        font_draw_string(tab_x + 6, tb_y + 8, trunc_title, active ? COLOR_WHITE : Color(203, 213, 225, 255));
+
         tab_x += tab_w + 4;
     }
 
-    // 3. System Tray (Right aligned)
-    size_t used_ram_mb = pmm_get_used_memory() / (1024 * 1024);
-    font_printf(screen_w - 180, tb_y + 8, theme->taskbar_text, COLOR_TRANSPARENT,
-                "RAM: %uMB", static_cast<unsigned int>(used_ram_mb));
+    // System Tray Area (Bottom-Right)
+    int32_t tray_w = 160;
+    int32_t tray_x = screen_w - tray_w - 4;
+    int32_t tray_y = tb_y + 4;
 
-    font_printf(screen_w - 76, tb_y + 8, theme->taskbar_clock, COLOR_TRANSPARENT,
+    gfx_fill_rounded_rect(tray_x, tray_y, tray_w, 24, 3, Color(15, 23, 42, 180));
+    gfx_draw_rounded_rect(tray_x, tray_y, tray_w, 24, 3, Color(51, 65, 85, 255));
+
+    font_draw_string(tray_x + 8, tray_y + 4, "[x86_64]", theme->accent);
+
+    font_printf(tray_x + 80, tray_y + 4, COLOR_WHITE, COLOR_TRANSPARENT,
                 "%02u:%02u:%02u", g_system_time.hours, g_system_time.minutes, g_system_time.seconds);
 }
 
@@ -357,9 +390,9 @@ static void render_start_menu(int32_t screen_w, int32_t screen_h) {
     const Theme* theme = theme_get_current();
 
     int32_t sm_x = 4;
-    int32_t sm_y = screen_h - DESKTOP_TASKBAR_HEIGHT - DESKTOP_START_MENU_H - 2;
+    int32_t sm_h = 340;
+    int32_t sm_y = screen_h - DESKTOP_TASKBAR_HEIGHT - sm_h - 2;
     int32_t sm_w = DESKTOP_START_MENU_W;
-    int32_t sm_h = DESKTOP_START_MENU_H;
 
     // Drop Shadow
     gfx_fill_rect(sm_x + 4, sm_y + 4, sm_w, sm_h, Color(0, 0, 0, 120));
@@ -382,21 +415,22 @@ static void render_start_menu(int32_t screen_w, int32_t screen_h) {
         "[F] File Explorer",
         "[T] Task Manager",
         "[P] Paint Studio",
+        "[+] Setup & Recovery",
         "[S] Services",
         "---------------------",
         "[R] Reboot System"
     };
 
     int32_t item_y = sm_y + 42;
-    for (size_t i = 0; i < 10; ++i) {
-        if (i == 8) {
+    for (size_t i = 0; i < 11; ++i) {
+        if (i == 9) {
             gfx_fill_rect(sm_x + 8, item_y + 5, sm_w - 16, 1, Color(51, 65, 85, 255));
             item_y += 14;
             continue;
         }
 
         gfx_fill_rounded_rect(sm_x + 6, item_y, sm_w - 12, 23, 3, Color(28, 37, 65, 180));
-        font_draw_string(sm_x + 12, item_y + 3, items[i], COLOR_WHITE);
+        font_draw_string(sm_x + 12, item_y + 3, items[i], (i == 7) ? COLOR_OXYGEN_CYAN : COLOR_WHITE);
         item_y += 26;
     }
 }
@@ -409,9 +443,6 @@ void desktop_render(void) {
     MouseState ms = mouse_get_state();
 
     if (!g_desktop_dirty) {
-        // P01 & P03 Fast-path: Only mouse moved, desktop contents did not change!
-        // Restore background under old cursor position, save background under new cursor position,
-        // and swap ONLY the dirty cursor rectangles to VRAM using SSE2 streaming stores.
         bool moved = cursor_update_position(ms.x, ms.y);
         if (moved) {
             fb_present_dirty();
@@ -444,7 +475,7 @@ void desktop_render(void) {
     cursor_save_behind(ms.x, ms.y);
     cursor_render(ms.x, ms.y);
 
-    // 8. Swap to screen VRAM via dirty region presentation (SIMD streaming stores)
+    // 8. Swap to screen VRAM via dirty region presentation
     fb_mark_dirty_all();
     fb_present_dirty();
 
@@ -508,16 +539,17 @@ bool desktop_handle_mouse(int32_t x, int32_t y, uint8_t buttons) {
     // Check Start Menu Clicks
     if (g_start_menu_open) {
         int32_t sm_x = 4;
-        int32_t sm_y = screen_h - DESKTOP_TASKBAR_HEIGHT - DESKTOP_START_MENU_H - 2;
-        Rect start_menu(sm_x, sm_y, DESKTOP_START_MENU_W, DESKTOP_START_MENU_H);
+        int32_t sm_h = 340;
+        int32_t sm_y = screen_h - DESKTOP_TASKBAR_HEIGHT - sm_h - 2;
+        Rect start_menu(sm_x, sm_y, DESKTOP_START_MENU_W, sm_h);
 
         if (start_menu.contains(x, y)) {
             if (buttons & 1) {
                 int32_t rel_y = y - (sm_y + 42);
                 int32_t item_idx = (rel_y >= 0) ? (rel_y / 26) : -1;
-                if (item_idx >= 0 && item_idx <= 7) {
+                if (item_idx >= 0 && item_idx <= 8) {
                     desktop_launch_app(static_cast<uint8_t>(item_idx));
-                } else if (item_idx >= 9) {
+                } else if (item_idx >= 10) {
                     // Reboot
                     outb(0x64, 0xFE);
                 }

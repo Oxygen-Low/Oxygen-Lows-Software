@@ -36,11 +36,43 @@
 #include "apps/taskmgr_app.h"
 #include "apps/paint_app.h"
 #include "apps/services_app.h"
+#include "apps/installer_app.h"
+#include "boot/multiboot2.h"
 #include "arch/x86_64/acpi.h"
 #include "arch/x86_64/hpet.h"
 #include "kernel/service.h"
 
 extern "C" void call_global_constructors(void);
+
+static bool str_contains(const char* haystack, const char* needle) {
+    if (!haystack || !needle) return false;
+    for (size_t i = 0; haystack[i]; ++i) {
+        size_t j = 0;
+        while (needle[j] && haystack[i + j] && haystack[i + j] == needle[j]) {
+            j++;
+        }
+        if (!needle[j]) return true;
+    }
+    return false;
+}
+
+static const char* parse_multiboot_cmdline(uint64_t mbi_addr) {
+    if (mbi_addr == 0) return "";
+    auto* mbi = reinterpret_cast<const Multiboot2Info*>(mbi_addr);
+    uintptr_t current = mbi_addr + sizeof(Multiboot2Info);
+    uintptr_t end = mbi_addr + mbi->total_size;
+
+    while (current < end) {
+        auto* tag = reinterpret_cast<const Multiboot2Tag*>(current);
+        if (tag->type == MULTIBOOT2_TAG_TYPE_END || tag->size == 0) break;
+        if (tag->type == MULTIBOOT2_TAG_TYPE_CMDLINE) {
+            auto* cmd_tag = reinterpret_cast<const Multiboot2CmdlineTag*>(tag);
+            return cmd_tag->string;
+        }
+        current = (current + tag->size + 7) & ~static_cast<uintptr_t>(7);
+    }
+    return "";
+}
 
 // In-Kernel Diagnostic Self-Test Suite
 static bool run_selftests(void) {
@@ -328,48 +360,77 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
         wm_init();
         desktop_init();
 
-        // Launch 8 Desktop Applications
-        auto* term_app = new TerminalApp();
-        wm_create_window("Terminal - Oxygen Low's Software",
-                          40, 40, 640, 400,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, term_app);
+        const char* cmdline = parse_multiboot_cmdline(multiboot_info_addr);
+        serial_printf("[BOOT] Multiboot2 command line: '%s'\n", cmdline);
 
-        auto* sysinfo_app = new SysInfoApp();
-        wm_create_window("System Information - Oxygen Low's Software",
-                          460, 80, 500, 380,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, sysinfo_app);
+        bool is_install_mode = (str_contains(cmdline, "mode=install") || str_contains(cmdline, "install"));
+        bool is_update_mode  = (str_contains(cmdline, "mode=update")  || str_contains(cmdline, "update"));
+        bool is_repair_mode  = (str_contains(cmdline, "mode=repair")  || str_contains(cmdline, "repair"));
+        bool is_live_mode    = (str_contains(cmdline, "mode=live")    || str_contains(cmdline, "live"));
 
-        auto* notepad_app = new NotepadApp();
-        wm_create_window("Notepad - Oxygen Low's Software",
-                          100, 120, 560, 420,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, notepad_app);
+        if (is_install_mode || is_update_mode || is_repair_mode || (!is_live_mode && cmdline[0] == '\0')) {
+            // Setup / Maintenance Mode: Launch centered InstallerApp in foreground
+            InstallerMode init_m = is_update_mode ? INSTALL_MODE_UPDATE :
+                                  is_repair_mode ? INSTALL_MODE_REPAIR :
+                                  INSTALL_MODE_INSTALL;
 
-        auto* calc_app = new CalculatorApp();
-        wm_create_window("Calculator - Oxygen Low's Software",
-                          700, 160, 280, 360,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, calc_app);
+            auto* inst_app = new InstallerApp(init_m);
+            int32_t scr_w = static_cast<int32_t>(fb_get_width());
+            int32_t scr_h = static_cast<int32_t>(fb_get_height());
+            int32_t win_w = (scr_w > 720) ? 680 : (scr_w - 40);
+            int32_t win_h = (scr_h > 520) ? 460 : (scr_h - 60);
+            int32_t win_x = (scr_w - win_w) / 2;
+            int32_t win_y = (scr_h - win_h - DESKTOP_TASKBAR_HEIGHT) / 2;
+            if (win_y < 10) win_y = 10;
 
-        auto* explorer_app = new ExplorerApp();
-        wm_create_window("File Explorer - Oxygen Low's Software",
-                          180, 200, 620, 420,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, explorer_app);
+            wm_create_window("Oxygen Low's Software Setup & Maintenance",
+                             win_x, win_y, win_w, win_h,
+                             WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, inst_app);
+            serial_printf("[APPS] Setup & Maintenance wizard loaded in foreground (mode=%d)\n", static_cast<int>(init_m));
+        } else {
+            // Live Desktop: Launch 8 Desktop Applications
+            auto* term_app = new TerminalApp();
+            wm_create_window("Terminal - Oxygen Low's Software",
+                              40, 40, 640, 400,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, term_app);
 
-        auto* taskmgr_app = new TaskMgrApp();
-        wm_create_window("Task Manager - Oxygen Low's Software",
-                          300, 150, 520, 360,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, taskmgr_app);
+            auto* sysinfo_app = new SysInfoApp();
+            wm_create_window("System Information - Oxygen Low's Software",
+                              460, 80, 500, 380,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, sysinfo_app);
 
-        auto* paint_app = new PaintApp();
-        wm_create_window("Paint Studio - Oxygen Low's Software",
-                          220, 170, 560, 440,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, paint_app);
+            auto* notepad_app = new NotepadApp();
+            wm_create_window("Notepad - Oxygen Low's Software",
+                              100, 120, 560, 420,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, notepad_app);
 
-        auto* services_app = new ServicesApp();
-        wm_create_window("Services - Oxygen Low's Software",
-                          260, 130, 680, 440,
-                          WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, services_app);
+            auto* calc_app = new CalculatorApp();
+            wm_create_window("Calculator - Oxygen Low's Software",
+                              700, 160, 280, 360,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, calc_app);
 
-        serial_printf("[APPS] 8 desktop applications loaded (Terminal, SysInfo, Notepad, Calculator, Explorer, TaskMgr, Paint, Services)\n");
+            auto* explorer_app = new ExplorerApp();
+            wm_create_window("File Explorer - Oxygen Low's Software",
+                              180, 200, 620, 420,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, explorer_app);
+
+            auto* taskmgr_app = new TaskMgrApp();
+            wm_create_window("Task Manager - Oxygen Low's Software",
+                              300, 150, 520, 360,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, taskmgr_app);
+
+            auto* paint_app = new PaintApp();
+            wm_create_window("Paint Studio - Oxygen Low's Software",
+                              220, 170, 560, 440,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, paint_app);
+
+            auto* services_app = new ServicesApp();
+            wm_create_window("Services - Oxygen Low's Software",
+                              260, 130, 680, 440,
+                              WF_TITLEBAR | WF_CLOSABLE | WF_MINIMIZABLE, services_app);
+
+            serial_printf("[APPS] 8 desktop applications loaded in Live Mode\n");
+        }
 
         // Play Oxygen Low's Software startup sound chime
         speaker_play_startup_chime();

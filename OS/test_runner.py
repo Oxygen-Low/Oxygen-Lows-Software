@@ -225,10 +225,10 @@ def create_default_test_suite() -> List[TestCase]:
         # ----------------------------------------------------------------------
         TestCase(
             test_id="T4.1_APPS_LOADED",
-            name="Interactive Desktop Applications",
-            pattern=r"\[APPS\].*(?:[0-9]+ desktop applications|applications registered|Terminal|SysInfo|Notepad|Calculator|Explorer)",
+            name="Interactive Desktop Applications & Setup Wizard",
+            pattern=r"\[APPS\].*(?:[0-9]+ desktop applications|Setup & Maintenance|applications registered|Terminal|SysInfo|Notepad|Calculator|Explorer)",
             tier="Tier 4: Applications",
-            description="Verifies loading of Terminal, SysInfo, Notepad, Calculator, File Explorer, Task Manager, and Paint."
+            description="Verifies loading of Setup Wizard / Applications (Terminal, SysInfo, Notepad, Calculator, Explorer, etc.)."
         ),
         TestCase(
             test_id="T4.2_SELFTESTS_PASSED",
