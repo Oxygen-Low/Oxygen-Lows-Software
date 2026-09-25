@@ -315,7 +315,7 @@ static void render_taskbar(int32_t screen_w, int32_t screen_h) {
     // Gradient taskbar background
     gfx_draw_gradient_v(0, tb_y, screen_w, DESKTOP_TASKBAR_HEIGHT,
                         theme->taskbar_top, theme->taskbar_bottom);
-    gfx_draw_line(0, tb_y, screen_w, tb_y, theme->taskbar_border);
+    gfx_draw_line(0, tb_y, screen_w, tb_y, theme->taskbar_highlight);
 
     // Start Button (Bottom-Left)
     int32_t btn_x = 4;
@@ -327,12 +327,12 @@ static void render_taskbar(int32_t screen_w, int32_t screen_h) {
 
     int32_t logo_x = btn_x + 8;
     int32_t logo_y = btn_y + 4;
-    gfx_fill_rect(logo_x,     logo_y,     6, 6, theme->start_btn_fg);
-    gfx_fill_rect(logo_x + 8, logo_y,     6, 6, theme->start_btn_fg);
-    gfx_fill_rect(logo_x,     logo_y + 8, 6, 6, theme->start_btn_fg);
-    gfx_fill_rect(logo_x + 8, logo_y + 8, 6, 6, theme->start_btn_fg);
+    gfx_fill_rect(logo_x,     logo_y,     6, 6, COLOR_WHITE);
+    gfx_fill_rect(logo_x + 8, logo_y,     6, 6, COLOR_WHITE);
+    gfx_fill_rect(logo_x,     logo_y + 8, 6, 6, COLOR_WHITE);
+    gfx_fill_rect(logo_x + 8, logo_y + 8, 6, 6, COLOR_WHITE);
 
-    font_draw_string(btn_x + 28, btn_y + 4, "Start", theme->start_btn_fg);
+    font_draw_string(btn_x + 28, btn_y + 4, "Start", COLOR_WHITE);
 
     // Window Tabs on Taskbar
     size_t win_count = wm_get_window_count();

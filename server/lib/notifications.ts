@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { DATA_DIR } from "./dataStore.ts";
+import { DATA_DIR, getUserById } from "./dataStore.ts";
 import { broadcastChange } from "./realtime.ts";
 
 export const NOTIFICATIONS_DIR = path.join(DATA_DIR, "notifications");
@@ -201,6 +201,7 @@ export function deleteNotification(id: string): boolean {
 export function getNotificationsForUser(
   userId: string | null,
   includeDismissed = false,
+  userCreatedAt?: string | null,
 ): { notifications: ClientNotificationItem[]; unreadCount: number } {
   const allNotifications = getAllNotifications();
 
@@ -219,10 +220,28 @@ export function getNotificationsForUser(
     };
   }
 
+  // Determine user account creation timestamp
+  let accountCreatedAt = userCreatedAt;
+  if (!accountCreatedAt) {
+    const user = getUserById(userId);
+    accountCreatedAt = user?.created_at || null;
+  }
+  const accountCreatedTime = accountCreatedAt
+    ? new Date(accountCreatedAt).getTime()
+    : null;
+
   const userStates = getUserNotificationStates(userId);
   const userItems: ClientNotificationItem[] = [];
 
   for (const n of allNotifications) {
+    // Exclude notifications created before the user's account creation
+    if (accountCreatedTime !== null && !isNaN(accountCreatedTime)) {
+      const notifCreatedTime = new Date(n.created_at).getTime();
+      if (!isNaN(notifCreatedTime) && notifCreatedTime < accountCreatedTime) {
+        continue;
+      }
+    }
+
     // Only include if targeted to all or targeted to this specific user
     if (
       n.target_type !== "all" &&

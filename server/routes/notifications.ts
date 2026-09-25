@@ -29,6 +29,7 @@ notificationsRouter.get("/", async (c) => {
     const result = getNotificationsForUser(
       user ? String(user.id) : null,
       includeDismissed,
+      user?.created_at,
     );
     return c.json(result);
   } catch (err: any) {

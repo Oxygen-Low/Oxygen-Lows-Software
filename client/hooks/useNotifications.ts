@@ -118,10 +118,24 @@ export function useNotifications() {
               dismissed: false,
             };
 
-            // Check if this notification applies to the current user
+            // Check if this notification applies to the current user and was created after account creation
+            const notifCreatedTime = newNotif.created_at
+              ? new Date(newNotif.created_at).getTime()
+              : NaN;
+            const userCreatedTime = session?.user?.created_at
+              ? new Date(session.user.created_at).getTime()
+              : NaN;
+
+            const isAfterCreation =
+              !currentUserId ||
+              isNaN(userCreatedTime) ||
+              isNaN(notifCreatedTime) ||
+              notifCreatedTime >= userCreatedTime;
+
             const appliesToMe =
-              newNotif.target_type === "all" ||
-              (currentUserId && String(newNotif.target_user_id) === String(currentUserId));
+              isAfterCreation &&
+              (newNotif.target_type === "all" ||
+                (currentUserId && String(newNotif.target_user_id) === String(currentUserId)));
 
             if (appliesToMe) {
               // Avoid duplicates

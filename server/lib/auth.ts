@@ -186,6 +186,7 @@ export async function resolveUserFromToken(token: string) {
         email: user.email,
         username: user.username,
         role,
+        created_at: user.created_at,
         user_metadata: {
           username: user.username,
           full_name: user.username,

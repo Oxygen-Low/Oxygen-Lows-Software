@@ -6,6 +6,7 @@ export interface LocalSession {
     email: string;
     username: string;
     role?: string;
+    created_at?: string;
     oauth?: Record<string, any>;
     user_metadata?: {
       username?: string;

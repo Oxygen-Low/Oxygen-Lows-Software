@@ -218,6 +218,7 @@ authRouter.post("/register", async (c) => {
         email: user.email,
         username: user.username,
         role: user.role,
+        created_at: user.created_at,
         user_metadata: {
           username: user.username,
           full_name: user.username,
@@ -285,6 +286,7 @@ authRouter.post("/login", async (c) => {
         email: user.email,
         username: user.username,
         role: String(user.id) === "1" ? "admin" : user.role || "user",
+        created_at: user.created_at,
         user_metadata: {
           username: user.username,
           full_name: user.username,
