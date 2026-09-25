@@ -10,8 +10,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { toast } from "sonner";
 import {
   ChevronRight,
@@ -1462,8 +1461,7 @@ function AgentMarkdown({ content }: { content: string }) {
               );
             }
             return (
-              <SyntaxHighlighter
-                style={vscDarkPlus}
+              <CodeHighlighter
                 language={match[1]}
                 customStyle={{
                   margin: "0.5rem 0",
@@ -1474,7 +1472,7 @@ function AgentMarkdown({ content }: { content: string }) {
                 }}
               >
                 {String(children).replace(/\n$/, "")}
-              </SyntaxHighlighter>
+              </CodeHighlighter>
             );
           },
           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
