@@ -31,6 +31,7 @@ import { modelsRouter } from "./routes/models.ts";
 import { v1Router } from "./routes/v1.ts";
 import { contentTestRouter } from "./routes/contentTest.ts";
 import { workspacesRouter } from "./routes/workspaces.ts";
+import { partnersRouter } from "./routes/partners.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -478,6 +479,12 @@ app.get("/sitemap.xml", (c) => {
       loc: `${baseUrl}/support`,
       changefreq: "monthly",
       priority: "0.6",
+      lastmod: today,
+    },
+    {
+      loc: `${baseUrl}/partners`,
+      changefreq: "monthly",
+      priority: "0.7",
       lastmod: today,
     },
   ];
@@ -1229,6 +1236,7 @@ app.route("/api/chat", chatRouter);
 app.route("/api/chess", chessRouter);
 app.route("/api/models", modelsRouter);
 app.route("/api/workspaces", workspacesRouter);
+app.route("/api/partners", partnersRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
 app.route("/api/contenttest", contentTestRouter);

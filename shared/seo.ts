@@ -185,6 +185,11 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     label: "Support",
     description: "User support and issue reporting",
   },
+  {
+    href: "/partners",
+    label: "Partners",
+    description: "Partner opportunities and existing partners with Oxygen Low's Software",
+  },
 ];
 
 export const SEO_ROUTES: Record<string, RouteSeoData> = {
@@ -1107,6 +1112,36 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
     internalLinks: [
       { href: "/privacy", label: "Privacy Policy" },
       { href: "/terms", label: "Terms of Use" },
+      { href: "/apps", label: "Apps" },
+    ],
+  },
+  "/partners": {
+    path: "/partners",
+    title: "Partners - Oxygen Low's Software",
+    description:
+      "Explore existing partners and collaboration opportunities with Oxygen Low's Software. Request a partnership or view wanted partner categories.",
+    canonicalPath: "/partners",
+    h1: "Oxygen Low's Software Partners",
+    h2: [
+      "Existing Partners",
+      "Wanted Partner Categories & Opportunities",
+      "Become a Partner",
+    ],
+    keywords: [
+      "partners",
+      "partnerships",
+      "collaboration",
+      "Oxygen Low's Software partners",
+      "partner request",
+    ],
+    ogType: "website",
+    breadcrumbs: [
+      { name: "Home", url: "/" },
+      { name: "Partners", url: "/partners" },
+    ],
+    internalLinks: [
+      { href: "/support", label: "Support & Partner Requests" },
+      { href: "/legal", label: "Legal Documentation" },
       { href: "/apps", label: "Apps" },
     ],
   },

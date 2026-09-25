@@ -27,6 +27,7 @@ import {
   Download as DownloadIcon,
   Bell,
   MessageSquare,
+  Handshake,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -123,6 +124,13 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Support",
     href: "/support",
     icon: LifeBuoy,
+  },
+  {
+    key: "partners",
+    labelKey: "nav.partners",
+    defaultLabel: "Partners",
+    href: "/partners",
+    icon: Handshake,
   },
   {
     key: "legal",

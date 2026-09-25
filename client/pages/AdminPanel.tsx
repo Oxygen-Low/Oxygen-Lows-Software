@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
-import { LifeBuoy, ShieldCheck, ClipboardList, Bell, ShieldBan } from "lucide-react";
+import { LifeBuoy, ShieldCheck, ClipboardList, Bell, ShieldBan, Handshake } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -55,6 +55,17 @@ export default function AdminPanel() {
       icon: LifeBuoy,
       href: "/admin/support",
       color: "text-blue-500",
+    },
+    {
+      title: t("admin.partnersTitle", undefined, "Partners"),
+      description: t(
+        "admin.partnersSubtitle",
+        undefined,
+        "Manage active partners and target partner categories displayed on the public Partners page.",
+      ),
+      icon: Handshake,
+      href: "/admin/partners",
+      color: "text-indigo-500",
     },
     {
       title: t("admin.verificationTitle", undefined, "Asset Verification"),

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -48,6 +48,7 @@ export default function Support() {
     ),
   });
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -61,6 +62,17 @@ export default function Support() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Medium");
   const [type, setType] = useState("Suggestion");
+
+  useEffect(() => {
+    const typeParam = searchParams.get("type");
+    const openParam = searchParams.get("open");
+    if (typeParam) {
+      setType(typeParam);
+    }
+    if (openParam === "true") {
+      setIsDialogOpen(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (session?.user) {
@@ -315,6 +327,13 @@ export default function Support() {
                       </SelectItem>
                       <SelectItem value="User Report">User Report</SelectItem>
                       <SelectItem value="Request">Request</SelectItem>
+                      <SelectItem value="Partner Request">
+                        {t(
+                          "support.typePartnerRequest",
+                          undefined,
+                          "Partner Request",
+                        )}
+                      </SelectItem>
                       <SelectItem value="Account Deletion Request">
                         Account Deletion Request
                       </SelectItem>

@@ -81,6 +81,8 @@ const Legal = lazyWithRetry(() => import("./pages/Legal"));
 const License = lazyWithRetry(() => import("./pages/License"));
 const Download = lazyWithRetry(() => import("./pages/Download"));
 const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
+const Partners = lazyWithRetry(() => import("./pages/Partners"));
+const AdminPartners = lazyWithRetry(() => import("./pages/AdminPartners"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -182,6 +184,7 @@ const App = () => (
                     <Route path="/acceptable-use" element={<AcceptableUse />} />
                     <Route path="/legal" element={<Legal />} />
                     <Route path="/license" element={<License />} />
+                    <Route path="/partners" element={<Partners />} />
                     <Route
                       path="/support"
                       element={
@@ -211,6 +214,14 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <AdminPanel />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/partners"
+                      element={
+                        <ProtectedRoute>
+                          <AdminPartners />
                         </ProtectedRoute>
                       }
                     />
