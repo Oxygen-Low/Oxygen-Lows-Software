@@ -78,9 +78,9 @@ void mouse_handler(InterruptFrame* frame) {
         uint8_t data = inb(0x60);
         uint64_t now = pit_get_uptime_ms();
 
-        // If an inter-packet gap exceeds 25ms, previous packet was dropped.
+        // If an inter-packet gap exceeds 250ms, previous packet was dropped.
         // Resync to start of packet.
-        if (g_mouse_cycle > 0 && (now - g_last_packet_time > 25)) {
+        if (g_mouse_cycle > 0 && (now - g_last_packet_time > 250)) {
             g_mouse_cycle = 0;
         }
         g_last_packet_time = now;

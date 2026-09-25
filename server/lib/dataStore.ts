@@ -23,6 +23,40 @@ const REALTIME_TABLES = new Set([
   "workspace_activities",
 ]);
 
+/** Global tables stored in a single shared file rather than per-user directories. */
+export const GLOBAL_TABLE_NAMES = new Set([
+  "chat_servers",
+  "chat_channels",
+  "chat_dms",
+  "chat_user_keys",
+  "chat_messages",
+  "workspaces",
+  "workspace_members",
+  "workspace_files",
+  "workspace_comments",
+  "workspace_activities",
+]);
+
+export function isGlobalTable(table: string): boolean {
+  return GLOBAL_TABLE_NAMES.has(table.trim().toLowerCase());
+}
+
+const userCache = new Map<string, any>();
+
+export function invalidateUserCache(userId?: string | number): void {
+  if (userId !== undefined && userId !== null) {
+    userCache.delete(String(userId));
+  } else {
+    userCache.clear();
+  }
+}
+
+export function invalidateUserIdsCache(): void {
+  cachedUserIds = null;
+  lastCacheTime = 0;
+  userCache.clear();
+}
+
 type BroadcastFn = (event: {
   table: string;
   event: "INSERT" | "UPDATE" | "DELETE";
@@ -423,6 +457,16 @@ function writeJsonFile(filePath: string, data: any) {
       while (Date.now() - start < 15) {}
     }
   }
+
+  if (path.basename(safePath) === "user.json") {
+    const parentDir = path.basename(path.dirname(safePath));
+    try {
+      const stat = fs.statSync(safePath);
+      userCache.set(parentDir, { user: data, mtime: stat.mtimeMs });
+    } catch {
+      userCache.delete(parentDir);
+    }
+  }
 }
 
 /**
@@ -587,6 +631,12 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "games", "snapshots.json"), []);
   writeJsonFile(path.join(userDir, "games", "conflicts.json"), []);
 
+  const userIdStr = String(userId);
+  userCache.set(userIdStr, userData);
+  if (cachedUserIds !== null && !cachedUserIds.includes(userIdStr)) {
+    cachedUserIds.push(userIdStr);
+  }
+
   return userData;
 }
 
@@ -598,7 +648,8 @@ export function updateUserAuthVerifier(
   authVerifier: string,
   authSalt: string,
 ) {
-  const userPath = path.join(DATA_DIR, String(userId), "user.json");
+  const userIdStr = String(userId);
+  const userPath = path.join(DATA_DIR, userIdStr, "user.json");
   if (!fs.existsSync(userPath)) return null;
   const user = readJsonFile<Record<string, any>>(userPath, null);
   if (!user) return null;
@@ -608,6 +659,7 @@ export function updateUserAuthVerifier(
   user.auth_salt = authSalt;
   user.updated_at = new Date().toISOString();
   writeJsonFile(userPath, user);
+  userCache.set(userIdStr, user);
   return user;
 }
 
@@ -679,26 +731,38 @@ export function getAllUserIds(): string[] {
   }
 }
 
-export function invalidateUserIdsCache(): void {
-  cachedUserIds = null;
-  lastCacheTime = 0;
-}
-
 export function getUserById(userId: string | number) {
   if (userId === undefined || userId === null || String(userId).trim() === "")
     return null;
+  const userIdStr = String(userId);
   const base = path.resolve(DATA_DIR);
-  const target = path.resolve(base, String(userId), "user.json");
+  const target = path.resolve(base, userIdStr, "user.json");
   const relative = path.relative(base, target);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return null;
   }
   const userPath = target;
-  const user = readJsonFile(userPath, null);
-  if (user && String(userId) === "1" && user.role !== "admin") {
-    user.role = "admin";
+  try {
+    if (!fs.existsSync(userPath)) {
+      userCache.delete(userIdStr);
+      return null;
+    }
+    const stat = fs.statSync(userPath);
+    const cached = userCache.get(userIdStr);
+    if (cached && cached.mtime === stat.mtimeMs) {
+      return cached.user;
+    }
+    const user = readJsonFile(userPath, null);
+    if (user && userIdStr === "1" && user.role !== "admin") {
+      user.role = "admin";
+    }
+    if (user) {
+      userCache.set(userIdStr, { user, mtime: stat.mtimeMs });
+    }
+    return user;
+  } catch {
+    return null;
   }
-  return user;
 }
 
 export function getUserByUsernameOrEmail(identifier: string) {
@@ -1104,18 +1168,7 @@ export function getTableRows(table: string, userId?: string | number): any[] {
   }
 
   // Global chat and workspace tables
-  if (
-    normTable === "chat_servers" ||
-    normTable === "chat_channels" ||
-    normTable === "chat_dms" ||
-    normTable === "chat_user_keys" ||
-    normTable === "chat_messages" ||
-    normTable === "workspaces" ||
-    normTable === "workspace_members" ||
-    normTable === "workspace_files" ||
-    normTable === "workspace_comments" ||
-    normTable === "workspace_activities"
-  ) {
+  if (isGlobalTable(normTable)) {
     const filePath = getTableFilePath(normTable);
     return filePath && fs.existsSync(filePath)
       ? readJsonFile<any[]>(filePath, [])
@@ -1369,18 +1422,7 @@ export function saveTableRows(
   rows: any[],
 ) {
   const normTable = table.toLowerCase();
-  if (
-    normTable === "chat_servers" ||
-    normTable === "chat_channels" ||
-    normTable === "chat_dms" ||
-    normTable === "chat_user_keys" ||
-    normTable === "chat_messages" ||
-    normTable === "workspaces" ||
-    normTable === "workspace_members" ||
-    normTable === "workspace_files" ||
-    normTable === "workspace_comments" ||
-    normTable === "workspace_activities"
-  ) {
+  if (isGlobalTable(normTable)) {
     const filePath = getTableFilePath(normTable);
     if (filePath) {
       writeJsonFile(filePath, rows);
@@ -1790,6 +1832,40 @@ export function updateTable(
   const normTable = table.toLowerCase();
   const now = new Date().toISOString();
 
+  if (isGlobalTable(normTable)) {
+    const existing = getTableRows(table);
+    const matched: any[] = [];
+    const updated = existing.map((row) => {
+      const matchesAnd =
+        filters.length === 0 || filters.every((f) => matchesFilter(row, f));
+      const matchesOr =
+        orFilters.length === 0 ||
+        orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
+      if (matchesAnd && matchesOr) {
+        const modified = { ...row, ...data, updated_at: now };
+        matched.push(modified);
+        return modified;
+      }
+      return row;
+    });
+
+    saveTableRows(table, undefined, updated);
+
+    if (_broadcast && REALTIME_TABLES.has(normTable)) {
+      for (const item of matched) {
+        _broadcast({
+          table: normTable,
+          event: "UPDATE",
+          schema: "public",
+          new: item,
+          old: null,
+        });
+      }
+    }
+
+    return matched;
+  }
+
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
     const userIdStr = String(userId);
     if (
@@ -2005,6 +2081,40 @@ export function deleteTable(
   orFilters: string[] = [],
 ): any {
   const normTable = table.toLowerCase();
+
+  if (isGlobalTable(normTable)) {
+    const existing = getTableRows(table);
+    const matched: any[] = [];
+    const remaining = existing.filter((row) => {
+      const matchesAnd =
+        filters.length === 0 || filters.every((f) => matchesFilter(row, f));
+      const matchesOr =
+        orFilters.length === 0 ||
+        orFilters.every((orExpr) => matchesOrFilter(row, orExpr));
+      if (matchesAnd && matchesOr) {
+        matched.push(row);
+        return false;
+      }
+      return true;
+    });
+
+    saveTableRows(table, undefined, remaining);
+
+    if (_broadcast && REALTIME_TABLES.has(normTable)) {
+      for (const item of matched) {
+        _broadcast({
+          table: normTable,
+          event: "DELETE",
+          schema: "public",
+          new: null,
+          old: item,
+        });
+      }
+    }
+
+    return matched;
+  }
+
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
     const userIdStr = String(userId);
     const existing = getTableRows(table, userIdStr);
