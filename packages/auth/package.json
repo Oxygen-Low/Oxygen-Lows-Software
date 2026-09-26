@@ -1,6 +1,6 @@
 {
   "name": "@oxygenlow/auth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Oxygen Low's Software",
   "description": "Official authentication SDK for Oxygen Low's Software. Universal zero-dependency OAuth 2.0 authentication and identity verification.",
   "type": "module",
