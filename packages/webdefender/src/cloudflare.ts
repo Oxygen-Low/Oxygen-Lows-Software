@@ -55,9 +55,6 @@ function resolveConfig(
     resolved.apiKey =
       env?.DEFENDER_API_KEY ||
       env?.WEBDEFENDER_API_KEY ||
-      (typeof process !== "undefined"
-        ? process.env?.DEFENDER_API_KEY || process.env?.WEBDEFENDER_API_KEY
-        : undefined) ||
       "";
   }
 
