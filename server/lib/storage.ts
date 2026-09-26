@@ -129,26 +129,7 @@ export function getUserTotalSize(userId: string): number {
   }
   const sizeStorage = getFolderSize(targetStorage);
   const sizePublic = getFolderSize(targetPublic);
-
-  // Workspaces owned by this user count towards their storage quota
-  let workspaceSize = 0;
-  try {
-    const workspacesFile = path.join(process.cwd(), "Data", "workspaces", "workspaces.json");
-    if (fs.existsSync(workspacesFile)) {
-      const raw = fs.readFileSync(workspacesFile, "utf-8");
-      const workspaces = JSON.parse(raw);
-      if (Array.isArray(workspaces)) {
-        for (const ws of workspaces) {
-          if (String(ws.owner_id) === String(userId) && ws.id) {
-            const wsDir = path.join(STORAGE_DIR, "workspaces", String(ws.id));
-            workspaceSize += getFolderSize(wsDir);
-          }
-        }
-      }
-    }
-  } catch {}
-
-  return sizeStorage + sizePublic + workspaceSize;
+  return sizeStorage + sizePublic;
 }
 
 export interface StorageListItem {

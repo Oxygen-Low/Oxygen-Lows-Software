@@ -37,7 +37,6 @@ import {
   Search,
   X,
   Cpu,
-  FolderGit2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -160,11 +159,6 @@ const ChatApp = lazy(() =>
 const ModelsApp = lazy(() =>
   import("@/components/apps/Models").then((m) => ({
     default: m.ModelsApp,
-  })),
-);
-const WorkspacesApp = lazy(() =>
-  import("@/components/apps/Workspaces").then((m) => ({
-    default: m.WorkspacesApp,
   })),
 );
 
@@ -362,19 +356,6 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Server className="w-8 h-8 text-cyan-500" />,
     component: DataSaveApp,
-    authRequired: true,
-  },
-  {
-    id: "workspaces",
-    nameKey: "apps.workspacesTitle",
-    defaultName: "Workspaces",
-    descKey: "apps.workspacesDesc",
-    defaultDesc:
-      "Collaborative project spaces to share, write, edit, and discuss storage files with invited team members.",
-    categories: ["All", "Development", "Utility"],
-    availability: "web-and-desktop",
-    icon: <FolderGit2 className="w-8 h-8 text-cyan-500" />,
-    component: WorkspacesApp,
     authRequired: true,
   },
   {
@@ -742,8 +723,7 @@ export default function Apps() {
       activeApp.id === "vpn" ||
       activeApp.id === "game-library" ||
       activeApp.id === "image-studio" ||
-      activeApp.id === "3d-background" ||
-      activeApp.id === "workspaces";
+      activeApp.id === "3d-background";
 
     return (
       <Layout fullWidth={isFullWidthApp}>

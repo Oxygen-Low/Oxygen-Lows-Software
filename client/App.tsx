@@ -109,7 +109,6 @@ const App = () => (
                       <Route path="/apps" element={<Apps />} />
                       <Route path="/apps/:appId" element={<Apps />} />
                       <Route path="/apps/3d-background" element={<Apps />} />
-                      <Route path="/workspaces" element={<Navigate to="/apps/workspaces" replace />} />
                       <Route path="/chat" element={<Chat />} />
                       <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
                     <Route path="/banned-ips" element={<BannedIps />} />
