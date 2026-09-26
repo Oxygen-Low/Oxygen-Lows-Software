@@ -1,6 +1,0 @@
-<resources>
-    <string name="app_name">Oxygen Low\'s Software</string>
-    <string name="update_downloading">Descargando actualización de Oxygen Low\'s Software (%1$s)...</string>
-    <string name="update_ready">Actualización lista. Iniciando instalador...</string>
-    <string name="update_failed">Error al descargar la actualización.</string>
-</resources>
