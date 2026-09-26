@@ -511,7 +511,7 @@ export const en = {
       "Submit websites and sitemaps to be crawled and indexed.",
     modelsTitle: "Models",
     modelsDesc:
-      "Configure and manage custom AI models across top providers (OpenAI, Anthropic, Gemini, OpenRouter, Grok, Pollinations) with zero-knowledge encrypted API keys, or connect local & shared models.",
+      "Add AI providers, connect local models, and manage encrypted API keys.",
     imageGeneratorTitle: "AI Image Generator",
     imageGeneratorDesc:
       "Generate high-quality visuals using AI Horde SFW community workers.",

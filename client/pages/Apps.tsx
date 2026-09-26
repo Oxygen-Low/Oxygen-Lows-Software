@@ -525,7 +525,7 @@ const APPS: AppMetadata[] = [
     defaultName: "Models",
     descKey: "apps.modelsDesc",
     defaultDesc:
-      "Configure and manage custom AI models across top providers (OpenAI, Anthropic, Gemini, OpenRouter, Grok, Pollinations) with zero-knowledge encrypted API keys, or connect local & shared models.",
+      "Add AI providers, connect local models, and manage encrypted API keys.",
     categories: ["All", "LLM/AI", "Utility"],
     availability: "web-and-desktop",
     icon: <Cpu className="w-8 h-8 text-cyan-500" />,

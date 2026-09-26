@@ -1,4 +1,4 @@
-﻿export const es = {
+export const es = {
   common: {
     save: "Guardar",
     saveChanges: "Guardar cambios",
@@ -519,7 +519,7 @@
       "EnvÃ­a sitios web y mapas del sitio para ser rastreados e indexados.",
     modelsTitle: "Modelos",
     modelsDesc:
-      "Configura y administra modelos de IA personalizados en los principales proveedores (OpenAI, Anthropic, Gemini, OpenRouter, Grok, Pollinations) con claves API cifradas con conocimiento cero, o conecta modelos locales y compartidos.",
+      "Añade proveedores de IA, conecta modelos locales y gestiona claves API cifradas.",
     imageGeneratorTitle: "Generador de imÃ¡genes IA",
     imageGeneratorDesc:
       "Genera imÃ¡genes de alta calidad con trabajadores comunitarios seguros (SFW) de AI Horde.",
