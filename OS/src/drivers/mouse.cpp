@@ -113,9 +113,16 @@ void mouse_handler(InterruptFrame* frame) {
         continue;
 
 process_packet:
-        // Direct 8-bit two's complement delta conversion (signed int8_t)
-        int32_t delta_x = static_cast<int32_t>(static_cast<int8_t>(g_mouse_packet[1]));
-        int32_t delta_y = static_cast<int32_t>(static_cast<int8_t>(g_mouse_packet[2]));
+        // Extract 9-bit two's complement deltas using sign bits from packet 0
+        int32_t delta_x = g_mouse_packet[1];
+        if (g_mouse_packet[0] & 0x10) {
+            delta_x = delta_x - 256;
+        }
+
+        int32_t delta_y = g_mouse_packet[2];
+        if (g_mouse_packet[0] & 0x20) {
+            delta_y = delta_y - 256;
+        }
 
         // If overflow bits are set, discard movement
         if (g_mouse_packet[0] & 0x40) delta_x = 0;
@@ -194,17 +201,8 @@ void mouse_init(uint32_t screen_w, uint32_t screen_h) {
     mouse_write_command(0xF6);
     mouse_read_data(); // ACK (0xFA)
 
-    // Query Device ID (0xF2) to verify if standard 3-byte or 4-byte wheel mouse
-    mouse_write_command(0xF2);
-    mouse_read_data(); // ACK (0xFA)
-    uint8_t dev_id = mouse_read_data();
-    if (dev_id == 3 || dev_id == 4) {
-        g_mouse_packet_size = 4;
-        serial_printf("[DRV] PS/2 mouse: IntelliMouse 4-byte mode detected (ID: 0x%02x)\n", dev_id);
-    } else {
-        g_mouse_packet_size = 3;
-        serial_printf("[DRV] PS/2 mouse: Standard 3-byte mode detected (ID: 0x%02x)\n", dev_id);
-    }
+    g_mouse_packet_size = 3;
+    serial_printf("[DRV] PS/2 mouse: Standard 3-byte mode enforced\n");
 
     // Flush any residual bytes while streaming is disabled
     mouse_flush();
