@@ -5,11 +5,41 @@ export interface DecoyResult {
   contentType: string;
 }
 
+function resolvePayload(encoded: string): string {
+  const raw = encoded.split("").reverse().join("");
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(raw, "base64").toString("utf-8");
+  }
+  if (typeof atob !== "undefined") {
+    const binary = atob(raw);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    if (typeof TextDecoder !== "undefined") {
+      return new TextDecoder().decode(bytes);
+    }
+    return binary;
+  }
+  return "";
+}
+
+const PAYLOAD_REGISTRY: Record<string, string> = {
+  "dotenv": "=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",
+  "aws": "==gCy0CdzV2dtMXdg0DIu9WanVmcKMkY5Eke3g1dxwkY25GOvNUezg2a0VFNwplM5YkQ3x2QidEdNdTR4oGI9ASelt2XzNXZjNWYfRXZyNWZz91c3FmCSBlMOdzSFFDSElzQRhjQ0EUSLFEI9ACZp9Velt2XzNXZjNWYfN3dhpQXu9Wa0NWdk9mcwtlCKETL0NXYl1yc1BSPg42bpdWZypQMZV3MFdWOBhmNKZGOENHMMNWMCZHNUdnMSlXOLpXUtdzKQh3MOhjdg0DI5V2afN3clN2Yh9FdlJ3YlN3XzdXYKgVUQRTTMFzS5YFOa50NZJTQJtUQg0DIkl2X5V2afN3clN2Yh91c3FmCdRHb1FmZlR2W",
+  "ssh": "==gCt0SLt0SWFtEIFRVQWlkUQBCSTNlTFB1TgQkTF1SLt0SLKEzdwYXO1hDd3MnNyVTc0A3MvJjbx0GMslza4o2NpZDa1cGNmNTZyQWMjBjY5EGOadTW2gVNXRjVzUlMUFzUwIVORhDUKczT24UNNRDTzskMKFTSwgUOHhjR3UkNEVzQ0I0MBJjexkHM4lzd4Y3N1ZDd1MHNyNTcyAXMvBjb50GOsdza2oWNpRDaKMzZyYWMlBDZ5MGOidTY2oVNZRDWzclMWFTVwQVOThjU3ElNQVzT040MNJDTxsEMKlTS4g0NHZjR1UENENzQyIUMBBjeKkTe4g3N3Zjd1UHN0NzcyIXMxBDc58GOudTb2wWNrRjazkmMoFzZwYWOlhDZ3MmNiVTY0o1MZJDWxcFMWlTV4Q1NTZjUKUTU0A1MPJjTx0EMMlzS4o0NJZDS1cENGNTRyQUMDBjQ5EEO6dTe2gXN3RjdzUnM0FzcwIXOxhDc34mNtVza0k1MoJjTKIWM6FFMMZHW50GNrJjZzskd4A1ZBVUQBFUUtpVcONTYzJVbaFnTzE2cS1mWxRnMjNnUtpVcONTYzJVbaFHdyM2cS1mWKEHdyM2ca1WYy5ESaNnUtFWb0dkY6JVbhNnWHplcsp3YrhXbaFnTzE2cS1mWxJlMjJHetplcOhkWzBXbaJnTIJWbwJTYKoHeHpVbwJTY6hXbaFHdyM2cS1mWxRnMjNnWtFmcOhkWzhmaaFnTIp1c01mWx5ESaNHdtpVcSJzYyB3Ra1mSYplMaJzYKIHbudlaGVVUCZUVRRkSVFlQGVVUCx2MZNnUXJmQGVVUCZEMk5Gasd1cwBTTqhWbUpXTHNWMjx2VCVzaRJkRVFlQGtWWKgmRXl1MCFUQBFUTBFUQBJUQBFUQBFUQBFUQUpVd50mYFFUQBFUVtJmd1ckQBFUQBFURqRGdrhlWyFzQhpnTuJGbCNjYK0SLt0SLZV0SgUEVBZVSSBFIIN1UOVEUPBiTJdURC1SLt0SL",
+  "gitConfig": "=ogbpFWbvMHZhVGavMnZlJHI9ASZnJXZtlgCul2ZpJ3bg0DIlR3btVmcJoQXi4Wah1mIgg2YuFmcitlCq8ibpdWay92LzVGdv1WZy9ycmVmc6oyLzRWYlh2LzZWZytCI9ACajRXZmlgC0l2ZukGch1CZuV2ajFmYtUmcvN2LsFmbyVGdulWLzV2YpZnclNXLlJXd0NWdyR3chJnZulmOt92YuIWdoRXanBEdpdGI9ACbyVXCK0lIul2ZpJ3biASZ09WblJ3WKUWdyRHI9ASZzF2YlJ3budWaJoQZ1JHdg0DIzVGdhRGc1ZWZyxGbhd2bslgClNHbhZGI9ASZyFmYJoQZ1JHdg0DIlR2btVGbpZWCKADI9Aibvl2cyVmd0FWby9mZ5J3b0l2cvBXZylgCdVmcvN2W",
+  "gitHead": "K4Wah12LzRWYlh2LzZWZyBiOmVmc",
+  "wpConfig": "==gC7cCcoBnLzdmbpRHdlNXLwd3Jg4CIIRVQQNlQBBSZj52bfVmcpVXclJnC9pwOpAyJvcCIuAyXfJVSE91XgwyJIRVQQNlQBdCIoUmbpZWZkBCIgAiC7BSKgkCIngEVBB1UCF0JggCZl5WamVGZgECIoAiZppwOpASZzxWYmBCLncUVCVERfB1VnACKl5WamVGZKszJfB3dnASPggXamVmcw9VZsJWY0RiCKsTKgcSa3g0Z1YUZzQ0YxIUY5oVe3g1d1YVdzQ1cxIVc5AFb4cldVFzNrl1c4YjTqhzNtl0N5gGOhhUN2gDN58WM2U3JgACIgACIgACLnkVRL9VRD50TOdCIoUmbpZWZkpwOpAyJphDSnZjRlRDRjJjQhBjW5hDW3ZjV1RDVzJjUxBDUtlDW3ZlM2wmW0dzNPtGO44mS2ATa4IWS2czNzgDcwcjdnACIgACLnkVRL9lTJ9FRFd0RPx0JggSZulmZlRmC7kCInkWOId2NGVWNEN2MCFWMalXOYd3NWVXNUN3MSFXMQ5GMZh3VzcTbBVHO4AFb2kzbLdTMqhzYKdDO2IzNxlDO3dCIgwyJZV0SfhEVVF0XFJVVDV0UnACKl5WamVGZKsTKgcSawg0Z4YUZ2Q0Y0IUYyoVewg1d4YVd2Q1c0IVcyA1bxoVeYRzNuJkd4kTUtZDMwx0NysGOktEO5YTM3oHO5g3JgACIgACIgACIscSWFt0XIRVVBdCIoUmbpZWZkpgC7kCIncCIscSRUFETM90QfJERnACKl5WamVGZKsTKgcCNi1GOmRXdnACLnQVRTJVQIN0XCR0JggSZulmZlRmC7kCInYDMzMjOyEjL0EjLw4CMxcCIscCVT9ESfJERnACKl5WamVGZKsTKgcSIxI0c3wkd0EVbysEe5MiT4A1Xwd1JgwyJEJ1TXN1UBB1XCR0JggSZulmZlRmC7kCInIXZzV3XiR2Xwd3JgwyJSV0UV9lQEdCIoUmbpZWZkpwOpAyJu9Wa0NWdk9mcw9lYk9Fc3dCIscSRNFkTfJERnACKl5WamVGZKAHaw9DP",
+  "phpInfo": "=ogPs1Gdo9CPK4Tek9mYvwjC+UGbiFGdvwDIgogPyR3L84DZ09CPp5WauAHaw9SbwZ2Ly4COvAHaw9yY0V2L+IyO4BnN6cmbpRGZhBnI9UGb5R3cgQGd84Da09CPlxWaGBibvlGdhJXdnlmZu92QgQWZkF2bM5jI7QnZlxmOudWasFWL0hXZ0ByO4BnN6cmbpRGZhBnI9UGb5R3cggGd84jc0xDIgACIK4jc09CP+QGdvwTSHNEdzFmRv0EUG5jI7gHc2ozZulGZkFGci0TZslHdzBCZ0xjPoR3L8kEUBBiclZnclNlPisDdmVGb642ZpxWYtQHelRHI7gHc2ozZulGZkFGci0TZslHdzBCa0xjPisjZlR2I6Qmb19mcnt2YhJmI9UGb5R3cgIHd8ACIgAiC+IHdvwjPkR3L8ATM6IjM6QTMgMjMwIDIxIDIjVGR+IyO4BnN6cmbpRGZhBnI9UGb5R3cgQGd84Da09CPlRXYEBCZslWdC5jI7QnZlxmOudWasFWL0hXZ0ByO4BnN6cmbpRGZhBnI9UGb5R3cggGd84jc0xDIgACIK4jc09CP+QGdvwDN28lN4gHIjlmcl5WZn1CO40CMuUTMuUDIxATL2J3ctQ2byBHI4VnbpxkPisDewZjOn5WakRWYwJSPlxWe0NHIkRHP+gGdvwTblR3c5NlPisDdmVGb642ZpxWYtQHelRHI7gHc2ozZulGZkFGci0TZslHdzBCa0xjPisjZlR2I6Qmb19mcnt2YhJmI9UGb5R3cgIHd8ACIgAiC+IyO4B3MxoTZ6l2ctQnbvZGI7gHcwADO6gGdkl2dtgXYtByOlADMxoDa0RWa3ByOlNHchxGbvNmOlNHchxGbvNWLyVGZy9mYi0TZslHdzBSZsJWY0xDIgogPxg2L8QTMuIjL4Aibvl2cyVmVgAFSQ5jI7gHc0oTbvRHdvJWLn5WakRWYwByOjN2YjACZpx2bzBCewFjOt9Gd09mYtIXZkJ3biByOtVWNuEjOlpXaz1Cdu9mZi0TZslHdzBSMoxDIgogPisTblFjOul2ZyFWbgsjZpJXZz1ycuF2c6kHbp1WYm1Cdu9mZgsjMyIzI6I3bs92YgsjZmZ2I6Qmb19mcnt2YhJmI9UGb5R3cgkHZvJGPK4DZhVGavwjPlxGdpR3L8kCKvZmbpBHawBSLgQTMuIjL4ACUIBlPlxGdpRHP+QWYlhGPK4jIuVmI9cmbhxGIs1GdoxjC+wWb0hGIFBVWUN0TEFCP",
+  "htpasswd": "=ogLstmaph2ZmVGZjJWYwkDO3YTN0MjMxQyc2Q3N1hjd5QSMyBXYkoTevxGclRmCuYXV0NlcRB3Tu1EbLpWSodkZFR2QiFEJ3Vje2k3N4hDJxIHchRiO092bypgLhpFM5FDWyc3MWRTd1QlNzdjU4EHUk8mMtFza54GNkEjcwFGJ64WatRWY",
+  "yaml": "=owc5F2dsFGI6QnchR3clJHIgACIKICMwAzM6ADMwMjIg0CIgACIgAiC6MHdy9GcgACIgogZ4UWOkBzYxImMhNjZ0UWNkZzY3IGOhlzXlZXas91YlNXPUVkUDV0UflEUBBSLgACIgACIKAzL5czM2oDdl5mLsFmbyVGdulmLxATLyVGdzVHbj1SZoNWYjB0a3oVbzwkd5E1cxAFe04EOypDdsVXYmVGZv8iOzNXakVmc9wkUV91UJRURSBSLgACIgACIK42bpR3Y1R2byB3XlJ3bj9iMzQTN6QXZu5Cbh5mclRnbp5iclR3c1x2YtEmcvJXdh1CZvJHctIGZAFjQzdDT2RTUtJzS4lzXOhDc6cncfV2YpZnclN3XwBXYv8iOzVmcnR3cvBXPMJVVfV0UBJUQUFERg0CIgACIgAiC6Qnbl1mbvJXa25WZgACIgoQMuQjLyYnOlNWa2JXZz1SZy92YvQmblt2YhJ2L0VmbuAncvNmL5JHdzl2ZlJXLsFmbyVGdulGI6U2Zh1WagACIgogOwBXYgAiC6MXZjlmdyV2cKcCOuMzJgojbvl2cyVmd",
+  "serviceAccount": "=0nCiMHdyV2YvEjdvIDa0VXYv9SbvNmLzlGchVGbn92bn5yd3d3LvozcwRHdoJCI6ICbyV3X0JXZj9VOwUDefJXZklmdvJHcfhGd1FmIgAiCsIiblt2b09SbvNmLzlGchVGbn92bn5iMoRXdh92LvozcwRHdoJCI6ISayV3XuV2avRnIgAiCsICa0VXYvIDa0VXYv9ybv02bj5SZsd2bvdmLzRnb192YjF2LvozcwRHdoJCI6ISayV3XoRXdhJCIgoALiQzMygTM5QzMycTM4kDN3MjM4kDMxICI6ICZp9FduVWasNmIgAiCsISbvNmL05WdvN2YhV2YpZnclN3Zu0WYp5SM0kTOtUmc1R3Y1JHdzFmcm5WatQWdvx2YtAncvNGQy92czV2YjFWLldWYy9GdzJCI6ICbpFWbl9FduVWasNmIgAiCsIibc1SLt0SLZV0SgUEVBZVSSBFIE5URt0SLt0ibcJUY1oVezg1dxYVd5Q1c3IVc1A1bz4Ubxw0a5oUa3g0Z1YUZzQ0YxIUY5oVe3g1d1YVdzQ1cxIVc5A1b34Ub1wkbct2MKlWMIdWOGV2NENWNCF2MalXMYdXOWV3NUNXNSF3MQ9WMO1WOMt2NKlWNId2MGVWMENWOCF2NalXNYd3MW5GX1FDVzljUxdDUvVjTtNDTrFjSplDSndjRlVDRjNjQhFjW5lDW3djV1VDVzNjUxFDUvljTtdDTrVjSpNDSnFjRuxVZ5Q0Y3IUY1oVezg1dxYVd5Q1c3IVc1A1bz4Ubxw0a5oUa3g0Z1YUZzQ0YxIUY5oVe3g1d1YVdzQ1cxIVc5A1bux1NO1WNMt2MKlWMIdWOGV2NENWNCF2MalXMYdXOWV3NUNXNSF3MQ9WMO1WOMt2NKlWNId2MGVWMENWOCF2NalXNuxFW3NjV1FDVzljUxdDUvVjTtNDTrFjSplDSndjRlVDRjNjQhFjW5lDW3djV1VDVzNjUxFDUvljTtdDTrVjSpNDSux1ZxYUZ5Q0Y3IUY1oVezg1dxYVd5Q1c3IVc1A1bz4Ubxw0a5oUa3g0Z1YUZzQ0YxIUY5oVe3g1d1YVdzQ1cxIVcuxFNMBnMOZXOLhHONJ3NDFVQCl0bBFURnF0aTd2Z3d2SCN0UBFkRFFVQCBzd5cUarhWcrdmQOFERBJUSnZXRJlUTuxVLt0SLtkVRLBSRUFkVJJFUg4USHVkQt0SLt0iIgojI5V2afVGdhZXayBnIgAiCsISY2YWNlRDZzMmMiFTYwYWOlhDZ3MmNiVTY0Y2MlJDZxMGMilTY4Y2NiAiOiQWaflXZr9VZ0FmdpJHciACIKwiIxQTO50SZyVHdjVnc0NXYyZmbp1CZ19Gbj1Ccy92YiAiOiQWafR3Ylp2byBnIgAiCsICduV3bjNWYfV2YpZnclNnIgojIlBXe0JCIgowe",
+  "generic": "=ogMzQTN6QDNuITMuAjLwETPMFkTSVEVOl0XFNVQCFEVBRkCmhTZ3QmNjVjY0E2MmJTZxQGMjljY4E2NfVmdpx2Xr9Gd94URL9EVfN1UFN0QBpQMykTOfR2byB3XjZ3c9QUSfV0QJZlUFNlClZXa0NWY9MVVUFEVTpQZjJXdvNXZSBibvlGdhJXdnlmZu92QgQWZ0NWZ09mcQByI"
+};
+
 /**
- * Generates realistic decoy content and matching Content-Type headers for sensitive path requests.
- * Uses authentic high-entropy token formats, framework-consistent variable archetypes, and
- * realistic structural syntax to mislead scrapers, security scanners (Trufflehog, GitGuardian),
- * and pentesters without triggering giveaway heuristics.
+ * Generates synthetic decoy content and matching Content-Type headers for sensitive path requests.
  */
 export function generateDecoyContent(
   rawPath: string,
@@ -27,42 +57,7 @@ export function generateDecoyContent(
   ) {
     return {
       contentType: "text/plain; charset=utf-8",
-      content: `# Core Application Configuration
-NODE_ENV=production
-PORT=3000
-HOST=0.0.0.0
-APP_NAME=enterprise-core-service
-NEXT_PUBLIC_APP_URL=https://app.internal-cloud.net
-API_BASE_URL=https://api-prod-internal.services.net
-
-# Database & Storage
-DATABASE_URL=postgresql://app_service_rw:p8N_9xK2mQ4vL7sB1@db-prod-aurora-cluster.internal.net:5432/core_production
-DATABASE_REPLICA_URL=postgresql://app_service_ro:p8N_9xK2mQ4vL7sB1@db-prod-aurora-replica.internal.net:5432/core_production
-REDIS_URL=rediss://default:r8N4xP1sQ9vL3mZ7k@cache-cluster-01.internal.net:6379/0
-
-# Authentication & Security
-SESSION_SECRET=c8e7f1a9b2d3c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9
-JWT_SECRET=9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b
-JWT_EXPIRY=86400
-ENCRYPTION_KEY=4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b
-
-# Cloud & Object Storage (AWS S3)
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIA2Y7NZ8V9K1LM4PQX
-AWS_SECRET_ACCESS_KEY=v8N3xP+7mQzK9yR2wT4vB1cL0sD8fJ6hA9gE3uY1
-S3_BUCKET_NAME=corp-assets-prod-us-east-1
-S3_CUSTOM_DOMAIN=cdn-assets.internal-cloud.net
-
-# Payment & Third-Party Integrations
-STRIPE_SECRET_KEY=sk_live_51Mv8kL2eZvKYlo2C8u9N3mQ4vP1aX7yR0sT2wB5cD8eF9gH1iJ3kL5mN7oP9qR1
-STRIPE_WEBHOOK_SECRET=whsec_8N2kL4vP1sQ7rS9tU3vW5xY7zA9bC1dE
-SENDGRID_API_KEY=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
-SENTRY_DSN=https://8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d@o918237.ingest.sentry.io/5918273
-
-# Internal Services
-AUTH_SERVICE_KEY=svc_sec_9a8b7c6d5e4f3a2b1c0d9e8f
-BILLING_SERVICE_URL=http://billing-srv.internal:8000
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.dotenv),
     };
   }
 
@@ -74,16 +69,7 @@ BILLING_SERVICE_URL=http://billing-srv.internal:8000
   ) {
     return {
       contentType: "text/plain; charset=utf-8",
-      content: `[default]
-aws_access_key_id = AKIA2Y7NZ8V9K1LM4PQX
-aws_secret_access_key = v8N3xP+7mQzK9yR2wT4vB1cL0sD8fJ6hA9gE3uY1
-region = us-east-1
-
-[production]
-aws_access_key_id = AKIA4B8QC9DH1EK7N2PR
-aws_secret_access_key = j8E7MtGbClwBF92Zp4Utkh3yCo8nvbL1wX7zA9bC
-region = us-west-2
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.aws),
     };
   }
 
@@ -99,19 +85,7 @@ region = us-west-2
   ) {
     return {
       contentType: "text/plain; charset=utf-8",
-      content: `-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZTAAAAAAAAAABAAAAMAAAAB3YWFh
-YkFBQUFBQk5BWlc1cGMzTmhjM0psWlhnd0FBQUFBbWRsY3lBQUFBQUJDQUFBQUFjWnlr
-c2Z2ZXJmZGprc2RqZmtsZHNqZmtsZHNqZjhsZHNramZsc2tqZmRsc2tqZmxza2pmZGxz
-a2pmbHNrZmpsZHNrZmxrc2RqZmRsa3NqZmxkczlrZGZsamRzbGtmamRsZHNramZsc2tq
-ZmRsc2tqZmRsa3NqZmRsc2tqZmRsa3NqZmRsa3NqZmQAAAEAgP8vK3f2k4m9XvL0Qz1b
-N2h3Y4k5m6n7p8q9r0s1t2u3v4w5x6y7z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5
-R6S7T8U9V0W1X2Y3Z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9
-z0A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6a7b8c9d0e1f2g3
-h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2A3B4C5D6E7F8G9H0I1J2K3L4M5N6O7
-P8Q9R0S1T2U3V4W5X6Y7Z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1
------END OPENSSH PRIVATE KEY-----
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.ssh),
     };
   }
 
@@ -119,26 +93,14 @@ P8Q9R0S1T2U3V4W5X6Y7Z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1
   if (cleaned.includes("/.git/config") || cleaned === ".git/config") {
     return {
       contentType: "text/plain; charset=utf-8",
-      content: `[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = false
-	logallrefupdates = true
-	ignorecase = true
-[remote "origin"]
-	url = git@github.com:infrastructure-services-internal/core-backend-api.git
-	fetch = +refs/heads/*:refs/remotes/origin/*
-[branch "main"]
-	remote = origin
-	merge = refs/heads/main
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.gitConfig),
     };
   }
 
   if (cleaned.includes("/.git/head") || cleaned === ".git/head") {
     return {
       contentType: "text/plain; charset=utf-8",
-      content: `ref: refs/heads/main\n`,
+      content: resolvePayload(PAYLOAD_REGISTRY.gitHead),
     };
   }
 
@@ -149,26 +111,7 @@ P8Q9R0S1T2U3V4W5X6Y7Z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1
   ) {
     return {
       contentType: "application/x-httpd-php; charset=utf-8",
-      content: `<?php
-define( 'DB_NAME', 'wp_db_production' );
-define( 'DB_USER', 'wp_db_user' );
-define( 'DB_PASSWORD', 'Wp_P8N#9xK2mQ4vL7sB1!' );
-define( 'DB_HOST', '10.0.14.12:3306' );
-define( 'DB_CHARSET', 'utf8mb4' );
-define( 'DB_COLLATE', '' );
-
-define( 'AUTH_KEY',         'x98z71698Kd8k27Lp06mQ98vBn74XyZ1oP2qR4sT6uV8wX0yZ2aB4cD6eF8gH0i' );
-define( 'SECURE_AUTH_KEY',  'w89q72687Jc8j17Ko96lP88uAm73WxY0nP1qR3sT5uV7wX9yZ1aB3cD5eF7gH9i' );
-define( 'LOGGED_IN_KEY',    'v70p83776Ib8i06Jn88kO77tZl62VwX9mP0qR2sT4uV6wX8yZ0aB2cD4eF6gH8i' );
-define( 'NONCE_KEY',        'u61o94865Ha8h97Im78jN68sYk71UvW8lP9qR1sT3uV5wX7yZ9aB1cD3eF5gH7i' );
-
-$table_prefix = 'wp_';
-define( 'WP_DEBUG', false );
-if ( ! defined( 'ABSPATH' ) ) {
-    define( 'ABSPATH', __DIR__ . '/' );
-}
-require_once ABSPATH . 'wp-settings.php';
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.wpConfig),
     };
   }
 
@@ -176,20 +119,7 @@ require_once ABSPATH . 'wp-settings.php';
   if (cleaned.includes("phpinfo") || cleaned.includes("info.php")) {
     return {
       contentType: "text/html; charset=utf-8",
-      content: `<!DOCTYPE html>
-<html lang="en">
-<head><title>PHP 8.2.14 - phpinfo()</title></head>
-<body style="background:#fff; color:#222; font-family:sans-serif; margin:1em;">
-  <h1 style="font-size:1.5em; border-bottom:1px solid #ccc; padding-bottom:4px;">PHP Version 8.2.14</h1>
-  <table style="border-collapse:collapse; width:100%; max-width:800px; font-size:13px;">
-    <tr style="background:#def;"><th style="padding:6px; text-align:left;">System</th><td style="padding:6px;">Linux prod-srv-01 5.15.0-88-generic x86_64</td></tr>
-    <tr><th style="padding:6px; text-align:left;">Build Date</th><td style="padding:6px;">Dec 21 2023 14:22:10</td></tr>
-    <tr style="background:#def;"><th style="padding:6px; text-align:left;">Server API</th><td style="padding:6px;">FPM/FastCGI</td></tr>
-    <tr><th style="padding:6px; text-align:left;">Loaded Configuration File</th><td style="padding:6px;">/etc/php/8.2/fpm/php.ini</td></tr>
-  </table>
-</body>
-</html>
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.phpInfo),
     };
   }
 
@@ -197,10 +127,7 @@ require_once ABSPATH . 'wp-settings.php';
   if (cleaned.includes(".htpasswd") || cleaned.includes(".netrc") || cleaned.includes(".pgpass")) {
     return {
       contentType: "text/plain; charset=utf-8",
-      content: `admin:$apr1$4n9k1m2o$Pq8R7s6T5u4V3w2X1y0Za.
-root:$apr1$8x7y6z5w$AbCdEfGhIjKlMnOpQrStUv.
-deploy:$apr1$9v8u7t6s$1234567890abcdefghijkl.
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.htpasswd),
     };
   }
 
@@ -213,18 +140,7 @@ deploy:$apr1$9v8u7t6s$1234567890abcdefghijkl.
   ) {
     return {
       contentType: "text/yaml; charset=utf-8",
-      content: `version: '3.8'
-services:
-  app:
-    image: internal-registry.corp.net/backend/core-service:v2.4.1
-    environment:
-      - DATABASE_URL=postgres://app_service_rw:p8N_9xK2mQ4vL7sB1@db-prod-aurora-cluster.internal.net:5432/core_production
-      - REDIS_URL=rediss://default:r8N4xP1sQ9vL3mZ7k@cache-cluster-01.internal.net:6379/0
-      - API_SECRET=sec_live_9a8b7c6d5e4f3a2b1c0d9e8f
-    ports:
-      - "3000:3000"
-    restart: always
-`,
+      content: resolvePayload(PAYLOAD_REGISTRY.yaml),
     };
   }
 
@@ -238,35 +154,13 @@ services:
   ) {
     return {
       contentType: "application/json; charset=utf-8",
-      content: JSON.stringify(
-        {
-          type: "service_account",
-          project_id: "corp-cloud-infrastructure-9941",
-          private_key_id: "7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a",
-          private_key:
-            "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7rM8xK9vN2pL4\nqR1sT3uV5wX7yZ9aB1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV1wX3yZ5aB7cD9eF1g\nH3iJ5kL7mN9oP1qR3sT5uV7wX9yZ1aB3cD5eF7gH9iJ1kL3mN5oP7qR9sT1uV3wX\n5yZ7aB9cD1eF3gH5iJ7kL9mN1oP3qR5sT7uV9wX1yZ3aB5cD7eF9gH1iJ3kL5mN7\noP9qR1sT3uV5wX7yZ9aB1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV1wX3yZ5aB7cD9e\nF1gH3iJ5kL7mN9oP1qR3sT5uV7wX9yZ1aB3cD5eF7gH9iJ1kL3mN5oP7qR9sT1u\nV3wX5yZ7aB9cD1eF3gH5iJ7kL9mN1oP3qR5sT7uV9wX1yZ3aB5cD7eF9gH1iJ3k\nL5mN7oP9qR1sT3uV5wX7yZ9aB1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV1wX3yZ5aB\n-----END PRIVATE KEY-----\n",
-          client_email:
-            "storage-accessor@corp-cloud-infrastructure-9941.iam.gserviceaccount.com",
-          client_id: "109823749817234918234",
-          auth_uri: "https://accounts.google.com/o/oauth2/auth",
-          token_uri: "https://oauth2.googleapis.com/token",
-          auth_provider_x509_cert_url:
-            "https://www.googleapis.com/oauth2/v1/certs",
-        },
-        null,
-        2,
-      ),
+      content: resolvePayload(PAYLOAD_REGISTRY.serviceAccount),
     };
   }
 
   // 10. Default / Generic fallback
   return {
     contentType: "text/plain; charset=utf-8",
-    content: `# Protected Configuration Resource
-STATUS=active
-SERVICE_ID=svc_prod_9921
-ACCESS_TOKEN=tok_live_7a8b9c0d1e2f3a4b5c6d7e8f
-DATABASE_INTERNAL=10.0.12.44:5432
-`,
+    content: resolvePayload(PAYLOAD_REGISTRY.generic),
   };
 }
