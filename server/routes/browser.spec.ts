@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import { browserRouter } from "./browser";
 import {
   isPathAllowed,
+  parseRobotsTxt,
+  isUserAgentMatch,
+  getRobotsRules,
   extractPageData,
   extractReaderArticle,
   decodeHtmlEntities,
@@ -133,6 +136,119 @@ describe("Browser Router & oxylow-search crawler", () => {
     expect(isPathAllowed("/private/secret", rules)).toBe(false);
     expect(isPathAllowed("/api/internal", rules)).toBe(false);
     expect(isPathAllowed("/api/public", rules)).toBe(true);
+  });
+
+  it("strictly honors User-agent: oxylow-search with Disallow: / even when User-agent: * has Allow: /", () => {
+    const robotsTxt = `
+      User-agent: *
+      Allow: /
+      Disallow: /admin
+
+      User-agent: oxylow-search
+      Disallow: /
+    `;
+
+    const parsed = parseRobotsTxt(robotsTxt, "oxylow-search");
+    expect(parsed.disallow).toEqual(["/"]);
+    expect(parsed.allow).toEqual([]);
+
+    expect(isPathAllowed("/", parsed)).toBe(false);
+    expect(isPathAllowed("/about", parsed)).toBe(false);
+    expect(isPathAllowed("/index.html", parsed)).toBe(false);
+  });
+
+  it("isolates specific user-agent group and prevents leaking * rules into specific bot rules", () => {
+    const robotsTxt = `
+      User-agent: *
+      Disallow: /all-secret
+      Allow: /all-public
+      Crawl-delay: 5
+
+      User-agent: oxylow-search
+      Disallow: /oxylow-secret
+      Allow: /oxylow-secret/allowed
+      Crawl-delay: 2
+    `;
+
+    const parsedOxylow = parseRobotsTxt(robotsTxt, "oxylow-search");
+    expect(parsedOxylow.disallow).toEqual(["/oxylow-secret"]);
+    expect(parsedOxylow.allow).toEqual(["/oxylow-secret/allowed"]);
+    expect(parsedOxylow.crawlDelayMs).toBe(2000);
+
+    expect(isPathAllowed("/all-secret", parsedOxylow)).toBe(true); // Specific group didn't disallow /all-secret
+    expect(isPathAllowed("/oxylow-secret", parsedOxylow)).toBe(false);
+    expect(isPathAllowed("/oxylow-secret/allowed", parsedOxylow)).toBe(true);
+    expect(isPathAllowed("/oxylow-secret/blocked", parsedOxylow)).toBe(false);
+
+    // Generic bot fallback
+    const parsedGeneric = parseRobotsTxt(robotsTxt, "some-other-bot");
+    expect(parsedGeneric.disallow).toEqual(["/all-secret"]);
+    expect(parsedGeneric.allow).toEqual(["/all-public"]);
+    expect(parsedGeneric.crawlDelayMs).toBe(5000);
+  });
+
+  it("correctly separates user-agent groups even without blank lines between them", () => {
+    const robotsTxt = `User-agent: Googlebot
+Disallow: /google-blocked
+User-agent: oxylow-search
+Disallow: /
+User-agent: *
+Disallow: /fallback-blocked`;
+
+    const parsedOxylow = parseRobotsTxt(robotsTxt, "oxylow-search");
+    expect(parsedOxylow.disallow).toEqual(["/"]);
+    expect(parsedOxylow.allow).toEqual([]);
+    expect(isPathAllowed("/", parsedOxylow)).toBe(false);
+
+    const parsedGoogle = parseRobotsTxt(robotsTxt, "googlebot");
+    expect(parsedGoogle.disallow).toEqual(["/google-blocked"]);
+    expect(isPathAllowed("/", parsedGoogle)).toBe(true);
+    expect(isPathAllowed("/google-blocked", parsedGoogle)).toBe(false);
+
+    const parsedStar = parseRobotsTxt(robotsTxt, "unknown-bot");
+    expect(parsedStar.disallow).toEqual(["/fallback-blocked"]);
+    expect(isPathAllowed("/", parsedStar)).toBe(true);
+    expect(isPathAllowed("/fallback-blocked", parsedStar)).toBe(false);
+  });
+
+  it("matches wildcards and end-of-path anchors accurately", () => {
+    const rules = {
+      disallow: ["/*.php$", "/private/*", "/temp*"],
+      allow: ["/private/public.php$", "/temp/safe"],
+    };
+
+    expect(isPathAllowed("/index.php", rules)).toBe(false);
+    expect(isPathAllowed("/index.php?query=1", rules)).toBe(true); // $ anchors to end of URL
+    expect(isPathAllowed("/index.php/extra", rules)).toBe(true);
+    expect(isPathAllowed("/private/secret", rules)).toBe(false);
+    expect(isPathAllowed("/private/public.php", rules)).toBe(true);
+    expect(isPathAllowed("/temp-cache/file", rules)).toBe(false);
+    expect(isPathAllowed("/temp/safe/file", rules)).toBe(true);
+  });
+
+  it("resolves rule specificity (longest match wins and equal-length Allow wins)", () => {
+    // Disallow /admin (len 6) vs Allow /admin/public (len 13)
+    const rules = {
+      disallow: ["/admin", "/equal/path"],
+      allow: ["/admin/public", "/equal/path"],
+    };
+
+    expect(isPathAllowed("/admin/internal", rules)).toBe(false);
+    expect(isPathAllowed("/admin/public", rules)).toBe(true);
+    expect(isPathAllowed("/admin/public/profile", rules)).toBe(true);
+    // Equal length test: /equal/path (both len 11) -> Allow wins
+    expect(isPathAllowed("/equal/path", rules)).toBe(true);
+  });
+
+  it("matches user agent variants case-insensitively and with version tokens", () => {
+    expect(isUserAgentMatch("oxylow-search", "oxylow-search")).toBe(true);
+    expect(isUserAgentMatch("Oxylow-Search", "oxylow-search")).toBe(true);
+    expect(isUserAgentMatch("oxylow-search/1.0", "oxylow-search")).toBe(true);
+    expect(isUserAgentMatch("oxylow", "oxylow-search")).toBe(true);
+    expect(isUserAgentMatch("oxylowbot", "oxylow-search")).toBe(true);
+    expect(isUserAgentMatch("oxylow-aisearch", "oxylow-search")).toBe(true);
+    expect(isUserAgentMatch("googlebot", "oxylow-search")).toBe(false);
+    expect(isUserAgentMatch("*", "oxylow-search")).toBe(false);
   });
 
   it("enforces delay between requests to the same domain", async () => {

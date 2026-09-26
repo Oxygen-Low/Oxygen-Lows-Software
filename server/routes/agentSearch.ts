@@ -251,7 +251,7 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
     const parsedUrl = new URL(cleanUrl);
     const origin = parsedUrl.origin;
     const domain = parsedUrl.hostname.toLowerCase();
-    const robots = await getRobotsRules(origin, domain);
+    const robots = await getRobotsRules(origin, domain, "oxylow-aisearch");
     if (!isPathAllowed(parsedUrl.pathname, robots)) {
       return `Error: Fetching ${cleanUrl} is disallowed by robots.txt for oxylow-aisearch.`;
     }

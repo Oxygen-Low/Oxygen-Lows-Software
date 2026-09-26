@@ -688,4 +688,127 @@ describe("Webmaster Router & DNS Verification", () => {
 
     clearCrawlQueue();
   });
+
+  it("strictly stops crawler from indexing when robots.txt disallows oxylow-search even if * is allowed", async () => {
+    vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+      id: "1",
+      email: "admin@oxygenlow.com",
+      role: "admin",
+    } as any);
+
+    setDefaultDomainDelayMs(0);
+    setBatchCrawlDelayMs(0);
+
+    const requestedUrls: string[] = [];
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      requestedUrls.push(url);
+      if (url.includes("/robots.txt")) {
+        return new Response(
+          "User-agent: *\nAllow: /\n\nUser-agent: oxylow-search\nDisallow: /\n",
+          {
+            status: 200,
+            headers: { "content-type": "text/plain" },
+          }
+        );
+      }
+      return new Response("<html><head><title>Should Not Be Crawled</title></head><body>Secret</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as any;
+
+    const res = await webmasterRouter.fetch(
+      new Request("http://localhost/admin/sites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer test-admin-token",
+        },
+        body: JSON.stringify({ url: "https://blocked-for-oxylow.com" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    const siteId = data.site.id;
+
+    // Wait for crawler run
+    const startWait = Date.now();
+    while (Date.now() - startWait < 2000) {
+      const s = getSites().find((item) => item.id === siteId);
+      if (s && (s.status === "indexed" || s.status === "error")) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+
+    const sites = getSites();
+    const site = sites.find((s) => s.id === siteId);
+    expect(site).toBeDefined();
+    // Must NOT have crawled or indexed any page
+    expect(site?.pageCount).toBe(0);
+    expect(site?.status).toBe("error");
+    expect(site?.error).toContain("robots.txt");
+    expect(site?.logs.some((l) => l.message.includes("Blocked by robots.txt"))).toBe(true);
+
+    // Verify no content fetch was made to the target HTML page
+    const pageFetches = requestedUrls.filter((u) => !u.includes("/robots.txt") && !u.includes("/sitemap.xml"));
+    expect(pageFetches).toHaveLength(0);
+
+    clearCrawlQueue();
+  });
+
+  it("handles 403 and 401 on /robots.txt as full disallow", async () => {
+    vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+      id: "1",
+      email: "admin@oxygenlow.com",
+      role: "admin",
+    } as any);
+
+    setDefaultDomainDelayMs(0);
+    setBatchCrawlDelayMs(0);
+
+    const requestedUrls: string[] = [];
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      requestedUrls.push(url);
+      if (url.includes("/robots.txt")) {
+        return new Response("Forbidden", {
+          status: 403,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      return new Response("<html><head><title>Secret</title></head><body>Content</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as any;
+
+    const res = await webmasterRouter.fetch(
+      new Request("http://localhost/admin/sites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer test-admin-token",
+        },
+        body: JSON.stringify({ url: "https://forbidden-robots-site.com" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    const siteId = data.site.id;
+
+    const startWait = Date.now();
+    while (Date.now() - startWait < 2000) {
+      const s = getSites().find((item) => item.id === siteId);
+      if (s && (s.status === "indexed" || s.status === "error")) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+
+    const sites = getSites();
+    const site = sites.find((s) => s.id === siteId);
+    expect(site?.pageCount).toBe(0);
+    expect(site?.status).toBe("error");
+
+    const pageFetches = requestedUrls.filter((u) => !u.includes("/robots.txt") && !u.includes("/sitemap.xml"));
+    expect(pageFetches).toHaveLength(0);
+
+    clearCrawlQueue();
+  });
 });

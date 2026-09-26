@@ -73,7 +73,14 @@ export interface SearchResult {
 // Track per-domain request delays to respect target servers
 const domainLastRequestTime = new Map<string, number>();
 const domainLocks = new Map<string, Promise<void>>();
-const robotsCache = new Map<string, { rules: { disallow: string[]; allow: string[] }; crawlDelayMs: number; fetchedAt: number }>();
+const robotsCache = new Map<
+  string,
+  {
+    rules: { disallow: string[]; allow: string[]; sitemaps: string[]; crawlDelayMs: number };
+    crawlDelayMs: number;
+    fetchedAt: number;
+  }
+>();
 
 function ensureDataFiles() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -338,19 +345,295 @@ export async function verifyDomainDns(
   };
 }
 
+export interface RobotsRules {
+  disallow: string[];
+  allow: string[];
+  sitemaps: string[];
+  crawlDelayMs: number;
+}
+
+/**
+ * Checks if a declared User-Agent string from robots.txt matches our target crawler bot.
+ */
+export function isUserAgentMatch(declaredUa: string, targetUa: string): boolean {
+  const dec = declaredUa.trim().toLowerCase();
+  const target = targetUa.trim().toLowerCase();
+  if (!dec || !target) return false;
+  if (dec === "*") return false;
+
+  // Exact match
+  if (dec === target) return true;
+
+  // Token match (e.g. oxylow-search from oxylow-search/1.0)
+  const decToken = dec.split("/")[0].trim();
+  const targetToken = target.split("/")[0].trim();
+
+  if (decToken === targetToken) return true;
+  if (targetToken.startsWith(decToken) && decToken.length >= 6) return true;
+  if (decToken.startsWith(targetToken)) return true;
+
+  const botSynonyms = ["oxylow-search", "oxylow_search", "oxylow", "oxylowbot", "oxylow-aisearch"];
+  if (botSynonyms.includes(decToken) && botSynonyms.includes(targetToken)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Parses robots.txt content according to RFC 9309 (Robots Exclusion Protocol).
+ * Accurately isolates record groups and respects crawler-specific directives without inheriting
+ * generic rules when a specific user-agent group is matched.
+ */
+export function parseRobotsTxt(text: string, targetUserAgent = "oxylow-search"): RobotsRules {
+  if (!text || typeof text !== "string") {
+    return {
+      disallow: [],
+      allow: [],
+      sitemaps: [],
+      crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+    };
+  }
+
+  const lines = text.split(/\r?\n/);
+  interface RawGroup {
+    userAgents: string[];
+    disallow: string[];
+    allow: string[];
+    crawlDelayMs?: number;
+  }
+
+  const groups: RawGroup[] = [];
+  const globalSitemaps: string[] = [];
+  let currentGroup: RawGroup | null = null;
+  let inDirectives = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.split("#")[0].trim();
+    if (!line) {
+      if (currentGroup && inDirectives) {
+        groups.push(currentGroup);
+        currentGroup = null;
+        inDirectives = false;
+      }
+      continue;
+    }
+
+    const colonIdx = line.indexOf(":");
+    if (colonIdx === -1) continue;
+
+    const key = line.slice(0, colonIdx).trim().toLowerCase();
+    const val = line.slice(colonIdx + 1).trim();
+
+    if (key === "sitemap") {
+      if (val && !globalSitemaps.includes(val)) {
+        globalSitemaps.push(val);
+      }
+      continue;
+    }
+
+    if (key === "user-agent") {
+      const ua = val.toLowerCase();
+      if (inDirectives && currentGroup) {
+        groups.push(currentGroup);
+        currentGroup = null;
+        inDirectives = false;
+      }
+
+      if (!currentGroup) {
+        currentGroup = {
+          userAgents: [],
+          disallow: [],
+          allow: [],
+        };
+      }
+      if (ua && !currentGroup.userAgents.includes(ua)) {
+        currentGroup.userAgents.push(ua);
+      }
+    } else if (key === "disallow") {
+      if (!currentGroup) continue;
+      inDirectives = true;
+      if (val) {
+        currentGroup.disallow.push(val);
+      }
+    } else if (key === "allow") {
+      if (!currentGroup) continue;
+      inDirectives = true;
+      if (val) {
+        currentGroup.allow.push(val);
+      }
+    } else if (key === "crawl-delay") {
+      if (!currentGroup) continue;
+      inDirectives = true;
+      const delaySec = parseFloat(val);
+      if (!isNaN(delaySec) && delaySec >= 0) {
+        currentGroup.crawlDelayMs = Math.round(delaySec * 1000);
+      }
+    }
+  }
+
+  if (currentGroup) {
+    groups.push(currentGroup);
+  }
+
+  // 1. Check for specific matching groups (RFC 9309: specific user-agent group takes precedence)
+  const specificGroups = groups.filter((g) =>
+    g.userAgents.some((ua) => isUserAgentMatch(ua, targetUserAgent))
+  );
+
+  if (specificGroups.length > 0) {
+    const specificDisallow: string[] = [];
+    const specificAllow: string[] = [];
+    let specificCrawlDelay: number | undefined = undefined;
+
+    for (const g of specificGroups) {
+      specificDisallow.push(...g.disallow);
+      specificAllow.push(...g.allow);
+      if (g.crawlDelayMs !== undefined && specificCrawlDelay === undefined) {
+        specificCrawlDelay = g.crawlDelayMs;
+      }
+    }
+
+    return {
+      disallow: specificDisallow,
+      allow: specificAllow,
+      sitemaps: globalSitemaps,
+      crawlDelayMs: specificCrawlDelay ?? DEFAULT_DOMAIN_DELAY_MS,
+    };
+  }
+
+  // 2. Check for wildcard '*' group
+  const starGroups = groups.filter((g) => g.userAgents.includes("*"));
+  if (starGroups.length > 0) {
+    const starDisallow: string[] = [];
+    const starAllow: string[] = [];
+    let starCrawlDelay: number | undefined = undefined;
+
+    for (const g of starGroups) {
+      starDisallow.push(...g.disallow);
+      starAllow.push(...g.allow);
+      if (g.crawlDelayMs !== undefined && starCrawlDelay === undefined) {
+        starCrawlDelay = g.crawlDelayMs;
+      }
+    }
+
+    return {
+      disallow: starDisallow,
+      allow: starAllow,
+      sitemaps: globalSitemaps,
+      crawlDelayMs: starCrawlDelay ?? DEFAULT_DOMAIN_DELAY_MS,
+    };
+  }
+
+  // 3. Fallback: allow all
+  return {
+    disallow: [],
+    allow: [],
+    sitemaps: globalSitemaps,
+    crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+  };
+}
+
+/**
+ * Matches a robots.txt pattern against a path according to RFC 9309 Section 2.2.2.
+ * Supports '*' wildcards and '$' end-of-path anchors.
+ */
+function patternMatchesPath(pattern: string, path: string): boolean {
+  if (!pattern) return false;
+  const hasEndAnchor = pattern.endsWith("$");
+  const cleanPattern = hasEndAnchor ? pattern.slice(0, -1) : pattern;
+
+  const escaped = cleanPattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  const regexPattern = `^${escaped.replace(/\*/g, ".*")}${hasEndAnchor ? "$" : ""}`;
+  try {
+    const reg = new RegExp(regexPattern);
+    return reg.test(path);
+  } catch {
+    return path.startsWith(pattern);
+  }
+}
+
+/**
+ * Checks if a path is allowed by robots.txt rules according to RFC 9309 precedence:
+ * - Most specific match (longest rule pattern) wins.
+ * - In case of a tie between Allow and Disallow of equal length, Allow wins.
+ * - Defaults to allowed if no rules match.
+ */
+export function isPathAllowed(
+  pathStr: string,
+  rules: { disallow: string[]; allow: string[] }
+): boolean {
+  if (!rules) return true;
+  const normalizedPath = pathStr.startsWith("/") ? pathStr : `/${pathStr}`;
+
+  let longestMatchLen = -1;
+  let longestMatchType: "allow" | "disallow" | null = null;
+
+  for (const disallow of rules.disallow || []) {
+    if (!disallow) continue;
+    if (patternMatchesPath(disallow, normalizedPath)) {
+      const len = disallow.length;
+      if (len > longestMatchLen) {
+        longestMatchLen = len;
+        longestMatchType = "disallow";
+      }
+    }
+  }
+
+  for (const allow of rules.allow || []) {
+    if (!allow) continue;
+    if (patternMatchesPath(allow, normalizedPath)) {
+      const len = allow.length;
+      if (len >= longestMatchLen) {
+        longestMatchLen = len;
+        longestMatchType = "allow";
+      }
+    }
+  }
+
+  if (longestMatchType === "disallow") {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Fetches and parses robots.txt for a given domain, caching the result.
+ * Strictly adheres to RFC 9309 HTTP response status code rules:
+ * - 2xx: Parse robots.txt
+ * - 401/403: Full Disallow (Disallow: /)
+ * - 404/410: Full Allow (Disallow: [])
+ * - 5xx: Full Disallow (Disallow: /) to avoid hammering degraded origin
  */
 export async function getRobotsRules(
   origin: string,
-  domain: string
-): Promise<{ disallow: string[]; allow: string[]; crawlDelayMs: number }> {
-  const cached = robotsCache.get(domain);
+  domain: string,
+  targetUserAgent = "oxylow-search"
+): Promise<RobotsRules> {
+  const cacheKey = `${domain.toLowerCase()}#${targetUserAgent.toLowerCase()}`;
+  const cached = robotsCache.get(cacheKey);
   if (cached && Date.now() - cached.fetchedAt < 3600000) {
-    return { disallow: cached.rules.disallow, allow: cached.rules.allow, crawlDelayMs: cached.crawlDelayMs };
+    return {
+      disallow: cached.rules.disallow,
+      allow: cached.rules.allow,
+      sitemaps: cached.rules.sitemaps || [],
+      crawlDelayMs: cached.crawlDelayMs,
+    };
   }
 
-  const defaultResult = { disallow: [], allow: [], crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS };
+  const defaultAllowResult: RobotsRules = {
+    disallow: [],
+    allow: [],
+    sitemaps: [],
+    crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+  };
+  const fullDisallowResult: RobotsRules = {
+    disallow: ["/"],
+    allow: [],
+    sitemaps: [],
+    crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+  };
+
   try {
     await waitForDomainSlot(domain, DEFAULT_DOMAIN_DELAY_MS > 0 ? 500 : 0);
     const robotsUrl = `${origin}/robots.txt`;
@@ -361,86 +644,56 @@ export async function getRobotsRules(
       method: "GET",
       headers: {
         "User-Agent": OXYLOW_USER_AGENT,
-        "From": OXYLOW_CONTACT_EMAIL,
+        From: OXYLOW_CONTACT_EMAIL,
         Accept: "text/plain,*/*",
       },
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
 
-    if (!res.ok) {
-      robotsCache.set(domain, { rules: defaultResult, crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS, fetchedAt: Date.now() });
-      return defaultResult;
+    if (res.status === 401 || res.status === 403) {
+      robotsCache.set(cacheKey, {
+        rules: fullDisallowResult,
+        crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+        fetchedAt: Date.now(),
+      });
+      return fullDisallowResult;
+    }
+
+    if (res.status === 404 || res.status === 410) {
+      robotsCache.set(cacheKey, {
+        rules: defaultAllowResult,
+        crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+        fetchedAt: Date.now(),
+      });
+      return defaultAllowResult;
+    }
+
+    if (res.status >= 500 || !res.ok) {
+      robotsCache.set(cacheKey, {
+        rules: fullDisallowResult,
+        crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+        fetchedAt: Date.now(),
+      });
+      return fullDisallowResult;
     }
 
     const text = await res.text();
-    const lines = text.split(/\r?\n/);
-    let currentUserAgents: string[] = [];
-    const oxylowDisallow: string[] = [];
-    const oxylowAllow: string[] = [];
-    const starDisallow: string[] = [];
-    const starAllow: string[] = [];
-    let crawlDelayMs = DEFAULT_DOMAIN_DELAY_MS;
+    const rules = parseRobotsTxt(text, targetUserAgent);
 
-    for (const rawLine of lines) {
-      const line = rawLine.split("#")[0].trim();
-      if (!line) {
-        currentUserAgents = [];
-        continue;
-      }
-
-      const match = line.match(/^([a-zA-Z-]+)\s*:\s*(.+)$/);
-      if (!match) continue;
-
-      const key = match[1].toLowerCase();
-      const val = match[2].trim();
-
-      if (key === "user-agent") {
-        currentUserAgents.push(val.toLowerCase());
-      } else if (key === "disallow") {
-        if (currentUserAgents.some((ua) => ua === "oxylow-search")) {
-          if (val) oxylowDisallow.push(val);
-        } else if (currentUserAgents.some((ua) => ua === "*")) {
-          if (val) starDisallow.push(val);
-        }
-      } else if (key === "allow") {
-        if (currentUserAgents.some((ua) => ua === "oxylow-search")) {
-          if (val) oxylowAllow.push(val);
-        } else if (currentUserAgents.some((ua) => ua === "*")) {
-          if (val) starAllow.push(val);
-        }
-      } else if (key === "crawl-delay") {
-        const delaySec = parseFloat(val);
-        if (!isNaN(delaySec) && delaySec >= 0) {
-          crawlDelayMs = Math.round(delaySec * 1000);
-        }
-      }
-    }
-
-    const rules = {
-      disallow: oxylowDisallow.length > 0 ? oxylowDisallow : starDisallow,
-      allow: oxylowAllow.length > 0 ? oxylowAllow : starAllow,
-      crawlDelayMs,
-    };
-
-    robotsCache.set(domain, { rules, crawlDelayMs, fetchedAt: Date.now() });
+    robotsCache.set(cacheKey, {
+      rules,
+      crawlDelayMs: rules.crawlDelayMs,
+      fetchedAt: Date.now(),
+    });
     return rules;
   } catch {
-    robotsCache.set(domain, { rules: defaultResult, crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS, fetchedAt: Date.now() });
-    return defaultResult;
+    robotsCache.set(cacheKey, {
+      rules: defaultAllowResult,
+      crawlDelayMs: DEFAULT_DOMAIN_DELAY_MS,
+      fetchedAt: Date.now(),
+    });
+    return defaultAllowResult;
   }
-}
-
-/**
- * Checks if a path is allowed by robots.txt rules.
- */
-export function isPathAllowed(pathStr: string, rules: { disallow: string[]; allow: string[] }): boolean {
-  for (const allow of rules.allow) {
-    if (allow && pathStr.startsWith(allow)) return true;
-  }
-  for (const disallow of rules.disallow) {
-    if (disallow && pathStr.startsWith(disallow)) return false;
-  }
-  return true;
 }
 
 /**
@@ -868,18 +1121,31 @@ export async function crawlSite(
 
     if (!isContinuation) {
       // 2. Discover from Sitemap if available on fresh crawl
-      const sitemapTarget = site.sitemapUrl || `${origin}/sitemap.xml`;
-      log(`Checking sitemap at ${sitemapTarget}...`, "info");
+      const sitemapTargets = site.sitemapUrl
+        ? [site.sitemapUrl]
+        : robots.sitemaps && robots.sitemaps.length > 0
+        ? robots.sitemaps
+        : [`${origin}/sitemap.xml`];
 
-      const sitemapUrls = await parseSitemap(sitemapTarget, domain, robots.crawlDelayMs);
-      if (sitemapUrls.length > 0) {
-        log(`Found ${sitemapUrls.length} URLs in sitemap.`, "info");
-        for (const u of sitemapUrls) {
-          if (crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
-          if (!crawlQueue.includes(u)) {
-            crawlQueue.push(u);
+      for (const sitemapTarget of sitemapTargets) {
+        try {
+          const sitemapUrlObj = new URL(sitemapTarget);
+          if (!isPathAllowed(sitemapUrlObj.pathname, robots)) {
+            log(`Skipping sitemap at ${sitemapTarget} (disallowed by robots.txt)...`, "warn");
+            continue;
           }
-        }
+          log(`Checking sitemap at ${sitemapTarget}...`, "info");
+          const sitemapUrls = await parseSitemap(sitemapTarget, domain, robots.crawlDelayMs);
+          if (sitemapUrls.length > 0) {
+            log(`Found ${sitemapUrls.length} URLs in sitemap (${sitemapTarget}).`, "info");
+            for (const u of sitemapUrls) {
+              if (crawlQueue.length >= MAX_SITE_INDEX_PAGES) break;
+              if (!crawlQueue.includes(u)) {
+                crawlQueue.push(u);
+              }
+            }
+          }
+        } catch {}
       }
 
       // Always ensure start URL is in queue
@@ -1042,14 +1308,23 @@ export async function crawlSite(
         s.nextCrawlScheduledAt = null;
         cancelScheduledCrawl(s.id);
         s.status = totalIndexed > 0 ? "indexed" : "error";
-        s.logs.push({
-          timestamp: new Date().toISOString(),
-          message:
-            totalIndexed >= MAX_SITE_INDEX_PAGES
-              ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
-              : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
-          level: "info",
-        });
+        if (totalIndexed === 0) {
+          s.error = "Crawl completed with 0 indexed pages: Disallowed by robots.txt rules for oxylow-search or unreachable.";
+          s.logs.push({
+            timestamp: new Date().toISOString(),
+            message: `Crawl completed: 0 pages indexed (target paths disallowed by robots.txt or unreachable).`,
+            level: "warn",
+          });
+        } else {
+          s.logs.push({
+            timestamp: new Date().toISOString(),
+            message:
+              totalIndexed >= MAX_SITE_INDEX_PAGES
+                ? `Crawl completed: Reached maximum limit of ${MAX_SITE_INDEX_PAGES} indexed pages.`
+                : `Crawl completed: All ${totalIndexed} discovered pages have been indexed.`,
+            level: "info",
+          });
+        }
       }
     }, true);
 
