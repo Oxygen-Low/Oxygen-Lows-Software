@@ -19,7 +19,6 @@ describe("OxygenAuth Universal Client SDK", () => {
   it("builds correct authorization URL with scopes and state", () => {
     const auth = new OxygenAuth({
       clientId: "ol_app_1234567890abcdef",
-      baseUrl: "https://oxygenlow.com",
     });
 
     const url = auth.getAuthorizationUrl({
@@ -46,7 +45,6 @@ describe("OxygenAuth Universal Client SDK", () => {
     const auth = new OxygenAuth({
       clientId: "ol_app_test",
       apiKey: "ol_sec_test",
-      baseUrl: "https://test.oxygenlow.com",
     });
 
     const mockResponse = {
@@ -78,7 +76,7 @@ describe("OxygenAuth Universal Client SDK", () => {
     expect(res.user.username).toBe("johndoe");
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "https://test.oxygenlow.com/api/oauth/token",
+      "https://oxygenlow.com/api/oauth/token",
       expect.objectContaining({
         method: "POST",
         headers: {

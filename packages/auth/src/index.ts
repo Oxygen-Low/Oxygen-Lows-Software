@@ -13,7 +13,7 @@ export * from "./types.js";
 export class OxygenAuth {
   private clientId: string;
   private apiKey?: string;
-  private baseUrl: string;
+  private baseUrl: string = "https://oxygenlow.com";
 
   constructor(config: OxygenAuthConfig) {
     if (!config || !config.clientId) {
@@ -21,7 +21,6 @@ export class OxygenAuth {
     }
     this.clientId = config.clientId.trim();
     this.apiKey = config.apiKey?.trim();
-    this.baseUrl = (config.baseUrl || "https://oxygenlow.com").replace(/\/+$/, "");
   }
 
   /**

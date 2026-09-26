@@ -17,11 +17,7 @@ export interface OxygenAuthConfig {
    */
   apiKey?: string;
 
-  /**
-   * Base URL of the Oxygen Low's Software instance.
-   * Defaults to 'https://oxygenlow.com'.
-   */
-  baseUrl?: string;
+
 }
 
 export interface AuthorizeUrlOptions {

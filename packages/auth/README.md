@@ -210,11 +210,10 @@ export default {
 
 ## Configuration Options
 
-| Option     | Type     | Default                    | Description                                                                                             |
-| ---------- | -------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `clientId` | `string` | **Required**               | The public Client ID for your application created in the Oxygen Low's Software Developer Dashboard.     |
-| `apiKey`   | `string` | `undefined`                | The secret API key for your application. Required for backend token exchange (`exchangeCode`) and revocation. |
-| `baseUrl`  | `string` | `"https://oxygenlow.com"` | Base URL of the Oxygen Low's Software instance.                                                        |
+| Option     | Type     | Default      | Description                                                                                                    |
+| ---------- | -------- | ------------ | -------------------------------------------------------------------------------------------------------------- |
+| `clientId` | `string` | **Required** | The public Client ID for your application created in the Oxygen Low's Software Developer Dashboard.            |
+| `apiKey`   | `string` | `undefined`  | The secret API key for your application. Required for backend token exchange (`exchangeCode`) and revocation. |
 
 ## Scopes
 
