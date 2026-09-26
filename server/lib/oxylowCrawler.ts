@@ -481,6 +481,148 @@ export async function parseSitemap(sitemapUrl: string, domain: string, crawlDela
   return discoveredUrls;
 }
 
+const HTML_ENTITY_MAP: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&#039;": "'",
+  "&apos;": "'",
+  "&nbsp;": " ",
+  "&mdash;": "—",
+  "&ndash;": "–",
+  "&hellip;": "…",
+  "&copy;": "©",
+  "&reg;": "®",
+  "&trade;": "™",
+  "&lsquo;": "‘",
+  "&rsquo;": "’",
+  "&ldquo;": "“",
+  "&rdquo;": "”",
+  "&bull;": "•",
+  "&prime;": "′",
+  "&Prime;": "″",
+  "&euro;": "€",
+  "&pound;": "£",
+  "&yen;": "¥",
+  "&cent;": "¢",
+  "&sect;": "§",
+  "&deg;": "°",
+  "&plusmn;": "±",
+  "&times;": "×",
+  "&divide;": "÷",
+};
+
+/**
+ * Decodes all named and numerical HTML entities into clean Unicode characters.
+ */
+export function decodeHtmlEntities(str: string): string {
+  if (!str) return "";
+  let decoded = str;
+  for (const [entity, replacement] of Object.entries(HTML_ENTITY_MAP)) {
+    decoded = decoded.replaceAll(entity, replacement);
+  }
+  decoded = decoded.replace(/&#(\d+);/g, (_, dec) => {
+    try {
+      const code = parseInt(dec, 10);
+      return code ? String.fromCodePoint(code) : "";
+    } catch {
+      return _;
+    }
+  });
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    try {
+      const code = parseInt(hex, 16);
+      return code ? String.fromCodePoint(code) : "";
+    } catch {
+      return _;
+    }
+  });
+  return decoded;
+}
+
+export interface ReaderArticle {
+  title: string;
+  description: string;
+  headings: string[];
+  content: string;
+  paragraphs: string[];
+  readingTimeMinutes: number;
+  favicon?: string;
+}
+
+/**
+ * Extracts structured article content, cleaning out navigation, header, and footer boilerplate.
+ */
+export function extractReaderArticle(html: string, currentUrl: string): ReaderArticle {
+  const pageData = extractPageData(html, currentUrl);
+  const safeHtml = html.length > 2 * 1024 * 1024 ? html.slice(0, 2 * 1024 * 1024) : html;
+
+  let cleaned = safeHtml
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, "")
+    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, "")
+    .replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, "")
+    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, "")
+    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside>/gi, "")
+    .replace(/<menu\b[^>]*>[\s\S]*?<\/menu>/gi, "")
+    .replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, "")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "");
+
+  const articleMatch =
+    cleaned.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i) ||
+    cleaned.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i) ||
+    cleaned.match(/<div\b[^>]*role=["']main["'][^>]*>([\s\S]*?)<\/div>/i);
+  if (articleMatch && articleMatch[1].length > 200) {
+    cleaned = articleMatch[1];
+  }
+
+  const paragraphs: string[] = [];
+  const paragraphRegex = /<(?:p|h[1-6]|blockquote|li)\b[^>]*>([\s\S]*?)<\/(?:p|h[1-6]|blockquote|li)>/gi;
+  let pMatch: RegExpExecArray | null;
+  while ((pMatch = paragraphRegex.exec(cleaned)) !== null) {
+    const rawBlock = pMatch[1]
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .trim();
+    const text = decodeHtmlEntities(rawBlock);
+    if (text.length > 20 && !paragraphs.includes(text)) {
+      paragraphs.push(text);
+    }
+  }
+
+  if (paragraphs.length === 0) {
+    const fallbackText = decodeHtmlEntities(
+      cleaned
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/(?:p|div|section|article|h[1-6])>/gi, "\n\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n\s*\n/g, "\n\n")
+        .trim()
+    );
+    const splitBlocks = fallbackText.split(/\n\n+/).map((b) => b.trim()).filter((b) => b.length > 20);
+    paragraphs.push(...splitBlocks);
+  }
+
+  const fullContent = paragraphs.join("\n\n");
+  const wordCount = fullContent.split(/\s+/).filter(Boolean).length;
+  const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+
+  return {
+    title: pageData.title,
+    description: pageData.description,
+    headings: pageData.headings,
+    content: fullContent || pageData.bodyPreview,
+    paragraphs: paragraphs.length > 0 ? paragraphs : [pageData.bodyPreview],
+    readingTimeMinutes,
+    favicon: pageData.favicon,
+  };
+}
+
 /**
  * Extracts metadata, clean text content, headings, and internal links from HTML string.
  */
@@ -499,7 +641,7 @@ export function extractPageData(
   let title = "";
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (titleMatch) {
-    title = titleMatch[1].trim();
+    title = decodeHtmlEntities(titleMatch[1].trim());
   }
 
   let description = "";
@@ -508,7 +650,7 @@ export function extractPageData(
     html.match(/<meta\s+content=["']([^"']+)["']\s+name=["']description["']/i) ||
     html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i);
   if (metaDescMatch) {
-    description = metaDescMatch[1].trim();
+    description = decodeHtmlEntities(metaDescMatch[1].trim());
   }
 
   let favicon: string | undefined;
@@ -535,7 +677,7 @@ export function extractPageData(
   const headingRegex = /<h[1-3][^>]*>(.*?)<\/h[1-3]>/gi;
   let hMatch: RegExpExecArray | null;
   while ((hMatch = headingRegex.exec(html)) !== null && headings.length < 10) {
-    const cleanHeading = hMatch[1].replace(/<[^>]+>/g, "").trim();
+    const cleanHeading = decodeHtmlEntities(hMatch[1].replace(/<[^>]+>/g, "").trim());
     if (cleanHeading && !headings.includes(cleanHeading)) {
       headings.push(cleanHeading);
     }
@@ -548,21 +690,25 @@ export function extractPageData(
     keywords.push(
       ...keywordsMatch[1]
         .split(",")
-        .map((k) => k.trim().toLowerCase())
+        .map((k) => decodeHtmlEntities(k.trim().toLowerCase()))
         .filter(Boolean)
     );
   }
 
-  // Clean body text preview with linear-time safe regexes
+  // Clean body text preview with linear-time safe regexes and tag whitespace separation
   const safeHtml = html.length > 2 * 1024 * 1024 ? html.slice(0, 2 * 1024 * 1024) : html;
-  const cleanBody = safeHtml
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, " ")
-    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const cleanBody = decodeHtmlEntities(
+    safeHtml
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, " ")
+      .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, " ")
+      .replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, " ")
+      .replace(/<\/(?:p|div|section|article|h[1-6]|li)>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 
   const bodyPreview = cleanBody.slice(0, 300);
   if (!description && bodyPreview) {
@@ -1192,8 +1338,38 @@ export function attachQueuePositions<T extends WebmasterSite>(sites: T[]): T[] {
 }
 
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function countWordOccurrences(text: string, word: string): number {
+  if (!text || !word) return 0;
+  const regex = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
+  const matches = text.match(regex);
+  return matches ? matches.length : 0;
+}
+
+function getWordStems(word: string): string[] {
+  const clean = word.toLowerCase().trim();
+  const stems = [clean];
+  if (clean.endsWith("ies") && clean.length > 4) {
+    stems.push(clean.slice(0, -3) + "y");
+  } else if (clean.endsWith("es") && clean.length > 3) {
+    stems.push(clean.slice(0, -2));
+    stems.push(clean.slice(0, -1));
+  } else if (clean.endsWith("s") && clean.length > 2) {
+    stems.push(clean.slice(0, -1));
+  } else if (clean.endsWith("ing") && clean.length > 4) {
+    stems.push(clean.slice(0, -3));
+  } else if (clean.endsWith("ed") && clean.length > 3) {
+    stems.push(clean.slice(0, -2));
+    stems.push(clean.slice(0, -1));
+  }
+  return Array.from(new Set(stems));
+}
+
 /**
- * Searches the oxylow search index.
+ * Searches the oxylow search index with high accuracy relevance scoring.
  */
 export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { results: SearchResult[]; total: number } {
   const index = getIndex();
@@ -1216,9 +1392,9 @@ export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { res
     const rawResults: SearchResult[] = index.map((item) => ({
       url: item.url,
       domain: item.domain,
-      title: item.title,
-      description: item.description,
-      bodyPreview: item.bodyPreview,
+      title: decodeHtmlEntities(item.title),
+      description: decodeHtmlEntities(item.description),
+      bodyPreview: decodeHtmlEntities(item.bodyPreview),
       favicon: item.favicon,
       score: 1,
       indexedAt: item.indexedAt,
@@ -1240,27 +1416,98 @@ export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { res
       const lowerBody = (item.bodyPreview || "").toLowerCase();
       const lowerHeadings = (item.headings || []).join(" ").toLowerCase();
       const lowerKeywords = (item.keywords || []).join(" ").toLowerCase();
+      const lowerUrl = (item.url || "").toLowerCase();
 
-      // Exact full match
-      if (lowerTitle.includes(trimmed)) score += 50;
-      if (lowerDomain.includes(trimmed)) score += 30;
-      if (lowerDesc.includes(trimmed)) score += 20;
+      // Full phrase matching
+      if (lowerTitle === trimmed) {
+        score += 350;
+      } else if (lowerTitle.startsWith(trimmed)) {
+        score += 200;
+      } else if (countWordOccurrences(lowerTitle, trimmed) > 0 || lowerTitle.includes(trimmed)) {
+        score += 150;
+      }
+
+      if (lowerDomain === trimmed || lowerDomain.startsWith(trimmed + ".")) {
+        score += 140;
+      } else if (lowerDomain.includes(trimmed)) {
+        score += 60;
+      }
+
+      if (lowerUrl.includes(trimmed)) {
+        score += 40;
+      }
+
+      if (countWordOccurrences(lowerDesc, trimmed) > 0 || lowerDesc.includes(trimmed)) {
+        score += 50;
+      }
+
+      // Per-term whole-word and stem relevance scoring
+      let matchedTermsCount = 0;
 
       for (const term of queryTerms) {
-        if (lowerTitle.includes(term)) score += 15;
-        if (lowerDomain.includes(term)) score += 10;
-        if (lowerHeadings.includes(term)) score += 8;
-        if (lowerKeywords.includes(term)) score += 6;
-        if (lowerDesc.includes(term)) score += 5;
-        if (lowerBody.includes(term)) score += 2;
+        const stems = getWordStems(term);
+        let termFoundOnPage = false;
+
+        let titleMatches = 0;
+        let headingMatches = 0;
+        let keywordMatches = 0;
+        let descMatches = 0;
+        let bodyMatches = 0;
+
+        for (const stem of stems) {
+          titleMatches += countWordOccurrences(lowerTitle, stem);
+          headingMatches += countWordOccurrences(lowerHeadings, stem);
+          keywordMatches += countWordOccurrences(lowerKeywords, stem);
+          descMatches += countWordOccurrences(lowerDesc, stem);
+          bodyMatches += countWordOccurrences(lowerBody, stem);
+        }
+
+        if (titleMatches > 0) {
+          score += Math.min(titleMatches, 3) * 60;
+          termFoundOnPage = true;
+        }
+
+        if (lowerDomain.includes(term)) {
+          score += 40;
+          termFoundOnPage = true;
+        }
+
+        if (headingMatches > 0) {
+          score += Math.min(headingMatches, 3) * 30;
+          termFoundOnPage = true;
+        }
+
+        if (keywordMatches > 0) {
+          score += Math.min(keywordMatches, 3) * 35;
+          termFoundOnPage = true;
+        }
+
+        if (descMatches > 0) {
+          score += Math.min(descMatches, 3) * 20;
+          termFoundOnPage = true;
+        }
+
+        if (bodyMatches > 0) {
+          score += Math.min(bodyMatches, 5) * 4;
+          termFoundOnPage = true;
+        }
+
+        if (termFoundOnPage) {
+          matchedTermsCount++;
+        }
+      }
+
+      // Multi-term coverage bonus
+      if (queryTerms.length > 1 && matchedTermsCount === queryTerms.length) {
+        score += 100;
       }
 
       return {
         url: item.url,
         domain: item.domain,
-        title: item.title,
-        description: item.description,
-        bodyPreview: item.bodyPreview,
+        title: decodeHtmlEntities(item.title),
+        description: decodeHtmlEntities(item.description),
+        bodyPreview: decodeHtmlEntities(item.bodyPreview),
         favicon: item.favicon,
         score,
         indexedAt: item.indexedAt,
@@ -1269,7 +1516,7 @@ export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { res
     .filter((res) => res.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  // Filter so domains can only appear once in search results, retaining the highest-scoring page for each domain
+  // Filter so domains can only appear once in search results, retaining highest-scoring page for each domain
   const uniqueScored = deduplicateByDomain(scored);
 
   const total = uniqueScored.length;
@@ -1280,14 +1527,14 @@ export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { res
 }
 
 /**
- * Autocomplete suggestions for Omnibox.
+ * Autocomplete suggestions for Omnibox with prefix and relevance prioritization.
  */
 export function getOxylowSuggestions(query: string, limit = 6): { title: string; url: string }[] {
   const index = getIndex();
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return [];
 
-  const matched: { title: string; url: string }[] = [];
+  const matched: { title: string; url: string; score: number }[] = [];
   const seenDomains = new Set<string>();
 
   for (const item of index) {
@@ -1295,21 +1542,27 @@ export function getOxylowSuggestions(query: string, limit = 6): { title: string;
     const lowerUrl = (item.url || "").toLowerCase();
     const lowerDomain = (item.domain || "").toLowerCase();
 
-    if (
-      lowerTitle.includes(trimmed) ||
-      lowerUrl.includes(trimmed) ||
-      lowerDomain.includes(trimmed)
-    ) {
+    let score = 0;
+    if (lowerTitle.startsWith(trimmed)) score += 100;
+    else if (lowerTitle.includes(trimmed)) score += 50;
+
+    if (lowerDomain.startsWith(trimmed)) score += 80;
+    else if (lowerDomain.includes(trimmed)) score += 40;
+
+    if (lowerUrl.includes(trimmed)) score += 20;
+
+    if (score > 0) {
       if (lowerDomain && !seenDomains.has(lowerDomain)) {
         seenDomains.add(lowerDomain);
         matched.push({
-          title: item.title,
+          title: decodeHtmlEntities(item.title),
           url: item.url,
+          score,
         });
-        if (matched.length >= limit) break;
       }
     }
   }
 
-  return matched;
+  matched.sort((a, b) => b.score - a.score);
+  return matched.slice(0, limit).map(({ title, url }) => ({ title, url }));
 }

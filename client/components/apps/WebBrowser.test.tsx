@@ -5,7 +5,28 @@ import { WebBrowserApp } from "./WebBrowser";
 
 vi.mock("@/contexts/LanguageContext", () => ({
   useTranslation: () => ({
-    t: (key: string, defaultVal?: string) => defaultVal || key,
+    t: (key: string, defaultVal?: string) => {
+      const translations: Record<string, string> = {
+        "browserApp.newTab": "New Tab",
+        "browserApp.back": "Back",
+        "browserApp.forward": "Forward",
+        "browserApp.reload": "Reload",
+        "browserApp.home": "Home",
+        "browserApp.searchPlaceholder": "Search or enter URL...",
+        "browserApp.homeSearchPlaceholder": "Search websites or enter URL (e.g. oxygenlow.com)...",
+        "browserApp.search": "Search",
+        "browserApp.readerMode": "Reader Mode",
+        "browserApp.liveMode": "Live Web View",
+        "browserApp.bookmarks": "Bookmarks",
+        "browserApp.history": "History",
+        "browserApp.closeTab": "Close Tab",
+        "browserApp.quickAccess": "Quick Access",
+        "browserApp.savedBookmarks": "Saved Bookmarks",
+        "browserApp.browsingHistory": "Browsing History",
+        "browserApp.clearHistory": "Clear History",
+      };
+      return translations[key] || defaultVal || key;
+    },
   }),
 }));
 
@@ -60,5 +81,32 @@ describe("WebBrowserApp", () => {
 
     const tabs = screen.getAllByText("New Tab");
     expect(tabs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("configures iframe with hardened sandbox (no allow-same-origin)", () => {
+    render(<WebBrowserApp />);
+    const input = screen.getByPlaceholderText("Search or enter URL...");
+    fireEvent.change(input, { target: { value: "https://example.com" } });
+    fireEvent.submit(input.closest("form")!);
+
+    const iframe = document.querySelector("iframe");
+    expect(iframe).toBeDefined();
+    if (iframe) {
+      const sandbox = iframe.getAttribute("sandbox") || "";
+      expect(sandbox).toContain("allow-scripts");
+      expect(sandbox).toContain("allow-forms");
+      expect(sandbox).not.toContain("allow-same-origin");
+    }
+  });
+
+  it("allows opening bookmarks and history dialogs", () => {
+    render(<WebBrowserApp />);
+    const bookmarksBtn = screen.getByTitle("Bookmarks");
+    fireEvent.click(bookmarksBtn);
+    expect(screen.getByText("Saved Bookmarks")).toBeDefined();
+
+    const historyBtn = screen.getByTitle("History");
+    fireEvent.click(historyBtn);
+    expect(screen.getByText("Browsing History")).toBeDefined();
   });
 });

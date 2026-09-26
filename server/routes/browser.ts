@@ -1,9 +1,16 @@
 import { Hono } from "hono";
-import { validateCrawlUrl, searchOxylowIndex, getOxylowSuggestions, extractPageData } from "../lib/oxylowCrawler.ts";
+import {
+  validateCrawlUrl,
+  searchOxylowIndex,
+  getOxylowSuggestions,
+  extractPageData,
+  extractReaderArticle,
+  decodeHtmlEntities,
+} from "../lib/oxylowCrawler.ts";
 
 export const browserRouter = new Hono();
 
-// Search endpoint querying the oxylow index
+// Search endpoint querying the oxylow index with relevance scoring
 browserRouter.get("/search", (c) => {
   const query = c.req.query("q") || "";
   const page = parseInt(c.req.query("page") || "1", 10);
@@ -20,7 +27,7 @@ browserRouter.get("/suggestions", (c) => {
   return c.json({ suggestions });
 });
 
-// Reader mode extraction
+// Reader mode extraction with full structured article parsing
 browserRouter.get("/reader", async (c) => {
   const rawUrl = c.req.query("url");
   if (!rawUrl) {
@@ -46,7 +53,7 @@ browserRouter.get("/reader", async (c) => {
     }
 
     const html = await res.text();
-    const extracted = extractPageData(html, validated.href);
+    const extracted = extractReaderArticle(html, validated.href);
 
     return c.json({
       url: validated.href,
@@ -54,7 +61,9 @@ browserRouter.get("/reader", async (c) => {
       title: extracted.title,
       description: extracted.description,
       headings: extracted.headings,
-      content: extracted.bodyPreview,
+      content: extracted.content,
+      paragraphs: extracted.paragraphs,
+      readingTimeMinutes: extracted.readingTimeMinutes,
       favicon: extracted.favicon,
     });
   } catch (err: any) {
@@ -62,7 +71,65 @@ browserRouter.get("/reader", async (c) => {
   }
 });
 
-// Proxy endpoint to load external pages within the Web Browser tabs
+function rewriteHtmlUrls(html: string, baseUrlStr: string): string {
+  let baseUrl: URL;
+  try {
+    baseUrl = new URL(baseUrlStr);
+  } catch {
+    return html;
+  }
+
+  const resolveAttrUrl = (val: string): string => {
+    const trimmed = val.trim();
+    if (
+      !trimmed ||
+      trimmed.startsWith("javascript:") ||
+      trimmed.startsWith("mailto:") ||
+      trimmed.startsWith("tel:") ||
+      trimmed.startsWith("data:") ||
+      trimmed.startsWith("blob:") ||
+      trimmed.startsWith("#")
+    ) {
+      return val;
+    }
+    try {
+      return new URL(trimmed, baseUrl).href;
+    } catch {
+      return val;
+    }
+  };
+
+  // Rewrite href, src, action, poster attributes
+  let processed = html.replace(
+    /\b(href|src|action|poster)\s*=\s*(["'])(.*?)\2/gi,
+    (match, attr, quote, url) => {
+      const resolved = resolveAttrUrl(url);
+      return `${attr}=${quote}${resolved}${quote}`;
+    }
+  );
+
+  // Rewrite srcset="image.jpg 1x, image2.jpg 2x"
+  processed = processed.replace(
+    /\bsrcset\s*=\s*(["'])(.*?)\1/gi,
+    (match, quote, srcsetValue) => {
+      const parts = srcsetValue.split(",").map((part: string) => {
+        const trimmed = part.trim();
+        const spaceIdx = trimmed.indexOf(" ");
+        if (spaceIdx === -1) {
+          return resolveAttrUrl(trimmed);
+        }
+        const url = trimmed.slice(0, spaceIdx);
+        const descriptor = trimmed.slice(spaceIdx);
+        return `${resolveAttrUrl(url)}${descriptor}`;
+      });
+      return `srcset=${quote}${parts.join(", ")}${quote}`;
+    }
+  );
+
+  return processed;
+}
+
+// Proxy endpoint to load external pages with high rendering fidelity within Web Browser tabs
 browserRouter.get("/proxy", async (c) => {
   const rawUrl = c.req.query("url");
   if (!rawUrl) {
@@ -87,47 +154,93 @@ browserRouter.get("/proxy", async (c) => {
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
 
-    const contentType = res.headers.get("content-type") || "text/html";
+    const originalContentType = res.headers.get("content-type") || "text/html";
 
-    // If it is an HTML document, rewrite base and inject navigation listener
-    if (contentType.includes("text/html") || contentType.includes("application/xhtml+xml")) {
+    // If it is an HTML document, rewrite URLs, inject base href and navigation listener
+    if (originalContentType.includes("text/html") || originalContentType.includes("application/xhtml+xml")) {
       let html = await res.text();
 
-      // Ensure <base href="..."> is set so relative styles, images, and links resolve
+      // Ensure <base href="..."> is set and relative URLs are rewritten
       const baseTag = `<base href="${validated.href}">`;
       const injectionScript = `
         <script>
-          // Inform parent browser frame about link navigation
-          document.addEventListener('click', function(e) {
-            const anchor = e.target.closest('a');
-            if (anchor && anchor.href && !anchor.href.startsWith('javascript:')) {
-              e.preventDefault();
-              window.parent.postMessage({ type: 'OXYLOW_BROWSER_NAVIGATE', url: anchor.href }, '*');
+          (function() {
+            function resolveTarget(rawHref) {
+              try {
+                return new URL(rawHref, document.baseURI || window.location.href).href;
+              } catch (e) {
+                return rawHref;
+              }
             }
-          }, true);
+
+            document.addEventListener('click', function(e) {
+              const anchor = e.target.closest('a');
+              if (anchor) {
+                const href = anchor.getAttribute('href') || anchor.href;
+                if (href && !href.startsWith('javascript:') && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+                  e.preventDefault();
+                  const targetUrl = resolveTarget(href);
+                  window.parent.postMessage({ type: 'OXYLOW_BROWSER_NAVIGATE', url: targetUrl }, '*');
+                }
+              }
+            }, true);
+
+            document.addEventListener('submit', function(e) {
+              const form = e.target;
+              if (form) {
+                const action = form.getAttribute('action') || form.action || '';
+                const method = (form.method || 'GET').toUpperCase();
+                if (method === 'GET' && !action.startsWith('javascript:')) {
+                  e.preventDefault();
+                  const formData = new FormData(form);
+                  const params = new URLSearchParams();
+                  for (const [k, v] of formData.entries()) {
+                    if (typeof v === 'string') params.append(k, v);
+                  }
+                  const baseTarget = resolveTarget(action || window.location.href);
+                  const targetUrl = baseTarget + (baseTarget.includes('?') ? '&' : '?') + params.toString();
+                  window.parent.postMessage({ type: 'OXYLOW_BROWSER_NAVIGATE', url: targetUrl }, '*');
+                }
+              }
+            }, true);
+          })();
         </script>
       `;
 
-      // Strip any third-party meta framing and CSP tags that might break iframe rendering
+      // Rewrite relative URLs to absolute URLs
+      html = rewriteHtmlUrls(html, validated.href);
+
+      // Strip any third-party meta framing, CSP, and legacy charset tags that might break rendering
       html = html.replace(/<meta\s+[^>]*http-equiv=["']?(?:content-security-policy|x-frame-options)["']?[^>]*>/gi, "");
+      html = html.replace(/<meta\s+[^>]*http-equiv=["']?refresh["'][^>]*>/gi, "");
 
       if (/<head[^>]*>/i.test(html)) {
-        html = html.replace(/<head[^>]*>/i, (match) => `${match}\n${baseTag}\n${injectionScript}`);
+        html = html.replace(/<head[^>]*>/i, (match) => `${match}\n<meta charset="utf-8">\n${baseTag}\n${injectionScript}`);
       } else {
-        html = `${baseTag}\n${injectionScript}\n${html}`;
+        html = `<meta charset="utf-8">\n${baseTag}\n${injectionScript}\n${html}`;
       }
 
-      // Return sanitized HTML with stripped framing restriction headers
+      // Return sanitized HTML with permissive proxy CSP so external stylesheets/images/fonts render accurately
+      c.header(
+        "Content-Security-Policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; base-uri *; frame-src *; object-src 'none';"
+      );
+      c.header("X-Frame-Options", "SAMEORIGIN");
+
       return c.html(html, 200, {
-        "Content-Type": contentType,
+        "Content-Type": "text/html; charset=utf-8",
         "X-Frame-Options": "SAMEORIGIN",
       });
     }
 
     // For non-HTML binary / media / css / js resources
     const arrayBuffer = await res.arrayBuffer();
+    c.header(
+      "Content-Security-Policy",
+      "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; base-uri *; frame-src *;"
+    );
     return c.body(arrayBuffer, 200, {
-      "Content-Type": contentType,
+      "Content-Type": originalContentType,
     });
   } catch (err: any) {
     const errorHtml = `
@@ -153,6 +266,10 @@ browserRouter.get("/proxy", async (c) => {
         </body>
       </html>
     `;
+    c.header(
+      "Content-Security-Policy",
+      "default-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    );
     return c.html(errorHtml, 502);
   }
 });

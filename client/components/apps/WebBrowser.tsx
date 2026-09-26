@@ -13,20 +13,11 @@ import {
   History,
   ExternalLink,
   BookOpen,
-  Sparkles,
-  ShieldCheck,
   Clock,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +41,9 @@ interface Tab {
     description: string;
     headings: string[];
     content: string;
+    paragraphs: string[];
+    readingTimeMinutes: number;
+    favicon?: string;
   };
 }
 
@@ -96,6 +90,7 @@ export function WebBrowserApp() {
   const [inputUrl, setInputUrl] = useState<string>("");
   const [suggestions, setSuggestions] = useState<{ title: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
@@ -135,7 +130,7 @@ export function WebBrowserApp() {
   });
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const omniboxInputRef = useRef<HTMLInputElement>(null);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
@@ -164,7 +159,7 @@ export function WebBrowserApp() {
     } catch {}
   }, [historyList]);
 
-  // Listen to navigation events from proxied iframe
+  // Listen to navigation events from proxied iframe (works cleanly across sandboxed origins)
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === "OXYLOW_BROWSER_NAVIGATE" && e.data.url) {
@@ -178,6 +173,7 @@ export function WebBrowserApp() {
   // Fetch search suggestions while typing in omnibox
   useEffect(() => {
     const query = inputUrl.trim();
+    setSelectedSuggestionIndex(-1);
     if (!query || query.startsWith("http://") || query.startsWith("https://")) {
       setSuggestions([]);
       return;
@@ -191,7 +187,7 @@ export function WebBrowserApp() {
           setSuggestions(data.suggestions || []);
         }
       } catch {}
-    }, 200);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [inputUrl]);
@@ -206,7 +202,7 @@ export function WebBrowserApp() {
     const newId = `tab-${Date.now()}`;
     const newTab: Tab = {
       id: newId,
-      title: initialUrl ? "Loading..." : "New Tab",
+      title: initialUrl ? (t("browserApp.newTab") || "New Tab") : (t("browserApp.newTab") || "New Tab"),
       url: initialUrl,
       history: initialUrl ? [initialUrl] : [""],
       historyIndex: 0,
@@ -220,14 +216,14 @@ export function WebBrowserApp() {
     }
   };
 
-  const closeTab = (idToClose: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const closeTab = (idToClose: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (tabs.length === 1) {
       // Reset single tab to home
       setTabs([
         {
           id: `tab-${Date.now()}`,
-          title: "New Tab",
+          title: t("browserApp.newTab") || "New Tab",
           url: "",
           history: [""],
           historyIndex: 0,
@@ -258,6 +254,7 @@ export function WebBrowserApp() {
 
   const navigateTo = (targetUrl: string) => {
     setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
     let finalUrl = targetUrl.trim();
     if (!finalUrl) return;
 
@@ -303,12 +300,13 @@ export function WebBrowserApp() {
 
   const performSearch = async (query: string) => {
     setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
     if (!query.trim()) return;
 
     setIsSearching(true);
     updateActiveTab((tab) => ({
       ...tab,
-      title: `Search: ${query}`,
+      title: `${t("browserApp.search") || "Search"}: ${query}`,
       searchQuery: query,
       mode: "search",
       isLoading: true,
@@ -323,7 +321,7 @@ export function WebBrowserApp() {
         setSearchResults([]);
       }
     } catch {
-      toast.error("Failed to fetch search results");
+      toast.error(t("browserApp.failedSearch") || "Failed to fetch search results");
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -351,11 +349,11 @@ export function WebBrowserApp() {
           readerData: data,
         }));
       } else {
-        toast.error("Unable to extract reader view for this page");
+        toast.error(t("browserApp.failedReader") || "Unable to extract reader view for this page");
         updateActiveTab((tab) => ({ ...tab, isLoading: false }));
       }
     } catch {
-      toast.error("Error loading reader mode");
+      toast.error(t("browserApp.failedReader") || "Error loading reader mode");
       updateActiveTab((tab) => ({ ...tab, isLoading: false }));
     }
   };
@@ -369,7 +367,7 @@ export function WebBrowserApp() {
         historyIndex: newIndex,
         url: targetUrl,
         mode: targetUrl ? "browser" : "home",
-        title: targetUrl ? targetUrl : "New Tab",
+        title: targetUrl ? targetUrl : (t("browserApp.newTab") || "New Tab"),
       }));
     }
   };
@@ -383,7 +381,7 @@ export function WebBrowserApp() {
         historyIndex: newIndex,
         url: targetUrl,
         mode: targetUrl ? "browser" : "home",
-        title: targetUrl ? targetUrl : "New Tab",
+        title: targetUrl ? targetUrl : (t("browserApp.newTab") || "New Tab"),
       }));
     }
   };
@@ -400,7 +398,7 @@ export function WebBrowserApp() {
     updateActiveTab((tab) => ({
       ...tab,
       url: "",
-      title: "New Tab",
+      title: t("browserApp.newTab") || "New Tab",
       mode: "home",
       isLoading: false,
     }));
@@ -412,13 +410,35 @@ export function WebBrowserApp() {
     if (!activeTab.url) return;
     if (isCurrentBookmarked) {
       setBookmarks((prev) => prev.filter((b) => b.url !== activeTab.url));
-      toast.info("Removed from bookmarks");
+      toast.info(t("browserApp.removedFromBookmarks") || "Removed from bookmarks");
     } else {
       setBookmarks((prev) => [
         ...prev,
         { title: activeTab.title || activeTab.url, url: activeTab.url },
       ]);
-      toast.success("Added to bookmarks");
+      toast.success(t("browserApp.addedToBookmarks") || "Added to bookmarks");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1
+      );
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+    } else if (e.key === "Enter" && selectedSuggestionIndex >= 0) {
+      e.preventDefault();
+      navigateTo(suggestions[selectedSuggestionIndex].url);
     }
   };
 
@@ -439,8 +459,11 @@ export function WebBrowserApp() {
               }`}
             >
               <Globe className="w-3.5 h-3.5 shrink-0 text-cyan-500" />
-              <span className="truncate flex-1">{tab.title || "New Tab"}</span>
+              <span className="truncate flex-1">{tab.title || t("browserApp.newTab") || "New Tab"}</span>
               <button
+                type="button"
+                aria-label={t("browserApp.closeTab") || "Close Tab"}
+                title={t("browserApp.closeTab") || "Close Tab"}
                 onClick={(e) => closeTab(tab.id, e)}
                 className="opacity-0 group-hover:opacity-100 hover:bg-background/80 rounded p-0.5 transition-opacity"
               >
@@ -454,7 +477,8 @@ export function WebBrowserApp() {
           variant="ghost"
           onClick={() => addTab()}
           className="h-7 w-7 p-0 rounded-full hover:bg-background/80 shrink-0 ml-1"
-          title="New Tab"
+          aria-label={t("browserApp.newTab") || "New Tab"}
+          title={t("browserApp.newTab") || "New Tab"}
         >
           <Plus className="w-3.5 h-3.5" />
         </Button>
@@ -469,7 +493,8 @@ export function WebBrowserApp() {
             onClick={goBack}
             disabled={activeTab.historyIndex <= 0}
             className="h-8 w-8 p-0"
-            title="Back"
+            aria-label={t("browserApp.back") || "Back"}
+            title={t("browserApp.back") || "Back"}
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -479,7 +504,8 @@ export function WebBrowserApp() {
             onClick={goForward}
             disabled={activeTab.historyIndex >= activeTab.history.length - 1}
             className="h-8 w-8 p-0"
-            title="Forward"
+            aria-label={t("browserApp.forward") || "Forward"}
+            title={t("browserApp.forward") || "Forward"}
           >
             <ArrowRight className="w-4 h-4" />
           </Button>
@@ -488,7 +514,8 @@ export function WebBrowserApp() {
             variant="ghost"
             onClick={refreshTab}
             className="h-8 w-8 p-0"
-            title="Reload"
+            aria-label={t("browserApp.reload") || "Reload"}
+            title={t("browserApp.reload") || "Reload"}
           >
             <RotateCw className={`w-4 h-4 ${activeTab.isLoading ? "animate-spin" : ""}`} />
           </Button>
@@ -497,7 +524,8 @@ export function WebBrowserApp() {
             variant="ghost"
             onClick={goHome}
             className="h-8 w-8 p-0"
-            title="Home"
+            aria-label={t("browserApp.home") || "Home"}
+            title={t("browserApp.home") || "Home"}
           >
             <Home className="w-4 h-4" />
           </Button>
@@ -508,19 +536,25 @@ export function WebBrowserApp() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              navigateTo(inputUrl);
+              if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+                navigateTo(suggestions[selectedSuggestionIndex].url);
+              } else {
+                navigateTo(inputUrl);
+              }
             }}
             className="relative flex items-center"
           >
             <Search className="absolute left-3 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
+              ref={omniboxInputRef}
               value={inputUrl}
               onChange={(e) => {
                 setInputUrl(e.target.value);
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="Search or enter URL..."
+              onKeyDown={handleKeyDown}
+              placeholder={t("browserApp.searchPlaceholder") || "Search or enter URL..."}
               className="pl-9 pr-8 h-9 text-sm bg-muted/40 hover:bg-muted/70 focus:bg-background transition-colors w-full rounded-full"
             />
             {activeTab.url && (
@@ -528,7 +562,8 @@ export function WebBrowserApp() {
                 type="button"
                 onClick={toggleBookmark}
                 className="absolute right-3 text-muted-foreground hover:text-cyan-500 transition-colors"
-                title={isCurrentBookmarked ? "Bookmarked" : "Bookmark this page"}
+                aria-label={isCurrentBookmarked ? (t("browserApp.bookmarked") || "Bookmarked") : (t("browserApp.bookmarkThisPage") || "Bookmark this page")}
+                title={isCurrentBookmarked ? (t("browserApp.bookmarked") || "Bookmarked") : (t("browserApp.bookmarkThisPage") || "Bookmark this page")}
               >
                 {isCurrentBookmarked ? (
                   <BookmarkCheck className="w-4 h-4 text-cyan-500 fill-cyan-500" />
@@ -543,19 +578,23 @@ export function WebBrowserApp() {
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-xl z-50 overflow-hidden">
               <div className="p-1 text-[11px] font-semibold text-muted-foreground px-3 py-1 bg-muted/30">
-                Search Suggestions
+                {t("browserApp.search") || "Search"}
               </div>
               {suggestions.map((sug, i) => (
                 <div
                   key={i}
                   onMouseDown={() => navigateTo(sug.url)}
-                  className="flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+                  className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer transition-colors ${
+                    i === selectedSuggestionIndex
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-accent/60"
+                  }`}
                 >
                   <div className="flex items-center gap-2 truncate">
                     <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     <span className="truncate font-medium">{sug.title}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground truncate max-w-[200px] ml-2">
+                  <span className="text-xs text-muted-foreground truncate max-w-[200px] ml-2 font-mono">
                     {sug.url}
                   </span>
                 </div>
@@ -572,10 +611,13 @@ export function WebBrowserApp() {
               variant={activeTab.mode === "reader" ? "secondary" : "ghost"}
               onClick={toggleReaderMode}
               className="h-8 px-2.5 text-xs flex items-center gap-1.5"
-              title="Reader Mode"
+              aria-label={activeTab.mode === "reader" ? (t("browserApp.liveMode") || "Live Web View") : (t("browserApp.readerMode") || "Reader Mode")}
+              title={activeTab.mode === "reader" ? (t("browserApp.liveMode") || "Live Web View") : (t("browserApp.readerMode") || "Reader Mode")}
             >
               <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Reader</span>
+              <span className="hidden sm:inline">
+                {activeTab.mode === "reader" ? (t("browserApp.liveMode") || "Live") : (t("browserApp.readerMode") || "Reader")}
+              </span>
             </Button>
           )}
           {activeTab.url && (
@@ -584,7 +626,8 @@ export function WebBrowserApp() {
               variant="ghost"
               onClick={() => window.open(activeTab.url, "_blank")}
               className="h-8 w-8 p-0"
-              title="Open in new window"
+              aria-label={t("browserApp.openNewWindow") || "Open in new window"}
+              title={t("browserApp.openNewWindow") || "Open in new window"}
             >
               <ExternalLink className="w-4 h-4" />
             </Button>
@@ -594,7 +637,8 @@ export function WebBrowserApp() {
             variant="ghost"
             onClick={() => setIsBookmarksOpen(true)}
             className="h-8 w-8 p-0"
-            title="Bookmarks"
+            aria-label={t("browserApp.bookmarks") || "Bookmarks"}
+            title={t("browserApp.bookmarks") || "Bookmarks"}
           >
             <Bookmark className="w-4 h-4" />
           </Button>
@@ -603,7 +647,8 @@ export function WebBrowserApp() {
             variant="ghost"
             onClick={() => setIsHistoryOpen(true)}
             className="h-8 w-8 p-0"
-            title="History"
+            aria-label={t("browserApp.history") || "History"}
+            title={t("browserApp.history") || "History"}
           >
             <History className="w-4 h-4" />
           </Button>
@@ -638,21 +683,21 @@ export function WebBrowserApp() {
                 <Input
                   value={inputUrl}
                   onChange={(e) => setInputUrl(e.target.value)}
-                  placeholder="Search websites or enter URL (e.g. oxygenlow.com)..."
+                  placeholder={t("browserApp.homeSearchPlaceholder") || "Search websites or enter URL (e.g. oxygenlow.com)..."}
                   className="pl-12 pr-28 h-12 text-base rounded-full shadow-md bg-card hover:border-cyan-500 focus:border-cyan-500 transition-all"
                 />
                 <Button
                   type="submit"
                   className="absolute right-2 h-8 px-4 rounded-full text-xs"
                 >
-                  Search
+                  {t("browserApp.search") || "Search"}
                 </Button>
               </form>
 
               {/* Popular Sites Shortcuts */}
               <div className="w-full pt-4">
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Quick Access
+                  {t("browserApp.quickAccess") || "Quick Access"}
                 </div>
                 {bookmarks.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
@@ -675,7 +720,7 @@ export function WebBrowserApp() {
                 ) : (
                   <div className="p-6 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-1">
                     <p className="text-xs text-muted-foreground">
-                      No bookmarks saved yet. Enter any URL in the search bar above, or submit websites to be indexed with the Webmaster app.
+                      {t("browserApp.noBookmarks") || "No bookmarks saved yet. Click the bookmark icon in the address bar to bookmark pages!"}
                     </p>
                   </div>
                 )}
@@ -691,10 +736,13 @@ export function WebBrowserApp() {
               <div>
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <Search className="w-5 h-5 text-cyan-500" />
-                  Search results for "{activeTab.searchQuery}"
+                  {t("browserApp.searchResultsFor") || "Search results for"} "{activeTab.searchQuery}"
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Found {searchResults.length} indexed pages
+                  {(t("browserApp.indexedPagesFound") || "Found {count} indexed pages").replace(
+                    "{count}",
+                    searchResults.length.toString()
+                  )}
                 </p>
               </div>
             </div>
@@ -702,14 +750,29 @@ export function WebBrowserApp() {
             {isSearching ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground space-y-3">
                 <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
-                <p className="text-sm">Searching the index...</p>
+                <p className="text-sm">{t("browserApp.searching") || "Searching the index..."}</p>
               </div>
             ) : searchResults.length === 0 ? (
-              <div className="text-center py-16 space-y-3">
-                <p className="text-muted-foreground">No indexed pages found for this query.</p>
-                <p className="text-xs text-muted-foreground">
-                  Try another keyword or submit new websites via the Webmaster app!
+              <div className="text-center py-12 space-y-4 max-w-md mx-auto">
+                <p className="text-muted-foreground font-medium">
+                  {t("browserApp.noResultsFound") || "No indexed pages found for this query."}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("browserApp.noResultsTip") || "Try another keyword, or enter a direct website address."}
+                </p>
+                {activeTab.searchQuery && (
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigateTo(activeTab.searchQuery!)}
+                      className="text-xs gap-1.5 w-full sm:w-auto"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-cyan-500" />
+                      {t("browserApp.directNavigate") || "Navigate directly to"} "{activeTab.searchQuery}"
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
@@ -736,39 +799,60 @@ export function WebBrowserApp() {
           </div>
         )}
 
-        {/* MODE: READER VIEW */}
+        {/* MODE: STRUCTURED READER VIEW */}
         {activeTab.mode === "reader" && activeTab.readerData && (
           <div className="h-full overflow-y-auto p-6 md:p-12 max-w-3xl mx-auto space-y-6 leading-relaxed">
-            <div className="border-b border-border pb-4">
-              <span className="text-xs font-semibold text-cyan-500 uppercase tracking-wider">
-                Reader Mode
-              </span>
-              <h1 className="text-2xl md:text-3xl font-bold mt-1">
+            <div className="border-b border-border pb-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-cyan-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  {t("browserApp.readerMode") || "Reader Mode"}
+                </span>
+                {activeTab.readerData.readingTimeMinutes > 0 && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
+                    <Clock className="w-3.5 h-3.5" />
+                    {activeTab.readerData.readingTimeMinutes} {t("browserApp.readingTime") || "min read"}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                 {activeTab.readerData.title}
               </h1>
-              <p className="text-sm text-muted-foreground mt-2 font-mono">
+              <p className="text-xs text-muted-foreground font-mono truncate">
                 {activeTab.url}
               </p>
             </div>
+
             {activeTab.readerData.description && (
-              <div className="p-4 rounded-lg bg-muted/40 border-l-4 border-cyan-500 text-sm italic">
+              <div className="p-4 rounded-xl bg-muted/40 border-l-4 border-cyan-500 text-sm italic leading-relaxed">
                 {activeTab.readerData.description}
               </div>
             )}
-            <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-              {activeTab.readerData.content}
+
+            <div className="space-y-4 text-sm md:text-base text-foreground/90 leading-relaxed font-sans">
+              {Array.isArray(activeTab.readerData.paragraphs) && activeTab.readerData.paragraphs.length > 0 ? (
+                activeTab.readerData.paragraphs.map((p, idx) => (
+                  <p key={idx} className="leading-relaxed">
+                    {p}
+                  </p>
+                ))
+              ) : (
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {activeTab.readerData.content}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* MODE: PROXIED BROWSER VIEW */}
+        {/* MODE: PROXIED BROWSER VIEW (Hardened Sandbox: No allow-same-origin for maximum security) */}
         {activeTab.mode === "browser" && (
           <iframe
             ref={iframeRef}
             src={`/api/browser/proxy?url=${encodeURIComponent(activeTab.url)}`}
             title={activeTab.title}
             className="w-full h-full border-none bg-white"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+            sandbox="allow-scripts allow-forms allow-popups allow-modals allow-presentation"
             onLoad={() => {
               updateActiveTab((tab) => ({ ...tab, isLoading: false }));
             }}
@@ -782,13 +866,13 @@ export function WebBrowserApp() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Bookmark className="w-5 h-5 text-cyan-500" />
-              Saved Bookmarks
+              {t("browserApp.savedBookmarks") || "Saved Bookmarks"}
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto space-y-2 mt-2">
             {bookmarks.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-6">
-                No bookmarks saved yet. Click the star icon in the address bar to bookmark pages!
+                {t("browserApp.noBookmarks") || "No bookmarks saved yet."}
               </p>
             ) : (
               bookmarks.map((b, i) => (
@@ -804,11 +888,13 @@ export function WebBrowserApp() {
                     <div className="text-sm font-medium truncate group-hover:text-cyan-500">
                       {b.title}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">{b.url}</div>
+                    <div className="text-xs text-muted-foreground truncate font-mono">{b.url}</div>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
+                    aria-label="Delete bookmark"
+                    title="Delete bookmark"
                     onClick={(e) => {
                       e.stopPropagation();
                       setBookmarks((prev) => prev.filter((item) => item.url !== b.url));
@@ -830,23 +916,26 @@ export function WebBrowserApp() {
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <History className="w-5 h-5 text-cyan-500" />
-              Browsing History
+              {t("browserApp.browsingHistory") || "Browsing History"}
             </DialogTitle>
             {historyList.length > 0 && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setHistoryList([])}
+                onClick={() => {
+                  setHistoryList([]);
+                  toast.info(t("browserApp.historyCleared") || "Browsing history cleared");
+                }}
                 className="h-7 text-xs"
               >
-                Clear History
+                {t("browserApp.clearHistory") || "Clear History"}
               </Button>
             )}
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto space-y-2 mt-2">
             {historyList.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-6">
-                Browsing history is empty.
+                {t("browserApp.noHistory") || "Browsing history is empty."}
               </p>
             ) : (
               historyList.map((h, i) => (
@@ -862,7 +951,7 @@ export function WebBrowserApp() {
                     <div className="text-sm font-medium truncate group-hover:text-cyan-500">
                       {h.title}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">{h.url}</div>
+                    <div className="text-xs text-muted-foreground truncate font-mono">{h.url}</div>
                   </div>
                   <span className="text-[10px] text-muted-foreground shrink-0">
                     {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
