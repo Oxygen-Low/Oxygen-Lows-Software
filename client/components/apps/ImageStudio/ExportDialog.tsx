@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Download,
   Copy,
@@ -6,6 +7,7 @@ import {
   Check,
   Loader2,
   FileImage,
+  Grid2x2,
 } from "lucide-react";
 import {
   Dialog,
@@ -40,6 +42,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   const { t } = useTranslation();
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const navigate = useNavigate();
 
   const [format, setFormat] = useState<ExportFormat>("png");
   const [scale, setScale] = useState<number>(1);
@@ -194,6 +197,22 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
       onOpenChange(false);
     } catch (e: any) {
       toast.error(t("imageStudio.storageSaveError", undefined, "Failed to save file to Storage."));
+      console.error(e);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleOpenInPixelArtStudio = async () => {
+    setIsExporting(true);
+    try {
+      const canvas = await renderExportCanvas();
+      const dataUrl = canvas.toDataURL("image/png");
+      sessionStorage.setItem("pixel_art_import_pending", dataUrl);
+      onOpenChange(false);
+      navigate("/apps/pixel-art-studio");
+    } catch (e: any) {
+      toast.error(t("imageStudio.exportFailed", undefined, "Failed to export image."));
       console.error(e);
     } finally {
       setIsExporting(false);
