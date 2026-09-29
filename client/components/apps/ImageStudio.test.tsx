@@ -62,6 +62,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
   createRadialGradient: vi.fn().mockReturnValue({
     addColorStop: vi.fn(),
   }),
+  measureText: vi.fn().mockReturnValue({ width: 10 }),
 } as any);
 
 describe("ImageStudioApp", () => {
@@ -337,6 +338,154 @@ describe("ImageStudioApp", () => {
       ).toBeDefined();
       expect(screen.getByText("Generate & Insert")).toBeDefined();
     });
+  });
+
+  it("allows adding and configuring Background Light shape layer", async () => {
+    render(
+      <BrowserRouter>
+        <ImageStudioApp />
+      </BrowserRouter>,
+    );
+
+    // Switch to Shapes tab
+    fireEvent.click(screen.getByText("Shapes"));
+    expect(screen.getByText("Background Light")).toBeDefined();
+
+    // Click to add Background Light
+    fireEvent.click(screen.getByText("Background Light"));
+
+    // Check Layers tab
+    fireEvent.click(screen.getByText("Layers"));
+    expect(screen.getByText("Background Light")).toBeDefined();
+  });
+
+  it("supports character color selection and styling in CharacterColorsPopover", async () => {
+    const mockUpdateLayer = vi.fn();
+    const sampleLayer = {
+      id: "text-1",
+      type: "text" as const,
+      name: "Sample Text",
+      text: "HELLO",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 50,
+      rotation: 0,
+      opacity: 1,
+      isLocked: false,
+      isVisible: true,
+      fontFamily: "Inter, sans-serif",
+      fontSize: 24,
+      fontWeight: "normal" as const,
+      fontStyle: "normal" as const,
+      underline: false,
+      color: "#ffffff",
+      textAlign: "center" as const,
+      lineHeight: 1.2,
+      letterSpacing: 0,
+    };
+
+    const { CharacterColorsPopover } = await import("./ImageStudio/InspectorToolbar");
+
+    const { unmount } = render(
+      <CharacterColorsPopover
+        textLayer={sampleLayer}
+        onUpdateLayer={mockUpdateLayer}
+      />,
+    );
+
+    // Open popover
+    const trigger = screen.getByText("Color Characters");
+    fireEvent.click(trigger);
+
+    // Select All
+    const selectAllBtn = screen.getByText("Select All");
+    fireEvent.click(selectAllBtn);
+
+    // Apply rainbow
+    const rainbowBtn = screen.getByText(/Rainbow Effect/i);
+    fireEvent.click(rainbowBtn);
+    expect(mockUpdateLayer).toHaveBeenCalledWith(
+      "text-1",
+      expect.objectContaining({
+        charColors: expect.any(Object),
+      }),
+    );
+
+    // Apply gradient
+    const gradientBtn = screen.getByText("Apply Gradient");
+    fireEvent.click(gradientBtn);
+    expect(mockUpdateLayer).toHaveBeenCalledWith(
+      "text-1",
+      expect.objectContaining({
+        charColors: expect.any(Object),
+      }),
+    );
+
+    unmount();
+  });
+
+  it("correctly draws background-light shape and per-character text onto canvas", async () => {
+    const { drawShape, drawText, parseColorToRgb } = await import("./ImageStudio/canvasUtils");
+
+    expect(parseColorToRgb("#06b6d4")).toEqual({ r: 6, g: 182, b: 212 });
+    expect(parseColorToRgb("rgb(255, 100, 50)")).toEqual({ r: 255, g: 100, b: 50 });
+
+    const ctx = document.createElement("canvas").getContext("2d")!;
+
+    // Test background light shape drawing
+    const bgLightLayer = {
+      id: "light-1",
+      type: "shape" as const,
+      name: "Background Light",
+      shapeType: "background-light" as const,
+      fill: "#38bdf8",
+      fillType: "solid" as const,
+      strokeColor: "transparent",
+      strokeWidth: 0,
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      rotation: 0,
+      opacity: 1,
+      isLocked: false,
+      isVisible: true,
+    };
+
+    expect(() => drawShape(ctx, bgLightLayer)).not.toThrow();
+
+    // Test text with charColors drawing
+    const textLayerWithCharColors = {
+      id: "text-colored",
+      type: "text" as const,
+      name: "Colored Heading",
+      text: "HELLO WORLD",
+      fontFamily: "Inter, sans-serif",
+      fontSize: 32,
+      fontWeight: "bold" as const,
+      fontStyle: "normal" as const,
+      underline: false,
+      color: "#ffffff",
+      charColors: {
+        0: "#ff0000",
+        1: "#00ff00",
+        2: "#0000ff",
+      },
+      textAlign: "center" as const,
+      lineHeight: 1.2,
+      letterSpacing: 2,
+      x: 50,
+      y: 50,
+      width: 300,
+      height: 60,
+      rotation: 0,
+      opacity: 1,
+      isLocked: false,
+      isVisible: true,
+    };
+
+    expect(() => drawText(ctx, textLayerWithCharColors)).not.toThrow();
   });
 });
 

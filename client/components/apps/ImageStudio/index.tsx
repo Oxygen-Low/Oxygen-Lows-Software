@@ -322,7 +322,10 @@ export function ImageStudioApp() {
     let strokeColor = "transparent";
     let strokeWidth = 0;
 
-    if (shapeType === "rounded-rectangle") {
+    if (shapeType === "background-light") {
+      width = 400;
+      height = 400;
+    } else if (shapeType === "rounded-rectangle") {
       width = 320;
       height = 200;
     } else if (shapeType === "line") {
@@ -335,10 +338,15 @@ export function ImageStudioApp() {
       height = 60;
     }
 
+    const layerName =
+      shapeType === "background-light"
+        ? "Background Light"
+        : `${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}`;
+
     const newLayer: ShapeLayer = {
       id: `shape-${Date.now()}`,
       type: "shape",
-      name: `${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}`,
+      name: layerName,
       shapeType,
       x: Math.round((project.width - width) / 2),
       y: Math.round((project.height - height) / 2),

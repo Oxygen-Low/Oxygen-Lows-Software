@@ -8,6 +8,7 @@ import {
   ArrowRight,
   ShieldAlert,
   RectangleHorizontal,
+  SunMedium,
 } from "lucide-react";
 import { ShapeType } from "./types";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -34,6 +35,11 @@ export const ShapesPanel: React.FC<ShapesPanelProps> = ({ onAddShape }) => {
       type: "circle",
       label: t("imageStudio.circle", undefined, "Circle"),
       icon: <Circle className="w-5 h-5" />,
+    },
+    {
+      type: "background-light",
+      label: t("imageStudio.backgroundLight", undefined, "Background Light"),
+      icon: <SunMedium className="w-5 h-5" />,
     },
     {
       type: "triangle",

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   SlidersHorizontal,
   FlipHorizontal,
@@ -25,6 +25,7 @@ import {
   Crop,
   Layers,
   LayoutGrid,
+  SunMedium,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +62,352 @@ import {
   LayerAlignment,
   ImageFilters,
 } from "./types";
+import { parseColorToRgb } from "./canvasUtils";
 import { useTranslation } from "@/contexts/LanguageContext";
+
+function interpolateColors(color1: string, color2: string, steps: number): string[] {
+  if (steps <= 0) return [];
+  if (steps === 1) return [color1];
+  const c1 = parseColorToRgb(color1);
+  const c2 = parseColorToRgb(color2);
+  const results: string[] = [];
+  for (let i = 0; i < steps; i++) {
+    const factor = i / (steps - 1);
+    const r = Math.round(c1.r + (c2.r - c1.r) * factor);
+    const g = Math.round(c1.g + (c2.g - c1.g) * factor);
+    const b = Math.round(c1.b + (c2.b - c1.b) * factor);
+    results.push(`#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`);
+  }
+  return results;
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  l /= 100;
+  const a = (s * Math.min(l, 1 - l)) / 100;
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function generateRainbowColors(steps: number): string[] {
+  if (steps <= 0) return [];
+  const results: string[] = [];
+  for (let i = 0; i < steps; i++) {
+    const hue = Math.round((i / Math.max(1, steps)) * 360);
+    results.push(hslToHex(hue, 90, 55));
+  }
+  return results;
+}
+
+export interface CharacterColorsPopoverProps {
+  textLayer: TextLayer;
+  onUpdateLayer: (id: string, updates: Partial<CanvasLayer>) => void;
+}
+
+export const CharacterColorsPopover: React.FC<CharacterColorsPopoverProps> = ({
+  textLayer,
+  onUpdateLayer,
+}) => {
+  const { t } = useTranslation();
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+  const [currentColor, setCurrentColor] = useState<string>("#38bdf8");
+  const [gradientStart, setGradientStart] = useState<string>("#38bdf8");
+  const [gradientEnd, setGradientEnd] = useState<string>("#ec4899");
+
+  const text = textLayer.text || "";
+  const charColors = textLayer.charColors || {};
+  const hasCustomColors = Object.keys(charColors).length > 0;
+
+  const characters = Array.from(text);
+
+  const toggleSelect = (index: number, e: React.MouseEvent) => {
+    if (e.shiftKey && lastClickedIndex !== null) {
+      const start = Math.min(lastClickedIndex, index);
+      const end = Math.max(lastClickedIndex, index);
+      const range: number[] = [];
+      for (let i = start; i <= end; i++) {
+        range.push(i);
+      }
+      setSelectedIndices(Array.from(new Set([...selectedIndices, ...range])));
+    } else if (e.ctrlKey || e.metaKey) {
+      if (selectedIndices.includes(index)) {
+        setSelectedIndices(selectedIndices.filter((i) => i !== index));
+      } else {
+        setSelectedIndices([...selectedIndices, index]);
+      }
+    } else {
+      if (selectedIndices.length === 1 && selectedIndices[0] === index) {
+        setSelectedIndices([]);
+      } else {
+        setSelectedIndices([index]);
+      }
+    }
+    setLastClickedIndex(index);
+    if (charColors[index]) {
+      setCurrentColor(charColors[index]);
+    } else {
+      setCurrentColor(textLayer.color || "#ffffff");
+    }
+  };
+
+  const handleSelectAll = () => {
+    setSelectedIndices(characters.map((_, i) => i));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIndices([]);
+  };
+
+  const handleApplyColor = (colorToApply: string) => {
+    setCurrentColor(colorToApply);
+    const targetIndices =
+      selectedIndices.length > 0 ? selectedIndices : characters.map((_, i) => i);
+    const nextCharColors = { ...charColors };
+    targetIndices.forEach((idx) => {
+      nextCharColors[idx] = colorToApply;
+    });
+    onUpdateLayer(textLayer.id, { charColors: nextCharColors });
+  };
+
+  const handleApplyGradient = () => {
+    const targetIndices =
+      selectedIndices.length > 0 ? selectedIndices : characters.map((_, i) => i);
+    const sorted = [...targetIndices].sort((a, b) => a - b);
+    const colors = interpolateColors(gradientStart, gradientEnd, sorted.length);
+    const nextCharColors = { ...charColors };
+    sorted.forEach((charIdx, i) => {
+      nextCharColors[charIdx] = colors[i];
+    });
+    onUpdateLayer(textLayer.id, { charColors: nextCharColors });
+  };
+
+  const handleApplyRainbow = () => {
+    const targetIndices =
+      selectedIndices.length > 0 ? selectedIndices : characters.map((_, i) => i);
+    const sorted = [...targetIndices].sort((a, b) => a - b);
+    const colors = generateRainbowColors(sorted.length);
+    const nextCharColors = { ...charColors };
+    sorted.forEach((charIdx, i) => {
+      nextCharColors[charIdx] = colors[i];
+    });
+    onUpdateLayer(textLayer.id, { charColors: nextCharColors });
+  };
+
+  const handleResetColors = () => {
+    onUpdateLayer(textLayer.id, { charColors: {} });
+    setSelectedIndices([]);
+  };
+
+  const swatches = [
+    "#ffffff",
+    "#f87171",
+    "#fb923c",
+    "#facc15",
+    "#4ade80",
+    "#34d399",
+    "#22d3ee",
+    "#38bdf8",
+    "#818cf8",
+    "#a855f7",
+    "#ec4899",
+    "#f43f5e",
+    "#94a3b8",
+    "#000000",
+  ];
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={`h-8 gap-1.5 text-xs border-border bg-background ${
+            hasCustomColors ? "border-cyan-500/60 text-cyan-400 bg-cyan-950/20" : ""
+          }`}
+          title={t("imageStudio.colorCharacters", undefined, "Color Specific Characters")}
+        >
+          <Palette className="w-3.5 h-3.5 text-cyan-400" />
+          <span>{t("imageStudio.colorCharacters", undefined, "Color Characters")}</span>
+          {hasCustomColors && (
+            <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] text-cyan-400 font-mono">
+              {Object.keys(charColors).length}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 sm:w-96 p-3 bg-popover border-border space-y-3 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <div>
+            <div className="text-xs font-semibold text-foreground">
+              {t("imageStudio.characterColors", undefined, "Character Colors")}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {selectedIndices.length > 0
+                ? t("imageStudio.selectedCount", { count: selectedIndices.length }, `${selectedIndices.length} selected`)
+                : t("imageStudio.selectCharactersToColor", undefined, "Click to select characters")}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSelectAll}
+              className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              {t("imageStudio.selectAll", undefined, "All")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDeselectAll}
+              className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              {t("imageStudio.deselectAll", undefined, "None")}
+            </Button>
+            {hasCustomColors && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetColors}
+                className="h-6 px-1.5 text-[11px] text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                {t("imageStudio.clearCharColors", undefined, "Reset")}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Character Grid */}
+        <div className="p-2 rounded-lg bg-card/60 border border-border max-h-48 overflow-y-auto">
+          <div className="flex flex-wrap gap-1 items-center">
+            {characters.map((char, idx) => {
+              if (char === "\n") {
+                return (
+                  <div key={idx} className="w-full flex items-center gap-1 my-0.5 text-[10px] text-muted-foreground/60 select-none">
+                    <span className="h-[1px] flex-1 bg-border/50" />
+                    <span>↵</span>
+                    <span className="h-[1px] flex-1 bg-border/50" />
+                  </div>
+                );
+              }
+
+              const isSelected = selectedIndices.includes(idx);
+              const charColor = charColors[idx] || textLayer.color || "#ffffff";
+              const isSpace = char === " ";
+
+              return (
+                <button
+                  key={idx}
+                  onClick={(e) => toggleSelect(idx, e)}
+                  className={`min-w-[24px] h-7 px-1.5 rounded flex items-center justify-center font-mono text-xs font-semibold transition-all select-none ${
+                    isSelected
+                      ? "ring-2 ring-cyan-400 bg-cyan-950/60 border border-cyan-400"
+                      : "bg-background/80 hover:bg-accent border border-border/60 hover:border-border"
+                  }`}
+                  style={{
+                    color: charColor,
+                    fontFamily: textLayer.fontFamily || "monospace",
+                  }}
+                  title={`Character #${idx + 1}: '${char}' (${charColor})`}
+                >
+                  {isSpace ? <span className="opacity-40 text-[10px]">␣</span> : char}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Color Palette & Custom Picker */}
+        <div className="space-y-2 pt-1 border-t border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {selectedIndices.length > 0
+                ? t("imageStudio.applyColorToSelected", undefined, "Apply Color to Selected")
+                : t("imageStudio.applyColorToSelected", undefined, "Apply Color")}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="color"
+                value={currentColor}
+                onChange={(e) => handleApplyColor(e.target.value)}
+                className="w-6 h-6 rounded border border-border cursor-pointer bg-transparent"
+              />
+              <Input
+                value={currentColor}
+                onChange={(e) => handleApplyColor(e.target.value)}
+                className="h-6 w-20 text-[11px] font-mono bg-background px-1 text-center"
+              />
+            </div>
+          </div>
+
+          {/* Quick Swatches */}
+          <div className="grid grid-cols-7 gap-1">
+            {swatches.map((color) => (
+              <button
+                key={color}
+                onClick={() => handleApplyColor(color)}
+                className="h-6 rounded border border-border/80 hover:scale-110 hover:border-white transition-all shadow-sm"
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Gradients & Rainbow */}
+        <div className="space-y-2 pt-2 border-t border-border">
+          <div className="text-[11px] font-medium text-muted-foreground">
+            {t("imageStudio.gradientAcrossText", undefined, "Gradient Across Text")}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-muted-foreground">{t("imageStudio.gradientStart", undefined, "Start")}:</span>
+              <input
+                type="color"
+                value={gradientStart}
+                onChange={(e) => setGradientStart(e.target.value)}
+                className="w-5 h-5 rounded border border-border cursor-pointer bg-transparent"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-muted-foreground">{t("imageStudio.gradientEnd", undefined, "End")}:</span>
+              <input
+                type="color"
+                value={gradientEnd}
+                onChange={(e) => setGradientEnd(e.target.value)}
+                className="w-5 h-5 rounded border border-border cursor-pointer bg-transparent"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleApplyGradient}
+              className="ml-auto h-7 text-xs border-border bg-background hover:bg-accent"
+            >
+              {t("imageStudio.applyGradient", undefined, "Apply Gradient")}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleApplyRainbow}
+              className="w-full h-7 text-xs border-border bg-gradient-to-r from-red-500/20 via-yellow-500/20 via-green-500/20 via-blue-500/20 to-purple-500/20 hover:opacity-90 font-medium"
+            >
+              🌈 {t("imageStudio.rainbow", undefined, "Rainbow Effect")}
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 interface InspectorToolbarProps {
   layer: CanvasLayer | null;
@@ -227,6 +573,12 @@ export const InspectorToolbar: React.FC<InspectorToolbarProps> = ({
                 title={t("imageStudio.textColor", undefined, "Text Color")}
               />
             </div>
+
+            {/* Per-Character Colors */}
+            <CharacterColorsPopover
+              textLayer={textLayer}
+              onUpdateLayer={onUpdateLayer}
+            />
 
             {/* Bold / Italic / Underline */}
             <div className="flex items-center gap-0.5 border border-border rounded p-0.5 bg-background/50">

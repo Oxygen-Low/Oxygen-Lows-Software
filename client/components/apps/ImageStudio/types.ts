@@ -8,7 +8,8 @@ export type ShapeType =
   | "star"
   | "line"
   | "arrow"
-  | "badge";
+  | "badge"
+  | "background-light";
 
 export interface ImageFilters {
   brightness: number; // 0 - 200, default 100
@@ -64,6 +65,7 @@ export interface TextLayer extends BaseLayer {
   fontStyle: "normal" | "italic";
   underline: boolean;
   color: string;
+  charColors?: Record<number, string>;
   textAlign: "left" | "center" | "right";
   lineHeight: number; // multiplier, e.g. 1.2
   letterSpacing: number; // px

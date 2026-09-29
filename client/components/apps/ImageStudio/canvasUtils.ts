@@ -80,6 +80,37 @@ export function drawBackground(
   }
 }
 
+export function parseColorToRgb(color: string): { r: number; g: number; b: number } {
+  if (!color) return { r: 6, g: 182, b: 212 };
+  const trimmed = color.trim();
+  if (trimmed.startsWith("#")) {
+    const hex = trimmed.slice(1);
+    if (hex.length === 3) {
+      return {
+        r: parseInt(hex[0] + hex[0], 16) || 0,
+        g: parseInt(hex[1] + hex[1], 16) || 0,
+        b: parseInt(hex[2] + hex[2], 16) || 0,
+      };
+    }
+    if (hex.length >= 6) {
+      return {
+        r: parseInt(hex.slice(0, 2), 16) || 0,
+        g: parseInt(hex.slice(2, 4), 16) || 0,
+        b: parseInt(hex.slice(4, 6), 16) || 0,
+      };
+    }
+  }
+  const rgbMatch = trimmed.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (rgbMatch) {
+    return {
+      r: Math.min(255, Math.max(0, parseInt(rgbMatch[1], 10))),
+      g: Math.min(255, Math.max(0, parseInt(rgbMatch[2], 10))),
+      b: Math.min(255, Math.max(0, parseInt(rgbMatch[3], 10))),
+    };
+  }
+  return { r: 6, g: 182, b: 212 };
+}
+
 export function drawShape(
   ctx: CanvasRenderingContext2D,
   layer: ShapeLayer,
@@ -185,13 +216,50 @@ export function drawShape(
       ctx.closePath();
       break;
     }
+
+    case "background-light": {
+      ctx.save();
+      // Scale coordinates so the radial gradient unit circle fills the (-hw, -hh, width, height) bounding box
+      ctx.scale(hw, hh);
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+
+      const baseColor = fill || "#06b6d4";
+      const { r, g, b } = parseColorToRgb(baseColor);
+
+      if (fillType === "gradient") {
+        const startRgb = parseColorToRgb(layer.gradientStart || baseColor);
+        const endRgb = parseColorToRgb(layer.gradientEnd || "#3b82f6");
+        grad.addColorStop(0, `rgba(${startRgb.r}, ${startRgb.g}, ${startRgb.b}, 1)`);
+        grad.addColorStop(0.2, `rgba(${startRgb.r}, ${startRgb.g}, ${startRgb.b}, 0.85)`);
+        grad.addColorStop(0.45, `rgba(${Math.round((startRgb.r + endRgb.r) / 2)}, ${Math.round((startRgb.g + endRgb.g) / 2)}, ${Math.round((startRgb.b + endRgb.b) / 2)}, 0.5)`);
+        grad.addColorStop(0.7, `rgba(${endRgb.r}, ${endRgb.g}, ${endRgb.b}, 0.2)`);
+        grad.addColorStop(0.9, `rgba(${endRgb.r}, ${endRgb.g}, ${endRgb.b}, 0.05)`);
+        grad.addColorStop(1, `rgba(${endRgb.r}, ${endRgb.g}, ${endRgb.b}, 0)`);
+      } else {
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
+        grad.addColorStop(0.2, `rgba(${r}, ${g}, ${b}, 0.85)`);
+        grad.addColorStop(0.45, `rgba(${r}, ${g}, ${b}, 0.5)`);
+        grad.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, 0.2)`);
+        grad.addColorStop(0.9, `rgba(${r}, ${g}, ${b}, 0.05)`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+      }
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(-1, -1, 2, 2);
+      ctx.restore();
+      break;
+    }
   }
 
-  if (shapeType !== "line") {
+  if (shapeType !== "line" && shapeType !== "background-light") {
     ctx.fill();
   }
   if (strokeWidth && strokeWidth > 0 && strokeColor && strokeColor !== "transparent") {
-    ctx.stroke();
+    if (shapeType === "background-light") {
+      ctx.strokeRect(-hw, -hh, width, height);
+    } else {
+      ctx.stroke();
+    }
   }
 }
 
@@ -206,9 +274,10 @@ export function drawText(
     fontWeight,
     fontStyle,
     color,
+    charColors,
     textAlign,
     lineHeight,
-    letterSpacing,
+    letterSpacing = 0,
     strokeColor,
     strokeWidth,
     shadowColor,
@@ -216,11 +285,9 @@ export function drawText(
     shadowOffsetX,
     shadowOffsetY,
     width,
-    height,
   } = layer;
 
   ctx.font = `${fontStyle || "normal"} ${fontWeight || "normal"} ${fontSize}px ${fontFamily || "sans-serif"}`;
-  ctx.textAlign = textAlign || "left";
   ctx.textBaseline = "middle";
 
   if (shadowColor && shadowBlur) {
@@ -235,22 +302,53 @@ export function drawText(
   const totalTextHeight = lines.length * computedLineHeight;
   const startY = -totalTextHeight / 2 + computedLineHeight / 2;
 
-  lines.forEach((line, index) => {
+  let globalCharIndex = 0;
+
+  lines.forEach((line, lineIndex) => {
+    const y = startY + lineIndex * computedLineHeight;
+    const chars = Array.from(line);
+
+    // Calculate width of each character in this line
+    const charWidths = chars.map((char) =>
+      typeof ctx.measureText === "function"
+        ? ctx.measureText(char)?.width || fontSize * 0.6
+        : fontSize * 0.6,
+    );
+    const totalLineWidth =
+      charWidths.reduce((sum, w) => sum + w, 0) +
+      (chars.length > 1 ? (chars.length - 1) * letterSpacing : 0);
+
     let startX = 0;
-    if (textAlign === "left") startX = -width / 2;
-    else if (textAlign === "right") startX = width / 2;
-    else startX = 0;
-
-    const y = startY + index * computedLineHeight;
-
-    if (strokeWidth && strokeWidth > 0 && strokeColor) {
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = strokeWidth;
-      ctx.strokeText(line, startX, y);
+    if (textAlign === "left") {
+      startX = -width / 2;
+    } else if (textAlign === "right") {
+      startX = width / 2 - totalLineWidth;
+    } else {
+      startX = -totalLineWidth / 2;
     }
 
-    ctx.fillStyle = color || "#ffffff";
-    ctx.fillText(line, startX, y);
+    ctx.textAlign = "left";
+
+    let curX = startX;
+    chars.forEach((char, charIdx) => {
+      const charGlobalIdx = globalCharIndex + charIdx;
+      const charColor =
+        (charColors && charColors[charGlobalIdx]) || color || "#ffffff";
+      const charWidth = charWidths[charIdx];
+
+      if (strokeWidth && strokeWidth > 0 && strokeColor) {
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = strokeWidth;
+        ctx.strokeText(char, curX, y);
+      }
+
+      ctx.fillStyle = charColor;
+      ctx.fillText(char, curX, y);
+
+      curX += charWidth + letterSpacing;
+    });
+
+    globalCharIndex += line.length + 1;
   });
 }
 
