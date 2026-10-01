@@ -1,4 +1,4 @@
-﻿export const ja = {
+export const ja = {
   common: {
     save: "ä¿å­˜",
     saveChanges: "å¤‰æ›´ã‚’ä¿å­˜",
@@ -2818,6 +2818,9 @@ notificationsTitle: "é€šçŸ¥",
     selectProjectPrompt: "サイドバーからプロジェクトを選択するか、新規作成してください。",
     createProjectBtn: "プロジェクトを作成",
     saveProjectBtn: "プロジェクトを保存",
+    projectCreated: "プロジェクトが正常に作成されました！",
+    createProjectError: "プロジェクトの作成に失敗しました",
+    loadError: "プロジェクトの詳細の読み込みに失敗しました。",
     deleting: "削除中...",
     saving: "保存中...",
     tabs: {

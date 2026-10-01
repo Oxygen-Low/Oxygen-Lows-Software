@@ -1,4 +1,4 @@
-﻿export const zhCN = {
+export const zhCN = {
   common: {
     save: "ä¿å­˜",
     saveChanges: "ä¿å­˜æ›´æ”¹",
@@ -2724,6 +2724,9 @@ notificationsTitle: "é€šçŸ¥",
     selectProjectPrompt: "从侧边栏选择项目或创建新项目以开始。",
     createProjectBtn: "创建项目",
     saveProjectBtn: "保存项目",
+    projectCreated: "项目创建成功！",
+    createProjectError: "创建项目失败",
+    loadError: "加载项目详情失败。",
     deleting: "正在删除...",
     saving: "正在保存...",
     tabs: {

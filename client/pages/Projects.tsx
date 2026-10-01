@@ -223,8 +223,17 @@ export default function Projects() {
         },
       });
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || `Request failed with status ${res.status}`);
+        let errorMsg = `Request failed with status ${res.status}`;
+        try {
+          const json = await res.clone().json();
+          if (json.error) errorMsg = json.error;
+        } catch {
+          try {
+            const errorText = await res.text();
+            if (errorText) errorMsg = errorText;
+          } catch {}
+        }
+        throw new Error(errorMsg);
       }
       return res;
     },
@@ -261,11 +270,11 @@ export default function Projects() {
       setThreats(threatsData.threats || []);
     } catch (err) {
       console.error("Failed to load project details:", err);
-      toast.error("Failed to load project details.");
+      toast.error(t("projects.loadError", undefined, "Failed to load project details."));
     } finally {
       setIsLoadingDetails(false);
     }
-  }, [authFetch]);
+  }, [authFetch, t]);
 
   // Load all projects
   const loadProjects = useCallback(async (selectId?: string) => {
@@ -281,27 +290,26 @@ export default function Projects() {
         if (matched) {
           if (!projectId || projectId !== matched.id) {
             navigate(`/projects/${matched.id}`, { replace: true });
-          } else {
-            loadActiveProjectData(matched.id);
           }
+          await loadActiveProjectData(matched.id);
         }
       } else {
         setActiveProject(null);
       }
     } catch (err) {
       console.error("Failed to load projects:", err);
-      toast.error("Failed to load projects.");
+      toast.error(t("projects.loadError", undefined, "Failed to load projects."));
     } finally {
       setIsLoadingProjects(false);
     }
-  }, [authFetch, projectId, navigate, loadActiveProjectData]);
+  }, [authFetch, projectId, navigate, loadActiveProjectData, t]);
 
   useEffect(() => {
     if (session) {
       loadProjects();
       loadUserDefenderApps();
     }
-  }, [session, loadProjects, loadUserDefenderApps]);
+  }, [session, loadUserDefenderApps]);
 
   useEffect(() => {
     if (projectId && session) {
@@ -401,14 +409,24 @@ export default function Projects() {
         }),
       });
       const created: Project = await res.json();
-      toast.success("Project created successfully!");
+      toast.success(t("projects.projectCreated", undefined, "Project created successfully!"));
       setIsCreateModalOpen(false);
       setNewProjectName("");
       setNewProjectDescription("");
       setNewProjectTags("");
-      await loadProjects(created.id);
+
+      // Immediately set active project and update local projects list
+      setActiveProject(created);
+      setProjects((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+      navigate(`/projects/${created.id}`);
+
+      // Fetch fresh issues, threats and reload full projects summary
+      await Promise.all([
+        loadActiveProjectData(created.id),
+        loadProjects(created.id),
+      ]);
     } catch (err: any) {
-      toast.error(err.message || "Failed to create project");
+      toast.error(err.message || t("projects.createProjectError", undefined, "Failed to create project"));
     } finally {
       setIsCreatingProject(false);
     }

@@ -2850,6 +2850,9 @@ export const en = {
     selectProjectPrompt: "Select a project from the sidebar or create a new one to get started.",
     createProjectBtn: "Create Project",
     saveProjectBtn: "Save Project",
+    projectCreated: "Project created successfully!",
+    createProjectError: "Failed to create project",
+    loadError: "Failed to load project details.",
     deleting: "Deleting...",
     saving: "Saving...",
     tabs: {

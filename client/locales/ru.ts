@@ -1,4 +1,4 @@
-﻿export const ru = {
+export const ru = {
   common: {
     save: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ",
     saveChanges: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ",
@@ -2823,6 +2823,9 @@ notificationsTitle: "Ð£Ð²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ñ",
     selectProjectPrompt: "Выберите проект на боковой панели или создайте новый, чтобы начать.",
     createProjectBtn: "Создать проект",
     saveProjectBtn: "Сохранить проект",
+    projectCreated: "Проект успешно создан!",
+    createProjectError: "Не удалось создать проект",
+    loadError: "Не удалось загрузить данные проекта.",
     deleting: "Удаление...",
     saving: "Сохранение...",
     tabs: {

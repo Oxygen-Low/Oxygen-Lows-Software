@@ -77,7 +77,9 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/browser") ||
     c.req.path.startsWith("/api/webmaster") ||
     c.req.path.startsWith("/api/chat") ||
-    c.req.path.startsWith("/api/chess")
+    c.req.path.startsWith("/api/chess") ||
+    c.req.path.startsWith("/api/projects") ||
+    c.req.path.startsWith("/api/partners")
   ) {
     return next();
   }

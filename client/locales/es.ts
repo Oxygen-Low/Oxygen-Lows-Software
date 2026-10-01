@@ -2833,6 +2833,9 @@ export const es = {
     selectProjectPrompt: "Seleccione un proyecto de la barra lateral o cree uno nuevo para comenzar.",
     createProjectBtn: "Crear Proyecto",
     saveProjectBtn: "Guardar Proyecto",
+    projectCreated: "¡Proyecto creado con éxito!",
+    createProjectError: "Error al crear el proyecto",
+    loadError: "Error al cargar los detalles del proyecto.",
     deleting: "Eliminando...",
     saving: "Guardando...",
     tabs: {

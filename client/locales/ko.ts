@@ -1,4 +1,4 @@
-﻿export const ko = {
+export const ko = {
   common: {
     save: "ì €ìž¥",
     saveChanges: "ë³€ê²½ì‚¬í•­ ì €ìž¥",
@@ -2795,6 +2795,9 @@ notificationsTitle: "ì•Œë¦¼",
     selectProjectPrompt: "사이드바에서 프로젝트를 선택하거나 새로 만들어 시작하세요.",
     createProjectBtn: "프로젝트 만들기",
     saveProjectBtn: "프로젝트 저장",
+    projectCreated: "프로젝트가 성공적으로 생성되었습니다!",
+    createProjectError: "프로젝트를 생성하지 못했습니다",
+    loadError: "프로젝트 세부 정보를 불러오지 못했습니다.",
     deleting: "삭제 중...",
     saving: "저장 중...",
     tabs: {

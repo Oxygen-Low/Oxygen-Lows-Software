@@ -259,4 +259,33 @@ describe("Projects Page", () => {
       expect(screen.getByText("Issue Title")).toBeDefined();
     });
   });
+
+  it("opens create project modal and creates project", async () => {
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Alpha Cyber Shield").length).toBeGreaterThan(0);
+    });
+
+    const newProjectBtn = screen.getByRole("button", { name: /New Project/i });
+    fireEvent.click(newProjectBtn);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Production Core")).toBeDefined();
+    });
+
+    const input = screen.getByPlaceholderText("e.g., Production Core");
+    fireEvent.change(input, { target: { value: "Beta Cloud Shield" } });
+
+    const createSubmitBtn = screen.getByRole("button", { name: /^Create Project$/i });
+    fireEvent.click(createSubmitBtn);
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+  });
 });
