@@ -30,11 +30,6 @@ export const DEFAULT_OG_IMAGE = "https://oxygenlow.com/icons/icon-512x512.png";
 export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
   { href: "/", label: "Home", description: "Main platform overview and tools" },
   {
-    href: "/projects",
-    label: "Projects",
-    description: "Manage projects, WebDefender apps, and security issues",
-  },
-  {
     href: "/apps",
     label: "Apps",
     description: "Productivity, utility, and AI applications",
@@ -223,49 +218,6 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
     ogType: "website",
     breadcrumbs: [{ name: "Home", url: "/" }],
     internalLinks: ALL_INTERNAL_NAV_LINKS.filter((l) => l.href !== "/"),
-  },
-  "/projects": {
-    path: "/projects",
-    title: "Projects & Security Workspaces - Oxygen Low's Software",
-    description:
-      "Manage projects, attach WebDefender apps, resolve security issues, and monitor live cyber threats with Oxygen Low's Software.",
-    canonicalPath: "/projects",
-    h1: "Projects & Security Workspaces",
-    h2: [
-      "Project Security Monitoring",
-      "WebDefender Application Integration",
-      "Automated Issues Manager",
-    ],
-    keywords: [
-      "projects",
-      "workspace",
-      "security management",
-      "webdefender",
-      "threat monitoring",
-      "issue tracker",
-    ],
-    ogType: "website",
-    breadcrumbs: [
-      { name: "Home", url: "/" },
-      { name: "Projects", url: "/projects" },
-    ],
-    internalLinks: [
-      {
-        href: "/apps/webdefender",
-        label: "Web Defender",
-        description: "DDoS and bot protection suite",
-      },
-      {
-        href: "/apps",
-        label: "Apps & Tools",
-        description: "Explore all developer and utility tools",
-      },
-      {
-        href: "/security",
-        label: "Security",
-        description: "Account security and authentication settings",
-      },
-    ],
   },
   "/apps": {
     path: "/apps",

@@ -28,7 +28,6 @@ import {
   Bell,
   MessageSquare,
   Handshake,
-  FolderTree,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -69,13 +68,6 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Notifications",
     href: "/notifications",
     icon: Bell,
-  },
-  {
-    key: "projects",
-    labelKey: "nav.projects",
-    defaultLabel: "Projects",
-    href: "/projects",
-    icon: FolderTree,
   },
   {
     key: "storage",

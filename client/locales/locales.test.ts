@@ -84,9 +84,7 @@ describe("All Locales Verification", () => {
       });
       expect(oauthTranslate).toContain("MyTestApp");
 
-      expect(t("titles.projects")).toBeTruthy();
-      expect(t("projects.title")).toBeTruthy();
-      expect(t("nav.projects")).toBeTruthy();
+      // Test title keys
       expect(t("titles.apps")).toBeTruthy();
       expect(t("titles.games")).toBeTruthy();
       expect(t("titles.storage")).toBeTruthy();
@@ -362,14 +360,6 @@ type _AssertJaModels = AssertTrue<ExactKeys<typeof en.models, typeof ja.models>>
 type _AssertKoModels = AssertTrue<ExactKeys<typeof en.models, typeof ko.models>>;
 type _AssertRuModels = AssertTrue<ExactKeys<typeof en.models, typeof ru.models>>;
 type _AssertZhModels = AssertTrue<ExactKeys<typeof en.models, typeof zhCN.models>>;
-
-// 11. projects leaf keys exact parity across all 6 locales
-type _AssertEsProjects = AssertTrue<ExactKeys<typeof en.projects, typeof es.projects>>;
-type _AssertJaProjects = AssertTrue<ExactKeys<typeof en.projects, typeof ja.projects>>;
-type _AssertKoProjects = AssertTrue<ExactKeys<typeof en.projects, typeof ko.projects>>;
-type _AssertRuProjects = AssertTrue<ExactKeys<typeof en.projects, typeof ru.projects>>;
-type _AssertZhProjects = AssertTrue<ExactKeys<typeof en.projects, typeof zhCN.projects>>;
-
 
 
 
