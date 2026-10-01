@@ -84,7 +84,9 @@ describe("All Locales Verification", () => {
       });
       expect(oauthTranslate).toContain("MyTestApp");
 
-      // Test title keys
+      expect(t("titles.projects")).toBeTruthy();
+      expect(t("projects.title")).toBeTruthy();
+      expect(t("nav.projects")).toBeTruthy();
       expect(t("titles.apps")).toBeTruthy();
       expect(t("titles.games")).toBeTruthy();
       expect(t("titles.storage")).toBeTruthy();

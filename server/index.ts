@@ -31,6 +31,7 @@ import { modelsRouter } from "./routes/models.ts";
 import { v1Router } from "./routes/v1.ts";
 import { contentTestRouter } from "./routes/contentTest.ts";
 import { partnersRouter } from "./routes/partners.ts";
+import { projectsRouter } from "./routes/projects.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -1236,6 +1237,7 @@ app.route("/api/partners", partnersRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
 app.route("/api/contenttest", contentTestRouter);
+app.route("/api/projects", projectsRouter);
 app.post("/contenttest", (c) => contentTestRouter.fetch(c.req.raw));
 
 app.get("/bot", (c) => {

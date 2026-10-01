@@ -28,6 +28,7 @@ import {
   Bell,
   MessageSquare,
   Handshake,
+  FolderKanban,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
@@ -48,6 +49,13 @@ interface NavItemDef {
 }
 
 const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
+  {
+    key: "projects",
+    labelKey: "nav.projects",
+    defaultLabel: "Projects",
+    href: "/projects",
+    icon: FolderKanban,
+  },
   {
     key: "apps",
     labelKey: "nav.apps",

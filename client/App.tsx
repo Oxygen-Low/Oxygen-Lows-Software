@@ -83,6 +83,7 @@ const Download = lazyWithRetry(() => import("./pages/Download"));
 const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
 const Partners = lazyWithRetry(() => import("./pages/Partners"));
 const AdminPartners = lazyWithRetry(() => import("./pages/AdminPartners"));
+const Projects = lazyWithRetry(() => import("./pages/Projects"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -106,6 +107,22 @@ const App = () => (
                   >
                     <Routes>
                       <Route path="/" element={<Apps />} />
+                      <Route
+                        path="/projects"
+                        element={
+                          <ProtectedRoute>
+                            <Projects />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/projects/:projectId"
+                        element={
+                          <ProtectedRoute>
+                            <Projects />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route path="/apps" element={<Apps />} />
                       <Route path="/apps/:appId" element={<Apps />} />
                       <Route path="/apps/3d-background" element={<Apps />} />
