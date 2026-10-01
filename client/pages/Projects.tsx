@@ -242,35 +242,6 @@ export default function Projects() {
     }
   }, [authFetch]);
 
-  // Load all projects
-  const loadProjects = useCallback(async (selectId?: string) => {
-    try {
-      setIsLoadingProjects(true);
-      const res = await authFetch("/api/projects");
-      const data: Project[] = await res.json();
-      setProjects(data || []);
-
-      if (data && data.length > 0) {
-        const targetId = selectId || projectId || data[0].id;
-        const matched = data.find((p) => p.id === targetId) || data[0];
-        if (matched) {
-          if (!projectId || projectId !== matched.id) {
-            navigate(`/projects/${matched.id}`, { replace: true });
-          } else if (!activeProject || activeProject.id !== matched.id) {
-            loadActiveProjectData(matched.id);
-          }
-        }
-      } else {
-        setActiveProject(null);
-      }
-    } catch (err) {
-      console.error("Failed to load projects:", err);
-      toast.error("Failed to load projects.");
-    } finally {
-      setIsLoadingProjects(false);
-    }
-  }, [authFetch, projectId, navigate]);
-
   // Load active project details, issues, and threats
   const loadActiveProjectData = useCallback(async (id: string) => {
     try {
@@ -295,6 +266,35 @@ export default function Projects() {
       setIsLoadingDetails(false);
     }
   }, [authFetch]);
+
+  // Load all projects
+  const loadProjects = useCallback(async (selectId?: string) => {
+    try {
+      setIsLoadingProjects(true);
+      const res = await authFetch("/api/projects");
+      const data: Project[] = await res.json();
+      setProjects(data || []);
+
+      if (data && data.length > 0) {
+        const targetId = selectId || projectId || data[0].id;
+        const matched = data.find((p) => p.id === targetId) || data[0];
+        if (matched) {
+          if (!projectId || projectId !== matched.id) {
+            navigate(`/projects/${matched.id}`, { replace: true });
+          } else {
+            loadActiveProjectData(matched.id);
+          }
+        }
+      } else {
+        setActiveProject(null);
+      }
+    } catch (err) {
+      console.error("Failed to load projects:", err);
+      toast.error("Failed to load projects.");
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  }, [authFetch, projectId, navigate, loadActiveProjectData]);
 
   useEffect(() => {
     if (session) {
@@ -1983,7 +1983,11 @@ export default function Projects() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText(createdAppApiKey);
+                    if (navigator?.clipboard?.writeText) {
+                      navigator.clipboard
+                        .writeText(createdAppApiKey)
+                        .catch(() => {});
+                    }
                     toast.success("API key copied to clipboard");
                   }}
                   className="border-slate-800 text-slate-300 h-7 text-xs"

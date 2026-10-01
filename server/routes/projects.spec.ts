@@ -362,4 +362,71 @@ describe("Projects API Routes", () => {
     expect(res.status).toBe(200);
     expect(mockStore.projects.length).toBe(0);
   });
+
+  it("enforces multi-tenant isolation across all endpoints", async () => {
+    // Other user cannot view project
+    const getRes = await app.request("/api/projects/proj-1", {
+      headers: { Authorization: "Bearer other-user-token" },
+    });
+    expect(getRes.status).toBe(404);
+
+    // Other user cannot update project
+    const putRes = await app.request("/api/projects/proj-1", {
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer other-user-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "Hacked" }),
+    });
+    expect(putRes.status).toBe(404);
+
+    // Other user cannot fetch threats
+    const threatsRes = await app.request("/api/projects/proj-1/threats", {
+      headers: { Authorization: "Bearer other-user-token" },
+    });
+    expect(threatsRes.status).toBe(404);
+
+    // Other user cannot apply quick fix
+    const fixRes = await app.request("/api/projects/proj-1/issues/quick-fix", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer other-user-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fixType: "enable_block_mode",
+        targetAppId: "app-1",
+      }),
+    });
+    expect(fixRes.status).toBe(404);
+  });
+
+  it("handles non-numeric pagination query params gracefully", async () => {
+    const res = await app.request("/api/projects/proj-1/threats?limit=invalid&offset=not-a-number", {
+      headers: { Authorization: "Bearer valid-user-token" },
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.limit).toBe(50);
+    expect(data.offset).toBe(0);
+    expect(data.threats.length).toBe(3);
+  });
+
+  it("deduplicates attached app IDs on creation and update", async () => {
+    const res = await app.request("/api/projects", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer valid-user-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "Dedup Project",
+        defender_app_ids: ["app-1", "app-1", "app-1"],
+      }),
+    });
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.defender_app_ids).toEqual(["app-1"]);
+  });
 });

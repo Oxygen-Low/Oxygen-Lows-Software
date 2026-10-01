@@ -363,6 +363,14 @@ type _AssertKoModels = AssertTrue<ExactKeys<typeof en.models, typeof ko.models>>
 type _AssertRuModels = AssertTrue<ExactKeys<typeof en.models, typeof ru.models>>;
 type _AssertZhModels = AssertTrue<ExactKeys<typeof en.models, typeof zhCN.models>>;
 
+// 11. projects leaf keys exact parity across all 6 locales
+type _AssertEsProjects = AssertTrue<ExactKeys<typeof en.projects, typeof es.projects>>;
+type _AssertJaProjects = AssertTrue<ExactKeys<typeof en.projects, typeof ja.projects>>;
+type _AssertKoProjects = AssertTrue<ExactKeys<typeof en.projects, typeof ko.projects>>;
+type _AssertRuProjects = AssertTrue<ExactKeys<typeof en.projects, typeof ru.projects>>;
+type _AssertZhProjects = AssertTrue<ExactKeys<typeof en.projects, typeof zhCN.projects>>;
+
+
 
 
 

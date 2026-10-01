@@ -150,8 +150,12 @@ projectsRouter.post("/", async (c) => {
   // Validate defender_app_ids belong to the user
   const userDefenderApps = getTableRows("defender_apps", userId);
   const validAppIds = Array.isArray(defender_app_ids)
-    ? defender_app_ids.filter((id: string) =>
-        userDefenderApps.some((a: any) => a.id === id),
+    ? Array.from(
+        new Set(
+          defender_app_ids.filter((id: string) =>
+            userDefenderApps.some((a: any) => a.id === id),
+          ),
+        ),
       )
     : [];
 
@@ -223,8 +227,12 @@ projectsRouter.put("/:id", async (c) => {
 
   let updatedAppIds = project.defender_app_ids;
   if (Array.isArray(body.defender_app_ids)) {
-    updatedAppIds = body.defender_app_ids.filter((id: string) =>
-      userDefenderApps.some((a: any) => a.id === id),
+    updatedAppIds = Array.from(
+      new Set(
+        body.defender_app_ids.filter((id: string) =>
+          userDefenderApps.some((a: any) => a.id === id),
+        ),
+      ),
     );
   }
 
@@ -318,8 +326,12 @@ projectsRouter.get("/:id/threats", async (c) => {
         new Date(a.created_at || 0).getTime(),
     );
 
-  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") || 50)));
-  const offset = Math.max(0, Number(c.req.query("offset") || 0));
+  const rawLimit = Number(c.req.query("limit"));
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(100, Math.max(1, rawLimit))
+    : 50;
+  const rawOffset = Number(c.req.query("offset"));
+  const offset = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : 0;
 
   const paginated = filteredEvents.slice(offset, offset + limit);
 
@@ -504,6 +516,14 @@ projectsRouter.post("/:id/issues", async (c) => {
   const validSeverities = ["critical", "high", "medium", "low", "info"];
   const validCategories = ["security", "config", "task", "bug", "enhancement"];
 
+  const userDefenderApps = getTableRows("defender_apps", userId);
+  const validTargetAppId =
+    target_app_id &&
+    typeof target_app_id === "string" &&
+    userDefenderApps.some((a: any) => a.id === target_app_id)
+      ? target_app_id
+      : null;
+
   const now = new Date().toISOString();
   const newIssue: ProjectIssueRecord = {
     id: randomUUID(),
@@ -514,7 +534,7 @@ projectsRouter.post("/:id/issues", async (c) => {
     severity: validSeverities.includes(severity) ? (severity as any) : "medium",
     status: "open",
     category: validCategories.includes(category) ? (category as any) : "task",
-    target_app_id: target_app_id || null,
+    target_app_id: validTargetAppId,
     created_at: now,
     updated_at: now,
   };
@@ -616,6 +636,10 @@ projectsRouter.post("/:id/issues/quick-fix", async (c) => {
   }
 
   if (fixType === "enable_rate_limit" && targetAppId) {
+    const userDefenderApps = getTableRows("defender_apps", userId);
+    const app = userDefenderApps.find((a: any) => a.id === targetAppId);
+    if (!app) return c.json({ error: "App not found" }, 404);
+
     const userConfigs = getTableRows("defender_config", userId);
     const config = userConfigs.find((cfg: any) => cfg.app_id === targetAppId) || {
       app_id: targetAppId,
@@ -628,6 +652,10 @@ projectsRouter.post("/:id/issues/quick-fix", async (c) => {
   }
 
   if (fixType === "block_ip" && targetAppId && ip) {
+    const userDefenderApps = getTableRows("defender_apps", userId);
+    const app = userDefenderApps.find((a: any) => a.id === targetAppId);
+    if (!app) return c.json({ error: "App not found" }, 404);
+
     const userConfigs = getTableRows("defender_config", userId);
     const config = userConfigs.find((cfg: any) => cfg.app_id === targetAppId) || {
       app_id: targetAppId,
@@ -646,7 +674,9 @@ projectsRouter.post("/:id/issues/quick-fix", async (c) => {
 
   if (fixType === "resolve_custom_issue" && issueId) {
     const customIssues = getTableRows("project_issues", userId) as ProjectIssueRecord[];
-    const issue = customIssues.find((i) => i.id === issueId);
+    const issue = customIssues.find(
+      (i) => i.id === issueId && i.project_id === projectId,
+    );
     if (issue) {
       updateTable(
         "project_issues",
@@ -656,6 +686,7 @@ projectsRouter.post("/:id/issues/quick-fix", async (c) => {
       );
       return c.json({ success: true, message: "Issue marked as resolved" });
     }
+    return c.json({ error: "Issue not found" }, 404);
   }
 
   return c.json({ error: "Invalid fixType or parameters" }, 400);

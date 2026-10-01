@@ -171,11 +171,15 @@ describe("Projects Page", () => {
       } as any;
     });
 
+    global.fetch = mockFetchFn;
+    window.fetch = mockFetchFn;
     vi.stubGlobal("fetch", mockFetchFn);
   });
 
   afterEach(() => {
     cleanup();
+    global.fetch = originalFetch;
+    window.fetch = originalFetch;
     vi.unstubAllGlobals();
   });
 
