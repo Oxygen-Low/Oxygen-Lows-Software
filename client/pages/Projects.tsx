@@ -7,7 +7,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FolderKanban,
+  FolderTree,
   Plus,
   Search,
   Shield,
@@ -709,7 +709,7 @@ export default function Projects() {
           <div className="p-4 border-b border-slate-800/80 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                <FolderKanban className="w-5 h-5" />
+                <FolderTree className="w-5 h-5" />
               </div>
               <div>
                 <h1 className="font-bold text-white text-base leading-tight">
@@ -753,7 +753,7 @@ export default function Projects() {
               </div>
             ) : filteredProjects.length === 0 ? (
               <div className="p-6 text-center text-slate-500 space-y-3">
-                <FolderKanban className="w-8 h-8 mx-auto opacity-30 text-cyan-400" />
+                <FolderTree className="w-8 h-8 mx-auto opacity-30 text-cyan-400" />
                 <p className="text-xs">
                   {searchQuery
                     ? t("projects.noProjectsFound", undefined, "No projects found")
@@ -844,7 +844,7 @@ export default function Projects() {
           {!activeProject ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                <FolderKanban className="w-8 h-8" />
+                <FolderTree className="w-8 h-8" />
               </div>
               <div className="space-y-1 max-w-md">
                 <h2 className="text-xl font-bold text-white">
@@ -1826,7 +1826,7 @@ export default function Projects() {
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-white text-lg flex items-center gap-2">
-              <FolderKanban className="w-5 h-5 text-cyan-400" />
+              <FolderTree className="w-5 h-5 text-cyan-400" />
               {t("projects.createNewProject", undefined, "Create New Project")}
             </DialogTitle>
             <DialogDescription className="text-slate-400 text-xs">
