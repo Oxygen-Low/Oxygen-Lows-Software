@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import Prism from "@/lib/prism";
+import React, { useMemo, useState, useEffect } from "react";
+import Prism, { loadGrammars } from "@/lib/prism";
 
 // Language alias mapping
 const LANGUAGE_MAP: Record<string, string> = {
@@ -48,6 +48,12 @@ export const CodeHighlighter: React.FC<CodeHighlighterProps> = ({
   PreTag = "pre",
   ...rest
 }) => {
+  const [grammarsReady, setGrammarsReady] = useState(false);
+
+  useEffect(() => {
+    loadGrammars().then(() => setGrammarsReady(true));
+  }, []);
+
   const rawCode = (
     code !== undefined ? code : typeof children === "string" ? children : ""
   ).replace(/\n$/, "");
@@ -59,7 +65,7 @@ export const CodeHighlighter: React.FC<CodeHighlighterProps> = ({
     if (!rawCode) return "";
 
     try {
-      if (typeof Prism !== "undefined" && Prism?.languages) {
+      if (grammarsReady && Prism?.languages) {
         const grammar = Prism.languages[canonicalLang];
         if (grammar) {
           return Prism.highlight(rawCode, grammar, canonicalLang);
@@ -69,7 +75,7 @@ export const CodeHighlighter: React.FC<CodeHighlighterProps> = ({
       return escapeHtml(rawCode);
     }
     return escapeHtml(rawCode);
-  }, [rawCode, canonicalLang]);
+  }, [rawCode, canonicalLang, grammarsReady]);
 
   const Tag = PreTag || "pre";
 
