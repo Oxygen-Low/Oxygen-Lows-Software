@@ -377,8 +377,8 @@ v1Router.post("/chat/completions", async (c) => {
     model: actualModel,
     messages: processedMessages,
     stream: Boolean(stream),
+    max_tokens: max_tokens !== undefined ? Number(max_tokens) : 512,
     ...(temperature !== undefined ? { temperature: Number(temperature) } : {}),
-    ...(max_tokens !== undefined ? { max_tokens: Number(max_tokens) } : {}),
   };
 
   const targetUrl = "https://oai.stablehorde.net/v1/chat/completions";

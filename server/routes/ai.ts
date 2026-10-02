@@ -413,6 +413,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         Authorization: `Bearer ${integration?.api_key || "0000000000"}`,
       };
       let hordeRequestBody = {
+        max_tokens: requestBody.max_tokens || 512,
         ...requestBody,
         model: actualModel,
         messages: finalMessages,

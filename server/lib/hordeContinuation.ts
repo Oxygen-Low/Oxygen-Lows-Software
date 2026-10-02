@@ -1,4 +1,4 @@
-export const MAX_HORDE_CONTINUATIONS = 6;
+export const MAX_HORDE_CONTINUATIONS = 25;
 export const CONTINUATION_USER_PROMPT =
   "Continue directly from where you left off without repeating previous text or adding introductory remarks.";
 
@@ -9,6 +9,9 @@ export const KNOWN_EOS_TOKENS = [
   "<|im_end|>",
   "[EOS]",
   "<|endoftext|>",
+  "<|end|>",
+  "<eos>",
+  "[DONE]",
 ];
 
 /**
@@ -47,6 +50,81 @@ export function deduplicateOverlap(prevText: string, newText: string): string {
     }
   }
   return newText;
+}
+
+/**
+ * Strips standard conversational continuation preamble introduced by some LLMs
+ * during continuation turns (e.g. "Sure, continuing from where I left off:").
+ */
+export function stripContinuationPrefixes(text: string): string {
+  if (!text) return text;
+  const prefixRegex =
+    /^(?:sure,?\s*(?:here\s*(?:is|'s)\s*(?:the\s*)?)?(?:continuing|continuation)(?:\s*(?:from\s*)?(?:where\s*i\s*left\s*off|the\s*previous\s*text)?)?[:\n\s]*|^(?:continuing\s*(?:from\s*where\s*i\s*left\s*off|directly|the\s*previous\s*text)?[:\n\s]*)|^(?:here\s*(?:is|'s)\s*(?:the\s*)?(?:rest|continuation)[:\n\s]*))/i;
+  return text.replace(prefixRegex, "");
+}
+
+/**
+ * Checks whether an LLM generation is genuinely complete or was truncated/cut off.
+ */
+export function isGenerationComplete(
+  accumulatedText: string,
+  latestChunk: string,
+  hasEos: boolean,
+  finishReason: string | null | undefined,
+): boolean {
+  if (hasEos) return true;
+  if (finishReason === "tool_calls") return true;
+  if (
+    finishReason === "length" ||
+    finishReason === "model_length" ||
+    finishReason === "max_tokens"
+  ) {
+    return false;
+  }
+
+  const combined = (accumulatedText + (latestChunk || "")).trim();
+  if (!combined) return false;
+
+  // Check for unclosed action/memory/task tags e.g. [ACTION: ..., [MEMORY: ..., [TASK: ...
+  const lastOpenBracket = combined.lastIndexOf("[");
+  const lastCloseBracket = combined.lastIndexOf("]");
+  if (lastOpenBracket > lastCloseBracket) {
+    return false; // Unclosed tag
+  }
+
+  // Check for unclosed code fences
+  const codeBlockCount = (combined.match(/```/g) || []).length;
+  if (codeBlockCount % 2 !== 0) {
+    return false; // Inside an unclosed code block
+  }
+
+  // If finishReason is explicitly "stop", check if text ends cleanly
+  if (finishReason === "stop") {
+    const lastChar = combined.slice(-1);
+    const validEndings = [
+      ".",
+      "!",
+      "?",
+      '"',
+      "'",
+      "]",
+      "}",
+      ">",
+      ")",
+      "`",
+      "\n",
+      "*",
+      "#",
+    ];
+    if (validEndings.includes(lastChar)) {
+      return true;
+    }
+    // Ended mid-word or mid-phrase without EOS token
+    return false;
+  }
+
+  // If finishReason is null/undefined/unknown and no EOS was found, it is not complete
+  return false;
 }
 
 /**
@@ -97,16 +175,23 @@ export interface HordeContinuationRequestOptions {
   fetchHeaders: Record<string, string>;
   requestBody: Record<string, any>;
   signal?: AbortSignal;
+  maxContinuations?: number;
 }
 
 /**
- * Executes a streaming AI Horde request with automatic continuation until EOS or MAX_HORDE_CONTINUATIONS.
+ * Executes a streaming AI Horde request with automatic continuation until EOS or maxContinuations.
  * Returns a Response wrapping a ReadableStream of SSE events.
  */
 export async function streamHordeWithContinuation(
   options: HordeContinuationRequestOptions,
 ): Promise<Response> {
-  const { targetUrl, fetchHeaders, requestBody, signal } = options;
+  const {
+    targetUrl,
+    fetchHeaders,
+    requestBody,
+    signal,
+    maxContinuations = MAX_HORDE_CONTINUATIONS,
+  } = options;
 
   let currentMessages = [...(requestBody.messages || [])];
   const initialBody = {
@@ -147,7 +232,7 @@ export async function streamHordeWithContinuation(
     let currentRes: Response | null = initialRes;
 
     try {
-      while (continuationCount <= MAX_HORDE_CONTINUATIONS) {
+      while (continuationCount <= maxContinuations) {
         if (!currentRes) {
           const nextBody = {
             ...requestBody,
@@ -230,7 +315,9 @@ export async function streamHordeWithContinuation(
 
               if (rawDelta) {
                 if (continuationCount > 0 && isFirstDeltaThisRound) {
-                  rawDelta = deduplicateOverlap(accumulatedContent, rawDelta);
+                  rawDelta = stripContinuationPrefixes(
+                    deduplicateOverlap(accumulatedContent, rawDelta),
+                  );
                   isFirstDeltaThisRound = false;
                 }
 
@@ -290,13 +377,15 @@ export async function streamHordeWithContinuation(
           await writeSse(`data: ${JSON.stringify(flushedChunk)}\n\n`);
         }
 
-        // Evaluate stopping conditions
-        if (
-          isDone ||
-          lastFinishReason === "stop" ||
-          lastFinishReason === "tool_calls"
-        ) {
-          // Model naturally completed with EOS or stop token
+        const complete = isGenerationComplete(
+          accumulatedContent,
+          "",
+          isDone,
+          lastFinishReason,
+        );
+
+        if (complete || lastFinishReason === "tool_calls") {
+          // Model naturally completed with EOS or stop condition
           await writeSse(
             `data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] })}\n\n`,
           );
@@ -305,10 +394,13 @@ export async function streamHordeWithContinuation(
 
         if (roundTokensGenerated === 0) {
           // No tokens generated in this iteration; avoid infinite empty calls
+          await writeSse(
+            `data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] })}\n\n`,
+          );
           break;
         }
 
-        if (continuationCount >= MAX_HORDE_CONTINUATIONS) {
+        if (continuationCount >= maxContinuations) {
           // Reached safety cap
           await writeSse(
             `data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] })}\n\n`,
@@ -344,19 +436,25 @@ export async function streamHordeWithContinuation(
 }
 
 /**
- * Executes a non-streaming AI Horde request with automatic continuation until EOS or MAX_HORDE_CONTINUATIONS.
+ * Executes a non-streaming AI Horde request with automatic continuation until EOS or maxContinuations.
  */
 export async function fetchHordeNonStreamWithContinuation(
   options: HordeContinuationRequestOptions,
 ): Promise<Response> {
-  const { targetUrl, fetchHeaders, requestBody, signal } = options;
+  const {
+    targetUrl,
+    fetchHeaders,
+    requestBody,
+    signal,
+    maxContinuations = MAX_HORDE_CONTINUATIONS,
+  } = options;
 
   let currentMessages = [...(requestBody.messages || [])];
   let accumulatedContent = "";
   let continuationCount = 0;
   let lastData: any = null;
 
-  while (continuationCount <= MAX_HORDE_CONTINUATIONS) {
+  while (continuationCount <= maxContinuations) {
     const currentBody = {
       ...requestBody,
       stream: false,
@@ -397,23 +495,33 @@ export async function fetchHordeNonStreamWithContinuation(
     let rawContent = choice?.message?.content || data.response || "";
 
     if (continuationCount > 0) {
-      rawContent = deduplicateOverlap(accumulatedContent, rawContent);
+      rawContent = stripContinuationPrefixes(
+        deduplicateOverlap(accumulatedContent, rawContent),
+      );
     }
 
     const { cleanText, hasEos } = stripEosTokens(rawContent);
+    const prevLen = accumulatedContent.length;
     accumulatedContent += cleanText;
-
     const finishReason = choice?.finish_reason;
-    if (
-      hasEos ||
-      finishReason === "stop" ||
-      finishReason === "tool_calls" ||
-      !cleanText
-    ) {
+
+    // Check if zero new tokens were generated
+    if (accumulatedContent.length === prevLen) {
       break;
     }
 
-    if (finishReason === "length" && continuationCount < MAX_HORDE_CONTINUATIONS) {
+    const complete = isGenerationComplete(
+      accumulatedContent,
+      cleanText,
+      hasEos,
+      finishReason,
+    );
+
+    if (complete || finishReason === "tool_calls") {
+      break;
+    }
+
+    if (continuationCount < maxContinuations) {
       continuationCount++;
       currentMessages = [
         ...(requestBody.messages || []),
@@ -443,4 +551,39 @@ export async function fetchHordeNonStreamWithContinuation(
     headers: { "Content-Type": "application/json" },
     status: 200,
   });
+}
+
+export const HORDE_MODELS_MAP: Record<string, string[]> = {
+  Fast: [
+    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+    "koboldcpp/Llama-3.2-1B-Instruct",
+  ],
+  Smart: ["aphrodite/DeepSeek-V4.1-Flash"],
+  Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
+};
+
+export function resolveHordeModel(modelName: string): string {
+  if (HORDE_MODELS_MAP[modelName]) {
+    return HORDE_MODELS_MAP[modelName].join(",");
+  }
+  return modelName;
+}
+
+export async function getFallbackHordeModel(
+  category: "fast" | "general" = "general",
+): Promise<string> {
+  try {
+    const res = await fetch("https://stablehorde.net/api/v2/status/models?type=text");
+    if (!res.ok) return "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+    const models: any[] = await res.json();
+    if (!Array.isArray(models) || models.length === 0) {
+      return "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+    }
+    const available = models.filter((m) => m.count > 0 && m.performance > 0);
+    if (available.length === 0) return models[0].name;
+    available.sort((a, b) => b.count - a.count);
+    return available[0].name;
+  } catch {
+    return "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+  }
 }

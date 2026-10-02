@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   stripEosTokens,
   deduplicateOverlap,
+  stripContinuationPrefixes,
+  isGenerationComplete,
   EosStreamFilter,
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
@@ -46,6 +48,13 @@ describe("hordeContinuation", () => {
       expect(res.cleanText).toBe("Classic EOS.");
     });
 
+    it("should detect and strip <|end|>", () => {
+      const input = "Phi-3 end.<|end|>";
+      const res = stripEosTokens(input);
+      expect(res.hasEos).toBe(true);
+      expect(res.cleanText).toBe("Phi-3 end.");
+    });
+
     it("should return unchanged text if no EOS token is present", () => {
       const input = "Continuing generating text...";
       const res = stripEosTokens(input);
@@ -81,6 +90,62 @@ describe("hordeContinuation", () => {
       const prev = "banana";
       const next = "apple";
       expect(deduplicateOverlap(prev, next)).toBe("apple");
+    });
+  });
+
+  describe("stripContinuationPrefixes", () => {
+    it("should strip 'Sure, continuing from where I left off:'", () => {
+      const input = "Sure, continuing from where I left off: Here is the code";
+      expect(stripContinuationPrefixes(input)).toBe("Here is the code");
+    });
+
+    it("should strip 'Continuing directly:'", () => {
+      const input = "Continuing directly: more text";
+      expect(stripContinuationPrefixes(input)).toBe("more text");
+    });
+
+    it("should strip 'Here is the rest:'", () => {
+      const input = "Here is the rest: final details.";
+      expect(stripContinuationPrefixes(input)).toBe("final details.");
+    });
+
+    it("should preserve regular content without prefixes", () => {
+      const input = "[ACTION: CREATE_AGENT name=\"John\"]";
+      expect(stripContinuationPrefixes(input)).toBe(input);
+    });
+  });
+
+  describe("isGenerationComplete", () => {
+    it("returns true if hasEos is true", () => {
+      expect(isGenerationComplete("Hello world", "", true, "stop")).toBe(true);
+    });
+
+    it("returns true if finishReason is tool_calls", () => {
+      expect(isGenerationComplete("Calling tool", "", false, "tool_calls")).toBe(true);
+    });
+
+    it("returns false if finishReason is length", () => {
+      expect(isGenerationComplete("Sentence ending.", "", false, "length")).toBe(false);
+    });
+
+    it("returns false if there is an unclosed action tag", () => {
+      expect(isGenerationComplete("[ACTION: CREATE_AGENT name=\"Bob\"", "", false, "stop")).toBe(false);
+    });
+
+    it("returns false if there is an unclosed code block", () => {
+      expect(isGenerationComplete("```ts\nconst a = 1;", "", false, "stop")).toBe(false);
+    });
+
+    it("returns false if finishReason is null and no EOS was found", () => {
+      expect(isGenerationComplete("Some partial text", "", false, null)).toBe(false);
+    });
+
+    it("returns true if finishReason is stop and ends with terminal punctuation", () => {
+      expect(isGenerationComplete("Execution finished successfully.", "", false, "stop")).toBe(true);
+    });
+
+    it("returns false if finishReason is stop but ends mid-word", () => {
+      expect(isGenerationComplete("Execution finished and", "", false, "stop")).toBe(false);
     });
   });
 
@@ -149,7 +214,7 @@ describe("hordeContinuation", () => {
       });
     }
 
-    it("should stream single response if finish_reason is stop", async () => {
+    it("should stream single response if finish_reason is stop with clean punctuation", async () => {
       const mockChunks = [
         `data: {"choices":[{"delta":{"content":"Hello world!"},"finish_reason":null}]}\n\n`,
         `data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n`,
@@ -238,6 +303,59 @@ describe("hordeContinuation", () => {
         role: "user",
         content: CONTINUATION_USER_PROMPT,
       });
+    });
+
+    it("should continue when generation is cut off mid-tag even if finish_reason is null or stop", async () => {
+      const round1Chunks = [
+        `data: {"choices":[{"delta":{"content":"[ACTION: CREATE_AGENT name=\\"Alice\\" role=\\"Dev\\""},"finish_reason":null}]}\n\n`,
+        `data: [DONE]\n\n`,
+      ];
+
+      const round2Chunks = [
+        `data: {"choices":[{"delta":{"content":" prompt=\\"You are Alice.\\"]"},"finish_reason":null}]}\n\n`,
+        `data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n`,
+        `data: [DONE]\n\n`,
+      ];
+
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(createMockSseResponse(round1Chunks))
+        .mockResolvedValueOnce(createMockSseResponse(round2Chunks));
+
+      globalThis.fetch = fetchMock;
+
+      const res = await streamHordeWithContinuation({
+        targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+        fetchHeaders: { Authorization: "Bearer test" },
+        requestBody: {
+          model: "Fast",
+          messages: [{ role: "user", content: "Create Alice" }],
+        },
+      });
+
+      expect(res.ok).toBe(true);
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let streamContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const textChunk = decoder.decode(value);
+        const lines = textChunk.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) streamContent += delta;
+            } catch {}
+          }
+        }
+      }
+
+      expect(streamContent).toBe('[ACTION: CREATE_AGENT name="Alice" role="Dev" prompt="You are Alice."]');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it("should stop immediately when EOS token is encountered in content", async () => {
@@ -341,7 +459,7 @@ describe("hordeContinuation", () => {
       vi.restoreAllMocks();
     });
 
-    it("should return single response if finish_reason is stop", async () => {
+    it("should return single response if finish_reason is stop with complete sentence", async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
@@ -371,7 +489,7 @@ describe("hordeContinuation", () => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
-    it("should loop and concatenate when finish_reason is length", async () => {
+    it("should loop and concatenate across multiple small character bursts until done", async () => {
       const fetchMock = vi
         .fn()
         .mockResolvedValueOnce({
@@ -380,7 +498,7 @@ describe("hordeContinuation", () => {
           json: async () => ({
             choices: [
               {
-                message: { role: "assistant", content: "Part 1 content " },
+                message: { role: "assistant", content: "Burst 1 - " },
                 finish_reason: "length",
               },
             ],
@@ -392,7 +510,19 @@ describe("hordeContinuation", () => {
           json: async () => ({
             choices: [
               {
-                message: { role: "assistant", content: "Part 2 content." },
+                message: { role: "assistant", content: "Burst 2 - " },
+                finish_reason: "length",
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            choices: [
+              {
+                message: { role: "assistant", content: "Burst 3 completed." },
                 finish_reason: "stop",
               },
             ],
@@ -406,14 +536,61 @@ describe("hordeContinuation", () => {
         fetchHeaders: { Authorization: "Bearer test" },
         requestBody: {
           model: "Fast",
-          messages: [{ role: "user", content: "Long task" }],
+          messages: [{ role: "user", content: "Multi-burst task" }],
         },
       });
 
       expect(res.ok).toBe(true);
       const data = await res.json();
-      expect(data.choices[0].message.content).toBe("Part 1 content Part 2 content.");
+      expect(data.choices[0].message.content).toBe("Burst 1 - Burst 2 - Burst 3 completed.");
       expect(data.choices[0].finish_reason).toBe("stop");
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("should continue non-streaming when unclosed project action tag is detected", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            choices: [
+              {
+                message: { role: "assistant", content: 'I am creating the agent.\n\n[ACTION: CREATE_AGENT name="Marcus" role="Security"' },
+                finish_reason: "stop",
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            choices: [
+              {
+                message: { role: "assistant", content: ' prompt="Security guidelines."]' },
+                finish_reason: "stop",
+              },
+            ],
+          }),
+        });
+
+      globalThis.fetch = fetchMock;
+
+      const res = await fetchHordeNonStreamWithContinuation({
+        targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+        fetchHeaders: { Authorization: "Bearer test" },
+        requestBody: {
+          model: "Fast",
+          messages: [{ role: "user", content: "Hire Marcus" }],
+        },
+      });
+
+      expect(res.ok).toBe(true);
+      const data = await res.json();
+      expect(data.choices[0].message.content).toBe(
+        'I am creating the agent.\n\n[ACTION: CREATE_AGENT name="Marcus" role="Security" prompt="Security guidelines."]',
+      );
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
   });
