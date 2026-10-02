@@ -70,15 +70,7 @@ export interface ProjectRecord {
   memoryFiles: ProjectMemoryFile[];
   tasks: ProjectTask[];
   messages: ProjectChatMessage[];
-  isSetupComplete?: boolean;
   userName?: string;
-  setupState?: {
-    isComplete: boolean;
-    step: 1 | 2;
-    domain?: string;
-    userName?: string;
-    messages?: ProjectChatMessage[];
-  };
   created_at: string;
   updated_at: string;
 }
@@ -165,9 +157,7 @@ projectsRouter.post("/", async (c) => {
     memoryFiles: starterMemory,
     tasks: [],
     messages: starterMessages,
-    isSetupComplete: body.isSetupComplete ?? false,
     userName: body.userName ?? "",
-    setupState: body.setupState ?? { isComplete: false, step: 1, messages: [] },
     created_at: now,
     updated_at: now,
   };

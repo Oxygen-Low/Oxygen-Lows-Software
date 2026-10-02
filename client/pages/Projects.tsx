@@ -98,14 +98,6 @@ export interface ProjectChatMessage {
   createdAt: string;
 }
 
-export interface ProjectSetupState {
-  isComplete: boolean;
-  step: 1 | 2;
-  domain?: string;
-  userName?: string;
-  messages: ProjectChatMessage[];
-}
-
 export interface ProjectRecord {
   id: string;
   user_id?: string;
@@ -119,9 +111,7 @@ export interface ProjectRecord {
   memoryFiles: ProjectMemoryFile[];
   tasks: ProjectTask[];
   messages?: ProjectChatMessage[];
-  isSetupComplete?: boolean;
   userName?: string;
-  setupState?: ProjectSetupState;
   created_at: string;
   updated_at: string;
 }
@@ -315,29 +305,11 @@ export default function Projects() {
     }
   }, [selectedMemoryFile]);
 
-  // Messages to display: during setup, show persisted setup messages; once completed, show current session messages
+  // Messages to display in session
   const displayedMessages = useMemo(() => {
     if (!activeProject) return [];
-    if (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete)) {
-      if (activeProject.setupState?.messages && activeProject.setupState.messages.length > 0) {
-        return activeProject.setupState.messages;
-      }
-      return [
-        {
-          id: "setup-initial-q1",
-          sender: "orchestrator" as const,
-          agentName: activeProject.orchestratorName || "Orchestrator",
-          content: t(
-            "projects.setupQuestion1",
-            undefined,
-            "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
-          ),
-          createdAt: activeProject.created_at || new Date().toISOString(),
-        },
-      ];
-    }
     return sessionMessages;
-  }, [activeProject, sessionMessages, t]);
+  }, [activeProject, sessionMessages]);
 
   // Scroll chat to bottom
   useEffect(() => {
@@ -388,64 +360,6 @@ export default function Projects() {
     await updateProjectInStateAndServer(updated);
   };
 
-  const extractDomain = (text: string): string | null => {
-    const urlMatch = text.match(/https?:\/\/([^\s/$.?#].[^\s]*)/i);
-    if (urlMatch) return urlMatch[1].replace(/\/$/, "");
-    const domainMatch = text.match(/\b([a-zA-Z0-9-]+\.(?:com|org|net|io|dev|ai|app|co|xyz|tech|software|biz|info))\b/i);
-    if (domainMatch) return domainMatch[1];
-    return null;
-  };
-
-  const extractUserName = (text: string): string => {
-    let cleaned = text
-      .replace(/^(?:my name is|i am|i'm|call me|please call me|you can call me|this is)\s+/i, "")
-      .replace(/[.!?,]$/, "")
-      .trim();
-    if (cleaned.length > 0) {
-      if (!cleaned.includes(" ") && cleaned.length > 1) {
-        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-      }
-      return cleaned;
-    }
-    return text.trim() || "User";
-  };
-
-  const handleResetSetup = async () => {
-    if (!activeProject) return;
-    const now = new Date().toISOString();
-    const initialMsg: ProjectChatMessage = {
-      id: crypto.randomUUID(),
-      sender: "orchestrator",
-      agentName: activeProject.orchestratorName || "Orchestrator",
-      content: t(
-        "projects.setupQuestion1",
-        undefined,
-        "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
-      ),
-      createdAt: now,
-    };
-
-    const cleanedMemory = activeProject.memoryFiles.filter(
-      (m) => m.filename !== "user_profile.md" && m.filename !== "workspace_context.md"
-    );
-
-    const resetProj: ProjectRecord = {
-      ...activeProject,
-      isSetupComplete: false,
-      userName: undefined,
-      memoryFiles: cleanedMemory,
-      setupState: {
-        isComplete: false,
-        step: 1,
-        messages: [initialMsg],
-      },
-      updated_at: now,
-    };
-
-    await updateProjectInStateAndServer(resetProj);
-    setChatInput("");
-  };
-
   // Create new project
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -454,18 +368,6 @@ export default function Projects() {
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
     const orchName = newOrchestratorName.trim() || "Orchestrator";
-
-    const initialSetupMsg: ProjectChatMessage = {
-      id: crypto.randomUUID(),
-      sender: "orchestrator",
-      agentName: orchName,
-      content: t(
-        "projects.setupQuestion1",
-        undefined,
-        "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
-      ),
-      createdAt: now,
-    };
 
     const newProj: ProjectRecord = {
       id: newId,
@@ -499,12 +401,6 @@ export default function Projects() {
         },
       ],
       tasks: [],
-      isSetupComplete: false,
-      setupState: {
-        isComplete: false,
-        step: 1,
-        messages: [initialSetupMsg],
-      },
       created_at: now,
       updated_at: now,
     };
@@ -916,166 +812,6 @@ export default function Projects() {
 
     if (!customPrompt) setChatInput("");
     setIsGenerating(true);
-
-    // If in setup mode, process setup conversation and unlock workspace
-    const isSetup = activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete);
-    if (isSetup) {
-      const now = new Date().toISOString();
-      const userMsg: ProjectChatMessage = {
-        id: crypto.randomUUID(),
-        sender: "user",
-        content: promptToSend,
-        createdAt: now,
-      };
-
-      const currentSetup = activeProject.setupState || {
-        isComplete: false,
-        step: 1 as const,
-        messages: [
-          {
-            id: "setup-initial-q1",
-            sender: "orchestrator" as const,
-            agentName: activeProject.orchestratorName || "Orchestrator",
-            content: t(
-              "projects.setupQuestion1",
-              undefined,
-              "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
-            ),
-            createdAt: activeProject.created_at || now,
-          },
-        ],
-      };
-
-      const existingMessages =
-        currentSetup.messages && currentSetup.messages.length > 0
-          ? currentSetup.messages
-          : [
-              {
-                id: "setup-initial-q1",
-                sender: "orchestrator" as const,
-                agentName: activeProject.orchestratorName || "Orchestrator",
-                content: t(
-                  "projects.setupQuestion1",
-                  undefined,
-                  "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
-                ),
-                createdAt: activeProject.created_at || now,
-              },
-            ];
-
-      if (currentSetup.step === 1) {
-        // Step 1: Project & Domain Check
-        const detectedDomain = extractDomain(promptToSend);
-        let updatedMemory = [...activeProject.memoryFiles];
-
-        if (detectedDomain) {
-          // Add researched domain context memory doc
-          const contextDoc: ProjectMemoryFile = {
-            id: crypto.randomUUID(),
-            filename: "workspace_context.md",
-            title: "Workspace Context & Domain Profile",
-            content: `# Domain Context: ${detectedDomain}\n\n- **Target Domain:** ${detectedDomain}\n- **Website Status:** Verified via web search\n- **Workspace Profile:** Autonomous multi-agent coordination and operations for ${activeProject.name}.\n`,
-            updatedAt: now,
-          };
-          updatedMemory = [...updatedMemory.filter((m) => m.filename !== "workspace_context.md"), contextDoc];
-        }
-
-        const step2Msg: ProjectChatMessage = {
-          id: crypto.randomUUID(),
-          sender: "orchestrator",
-          agentName: activeProject.orchestratorName || "Orchestrator",
-          content: t(
-            "projects.setupQuestion2",
-            undefined,
-            "Great! I've recorded that.\n\n2. What is your name, or what would you like me to call you?"
-          ),
-          createdAt: new Date().toISOString(),
-        };
-
-        const updatedSetupState: ProjectSetupState = {
-          isComplete: false,
-          step: 2,
-          domain: detectedDomain || undefined,
-          userName: undefined,
-          messages: [...existingMessages, userMsg, step2Msg],
-        };
-
-        const updatedProj: ProjectRecord = {
-          ...activeProject,
-          isSetupComplete: false,
-          memoryFiles: updatedMemory,
-          setupState: updatedSetupState,
-          updated_at: new Date().toISOString(),
-        };
-
-        await updateProjectInStateAndServer(updatedProj);
-        setIsGenerating(false);
-        return;
-      } else {
-        // Step 2: User Name & Workspace Unlock
-        const chosenName = extractUserName(promptToSend);
-        const userProfileDoc: ProjectMemoryFile = {
-          id: crypto.randomUUID(),
-          filename: "user_profile.md",
-          title: "User Profile",
-          content: `# User Profile\n\n- **Name:** ${chosenName}\n- **Preferred Name:** ${chosenName}\n- **Role:** Workspace Owner / Lead\n`,
-          always_shown: true,
-          updatedAt: now,
-        };
-
-        const updatedMemory = [
-          ...activeProject.memoryFiles.filter((m) => m.filename !== "user_profile.md"),
-          userProfileDoc,
-        ];
-        const updatedPrompt = `${
-          activeProject.orchestratorPrompt || "You are the Lead Workspace Orchestrator."
-        }\n\nThe user's name is ${chosenName}. Always address them by their name (${chosenName}).`;
-        const updatedAgents = activeProject.agents.map((ag) =>
-          ag.isOrchestrator
-            ? {
-                ...ag,
-                systemPrompt: `${ag.systemPrompt}\n\nThe user's name is ${chosenName}. Always address them by their name (${chosenName}).`,
-              }
-            : ag,
-        );
-
-        const finishedMsg: ProjectChatMessage = {
-          id: crypto.randomUUID(),
-          sender: "orchestrator",
-          agentName: activeProject.orchestratorName || "Orchestrator",
-          content: t(
-            "projects.setupFinished",
-            undefined,
-            `Workspace setup complete! Nice to meet you, ${chosenName}. All tools, memory docs, and agents are now unlocked.`
-          ),
-          createdAt: new Date().toISOString(),
-        };
-
-        const updatedSetupState: ProjectSetupState = {
-          isComplete: true,
-          step: 2,
-          domain: currentSetup.domain,
-          userName: chosenName,
-          messages: [...existingMessages, userMsg, finishedMsg],
-        };
-
-        const updatedProj: ProjectRecord = {
-          ...activeProject,
-          isSetupComplete: true,
-          userName: chosenName,
-          orchestratorPrompt: updatedPrompt,
-          agents: updatedAgents,
-          memoryFiles: updatedMemory,
-          setupState: updatedSetupState,
-          updated_at: new Date().toISOString(),
-        };
-
-        await updateProjectInStateAndServer(updatedProj);
-        setSessionMessages([finishedMsg]);
-        setIsGenerating(false);
-        return;
-      }
-    }
 
     const now = new Date().toISOString();
     const userMsg: ProjectChatMessage = {
@@ -1553,30 +1289,7 @@ WORKSPACE PROTOCOLS:
           <div className="flex flex-1 overflow-hidden">
           {/* LEFT COLUMN: ROSTER, MEMORY, TASKS */}
           <aside className="w-72 border-r border-slate-800/80 bg-slate-900/30 flex flex-col overflow-y-auto">
-            {/* SETUP LOCK BANNER */}
-            {activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete)) && (
-              <div className="bg-amber-500/10 border-b border-amber-500/30 p-2.5 text-center shrink-0">
-                <div className="flex items-center justify-center gap-1.5 text-amber-300 font-semibold text-xs">
-                  <Lock className="h-3.5 w-3.5" />
-                  <span>{t("projects.setupLocked", undefined, "Locked during setup")}</span>
-                </div>
-                <p className="text-[10px] text-amber-400/80 mt-0.5">
-                  {t(
-                    "projects.setupLockedDesc",
-                    undefined,
-                    "Complete workspace setup to unlock agent roster, memory docs, and tasks.",
-                  )}
-                </p>
-              </div>
-            )}
-
-            <div
-              className={`flex flex-col flex-1 overflow-y-auto ${
-                activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete))
-                  ? "pointer-events-none opacity-50 select-none"
-                  : ""
-              }`}
-            >
+            <div className="flex flex-col flex-1 overflow-y-auto">
               {/* AGENT ROSTER SECTION */}
               <div className="p-3 border-b border-slate-800/60">
                 <div className="flex items-center justify-between mb-2">
@@ -1818,81 +1531,55 @@ WORKSPACE PROTOCOLS:
           <main className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
             {/* Quick Action Chips & Target Agent Indicator */}
             <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-900/40 px-4 py-2 text-xs">
-              {activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete)) ? (
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/30 px-3 py-1 text-xs font-semibold text-amber-300">
-                      <Lock className="h-3.5 w-3.5" />
-                      <span>
-                        {t("projects.setupMode", undefined, "Workspace Setup")}:{" "}
-                        {activeProject?.setupState?.step === 2
-                          ? t("projects.setupStep2", undefined, "Step 2: User Profile")
-                          : t("projects.setupStep1", undefined, "Step 1: Project & Domain")}
-                      </span>
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleResetSetup}
-                    className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                    title="Reset setup and start over"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    <span>{t("projects.resetSetup", undefined, "Reset Setup")}</span>
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 overflow-x-auto">
-                    <span className="text-slate-400 shrink-0 flex items-center gap-1 font-semibold">
-                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                      {t("projects.quickActions", undefined, "Quick Actions")}:
-                    </span>
-                    <button
-                      onClick={() => handleQuickAddAgent()}
-                      className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors flex items-center gap-1"
-                    >
-                      <UserPlus className="h-3 w-3 text-primary" />
-                      <span>{t("projects.hireAgent", undefined, "Hire Agent")}</span>
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleSendMessage(
-                          t(
-                            "projects.generateTasksPrompt",
-                            undefined,
-                            "Analyze project context and generate the next 3 actionable tasks.",
-                          ),
-                        )
-                      }
-                      className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-sky-950/40 hover:text-sky-300 transition-colors"
-                    >
-                      📋 Plan Tasks
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleSendMessage(
-                          t(
-                            "projects.summarizeMemoryPrompt",
-                            undefined,
-                            "Summarize all memory files and review project goals.",
-                          ),
-                        )
-                      }
-                      className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors"
-                    >
-                      🧠 Audit Memory
-                    </button>
-                  </div>
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <span className="text-slate-400 shrink-0 flex items-center gap-1 font-semibold">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  {t("projects.quickActions", undefined, "Quick Actions")}:
+                </span>
+                <button
+                  onClick={() => handleQuickAddAgent()}
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <UserPlus className="h-3 w-3 text-primary" />
+                  <span>{t("projects.hireAgent", undefined, "Hire Agent")}</span>
+                </button>
+                <button
+                  onClick={() =>
+                    handleSendMessage(
+                      t(
+                        "projects.generateTasksPrompt",
+                        undefined,
+                        "Analyze project context and generate the next 3 actionable tasks.",
+                      ),
+                    )
+                  }
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-sky-950/40 hover:text-sky-300 transition-colors"
+                >
+                  📋 Plan Tasks
+                </button>
+                <button
+                  onClick={() =>
+                    handleSendMessage(
+                      t(
+                        "projects.summarizeMemoryPrompt",
+                        undefined,
+                        "Summarize all memory files and review project goals.",
+                      ),
+                    )
+                  }
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors"
+                >
+                  🧠 Audit Memory
+                </button>
+              </div>
 
-                  {/* Chat focus indicator */}
-                  <div className="hidden md:flex items-center gap-1 text-[11px] text-slate-400">
-                    <span>Chat Focus:</span>
-                    <span className="font-semibold text-white">
-                      {selectedAgent?.name || activeProject?.orchestratorName}
-                    </span>
-                  </div>
-                </>
-              )}
+              {/* Chat focus indicator */}
+              <div className="hidden md:flex items-center gap-1 text-[11px] text-slate-400">
+                <span>Chat Focus:</span>
+                <span className="font-semibold text-white">
+                  {selectedAgent?.name || activeProject?.orchestratorName}
+                </span>
+              </div>
             </div>
 
             {/* Chat Message Stream */}
