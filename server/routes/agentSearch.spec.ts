@@ -68,7 +68,7 @@ describe("Agent Search Route", () => {
 
   test("Exports HORDE_FAST_MODEL constant", () => {
     expect(HORDE_FAST_MODEL).toBe(
-      "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+      "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     );
     expect(HORDE_URL).toBe("https://oai.stablehorde.net/v1/chat/completions");
   });
@@ -372,7 +372,7 @@ describe("Agent Search Route", () => {
     expect(summarizerCalled).toBe(true);
   });
 
-  test("Maps Horde 'Smart' model alias to aphrodite/TheDrummer/Behemoth-X-123B-v2.1", async () => {
+  test("Maps Horde 'Smart' model alias to aphrodite/DeepSeek-V4.1-Flash", async () => {
     let capturedHordeModel = "";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const urlStr = String(url);
@@ -403,6 +403,47 @@ describe("Agent Search Route", () => {
          researchOnly: true,
          stream: false,
          researchModel: "Smart",
+         researchProvider: "horde",
+       }),
+     });
+
+     expect(res.status).toBe(200);
+     expect(capturedHordeModel).toBe(
+       "aphrodite/DeepSeek-V4.1-Flash",
+     );
+   });
+
+  test("Maps Horde 'Writing' model alias to aphrodite/TheDrummer/Behemoth-X-123B-v2.1", async () => {
+    let capturedHordeModel = "";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      const urlStr = String(url);
+      if (urlStr.includes("stablehorde.net")) {
+        const reqBody = JSON.parse((init?.body as string) || "{}");
+        capturedHordeModel = reqBody.model;
+        return new Response(
+           JSON.stringify({
+             choices: [{ message: { content: '{"action": "done"}' } }],
+           }),
+           { status: 200, headers: { "Content-Type": "application/json" } },
+         );
+       }
+       return new Response(JSON.stringify({ error: "Not found" }), {
+         status: 404,
+       });
+     });
+
+     const res = await app.request("/api/ai/agent-search", {
+       method: "POST",
+       headers: {
+         Authorization: `Bearer ${validToken}`,
+         "Content-Type": "application/json",
+       },
+       body: JSON.stringify({
+         query: "Write a poem about space",
+         responseFormat: "summary",
+         researchOnly: true,
+         stream: false,
+         researchModel: "Writing",
          researchProvider: "horde",
        }),
      });

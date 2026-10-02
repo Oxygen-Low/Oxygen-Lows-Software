@@ -521,9 +521,9 @@ export function initUserFolder(
     show_online_status: true,
     chatbot_default_model: "Fast",
     chatbot_default_provider: "horde",
-    research_agent_default_model: "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+    research_agent_default_model: "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     research_agent_default_provider: "horde",
-    research_summarizer_default_model: "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+    research_summarizer_default_model: "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     research_summarizer_default_provider: "horde",
     last_model_id: "Fast",
     last_provider: "horde",
@@ -1114,14 +1114,14 @@ function sanitizePreferences(pref: any): any {
     updated.research_agent_default_provider = "horde";
     if (updated.research_agent_default_model?.startsWith("@cf/")) {
       updated.research_agent_default_model =
-        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M";
+        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
     }
   }
   if (updated.research_summarizer_default_provider === "cloudflare") {
     updated.research_summarizer_default_provider = "horde";
     if (updated.research_summarizer_default_model?.startsWith("@cf/")) {
       updated.research_summarizer_default_model =
-        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M";
+        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
     }
   }
   if (updated.last_provider === "cloudflare") {

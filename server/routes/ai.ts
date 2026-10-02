@@ -20,6 +20,7 @@ export const aiRouter = new Hono();
 const DEFAULT_MODELS = [
   { provider: "horde", model_id: "Fast" },
   { provider: "horde", model_id: "Smart" },
+  { provider: "horde", model_id: "Writing" },
 ];
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
@@ -29,13 +30,10 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
     "meta-llama/Llama-3.2-3B-Instruct",
   ],
   Fast: [
-    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
-    "koboldcpp/llama-3.2-3b-instruct-q4_k_m",
-    "meta-llama/Llama-3.2-3B-Instruct",
-    "koboldcpp/Llama-3.2-1B-Instruct",
-    "koboldcpp/L3-Super-Nova-RP-8B",
-    "koboldcpp/L3-8B-Stheno-v3.2",
-    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+  ],
+  "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M": [
+    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
   ],
   "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M": [
     "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
@@ -46,7 +44,8 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
     "koboldcpp/L3-8B-Stheno-v3.2",
     "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
   ],
-  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
+  Smart: ["aphrodite/DeepSeek-V4.1-Flash"],
+  Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 
 export function resolveHordeModel(model: string): string {

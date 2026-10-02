@@ -58,7 +58,7 @@ export const V1_AVAILABLE_MODELS = [
     created: 1700000000,
     owned_by: "oxygenlow",
     type: "text",
-    description: "Fast instruction-tuned LLM (Llama 3.2 / Llama 3.1)",
+    description: "Fast instruction-tuned LLM (NVIDIA Nemotron 3 Nano)",
   },
   {
     id: "Smart",
@@ -66,7 +66,15 @@ export const V1_AVAILABLE_MODELS = [
     created: 1700000000,
     owned_by: "oxygenlow",
     type: "text",
-    description: "High-parameter intelligent reasoning open LLM",
+    description: "High-parameter intelligent reasoning open LLM (DeepSeek V4.1 Flash)",
+  },
+  {
+    id: "Writing",
+    object: "model",
+    created: 1700000000,
+    owned_by: "oxygenlow",
+    type: "text",
+    description: "High-parameter creative & long-form writing LLM (Behemoth 123B)",
   },
   {
     id: "llama-3.2-3b",
@@ -233,6 +241,9 @@ export function resolveV1TextModel(modelName?: string): string {
   }
   if (clean === "smart") {
     return resolveHordeModel("Smart");
+  }
+  if (clean === "writing") {
+    return resolveHordeModel("Writing");
   }
   if (clean === "llama-3.2-3b") {
     return "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M";

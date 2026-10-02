@@ -1283,6 +1283,7 @@ WORKSPACE PROTOCOLS:
                   <>
                     <option value="horde:Fast" className="bg-slate-900 text-white">AI Horde - Fast</option>
                     <option value="horde:Smart" className="bg-slate-900 text-white">AI Horde - Smart</option>
+                    <option value="horde:Writing" className="bg-slate-900 text-white">AI Horde - Writing</option>
                     <option value="pollinations:openai" className="bg-slate-900 text-white">Pollinations AI</option>
                     <option value="openai:gpt-4o" className="bg-slate-900 text-white">OpenAI - GPT-4o</option>
                     <option value="anthropic:claude-3-7-sonnet" className="bg-slate-900 text-white">Anthropic - Claude 3.7</option>

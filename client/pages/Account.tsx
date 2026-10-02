@@ -1289,7 +1289,7 @@ export default function Account() {
                         <SelectValue
                           placeholder={
                             researchAgentDefaultModel ||
-                            "Default: koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M"
+                            "Default: koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"
                           }
                         />
                       </SelectTrigger>

@@ -321,7 +321,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       expect(p.research_agent_default_model).toBe("claude-3-7-sonnet");
       expect(p.research_agent_default_provider).toBe("anthropic");
       expect(p.research_summarizer_default_model).toBe(
-        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
       );
 
       // Step 3: Update research_summarizer_default_model only

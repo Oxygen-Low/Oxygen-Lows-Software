@@ -469,7 +469,7 @@ describe("aiRouter Horde proxy continuation", () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("should resolve Fast model to a comma-separated list of active Horde candidates", async () => {
+  it("should resolve Fast model to Horde candidate", async () => {
     let requestedModel = "";
     globalThis.fetch = vi.fn().mockImplementation(async (url, init) => {
       const body = JSON.parse(init?.body || "{}");
@@ -495,8 +495,7 @@ describe("aiRouter Horde proxy continuation", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(requestedModel).toContain("koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M");
-    expect(requestedModel).toContain("meta-llama/Llama-3.2-3B-Instruct");
+    expect(requestedModel).toBe("koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M");
   });
 
   it("should retry with dynamic fallback model if Horde returns 406", async () => {

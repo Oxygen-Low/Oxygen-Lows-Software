@@ -134,7 +134,7 @@ function TestThemeConsumer() {
         data-testid="set-research-agent-default"
         onClick={() =>
           setResearchAgentDefault(
-            "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
             "horde",
           )
         }
@@ -145,7 +145,7 @@ function TestThemeConsumer() {
         data-testid="set-research-summarizer-default"
         onClick={() =>
           setResearchSummarizerDefault(
-            "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
             "horde",
           )
         }
@@ -339,7 +339,7 @@ describe("ThemeContext & Provider", () => {
       expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
         p_user_id: "test-user-id",
         p_research_agent_default_model:
-          "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+          "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
         p_research_agent_default_provider: "horde",
       });
     });
@@ -362,7 +362,7 @@ describe("ThemeContext & Provider", () => {
       expect(mockRpc).toHaveBeenCalledWith("upsert_user_preferences", {
         p_user_id: "test-user-id",
         p_research_summarizer_default_model:
-          "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+          "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
         p_research_summarizer_default_provider: "horde",
       });
     });

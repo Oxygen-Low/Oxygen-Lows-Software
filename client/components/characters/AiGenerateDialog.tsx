@@ -262,12 +262,17 @@ export function AiGenerateDialog({
           {
             provider: "horde",
             model_id: "Fast",
-            name: "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+            name: "Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
           },
           {
             provider: "horde",
             model_id: "Smart",
-            name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+            name: "Smart - aphrodite/DeepSeek-V4.1-Flash",
+          },
+          {
+            provider: "horde",
+            model_id: "Writing",
+            name: "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
           },
         ];
 

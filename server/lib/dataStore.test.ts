@@ -393,11 +393,11 @@ describe("dataStore", () => {
     expect(initialPrefs.chatbot_default_model).toBe("Fast");
     expect(initialPrefs.chatbot_default_provider).toBe("horde");
     expect(initialPrefs.research_agent_default_model).toBe(
-      "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+      "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     );
     expect(initialPrefs.research_agent_default_provider).toBe("horde");
     expect(initialPrefs.research_summarizer_default_model).toBe(
-      "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+      "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     );
     expect(initialPrefs.research_summarizer_default_provider).toBe(
       "horde",

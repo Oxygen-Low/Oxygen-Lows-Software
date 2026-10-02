@@ -23,7 +23,7 @@ describe("OpenAI-Compatible Free AI API (/v1 & /api/v1)", () => {
   describe("Helper Functions", () => {
     it("resolves text model aliases correctly", () => {
       expect(resolveV1TextModel("gpt-3.5-turbo")).toBe(
-        "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M,koboldcpp/llama-3.2-3b-instruct-q4_k_m,meta-llama/Llama-3.2-3B-Instruct,koboldcpp/Llama-3.2-1B-Instruct,koboldcpp/L3-Super-Nova-RP-8B,koboldcpp/L3-8B-Stheno-v3.2,koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
       );
       expect(resolveV1TextModel("gpt-4o-mini")).toBe(
         resolveV1TextModel("Fast"),
@@ -32,6 +32,9 @@ describe("OpenAI-Compatible Free AI API (/v1 & /api/v1)", () => {
         "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
       );
       expect(resolveV1TextModel("Smart")).toBe(
+        "aphrodite/DeepSeek-V4.1-Flash",
+      );
+      expect(resolveV1TextModel("Writing")).toBe(
         "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
       );
       expect(resolveV1TextModel()).toBe(resolveV1TextModel("Fast"));
@@ -59,6 +62,7 @@ describe("OpenAI-Compatible Free AI API (/v1 & /api/v1)", () => {
       const modelIds = json.data.map((m: any) => m.id);
       expect(modelIds).toContain("Fast");
       expect(modelIds).toContain("Smart");
+      expect(modelIds).toContain("Writing");
       expect(modelIds).toContain("quality");
       expect(modelIds).toContain("fast");
       expect(modelIds).toContain("dall-e-3");

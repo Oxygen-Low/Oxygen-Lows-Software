@@ -4,10 +4,13 @@ import { formatModelLabel } from "./aiUtils";
 describe("formatModelLabel", () => {
   it("should handle horde provider", () => {
     expect(formatModelLabel("horde", "Fast")).toBe(
-      "Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+      "Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     );
     expect(formatModelLabel("horde", "Smart")).toBe(
-      "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+      "Smart - aphrodite/DeepSeek-V4.1-Flash",
+    );
+    expect(formatModelLabel("horde", "Writing")).toBe(
+      "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
     );
     expect(formatModelLabel("horde", "UnknownModel")).toBe(
       "AI Horde - UnknownModel",

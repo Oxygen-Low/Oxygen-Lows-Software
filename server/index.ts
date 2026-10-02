@@ -832,7 +832,7 @@ app.get("/api/openapi.json", (c) => {
                 schema: {
                   type: "object",
                   properties: {
-                    model: { type: "string", example: "Fast", description: "Model name or alias (Fast, Smart, llama-3.2-3b, gpt-3.5-turbo, etc.)" },
+                    model: { type: "string", example: "Fast", description: "Model name or alias (Fast, Smart, Writing, llama-3.2-3b, gpt-3.5-turbo, etc.)" },
                     messages: {
                       type: "array",
                       items: {
@@ -1156,7 +1156,7 @@ app.get("/api/docs", (c) => {
         <span class="method get">GET</span>
         <span class="path">/v1/models <span style="color: var(--text-muted); font-size: 0.85rem;">(or /api/v1/models)</span></span>
       </div>
-      <div class="desc">Discover available free text models (Fast, Smart, llama-3.2-3b, etc.) and image models (quality, fast, anime, pixel_art, etc.).</div>
+      <div class="desc">Discover available free text models (Fast, Smart, Writing, llama-3.2-3b, etc.) and image models (quality, fast, anime, pixel_art, etc.).</div>
     </div>
 
     <div class="endpoint">

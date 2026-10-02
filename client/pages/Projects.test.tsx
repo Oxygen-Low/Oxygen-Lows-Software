@@ -207,7 +207,7 @@ describe("Projects Page", () => {
       expect(screen.getByText("Model Selection Workspace")).toBeTruthy();
     });
 
-    const modelSelect = screen.getByDisplayValue("Fast - koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M");
+    const modelSelect = screen.getByDisplayValue("Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M");
     expect(modelSelect).toBeTruthy();
     fireEvent.change(modelSelect, { target: { value: "openai:gpt-4o" } });
   });

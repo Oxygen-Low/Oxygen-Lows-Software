@@ -2228,10 +2228,13 @@ export function Models() {
                       Built-in Models
                     </div>
                     <SelectItem value="horde:Fast" className="text-xs">
-                      Fast - Llama 3.1 8B (AI Horde)
+                      Fast - NVIDIA Nemotron 3 Nano (AI Horde)
                     </SelectItem>
                     <SelectItem value="horde:Smart" className="text-xs">
-                      Smart - Behemoth 123B (AI Horde)
+                      Smart - DeepSeek V4.1 Flash (AI Horde)
+                    </SelectItem>
+                    <SelectItem value="horde:Writing" className="text-xs">
+                      Writing - Behemoth 123B (AI Horde)
                     </SelectItem>
                   </SelectContent>
                 </Select>

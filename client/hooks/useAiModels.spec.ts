@@ -57,10 +57,10 @@ vi.mock("@/lib/db", () => {
                   chatbot_default_model: "gpt-4o",
                   chatbot_default_provider: "openai",
                   research_agent_default_model:
-                    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+                    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
                   research_agent_default_provider: "horde",
                   research_summarizer_default_model:
-                    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+                    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
                   research_summarizer_default_provider: "horde",
                 },
                 error: null,
@@ -286,10 +286,10 @@ describe("useAiModels Hook", () => {
     await waitFor(() => {
       expect(result.current.chatbotDefaultModel).toBe("gpt-4o");
       expect(result.current.researchAgentDefaultModel).toBe(
-        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
       );
       expect(result.current.researchSummarizerDefaultModel).toBe(
-        "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
       );
     });
 
