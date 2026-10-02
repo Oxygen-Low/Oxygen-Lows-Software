@@ -1,4 +1,4 @@
-﻿export const ru = {
+export const ru = {
   common: {
     save: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ",
     saveChanges: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ",
@@ -2855,7 +2855,19 @@ notificationsTitle: "Ð£Ð²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ñ",
       "helpCreateAgentPrompt": "Помоги мне создать нового агента со специализацией:",
       "fireAgentPrompt": "Уволить агента:",
       "generateTasksPrompt": "Проанализируй контекст проекта и сгенерируй следующие 3 практические задачи.",
-      "summarizeMemoryPrompt": "Обобщи все файлы памяти и проверь цели проекта."
+      "summarizeMemoryPrompt": "Обобщи все файлы памяти и проверь цели проекта.",
+      "clearChat": "Очистить чат",
+      "sessionStarted": "Сессия начата. Готов к выполнению действий.",
+      "agentSessionReady": "Сессия агента активна. Задавайте вопросы или запускайте действия.",
+      "hireAgent": "Нанять агента",
+      "startTask": "Запустить задачу",
+      "taskRunning": "Выполнение задачи...",
+      "taskCompleted": "Задача выполнена",
+      "assignedAgent": "Назначенный агент",
+      "unassigned": "Не назначен",
+      "taskLogs": "Журнал действий",
+      "taskDetails": "Детали задачи",
+      "hireAgentPrompt": "Я хочу нанять нового агента для нашего проекта."
   },
 
 } as const;

@@ -1,4 +1,4 @@
-﻿export const ko = {
+export const ko = {
   common: {
     save: "ì €ìž¥",
     saveChanges: "ë³€ê²½ì‚¬í•­ ì €ìž¥",
@@ -2827,7 +2827,19 @@ notificationsTitle: "ì•Œë¦¼",
       "helpCreateAgentPrompt": "다음 전문 분야를 가진 새 에이전트를 생성하도록 도와주세요:",
       "fireAgentPrompt": "에이전트 해고:",
       "generateTasksPrompt": "프로젝트 컨텍스트를 분석하고 실행 가능한 다음 3가지 작업을 생성하세요.",
-      "summarizeMemoryPrompt": "모든 메모리 파일을 요약하고 프로젝트 목표를 검토하세요."
+      "summarizeMemoryPrompt": "모든 메모리 파일을 요약하고 프로젝트 목표를 검토하세요.",
+      "clearChat": "채팅 지우기",
+      "sessionStarted": "세션이 시작되었습니다. 작업을 실행할 준비가 되었습니다.",
+      "agentSessionReady": "에이전트 세션이 활성화되었습니다. 질문하거나 작업을 트리거하세요.",
+      "hireAgent": "에이전트 채용",
+      "startTask": "작업 시작",
+      "taskRunning": "작업 실행 중...",
+      "taskCompleted": "작업 완료",
+      "assignedAgent": "담당 에이전트",
+      "unassigned": "미지정",
+      "taskLogs": "작업 로그",
+      "taskDetails": "작업 상세 정보",
+      "hireAgentPrompt": "프로젝트를 위해 새 에이전트를 채용하고 싶습니다."
   },
 
 } as const;

@@ -2888,6 +2888,15 @@ export const en = {
     clearChat: "Clear Chat",
     sessionStarted: "Session started. Ready to execute actions.",
     agentSessionReady: "Agent session active. Ask questions or trigger actions.",
+    hireAgent: "Hire Agent",
+    startTask: "Start Task",
+    taskRunning: "Running Task...",
+    taskCompleted: "Task Completed",
+    assignedAgent: "Assigned Agent",
+    unassigned: "Unassigned",
+    taskLogs: "Action Logs",
+    taskDetails: "Task Details",
+    hireAgentPrompt: "I would like to hire a new agent for our project.",
   },
 } as const;
 

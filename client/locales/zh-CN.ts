@@ -1,4 +1,4 @@
-﻿export const zhCN = {
+export const zhCN = {
   common: {
     save: "ä¿å­˜",
     saveChanges: "ä¿å­˜æ›´æ”¹",
@@ -2756,7 +2756,19 @@ notificationsTitle: "é€šçŸ¥",
       "helpCreateAgentPrompt": "请帮我创建一个具备以下专业技能的新智能体：",
       "fireAgentPrompt": "解雇智能体：",
       "generateTasksPrompt": "分析项目上下文并生成接下来的 3 个可执行任务。",
-      "summarizeMemoryPrompt": "总结所有记忆文件并审查项目目标。"
+      "summarizeMemoryPrompt": "总结所有记忆文件并审查项目目标。",
+      "clearChat": "清空对话",
+      "sessionStarted": "会话已启动，准备执行操作。",
+      "agentSessionReady": "智能体会话已就绪。可以提问或触发操作。",
+      "hireAgent": "雇佣智能体",
+      "startTask": "启动任务",
+      "taskRunning": "正在执行任务...",
+      "taskCompleted": "任务已完成",
+      "assignedAgent": "指派智能体",
+      "unassigned": "未指派",
+      "taskLogs": "操作日志",
+      "taskDetails": "任务详情",
+      "hireAgentPrompt": "我想为我们的项目雇佣一个新的智能体。"
   },
 
 } as const;

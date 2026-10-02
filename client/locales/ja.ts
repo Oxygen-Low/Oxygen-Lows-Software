@@ -1,4 +1,4 @@
-﻿export const ja = {
+export const ja = {
   common: {
     save: "ä¿å­˜",
     saveChanges: "å¤‰æ›´ã‚’ä¿å­˜",
@@ -2850,7 +2850,19 @@ notificationsTitle: "é€šçŸ¥",
       "helpCreateAgentPrompt": "次の専門分野を持つ新しいエージェントの作成を手伝ってください:",
       "fireAgentPrompt": "エージェントを解雇:",
       "generateTasksPrompt": "プロジェクトコンテキストを分析し、実行可能な次の3つのタスクを生成してください。",
-      "summarizeMemoryPrompt": "すべてのメモリファイルを要約し、プロジェクトの目標を確認してください。"
+      "summarizeMemoryPrompt": "すべてのメモリファイルを要約し、プロジェクトの目標を確認してください。",
+      "clearChat": "チャットをクリア",
+      "sessionStarted": "セッションを開始しました。アクションを実行する準備が整いました。",
+      "agentSessionReady": "エージェントセッションが有効です。質問するかアクションを開始してください。",
+      "hireAgent": "エージェントを採用",
+      "startTask": "タスクを開始",
+      "taskRunning": "タスク実行中...",
+      "taskCompleted": "タスク完了",
+      "assignedAgent": "担当エージェント",
+      "unassigned": "未割り当て",
+      "taskLogs": "実行ログ",
+      "taskDetails": "タスク詳細",
+      "hireAgentPrompt": "プロジェクトに新しいエージェントを採用したいです。"
   },
 
 } as const;

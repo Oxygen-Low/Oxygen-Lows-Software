@@ -211,4 +211,299 @@ describe("Projects Page", () => {
     expect(modelSelect).toBeTruthy();
     fireEvent.change(modelSelect, { target: { value: "openai:gpt-4o" } });
   });
+
+  it("strips raw tool tags from displayed message and executes batch actions", async () => {
+    let proxyCallCount = 0;
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-1",
+                name: "Alpha Workspace",
+                orchestratorName: "MainOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "MainOrchestrator",
+                    role: "Lead Workspace Orchestrator",
+                    systemPrompt: "You are Lead Orchestrator.",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [
+                  {
+                    id: "mem-1",
+                    filename: "project_goals.md",
+                    title: "Project Goals",
+                    content: "# Alpha Goals\nExecute autonomous pipelines.",
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+                tasks: [],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      if (url === "/api/ai/proxy") {
+        proxyCallCount++;
+        if (proxyCallCount === 1) {
+          return {
+            ok: true,
+            json: async () => ({
+              text: `I have analyzed the goals.\n\n[TASK: ADD title="Implement core auth module" priority="high"]\n[MEMORY: READ filename="project_goals.md"]\n\nScheduling tasks.`,
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            text: `All tasks have been scheduled on the board.`,
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Workspace")).toBeTruthy();
+    });
+
+    // Type a message in chat input and submit
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "Please create initial tasks" } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Wait for the action badge and clean text
+    await waitFor(() => {
+      expect(screen.getByText(/Added task "Implement core auth module"/i)).toBeTruthy();
+    });
+
+    // Ensure raw [TASK: ADD ...] tag is NOT visible in the rendered message
+    expect(screen.queryByText(/\[TASK:\s*ADD/i)).toBeNull();
+    expect(screen.queryByText(/\[MEMORY:\s*READ/i)).toBeNull();
+  });
+
+  it("guides through 4-step hiring workflow with Hire Agent quick action", async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-1",
+                name: "Alpha Workspace",
+                orchestratorName: "MainOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "MainOrchestrator",
+                    role: "Lead",
+                    systemPrompt: "Lead",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [],
+                tasks: [],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Workspace")).toBeTruthy();
+    });
+
+    // Click Hire Agent quick action
+    const hireBtn = screen.getByText("Hire Agent");
+    fireEvent.click(hireBtn);
+
+    // Orchestrator starts 4-step interview with Question 1: Role
+    await waitFor(() => {
+      expect(screen.getByText(/1\. Role & Specialization/i)).toBeTruthy();
+    });
+  });
+
+  it("selects task, assigns agent, and executes task with live action logs", async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-1",
+                name: "Alpha Workspace",
+                orchestratorName: "MainOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "MainOrchestrator",
+                    role: "Lead",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                  {
+                    id: "ag-2",
+                    name: "DevSpecialist",
+                    role: "Developer",
+                    isOrchestrator: false,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [
+                  {
+                    id: "mem-1",
+                    filename: "project_goals.md",
+                    title: "Project Goals",
+                    content: "Build system",
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+                tasks: [
+                  {
+                    id: "tsk-100",
+                    title: "Build authentication router",
+                    status: "todo",
+                    priority: "high",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-item-tsk-100")).toBeTruthy();
+    });
+
+    // Click task item to open Task Inspector
+    const taskItem = screen.getByTestId("task-item-tsk-100");
+    fireEvent.click(taskItem);
+
+    // Verify Task tab is active and task details are shown
+    await waitFor(() => {
+      expect(screen.getByText("Start Task")).toBeTruthy();
+    });
+
+    // Click "Start Task"
+    const startBtn = screen.getByText("Start Task");
+    fireEvent.click(startBtn);
+
+    // Verify task progression and completed log
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Task completed successfully/i)).toBeTruthy();
+      },
+      { timeout: 3000 },
+    );
+  });
+
+  it("handles firing an agent with clean name extraction and stripped tags", async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-1",
+                name: "Alpha Workspace",
+                orchestratorName: "MainOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "MainOrchestrator",
+                    role: "Lead",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                  {
+                    id: "ag-2",
+                    name: "MarketingBot",
+                    role: "Marketer",
+                    isOrchestrator: false,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [],
+                tasks: [],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("agent-item-ag-2")).toBeTruthy();
+    });
+
+    // Click fire agent button (flame icon) on MarketingBot
+    const fireBtn = screen.getByTitle("Prompt Orchestrator to Fire Agent");
+    fireEvent.click(fireBtn);
+
+    // Verify orchestrator confirms offboarding with clean name and no raw tags
+    await waitFor(() => {
+      expect(screen.getByText(/I have offboarded \*\*MarketingBot\*\*/i)).toBeTruthy();
+      expect(screen.getByText(/Fired agent "MarketingBot"/i)).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/\[ACTION:\s*FIRE_AGENT/i)).toBeNull();
+  });
 });
