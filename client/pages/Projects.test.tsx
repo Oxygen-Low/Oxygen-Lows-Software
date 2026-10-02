@@ -1087,6 +1087,185 @@ describe("Projects Page", () => {
     // Verify change reflected
     expect((descTextarea as HTMLTextAreaElement).value).toBe("Build responsive navbar with mobile drawer");
   });
+
+  it("actually performs web search via /api/ai/agent-search instead of hallucinating when agent triggers web search", async () => {
+    let proxyCount = 0;
+    let agentSearchCalled = false;
+    let agentSearchQuery = "";
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-search-1",
+                name: "Research Workspace",
+                orchestratorName: "ResearcherAgent",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-research",
+                    name: "ResearcherAgent",
+                    role: "Market Researcher",
+                    systemPrompt: "You are a research agent.",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [],
+                tasks: [],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      if (url === "/api/ai/agent-search" && opts?.method === "POST") {
+        agentSearchCalled = true;
+        const body = JSON.parse(opts.body);
+        agentSearchQuery = body.query;
+        return {
+          ok: true,
+          json: async () => ({
+            context: "DeepSeek-V3 was released in December 2024 with 671B parameters.",
+            result: "DeepSeek-V3 was released in December 2024 with 671B parameters.",
+            searches: [{ query: body.query, snippets: ["DeepSeek-V3 released with 671B total params."] }],
+          }),
+        };
+      }
+      if (url === "/api/ai/proxy" && opts?.method === "POST") {
+        proxyCount++;
+        if (proxyCount === 1) {
+          return {
+            ok: true,
+            json: async () => ({
+              text: `I will check the web for DeepSeek V3 release.\n\n[ACTION: WEB_SEARCH query="DeepSeek V3 release details"]\n\nSearching now...`,
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            text: `Based on the live web search findings, DeepSeek-V3 was officially released in December 2024.`,
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Research Workspace")).toBeTruthy();
+    });
+
+    // Send a message asking for research
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "What are the DeepSeek V3 release details?" } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Verify /api/ai/agent-search was actually called with the query
+    await waitFor(() => {
+      expect(agentSearchCalled).toBe(true);
+      expect(agentSearchQuery).toBe("DeepSeek V3 release details");
+    });
+
+    // Verify web search action badge was rendered and tag was stripped
+    await waitFor(() => {
+      expect(screen.getByText(/Searched web for "DeepSeek V3 release details"/i)).toBeTruthy();
+      expect(screen.getByText(/DeepSeek-V3 was officially released in December 2024/i)).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/\[ACTION:\s*WEB_SEARCH/i)).toBeNull();
+  });
+
+  it("executes web search during autonomous task execution when task requires online research", async () => {
+    let agentSearchCalled = false;
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-task-search-1",
+                name: "Autonomous Search Workspace",
+                orchestratorName: "TaskOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "TaskOrchestrator",
+                    role: "Lead",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [],
+                tasks: [
+                  {
+                    id: "tsk-web-1",
+                    title: "Research latest AI agent frameworks 2026",
+                    status: "todo",
+                    priority: "high",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      if (url === "/api/ai/agent-search" && opts?.method === "POST") {
+        agentSearchCalled = true;
+        return {
+          ok: true,
+          json: async () => ({
+            context: "LangGraph, AutoGen, and CrewAI remain leading multi-agent frameworks.",
+            result: "LangGraph, AutoGen, and CrewAI remain leading multi-agent frameworks.",
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-item-tsk-web-1")).toBeTruthy();
+    });
+
+    // Select task and click "Start Task"
+    fireEvent.click(screen.getByTestId("task-item-tsk-web-1"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Start Task")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Start Task"));
+
+    // Verify web search was executed in fallback / live task execution
+    await waitFor(() => {
+      expect(agentSearchCalled).toBe(true);
+      expect(screen.getByText(/Task completed successfully/i)).toBeTruthy();
+    });
+  });
 });
 
 

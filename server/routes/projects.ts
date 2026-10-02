@@ -49,7 +49,7 @@ export interface ProjectChatMessage {
   agentId?: string;
   content: string;
   actions?: Array<{
-    type: "create_agent" | "fire_agent" | "read_memory" | "write_memory" | "add_task" | "update_task";
+    type: "create_agent" | "fire_agent" | "read_memory" | "write_memory" | "add_task" | "update_task" | "web_search";
     status: "pending" | "running" | "completed" | "failed";
     details?: string;
   }>;

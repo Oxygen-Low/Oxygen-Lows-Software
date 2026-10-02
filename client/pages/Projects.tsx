@@ -93,7 +93,7 @@ export interface ProjectChatMessage {
   agentId?: string;
   content: string;
   actions?: Array<{
-    type: "create_agent" | "fire_agent" | "read_memory" | "write_memory" | "add_task" | "update_task";
+    type: "create_agent" | "fire_agent" | "read_memory" | "write_memory" | "add_task" | "update_task" | "web_search";
     status: "pending" | "running" | "completed" | "failed";
     details?: string;
   }>;
@@ -254,6 +254,11 @@ export default function Projects() {
     selectedModel: defaultModel = "Fast",
     selectedProvider: defaultProvider = "horde",
     getDecryptedApiKey,
+    researchAgentDefaultModel,
+    researchAgentDefaultProvider,
+    researchSummarizerDefaultModel,
+    researchSummarizerDefaultProvider,
+    isProviderConfigured,
   } = aiHook;
 
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
@@ -694,11 +699,93 @@ export default function Projects() {
     setActiveRightTab("tasks");
   };
 
+  // Live Web Search execution using the existing agentSearch / AI search system
+  const performAgentWebSearch = async (searchQuery: string): Promise<string> => {
+    try {
+      const searchTargetProvider =
+        selectedAgent?.modelProvider ||
+        activeProject?.orchestratorModelProvider ||
+        researchAgentDefaultProvider ||
+        "horde";
+      const agentApiKey = getDecryptedApiKey?.(searchTargetProvider);
+
+      const isSearchProviderKeyless =
+        searchTargetProvider === "horde" ||
+        searchTargetProvider === "pollinations" ||
+        searchTargetProvider.startsWith("local-");
+
+      const finalResearchProvider =
+        agentApiKey || isSearchProviderKeyless
+          ? searchTargetProvider
+          : researchAgentDefaultProvider &&
+              (isProviderConfigured?.(researchAgentDefaultProvider) ||
+                researchAgentDefaultProvider === "horde" ||
+                researchAgentDefaultProvider === "pollinations")
+            ? researchAgentDefaultProvider
+            : "horde";
+
+      const finalResearchModel =
+        (finalResearchProvider === searchTargetProvider
+          ? selectedAgent?.modelId || activeProject?.orchestratorModelId || researchAgentDefaultModel
+          : researchAgentDefaultModel) || "Fast";
+
+      const finalApiKey =
+        finalResearchProvider === searchTargetProvider
+          ? agentApiKey || undefined
+          : getDecryptedApiKey?.(finalResearchProvider) || undefined;
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/ai/agent-search", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          query: searchQuery,
+          responseFormat: "summary",
+          researchOnly: true,
+          stream: false,
+          researchModel: finalResearchModel,
+          researchProvider: finalResearchProvider,
+          summarizerModel: finalResearchModel,
+          summarizerProvider: finalResearchProvider,
+          apiKey: finalApiKey,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const findings = json.context || json.result || "";
+        if (findings && typeof findings === "string" && findings.trim()) {
+          return findings.trim();
+        }
+        if (Array.isArray(json.searches) && json.searches.length > 0) {
+          const formatted = json.searches
+            .map((s: any) => {
+              const snippets = (s.snippets || []).join("\n- ");
+              return `Search query: "${s.query}"\n${snippets ? `- ${snippets}` : "No snippets"}`;
+            })
+            .join("\n\n");
+          if (formatted.trim()) return formatted;
+        }
+      }
+    } catch (e) {
+      console.warn("Agent web search error:", e);
+    }
+
+    return `No online search results found for "${searchQuery}".`;
+  };
+
   // Utility to clean raw tool call tags from user-facing chat text
   const cleanDisplayedText = (text: string): string => {
     if (!text) return "";
     return text
-      .replace(/\[(?:ACTION|TASK|MEMORY|TOOL_OBSERVATIONS|Tool Output)[\s\S]*?\]/gi, "")
+      .replace(/\[(?:ACTION|TASK|MEMORY|TOOL_OBSERVATIONS|Tool Output|WEB_SEARCH|WEB SEARCH|SEARCH)[\s\S]*?\]/gi, "")
+      .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, "")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
   };
@@ -708,13 +795,44 @@ export default function Projects() {
     const toolCalls: Array<{
       raw: string;
       startIndex: number;
-      type: "read_memory" | "write_memory" | "create_agent" | "fire_agent" | "add_task" | "update_task";
+      type: "read_memory" | "write_memory" | "create_agent" | "fire_agent" | "add_task" | "update_task" | "web_search";
       params: Record<string, string>;
     }> = [];
 
+    // [ACTION: WEB_SEARCH query="..."] or [WEB_SEARCH: query="..."] or [WEB_SEARCH: "..."] or [SEARCH: query="..."] etc.
+    const webSearchRegex = /\[(?:ACTION:\s*)?(?:WEB_SEARCH|WEB SEARCH|SEARCH)(?::)?\s+(?:query=)?(?:["']([\s\S]*?)["']|([^\]\n]+))\]/gi;
+    let match;
+    while ((match = webSearchRegex.exec(text)) !== null) {
+      const q = (match[1] || match[2] || "").replace(/^query=/i, "").replace(/^["']|["']$/g, "").trim();
+      if (q) {
+        toolCalls.push({
+          raw: match[0],
+          startIndex: match.index,
+          type: "web_search",
+          params: { query: q },
+        });
+      }
+    }
+
+    // JSON tool call detection: {"action": "web_search", "query": "..."} or {"name": "web_search", "args": {"query": "..."}}
+    const jsonToolRegex = /\{[\s\r\n]*"(?:action|name|tool)"\s*:\s*"web_search"[\s\S]*?\}/gi;
+    while ((match = jsonToolRegex.exec(text)) !== null) {
+      try {
+        const parsed = JSON.parse(match[0]);
+        const q = parsed.query || parsed.args?.query || parsed.args?.q || "";
+        if (q) {
+          toolCalls.push({
+            raw: match[0],
+            startIndex: match.index,
+            type: "web_search",
+            params: { query: String(q).trim() },
+          });
+        }
+      } catch {}
+    }
+
     // [MEMORY: READ filename="..."]
     const readMemRegex = /\[MEMORY:\s*READ\s+filename="([^"]+)"\]/gi;
-    let match;
     while ((match = readMemRegex.exec(text)) !== null) {
       toolCalls.push({
         raw: match[0],
@@ -784,11 +902,11 @@ export default function Projects() {
   };
 
   // Execute batch tool calls against project state
-  const executeBatchTools = (
+  const executeBatchTools = async (
     toolCalls: Array<{
       raw: string;
       startIndex: number;
-      type: "read_memory" | "write_memory" | "create_agent" | "fire_agent" | "add_task" | "update_task";
+      type: "read_memory" | "write_memory" | "create_agent" | "fire_agent" | "add_task" | "update_task" | "web_search";
       params: Record<string, string>;
     }>,
     currentProj: ProjectRecord,
@@ -803,7 +921,18 @@ export default function Projects() {
     const observations: string[] = [];
 
     for (const call of toolCalls) {
-      if (call.type === "read_memory") {
+      if (call.type === "web_search") {
+        const query = call.params.query || "";
+        if (query) {
+          const findings = await performAgentWebSearch(query);
+          observations.push(`[Tool Output: Live Web Search Findings for "${query}":\n${findings}]`);
+          actionsFound.push({
+            type: "web_search",
+            status: "completed",
+            details: `Searched web for "${query}"`,
+          });
+        }
+      } else if (call.type === "read_memory") {
         const filename = call.params.filename || "";
         const target = proj.memoryFiles.find(
           (m) =>
@@ -1023,16 +1152,18 @@ ${agentsRoster || "No agents yet."}
 Current Tasks:
 ${tasksList || "No tasks."}
 
-WORKSPACE PROTOCOLS:
+WORKSPACES PROTOCOLS:
 1. ALWAYS check before doing things! Before creating tasks, creating agents, or making major project decisions, you MUST read the relevant memory files using [MEMORY: READ filename="<filename>"] if the information is not already present in Core Workspace Memory.
-2. Multi-tool Batch Execution: You may output tool calls. The system will batch-execute all detected tool calls, strip text after the tool calls, provide observations, and re-run until finished.
-3. Hiring Workflow: When hiring an agent, strictly follow this sequential 4-step interview. You MUST ask ONLY ONE step at a time and WAIT for the user's response. NEVER skip steps, NEVER combine multiple steps into a single message, and NEVER pick a name on the user's behalf without asking them:
+2. Web Search & Real-Time Facts: When you need up-to-date real-world facts, live information, documentation, or answers about external topics, NEVER hallucinate or pretend to search. You MUST use the live web search tool: [ACTION: WEB_SEARCH query="<search query>"]. The system will execute the real web search and return live search results.
+3. Multi-tool Batch Execution: You may output tool calls. The system will batch-execute all detected tool calls, strip text after the tool calls, provide observations, and re-run until finished.
+4. Hiring Workflow: When hiring an agent, strictly follow this sequential 4-step interview. You MUST ask ONLY ONE step at a time and WAIT for the user's response. NEVER skip steps, NEVER combine multiple steps into a single message, and NEVER pick a name on the user's behalf without asking them:
    - Step 1 (Role): Ask the user what domain specialization or role the new agent should handle (e.g., Security Engineer, Growth Specialist, Data Analyst). Do NOT ask for or suggest a name yet.
    - Step 2 (Name): In the NEXT turn after the user provides the role, ask the user what name they want to assign to this agent. Suggest 2-4 natural real human names (e.g., John, Sarah, Marcus, Elena, Alex, David, Jade, Chloe, Maya, Arthur; NEVER use robotic titles like "NexusBot", "MarketingBot", or "DevAgent") and ask the user to choose one or provide their own. You MUST wait for the user's reply with their chosen name before moving to Step 3. Do NOT skip Step 2.
    - Step 3 (Personality & Tone): In the NEXT turn after the user provides or confirms the name, ask what personality, tone, and operational guidelines they should have (e.g., Analytical, thorough, and proactive).
    - Step 4 (Confirmation): Present a clear summary of the chosen Role, Name, and Personality, and ask the user to reply "Confirm" to finalize hiring.
    - Step 5 (Creation): ONLY after the user explicitly confirms in response to Step 4, emit [ACTION: CREATE_AGENT name="..." role="..." prompt="..."] and [TASK: ADD title="..." priority="medium"].
-4. Tool Tags:
+5. Tool Tags:
+   - [ACTION: WEB_SEARCH query="<search query>"]
    - [MEMORY: READ filename="<filename>"]
    - [MEMORY: WRITE filename="<filename>" content="<markdown content>"]
    - [ACTION: CREATE_AGENT name="<name>" role="<role>" prompt="<system prompt>"]
@@ -1128,7 +1259,12 @@ WORKSPACE PROTOCOLS:
             }
           }
 
-          if (lower.includes("fire")) {
+          if (lower.includes("search") || lower.includes("web") || lower.includes("look up") || lower.includes("research")) {
+            const cleanQuery = promptToSend
+              .replace(/^(search (the )?web for|search for|look up|research|find online)\s*/i, "")
+              .trim() || promptToSend;
+            replyText = `I will search the web for "${cleanQuery}" to gather up-to-date live information.\n\n[ACTION: WEB_SEARCH query="${cleanQuery}"]`;
+          } else if (lower.includes("fire")) {
             const matchedAgent = workingProj.agents.find(
               (a) => !a.isOrchestrator && promptToSend.toLowerCase().includes(a.name.toLowerCase()),
             );
@@ -1229,7 +1365,7 @@ WORKSPACE PROTOCOLS:
           }
 
           // Execute batch of all detected tool calls
-          const { updatedProj, actionsFound, observations } = executeBatchTools(toolCalls, workingProj);
+          const { updatedProj, actionsFound, observations } = await executeBatchTools(toolCalls, workingProj);
           workingProj = updatedProj;
           accumulatedActions = [...accumulatedActions, ...actionsFound];
 
@@ -1379,10 +1515,11 @@ ${tasksList || "No tasks."}
 
 TASK EXECUTION PROTOCOLS:
 1. Autonomously execute the task to completion.
-2. Read required memory using [MEMORY: READ filename="<filename>"].
-3. Save key deliverables, documentation, or code artifacts to workspace memory files using [MEMORY: WRITE filename="<filename>" content="<markdown>"].
-4. If follow-up work is required, add tasks using [TASK: ADD title="<title>" priority="high|medium|low"].
-5. Output a structured deliverable summary with clear markdown.`;
+2. If real-time or external web information is required, execute live web searches using [ACTION: WEB_SEARCH query="<search query>"]. Never hallucinate or pretend to search.
+3. Read required memory using [MEMORY: READ filename="<filename>"].
+4. Save key deliverables, documentation, or code artifacts to workspace memory files using [MEMORY: WRITE filename="<filename>" content="<markdown>"].
+5. If follow-up work is required, add tasks using [TASK: ADD title="<title>" priority="high|medium|low"].
+6. Output a structured deliverable summary with clear markdown.`;
 
         let replyText = "";
         try {
@@ -1422,13 +1559,24 @@ TASK EXECUTION PROTOCOLS:
         if (!replyText) {
           if (iteration > 1) break;
 
-          const cleanDocName = `deliverable_${task.title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "_")
-            .replace(/^_+|_+$/g, "")
-            .slice(0, 25) || "task"}.md`;
+          const lowerTitle = task.title.toLowerCase();
+          if (
+            (lowerTitle.includes("search") ||
+              lowerTitle.includes("research") ||
+              lowerTitle.includes("web") ||
+              lowerTitle.includes("investigate")) &&
+            iteration === 1
+          ) {
+            replyText = `I am initiating live web research for "${task.title}".\n\n[ACTION: WEB_SEARCH query="${task.title}"]`;
+          } else {
+            const cleanDocName = `deliverable_${task.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "_")
+              .replace(/^_+|_+$/g, "")
+              .slice(0, 25) || "task"}.md`;
 
-          replyText = `I have analyzed the task requirements and generated the solution deliverables.\n\n[MEMORY: WRITE filename="${cleanDocName}" content="# Deliverable: ${task.title}\n\n## Summary\nAutonomous execution completed by ${agentName}.\n\n## Implementation & Deliverables\n- Verified workspace prerequisites and memory context.\n- Synthesized technical design and deliverables.\n- Prepared production-ready specifications.\n\n## Status\nCompleted."]\n\nTask "${task.title}" has been executed successfully. All deliverable documents have been saved to workspace memory.`;
+            replyText = `I have analyzed the task requirements and generated the solution deliverables.\n\n[MEMORY: WRITE filename="${cleanDocName}" content="# Deliverable: ${task.title}\n\n## Summary\nAutonomous execution completed by ${agentName}.\n\n## Implementation & Deliverables\n- Verified workspace prerequisites and memory context.\n- Synthesized technical design and deliverables.\n- Prepared production-ready specifications.\n\n## Status\nCompleted."]\n\nTask "${task.title}" has been executed successfully. All deliverable documents have been saved to workspace memory.`;
+          }
         }
 
         const toolCalls = detectToolCalls(replyText);
@@ -1440,7 +1588,7 @@ TASK EXECUTION PROTOCOLS:
             displayedTextChunks.push(textBeforeTool);
           }
 
-          const { updatedProj, actionsFound, observations } = executeBatchTools(toolCalls, workingProj);
+          const { updatedProj, actionsFound, observations } = await executeBatchTools(toolCalls, workingProj);
           workingProj = updatedProj;
           accumulatedActions = [...accumulatedActions, ...actionsFound];
 
@@ -1993,6 +2141,21 @@ TASK EXECUTION PROTOCOLS:
                 >
                   🧠 Audit Memory
                 </button>
+                <button
+                  onClick={() =>
+                    handleSendMessage(
+                      t(
+                        "projects.webResearchPrompt",
+                        undefined,
+                        "Search the web for the latest updates and research relevant to our project goals.",
+                      ),
+                    )
+                  }
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-cyan-950/40 hover:text-cyan-300 transition-colors flex items-center gap-1"
+                >
+                  <Globe className="h-3 w-3 text-cyan-400" />
+                  <span>{t("projects.webResearch", undefined, "Web Research")}</span>
+                </button>
               </div>
 
               {/* Chat focus indicator */}
@@ -2063,9 +2226,17 @@ TASK EXECUTION PROTOCOLS:
                           {msg.actions.map((act, i) => (
                             <div
                               key={i}
-                              className="flex items-center gap-2 rounded-lg bg-slate-900/90 border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-300 shadow-sm"
+                              className={`flex items-center gap-2 rounded-lg bg-slate-900/90 border px-3 py-1.5 text-xs shadow-sm ${
+                                act.type === "web_search"
+                                  ? "border-cyan-500/30 text-cyan-300"
+                                  : "border-emerald-500/30 text-emerald-300"
+                              }`}
                             >
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                              {act.type === "web_search" ? (
+                                <Globe className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                              ) : (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                              )}
                               <span>{act.details || act.type}</span>
                             </div>
                           ))}
