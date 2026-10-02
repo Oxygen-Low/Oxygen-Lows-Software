@@ -242,18 +242,21 @@ describe("Projects API Routes (/api/projects)", () => {
         filename: "tech_stack.md",
         title: "Technical Stack",
         content: "# Stack\n- React\n- Hono\n- Vitest\n",
+        always_shown: true,
       }),
     });
 
     expect(memRes.status).toBe(200);
     const memJson = await memRes.json();
     expect(memJson.data.filename).toBe("tech_stack.md");
+    expect(memJson.data.always_shown).toBe(true);
 
     const fetchRes = await app.request(`/api/projects/${projId}`, {
       headers: { Authorization: "Bearer valid-user-token" },
     });
     const fetchJson = await fetchRes.json();
     expect(fetchJson.data.memoryFiles).toHaveLength(2);
+    expect(fetchJson.data.memoryFiles.find((m: any) => m.filename === "tech_stack.md")?.always_shown).toBe(true);
   });
 
   it("POST /api/projects/:id/tasks and PATCH /api/projects/:id/tasks/:taskId handles task lifecycle", async () => {

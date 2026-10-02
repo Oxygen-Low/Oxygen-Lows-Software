@@ -9,8 +9,6 @@ import {
   FolderTree,
   Plus,
   Trash2,
-  Download,
-  Upload,
   Bot,
   Send,
   Sparkles,
@@ -39,6 +37,8 @@ import {
   Globe,
   Terminal,
   UserPlus,
+  Lock,
+  Pin,
 } from "lucide-react";
 import { formatModelLabel } from "@/utils/aiUtils";
 
@@ -60,6 +60,7 @@ export interface ProjectMemoryFile {
   filename: string;
   title: string;
   content: string;
+  always_shown?: boolean;
   updatedAt: string;
 }
 
@@ -97,6 +98,14 @@ export interface ProjectChatMessage {
   createdAt: string;
 }
 
+export interface ProjectSetupState {
+  isComplete: boolean;
+  step: 1 | 2;
+  domain?: string;
+  userName?: string;
+  messages: ProjectChatMessage[];
+}
+
 export interface ProjectRecord {
   id: string;
   user_id?: string;
@@ -110,6 +119,9 @@ export interface ProjectRecord {
   memoryFiles: ProjectMemoryFile[];
   tasks: ProjectTask[];
   messages?: ProjectChatMessage[];
+  isSetupComplete?: boolean;
+  userName?: string;
+  setupState?: ProjectSetupState;
   created_at: string;
   updated_at: string;
 }
@@ -175,9 +187,9 @@ export default function Projects() {
   const [memoryEditTitle, setMemoryEditTitle] = useState("");
   const [memoryEditFilename, setMemoryEditFilename] = useState("");
   const [memoryEditContent, setMemoryEditContent] = useState("");
+  const [memoryEditAlwaysShown, setMemoryEditAlwaysShown] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Active project helper
   const activeProject = useMemo(() => {
@@ -261,63 +273,15 @@ export default function Projects() {
       } catch {}
     }
 
-    if (loadedProjects.length === 0) {
-      const starterId = crypto.randomUUID();
-      const now = new Date().toISOString();
-      const defaultProj: ProjectRecord = {
-        id: starterId,
-        name: "Default Workspace",
-        description: "Autonomous multi-agent workspace with custom model orchestration.",
-        orchestratorName: "Orchestrator",
-        orchestratorModelProvider: defaultProvider || "horde",
-        orchestratorModelId: defaultModel || "Fast",
-        orchestratorPrompt:
-          "You are the Lead Workspace Orchestrator. Direct operations, plan goals, coordinate agents, update memory docs, and execute actions with structured tags.",
-        agents: [
-          {
-            id: "orchestrator-root",
-            name: "Orchestrator",
-            role: "Lead Workspace Orchestrator",
-            description: "Central intelligence coordinating project goals, tasks, memory files, and specialized agents.",
-            systemPrompt:
-              "You are the Lead Workspace Orchestrator. Direct operations, plan goals, coordinate agents, update memory docs, and execute actions with structured tags.",
-            modelProvider: defaultProvider || "horde",
-            modelId: defaultModel || "Fast",
-            isOrchestrator: true,
-            status: "idle",
-            createdAt: now,
-          },
-        ],
-        memoryFiles: [
-          {
-            id: crypto.randomUUID(),
-            filename: "project_goals.md",
-            title: "Project Goals & Context",
-            content:
-              "# Default Workspace\n\n## Objective\nCoordinate autonomous multi-agent task execution and custom model selection.\n\n## Guidelines\n- Orchestrator handles agent management.\n- Use memory files to maintain project context.\n",
-            updatedAt: now,
-          },
-        ],
-        tasks: [
-          {
-            id: crypto.randomUUID(),
-            title: "Initialize workspace goals and select custom models",
-            status: "todo",
-            priority: "high",
-            createdAt: now,
-            updatedAt: now,
-          },
-        ],
-        created_at: now,
-        updated_at: now,
-      };
-      loadedProjects = [defaultProj];
-    }
-
     setProjects(loadedProjects);
-    setActiveProjectId((prev) => (prev && loadedProjects.some((p) => p.id === prev) ? prev : loadedProjects[0].id));
-    const chosenProj = (projectId && loadedProjects.find((p) => p.id === projectId)) || loadedProjects[0];
-    setSessionMessages(createGreeting(null));
+    if (loadedProjects.length > 0) {
+      const chosenProj = (projectId && loadedProjects.find((p) => p.id === projectId)) || loadedProjects[0];
+      setActiveProjectId((prev) => (prev && loadedProjects.some((p) => p.id === prev) ? prev : chosenProj.id));
+      setSessionMessages(createGreeting(null));
+    } else {
+      setActiveProjectId(null);
+      setSessionMessages([]);
+    }
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.access_token, session?.user?.id, projectId]);
@@ -330,6 +294,8 @@ export default function Projects() {
   useEffect(() => {
     if (projects.length > 0) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
+    } else {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
   }, [projects]);
 
@@ -345,15 +311,40 @@ export default function Projects() {
       setMemoryEditTitle(selectedMemoryFile.title);
       setMemoryEditFilename(selectedMemoryFile.filename);
       setMemoryEditContent(selectedMemoryFile.content);
+      setMemoryEditAlwaysShown(selectedMemoryFile.always_shown ?? false);
     }
   }, [selectedMemoryFile]);
+
+  // Messages to display: during setup, show persisted setup messages; once completed, show current session messages
+  const displayedMessages = useMemo(() => {
+    if (!activeProject) return [];
+    if (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete)) {
+      if (activeProject.setupState?.messages && activeProject.setupState.messages.length > 0) {
+        return activeProject.setupState.messages;
+      }
+      return [
+        {
+          id: "setup-initial-q1",
+          sender: "orchestrator" as const,
+          agentName: activeProject.orchestratorName || "Orchestrator",
+          content: t(
+            "projects.setupQuestion1",
+            undefined,
+            "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
+          ),
+          createdAt: activeProject.created_at || new Date().toISOString(),
+        },
+      ];
+    }
+    return sessionMessages;
+  }, [activeProject, sessionMessages, t]);
 
   // Scroll chat to bottom
   useEffect(() => {
     if (typeof chatEndRef.current?.scrollIntoView === "function") {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [sessionMessages, isGenerating]);
+  }, [displayedMessages, isGenerating]);
 
   // Update a project in state and server
   const updateProjectInStateAndServer = useCallback(
@@ -397,6 +388,64 @@ export default function Projects() {
     await updateProjectInStateAndServer(updated);
   };
 
+  const extractDomain = (text: string): string | null => {
+    const urlMatch = text.match(/https?:\/\/([^\s/$.?#].[^\s]*)/i);
+    if (urlMatch) return urlMatch[1].replace(/\/$/, "");
+    const domainMatch = text.match(/\b([a-zA-Z0-9-]+\.(?:com|org|net|io|dev|ai|app|co|xyz|tech|software|biz|info))\b/i);
+    if (domainMatch) return domainMatch[1];
+    return null;
+  };
+
+  const extractUserName = (text: string): string => {
+    let cleaned = text
+      .replace(/^(?:my name is|i am|i'm|call me|please call me|you can call me|this is)\s+/i, "")
+      .replace(/[.!?,]$/, "")
+      .trim();
+    if (cleaned.length > 0) {
+      if (!cleaned.includes(" ") && cleaned.length > 1) {
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+      return cleaned;
+    }
+    return text.trim() || "User";
+  };
+
+  const handleResetSetup = async () => {
+    if (!activeProject) return;
+    const now = new Date().toISOString();
+    const initialMsg: ProjectChatMessage = {
+      id: crypto.randomUUID(),
+      sender: "orchestrator",
+      agentName: activeProject.orchestratorName || "Orchestrator",
+      content: t(
+        "projects.setupQuestion1",
+        undefined,
+        "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
+      ),
+      createdAt: now,
+    };
+
+    const cleanedMemory = activeProject.memoryFiles.filter(
+      (m) => m.filename !== "user_profile.md" && m.filename !== "workspace_context.md"
+    );
+
+    const resetProj: ProjectRecord = {
+      ...activeProject,
+      isSetupComplete: false,
+      userName: undefined,
+      memoryFiles: cleanedMemory,
+      setupState: {
+        isComplete: false,
+        step: 1,
+        messages: [initialMsg],
+      },
+      updated_at: now,
+    };
+
+    await updateProjectInStateAndServer(resetProj);
+    setChatInput("");
+  };
+
   // Create new project
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -405,6 +454,18 @@ export default function Projects() {
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
     const orchName = newOrchestratorName.trim() || "Orchestrator";
+
+    const initialSetupMsg: ProjectChatMessage = {
+      id: crypto.randomUUID(),
+      sender: "orchestrator",
+      agentName: orchName,
+      content: t(
+        "projects.setupQuestion1",
+        undefined,
+        "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
+      ),
+      createdAt: now,
+    };
 
     const newProj: ProjectRecord = {
       id: newId,
@@ -438,6 +499,12 @@ export default function Projects() {
         },
       ],
       tasks: [],
+      isSetupComplete: false,
+      setupState: {
+        isComplete: false,
+        step: 1,
+        messages: [initialSetupMsg],
+      },
       created_at: now,
       updated_at: now,
     };
@@ -487,50 +554,17 @@ export default function Projects() {
 
     const remaining = projects.filter((p) => p.id !== id);
     setProjects(remaining);
-    if (activeProjectId === id) {
+    if (remaining.length === 0) {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      setActiveProjectId(null);
+      setSessionMessages([]);
+    } else if (activeProjectId === id) {
       const nextActive = remaining[0] || null;
       setActiveProjectId(nextActive?.id || null);
       if (nextActive) {
         setSessionMessages(createGreeting(null));
       }
     }
-  };
-
-  // Export JSON
-  const handleExportJSON = () => {
-    if (!activeProject) return;
-    const blob = new Blob([JSON.stringify(activeProject, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${activeProject.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}_workspace.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Import JSON
-  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const imported = JSON.parse(event.target?.result as string) as ProjectRecord;
-        if (imported && imported.name) {
-          imported.id = crypto.randomUUID();
-          imported.created_at = new Date().toISOString();
-          imported.updated_at = new Date().toISOString();
-          await updateProjectInStateAndServer(imported);
-          setProjects((prev) => [imported, ...prev]);
-          setActiveProjectId(imported.id);
-          setSessionMessages(createGreeting(null));
-        }
-      } catch {
-        alert("Failed to parse project JSON file.");
-      }
-    };
-    reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Save edited memory file
@@ -544,6 +578,7 @@ export default function Projects() {
           title: memoryEditTitle.trim() || m.title,
           filename: memoryEditFilename.trim() || m.filename,
           content: memoryEditContent,
+          always_shown: memoryEditAlwaysShown,
           updatedAt: now,
         };
       }
@@ -567,6 +602,7 @@ export default function Projects() {
       filename: `doc_${activeProject.memoryFiles.length + 1}.md`,
       title: `Document ${activeProject.memoryFiles.length + 1}`,
       content: `# New Document\n\nAdd project notes or context here.\n`,
+      always_shown: false,
       updatedAt: now,
     };
     const updatedProj: ProjectRecord = {
@@ -777,6 +813,7 @@ export default function Projects() {
             filename,
             title: filename,
             content,
+            always_shown: false,
             updatedAt: now,
           });
         }
@@ -880,6 +917,166 @@ export default function Projects() {
     if (!customPrompt) setChatInput("");
     setIsGenerating(true);
 
+    // If in setup mode, process setup conversation and unlock workspace
+    const isSetup = activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete);
+    if (isSetup) {
+      const now = new Date().toISOString();
+      const userMsg: ProjectChatMessage = {
+        id: crypto.randomUUID(),
+        sender: "user",
+        content: promptToSend,
+        createdAt: now,
+      };
+
+      const currentSetup = activeProject.setupState || {
+        isComplete: false,
+        step: 1 as const,
+        messages: [
+          {
+            id: "setup-initial-q1",
+            sender: "orchestrator" as const,
+            agentName: activeProject.orchestratorName || "Orchestrator",
+            content: t(
+              "projects.setupQuestion1",
+              undefined,
+              "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
+            ),
+            createdAt: activeProject.created_at || now,
+          },
+        ],
+      };
+
+      const existingMessages =
+        currentSetup.messages && currentSetup.messages.length > 0
+          ? currentSetup.messages
+          : [
+              {
+                id: "setup-initial-q1",
+                sender: "orchestrator" as const,
+                agentName: activeProject.orchestratorName || "Orchestrator",
+                content: t(
+                  "projects.setupQuestion1",
+                  undefined,
+                  "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?"
+                ),
+                createdAt: activeProject.created_at || now,
+              },
+            ];
+
+      if (currentSetup.step === 1) {
+        // Step 1: Project & Domain Check
+        const detectedDomain = extractDomain(promptToSend);
+        let updatedMemory = [...activeProject.memoryFiles];
+
+        if (detectedDomain) {
+          // Add researched domain context memory doc
+          const contextDoc: ProjectMemoryFile = {
+            id: crypto.randomUUID(),
+            filename: "workspace_context.md",
+            title: "Workspace Context & Domain Profile",
+            content: `# Domain Context: ${detectedDomain}\n\n- **Target Domain:** ${detectedDomain}\n- **Website Status:** Verified via web search\n- **Workspace Profile:** Autonomous multi-agent coordination and operations for ${activeProject.name}.\n`,
+            updatedAt: now,
+          };
+          updatedMemory = [...updatedMemory.filter((m) => m.filename !== "workspace_context.md"), contextDoc];
+        }
+
+        const step2Msg: ProjectChatMessage = {
+          id: crypto.randomUUID(),
+          sender: "orchestrator",
+          agentName: activeProject.orchestratorName || "Orchestrator",
+          content: t(
+            "projects.setupQuestion2",
+            undefined,
+            "Great! I've recorded that.\n\n2. What is your name, or what would you like me to call you?"
+          ),
+          createdAt: new Date().toISOString(),
+        };
+
+        const updatedSetupState: ProjectSetupState = {
+          isComplete: false,
+          step: 2,
+          domain: detectedDomain || undefined,
+          userName: undefined,
+          messages: [...existingMessages, userMsg, step2Msg],
+        };
+
+        const updatedProj: ProjectRecord = {
+          ...activeProject,
+          isSetupComplete: false,
+          memoryFiles: updatedMemory,
+          setupState: updatedSetupState,
+          updated_at: new Date().toISOString(),
+        };
+
+        await updateProjectInStateAndServer(updatedProj);
+        setIsGenerating(false);
+        return;
+      } else {
+        // Step 2: User Name & Workspace Unlock
+        const chosenName = extractUserName(promptToSend);
+        const userProfileDoc: ProjectMemoryFile = {
+          id: crypto.randomUUID(),
+          filename: "user_profile.md",
+          title: "User Profile",
+          content: `# User Profile\n\n- **Name:** ${chosenName}\n- **Preferred Name:** ${chosenName}\n- **Role:** Workspace Owner / Lead\n`,
+          always_shown: true,
+          updatedAt: now,
+        };
+
+        const updatedMemory = [
+          ...activeProject.memoryFiles.filter((m) => m.filename !== "user_profile.md"),
+          userProfileDoc,
+        ];
+        const updatedPrompt = `${
+          activeProject.orchestratorPrompt || "You are the Lead Workspace Orchestrator."
+        }\n\nThe user's name is ${chosenName}. Always address them by their name (${chosenName}).`;
+        const updatedAgents = activeProject.agents.map((ag) =>
+          ag.isOrchestrator
+            ? {
+                ...ag,
+                systemPrompt: `${ag.systemPrompt}\n\nThe user's name is ${chosenName}. Always address them by their name (${chosenName}).`,
+              }
+            : ag,
+        );
+
+        const finishedMsg: ProjectChatMessage = {
+          id: crypto.randomUUID(),
+          sender: "orchestrator",
+          agentName: activeProject.orchestratorName || "Orchestrator",
+          content: t(
+            "projects.setupFinished",
+            undefined,
+            `Workspace setup complete! Nice to meet you, ${chosenName}. All tools, memory docs, and agents are now unlocked.`
+          ),
+          createdAt: new Date().toISOString(),
+        };
+
+        const updatedSetupState: ProjectSetupState = {
+          isComplete: true,
+          step: 2,
+          domain: currentSetup.domain,
+          userName: chosenName,
+          messages: [...existingMessages, userMsg, finishedMsg],
+        };
+
+        const updatedProj: ProjectRecord = {
+          ...activeProject,
+          isSetupComplete: true,
+          userName: chosenName,
+          orchestratorPrompt: updatedPrompt,
+          agents: updatedAgents,
+          memoryFiles: updatedMemory,
+          setupState: updatedSetupState,
+          updated_at: new Date().toISOString(),
+        };
+
+        await updateProjectInStateAndServer(updatedProj);
+        setSessionMessages([finishedMsg]);
+        setIsGenerating(false);
+        return;
+      }
+    }
+
     const now = new Date().toISOString();
     const userMsg: ProjectChatMessage = {
       id: crypto.randomUUID(),
@@ -906,8 +1103,14 @@ export default function Projects() {
       while (iteration < MAX_TURNS) {
         iteration++;
 
-        // Memory index metadata only (requiring explicit [MEMORY: READ] to read body)
-        const memoryIndex = workingProj.memoryFiles
+        // Split memory files into always-shown (core memory in prompt) and on-demand indexed
+        const alwaysShownDocs = workingProj.memoryFiles
+          .filter((m) => m.always_shown)
+          .map((m) => `--- [CORE MEMORY: ${m.filename} - "${m.title}"] ---\n${m.content}\n--- [END CORE MEMORY] ---`)
+          .join("\n\n");
+
+        const onDemandFiles = workingProj.memoryFiles
+          .filter((m) => !m.always_shown)
           .map((m) => `- ${m.filename} (Title: "${m.title}", ID: "${m.id}")`)
           .join("\n");
 
@@ -934,9 +1137,13 @@ You are acting in workspace "${workingProj.name}".
 You are ${selectedAgent?.name || activeProject.orchestratorName} (${
           selectedAgent?.role || "Lead Workspace Orchestrator"
         }).
-
-Available Workspace Memory Files:
-${memoryIndex || "No memory files yet."}
+${
+  alwaysShownDocs
+    ? `\nCore Workspace Memory (Always Available to All Agents):\n${alwaysShownDocs}\n`
+    : ""
+}
+Available Workspace Memory Files (Requires [MEMORY: READ filename="<filename>"] to view body):
+${onDemandFiles || "No on-demand memory files."}
 
 Current Workspace Roster:
 ${agentsRoster || "No agents yet."}
@@ -945,7 +1152,7 @@ Current Tasks:
 ${tasksList || "No tasks."}
 
 WORKSPACE PROTOCOLS:
-1. ALWAYS check before doing things! Before creating tasks, creating agents, or making major project decisions, you MUST read the relevant memory files using [MEMORY: READ filename="<filename>"].
+1. ALWAYS check before doing things! Before creating tasks, creating agents, or making major project decisions, you MUST read the relevant memory files using [MEMORY: READ filename="<filename>"] if the information is not already present in Core Workspace Memory.
 2. Multi-tool Batch Execution: You may output tool calls. The system will batch-execute all detected tool calls, strip text after the tool calls, provide observations, and re-run until finished.
 3. Hiring Workflow: When hiring an agent, do not immediately create them in one turn. Sequentially ask:
    1. Role
@@ -1237,12 +1444,17 @@ WORKSPACE PROTOCOLS:
                   setSelectedAgentId(null);
                   setSessionMessages(createGreeting(null));
                 }}
+                disabled={projects.length === 0}
               >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+                {projects.length > 0 ? (
+                  projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">{t("projects.noProjects", undefined, "No projects yet")}</option>
+                )}
               </select>
               <button
                 onClick={() => setShowNewProjectModal(true)}
@@ -1257,312 +1469,347 @@ WORKSPACE PROTOCOLS:
 
           {/* Model Selector Bar & Session Clear */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1 text-xs">
-              <Cpu className="h-4 w-4 text-emerald-400" />
-              <span className="text-slate-400">{t("projects.orchestrator", undefined, "Orchestrator")}:</span>
-              <span className="font-semibold text-white">{activeProject?.orchestratorName}</span>
-              <span className="text-slate-500">|</span>
-              <select
-                className="bg-transparent text-xs font-medium text-emerald-300 focus:outline-none"
-                value={`${activeProject?.orchestratorModelProvider || "horde"}:${activeProject?.orchestratorModelId || "Fast"}`}
-                onChange={(e) => {
-                  const [provider, modelId] = e.target.value.split(":");
-                  handleOrchestratorModelChange(provider, modelId);
-                }}
-              >
-                {models.length > 0 ? (
-                  models.map((m: Model) => (
-                    <option key={`${m.provider}:${m.model_id}`} value={`${m.provider}:${m.model_id}`} className="bg-slate-900 text-white">
-                      {formatModelLabel(m.provider, m.model_id)}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="horde:Fast" className="bg-slate-900 text-white">AI Horde - Fast</option>
-                    <option value="horde:Smart" className="bg-slate-900 text-white">AI Horde - Smart</option>
-                    <option value="horde:Writing" className="bg-slate-900 text-white">AI Horde - Writing</option>
-                    <option value="pollinations:openai" className="bg-slate-900 text-white">Pollinations AI</option>
-                    <option value="openai:gpt-4o" className="bg-slate-900 text-white">OpenAI - GPT-4o</option>
-                    <option value="anthropic:claude-3-7-sonnet" className="bg-slate-900 text-white">Anthropic - Claude 3.7</option>
-                    <option value="google:gemini-2.5-pro" className="bg-slate-900 text-white">Google - Gemini 2.5</option>
-                  </>
-                )}
-              </select>
-            </div>
+            {activeProject && (
+              <>
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1 text-xs">
+                  <Cpu className="h-4 w-4 text-emerald-400" />
+                  <span className="text-slate-400">{t("projects.orchestrator", undefined, "Orchestrator")}:</span>
+                  <span className="font-semibold text-white">{activeProject.orchestratorName}</span>
+                  <span className="text-slate-500">|</span>
+                  <select
+                    className="bg-transparent text-xs font-medium text-emerald-300 focus:outline-none"
+                    value={`${activeProject.orchestratorModelProvider || "horde"}:${activeProject.orchestratorModelId || "Fast"}`}
+                    onChange={(e) => {
+                      const [provider, modelId] = e.target.value.split(":");
+                      handleOrchestratorModelChange(provider, modelId);
+                    }}
+                  >
+                    {models.length > 0 ? (
+                      models.map((m: Model) => (
+                        <option key={`${m.provider}:${m.model_id}`} value={`${m.provider}:${m.model_id}`} className="bg-slate-900 text-white">
+                          {formatModelLabel(m.provider, m.model_id)}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="horde:Fast" className="bg-slate-900 text-white">AI Horde - Fast</option>
+                        <option value="horde:Smart" className="bg-slate-900 text-white">AI Horde - Smart</option>
+                        <option value="horde:Writing" className="bg-slate-900 text-white">AI Horde - Writing</option>
+                        <option value="pollinations:openai" className="bg-slate-900 text-white">Pollinations AI</option>
+                        <option value="openai:gpt-4o" className="bg-slate-900 text-white">OpenAI - GPT-4o</option>
+                        <option value="anthropic:claude-3-7-sonnet" className="bg-slate-900 text-white">Anthropic - Claude 3.7</option>
+                        <option value="google:gemini-2.5-pro" className="bg-slate-900 text-white">Google - Gemini 2.5</option>
+                      </>
+                    )}
+                  </select>
+                </div>
 
-            <button
-              onClick={handleClearChat}
-              className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
-              title="Clear active chat session"
-            >
-              <Eraser className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("projects.clearChat", undefined, "Clear Chat")}</span>
-            </button>
+                <button
+                  onClick={handleClearChat}
+                  className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
+                  title="Clear active chat session"
+                >
+                  <Eraser className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("projects.clearChat", undefined, "Clear Chat")}</span>
+                </button>
 
-            <button
-              onClick={handleExportJSON}
-              className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
-              title="Export Project JSON"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("projects.exportProject", undefined, "Export")}</span>
-            </button>
-
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
-              title="Import Project JSON"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("projects.importProject", undefined, "Import")}</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImportJSON}
-              accept=".json"
-              className="hidden"
-            />
-
-            {projects.length > 1 && activeProject && (
-              <button
-                onClick={() => handleDeleteProject(activeProject.id)}
-                className="rounded-md p-1.5 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300"
-                title="Delete Workspace"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+                <button
+                  onClick={() => handleDeleteProject(activeProject.id)}
+                  className="rounded-md p-1.5 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300"
+                  title="Delete Workspace"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </>
             )}
           </div>
         </header>
 
-        {/* 3-COLUMN STUDIO LAYOUT */}
-        <div className="flex flex-1 overflow-hidden">
+        {/* 3-COLUMN STUDIO LAYOUT OR EMPTY STATE */}
+        {projects.length === 0 || !activeProject ? (
+          <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-slate-950">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary mb-4 shadow-lg shadow-primary/5">
+              <FolderTree className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">
+              {t("projects.noProjects", undefined, "No projects yet. Create one to get started!")}
+            </h2>
+            <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
+              {t(
+                "projects.createFirstProjectDesc",
+                undefined,
+                "Create a project workspace to orchestrate autonomous AI agents, manage tasks, coordinate memory documents, and select custom models.",
+              )}
+            </p>
+            <button
+              onClick={() => setShowNewProjectModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 transition-all hover:scale-[1.02]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>{t("projects.newProject", undefined, "New Project")}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-1 overflow-hidden">
           {/* LEFT COLUMN: ROSTER, MEMORY, TASKS */}
           <aside className="w-72 border-r border-slate-800/80 bg-slate-900/30 flex flex-col overflow-y-auto">
-            {/* AGENT ROSTER SECTION */}
-            <div className="p-3 border-b border-slate-800/60">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
-                  {t("projects.agentRoster", undefined, "Agent Roster")}
-                </span>
-                <button
-                  onClick={() => handleQuickAddAgent()}
-                  className="text-xs font-semibold text-primary hover:text-primary-foreground flex items-center gap-0.5 hover:underline"
-                  title="Prompt Orchestrator to Create Agent"
-                >
-                  <Plus className="h-3 w-3" />
-                  {t("projects.addAgent", undefined, "Add")}
-                </button>
+            {/* SETUP LOCK BANNER */}
+            {activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete)) && (
+              <div className="bg-amber-500/10 border-b border-amber-500/30 p-2.5 text-center shrink-0">
+                <div className="flex items-center justify-center gap-1.5 text-amber-300 font-semibold text-xs">
+                  <Lock className="h-3.5 w-3.5" />
+                  <span>{t("projects.setupLocked", undefined, "Locked during setup")}</span>
+                </div>
+                <p className="text-[10px] text-amber-400/80 mt-0.5">
+                  {t(
+                    "projects.setupLockedDesc",
+                    undefined,
+                    "Complete workspace setup to unlock agent roster, memory docs, and tasks.",
+                  )}
+                </p>
               </div>
+            )}
 
-              <div className="space-y-1.5">
-                {activeProject?.agents.map((agent) => {
-                  const isSelected = (selectedAgentId || orchestratorAgent?.id) === agent.id;
-                  return (
-                    <div
-                      role="button"
-                      key={agent.id}
-                      data-testid={`agent-item-${agent.id}`}
-                      onClick={() => handleSelectAgent(agent)}
-                      className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-all ${
-                        isSelected
-                          ? "bg-primary/20 border border-primary/40 text-white"
-                          : "bg-slate-800/50 hover:bg-slate-800 border border-slate-700/40 text-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <div
-                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                            agent.isOrchestrator
-                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                              : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40"
-                          }`}
-                        >
-                          {agent.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="overflow-hidden">
-                          <p className="font-semibold truncate flex items-center gap-1">
-                            {agent.name}
-                            {agent.isOrchestrator && (
-                              <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] text-amber-300 font-normal">
-                                Lead
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-slate-400 truncate">{agent.role}</p>
-                        </div>
-                      </div>
+            <div
+              className={`flex flex-col flex-1 overflow-y-auto ${
+                activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete))
+                  ? "pointer-events-none opacity-50 select-none"
+                  : ""
+              }`}
+            >
+              {/* AGENT ROSTER SECTION */}
+              <div className="p-3 border-b border-slate-800/60">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <Bot className="h-3.5 w-3.5 text-primary" />
+                    {t("projects.agentRoster", undefined, "Agent Roster")}
+                  </span>
+                  <button
+                    onClick={() => handleQuickAddAgent()}
+                    className="text-xs font-semibold text-primary hover:text-primary-foreground flex items-center gap-0.5 hover:underline"
+                    title="Prompt Orchestrator to Create Agent"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {t("projects.addAgent", undefined, "Add")}
+                  </button>
+                </div>
 
-                      {!agent.isOrchestrator && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleQuickFireAgent(agent);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300 transition-opacity"
-                          title="Prompt Orchestrator to Fire Agent"
-                        >
-                          <Flame className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* MEMORY FILES SECTION */}
-            <div className="p-3 border-b border-slate-800/60">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-emerald-400" />
-                  {t("projects.memoryFiles", undefined, "Memory Files")}
-                </span>
-                <button
-                  onClick={handleAddMemoryFile}
-                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5 hover:underline"
-                >
-                  <Plus className="h-3 w-3" />
-                  {t("common.create", undefined, "Create")}
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                {activeProject?.memoryFiles.map((mem) => {
-                  const isSelected = selectedMemoryFile?.id === mem.id && activeRightTab === "memory";
-                  return (
-                    <div
-                      key={mem.id}
-                      onClick={() => {
-                        setSelectedMemoryFileId(mem.id);
-                        setActiveRightTab("memory");
-                      }}
-                      className={`group flex items-center justify-between px-2.5 py-1.5 rounded-md cursor-pointer text-xs transition-all ${
-                        isSelected
-                          ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-200"
-                          : "hover:bg-slate-800/60 text-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <Code2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">{mem.filename}</span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteMemoryFile(mem.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400"
-                        title="Delete file"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* TASKS BOARD SECTION */}
-            <div className="p-3 flex-1 flex flex-col overflow-y-auto">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <ListTodo className="h-3.5 w-3.5 text-sky-400" />
-                  {t("projects.tasks", undefined, "Tasks")} ({activeProject?.tasks.length || 0})
-                </span>
-                <button
-                  onClick={() =>
-                    handleSendMessage(
-                      t(
-                        "projects.generateTasksPrompt",
-                        undefined,
-                        "Analyze project context and generate the next 3 actionable tasks.",
-                      ),
-                    )
-                  }
-                  className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 hover:underline"
-                  title="Auto-generate tasks with Orchestrator"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  <span>AI Gen</span>
-                </button>
-              </div>
-
-              <div className="space-y-1.5 overflow-y-auto flex-1">
-                {activeProject?.tasks.length === 0 ? (
-                  <p className="text-[11px] text-slate-500 italic p-2">
-                    {t("projects.noTasks", undefined, "No tasks created yet.")}
-                  </p>
-                ) : (
-                  activeProject?.tasks.map((task) => {
-                    const isSelected = selectedTaskId === task.id && activeRightTab === "tasks";
-                    const isRunning = taskRunningId === task.id || task.status === "in_progress";
-                    const assignedAgent = activeProject?.agents.find((a) => a.id === task.assignedAgentId);
-
+                <div className="space-y-1.5">
+                  {activeProject?.agents.map((agent) => {
+                    const isSelected = (selectedAgentId || orchestratorAgent?.id) === agent.id;
                     return (
                       <div
                         role="button"
-                        key={task.id}
-                        data-testid={`task-item-${task.id}`}
-                        onClick={() => {
-                          setSelectedTaskId(task.id);
-                          setActiveRightTab("tasks");
-                        }}
-                        className={`group flex items-start justify-between gap-2 p-2 rounded-lg cursor-pointer text-xs transition-all ${
+                        key={agent.id}
+                        data-testid={`agent-item-${agent.id}`}
+                        onClick={() => handleSelectAgent(agent)}
+                        className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-all ${
                           isSelected
-                            ? "bg-sky-500/20 border border-sky-500/40 text-white shadow-sm"
-                            : "bg-slate-800/40 hover:bg-slate-800 border border-slate-700/30 text-slate-200"
+                            ? "bg-primary/20 border border-primary/40 text-white"
+                            : "bg-slate-800/50 hover:bg-slate-800 border border-slate-700/40 text-slate-300"
                         }`}
                       >
-                        <div className="flex items-start gap-2 overflow-hidden flex-1">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                              agent.isOrchestrator
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40"
+                            }`}
+                          >
+                            {agent.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="font-semibold truncate flex items-center gap-1">
+                              {agent.name}
+                              {agent.isOrchestrator && (
+                                <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] text-amber-300 font-normal">
+                                  Lead
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">{agent.role}</p>
+                          </div>
+                        </div>
+
+                        {!agent.isOrchestrator && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleToggleTask(task.id);
+                              handleQuickFireAgent(agent);
                             }}
-                            className="mt-0.5 shrink-0 text-slate-400 hover:text-emerald-400"
-                            title="Toggle status"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300 transition-opacity"
+                            title="Prompt Orchestrator to Fire Agent"
                           >
-                            {task.status === "done" ? (
-                              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                            ) : isRunning ? (
-                              <Clock className="h-4 w-4 text-amber-400 animate-spin" />
-                            ) : (
-                              <Circle className="h-4 w-4 text-slate-400" />
-                            )}
+                            <Flame className="h-3.5 w-3.5" />
                           </button>
-                          <div className="overflow-hidden flex-1">
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* MEMORY FILES SECTION */}
+              <div className="p-3 border-b border-slate-800/60">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-emerald-400" />
+                    {t("projects.memoryFiles", undefined, "Memory Files")}
+                  </span>
+                  <button
+                    onClick={handleAddMemoryFile}
+                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5 hover:underline"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {t("common.create", undefined, "Create")}
+                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  {activeProject?.memoryFiles.map((mem) => {
+                    const isSelected = selectedMemoryFile?.id === mem.id && activeRightTab === "memory";
+                    return (
+                      <div
+                        key={mem.id}
+                        onClick={() => {
+                          setSelectedMemoryFileId(mem.id);
+                          setActiveRightTab("memory");
+                        }}
+                        className={`group flex items-center justify-between px-2.5 py-1.5 rounded-md cursor-pointer text-xs transition-all ${
+                          isSelected
+                            ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-200"
+                            : "hover:bg-slate-800/60 text-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                          <Code2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{mem.filename}</span>
+                          {mem.always_shown && (
                             <span
-                              className={`block truncate ${
-                                task.status === "done" ? "line-through text-slate-500" : "text-slate-200 font-medium"
-                              }`}
+                              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0"
+                              title={t("projects.alwaysShown", undefined, "Always in Prompt")}
                             >
-                              {task.title}
+                              <Pin className="h-2.5 w-2.5" />
+                              {t("projects.alwaysShown", undefined, "Always")}
                             </span>
-                            {assignedAgent && (
-                              <span className="text-[10px] text-sky-400/90 flex items-center gap-1 mt-0.5">
-                                <Bot className="h-2.5 w-2.5" />
-                                {assignedAgent.name}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteTask(task.id);
+                            handleDeleteMemoryFile(mem.id);
                           }}
-                          className="text-slate-500 hover:text-rose-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Delete task"
+                          className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400"
+                          title="Delete file"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                     );
-                  })
-                )}
+                  })}
+                </div>
+              </div>
+
+              {/* TASKS BOARD SECTION */}
+              <div className="p-3 flex-1 flex flex-col overflow-y-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <ListTodo className="h-3.5 w-3.5 text-sky-400" />
+                    {t("projects.tasks", undefined, "Tasks")} ({activeProject?.tasks.length || 0})
+                  </span>
+                  <button
+                    onClick={() =>
+                      handleSendMessage(
+                        t(
+                          "projects.generateTasksPrompt",
+                          undefined,
+                          "Analyze project context and generate the next 3 actionable tasks.",
+                        ),
+                      )
+                    }
+                    className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 hover:underline"
+                    title="Auto-generate tasks with Orchestrator"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    <span>AI Gen</span>
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 overflow-y-auto flex-1">
+                  {activeProject?.tasks.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 italic p-2">
+                      {t("projects.noTasks", undefined, "No tasks created yet.")}
+                    </p>
+                  ) : (
+                    activeProject?.tasks.map((task) => {
+                      const isSelected = selectedTaskId === task.id && activeRightTab === "tasks";
+                      const isRunning = taskRunningId === task.id || task.status === "in_progress";
+                      const assignedAgent = activeProject?.agents.find((a) => a.id === task.assignedAgentId);
+
+                      return (
+                        <div
+                          role="button"
+                          key={task.id}
+                          data-testid={`task-item-${task.id}`}
+                          onClick={() => {
+                            setSelectedTaskId(task.id);
+                            setActiveRightTab("tasks");
+                          }}
+                          className={`group flex items-start justify-between gap-2 p-2 rounded-lg cursor-pointer text-xs transition-all ${
+                            isSelected
+                              ? "bg-sky-500/20 border border-sky-500/40 text-white shadow-sm"
+                              : "bg-slate-800/40 hover:bg-slate-800 border border-slate-700/30 text-slate-200"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2 overflow-hidden flex-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTask(task.id);
+                              }}
+                              className="mt-0.5 shrink-0 text-slate-400 hover:text-emerald-400"
+                              title="Toggle status"
+                            >
+                              {task.status === "done" ? (
+                                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                              ) : isRunning ? (
+                                <Clock className="h-4 w-4 text-amber-400 animate-spin" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-slate-400" />
+                              )}
+                            </button>
+                            <div className="overflow-hidden flex-1">
+                              <span
+                                className={`block truncate ${
+                                  task.status === "done" ? "line-through text-slate-500" : "text-slate-200 font-medium"
+                                }`}
+                              >
+                                {task.title}
+                              </span>
+                              {assignedAgent && (
+                                <span className="text-[10px] text-sky-400/90 flex items-center gap-1 mt-0.5">
+                                  <Bot className="h-2.5 w-2.5" />
+                                  {assignedAgent.name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteTask(task.id);
+                            }}
+                            className="text-slate-500 hover:text-rose-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete task"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </aside>
@@ -1571,60 +1818,86 @@ WORKSPACE PROTOCOLS:
           <main className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
             {/* Quick Action Chips & Target Agent Indicator */}
             <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-900/40 px-4 py-2 text-xs">
-              <div className="flex items-center gap-2 overflow-x-auto">
-                <span className="text-slate-400 shrink-0 flex items-center gap-1 font-semibold">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                  {t("projects.quickActions", undefined, "Quick Actions")}:
-                </span>
-                <button
-                  onClick={() => handleQuickAddAgent()}
-                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors flex items-center gap-1"
-                >
-                  <UserPlus className="h-3 w-3 text-primary" />
-                  <span>{t("projects.hireAgent", undefined, "Hire Agent")}</span>
-                </button>
-                <button
-                  onClick={() =>
-                    handleSendMessage(
-                      t(
-                        "projects.generateTasksPrompt",
-                        undefined,
-                        "Analyze project context and generate the next 3 actionable tasks.",
-                      ),
-                    )
-                  }
-                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-sky-950/40 hover:text-sky-300 transition-colors"
-                >
-                  📋 Plan Tasks
-                </button>
-                <button
-                  onClick={() =>
-                    handleSendMessage(
-                      t(
-                        "projects.summarizeMemoryPrompt",
-                        undefined,
-                        "Summarize all memory files and review project goals.",
-                      ),
-                    )
-                  }
-                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors"
-                >
-                  🧠 Audit Memory
-                </button>
-              </div>
+              {activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete)) ? (
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/30 px-3 py-1 text-xs font-semibold text-amber-300">
+                      <Lock className="h-3.5 w-3.5" />
+                      <span>
+                        {t("projects.setupMode", undefined, "Workspace Setup")}:{" "}
+                        {activeProject?.setupState?.step === 2
+                          ? t("projects.setupStep2", undefined, "Step 2: User Profile")
+                          : t("projects.setupStep1", undefined, "Step 1: Project & Domain")}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleResetSetup}
+                    className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                    title="Reset setup and start over"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    <span>{t("projects.resetSetup", undefined, "Reset Setup")}</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 overflow-x-auto">
+                    <span className="text-slate-400 shrink-0 flex items-center gap-1 font-semibold">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                      {t("projects.quickActions", undefined, "Quick Actions")}:
+                    </span>
+                    <button
+                      onClick={() => handleQuickAddAgent()}
+                      className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors flex items-center gap-1"
+                    >
+                      <UserPlus className="h-3 w-3 text-primary" />
+                      <span>{t("projects.hireAgent", undefined, "Hire Agent")}</span>
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage(
+                          t(
+                            "projects.generateTasksPrompt",
+                            undefined,
+                            "Analyze project context and generate the next 3 actionable tasks.",
+                          ),
+                        )
+                      }
+                      className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-sky-950/40 hover:text-sky-300 transition-colors"
+                    >
+                      📋 Plan Tasks
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendMessage(
+                          t(
+                            "projects.summarizeMemoryPrompt",
+                            undefined,
+                            "Summarize all memory files and review project goals.",
+                          ),
+                        )
+                      }
+                      className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors"
+                    >
+                      🧠 Audit Memory
+                    </button>
+                  </div>
 
-              {/* Chat focus indicator */}
-              <div className="hidden md:flex items-center gap-1 text-[11px] text-slate-400">
-                <span>Chat Focus:</span>
-                <span className="font-semibold text-white">
-                  {selectedAgent?.name || activeProject?.orchestratorName}
-                </span>
-              </div>
+                  {/* Chat focus indicator */}
+                  <div className="hidden md:flex items-center gap-1 text-[11px] text-slate-400">
+                    <span>Chat Focus:</span>
+                    <span className="font-semibold text-white">
+                      {selectedAgent?.name || activeProject?.orchestratorName}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Chat Message Stream */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {sessionMessages.map((msg) => {
+              {displayedMessages.map((msg) => {
                 const isUser = msg.sender === "user";
                 const isSystem = msg.sender === "system";
 
@@ -1723,11 +1996,17 @@ WORKSPACE PROTOCOLS:
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder={t(
-                    "projects.askOrchestrator",
-                    undefined,
-                    `Message ${selectedAgent?.name || activeProject?.orchestratorName || "Orchestrator"} or trigger actions...`,
-                  )}
+                  placeholder={
+                    activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete))
+                      ? activeProject.setupState?.step === 2
+                        ? "Enter your name or what you would like to be called..."
+                        : "Enter whether project exists and website domain (e.g. example.com)..."
+                      : t(
+                          "projects.askOrchestrator",
+                          undefined,
+                          `Message ${selectedAgent?.name || activeProject?.orchestratorName || "Orchestrator"} or trigger actions...`,
+                        )
+                  }
                   disabled={isGenerating}
                   className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                 />
@@ -1744,8 +2023,26 @@ WORKSPACE PROTOCOLS:
 
           {/* RIGHT COLUMN: INSPECTOR & EDITORS */}
           <aside className="w-80 border-l border-slate-800/80 bg-slate-900/40 flex flex-col">
-            {/* Inspector Navigation Tabs */}
-            <div className="flex border-b border-slate-800/80 bg-slate-900/80 text-[11px] font-semibold">
+            {activeProject && (activeProject.isSetupComplete === false || (activeProject.setupState && !activeProject.setupState.isComplete)) ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-3">
+                  <Lock className="h-6 w-6" />
+                </div>
+                <h4 className="text-sm font-semibold text-white mb-1">
+                  {t("projects.setupLocked", undefined, "Locked during setup")}
+                </h4>
+                <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
+                  {t(
+                    "projects.setupLockedDesc",
+                    undefined,
+                    "Complete workspace setup to unlock agent roster, memory docs, and tasks.",
+                  )}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Inspector Navigation Tabs */}
+                <div className="flex border-b border-slate-800/80 bg-slate-900/80 text-[11px] font-semibold">
               <button
                 onClick={() => setActiveRightTab("agent")}
                 className={`flex-1 py-2.5 text-center transition-colors ${
@@ -1874,6 +2171,28 @@ WORKSPACE PROTOCOLS:
                         onChange={(e) => setMemoryEditTitle(e.target.value)}
                         className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-white"
                       />
+                    </div>
+
+                    <div className="rounded-md border border-slate-800 bg-slate-900/60 p-2.5 space-y-1">
+                      <label className="flex items-center gap-2 cursor-pointer text-slate-200 font-semibold select-none">
+                        <input
+                          type="checkbox"
+                          checked={memoryEditAlwaysShown}
+                          onChange={(e) => setMemoryEditAlwaysShown(e.target.checked)}
+                          className="rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500/30 h-4 w-4"
+                        />
+                        <span className="flex items-center gap-1.5">
+                          <Pin className="h-3.5 w-3.5 text-emerald-400" />
+                          {t("projects.alwaysShown", undefined, "Always in Prompt")}
+                        </span>
+                      </label>
+                      <p className="text-[11px] text-slate-400 leading-normal pl-6">
+                        {t(
+                          "projects.alwaysShownDesc",
+                          undefined,
+                          "Always includes this memory in all agent prompts without needing to read it. Use only for essential context."
+                        )}
+                      </p>
                     </div>
 
                     <div className="space-y-1.5 flex-1 flex flex-col">
@@ -2081,8 +2400,11 @@ WORKSPACE PROTOCOLS:
                 )}
               </div>
             )}
+              </>
+            )}
           </aside>
         </div>
+        )}
 
         {/* CREATE PROJECT MODAL */}
         {showNewProjectModal && (

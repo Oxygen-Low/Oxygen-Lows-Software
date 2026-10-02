@@ -506,4 +506,358 @@ describe("Projects Page", () => {
 
     expect(screen.queryByText(/\[ACTION:\s*FIRE_AGENT/i)).toBeNull();
   });
+
+  it("handles workspace setup chat, locking UI, domain research, name capture, and unlocking", async () => {
+    let projectInServer = {
+      id: "proj-setup-1",
+      name: "Beta Studio",
+      description: "Testing setup chat",
+      orchestratorName: "LeadOrchestrator",
+      orchestratorModelProvider: "openai",
+      orchestratorModelId: "gpt-4o",
+      orchestratorPrompt: "Lead Orchestrator Prompt",
+      isSetupComplete: false,
+      agents: [
+        {
+          id: "ag-lead",
+          name: "LeadOrchestrator",
+          role: "Lead Workspace Orchestrator",
+          systemPrompt: "Lead Orchestrator Prompt",
+          isOrchestrator: true,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      memoryFiles: [],
+      tasks: [],
+      setupState: {
+        isComplete: false,
+        step: 1,
+        messages: [
+          {
+            id: "msg-q1",
+            sender: "orchestrator",
+            agentName: "LeadOrchestrator",
+            content: "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects" && (!opts || !opts.method || opts.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({ data: [projectInServer] }),
+        };
+      }
+      if (url.startsWith("/api/projects/") && opts?.method === "PATCH") {
+        const body = JSON.parse(opts.body);
+        projectInServer = { ...projectInServer, ...body };
+        return {
+          ok: true,
+          json: async () => ({ data: projectInServer }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    // Verify setup mode is active and locked banner is shown
+    await waitFor(() => {
+      expect(screen.getByText("Beta Studio")).toBeTruthy();
+    });
+
+    expect(screen.getAllByText(/Locked during setup/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Step 1: Project & Domain/i)).toBeTruthy();
+    expect(screen.getByText(/Does this project or business already exist/i)).toBeTruthy();
+
+    // Answer Question 1 with a domain
+    const input = screen.getByPlaceholderText(/Enter whether project exists and website domain/i);
+
+    fireEvent.change(input, { target: { value: "Yes, our website is https://betastudio.dev" } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Verify advances to Step 2
+    await waitFor(() => {
+      expect(screen.getByText(/Step 2: User Profile/i)).toBeTruthy();
+      expect(screen.getByText(/What is your name, or what would you like me to call you\?/i)).toBeTruthy();
+    });
+
+    // Answer Question 2 with user's name
+    const inputStep2 = screen.getByPlaceholderText(/Enter your name or what you would like to be called/i);
+    fireEvent.change(inputStep2, { target: { value: "Call me John" } });
+    fireEvent.submit(inputStep2.closest("form")!);
+
+    // Verify setup completes and unlocks the workspace
+    await waitFor(() => {
+      expect(screen.getByText(/Workspace setup complete/i)).toBeTruthy();
+    });
+
+    // Verify locked banner is gone and Quick Actions are unlocked
+    expect(screen.queryByText(/Step 1: Project & Domain/i)).toBeNull();
+    expect(screen.getByText("Hire Agent")).toBeTruthy();
+    expect(screen.getByText("📋 Plan Tasks")).toBeTruthy();
+    expect(screen.getByText("🧠 Audit Memory")).toBeTruthy();
+  });
+
+  it("supports Reset Setup to wipe partial setup and restart at question 1", async () => {
+    let projectInServer = {
+      id: "proj-setup-2",
+      name: "Gamma Labs",
+      orchestratorName: "Orchestrator",
+      orchestratorModelProvider: "horde",
+      orchestratorModelId: "Fast",
+      isSetupComplete: false,
+      agents: [
+        {
+          id: "ag-lead",
+          name: "Orchestrator",
+          role: "Lead",
+          systemPrompt: "Lead Prompt",
+          isOrchestrator: true,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      memoryFiles: [],
+      tasks: [],
+      setupState: {
+        isComplete: false,
+        step: 2,
+        domain: "gammalabs.ai",
+        messages: [
+          {
+            id: "msg-q1",
+            sender: "orchestrator",
+            agentName: "Orchestrator",
+            content: "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "msg-a1",
+            sender: "user",
+            content: "https://gammalabs.ai",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "msg-q2",
+            sender: "orchestrator",
+            agentName: "Orchestrator",
+            content: "Great! I've recorded that.\n\n2. What is your name, or what would you like me to call you?",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects" && (!opts || !opts.method || opts.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({ data: [projectInServer] }),
+        };
+      }
+      if (url.startsWith("/api/projects/") && opts?.method === "PATCH") {
+        const body = JSON.parse(opts.body);
+        projectInServer = { ...projectInServer, ...body };
+        return {
+          ok: true,
+          json: async () => ({ data: projectInServer }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Gamma Labs")).toBeTruthy();
+      expect(screen.getByText(/Step 2: User Profile/i)).toBeTruthy();
+    });
+
+    // Click "Reset Setup"
+    const resetBtn = screen.getByRole("button", { name: /Reset Setup/i });
+    fireEvent.click(resetBtn);
+
+    // Verify restarts at Step 1
+    await waitFor(() => {
+      expect(screen.getByText(/Step 1: Project & Domain/i)).toBeTruthy();
+    });
+  });
+
+  it("renders Always badge and injects always_shown memory files directly into agent prompt", async () => {
+    let lastProxyPayload: any = null;
+    let projectInServer = {
+      id: "proj-always-shown",
+      name: "Autonomous Core Workspace",
+      isSetupComplete: true,
+      orchestratorName: "Arthur",
+      orchestratorModelProvider: "horde",
+      orchestratorModelId: "Fast",
+      orchestratorPrompt: "You are Arthur, Lead Workspace Orchestrator.",
+      agents: [
+        {
+          id: "ag-lead",
+          name: "Arthur",
+          role: "Lead Workspace Orchestrator",
+          systemPrompt: "You are Arthur, Lead Workspace Orchestrator.",
+          isOrchestrator: true,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      memoryFiles: [
+        {
+          id: "mem-user",
+          filename: "user_profile.md",
+          title: "User Profile",
+          content: "# User Profile\n- **Name:** Alice\n- **Role:** Founder",
+          always_shown: true,
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "mem-secondary",
+          filename: "extra_notes.md",
+          title: "Extra Notes",
+          content: "# Extra Notes\nSome background notes.",
+          always_shown: false,
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      tasks: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects" && (!opts || !opts.method || opts.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({ data: [projectInServer] }),
+        };
+      }
+      if (url.startsWith("/api/projects/") && opts?.method === "PATCH") {
+        const body = JSON.parse(opts.body);
+        projectInServer = { ...projectInServer, ...body };
+        return {
+          ok: true,
+          json: async () => ({ data: projectInServer }),
+        };
+      }
+      if (url === "/api/ai/proxy" && opts?.method === "POST") {
+        lastProxyPayload = JSON.parse(opts.body);
+        return {
+          ok: true,
+          json: async () => ({ response: "Hello Alice, I have your profile in mind." }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Autonomous Core Workspace")).toBeTruthy();
+    });
+
+    // Check that user_profile.md shows the Always badge in memory list
+    expect(screen.getByText("user_profile.md")).toBeTruthy();
+    expect(screen.getByText(/Always/i)).toBeTruthy();
+
+    // Click on user_profile.md to open memory editor
+    fireEvent.click(screen.getByText("user_profile.md"));
+
+    // Check that the "Always in Prompt" checkbox is checked
+    await waitFor(() => {
+      const checkbox = screen.getByRole("checkbox", { name: /Always.*Prompt/i }) as HTMLInputElement;
+      expect(checkbox.checked).toBe(true);
+    });
+
+    // Send a message to verify systemPrompt contains the always_shown memory
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "What is my name?" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(lastProxyPayload).toBeTruthy();
+    });
+
+    expect(lastProxyPayload.systemPrompt).toContain("Core Workspace Memory (Always Available to All Agents):");
+    expect(lastProxyPayload.systemPrompt).toContain("--- [CORE MEMORY: user_profile.md - \"User Profile\"] ---");
+    expect(lastProxyPayload.systemPrompt).toContain("# User Profile\n- **Name:** Alice\n- **Role:** Founder");
+    expect(lastProxyPayload.systemPrompt).toContain("Available Workspace Memory Files (Requires [MEMORY: READ filename=\"<filename>\"] to view body):");
+    expect(lastProxyPayload.systemPrompt).toContain("- extra_notes.md");
+  });
+
+  it("renders empty state when no projects exist and allows user to create one manually", async () => {
+    let createdProject: any = null;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects" && (!opts || !opts.method || opts.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({ data: createdProject ? [createdProject] : [] }),
+        };
+      }
+      if (url === "/api/projects" && opts?.method === "POST") {
+        const body = JSON.parse(opts.body);
+        createdProject = { ...body, id: "created-proj-123" };
+        return {
+          ok: true,
+          json: async () => ({ data: createdProject }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    // Verify empty state is displayed and no default project exists
+    await waitFor(() => {
+      expect(screen.getAllByText(/No projects yet/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByText("Default Workspace")).toBeNull();
+
+    // Click "New Project" button in the empty state
+    const newProjButtons = screen.getAllByRole("button", { name: /New Project/i });
+    fireEvent.click(newProjButtons[0]);
+
+    // Fill in modal
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/e\.g\. NextGen Web App/i)).toBeTruthy();
+    });
+
+    const nameInput = screen.getByPlaceholderText(/e\.g\. NextGen Web App/i);
+    fireEvent.change(nameInput, { target: { value: "My Custom Startup" } });
+
+    const createSubmitBtn = screen.getByRole("button", { name: /^Create$/i });
+    fireEvent.click(createSubmitBtn);
+
+    // Verify created workspace is now active
+    await waitFor(() => {
+      expect(screen.getByText("My Custom Startup")).toBeTruthy();
+    });
+  });
 });
+

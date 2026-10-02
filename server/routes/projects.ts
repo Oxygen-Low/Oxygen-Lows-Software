@@ -27,6 +27,7 @@ export interface ProjectMemoryFile {
   filename: string;
   title: string;
   content: string;
+  always_shown?: boolean;
   updatedAt: string;
 }
 
@@ -69,6 +70,15 @@ export interface ProjectRecord {
   memoryFiles: ProjectMemoryFile[];
   tasks: ProjectTask[];
   messages: ProjectChatMessage[];
+  isSetupComplete?: boolean;
+  userName?: string;
+  setupState?: {
+    isComplete: boolean;
+    step: 1 | 2;
+    domain?: string;
+    userName?: string;
+    messages?: ProjectChatMessage[];
+  };
   created_at: string;
   updated_at: string;
 }
@@ -155,6 +165,9 @@ projectsRouter.post("/", async (c) => {
     memoryFiles: starterMemory,
     tasks: [],
     messages: starterMessages,
+    isSetupComplete: body.isSetupComplete ?? false,
+    userName: body.userName ?? "",
+    setupState: body.setupState ?? { isComplete: false, step: 1, messages: [] },
     created_at: now,
     updated_at: now,
   };
@@ -229,6 +242,9 @@ projectsRouter.patch("/:id", async (c) => {
     memoryFiles: body.memoryFiles ?? existing.memoryFiles,
     tasks: body.tasks ?? existing.tasks,
     messages: body.messages ?? existing.messages,
+    isSetupComplete: body.isSetupComplete ?? existing.isSetupComplete,
+    userName: body.userName ?? existing.userName,
+    setupState: body.setupState ?? existing.setupState,
     updated_at: now,
   };
 
@@ -387,6 +403,7 @@ projectsRouter.post("/:id/memory", async (c) => {
     filename: body.filename || "context.md",
     title: body.title || body.filename || "Context Document",
     content: body.content ?? "",
+    always_shown: body.always_shown ?? false,
     updatedAt: now,
   };
 
