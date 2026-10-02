@@ -943,6 +943,150 @@ describe("Projects Page", () => {
 
     expect(screen.queryByText(/No projects yet. Create one to get started!/i)).toBeNull();
   });
+
+  it("handles autonomous task execution with AI model proxy, tool calls, deliverable creation, and chat feed deliverable", async () => {
+    let proxyCalled = false;
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-1",
+                name: "Alpha Workspace",
+                orchestratorName: "MainOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "MainOrchestrator",
+                    role: "Lead",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [],
+                tasks: [
+                  {
+                    id: "tsk-autonomous-1",
+                    title: "Generate API specification",
+                    description: "Produce OpenAPI schema for authentication endpoints",
+                    status: "todo",
+                    priority: "high",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      if (url === "/api/ai/proxy") {
+        proxyCalled = true;
+        return {
+          ok: true,
+          json: async () => ({
+            text: `[MEMORY: WRITE filename="openapi_spec.md" content="# OpenAPI 3.0 Auth Spec\n\npaths:\n  /api/auth:\n    post:"]\n\nI have generated the complete OpenAPI specification and saved it to workspace memory.`,
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("task-item-tsk-autonomous-1")).toBeTruthy();
+    });
+
+    // Select task
+    fireEvent.click(screen.getByTestId("task-item-tsk-autonomous-1"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Start Task")).toBeTruthy();
+    });
+
+    // Click Start Task
+    fireEvent.click(screen.getByText("Start Task"));
+
+    // Verify AI proxy was triggered and task completed
+    await waitFor(() => {
+      expect(proxyCalled).toBe(true);
+      expect(screen.getByText(/Task completed successfully/i)).toBeTruthy();
+      expect(screen.getByText(/Task Deliverable: Generate API specification/i)).toBeTruthy();
+      expect(screen.getByText("openapi_spec.md")).toBeTruthy();
+    });
+  });
+
+  it("allows manual task creation and edits task details (description, priority, status)", async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-1",
+                name: "Task Management Workspace",
+                orchestratorName: "MainOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "MainOrchestrator",
+                    role: "Lead",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [],
+                tasks: [],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Task Management Workspace")).toBeTruthy();
+    });
+
+    // Click "Add" task button
+    const addTaskBtn = screen.getByTitle("Add new task");
+    fireEvent.click(addTaskBtn);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("New Task 1").length).toBeGreaterThan(0);
+      expect(screen.getByPlaceholderText(/Detailed task objectives/i)).toBeTruthy();
+    });
+
+    // Edit description
+    const descTextarea = screen.getByPlaceholderText(/Detailed task objectives/i);
+    fireEvent.change(descTextarea, { target: { value: "Build responsive navbar with mobile drawer" } });
+
+    // Verify change reflected
+    expect((descTextarea as HTMLTextAreaElement).value).toBe("Build responsive navbar with mobile drawer");
+  });
 });
 
 

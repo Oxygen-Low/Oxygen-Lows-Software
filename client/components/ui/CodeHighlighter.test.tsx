@@ -1,10 +1,10 @@
 /** @vitest-environment jsdom */
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { CodeHighlighter } from "./CodeHighlighter";
 
 describe("CodeHighlighter", () => {
-  it("renders code with Prism syntax highlighting", () => {
+  it("renders code with Prism syntax highlighting", async () => {
     const code = `const greeting = "Hello, world!";`;
     const { container } = render(
       <CodeHighlighter language="typescript">{code}</CodeHighlighter>,
@@ -17,9 +17,11 @@ describe("CodeHighlighter", () => {
     expect(codeElement).not.toBeNull();
     expect(codeElement?.className).toContain("language-typescript");
 
-    // Tokenized elements should exist
-    const token = container.querySelector(".token");
-    expect(token).not.toBeNull();
+    // Tokenized elements should exist after grammars load
+    await waitFor(() => {
+      const token = container.querySelector(".token");
+      expect(token).not.toBeNull();
+    });
   });
 
   it("handles plaintext or unknown languages safely", () => {

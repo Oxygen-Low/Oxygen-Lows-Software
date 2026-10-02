@@ -71,6 +71,11 @@ export interface ProjectRecord {
   tasks: ProjectTask[];
   messages: ProjectChatMessage[];
   userName?: string;
+  isSetupComplete?: boolean;
+  setupState?: {
+    step: number;
+    isComplete: boolean;
+  };
   created_at: string;
   updated_at: string;
 }
