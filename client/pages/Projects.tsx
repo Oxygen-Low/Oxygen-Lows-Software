@@ -1056,7 +1056,12 @@ WORKSPACE PROTOCOLS:
 
         // Fallback simulation when proxy is empty or simulated
         if (!replyText) {
-          const lower = currentPrompt.toLowerCase();
+          if (iteration > 1) {
+            // Tools were already executed in prior iteration; terminate loop cleanly
+            break;
+          }
+
+          const lower = promptToSend.toLowerCase();
           const lastAssistantMsg =
             [...sessionMessages]
               .reverse()
@@ -1097,11 +1102,11 @@ WORKSPACE PROTOCOLS:
 
           if (lower.includes("fire")) {
             const matchedAgent = workingProj.agents.find(
-              (a) => !a.isOrchestrator && currentPrompt.toLowerCase().includes(a.name.toLowerCase()),
+              (a) => !a.isOrchestrator && promptToSend.toLowerCase().includes(a.name.toLowerCase()),
             );
             const targetName = matchedAgent
               ? matchedAgent.name
-              : currentPrompt
+              : promptToSend
                   .replace(/fire agent/i, "")
                   .replace(/fire/i, "")
                   .split(/[.\n]/)[0]

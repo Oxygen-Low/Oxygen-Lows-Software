@@ -388,7 +388,11 @@ describe("Projects Page", () => {
     await waitFor(() => {
       expect(screen.getByText(/has been successfully hired and onboarded/i)).toBeTruthy();
       expect(screen.getAllByText("Jade").length).toBeGreaterThan(0);
+      expect(screen.getByText(/Hired agent "Jade" \(Growth Specialist\)/i)).toBeTruthy();
     });
+
+    // Ensure infinite multi-turn loop didn't flood the board with duplicate generic tasks
+    expect(screen.queryByText(/Refine project architecture/i)).toBeNull();
   });
 
   it("selects task, assigns agent, and executes task with live action logs", async () => {
