@@ -21,6 +21,7 @@ export const ko = {
     uploading: "ì—…ë¡œë“œ ì¤‘...",
     create: "ë§Œë“¤ê¸°",
     view: "ë³´ê¸°",
+    preview: "미리보기",
     submit: "ì œì¶œ",
     submitting: "ì œì¶œ ì¤‘...",
     comingSoon: "ì¶œì‹œ ì˜ˆì •",

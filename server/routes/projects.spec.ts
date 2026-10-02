@@ -13,34 +13,39 @@ vi.mock("../lib/dataStore.ts", () => ({
     if (filters) {
       for (const f of filters) {
         if (f.operator === "eq") {
-          list = list.filter((item) => item[f.column] === f.value);
+          list = list.filter((item) => item[f.field] === f.value);
         }
       }
     }
     if (single) {
-      return { data: list[0] || null, error: null };
+      return list[0] || null;
     }
-    return { data: list, error: null };
+    return list;
   }),
-  insertTable: vi.fn(({ table, record }) => {
+  insertTable: vi.fn((table, data, userId) => {
+    const record = Array.isArray(data) ? data[0] : data;
     mockProjectsDb.push(record);
-    return { data: record, error: null };
+    return record;
   }),
-  updateTable: vi.fn(({ table, id, updates }) => {
+  updateTable: vi.fn((table, filters, updates, userId) => {
+    const idFilter = filters?.find((f: any) => f.field === "id");
+    const id = idFilter ? idFilter.value : null;
     const idx = mockProjectsDb.findIndex((item) => item.id === id);
     if (idx >= 0) {
       mockProjectsDb[idx] = { ...mockProjectsDb[idx], ...updates };
-      return { data: mockProjectsDb[idx], error: null };
+      return [mockProjectsDb[idx]];
     }
-    return { data: null, error: "Not found" };
+    return [];
   }),
-  deleteTable: vi.fn(({ table, id }) => {
+  deleteTable: vi.fn((table, filters, userId) => {
+    const idFilter = filters?.find((f: any) => f.field === "id");
+    const id = idFilter ? idFilter.value : null;
     const idx = mockProjectsDb.findIndex((item) => item.id === id);
     if (idx >= 0) {
-      mockProjectsDb.splice(idx, 1);
-      return { data: true, error: null };
+      const deleted = mockProjectsDb.splice(idx, 1);
+      return deleted;
     }
-    return { data: false, error: "Not found" };
+    return [];
   }),
 }));
 

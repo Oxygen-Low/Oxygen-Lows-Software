@@ -21,6 +21,7 @@ export const zhCN = {
     uploading: "ä¸Šä¼ ä¸­...",
     create: "åˆ›å»º",
     view: "æŸ¥çœ‹",
+    preview: "预览",
     submit: "æäº¤",
     submitting: "æäº¤ä¸­...",
     comingSoon: "æ•¬è¯·æœŸå¾…",

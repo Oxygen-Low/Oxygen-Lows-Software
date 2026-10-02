@@ -21,6 +21,7 @@ export const es = {
     uploading: "Subiendo...",
     create: "Crear",
     view: "Ver",
+    preview: "Vista previa",
     submit: "Enviar",
     submitting: "Enviando...",
     comingSoon: "PrÃ³ximamente",

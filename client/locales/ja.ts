@@ -21,6 +21,7 @@ export const ja = {
     uploading: "ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ä¸­...",
     create: "ä½œæˆ",
     view: "è¡¨ç¤º",
+    preview: "プレビュー",
     submit: "é€ä¿¡",
     submitting: "é€ä¿¡ä¸­...",
     comingSoon: "è¿‘æ—¥å…¬é–‹",

@@ -500,7 +500,8 @@ describe("Projects Page", () => {
 
     // Verify orchestrator confirms offboarding with clean name and no raw tags
     await waitFor(() => {
-      expect(screen.getByText(/I have offboarded \*\*MarketingBot\*\*/i)).toBeTruthy();
+      expect(screen.getByText(/I have offboarded/i)).toBeTruthy();
+      expect(screen.getByText("MarketingBot")).toBeTruthy();
       expect(screen.getByText(/Fired agent "MarketingBot"/i)).toBeTruthy();
     });
 
@@ -729,5 +730,177 @@ describe("Projects Page", () => {
       expect(screen.getByText("My Custom Startup")).toBeTruthy();
     });
   });
+
+  it("renders markdown formatting in chat messages and supports memory preview mode", async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-md-1",
+                name: "Markdown Test Workspace",
+                description: "Testing markdown rendering",
+                orchestratorName: "DocOrchestrator",
+                orchestratorModelProvider: "horde",
+                orchestratorModelId: "Fast",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "DocOrchestrator",
+                    role: "Documentation Specialist",
+                    description: "Handles docs",
+                    systemPrompt: "You are DocOrchestrator.",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [
+                  {
+                    id: "mem-1",
+                    filename: "architecture.md",
+                    title: "System Architecture",
+                    content: "# Architecture Overview\n\n- **Client:** React 18 SPA\n- **Server:** Hono Node.js\n\n```typescript\nconst message = 'Hello World';\n```",
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+                tasks: [],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      if (url === "/api/ai/stream-proxy" || url === "/api/ai/proxy") {
+        return {
+          ok: true,
+          json: async () => ({
+            text: "Here is your plan:\n\n### Next Steps\n1. **Setup** the database\n2. Run `pnpm test`\n\n```json\n{\"status\": \"ready\"}\n```",
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Markdown Test Workspace")).toBeTruthy();
+    });
+
+    // Send a chat message
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "Show me the project plan in markdown" } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Wait for markdown formatted elements in chat
+    await waitFor(() => {
+      expect(screen.getByText("Next Steps")).toBeTruthy();
+    });
+
+    expect(screen.getByText("Setup")).toBeTruthy();
+    expect(screen.getByText("pnpm test")).toBeTruthy();
+
+    // Check Memory File Preview toggle
+    fireEvent.click(screen.getByText("architecture.md"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Preview/i })).toBeTruthy();
+    });
+
+    // Click Preview button
+    fireEvent.click(screen.getByRole("button", { name: /Preview/i }));
+
+    // Memory markdown content should now be rendered
+    await waitFor(() => {
+      expect(screen.getByText("Architecture Overview")).toBeTruthy();
+      expect(screen.getByText("Client:")).toBeTruthy();
+    });
+
+    // Click Edit button to switch back to textarea
+    fireEvent.click(screen.getByRole("button", { name: /Edit/i }));
+
+    await waitFor(() => {
+      const textarea = screen.getByPlaceholderText(/# Document Title/i) as HTMLTextAreaElement;
+      expect(textarea).toBeTruthy();
+      expect(textarea.value).toContain("# Architecture Overview");
+    });
+  });
+
+  it("persists created project across reloads and does not prompt to create a new project after refreshing", async () => {
+    let serverProjects: any[] = [];
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects" && (!opts || !opts.method || opts.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({ data: serverProjects }),
+        };
+      }
+      if (url === "/api/projects" && opts?.method === "POST") {
+        const body = JSON.parse(opts.body);
+        const created = { ...body, id: "persisted-proj-999" };
+        serverProjects = [created];
+        return {
+          ok: true,
+          json: async () => ({ data: created }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    // 1. Initial render with 0 projects -> shows empty state
+    const { unmount } = render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/No projects yet/i).length).toBeGreaterThan(0);
+    });
+
+    // 2. User creates a project
+    const newProjButtons = screen.getAllByRole("button", { name: /New Project/i });
+    fireEvent.click(newProjButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/e\.g\. NextGen Web App/i)).toBeTruthy();
+    });
+
+    const nameInput = screen.getByPlaceholderText(/e\.g\. NextGen Web App/i);
+    fireEvent.change(nameInput, { target: { value: "Persistent SaaS Workspace" } });
+
+    const createBtn = screen.getByRole("button", { name: /^Create$/i });
+    fireEvent.click(createBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Persistent SaaS Workspace")).toBeTruthy();
+    });
+
+    // 3. Simulate page refresh by unmounting and re-rendering
+    unmount();
+    cleanup();
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    // 4. Verify project is immediately loaded and workspace is active (NO empty state asking to create)
+    await waitFor(() => {
+      expect(screen.getByText("Persistent SaaS Workspace")).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/No projects yet. Create one to get started!/i)).toBeNull();
+  });
 });
+
 

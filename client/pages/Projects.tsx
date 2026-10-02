@@ -39,7 +39,11 @@ import {
   UserPlus,
   Lock,
   Pin,
+  Eye,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { formatModelLabel } from "@/utils/aiUtils";
 
 export interface ProjectAgent {
@@ -118,6 +122,103 @@ export interface ProjectRecord {
 
 const LOCAL_STORAGE_KEY = "oxygenlow_projects_cache_v1";
 
+interface ProjectMarkdownProps {
+  content: string;
+  isUser?: boolean;
+}
+
+export function ProjectMarkdown({ content, isUser = false }: ProjectMarkdownProps) {
+  return (
+    <div
+      className={`prose prose-invert max-w-none text-sm leading-relaxed ${
+        isUser ? "text-primary-foreground" : "text-slate-100"
+      }`}
+    >
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          code({ className, children, ...props }: any) {
+            const match = /language-(\w+)/.exec(className || "");
+            const inline = !match;
+            if (inline) {
+              return (
+                <code
+                  className={`px-1.5 py-0.5 rounded text-xs font-mono ${
+                    isUser
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-800 text-cyan-300 border border-slate-700/50"
+                  }`}
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
+            }
+            return (
+              <CodeHighlighter
+                language={match[1]}
+                customStyle={{
+                  margin: "0.5rem 0",
+                  borderRadius: "0.5rem",
+                  fontSize: "12px",
+                  lineHeight: "1.5",
+                  border: "1px solid rgba(51,65,85,0.5)",
+                }}
+              >
+                {String(children).replace(/\n$/, "")}
+              </CodeHighlighter>
+            );
+          },
+          p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>,
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          strong: ({ children }) => (
+            <strong className={`font-semibold ${isUser ? "text-white" : "text-slate-100"}`}>{children}</strong>
+          ),
+          em: ({ children }) => <em className="italic">{children}</em>,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-slate-600 pl-3 my-2 italic text-slate-400">
+              {children}
+            </blockquote>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-2">
+              <table className="min-w-full divide-y divide-slate-700 border border-slate-700 text-xs text-left">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-slate-800/80 text-slate-200">{children}</thead>,
+          th: ({ children }) => <th className="px-2.5 py-1.5 font-semibold">{children}</th>,
+          td: ({ children }) => <td className="px-2.5 py-1.5 border-t border-slate-800 text-slate-300">{children}</td>,
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={
+                isUser
+                  ? "text-white underline hover:opacity-80"
+                  : "text-cyan-400 underline hover:text-cyan-300 transition-colors"
+              }
+            >
+              {children}
+            </a>
+          ),
+          h1: ({ children }) => <h1 className="text-lg font-bold text-white mb-2 mt-3 first:mt-0">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-base font-bold text-white mb-2 mt-2.5 first:mt-0">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold text-white mb-1.5 mt-2 first:mt-0">{children}</h3>,
+          h4: ({ children }) => <h4 className="text-xs font-semibold text-slate-200 mb-1 mt-1.5 first:mt-0">{children}</h4>,
+          hr: () => <hr className="my-3 border-slate-700" />,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 export default function Projects() {
   const { t } = useTranslation();
   usePageTitle(t("projects.title", undefined, "Projects"), {
@@ -178,6 +279,7 @@ export default function Projects() {
   const [memoryEditFilename, setMemoryEditFilename] = useState("");
   const [memoryEditContent, setMemoryEditContent] = useState("");
   const [memoryEditAlwaysShown, setMemoryEditAlwaysShown] = useState(false);
+  const [memoryViewMode, setMemoryViewMode] = useState<"edit" | "preview">("edit");
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -282,12 +384,13 @@ export default function Projects() {
 
   // Sync active project state to localStorage as backup
   useEffect(() => {
+    if (loading) return;
     if (projects.length > 0) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
     } else {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
-  }, [projects]);
+  }, [projects, loading]);
 
   // Selected memory file for inspector
   const selectedMemoryFile = useMemo(() => {
@@ -416,7 +519,11 @@ export default function Projects() {
       if (res.ok) {
         const json = await res.json();
         if (json.data) {
-          setProjects((prev) => [json.data, ...prev]);
+          const updatedList = [json.data, ...projects.filter((p) => p.id !== json.data.id)];
+          setProjects(updatedList);
+          try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+          } catch {}
           setActiveProjectId(json.data.id);
           setSelectedAgentId(null);
           setSessionMessages(createGreeting(null));
@@ -428,7 +535,11 @@ export default function Projects() {
       }
     } catch {}
 
-    setProjects((prev) => [newProj, ...prev]);
+    const fallbackList = [newProj, ...projects.filter((p) => p.id !== newProj.id)];
+    setProjects(fallbackList);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(fallbackList));
+    } catch {}
     setActiveProjectId(newProj.id);
     setSelectedAgentId(null);
     setSessionMessages(createGreeting(null));
@@ -1626,13 +1737,13 @@ WORKSPACE PROTOCOLS:
                       </div>
 
                       <div
-                        className={`rounded-xl p-3.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                        className={`rounded-xl p-3.5 text-sm leading-relaxed ${
                           isUser
                             ? "bg-primary text-primary-foreground font-medium"
                             : "bg-slate-900 border border-slate-800 text-slate-100 shadow-sm"
                         }`}
                       >
-                        {msg.content}
+                        <ProjectMarkdown content={msg.content} isUser={isUser} />
                       </div>
 
                       {/* Render Executed Actions as Visual Cards */}
@@ -1883,12 +1994,47 @@ WORKSPACE PROTOCOLS:
                     </div>
 
                     <div className="space-y-1.5 flex-1 flex flex-col">
-                      <label className="text-slate-400 font-semibold">{t("projects.fileContent", undefined, "Content (Markdown)")}</label>
-                      <textarea
-                        value={memoryEditContent}
-                        onChange={(e) => setMemoryEditContent(e.target.value)}
-                        className="flex-1 min-h-[180px] w-full rounded-md border border-slate-700 bg-slate-950 p-2.5 text-white font-mono text-xs leading-relaxed"
-                      />
+                      <div className="flex items-center justify-between">
+                        <label className="text-slate-400 font-semibold">{t("projects.fileContent", undefined, "Content (Markdown)")}</label>
+                        <div className="flex items-center rounded-lg bg-slate-800 p-0.5 border border-slate-700">
+                          <button
+                            type="button"
+                            onClick={() => setMemoryViewMode("edit")}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                              memoryViewMode === "edit"
+                                ? "bg-slate-700 text-white shadow-sm"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            <span>{t("common.edit", undefined, "Edit")}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMemoryViewMode("preview")}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                              memoryViewMode === "preview"
+                                ? "bg-slate-700 text-white shadow-sm"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>{t("common.preview", undefined, "Preview")}</span>
+                          </button>
+                        </div>
+                      </div>
+                      {memoryViewMode === "edit" ? (
+                        <textarea
+                          value={memoryEditContent}
+                          onChange={(e) => setMemoryEditContent(e.target.value)}
+                          className="flex-1 min-h-[180px] w-full rounded-md border border-slate-700 bg-slate-950 p-2.5 text-white font-mono text-xs leading-relaxed"
+                          placeholder="# Document Title..."
+                        />
+                      ) : (
+                        <div className="flex-1 min-h-[180px] w-full rounded-md border border-slate-700 bg-slate-950 p-3 overflow-y-auto text-xs">
+                          <ProjectMarkdown content={memoryEditContent || "*No content yet.*"} />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2 pt-2">

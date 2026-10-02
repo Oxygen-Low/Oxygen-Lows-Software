@@ -92,12 +92,12 @@ projectsRouter.get("/", async (c) => {
   const userId = resolveUserId(c);
   const result = queryTable({
     table: "projects",
-    filters: [{ column: "user_id", operator: "eq", value: userId }],
+    filters: [{ field: "user_id", operator: "eq", value: userId }],
     order: { column: "updated_at", ascending: false },
-    userId: userId !== "guest" ? userId : undefined,
+    userId: userId,
   });
 
-  const projects = (result.data || []) as ProjectRecord[];
+  const projects = (Array.isArray(result) ? result : result?.data || []) as ProjectRecord[];
   return c.json({ data: projects, error: null });
 });
 
@@ -117,7 +117,9 @@ projectsRouter.post("/", async (c) => {
     name: orchestratorName,
     role: "Lead Workspace Orchestrator",
     description: "Central intelligence coordinating project goals, tasks, memory files, and specialized agents.",
-    systemPrompt: body.orchestratorPrompt || "You are the Lead Workspace Orchestrator. You direct operations, plan goals, create and coordinate specialized agents, manage memory docs, and execute structured workspace actions.",
+    systemPrompt:
+      body.orchestratorPrompt ||
+      "You are the Lead Workspace Orchestrator. You direct operations, plan goals, create and coordinate specialized agents, manage memory docs, and execute structured workspace actions.",
     modelProvider: orchestratorModelProvider,
     modelId: orchestratorModelId,
     isOrchestrator: true,
@@ -162,17 +164,9 @@ projectsRouter.post("/", async (c) => {
     updated_at: now,
   };
 
-  const insertRes = insertTable({
-    table: "projects",
-    record: project,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  const inserted = insertTable("projects", project, userId);
 
-  if (insertRes.error) {
-    return c.json({ data: null, error: insertRes.error }, 500);
-  }
-
-  return c.json({ data: insertRes.data, error: null }, 201);
+  return c.json({ data: inserted || project, error: null }, 201);
 });
 
 // GET /api/projects/:id - get single project
@@ -180,21 +174,21 @@ projectsRouter.get("/:id", async (c) => {
   const userId = resolveUserId(c);
   const id = c.req.param("id");
 
-  const result = queryTable({
+  const project = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!result.data) {
+  if (!project) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  return c.json({ data: result.data, error: null });
+  return c.json({ data: project, error: null });
 });
 
 // PATCH /api/projects/:id - update project details
@@ -204,21 +198,19 @@ projectsRouter.patch("/:id", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const now = new Date().toISOString();
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
-
-  const existing = existingRes.data as ProjectRecord;
 
   const updated: Partial<ProjectRecord> = {
     ...existing,
@@ -232,9 +224,7 @@ projectsRouter.patch("/:id", async (c) => {
     memoryFiles: body.memoryFiles ?? existing.memoryFiles,
     tasks: body.tasks ?? existing.tasks,
     messages: body.messages ?? existing.messages,
-    isSetupComplete: body.isSetupComplete ?? existing.isSetupComplete,
     userName: body.userName ?? existing.userName,
-    setupState: body.setupState ?? existing.setupState,
     updated_at: now,
   };
 
@@ -254,14 +244,17 @@ projectsRouter.patch("/:id", async (c) => {
     });
   }
 
-  const updateRes = updateTable({
-    table: "projects",
-    id,
-    updates: updated,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  const updatedRows = updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    updated,
+    userId,
+  );
 
-  return c.json({ data: updateRes.data, error: updateRes.error });
+  return c.json({ data: updatedRows?.[0] || updated, error: null });
 });
 
 // DELETE /api/projects/:id - delete project
@@ -269,13 +262,16 @@ projectsRouter.delete("/:id", async (c) => {
   const userId = resolveUserId(c);
   const id = c.req.param("id");
 
-  const deleteRes = deleteTable({
-    table: "projects",
-    id,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  deleteTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    userId,
+  );
 
-  return c.json({ data: { success: !deleteRes.error, id }, error: deleteRes.error });
+  return c.json({ data: { success: true, id }, error: null });
 });
 
 // POST /api/projects/:id/agents - add agent
@@ -284,21 +280,20 @@ projectsRouter.post("/:id/agents", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const now = new Date().toISOString();
 
   const newAgent: ProjectAgent = {
@@ -315,12 +310,15 @@ projectsRouter.post("/:id/agents", async (c) => {
   };
 
   const updatedAgents = [...existing.agents, newAgent];
-  updateTable({
-    table: "projects",
-    id,
-    updates: { agents: updatedAgents, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { agents: updatedAgents, updated_at: now },
+    userId,
+  );
 
   return c.json({ data: newAgent, error: null }, 201);
 });
@@ -331,21 +329,20 @@ projectsRouter.delete("/:id/agents/:agentId", async (c) => {
   const id = c.req.param("id");
   const agentId = c.req.param("agentId");
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const target = existing.agents.find((a) => a.id === agentId);
   if (target?.isOrchestrator) {
     return c.json({ data: null, error: "Cannot fire the Lead Orchestrator" }, 400);
@@ -354,12 +351,15 @@ projectsRouter.delete("/:id/agents/:agentId", async (c) => {
   const updatedAgents = existing.agents.filter((a) => a.id !== agentId);
   const now = new Date().toISOString();
 
-  updateTable({
-    table: "projects",
-    id,
-    updates: { agents: updatedAgents, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { agents: updatedAgents, updated_at: now },
+    userId,
+  );
 
   return c.json({ data: { success: true, firedAgentId: agentId }, error: null });
 });
@@ -370,21 +370,20 @@ projectsRouter.post("/:id/memory", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const now = new Date().toISOString();
   const fileId = body.id || crypto.randomUUID();
 
@@ -406,12 +405,15 @@ projectsRouter.post("/:id/memory", async (c) => {
     updatedMemory = [...existing.memoryFiles, fileRecord];
   }
 
-  updateTable({
-    table: "projects",
-    id,
-    updates: { memoryFiles: updatedMemory, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { memoryFiles: updatedMemory, updated_at: now },
+    userId,
+  );
 
   return c.json({ data: fileRecord, error: null });
 });
@@ -422,30 +424,32 @@ projectsRouter.delete("/:id/memory/:fileId", async (c) => {
   const id = c.req.param("id");
   const fileId = c.req.param("fileId");
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const updatedMemory = existing.memoryFiles.filter((m) => m.id !== fileId);
   const now = new Date().toISOString();
 
-  updateTable({
-    table: "projects",
-    id,
-    updates: { memoryFiles: updatedMemory, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { memoryFiles: updatedMemory, updated_at: now },
+    userId,
+  );
 
   return c.json({ data: { success: true, deletedFileId: fileId }, error: null });
 });
@@ -456,21 +460,20 @@ projectsRouter.post("/:id/tasks", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const now = new Date().toISOString();
 
   const newTask: ProjectTask = {
@@ -486,12 +489,15 @@ projectsRouter.post("/:id/tasks", async (c) => {
 
   const updatedTasks = [...existing.tasks, newTask];
 
-  updateTable({
-    table: "projects",
-    id,
-    updates: { tasks: updatedTasks, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { tasks: updatedTasks, updated_at: now },
+    userId,
+  );
 
   return c.json({ data: newTask, error: null }, 201);
 });
@@ -503,21 +509,20 @@ projectsRouter.patch("/:id/tasks/:taskId", async (c) => {
   const taskId = c.req.param("taskId");
   const body = await c.req.json().catch(() => ({}));
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const now = new Date().toISOString();
 
   const updatedTasks = existing.tasks.map((t) => {
@@ -535,12 +540,15 @@ projectsRouter.patch("/:id/tasks/:taskId", async (c) => {
     return t;
   });
 
-  updateTable({
-    table: "projects",
-    id,
-    updates: { tasks: updatedTasks, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { tasks: updatedTasks, updated_at: now },
+    userId,
+  );
 
   const updatedTask = updatedTasks.find((t) => t.id === taskId);
   return c.json({ data: updatedTask, error: null });
@@ -552,30 +560,32 @@ projectsRouter.delete("/:id/tasks/:taskId", async (c) => {
   const id = c.req.param("id");
   const taskId = c.req.param("taskId");
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const updatedTasks = existing.tasks.filter((t) => t.id !== taskId);
   const now = new Date().toISOString();
 
-  updateTable({
-    table: "projects",
-    id,
-    updates: { tasks: updatedTasks, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { tasks: updatedTasks, updated_at: now },
+    userId,
+  );
 
   return c.json({ data: { success: true, deletedTaskId: taskId }, error: null });
 });
@@ -586,21 +596,20 @@ projectsRouter.post("/:id/messages", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
 
-  const existingRes = queryTable({
+  const existing = queryTable({
     table: "projects",
     filters: [
-      { column: "id", operator: "eq", value: id },
-      { column: "user_id", operator: "eq", value: userId },
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
     ],
     single: true,
-    userId: userId !== "guest" ? userId : undefined,
-  });
+    userId: userId,
+  }) as ProjectRecord | null;
 
-  if (!existingRes.data) {
+  if (!existing) {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  const existing = existingRes.data as ProjectRecord;
   const now = new Date().toISOString();
 
   const newMsg: ProjectChatMessage = {
@@ -616,12 +625,15 @@ projectsRouter.post("/:id/messages", async (c) => {
 
   const updatedMessages = [...existing.messages, newMsg];
 
-  updateTable({
-    table: "projects",
-    id,
-    updates: { messages: updatedMessages, updated_at: now },
-    userId: userId !== "guest" ? userId : undefined,
-  });
+  updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: id },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    { messages: updatedMessages, updated_at: now },
+    userId,
+  );
 
   return c.json({ data: newMsg, error: null }, 201);
 });

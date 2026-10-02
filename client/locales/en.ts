@@ -21,6 +21,7 @@ export const en = {
     uploading: "Uploading...",
     create: "Create",
     view: "View",
+    preview: "Preview",
     submit: "Submit",
     submitting: "Submitting...",
     comingSoon: "Coming Soon",
