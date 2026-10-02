@@ -956,7 +956,7 @@ WORKSPACE PROTOCOLS:
 2. Multi-tool Batch Execution: You may output tool calls. The system will batch-execute all detected tool calls, strip text after the tool calls, provide observations, and re-run until finished.
 3. Hiring Workflow: When hiring an agent, do not immediately create them in one turn. Sequentially ask:
    1. Role
-   2. Name
+   2. Name (Always suggest and pick natural real human names like John, Sarah, Marcus, Elena, Alex, David, Chloe, Maya, Arthur rather than robotic titles like "NexusBot", "MarketingBot", or "DevAgent")
    3. Personality
    4. Confirmation
    Only after the user confirms should you emit [ACTION: CREATE_AGENT name="..." role="..." prompt="..."].
@@ -1019,13 +1019,18 @@ WORKSPACE PROTOCOLS:
             lower.includes("developer") ||
             lower.includes("designer")
           ) {
-            replyText = `Great choice. **2. Name:** What name would you like to assign to this agent? (e.g., NexusBot, GrowthSpecialist)`;
+            replyText = `Great choice. **2. Name:** What name would you like to assign to this agent? (e.g., John, Sarah, Marcus, Elena)`;
           } else if (
-            lower.includes("bot") ||
-            lower.includes("agent") ||
+            lower.includes("john") ||
+            lower.includes("sarah") ||
+            lower.includes("marcus") ||
+            lower.includes("elena") ||
             lower.includes("alex") ||
             lower.includes("sam") ||
-            lower.includes("dev")
+            lower.includes("david") ||
+            lower.includes("maya") ||
+            lower.includes("bot") ||
+            lower.includes("agent")
           ) {
             replyText = `Got it. **3. Personality & Tone:** What personality, tone, and operational guidelines should they have? (e.g., Analytical, thorough, and proactive)`;
           } else if (
@@ -1035,9 +1040,9 @@ WORKSPACE PROTOCOLS:
             lower.includes("thorough") ||
             lower.includes("creative")
           ) {
-            replyText = `Here is the summary of the new agent:\n- **Role:** Specialist\n- **Name:** NewSpecialist\n- **Personality:** Dedicated and proactive\n\n**4. Confirmation:** Reply with "Confirm" to finalize hiring and onboard this agent.`;
+            replyText = `Here is the summary of the new agent:\n- **Role:** Specialist\n- **Name:** John\n- **Personality:** Dedicated and proactive\n\n**4. Confirmation:** Reply with "Confirm" to finalize hiring and onboard this agent.`;
           } else if (lower.includes("confirm") || lower.includes("proceed") || lower.includes("yes")) {
-            const newName = "SpecialistAgent";
+            const newName = "John";
             const newRole = "Domain Specialist";
             replyText = `Agent **${newName}** has been successfully hired and onboarded to the workspace!\n\n[ACTION: CREATE_AGENT name="${newName}" role="${newRole}" prompt="You are ${newName}, specialized in ${newRole}."]\n[TASK: ADD title="Initial workspace orientation for ${newName}" priority="medium"]`;
           } else {
