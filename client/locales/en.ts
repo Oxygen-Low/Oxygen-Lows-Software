@@ -2885,6 +2885,9 @@ export const en = {
     fireAgentPrompt: "Fire agent:",
     generateTasksPrompt: "Analyze project context and generate the next 3 actionable tasks.",
     summarizeMemoryPrompt: "Summarize all memory files and review project goals.",
+    clearChat: "Clear Chat",
+    sessionStarted: "Session started. Ready to execute actions.",
+    agentSessionReady: "Agent session active. Ask questions or trigger actions.",
   },
 } as const;
 

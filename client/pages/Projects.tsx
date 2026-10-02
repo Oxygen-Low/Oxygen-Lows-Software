@@ -33,6 +33,7 @@ import {
   RefreshCw,
   Edit3,
   Flame,
+  Eraser,
 } from "lucide-react";
 import { formatModelLabel } from "@/utils/aiUtils";
 
@@ -95,7 +96,7 @@ export interface ProjectRecord {
   agents: ProjectAgent[];
   memoryFiles: ProjectMemoryFile[];
   tasks: ProjectTask[];
-  messages: ProjectChatMessage[];
+  messages?: ProjectChatMessage[];
   created_at: string;
   updated_at: string;
 }
@@ -146,6 +147,9 @@ export default function Projects() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedMemoryFileId, setSelectedMemoryFileId] = useState<string | null>(null);
 
+  // Non-permanent in-memory session chat messages (resets per reload/agent click)
+  const [sessionMessages, setSessionMessages] = useState<ProjectChatMessage[]>([]);
+
   // Modals / forms
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -160,119 +164,6 @@ export default function Projects() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load projects from backend or fallback local storage
-  const loadProjects = useCallback(async () => {
-    setLoading(true);
-    try {
-      const headers: Record<string, string> = {};
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
-      const res = await fetch("/api/projects", { headers });
-      if (res.ok) {
-        const json = await res.json();
-        if (Array.isArray(json.data) && json.data.length > 0) {
-          setProjects(json.data);
-          if (!activeProjectId || !json.data.some((p: ProjectRecord) => p.id === activeProjectId)) {
-            setActiveProjectId(json.data[0].id);
-          }
-          setLoading(false);
-          return;
-        }
-      }
-    } catch {
-      // Backend unavailable, proceed to local fallback
-    }
-
-    // Fallback to local storage
-    try {
-      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProjects(parsed);
-          if (!activeProjectId || !parsed.some((p: ProjectRecord) => p.id === activeProjectId)) {
-            setActiveProjectId(parsed[0].id);
-          }
-          setLoading(false);
-          return;
-        }
-      }
-    } catch {}
-
-    // If completely empty, auto-create a default starter project
-    const starterId = crypto.randomUUID();
-    const now = new Date().toISOString();
-    const defaultProj: ProjectRecord = {
-      id: starterId,
-      name: "Default Workspace",
-      description: "Autonomous multi-agent workspace with custom model orchestration.",
-      orchestratorName: "Orchestrator",
-      orchestratorModelProvider: defaultProvider || "horde",
-      orchestratorModelId: defaultModel || "Fast",
-      orchestratorPrompt: "You are the Lead Workspace Orchestrator. Direct operations, plan goals, coordinate agents, update memory docs, and execute actions with structured tags.",
-      agents: [
-        {
-          id: "orchestrator-root",
-          name: "Orchestrator",
-          role: "Lead Workspace Orchestrator",
-          description: "Central intelligence coordinating project goals, tasks, memory files, and specialized agents.",
-          systemPrompt: "You are the Lead Workspace Orchestrator. Direct operations, plan goals, coordinate agents, update memory docs, and execute actions with structured tags.",
-          modelProvider: defaultProvider || "horde",
-          modelId: defaultModel || "Fast",
-          isOrchestrator: true,
-          status: "idle",
-          createdAt: now,
-        },
-      ],
-      memoryFiles: [
-        {
-          id: crypto.randomUUID(),
-          filename: "project_goals.md",
-          title: "Project Goals & Context",
-          content: "# Default Workspace\n\n## Objective\nCoordinate autonomous multi-agent task execution and custom model selection.\n\n## Guidelines\n- Orchestrator handles agent management.\n- Use memory files to maintain project context.\n",
-          updatedAt: now,
-        },
-      ],
-      tasks: [
-        {
-          id: crypto.randomUUID(),
-          title: "Initialize workspace goals and select custom models",
-          status: "todo",
-          priority: "high",
-          createdAt: now,
-          updatedAt: now,
-        },
-      ],
-      messages: [
-        {
-          id: crypto.randomUUID(),
-          sender: "system",
-          content: "Workspace ready. The Orchestrator is active and awaiting commands.",
-          createdAt: now,
-        },
-      ],
-      created_at: now,
-      updated_at: now,
-    };
-
-    setProjects([defaultProj]);
-    setActiveProjectId(defaultProj.id);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([defaultProj]));
-    setLoading(false);
-  }, [session, activeProjectId, defaultModel, defaultProvider]);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  // Sync active project state to localStorage as backup
-  useEffect(() => {
-    if (projects.length > 0) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
-    }
-  }, [projects]);
-
   // Active project helper
   const activeProject = useMemo(() => {
     return projects.find((p) => p.id === activeProjectId) || projects[0] || null;
@@ -284,11 +175,149 @@ export default function Projects() {
     return activeProject.agents.find((a) => a.isOrchestrator) || activeProject.agents[0] || null;
   }, [activeProject]);
 
-  // Selected agent for inspector
+  // Selected agent for inspector and active turn
   const selectedAgent = useMemo(() => {
     if (!activeProject) return null;
     return activeProject.agents.find((a) => a.id === selectedAgentId) || orchestratorAgent;
   }, [activeProject, selectedAgentId, orchestratorAgent]);
+
+  // Helper to create fresh greeting message
+  const createGreeting = useCallback(
+    (agent?: ProjectAgent | null, orchName?: string): ProjectChatMessage => {
+      const now = new Date().toISOString();
+      if (agent && !agent.isOrchestrator) {
+        return {
+          id: crypto.randomUUID(),
+          sender: "system",
+          content: `${agent.name} (${agent.role}) - ${t(
+            "projects.agentSessionReady",
+            undefined,
+            "Agent session active. Ask questions or trigger actions.",
+          )}`,
+          createdAt: now,
+        };
+      }
+      return {
+        id: crypto.randomUUID(),
+        sender: "system",
+        content: `${orchName || "Orchestrator"} - ${t(
+          "projects.sessionStarted",
+          undefined,
+          "Session started. Ready to execute actions.",
+        )}`,
+        createdAt: now,
+      };
+    },
+    [t],
+  );
+
+  // Reset/Clear chat to a fresh session
+  const handleClearChat = useCallback(() => {
+    setSessionMessages([createGreeting(selectedAgent, activeProject?.orchestratorName)]);
+    setChatInput("");
+  }, [createGreeting, selectedAgent, activeProject]);
+
+  // Load projects from backend or fallback local storage
+  const loadProjects = useCallback(async () => {
+    setLoading(true);
+    let loadedProjects: ProjectRecord[] = [];
+    try {
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch("/api/projects", { headers });
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.data) && json.data.length > 0) {
+          loadedProjects = json.data;
+        }
+      }
+    } catch {}
+
+    if (loadedProjects.length === 0) {
+      try {
+        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedProjects = parsed;
+          }
+        }
+      } catch {}
+    }
+
+    if (loadedProjects.length === 0) {
+      const starterId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const defaultProj: ProjectRecord = {
+        id: starterId,
+        name: "Default Workspace",
+        description: "Autonomous multi-agent workspace with custom model orchestration.",
+        orchestratorName: "Orchestrator",
+        orchestratorModelProvider: defaultProvider || "horde",
+        orchestratorModelId: defaultModel || "Fast",
+        orchestratorPrompt:
+          "You are the Lead Workspace Orchestrator. Direct operations, plan goals, coordinate agents, update memory docs, and execute actions with structured tags.",
+        agents: [
+          {
+            id: "orchestrator-root",
+            name: "Orchestrator",
+            role: "Lead Workspace Orchestrator",
+            description: "Central intelligence coordinating project goals, tasks, memory files, and specialized agents.",
+            systemPrompt:
+              "You are the Lead Workspace Orchestrator. Direct operations, plan goals, coordinate agents, update memory docs, and execute actions with structured tags.",
+            modelProvider: defaultProvider || "horde",
+            modelId: defaultModel || "Fast",
+            isOrchestrator: true,
+            status: "idle",
+            createdAt: now,
+          },
+        ],
+        memoryFiles: [
+          {
+            id: crypto.randomUUID(),
+            filename: "project_goals.md",
+            title: "Project Goals & Context",
+            content:
+              "# Default Workspace\n\n## Objective\nCoordinate autonomous multi-agent task execution and custom model selection.\n\n## Guidelines\n- Orchestrator handles agent management.\n- Use memory files to maintain project context.\n",
+            updatedAt: now,
+          },
+        ],
+        tasks: [
+          {
+            id: crypto.randomUUID(),
+            title: "Initialize workspace goals and select custom models",
+            status: "todo",
+            priority: "high",
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+        created_at: now,
+        updated_at: now,
+      };
+      loadedProjects = [defaultProj];
+    }
+
+    setProjects(loadedProjects);
+    setActiveProjectId((prev) => (prev && loadedProjects.some((p) => p.id === prev) ? prev : loadedProjects[0].id));
+    const chosenProj = (projectId && loadedProjects.find((p) => p.id === projectId)) || loadedProjects[0];
+    setSessionMessages([createGreeting(null, chosenProj.orchestratorName)]);
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.access_token, session?.user?.id, projectId]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [session?.access_token, session?.user?.id, projectId, loadProjects]);
+
+  // Sync active project state to localStorage as backup
+  useEffect(() => {
+    if (projects.length > 0) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
+    }
+  }, [projects]);
 
   // Selected memory file for inspector
   const selectedMemoryFile = useMemo(() => {
@@ -310,7 +339,7 @@ export default function Projects() {
     if (typeof chatEndRef.current?.scrollIntoView === "function") {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [activeProject?.messages, isGenerating]);
+  }, [sessionMessages, isGenerating]);
 
   // Update a project in state and server
   const updateProjectInStateAndServer = useCallback(
@@ -328,6 +357,15 @@ export default function Projects() {
     },
     [session],
   );
+
+  // Handle agent click / re-click -> clear chat and start fresh session for that agent
+  const handleSelectAgent = (agent: ProjectAgent) => {
+    setSelectedAgentId(agent.id);
+    setActiveRightTab("agent");
+    // Clear chat and initialize fresh session for this agent
+    setSessionMessages([createGreeting(agent, activeProject?.orchestratorName)]);
+    setChatInput("");
+  };
 
   // Handle Model change for Orchestrator or active Project
   const handleOrchestratorModelChange = async (provider: string, modelId: string) => {
@@ -386,14 +424,6 @@ export default function Projects() {
         },
       ],
       tasks: [],
-      messages: [
-        {
-          id: crypto.randomUUID(),
-          sender: "system",
-          content: `Project workspace created. ${orchName} initialized.`,
-          createdAt: now,
-        },
-      ],
       created_at: now,
       updated_at: now,
     };
@@ -411,6 +441,8 @@ export default function Projects() {
         if (json.data) {
           setProjects((prev) => [json.data, ...prev]);
           setActiveProjectId(json.data.id);
+          setSelectedAgentId(null);
+          setSessionMessages([createGreeting(null, json.data.orchestratorName)]);
           setShowNewProjectModal(false);
           setNewProjectName("");
           setNewProjectDesc("");
@@ -421,6 +453,8 @@ export default function Projects() {
 
     setProjects((prev) => [newProj, ...prev]);
     setActiveProjectId(newProj.id);
+    setSelectedAgentId(null);
+    setSessionMessages([createGreeting(null, newProj.orchestratorName)]);
     setShowNewProjectModal(false);
     setNewProjectName("");
     setNewProjectDesc("");
@@ -440,7 +474,11 @@ export default function Projects() {
     const remaining = projects.filter((p) => p.id !== id);
     setProjects(remaining);
     if (activeProjectId === id) {
-      setActiveProjectId(remaining[0]?.id || null);
+      const nextActive = remaining[0] || null;
+      setActiveProjectId(nextActive?.id || null);
+      if (nextActive) {
+        setSessionMessages([createGreeting(null, nextActive.orchestratorName)]);
+      }
     }
   };
 
@@ -471,6 +509,7 @@ export default function Projects() {
           await updateProjectInStateAndServer(imported);
           setProjects((prev) => [imported, ...prev]);
           setActiveProjectId(imported.id);
+          setSessionMessages([createGreeting(null, imported.orchestratorName)]);
         }
       } catch {
         alert("Failed to parse project JSON file.");
@@ -574,7 +613,10 @@ export default function Projects() {
   };
 
   // Parse Action Blocks from LLM response
-  const parseAndExecuteActions = (text: string, currentProj: ProjectRecord): { cleanedText: string; updatedProject: ProjectRecord; actionsFound: Array<{ type: any; status: any; details?: string }> } => {
+  const parseAndExecuteActions = (
+    text: string,
+    currentProj: ProjectRecord,
+  ): { cleanedText: string; updatedProject: ProjectRecord; actionsFound: Array<{ type: any; status: any; details?: string }> } => {
     let proj = { ...currentProj };
     const actionsFound: Array<{ type: any; status: any; details?: string }> = [];
 
@@ -673,7 +715,7 @@ export default function Projects() {
     return { cleanedText: text, updatedProject: proj, actionsFound };
   };
 
-  // Trigger Orchestrator Turn
+  // Trigger Chat Turn with Orchestrator or active Agent
   const handleSendMessage = async (customPrompt?: string) => {
     const promptToSend = (customPrompt || chatInput).trim();
     if (!promptToSend || !activeProject || isGenerating) return;
@@ -689,29 +731,23 @@ export default function Projects() {
       createdAt: now,
     };
 
-    let currentProj: ProjectRecord = {
-      ...activeProject,
-      messages: [...activeProject.messages, userMsg],
-      updated_at: now,
-    };
-    setProjects((prev) => prev.map((p) => (p.id === currentProj.id ? currentProj : p)));
+    setSessionMessages((prev) => [...prev, userMsg]);
 
-    // Build context prompt with Memory files, Agents, Tasks
-    const memoryContext = currentProj.memoryFiles
+    const memoryContext = activeProject.memoryFiles
       .map((m) => `[MEMORY_FILE: ${m.filename}]\n${m.content}`)
       .join("\n\n");
 
-    const agentsContext = currentProj.agents
+    const agentsContext = activeProject.agents
       .map((a) => `- ${a.name} (${a.role}) [${a.isOrchestrator ? "Lead Orchestrator" : "Specialist"}]`)
       .join("\n");
 
-    const tasksContext = currentProj.tasks
+    const tasksContext = activeProject.tasks
       .map((t) => `- [${t.status.toUpperCase()}] ${t.title}`)
       .join("\n");
 
-    const systemPrompt = `${orchestratorAgent?.systemPrompt || currentProj.orchestratorPrompt}
+    const systemPrompt = `${selectedAgent?.systemPrompt || orchestratorAgent?.systemPrompt || activeProject.orchestratorPrompt}
 
-You are orchestrating the workspace "${currentProj.name}".
+You are acting in workspace "${activeProject.name}".
 You have full authority to execute workspace actions using structured tags:
 - To create a specialized agent: [ACTION: CREATE_AGENT name="AgentName" role="Specialist Role" prompt="Instructions"]
 - To fire/delete an agent: [ACTION: FIRE_AGENT name="AgentName"]
@@ -729,8 +765,8 @@ ${tasksContext || "No tasks."}
 
 Provide a thoughtful, structured response. Include any necessary action tags.`;
 
-    const provider = currentProj.orchestratorModelProvider || "horde";
-    const model = currentProj.orchestratorModelId || "Fast";
+    const provider = selectedAgent?.modelProvider || activeProject.orchestratorModelProvider || "horde";
+    const model = selectedAgent?.modelId || activeProject.orchestratorModelId || "Fast";
     const apiKey = getDecryptedApiKey?.(provider) || undefined;
 
     try {
@@ -753,7 +789,7 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
       }
 
       if (!replyText) {
-        // Simulated smart response fallback
+        // Fallback simulated execution
         if (promptToSend.toLowerCase().includes("create a new agent") || promptToSend.toLowerCase().includes("create agent")) {
           const suggestedName = "MarketingBot";
           const suggestedRole = "Growth & SEO Specialist";
@@ -768,37 +804,33 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
         }
       }
 
-      const { updatedProject, actionsFound } = parseAndExecuteActions(replyText, currentProj);
+      const { updatedProject, actionsFound } = parseAndExecuteActions(replyText, activeProject);
 
-      const orchMsg: ProjectChatMessage = {
+      const replyMsg: ProjectChatMessage = {
         id: crypto.randomUUID(),
-        sender: "orchestrator",
-        agentName: currentProj.orchestratorName,
+        sender: selectedAgent?.isOrchestrator ? "orchestrator" : "agent",
+        agentName: selectedAgent?.name || activeProject.orchestratorName,
         content: replyText,
         actions: actionsFound,
         model: `${provider}/${model}`,
         createdAt: new Date().toISOString(),
       };
 
-      const finalProj: ProjectRecord = {
-        ...updatedProject,
-        messages: [...updatedProject.messages, orchMsg],
-        updated_at: new Date().toISOString(),
-      };
+      setSessionMessages((prev) => [...prev, replyMsg]);
 
-      await updateProjectInStateAndServer(finalProj);
+      // Persist workspace structural changes (agents, memory, tasks)
+      await updateProjectInStateAndServer({
+        ...updatedProject,
+        updated_at: new Date().toISOString(),
+      });
     } catch (err) {
       const errorMsg: ProjectChatMessage = {
         id: crypto.randomUUID(),
         sender: "system",
-        content: `Error executing Orchestrator turn. Please check your model configuration.`,
+        content: `Error executing request. Please check your model configuration.`,
         createdAt: new Date().toISOString(),
       };
-      const finalProj: ProjectRecord = {
-        ...currentProj,
-        messages: [...currentProj.messages, errorMsg],
-      };
-      await updateProjectInStateAndServer(finalProj);
+      setSessionMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsGenerating(false);
     }
@@ -847,7 +879,12 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
               <select
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm font-medium text-white shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 value={activeProjectId || ""}
-                onChange={(e) => setActiveProjectId(e.target.value)}
+                onChange={(e) => {
+                  setActiveProjectId(e.target.value);
+                  setSelectedAgentId(null);
+                  const selectedProj = projects.find((p) => p.id === e.target.value);
+                  setSessionMessages([createGreeting(null, selectedProj?.orchestratorName)]);
+                }}
               >
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -866,7 +903,7 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
             </div>
           </div>
 
-          {/* Model Selector Bar */}
+          {/* Model Selector Bar & Session Clear */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1 text-xs">
               <Cpu className="h-4 w-4 text-emerald-400" />
@@ -899,6 +936,15 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
                 )}
               </select>
             </div>
+
+            <button
+              onClick={handleClearChat}
+              className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
+              title="Clear active chat session"
+            >
+              <Eraser className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("projects.clearChat", undefined, "Clear Chat")}</span>
+            </button>
 
             <button
               onClick={handleExportJSON}
@@ -963,11 +1009,10 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
                   const isSelected = (selectedAgentId || orchestratorAgent?.id) === agent.id;
                   return (
                     <div
+                      role="button"
                       key={agent.id}
-                      onClick={() => {
-                        setSelectedAgentId(agent.id);
-                        setActiveRightTab("agent");
-                      }}
+                      data-testid={`agent-item-${agent.id}`}
+                      onClick={() => handleSelectAgent(agent)}
                       className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-all ${
                         isSelected
                           ? "bg-primary/20 border border-primary/40 text-white"
@@ -1129,41 +1174,51 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
 
           {/* CENTER COLUMN: INTERACTIVE CHAT & ORCHESTRATION FEED */}
           <main className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
-            {/* Quick Action Chips */}
-            <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-800/60 bg-slate-900/40 px-4 py-2 text-xs">
-              <span className="text-slate-400 shrink-0 flex items-center gap-1 font-semibold">
-                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                {t("projects.quickActions", undefined, "Quick Actions")}:
-              </span>
-              <button
-                onClick={() => handleQuickAddAgent("Growth Marketer")}
-                className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors"
-              >
-                ➕ Hire Marketer
-              </button>
-              <button
-                onClick={() => handleQuickAddAgent("Full Stack Developer")}
-                className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors"
-              >
-                ➕ Hire Dev Agent
-              </button>
-              <button
-                onClick={() => handleSendMessage(t("projects.generateTasksPrompt", undefined, "Analyze project context and generate the next 3 actionable tasks."))}
-                className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-sky-950/40 hover:text-sky-300 transition-colors"
-              >
-                📋 Plan Tasks
-              </button>
-              <button
-                onClick={() => handleSendMessage(t("projects.summarizeMemoryPrompt", undefined, "Summarize all memory files and review project goals."))}
-                className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors"
-              >
-                🧠 Audit Memory
-              </button>
+            {/* Quick Action Chips & Target Agent Indicator */}
+            <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-900/40 px-4 py-2 text-xs">
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <span className="text-slate-400 shrink-0 flex items-center gap-1 font-semibold">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  {t("projects.quickActions", undefined, "Quick Actions")}:
+                </span>
+                <button
+                  onClick={() => handleQuickAddAgent("Growth Marketer")}
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors"
+                >
+                  ➕ Hire Marketer
+                </button>
+                <button
+                  onClick={() => handleQuickAddAgent("Full Stack Developer")}
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-colors"
+                >
+                  ➕ Hire Dev Agent
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t("projects.generateTasksPrompt", undefined, "Analyze project context and generate the next 3 actionable tasks."))}
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-sky-950/40 hover:text-sky-300 transition-colors"
+                >
+                  📋 Plan Tasks
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t("projects.summarizeMemoryPrompt", undefined, "Summarize all memory files and review project goals."))}
+                  className="shrink-0 rounded-full bg-slate-800 px-3 py-1 font-medium text-slate-300 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors"
+                >
+                  🧠 Audit Memory
+                </button>
+              </div>
+
+              {/* Chat focus indicator */}
+              <div className="hidden md:flex items-center gap-1 text-[11px] text-slate-400">
+                <span>Chat Focus:</span>
+                <span className="font-semibold text-white">
+                  {selectedAgent?.name || activeProject?.orchestratorName}
+                </span>
+              </div>
             </div>
 
             {/* Chat Message Stream */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {activeProject?.messages.map((msg) => {
+              {sessionMessages.map((msg) => {
                 const isUser = msg.sender === "user";
                 const isSystem = msg.sender === "system";
 
@@ -1192,7 +1247,7 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
                     <div className="space-y-1.5 max-w-[85%]">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-300">
-                          {isUser ? "You" : msg.agentName || activeProject.orchestratorName}
+                          {isUser ? "You" : msg.agentName || activeProject?.orchestratorName}
                         </span>
                         {msg.model && (
                           <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
@@ -1240,7 +1295,9 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
                   </div>
                   <div className="flex items-center gap-2 rounded-xl bg-slate-900 border border-slate-800 px-4 py-2.5 text-xs text-slate-300">
                     <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />
-                    <span>{activeProject?.orchestratorName} is reasoning and executing actions...</span>
+                    <span>
+                      {selectedAgent?.name || activeProject?.orchestratorName} is reasoning and executing actions...
+                    </span>
                   </div>
                 </div>
               )}
@@ -1260,7 +1317,11 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder={t("projects.askOrchestrator", undefined, `Message ${activeProject?.orchestratorName || "Orchestrator"} or trigger actions...`)}
+                  placeholder={t(
+                    "projects.askOrchestrator",
+                    undefined,
+                    `Message ${selectedAgent?.name || activeProject?.orchestratorName || "Orchestrator"} or trigger actions...`,
+                  )}
                   disabled={isGenerating}
                   className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                 />
@@ -1461,7 +1522,6 @@ Provide a thoughtful, structured response. Include any necessary action tags.`;
                         <div>Agents: <span className="text-white font-bold">{activeProject.agents.length}</span></div>
                         <div>Memory Files: <span className="text-white font-bold">{activeProject.memoryFiles.length}</span></div>
                         <div>Tasks: <span className="text-white font-bold">{activeProject.tasks.length}</span></div>
-                        <div>Messages: <span className="text-white font-bold">{activeProject.messages.length}</span></div>
                       </div>
                     </div>
                   </>

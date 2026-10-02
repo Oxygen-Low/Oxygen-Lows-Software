@@ -2868,5 +2868,8 @@ export const es = {
     fireAgentPrompt: "Despedir al agente:",
     generateTasksPrompt: "Analiza el contexto del proyecto y genera las siguientes 3 tareas prácticas.",
     summarizeMemoryPrompt: "Resume todos los archivos de memoria y revisa los objetivos del proyecto.",
+    clearChat: "Limpiar chat",
+    sessionStarted: "Sesión iniciada. Listo para ejecutar acciones.",
+    agentSessionReady: "Sesión del agente activa. Haz preguntas o activa acciones.",
   },
 } as const;

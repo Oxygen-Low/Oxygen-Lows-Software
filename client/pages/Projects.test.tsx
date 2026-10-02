@@ -83,14 +83,6 @@ describe("Projects Page", () => {
                 updatedAt: new Date().toISOString(),
               },
             ],
-            messages: [
-              {
-                id: "msg-1",
-                sender: "system",
-                content: "Workspace initialized.",
-                createdAt: new Date().toISOString(),
-              },
-            ],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -113,7 +105,7 @@ describe("Projects Page", () => {
     expect(screen.getByText("Set up project architecture")).toBeTruthy();
   });
 
-  it("allows switching tabs and editing memory document", async () => {
+  it("clears chat when clicking on an agent or clicking Clear Chat", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -133,18 +125,17 @@ describe("Projects Page", () => {
                 isOrchestrator: true,
                 createdAt: new Date().toISOString(),
               },
-            ],
-            memoryFiles: [
               {
-                id: "mem-1",
-                filename: "context.md",
-                title: "Context File",
-                content: "# Context notes",
-                updatedAt: new Date().toISOString(),
+                id: "ag-2",
+                name: "DeveloperAgent",
+                role: "Coder",
+                systemPrompt: "Prompt",
+                isOrchestrator: false,
+                createdAt: new Date().toISOString(),
               },
             ],
+            memoryFiles: [],
             tasks: [],
-            messages: [],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -159,19 +150,21 @@ describe("Projects Page", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("context.md")).toBeTruthy();
+      expect(screen.getByTestId("agent-item-ag-2")).toBeTruthy();
     });
 
-    // Click memory tab in right inspector
-    const memTabs = screen.getAllByText("Memory Files");
-    fireEvent.click(memTabs[memTabs.length - 1]);
+    // Click on DeveloperAgent in roster -> activates and starts fresh session
+    const devAgent = screen.getByTestId("agent-item-ag-2");
+    fireEvent.click(devAgent);
 
-    // Click Save button
     await waitFor(() => {
-      expect(screen.getByText("Save")).toBeTruthy();
+      expect(screen.getByText(/Agent session active/i)).toBeTruthy();
     });
-    const saveBtn = screen.getByText("Save");
-    fireEvent.click(saveBtn);
+
+    // Click Clear Chat button
+    const clearBtn = screen.getByTitle("Clear active chat session");
+    expect(clearBtn).toBeTruthy();
+    fireEvent.click(clearBtn);
   });
 
   it("handles model selection change", async () => {
@@ -197,7 +190,6 @@ describe("Projects Page", () => {
             ],
             memoryFiles: [],
             tasks: [],
-            messages: [],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
