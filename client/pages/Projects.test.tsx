@@ -351,6 +351,44 @@ describe("Projects Page", () => {
     await waitFor(() => {
       expect(screen.getByText(/1\. Role & Specialization/i)).toBeTruthy();
     });
+
+    // Step 1: User provides Role "Growth Specialist."
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "Growth Specialist." } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Step 2: Must ask for Name (NOT skipped)
+    await waitFor(() => {
+      expect(screen.getByText(/2\. Name:/i)).toBeTruthy();
+    });
+
+    // Step 2: User provides Name "Jade"
+    fireEvent.change(input, { target: { value: "Jade" } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Step 3: Must ask for Personality & Tone
+    await waitFor(() => {
+      expect(screen.getByText(/3\. Personality & Tone:/i)).toBeTruthy();
+    });
+
+    // Step 3: User provides Personality
+    fireEvent.change(input, { target: { value: "Analytical and proactive" } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Step 4: Must ask for Confirmation
+    await waitFor(() => {
+      expect(screen.getByText(/4\. Confirmation:/i)).toBeTruthy();
+    });
+
+    // Step 4: User confirms
+    fireEvent.change(input, { target: { value: "Confirm" } });
+    fireEvent.submit(input.closest("form")!);
+
+    // Step 5: Agent Jade is created and orientation task added
+    await waitFor(() => {
+      expect(screen.getByText(/has been successfully hired and onboarded/i)).toBeTruthy();
+      expect(screen.getAllByText("Jade").length).toBeGreaterThan(0);
+    });
   });
 
   it("selects task, assigns agent, and executes task with live action logs", async () => {

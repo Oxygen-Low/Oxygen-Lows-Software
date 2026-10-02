@@ -194,7 +194,7 @@ aiRouter.get("/horde-status", apiLimiter, async (c) => {
 });
 
 aiRouter.post("/proxy", apiLimiter, async (c) => {
-  const { provider, model, messages, stream, apiKey, baseUrl, tools } =
+  const { provider, model, messages, prompt, systemPrompt, stream, apiKey, baseUrl, tools } =
     await c.req.json();
   const authHeader = c.req.header("authorization");
   // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
@@ -265,7 +265,13 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
 
   // A03: cap message history and enforce a per-message content length limit
   const MAX_MSG_CONTENT_LENGTH = 32_768; // 32 KB per message
-  const processedMessages = (messages || []).slice(-20).map((m: any) => ({
+  const rawMessages = Array.isArray(messages)
+    ? messages
+    : [
+        ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+        ...(prompt ? [{ role: "user", content: prompt }] : []),
+      ];
+  const processedMessages = rawMessages.slice(-20).map((m: any) => ({
     ...m,
     content:
       typeof m.content === "string" && m.content.length > MAX_MSG_CONTENT_LENGTH

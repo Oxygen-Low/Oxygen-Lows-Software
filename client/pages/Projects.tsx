@@ -998,12 +998,12 @@ ${tasksList || "No tasks."}
 WORKSPACE PROTOCOLS:
 1. ALWAYS check before doing things! Before creating tasks, creating agents, or making major project decisions, you MUST read the relevant memory files using [MEMORY: READ filename="<filename>"] if the information is not already present in Core Workspace Memory.
 2. Multi-tool Batch Execution: You may output tool calls. The system will batch-execute all detected tool calls, strip text after the tool calls, provide observations, and re-run until finished.
-3. Hiring Workflow: When hiring an agent, do not immediately create them in one turn. Sequentially ask:
-   1. Role
-   2. Name (Always suggest and pick natural real human names like John, Sarah, Marcus, Elena, Alex, David, Chloe, Maya, Arthur rather than robotic titles like "NexusBot", "MarketingBot", or "DevAgent")
-   3. Personality
-   4. Confirmation
-   Only after the user confirms should you emit [ACTION: CREATE_AGENT name="..." role="..." prompt="..."].
+3. Hiring Workflow: When hiring an agent, strictly follow this sequential 4-step interview. You MUST ask ONLY ONE step at a time and WAIT for the user's response. NEVER skip steps, NEVER combine multiple steps into a single message, and NEVER pick a name on the user's behalf without asking them:
+   - Step 1 (Role): Ask the user what domain specialization or role the new agent should handle (e.g., Security Engineer, Growth Specialist, Data Analyst). Do NOT ask for or suggest a name yet.
+   - Step 2 (Name): In the NEXT turn after the user provides the role, ask the user what name they want to assign to this agent. Suggest 2-4 natural real human names (e.g., John, Sarah, Marcus, Elena, Alex, David, Jade, Chloe, Maya, Arthur; NEVER use robotic titles like "NexusBot", "MarketingBot", or "DevAgent") and ask the user to choose one or provide their own. You MUST wait for the user's reply with their chosen name before moving to Step 3. Do NOT skip Step 2.
+   - Step 3 (Personality & Tone): In the NEXT turn after the user provides or confirms the name, ask what personality, tone, and operational guidelines they should have (e.g., Analytical, thorough, and proactive).
+   - Step 4 (Confirmation): Present a clear summary of the chosen Role, Name, and Personality, and ask the user to reply "Confirm" to finalize hiring.
+   - Step 5 (Creation): ONLY after the user explicitly confirms in response to Step 4, emit [ACTION: CREATE_AGENT name="..." role="..." prompt="..."] and [TASK: ADD title="..." priority="medium"].
 4. Tool Tags:
    - [MEMORY: READ filename="<filename>"]
    - [MEMORY: WRITE filename="<filename>" content="<markdown content>"]
@@ -1012,28 +1012,89 @@ WORKSPACE PROTOCOLS:
    - [TASK: ADD title="<title>" priority="high|medium|low" (assignee="<name>")]
    - [TASK: UPDATE id="<task_id>" status="todo|in_progress|done"]`;
 
+        const historyMessages = sessionMessages
+          .filter((m) => m.sender === "user" || m.sender === "orchestrator" || m.sender === "agent")
+          .map((m) => ({
+            role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
+            content: m.content,
+          }));
+
         let replyText = "";
         try {
           const response = await fetch("/api/ai/proxy", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            },
             body: JSON.stringify({
               provider,
               model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...historyMessages,
+                { role: "user", content: currentPrompt },
+              ],
               prompt: currentPrompt,
               systemPrompt,
+              stream: false,
               apiKey,
             }),
           });
           if (response.ok) {
             const json = await response.json();
-            replyText = json.text || json.content || json.response || "";
+            replyText =
+              json.choices?.[0]?.message?.content ||
+              json.content?.[0]?.text ||
+              json.candidates?.[0]?.content?.parts?.[0]?.text ||
+              json.text ||
+              json.content ||
+              json.response ||
+              "";
           }
         } catch {}
 
         // Fallback simulation when proxy is empty or simulated
         if (!replyText) {
           const lower = currentPrompt.toLowerCase();
+          const lastAssistantMsg =
+            [...sessionMessages]
+              .reverse()
+              .find((m) => m.sender === "orchestrator" || m.sender === "agent")?.content || "";
+
+          // Extract candidate hiring details from conversation history
+          let candidateRole = "";
+          let candidateName = "";
+          let candidatePersonality = "";
+
+          for (let i = 0; i < sessionMessages.length; i++) {
+            const msg = sessionMessages[i];
+            if (msg.sender === "orchestrator" || msg.sender === "agent") {
+              const nextUserMsg = sessionMessages.slice(i + 1).find((m) => m.sender === "user");
+              if (nextUserMsg) {
+                const userText = nextUserMsg.content.trim().replace(/[.!]+$/, "");
+                if (
+                  msg.content.includes("1. Role") ||
+                  msg.content.includes("Role & Specialization") ||
+                  msg.content.toLowerCase().includes("what role")
+                ) {
+                  candidateRole = userText;
+                } else if (
+                  msg.content.includes("2. Name") ||
+                  msg.content.toLowerCase().includes("what name")
+                ) {
+                  candidateName = userText;
+                } else if (
+                  msg.content.includes("3. Personality") ||
+                  msg.content.includes("Personality & Tone") ||
+                  msg.content.toLowerCase().includes("what personality")
+                ) {
+                  candidatePersonality = userText;
+                }
+              }
+            }
+          }
+
           if (lower.includes("fire")) {
             const matchedAgent = workingProj.agents.find(
               (a) => !a.isOrchestrator && currentPrompt.toLowerCase().includes(a.name.toLowerCase()),
@@ -1057,13 +1118,44 @@ WORKSPACE PROTOCOLS:
           } else if (lower.includes("hire") || lower.includes("new agent") || lower.includes("add agent")) {
             replyText = `Let's hire a new specialist for our workspace.\n\n**1. Role & Specialization:** What role or primary domain should this new agent handle? (e.g., Security Engineer, Growth Specialist, Data Analyst)`;
           } else if (
+            lastAssistantMsg.includes("1. Role") ||
+            lastAssistantMsg.includes("Role & Specialization") ||
+            lastAssistantMsg.toLowerCase().includes("what role")
+          ) {
+            const roleName = promptToSend.replace(/^i want (a|an)?\s*/i, "").replace(/[.!]+$/, "").trim() || "Specialist";
+            replyText = `Great choice. **2. Name:** What name would you like to assign to this agent? (e.g., John, Sarah, Marcus, Elena, Jade, Alex)`;
+          } else if (
+            lastAssistantMsg.includes("2. Name") ||
+            lastAssistantMsg.toLowerCase().includes("what name")
+          ) {
+            const chosenName = promptToSend.replace(/^(call (him|her|them)?|name (is)?|my name is|the name is)\s*/i, "").replace(/[.!]+$/, "").trim() || "Specialist";
+            replyText = `Got it. **3. Personality & Tone:** What personality, tone, and operational guidelines should they have? (e.g., Analytical, thorough, and proactive)`;
+          } else if (
+            lastAssistantMsg.includes("3. Personality") ||
+            lastAssistantMsg.includes("Personality & Tone") ||
+            lastAssistantMsg.toLowerCase().includes("what personality")
+          ) {
+            const role = candidateRole || "Specialist";
+            const name = candidateName || "Specialist";
+            const personality = promptToSend.replace(/[.!]+$/, "").trim() || "Dedicated and proactive";
+            replyText = `Here is the summary of the new agent:\n- **Role:** ${role}\n- **Name:** ${name}\n- **Personality:** ${personality}\n\n**4. Confirmation:** Reply with "Confirm" to finalize hiring and onboard this agent.`;
+          } else if (
+            lastAssistantMsg.includes("4. Confirmation") ||
+            (lastAssistantMsg.includes("summary of the new agent") &&
+              (lower.includes("confirm") || lower.includes("proceed") || lower === "yes" || lower.includes("looks good")))
+          ) {
+            const newName = candidateName || "Jade";
+            const newRole = candidateRole || "Domain Specialist";
+            const newPersonality = candidatePersonality || "Dedicated and proactive";
+            replyText = `Agent **${newName}** has been successfully hired and onboarded to the workspace!\n\n[ACTION: CREATE_AGENT name="${newName}" role="${newRole}" prompt="You are ${newName}, specialized in ${newRole}. Personality: ${newPersonality}."]\n[TASK: ADD title="Initial workspace orientation for ${newName}" priority="medium"]`;
+          } else if (
             lower.includes("engineer") ||
             lower.includes("specialist") ||
             lower.includes("marketer") ||
             lower.includes("developer") ||
             lower.includes("designer")
           ) {
-            replyText = `Great choice. **2. Name:** What name would you like to assign to this agent? (e.g., John, Sarah, Marcus, Elena)`;
+            replyText = `Great choice. **2. Name:** What name would you like to assign to this agent? (e.g., John, Sarah, Marcus, Elena, Jade, Alex)`;
           } else if (
             lower.includes("john") ||
             lower.includes("sarah") ||
@@ -1073,8 +1165,7 @@ WORKSPACE PROTOCOLS:
             lower.includes("sam") ||
             lower.includes("david") ||
             lower.includes("maya") ||
-            lower.includes("bot") ||
-            lower.includes("agent")
+            lower.includes("jade")
           ) {
             replyText = `Got it. **3. Personality & Tone:** What personality, tone, and operational guidelines should they have? (e.g., Analytical, thorough, and proactive)`;
           } else if (
@@ -1085,7 +1176,7 @@ WORKSPACE PROTOCOLS:
             lower.includes("creative")
           ) {
             replyText = `Here is the summary of the new agent:\n- **Role:** Specialist\n- **Name:** John\n- **Personality:** Dedicated and proactive\n\n**4. Confirmation:** Reply with "Confirm" to finalize hiring and onboard this agent.`;
-          } else if (lower.includes("confirm") || lower.includes("proceed") || lower.includes("yes")) {
+          } else if (lower.includes("confirm") || lower.includes("proceed") || lower === "yes") {
             const newName = "John";
             const newRole = "Domain Specialist";
             replyText = `Agent **${newName}** has been successfully hired and onboarded to the workspace!\n\n[ACTION: CREATE_AGENT name="${newName}" role="${newRole}" prompt="You are ${newName}, specialized in ${newRole}."]\n[TASK: ADD title="Initial workspace orientation for ${newName}" priority="medium"]`;
