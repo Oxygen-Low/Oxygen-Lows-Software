@@ -202,41 +202,34 @@ export default function Projects() {
     return activeProject.tasks.find((t) => t.id === selectedTaskId) || activeProject.tasks[0] || null;
   }, [activeProject, selectedTaskId]);
 
-  // Helper to create fresh greeting message
+  // Helper to create fresh greeting message for specialists
   const createGreeting = useCallback(
-    (agent?: ProjectAgent | null, orchName?: string): ProjectChatMessage => {
+    (agent?: ProjectAgent | null): ProjectChatMessage[] => {
       const now = new Date().toISOString();
       if (agent && !agent.isOrchestrator) {
-        return {
-          id: crypto.randomUUID(),
-          sender: "system",
-          content: `${agent.name} (${agent.role}) - ${t(
-            "projects.agentSessionReady",
-            undefined,
-            "Agent session active. Ask questions or trigger actions.",
-          )}`,
-          createdAt: now,
-        };
+        return [
+          {
+            id: crypto.randomUUID(),
+            sender: "system",
+            content: `${agent.name} (${agent.role}) - ${t(
+              "projects.agentSessionReady",
+              undefined,
+              "Agent session active. Ask questions or trigger actions.",
+            )}`,
+            createdAt: now,
+          },
+        ];
       }
-      return {
-        id: crypto.randomUUID(),
-        sender: "system",
-        content: `${orchName || "Orchestrator"} - ${t(
-          "projects.sessionStarted",
-          undefined,
-          "Session started. Ready to execute actions.",
-        )}`,
-        createdAt: now,
-      };
+      return [];
     },
     [t],
   );
 
   // Reset/Clear chat to a fresh session
   const handleClearChat = useCallback(() => {
-    setSessionMessages([createGreeting(selectedAgent, activeProject?.orchestratorName)]);
+    setSessionMessages(createGreeting(selectedAgent));
     setChatInput("");
-  }, [createGreeting, selectedAgent, activeProject]);
+  }, [createGreeting, selectedAgent]);
 
   // Load projects from backend or fallback local storage
   const loadProjects = useCallback(async () => {
@@ -324,7 +317,7 @@ export default function Projects() {
     setProjects(loadedProjects);
     setActiveProjectId((prev) => (prev && loadedProjects.some((p) => p.id === prev) ? prev : loadedProjects[0].id));
     const chosenProj = (projectId && loadedProjects.find((p) => p.id === projectId)) || loadedProjects[0];
-    setSessionMessages([createGreeting(null, chosenProj.orchestratorName)]);
+    setSessionMessages(createGreeting(null));
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.access_token, session?.user?.id, projectId]);
@@ -384,7 +377,7 @@ export default function Projects() {
     setSelectedAgentId(agent.id);
     setActiveRightTab("agent");
     // Clear chat and initialize fresh session for this agent
-    setSessionMessages([createGreeting(agent, activeProject?.orchestratorName)]);
+    setSessionMessages(createGreeting(agent));
     setChatInput("");
   };
 
@@ -463,7 +456,7 @@ export default function Projects() {
           setProjects((prev) => [json.data, ...prev]);
           setActiveProjectId(json.data.id);
           setSelectedAgentId(null);
-          setSessionMessages([createGreeting(null, json.data.orchestratorName)]);
+          setSessionMessages(createGreeting(null));
           setShowNewProjectModal(false);
           setNewProjectName("");
           setNewProjectDesc("");
@@ -475,7 +468,7 @@ export default function Projects() {
     setProjects((prev) => [newProj, ...prev]);
     setActiveProjectId(newProj.id);
     setSelectedAgentId(null);
-    setSessionMessages([createGreeting(null, newProj.orchestratorName)]);
+    setSessionMessages(createGreeting(null));
     setShowNewProjectModal(false);
     setNewProjectName("");
     setNewProjectDesc("");
@@ -498,7 +491,7 @@ export default function Projects() {
       const nextActive = remaining[0] || null;
       setActiveProjectId(nextActive?.id || null);
       if (nextActive) {
-        setSessionMessages([createGreeting(null, nextActive.orchestratorName)]);
+        setSessionMessages(createGreeting(null));
       }
     }
   };
@@ -530,7 +523,7 @@ export default function Projects() {
           await updateProjectInStateAndServer(imported);
           setProjects((prev) => [imported, ...prev]);
           setActiveProjectId(imported.id);
-          setSessionMessages([createGreeting(null, imported.orchestratorName)]);
+          setSessionMessages(createGreeting(null));
         }
       } catch {
         alert("Failed to parse project JSON file.");
@@ -1242,8 +1235,7 @@ WORKSPACE PROTOCOLS:
                 onChange={(e) => {
                   setActiveProjectId(e.target.value);
                   setSelectedAgentId(null);
-                  const selectedProj = projects.find((p) => p.id === e.target.value);
-                  setSessionMessages([createGreeting(null, selectedProj?.orchestratorName)]);
+                  setSessionMessages(createGreeting(null));
                 }}
               >
                 {projects.map((p) => (
