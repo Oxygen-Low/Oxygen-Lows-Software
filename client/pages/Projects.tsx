@@ -43,7 +43,6 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { formatModelLabel } from "@/utils/aiUtils";
 
 export interface ProjectAgent {
@@ -155,18 +154,16 @@ export function ProjectMarkdown({ content, isUser = false }: ProjectMarkdownProp
               );
             }
             return (
-              <CodeHighlighter
-                language={match[1]}
-                customStyle={{
+              <pre
+                className="font-mono text-xs leading-relaxed overflow-x-auto text-slate-100 bg-[#1e1e1e] p-4 rounded-lg border border-slate-700/50"
+                style={{
                   margin: "0.5rem 0",
-                  borderRadius: "0.5rem",
-                  fontSize: "12px",
-                  lineHeight: "1.5",
-                  border: "1px solid rgba(51,65,85,0.5)",
                 }}
               >
-                {String(children).replace(/\n$/, "")}
-              </CodeHighlighter>
+                <code className={className}>
+                  {String(children).replace(/\n$/, "")}
+                </code>
+              </pre>
             );
           },
           p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
