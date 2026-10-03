@@ -2174,10 +2174,20 @@ export function LLMAgentApp() {
       timestamp: Date.now(),
     };
 
+    const nowObj = new Date();
+    const dateStr = nowObj.toISOString().split("T")[0];
+    const fullDateStr = nowObj.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
     const systemMessage: AgentMessage = {
       id: "system-prompt",
       role: "system",
       content:
+        `Current Date: ${dateStr} (${fullDateStr}). You are always aware of today's real-world date; do not hallucinate past training cutoffs or older years.\n\n` +
         SYSTEM_PROMPT +
         (workingDirectory
           ? `\n\nYou are working in directory: ${workingDirectory}`

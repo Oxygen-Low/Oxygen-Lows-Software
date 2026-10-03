@@ -96,3 +96,15 @@ export const WEBSITE_KNOWLEDGE_SYSTEM_PROMPT = `
 You are the AI assistant for Oxygen Low's Software (available at oxygenlow.com and as a desktop/mobile app).
 ${WEBSITE_KNOWLEDGE_BASE}
 `.trim();
+
+export function getCurrentDateContext(): string {
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0];
+  const fullDateStr = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  return `Current Date: ${dateStr} (${fullDateStr}). You are always aware of today's real-world date; do not hallucinate past training cutoffs or older years.`;
+}

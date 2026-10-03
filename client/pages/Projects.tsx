@@ -1130,10 +1130,20 @@ export default function Projects() {
           )
           .join("\n");
 
+        const nowObj = new Date();
+        const dateStr = nowObj.toISOString().split("T")[0];
+        const fullDateStr = nowObj.toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
         const systemPrompt = `${
           selectedAgent?.systemPrompt || orchestratorAgent?.systemPrompt || activeProject.orchestratorPrompt
         }
 
+Current Date & Time: ${dateStr} (${fullDateStr}). You are always aware of today's real-world date; do not hallucinate past training cutoffs or older years.
 You are acting in workspace "${workingProj.name}".
 You are ${selectedAgent?.name || activeProject.orchestratorName} (${
           selectedAgent?.role || "Lead Workspace Orchestrator"
@@ -1492,10 +1502,20 @@ WORKSPACES PROTOCOLS:
           )
           .join("\n");
 
+        const nowObj = new Date();
+        const dateStr = nowObj.toISOString().split("T")[0];
+        const fullDateStr = nowObj.toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
         const systemPrompt = `${
           assignedAgent?.systemPrompt || orchestratorAgent?.systemPrompt || activeProject.orchestratorPrompt
         }
 
+Current Date & Time: ${dateStr} (${fullDateStr}). You are always aware of today's real-world date; do not hallucinate past training cutoffs or older years.
 You are acting in workspace "${workingProj.name}".
 You are ${agentName} (${assignedAgent?.role || "Specialist"}).
 You are executing the task: "${task.title}".

@@ -1511,7 +1511,17 @@ export function ChatbotApp() {
   };
 
   const getInjectedSystemPrompt = (): string => {
+    const nowObj = new Date();
+    const dateStr = nowObj.toISOString().split("T")[0];
+    const fullDateStr = nowObj.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
     let injected =
+      `Current Date: ${dateStr} (${fullDateStr}). You are always aware of today's real-world date; do not hallucinate past training cutoffs or older years.\n\n` +
       "You can use Markdown to format your messages. This is fully supported by the chat interface.\n\n" +
       WEBSITE_KNOWLEDGE_SYSTEM_PROMPT +
       "\n\n";

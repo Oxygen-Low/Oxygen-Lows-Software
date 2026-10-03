@@ -321,6 +321,27 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     }
   }
 
+  const hasDateContext = finalMessages.some(
+    (m: any) =>
+      m.role === "system" &&
+      typeof m.content === "string" &&
+      m.content.includes("Current Date:"),
+  );
+  if (!hasDateContext) {
+    const nowObj = new Date();
+    const dateStr = nowObj.toISOString().split("T")[0];
+    const fullDateStr = nowObj.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    finalMessages.unshift({
+      role: "system",
+      content: `Current Date: ${dateStr} (${fullDateStr}). You are always aware of today's real-world date; do not hallucinate past training cutoffs or older years.`,
+    });
+  }
+
   const hasWebsiteKnowledge = finalMessages.some(
     (m: any) =>
       m.role === "system" &&

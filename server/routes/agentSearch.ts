@@ -822,11 +822,21 @@ agentSearchRouter.post(
       const allSearches: any[] = [];
       const fetchedPages: Array<{ url: string; content: string }> = [];
 
+      const nowObj = new Date();
+      const dateStr = nowObj.toISOString().split("T")[0];
+      const fullDateStr = nowObj.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const currentDateContext = `Current Date: ${dateStr} (${fullDateStr}). You are always aware of today's real-world date; do not hallucinate past training cutoffs or older years.`;
+
       // Research prompt for tool decisions
       const researchMessages: any[] = [
         {
           role: "system",
-          content: `You are an autonomous research agent. Your goal is to gather facts from the web to answer the user's query up to a 4000 total context token budget.
+          content: `${currentDateContext}\n\nYou are an autonomous research agent. Your goal is to gather facts from the web to answer the user's query up to a 4000 total context token budget.
 
 Available actions (respond ONLY with a single JSON object):
 1. Search the web:
@@ -900,7 +910,7 @@ Available actions (respond ONLY with a single JSON object):
       function buildSynthesisMessages() {
         const researchContext = buildResearchContext();
 
-        const systemPrompt = `You are an expert research synthesizer. Using the gathered real-time web research findings below (capped at 4000 total context tokens), synthesize a high-quality, comprehensive, and well-structured response in the requested format.
+        const systemPrompt = `${currentDateContext}\n\nYou are an expert research synthesizer. Using the gathered real-time web research findings below (capped at 4000 total context tokens), synthesize a high-quality, comprehensive, and well-structured response in the requested format.
 
 Requested response format: ${responseFormat}
 

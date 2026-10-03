@@ -1266,6 +1266,77 @@ describe("Projects Page", () => {
       expect(screen.getByText(/Task completed successfully/i)).toBeTruthy();
     });
   });
+
+  it("injects real-world current date and time context into agent system prompt to prevent date hallucinations", async () => {
+    let capturedSystemPrompt = "";
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (url === "/api/projects") {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                id: "proj-date-1",
+                name: "Date Aware Workspace",
+                orchestratorName: "DateOrchestrator",
+                orchestratorModelProvider: "openai",
+                orchestratorModelId: "gpt-4o",
+                agents: [
+                  {
+                    id: "ag-1",
+                    name: "DateOrchestrator",
+                    role: "Lead",
+                    systemPrompt: "You are the Lead Orchestrator.",
+                    isOrchestrator: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+                memoryFiles: [],
+                tasks: [],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        };
+      }
+      if (url === "/api/ai/proxy" && opts?.method === "POST") {
+        const body = JSON.parse(opts.body);
+        capturedSystemPrompt = body.systemPrompt || "";
+        return {
+          ok: true,
+          json: async () => ({
+            text: "I am aware of today's date.",
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Date Aware Workspace")).toBeTruthy();
+    });
+
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "What is today's date?" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(capturedSystemPrompt).toBeTruthy();
+    });
+
+    const currentYear = new Date().getFullYear().toString();
+    expect(capturedSystemPrompt).toContain("Current Date & Time:");
+    expect(capturedSystemPrompt).toContain(currentYear);
+    expect(capturedSystemPrompt).toContain("You are always aware of today's real-world date");
+  });
 });
+
 
 
