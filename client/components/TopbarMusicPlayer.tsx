@@ -14,7 +14,7 @@ import {
   ListMusic,
   ExternalLink,
 } from "lucide-react";
-import { useMusic, PlaylistTrack } from "@/hooks/useMusic";
+import { useMusic } from "@/hooks/useMusic";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,6 @@ export const TopbarMusicPlayer: React.FC = () => {
     playNext,
     playPrev,
     seek,
-    setVolume,
     toggleMute,
     toggleShuffle,
     toggleLoop,
@@ -78,7 +77,7 @@ export const TopbarMusicPlayer: React.FC = () => {
     <PopoverContent
       align="center"
       sideOffset={8}
-      className="w-80 p-3 bg-popover/95 backdrop-blur-md border border-border shadow-xl rounded-xl z-[70]"
+      className="w-80 p-3 bg-popover/95 backdrop-blur-md border border-border shadow-xl rounded-lg z-[70]"
     >
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/50">
         <div className="flex items-center gap-2">
@@ -86,7 +85,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           <span className="text-xs font-semibold text-foreground">
             {t("customize.currentPlaylist", undefined, "Current Playlist")}
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">
             {playlist.length} {t("customize.tracksCount", undefined, "tracks")}
           </span>
         </div>
@@ -124,7 +123,7 @@ export const TopbarMusicPlayer: React.FC = () => {
                     playTrack(track);
                     setIsPopoverOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors ${
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs transition-colors ${
                     isCurrent
                       ? "bg-primary/15 text-primary font-semibold border border-primary/30"
                       : "hover:bg-muted/60 text-foreground"
@@ -164,7 +163,7 @@ export const TopbarMusicPlayer: React.FC = () => {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-2 px-3 py-1 sm:py-1.5 rounded-full bg-card/60 hover:bg-card/90 border border-border/50 text-xs text-muted-foreground hover:text-foreground transition-all shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card/60 hover:bg-card/90 border border-border text-xs text-muted-foreground hover:text-foreground transition-all shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
             title={t("customize.noTrackPlaying", undefined, "No track playing")}
             aria-label={t("customize.noTrackPlaying", undefined, "No track playing")}
           >
@@ -182,18 +181,18 @@ export const TopbarMusicPlayer: React.FC = () => {
   // If no track is currently active, but playlist has tracks
   if (!currentTrack && playlist.length > 0) {
     return (
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-card/70 border border-border/60 shadow-sm backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card/60 border border-border shadow-sm backdrop-blur-sm">
         <Button
           size="sm"
           variant="ghost"
           onClick={() => playTrack(playlist[0])}
-          className="h-7 px-2.5 text-xs text-primary font-medium hover:bg-primary/10 flex items-center gap-1.5 rounded-full"
+          className="h-7 px-2.5 text-xs text-primary font-medium hover:bg-primary/10 flex items-center gap-1.5 rounded-md"
           title={t("customize.startPlaylist", undefined, "Start Playlist")}
           aria-label={t("customize.startPlaylist", undefined, "Start Playlist")}
         >
           <Play className="w-3.5 h-3.5 fill-current" />
           <span>{t("customize.startPlaylist", undefined, "Start Playlist")}</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary/20 text-primary font-semibold">
+          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-primary/20 text-primary font-semibold">
             {playlist.length}
           </span>
         </Button>
@@ -203,7 +202,7 @@ export const TopbarMusicPlayer: React.FC = () => {
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary"
+              className="h-7 w-7 rounded-md text-muted-foreground hover:text-primary"
               title={t("customize.currentPlaylist", undefined, "Current Playlist")}
               aria-label={t("customize.currentPlaylist", undefined, "Current Playlist")}
             >
@@ -218,7 +217,7 @@ export const TopbarMusicPlayer: React.FC = () => {
 
   // Active track state
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-card/80 border border-border/60 shadow-sm backdrop-blur-md max-w-full">
+    <div className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-lg bg-card/70 border border-border shadow-sm backdrop-blur-md max-w-full">
       {/* Track Info */}
       <div className="flex items-center gap-1.5 min-w-0 max-w-[90px] xs:max-w-[130px] sm:max-w-[170px] md:max-w-[200px]">
         <Music
@@ -243,7 +242,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           value={Math.min(currentPosition, totalDuration || 100)}
           onChange={(e) => seek(parseFloat(e.target.value))}
           aria-label="Seek track"
-          className="w-16 lg:w-24 accent-primary cursor-pointer h-1 bg-muted rounded-full focus:outline-none"
+          className="w-16 lg:w-24 accent-primary cursor-pointer h-1.5 bg-muted rounded-sm focus:outline-none"
           style={{
             background: `linear-gradient(to right, var(--primary) ${progressPercent}%, hsl(var(--muted)) ${progressPercent}%)`,
           }}
@@ -259,24 +258,24 @@ export const TopbarMusicPlayer: React.FC = () => {
           size="icon"
           variant="ghost"
           onClick={playPrev}
-          className="h-6 w-6 sm:h-7 sm:w-7 rounded-full text-muted-foreground hover:text-primary"
+          className="h-7 w-7 rounded-md text-muted-foreground hover:text-primary"
           title="Previous track"
           aria-label="Previous track"
         >
-          <SkipBack className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <SkipBack className="w-3.5 h-3.5" />
         </Button>
 
         <Button
           size="icon"
           onClick={isPlaying ? pause : play}
-          className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+          className="h-7 w-7 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
           title={isPlaying ? "Pause track" : "Play track"}
           aria-label={isPlaying ? "Pause track" : "Play track"}
         >
           {isPlaying ? (
-            <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+            <Pause className="w-3.5 h-3.5 fill-current" />
           ) : (
-            <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current ml-0.5" />
+            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
           )}
         </Button>
 
@@ -284,18 +283,18 @@ export const TopbarMusicPlayer: React.FC = () => {
           size="icon"
           variant="ghost"
           onClick={playNext}
-          className="h-6 w-6 sm:h-7 sm:w-7 rounded-full text-muted-foreground hover:text-primary"
+          className="h-7 w-7 rounded-md text-muted-foreground hover:text-primary"
           title="Next track"
           aria-label="Next track"
         >
-          <SkipForward className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <SkipForward className="w-3.5 h-3.5" />
         </Button>
 
         <Button
           size="icon"
           variant={shuffle ? "default" : "ghost"}
           onClick={() => toggleShuffle(!shuffle)}
-          className={`hidden sm:inline-flex h-6 w-6 sm:h-7 sm:w-7 rounded-full ${
+          className={`hidden sm:inline-flex h-7 w-7 rounded-md ${
             shuffle
               ? "bg-primary/20 text-primary hover:bg-primary/30"
               : "text-muted-foreground hover:text-primary"
@@ -304,14 +303,14 @@ export const TopbarMusicPlayer: React.FC = () => {
           aria-label="Toggle shuffle"
           aria-pressed={shuffle}
         >
-          <Shuffle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <Shuffle className="w-3.5 h-3.5" />
         </Button>
 
         <Button
           size="icon"
           variant={loop ? "default" : "ghost"}
           onClick={() => toggleLoop(!loop)}
-          className={`hidden sm:inline-flex h-6 w-6 sm:h-7 sm:w-7 rounded-full ${
+          className={`hidden sm:inline-flex h-7 w-7 rounded-md ${
             loop
               ? "bg-primary/20 text-primary hover:bg-primary/30"
               : "text-muted-foreground hover:text-primary"
@@ -320,23 +319,23 @@ export const TopbarMusicPlayer: React.FC = () => {
           aria-label="Toggle loop"
           aria-pressed={loop}
         >
-          <Repeat className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <Repeat className="w-3.5 h-3.5" />
         </Button>
 
         <Button
           size="icon"
           variant="ghost"
           onClick={toggleMute}
-          className="hidden sm:inline-flex h-6 w-6 sm:h-7 sm:w-7 rounded-full text-muted-foreground hover:text-primary"
+          className="hidden sm:inline-flex h-7 w-7 rounded-md text-muted-foreground hover:text-primary"
           title={isMuted ? "Unmute" : "Mute"}
           aria-label={isMuted ? "Unmute" : "Mute"}
         >
           {isMuted || volume === 0 ? (
-            <VolumeX className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground" />
+            <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
           ) : volume < 0.5 ? (
-            <Volume1 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary" />
+            <Volume1 className="w-3.5 h-3.5 text-primary" />
           ) : (
-            <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary" />
+            <Volume2 className="w-3.5 h-3.5 text-primary" />
           )}
         </Button>
 
@@ -346,13 +345,13 @@ export const TopbarMusicPlayer: React.FC = () => {
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6 sm:h-7 sm:w-7 rounded-full text-muted-foreground hover:text-primary relative"
+              className="h-7 w-7 rounded-md text-muted-foreground hover:text-primary relative"
               title={t("customize.currentPlaylist", undefined, "Current Playlist")}
               aria-label={t("customize.currentPlaylist", undefined, "Current Playlist")}
             >
-              <ListMusic className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <ListMusic className="w-3.5 h-3.5" />
               {playlist.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground shadow-sm">
+                <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-md bg-primary text-[9px] font-bold text-primary-foreground shadow-sm">
                   {playlist.length > 9 ? "9+" : playlist.length}
                 </span>
               )}
