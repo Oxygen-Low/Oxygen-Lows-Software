@@ -8,8 +8,10 @@ import {
   cleanup,
 } from "@testing-library/react";
 import React from "react";
+import { MemoryRouter } from "react-router-dom";
 import { MusicPlayer } from "./MusicPlayer";
 import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
+import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
 import { MusicProvider, useMusicContext } from "@/contexts/MusicContext";
 
 const mockUseMusic = vi.fn();
@@ -55,18 +57,24 @@ vi.mock("@/hooks/useAuth", () => ({
   }),
 }));
 
-describe("MusicPlayer & SidebarMusicPlayer components", () => {
+describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () => {
   const defaultContext = {
     currentTrack: { name: "Test Song", fileName: "test.mp3" },
     currentPosition: 15000,
+    duration: 180000,
     isPlaying: true,
     shuffle: false,
     loop: false,
+    volume: 1,
+    isMuted: false,
     audioRef: { current: { duration: 180 } },
     play: vi.fn(),
     pause: vi.fn(),
     playNext: vi.fn(),
     playPrev: vi.fn(),
+    seek: vi.fn(),
+    setVolume: vi.fn(),
+    toggleMute: vi.fn(),
     toggleShuffle: vi.fn(),
     toggleLoop: vi.fn(),
     playlist: [{ name: "Test Song", fileName: "test.mp3" }],
@@ -134,6 +142,74 @@ describe("MusicPlayer & SidebarMusicPlayer components", () => {
 
     fireEvent.click(loopButton);
     expect(defaultContext.toggleLoop).toHaveBeenCalledWith(false);
+  });
+
+  it("renders TopbarMusicPlayer with track info, play/pause, prev/next, and toggles loop/shuffle", () => {
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Test Song")).not.toBeNull();
+
+    const loopButton = screen.getByTitle("Toggle loop");
+    expect(loopButton.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(loopButton);
+    expect(defaultContext.toggleLoop).toHaveBeenCalledWith(true);
+
+    const shuffleButton = screen.getByTitle("Toggle shuffle");
+    expect(shuffleButton.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(shuffleButton);
+    expect(defaultContext.toggleShuffle).toHaveBeenCalledWith(true);
+
+    const pauseButton = screen.getByTitle("Pause track");
+    fireEvent.click(pauseButton);
+    expect(defaultContext.pause).toHaveBeenCalled();
+
+    const prevButton = screen.getByTitle("Previous track");
+    fireEvent.click(prevButton);
+    expect(defaultContext.playPrev).toHaveBeenCalled();
+
+    const nextButton = screen.getByTitle("Next track");
+    fireEvent.click(nextButton);
+    expect(defaultContext.playNext).toHaveBeenCalled();
+  });
+
+  it("renders TopbarMusicPlayer in start playlist state when no track is currently playing but playlist has items", () => {
+    mockUseMusic.mockReturnValue({
+      ...defaultContext,
+      currentTrack: null,
+      isPlaying: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    const startBtn = screen.getByTitle("Start Playlist");
+    expect(startBtn).not.toBeNull();
+    fireEvent.click(startBtn);
+    expect(defaultContext.playTrack).toHaveBeenCalledWith(defaultContext.playlist[0]);
+  });
+
+  it("renders TopbarMusicPlayer in empty state when playlist is empty", () => {
+    mockUseMusic.mockReturnValue({
+      ...defaultContext,
+      currentTrack: null,
+      playlist: [],
+      isPlaying: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTitle("No track playing")).not.toBeNull();
   });
 });
 
