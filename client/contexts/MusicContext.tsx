@@ -61,6 +61,30 @@ const MUTED_STORAGE_KEY = "oxygen_music_muted";
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
+const matchTrack = (
+  a?: PlaylistTrack | null,
+  b?: PlaylistTrack | null,
+): boolean => {
+  if (!a || !b) return false;
+  if (a.id && b.id && a.id === b.id) return true;
+  if (a.fileName === b.fileName) return true;
+  const cleanA = (a.fileName || "").replace(/\\/g, "/").replace(/^\/+/, "");
+  const cleanB = (b.fileName || "").replace(/\\/g, "/").replace(/^\/+/, "");
+  if (cleanA && cleanB) {
+    if (cleanA === cleanB) return true;
+    if (cleanA.endsWith("/" + cleanB) || cleanB.endsWith("/" + cleanA)) return true;
+  }
+  return false;
+};
+
+const findTrackIndex = (
+  playlist: PlaylistTrack[],
+  track: PlaylistTrack | null,
+): number => {
+  if (!track || !playlist || playlist.length === 0) return -1;
+  return playlist.findIndex((t) => matchTrack(t, track));
+};
+
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -275,7 +299,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         console.warn("Failed to persist user preferences:", err);
       }
     },
-    [session?.user?.id],
+    [session?.user?.id, playlist],
   );
 
   // Save the playing state to localStorage whenever we exit/refresh
@@ -360,11 +384,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Load music preferences from DB
   useEffect(() => {
+    let isMounted = true;
     const loadMusicPreferences = async () => {
       if (!session?.user?.id) {
         setIsLoading(false);
         return;
       }
+
+      const initToken = playTokenRef.current;
 
       try {
         const { data, error } = await db
@@ -374,6 +401,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           )
           .eq("user_id", session.user.id)
           .single();
+
+        if (!isMounted || playTokenRef.current !== initToken) return;
 
         if (error && error.code !== "PGRST116") throw error;
 
@@ -409,6 +438,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             currentTrackRef.current = track;
 
             const url = await resolvePlaybackUrl(track.fileName);
+            if (!isMounted || playTokenRef.current !== initToken) return;
+
             if (url && audioRef.current) {
               const trackVol = track.volume ?? 1;
               audioRef.current.volume = isMutedRef.current
@@ -420,7 +451,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
               audioRef.current.src = url;
 
               const doSeekAndPlay = async () => {
-                if (!audioRef.current) return;
+                if (!audioRef.current || !isMounted || playTokenRef.current !== initToken) return;
                 try {
                   audioRef.current.currentTime = seekTo / 1000;
                 } catch {}
@@ -431,10 +462,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (shouldResume) {
                   try {
                     await audioRef.current.play();
+                    if (!isMounted || playTokenRef.current !== initToken) return;
                     setIsPlayingState(true);
                     isPlayingRef.current = true;
                   } catch {
                     // Browser blocked autoplay — show a one-click resume toast
+                    if (!isMounted || playTokenRef.current !== initToken) return;
                     toast("Music paused", {
                       description: `Click to resume "${track.name}"`,
                       action: {
@@ -458,7 +491,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
               audioRef.current.addEventListener(
                 "loadedmetadata",
                 () => {
-                  if (!audioRef.current) return;
+                  if (!audioRef.current || playTokenRef.current !== initToken) return;
                   try {
                     audioRef.current.currentTime = seekTo / 1000;
                     if (isFinite(audioRef.current.duration)) {
@@ -477,11 +510,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (error) {
         console.error("Failed to load music preferences:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadMusicPreferences();
+
+    return () => {
+      isMounted = false;
+    };
   }, [session?.user?.id, resolvePlaybackUrl, getAutoResumeState]);
 
   const playTrack = useCallback(
@@ -496,6 +535,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       currentTrackRef.current = track;
       setCurrentPositionState(0);
       currentPositionRef.current = 0;
+      setDurationState(0);
 
       audioRef.current.pause();
       audioRef.current.src = "";
@@ -517,25 +557,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       audioRef.current.volume = isMuted ? 0 : Math.max(0, Math.min(1, volume * trackVol));
       try {
         await audioRef.current.play();
+        if (currentToken !== playTokenRef.current) return;
         setIsPlayingState(true);
         isPlayingRef.current = true;
         saveExitState(true);
       } catch (error) {
+        if (currentToken !== playTokenRef.current) return;
         console.error(`Failed to play track ${track.name}:`, error);
         setIsPlayingState(false);
         isPlayingRef.current = false;
         saveExitState(false);
       }
 
-      savePreferences({
-        currentTrack: track,
-        currentPosition: 0,
-        playlist:
-          overridePlaylist ||
-          (playlistRef.current.length > 0 ? playlistRef.current : playlist),
-      });
+      if (currentToken === playTokenRef.current) {
+        savePreferences({
+          currentTrack: track,
+          currentPosition: 0,
+          playlist:
+            overridePlaylist ||
+            (playlistRef.current.length > 0 ? playlistRef.current : playlist),
+        });
+      }
     },
-    [playlist, resolvePlaybackUrl, savePreferences, saveExitState],
+    [playlist, resolvePlaybackUrl, savePreferences, saveExitState, isMuted, volume],
   );
 
   const playNext = useCallback(async () => {
@@ -556,20 +600,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     if (isShuffle && playlistArr.length > 1) {
       // Pick random track excluding current track to avoid immediate repeat
       const otherTracks = playlistArr.filter(
-        (t) => t.fileName !== currentT.fileName,
+        (t) => !matchTrack(t, currentT),
       );
-      const randomIndex = Math.floor(Math.random() * otherTracks.length);
+      const randomIndex = Math.floor(Math.random() * (otherTracks.length || 1));
       nextTrack = otherTracks[randomIndex] || playlistArr[0];
     } else {
-      const currentIndex = playlistArr.findIndex(
-        (t) => t.fileName === currentT.fileName,
-      );
-      const nextIndex = (currentIndex + 1) % playlistArr.length;
+      const currentIndex = findTrackIndex(playlistArr, currentT);
+      const validIndex = currentIndex >= 0 ? currentIndex : 0;
+      const nextIndex = (validIndex + 1) % playlistArr.length;
       nextTrack = playlistArr[nextIndex];
     }
 
     await playTrack(nextTrack);
-  }, [playTrack]);
+  }, [playlist, playTrack]);
 
   useEffect(() => {
     playNextRef.current = playNext;
@@ -603,25 +646,33 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const handleEnded = () => {
-      if (!loopRef.current) {
-        playNextRef.current?.();
-      }
+      if (loopRef.current) return;
+      if (!audio.src || audio.src === window.location.href) return;
+      playNextRef.current?.();
     };
 
     const handleError = async () => {
+      const errorToken = playTokenRef.current;
       // Attempt blob fallback if streaming signed URL fails during playback
       const currentT = currentTrackRef.current;
-      if (currentT && audio.src && !audio.src.startsWith("blob:")) {
+      if (
+        currentT &&
+        audio.src &&
+        audio.src !== window.location.href &&
+        !audio.src.startsWith("blob:")
+      ) {
         try {
           const { data: blobData } = await storage
             .from("Storage")
             .download(currentT.fileName.replace(/^\/+/, ""));
+          if (errorToken !== playTokenRef.current) return;
           if (blobData) {
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
             const blobUrl = URL.createObjectURL(blobData);
             blobUrlRef.current = blobUrl;
             audio.src = blobUrl;
             await audio.play();
+            if (errorToken !== playTokenRef.current) return;
             setIsPlayingState(true);
             isPlayingRef.current = true;
             return;
@@ -630,8 +681,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           // ignore
         }
       }
-      setIsPlayingState(false);
-      isPlayingRef.current = false;
+      if (errorToken === playTokenRef.current) {
+        setIsPlayingState(false);
+        isPlayingRef.current = false;
+      }
     };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
@@ -663,23 +716,31 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [isPlaying, session?.user?.id, savePreferences]);
 
   const play = useCallback(async () => {
-    const currentT = currentTrack || playlist[0];
+    const currentT =
+      currentTrackRef.current ||
+      currentTrack ||
+      (playlistRef.current.length > 0 ? playlistRef.current[0] : playlist[0]);
     if (!currentT) return;
 
-    if (!currentTrack && playlist.length > 0) {
-      await playTrack(playlist[0]);
+    if (!currentTrackRef.current && (playlistRef.current.length > 0 || playlist.length > 0)) {
+      const first = playlistRef.current[0] || playlist[0];
+      await playTrack(first);
       return;
     }
 
+    const currentToken = playTokenRef.current;
+
     try {
       if (audioRef.current) {
-        if (!audioRef.current.src && currentT.fileName) {
+        if (!audioRef.current.src || audioRef.current.src === window.location.href) {
           const url = await resolvePlaybackUrl(currentT.fileName);
-          if (url) {
+          if (currentToken !== playTokenRef.current) return;
+          if (url && audioRef.current) {
             audioRef.current.src = url;
             audioRef.current.currentTime = currentPositionRef.current / 1000;
           }
         }
+        if (currentToken !== playTokenRef.current) return;
         await audioRef.current.play();
       }
       setIsPlayingState(true);
@@ -804,11 +865,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    const currentIndex = playlistArr.findIndex(
-      (t) => t.fileName === currentT.fileName,
-    );
+    const currentIndex = findTrackIndex(playlistArr, currentT);
+    const validIndex = currentIndex >= 0 ? currentIndex : 0;
     const prevIndex =
-      (currentIndex - 1 + playlistArr.length) % playlistArr.length;
+      (validIndex - 1 + playlistArr.length) % playlistArr.length;
     const prevTrack = playlistArr[prevIndex];
 
     await playTrack(prevTrack);
@@ -828,16 +888,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       if (!currentTrackRef.current) {
+        const currentToken = ++playTokenRef.current;
         setCurrentTrackState(track);
         currentTrackRef.current = track;
         const url = await resolvePlaybackUrl(track.fileName);
+        if (currentToken !== playTokenRef.current) return;
         if (url && audioRef.current) {
           audioRef.current.src = url;
           audioRef.current.currentTime = 0;
         }
       }
     },
-    [playlist, session?.user?.id, resolvePlaybackUrl, savePreferences],
+    [session?.user?.id, resolvePlaybackUrl, savePreferences],
   );
 
   const removeTrack = useCallback(
@@ -866,14 +928,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           if (isPlayingRef.current) {
             await playTrack(nextTrack, updatedPlaylist);
           } else {
+            const currentToken = ++playTokenRef.current;
             setCurrentTrackState(nextTrack);
             currentTrackRef.current = nextTrack;
             setCurrentPositionState(0);
             currentPositionRef.current = 0;
+            setDurationState(0);
             setIsPlayingState(false);
             isPlayingRef.current = false;
             saveExitState(false);
             const url = await resolvePlaybackUrl(nextTrack.fileName);
+            if (currentToken !== playTokenRef.current) return;
             if (url && audioRef.current) {
               audioRef.current.src = url;
               audioRef.current.currentTime = 0;
@@ -884,10 +949,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
             });
           }
         } else {
+          ++playTokenRef.current;
           setCurrentTrackState(null);
           currentTrackRef.current = null;
           setCurrentPositionState(0);
           currentPositionRef.current = 0;
+          setDurationState(0);
           setIsPlayingState(false);
           isPlayingRef.current = false;
           saveExitState(false);
@@ -950,12 +1017,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const clearPlaylist = useCallback(async () => {
+    ++playTokenRef.current;
     playlistRef.current = [];
     setPlaylistState([]);
     setCurrentTrackState(null);
     currentTrackRef.current = null;
     setCurrentPositionState(0);
     currentPositionRef.current = 0;
+    setDurationState(0);
     setIsPlayingState(false);
     isPlayingRef.current = false;
     saveExitState(false);

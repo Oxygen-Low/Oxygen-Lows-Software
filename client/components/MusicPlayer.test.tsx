@@ -839,4 +839,118 @@ describe("MusicContext playlist management and playback features", () => {
       expect(audioElement?.volume).toBeCloseTo(0.3);
     });
   });
+
+  it("does not play previous track if next is clicked before the track loads", async () => {
+    let resolveSongA: (value: any) => void = () => {};
+    let resolveSongB: (value: any) => void = () => {};
+
+    mockCreateSignedUrl.mockImplementation((path: string) => {
+      if (path.includes("songA.mp3")) {
+        return new Promise((res) => {
+          resolveSongA = () =>
+            res({ data: { signedUrl: "https://example.com/songA.mp3" }, error: null });
+        });
+      }
+      if (path.includes("songB.mp3")) {
+        return new Promise((res) => {
+          resolveSongB = () =>
+            res({ data: { signedUrl: "https://example.com/songB.mp3" }, error: null });
+        });
+      }
+      return Promise.resolve({
+        data: { signedUrl: `https://example.com/${path}` },
+        error: null,
+      });
+    });
+
+    render(
+      <MusicProvider>
+        <PlaylistConsumer />
+      </MusicProvider>,
+    );
+
+    // Wait for initial preferences from DB to load
+    await waitFor(() => {
+      expect(screen.getByTestId("track-count").textContent).toBe("3");
+      expect(screen.getByTestId("current-track").textContent).toBe("Song A");
+    });
+
+    // Initial load starts fetching Song A url
+    // Before Song A resolves, user clicks "next-btn" to skip to Song B
+    fireEvent.click(screen.getByTestId("next-btn"));
+
+    // Now current track in state/ref is Song B
+    await waitFor(() => {
+      expect(screen.getByTestId("current-track").textContent).toBe("Song B");
+    });
+
+    // Now resolve Song A late (as if slow network for previous track)
+    resolveSongA(null);
+    await new Promise((r) => setTimeout(r, 20));
+
+    const audioElement = document.querySelector("audio");
+    // Audio element src should NOT be Song A!
+    expect(audioElement?.src).not.toContain("songA.mp3");
+
+    // Now resolve Song B
+    resolveSongB(null);
+    await waitFor(() => {
+      expect(audioElement?.src).toContain("songB.mp3");
+    });
+  });
+
+  it("handles rapid skip/next button clicks without playing any previously skipped tracks", async () => {
+    const resolvers: Record<string, () => void> = {};
+
+    mockCreateSignedUrl.mockImplementation((path: string) => {
+      return new Promise((res) => {
+        resolvers[path] = () =>
+          res({ data: { signedUrl: `https://example.com/${path}` }, error: null });
+      });
+    });
+
+    render(
+      <MusicProvider>
+        <PlaylistConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("track-count").textContent).toBe("3");
+      expect(screen.getByTestId("current-track").textContent).toBe("Song A");
+    });
+
+    // Initial track is Song A
+    // Rapidly click next: Song A -> Song B -> Song C
+    fireEvent.click(screen.getByTestId("next-btn")); // Next -> Song B
+    fireEvent.click(screen.getByTestId("next-btn")); // Next -> Song C
+
+    await waitFor(() => {
+      expect(screen.getByTestId("current-track").textContent).toBe("Song C");
+    });
+
+    // Resolve Song A and Song B in any order (e.g. Song B then Song A)
+    if (resolvers["test-user-id/songB.mp3"]) {
+      resolvers["test-user-id/songB.mp3"]();
+    }
+    if (resolvers["test-user-id/songA.mp3"]) {
+      resolvers["test-user-id/songA.mp3"]();
+    }
+    await new Promise((r) => setTimeout(r, 20));
+
+    const audioElement = document.querySelector("audio");
+    // Neither Song A nor Song B should have been set to audio.src
+    expect(audioElement?.src).not.toContain("songA.mp3");
+    expect(audioElement?.src).not.toContain("songB.mp3");
+
+    // Finally resolve Song C
+    if (resolvers["test-user-id/songC.mp3"]) {
+      resolvers["test-user-id/songC.mp3"]();
+    }
+
+    await waitFor(() => {
+      expect(audioElement?.src).toContain("songC.mp3");
+    });
+  });
 });
+
