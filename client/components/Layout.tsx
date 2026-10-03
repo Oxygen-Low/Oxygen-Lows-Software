@@ -262,7 +262,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
       <header
         className={`${styles["header"]} backdrop-blur-md sticky top-0 z-[60] h-[61px] sm:h-[73px] flex items-center`}
       >
-        <div className="w-full px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="w-full h-full px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 shrink-0">
             {/* Mobile Hamburger Toggle Button */}
             <button
@@ -327,7 +327,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           </div>
 
           {/* Topbar Music Player / Playlist directly in the middle */}
-          <div className="flex-1 flex items-center justify-center min-w-0 max-w-xl mx-2">
+          <div className="flex-1 h-full flex items-center justify-center min-w-0 max-w-2xl mx-1 sm:mx-2 py-1 sm:py-1.5">
             <TopbarMusicPlayer />
           </div>
 
