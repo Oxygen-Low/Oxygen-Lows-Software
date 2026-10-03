@@ -9,7 +9,19 @@ import {
   sanitizePath,
   assertSafeStoragePath,
   STORAGE_DIR,
+  isHiddenStoragePath,
 } from "../lib/storage.ts";
+import {
+  TrackBackgroundError,
+  cleanupTrackBackgroundsForRemovedFiles,
+  detectImageExtension,
+  getTrackBackgroundUsage,
+  getTrackBackgrounds,
+  readTrackBackgroundFile,
+  removeTrackBackground,
+  setTrackBackground,
+} from "../lib/trackBackgrounds.ts";
+import { TRACK_BACKGROUND_MAX_BYTES } from "../../shared/trackBackgrounds.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { scanImage } from "../lib/safety/csamGuard.ts";
 import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
@@ -51,6 +63,9 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
     try {
       filePath = sanitizePath(rawFilePath);
     } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+    if (isHiddenStoragePath(filePath)) {
       return c.json({ error: "Invalid path" }, 400);
     }
 
@@ -167,6 +182,9 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
     try {
       filePath = sanitizePath(rawFilePath);
     } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+    if (isHiddenStoragePath(filePath)) {
       return c.json({ error: "Invalid path" }, 400);
     }
 
@@ -346,6 +364,7 @@ storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
     const allowedPaths = paths.filter((p) => {
       try {
         const clean = sanitizePath(p);
+        if (isHiddenStoragePath(clean)) return false;
         return (
           clean.startsWith(user.id + "/") ||
           user.role === "admin" ||
@@ -359,6 +378,11 @@ storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
     const { data, error } = await serverStorage.remove(bucket, allowedPaths);
     if (error) {
       return c.json({ data: [], error: error.message }, 500);
+    }
+
+    // Deleting an audio file also deletes its song background (if any).
+    if (bucket === "Storage" && data && data.length > 0) {
+      cleanupTrackBackgroundsForRemovedFiles(data);
     }
 
     return c.json({ data, error: null });
@@ -377,6 +401,9 @@ storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
     try {
       filePath = sanitizePath(rawFilePath);
     } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+    if (isHiddenStoragePath(filePath)) {
       return c.json({ error: "Invalid path" }, 400);
     }
 
@@ -430,6 +457,9 @@ storageRouter.get("/public/:bucket/*", async (c) => {
     } catch {
       return c.json({ error: "Invalid path" }, 400);
     }
+    if (isHiddenStoragePath(filePath)) {
+      return c.json({ error: "Invalid path" }, 400);
+    }
 
     const { data, error } = await serverStorage.download(bucket, filePath);
     if (error || !data) {
@@ -479,6 +509,7 @@ storageRouter.post("/signed-urls/:bucket", authMiddleware, async (c) => {
     const result = paths.map((p: string) => {
       try {
         const clean = sanitizePath(p);
+        if (isHiddenStoragePath(clean)) throw new Error("Invalid path");
         return {
           error: null,
           signedUrl: serverStorage.createSignedUrl(bucket, clean, token),
@@ -496,3 +527,128 @@ storageRouter.post("/signed-urls/:bucket", authMiddleware, async (c) => {
     return c.json({ error: err.message }, 500);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Per-song topbar player backgrounds
+// Cropped copies live in uploads/Storage/<userId>/.hidden/ — they count toward
+// the user's quota but are hidden from listings and generic storage routes.
+// ---------------------------------------------------------------------------
+
+function trackBackgroundErrorResponse(c: any, err: any, fallback: string) {
+  if (err instanceof TrackBackgroundError) {
+    return c.json({ error: err.message }, err.status as any);
+  }
+  return c.json({ error: err?.message || fallback }, 500);
+}
+
+storageRouter.get("/track-backgrounds", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user" as any) as any;
+    const backgrounds = getTrackBackgrounds(user.id);
+    const usage = getTrackBackgroundUsage(user.id);
+    return c.json({ data: { backgrounds, usage }, error: null });
+  } catch (err: any) {
+    return trackBackgroundErrorResponse(c, err, "Failed to load backgrounds");
+  }
+});
+
+storageRouter.post("/track-backgrounds", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user" as any) as any;
+    const body = await c.req.parseBody();
+    const trackKey = typeof body["trackKey"] === "string" ? body["trackKey"] : "";
+    const sourcePath =
+      typeof body["sourcePath"] === "string" ? body["sourcePath"] : null;
+    const file = body["file"] as any;
+
+    if (!trackKey) {
+      return c.json({ error: "Missing track" }, 400);
+    }
+    if (!file || typeof file !== "object" || typeof file.arrayBuffer !== "function") {
+      return c.json({ error: "No file provided" }, 400);
+    }
+    if ((file.size ?? 0) > TRACK_BACKGROUND_MAX_BYTES) {
+      return c.json({ error: "Background image is too large" }, 413);
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const ext = detectImageExtension(buffer);
+    if (!ext) {
+      return c.json({ error: "Unsupported image format" }, 400);
+    }
+    const mime =
+      ext === "png" ? "image/png" : ext === "jpg" ? "image/jpeg" : "image/webp";
+
+    // Safety inspection (same pipeline as regular image uploads)
+    const scanResult = await scanImage(buffer, mime);
+    if (!scanResult.safe && scanResult.severity >= 2) {
+      const lockdown = await executeZeroToleranceLockdown({
+        ip: extractClientIp(c),
+        user,
+        userAgent: c.req.header("user-agent"),
+        surface: "track_background_upload",
+        fileName: `track-background:${trackKey}`,
+        fileHash: scanResult.details?.hash,
+        mimeType: mime,
+        severity: scanResult.severity,
+        reason:
+          scanResult.reason || "Track background flagged by child safety scanner",
+      });
+      return c.json(lockdown.clientResponse, 400);
+    }
+    const openAiImgResult = await moderateImage(buffer, mime);
+    if (!openAiImgResult.allowed) {
+      const enforcement = await handleModerationEnforcement(openAiImgResult, {
+        ip: extractClientIp(c),
+        user,
+        userAgent: c.req.header("user-agent"),
+        surface: "track_background_upload",
+        fileName: `track-background:${trackKey}`,
+        fileHash: scanResult.details?.hash,
+        mimeType: mime,
+      });
+      if (enforcement) {
+        return c.json(enforcement.clientResponse, 400);
+      }
+    }
+
+    const result = setTrackBackground(user.id, trackKey, buffer, sourcePath);
+    return c.json({ data: result, error: null });
+  } catch (err: any) {
+    return trackBackgroundErrorResponse(c, err, "Failed to save background");
+  }
+});
+
+storageRouter.delete("/track-backgrounds", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user" as any) as any;
+    const body = await c.req.json().catch(() => ({}));
+    const trackKey = typeof body.trackKey === "string" ? body.trackKey : "";
+    if (!trackKey) {
+      return c.json({ error: "Missing track" }, 400);
+    }
+    const backgrounds = removeTrackBackground(user.id, trackKey);
+    return c.json({ data: { backgrounds }, error: null });
+  } catch (err: any) {
+    return trackBackgroundErrorResponse(c, err, "Failed to remove background");
+  }
+});
+
+storageRouter.get(
+  "/track-backgrounds/file/:name",
+  authMiddleware,
+  async (c) => {
+    const user = c.get("user" as any) as any;
+    const name = c.req.param("name");
+    const result = readTrackBackgroundFile(user.id, name);
+    if (!result) {
+      return c.text("Not found", 404);
+    }
+    return c.body(result.data as any, 200, {
+      "Content-Type": result.mimeType,
+      "Content-Length": String(result.data.length),
+      // File names are unique per upload, so they can be cached forever.
+      "Cache-Control": "private, max-age=31536000, immutable",
+    });
+  },
+);

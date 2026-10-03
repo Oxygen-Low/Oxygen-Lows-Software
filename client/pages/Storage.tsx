@@ -70,6 +70,7 @@ import {
 } from "@/components/ui/select";
 import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
+import { fetchTrackBackgrounds } from "@/lib/trackBackgrounds";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
@@ -107,6 +108,7 @@ export default function Storage() {
   >({});
   const [uploading, setUploading] = useState(false);
   const [totalSize, setTotalSize] = useState(0);
+  const [hiddenBgUsage, setHiddenBgUsage] = useState(0);
   const [dbStats, setDbStats] = useState<any[]>([]);
   const cloudInputRef = useRef<HTMLInputElement>(null);
 
@@ -177,7 +179,19 @@ export default function Storage() {
         (acc, f) => acc + (f.metadata?.size || 0),
         0,
       );
-      setTotalSize(privateSize + pubSize);
+      // 3. Fetch hidden background image usage
+      let bgBytes = 0;
+      try {
+        const { data: bgData } = await fetchTrackBackgrounds();
+        if (bgData?.usage?.totalSize) {
+          bgBytes = bgData.usage.totalSize;
+          setHiddenBgUsage(bgBytes);
+        }
+      } catch {
+        // ignore
+      }
+
+      setTotalSize(privateSize + pubSize + bgBytes);
 
       const urls: Record<string, string> = {};
 
@@ -588,6 +602,8 @@ export default function Storage() {
         cats.text.size += size;
       }
     });
+
+    cats.image.size += hiddenBgUsage;
 
     const totalDataSize = dbStats.reduce((acc, s) => acc + s.size, 0);
     cats.data.size = totalDataSize;

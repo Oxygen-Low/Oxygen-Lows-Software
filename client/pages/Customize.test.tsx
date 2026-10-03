@@ -15,6 +15,14 @@ const mockMoveTrack = vi.fn();
 const mockRemoveTrack = vi.fn();
 const mockPlayTrack = vi.fn();
 const mockClearPlaylist = vi.fn();
+const mockSetTrackBackground = vi.fn();
+const mockRemoveTrackBackground = vi.fn();
+const mockGetTrackBackgroundUrl = vi.fn((track: any) =>
+  track?.fileName === "alpha.mp3" ? "/api/storage/track-backgrounds/file/songbg-alpha.webp" : null
+);
+const mockGetTrackBackgroundSource = vi.fn((track: any) =>
+  track?.fileName === "alpha.mp3" ? "images/custom-bg.png" : null
+);
 
 const mockMusicContext = {
   playlist: [
@@ -35,6 +43,15 @@ const mockMusicContext = {
   loop: false,
   toggleLoop: vi.fn(),
   setTrackVolume: mockSetTrackVolume,
+  trackBackgrounds: {
+    "alpha.mp3": { file: "songbg-alpha.webp", source: "images/custom-bg.png" },
+  },
+  currentBackgroundUrl: "/api/storage/track-backgrounds/file/songbg-alpha.webp",
+  getTrackBackgroundUrl: mockGetTrackBackgroundUrl,
+  getTrackBackgroundSource: mockGetTrackBackgroundSource,
+  setTrackBackground: mockSetTrackBackground,
+  removeTrackBackground: mockRemoveTrackBackground,
+  refreshTrackBackgrounds: vi.fn(),
 };
 
 vi.mock("@/contexts/MusicContext", () => ({
@@ -52,7 +69,14 @@ vi.mock("@/components/MusicPlayer", () => ({
 }));
 
 vi.mock("@/components/StorageFileSelector", () => ({
-  StorageFileSelector: () => <div data-testid="mock-storage-file-selector" />,
+  StorageFileSelector: ({ trigger, onSelect }: any) => (
+    <div
+      data-testid="mock-storage-file-selector"
+      onClick={() => onSelect && onSelect({ name: "images/new-bg.png" })}
+    >
+      {trigger || <button>Select file</button>}
+    </div>
+  ),
 }));
 
 vi.mock("@/contexts/ThemeContext", () => ({
@@ -139,5 +163,35 @@ describe("Customize page playlist individual track volume", () => {
 
     const resetButton = screen.getByRole("button", { name: "Reset to 100%" });
     expect(resetButton.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("renders track background buttons for configured and unconfigured tracks", () => {
+    render(<Customize />);
+
+    // Track Alpha has a background configured
+    const alphaBgBtn = screen.getByRole("button", { name: "Track Background" });
+    expect(alphaBgBtn).not.toBeNull();
+
+    // Track Beta does not have a background configured
+    const betaBgBtn = screen.getByRole("button", { name: "Set Background" });
+    expect(betaBgBtn).not.toBeNull();
+  });
+
+  it("opens the background popover and allows removing background", async () => {
+    render(<Customize />);
+
+    const alphaBgBtn = screen.getByRole("button", { name: "Track Background" });
+    fireEvent.click(alphaBgBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Remove Background/i })).not.toBeNull();
+    });
+
+    const removeBtn = screen.getByRole("button", { name: /Remove Background/i });
+    fireEvent.click(removeBtn);
+
+    expect(mockRemoveTrackBackground).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: "alpha.mp3" })
+    );
   });
 });

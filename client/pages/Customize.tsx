@@ -6,6 +6,8 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
+import { ImageCropDialog } from "@/components/ImageCropDialog";
+import { storage } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import {
   Music,
@@ -17,6 +19,8 @@ import {
   ChevronDown,
   Volume2,
   RotateCcw,
+  Image as ImageIcon,
+  Crop,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
@@ -115,6 +119,10 @@ export default function Customize() {
     loop,
     toggleLoop,
     setTrackVolume,
+    getTrackBackgroundUrl,
+    getTrackBackgroundSource,
+    setTrackBackground,
+    removeTrackBackground,
   } = useMusicContext();
 
   const { toast } = useToast();
@@ -169,6 +177,97 @@ export default function Customize() {
         title: "Info",
         description: "Track already in playlist",
       });
+    }
+  };
+
+  // Track background customization state
+  const [cropTrack, setCropTrack] = useState<PlaylistTrack | null>(null);
+  const [cropSourcePath, setCropSourcePath] = useState<string | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+
+  const handleSelectBackgroundImage = async (track: PlaylistTrack, file: any) => {
+    try {
+      const { data, error } = await storage.from("Storage").download(file.name);
+      if (error || !data) {
+        toast({
+          title: t("common.error", undefined, "Error"),
+          description: "Failed to load image from storage",
+          variant: "destructive",
+        });
+        return;
+      }
+      const blobUrl = URL.createObjectURL(data);
+      setCropTrack(track);
+      setCropSourcePath(file.name);
+      setCropImageSrc(blobUrl);
+      setCropOpen(true);
+    } catch (e: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: e?.message || "Failed to load image",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRecrop = async (track: PlaylistTrack) => {
+    const source = getTrackBackgroundSource(track);
+    let loadedSrc: string | null = null;
+    let loadedSourcePath: string | null = source;
+
+    if (source) {
+      try {
+        const { data } = await storage.from("Storage").download(source);
+        if (data) {
+          loadedSrc = URL.createObjectURL(data);
+        }
+      } catch {
+        // fallback
+      }
+    }
+    if (!loadedSrc) {
+      const bgUrl = getTrackBackgroundUrl(track);
+      if (bgUrl) loadedSrc = bgUrl;
+    }
+
+    if (!loadedSrc) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: "Background image not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCropTrack(track);
+    setCropSourcePath(loadedSourcePath);
+    setCropImageSrc(loadedSrc);
+    setCropOpen(true);
+  };
+
+  const handleApplyTrackCrop = async (croppedBlob: Blob) => {
+    if (!cropTrack) return;
+    try {
+      await setTrackBackground(cropTrack, croppedBlob, cropSourcePath);
+      toast({
+        title: t("common.success", undefined, "Success"),
+        description: t("customize.trackBackgroundUpdated", undefined, "Track background updated"),
+      });
+    } catch {
+      // toast shown by action
+    }
+  };
+
+  const handleRemoveBackground = async (track: PlaylistTrack) => {
+    try {
+      await removeTrackBackground(track);
+      toast({
+        title: t("common.success", undefined, "Success"),
+        description: t("customize.trackBackgroundRemoved", undefined, "Track background removed"),
+      });
+    } catch {
+      // toast shown by action
     }
   };
 
@@ -514,6 +613,88 @@ export default function Customize() {
                           <ChevronDown className="w-4 h-4" />
                         </button>
 
+                        {/* Track Background Popover */}
+                        {(() => {
+                          const bgUrl = getTrackBackgroundUrl(track);
+                          if (!bgUrl) {
+                            return (
+                              <StorageFileSelector
+                                allowedExtensions={[".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif"]}
+                                allowedTypes={["image"]}
+                                onSelect={(file) => handleSelectBackgroundImage(track, file)}
+                                trigger={
+                                  <button
+                                    aria-label={t("customize.setBackground", undefined, "Set Background")}
+                                    title={t("customize.setBackground", undefined, "Set Background")}
+                                    className="p-1.5 hover:bg-muted-foreground/10 rounded text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                                  >
+                                    <ImageIcon className="w-4 h-4" />
+                                  </button>
+                                }
+                              />
+                            );
+                          }
+
+                          return (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  aria-label={t("customize.trackBackground", undefined, "Track Background")}
+                                  title={t("customize.trackBackground", undefined, "Track Background")}
+                                  className="p-1 hover:bg-primary/20 rounded text-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none relative group"
+                                >
+                                  <div
+                                    className="w-5 h-5 rounded border border-primary/50 overflow-hidden bg-cover bg-center shadow-xs"
+                                    style={{ backgroundImage: `url("${bgUrl}")` }}
+                                  />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-3 space-y-3" align="end">
+                                <div className="space-y-1.5">
+                                  <span className="font-medium text-xs text-foreground block">
+                                    {t("customize.trackBackground", undefined, "Track Background")}
+                                  </span>
+                                  <div
+                                    className="w-full h-20 rounded-md border border-border overflow-hidden bg-cover bg-center shadow-inner"
+                                    style={{ backgroundImage: `url("${bgUrl}")` }}
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <StorageFileSelector
+                                    allowedExtensions={[".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif"]}
+                                    allowedTypes={["image"]}
+                                    onSelect={(file) => handleSelectBackgroundImage(track, file)}
+                                    trigger={
+                                      <Button variant="outline" size="sm" className="w-full text-xs justify-start h-8">
+                                        <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
+                                        {t("customize.changeBackground", undefined, "Change Background")}
+                                      </Button>
+                                    }
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full text-xs justify-start h-8"
+                                    onClick={() => handleRecrop(track)}
+                                  >
+                                    <Crop className="w-3.5 h-3.5 mr-1.5" />
+                                    {t("customize.recropBackground", undefined, "Re-crop")}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full text-xs justify-start h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleRemoveBackground(track)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                    {t("customize.removeBackground", undefined, "Remove Background")}
+                                  </Button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          );
+                        })()}
+
                         {/* Track Volume Popover */}
                         <Popover>
                           <PopoverTrigger asChild>
@@ -638,6 +819,22 @@ export default function Customize() {
             />
           </div>
         </div>
+        {/* Image Crop Dialog for Track Background */}
+        <ImageCropDialog
+          open={cropOpen}
+          onOpenChange={(open) => {
+            setCropOpen(open);
+            if (!open && cropImageSrc && cropImageSrc.startsWith('blob:')) {
+              URL.revokeObjectURL(cropImageSrc);
+              setCropImageSrc(null);
+            }
+          }}
+          imageSrc={cropImageSrc}
+          title={cropTrack ? `${t("imageStudio.cropImage", undefined, "Crop Image")} - ${cropTrack.name}` : undefined}
+          defaultAspect="4:1"
+          maxWidth={800}
+          onApplyCrop={handleApplyTrackCrop}
+        />
       </div>
     </Layout>
   );

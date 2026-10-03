@@ -109,6 +109,7 @@ export const TopbarMusicPlayer: React.FC = () => {
     toggleLoop,
     playlist,
     playTrack,
+    currentBackgroundUrl,
   } = useMusic();
 
   const { t } = useTranslation();
@@ -282,8 +283,21 @@ export const TopbarMusicPlayer: React.FC = () => {
   }
 
   // Active track state
+  const pillStyle: React.CSSProperties = currentBackgroundUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.75)), url("${currentBackgroundUrl}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : {};
+
   return (
-    <div className="h-full w-full max-w-2xl flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-lg bg-card/70 border border-border shadow-sm backdrop-blur-md">
+    <div
+      style={pillStyle}
+      className={`h-full w-full max-w-2xl flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-lg border border-border shadow-sm backdrop-blur-md transition-all ${
+        currentBackgroundUrl ? "bg-slate-950/80 text-white" : "bg-card/70"
+      }`}
+    >
       {/* Fixed-width Track Info container with sliding marquee */}
       <div className="flex items-center gap-1.5 shrink-0 w-24 xs:w-32 sm:w-40 md:w-48 lg:w-56 min-w-0">
         <Music

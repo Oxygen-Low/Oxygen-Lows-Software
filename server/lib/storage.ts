@@ -1,8 +1,21 @@
 import fs from "fs";
 import path from "path";
+import { HIDDEN_STORAGE_DIR } from "../../shared/trackBackgrounds.ts";
 
 export const STORAGE_DIR = path.join(process.cwd(), "uploads");
 export const MAX_USER_QUOTA = 500 * 1024 * 1024; // 500 MB
+
+/**
+ * Returns true if a (sanitized) storage path points into a user's hidden
+ * folder. Hidden files are managed exclusively by dedicated endpoints.
+ */
+export function isHiddenStoragePath(filePath: string): boolean {
+  if (!filePath) return false;
+  return filePath
+    .replace(/\\/g, "/")
+    .split("/")
+    .some((seg) => seg === HIDDEN_STORAGE_DIR);
+}
 
 const MIME_MAP: Record<string, string> = {
   // Images
@@ -233,7 +246,9 @@ export const serverStorage = {
         return { data: [], error: null };
       }
 
-      const files = fs.readdirSync(targetDir, { withFileTypes: true });
+      const files = fs
+        .readdirSync(targetDir, { withFileTypes: true })
+        .filter((f) => f.name !== HIDDEN_STORAGE_DIR);
       const result: StorageListItem[] = files.map((f) => {
         const fullPath = assertSafeStoragePath(targetDir, f.name);
         const stats = fs.statSync(fullPath);

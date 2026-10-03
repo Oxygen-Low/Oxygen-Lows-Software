@@ -11,6 +11,17 @@ import React, {
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  deleteTrackBackground,
+  fetchTrackBackgrounds,
+  getTrackBackgroundFileUrl,
+  uploadTrackBackground,
+} from "@/lib/trackBackgrounds";
+import {
+  normalizeTrackKey,
+  sanitizeTrackBackgroundMap,
+  type TrackBackgroundMap,
+} from "@shared/trackBackgrounds";
 import { toast } from "sonner";
 
 export interface PlaylistTrack {
@@ -52,6 +63,23 @@ export interface MusicContextType {
   clearPlaylist: () => Promise<void>;
   toggleShuffle: (shuffle: boolean) => Promise<void>;
   toggleLoop: (loop: boolean) => Promise<void>;
+  /** Per-song topbar backgrounds keyed by normalized track path. */
+  trackBackgrounds: TrackBackgroundMap;
+  /** Background image URL for the currently playing track (if any). */
+  currentBackgroundUrl: string | null;
+  getTrackBackgroundUrl: (
+    track: PlaylistTrack | null | undefined,
+  ) => string | null;
+  getTrackBackgroundSource: (
+    track: PlaylistTrack | null | undefined,
+  ) => string | null;
+  setTrackBackground: (
+    track: PlaylistTrack,
+    image: Blob,
+    sourcePath?: string | null,
+  ) => Promise<void>;
+  removeTrackBackground: (track: PlaylistTrack) => Promise<void>;
+  refreshTrackBackgrounds: () => Promise<void>;
 }
 
 const AUTO_RESUME_STORAGE_KEY = "oxygen_music_exit_state";
@@ -114,6 +142,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [trackBackgrounds, setTrackBackgroundsState] =
+    useState<TrackBackgroundMap>({});
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const blobUrlRef = useRef<string | null>(null);
@@ -397,7 +427,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         const { data, error } = await db
           .from("user_preferences")
           .select(
-            "music_playlist, current_music_track, current_music_position, shuffle_enabled, loop_enabled",
+            "music_playlist, current_music_track, current_music_position, shuffle_enabled, loop_enabled, track_backgrounds",
           )
           .eq("user_id", session.user.id)
           .single();
@@ -405,6 +435,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!isMounted || playTokenRef.current !== initToken) return;
 
         if (error && error.code !== "PGRST116") throw error;
+
+        setTrackBackgroundsState(
+          sanitizeTrackBackgroundMap(data?.track_backgrounds),
+        );
 
         const loadedPlaylist = (data?.music_playlist as PlaylistTrack[]) || [];
         const currentTrackName = data?.current_music_track as string;
@@ -1061,6 +1095,74 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     [savePreferences],
   );
 
+  const getTrackBackgroundUrl = useCallback(
+    (track: PlaylistTrack | null | undefined): string | null => {
+      if (!track?.fileName) return null;
+      const key = normalizeTrackKey(track.fileName, session?.user?.id);
+      const entry = trackBackgrounds[key];
+      if (!entry?.file) return null;
+      return getTrackBackgroundFileUrl(entry.file);
+    },
+    [trackBackgrounds, session?.user?.id],
+  );
+
+  const getTrackBackgroundSource = useCallback(
+    (track: PlaylistTrack | null | undefined): string | null => {
+      if (!track?.fileName) return null;
+      const key = normalizeTrackKey(track.fileName, session?.user?.id);
+      return trackBackgrounds[key]?.source ?? null;
+    },
+    [trackBackgrounds, session?.user?.id],
+  );
+
+  const currentBackgroundUrl = useMemo(() => {
+    return getTrackBackgroundUrl(currentTrack);
+  }, [getTrackBackgroundUrl, currentTrack]);
+
+  const refreshTrackBackgrounds = useCallback(async () => {
+    if (!session?.user?.id) return;
+    const { data, error } = await fetchTrackBackgrounds();
+    if (!error && data?.backgrounds) {
+      setTrackBackgroundsState(sanitizeTrackBackgroundMap(data.backgrounds));
+    }
+  }, [session?.user?.id]);
+
+  const setTrackBackgroundAction = useCallback(
+    async (
+      track: PlaylistTrack,
+      image: Blob,
+      sourcePath?: string | null,
+    ) => {
+      if (!session?.user?.id || !track?.fileName) return;
+      const key = normalizeTrackKey(track.fileName, session.user.id);
+      const { data, error } = await uploadTrackBackground(key, image, sourcePath);
+      if (error) {
+        toast.error(error.message || "Failed to set track background");
+        throw error;
+      }
+      if (data?.backgrounds) {
+        setTrackBackgroundsState(sanitizeTrackBackgroundMap(data.backgrounds));
+      }
+    },
+    [session?.user?.id],
+  );
+
+  const removeTrackBackgroundAction = useCallback(
+    async (track: PlaylistTrack) => {
+      if (!session?.user?.id || !track?.fileName) return;
+      const key = normalizeTrackKey(track.fileName, session.user.id);
+      const { data, error } = await deleteTrackBackground(key);
+      if (error) {
+        toast.error(error.message || "Failed to remove track background");
+        throw error;
+      }
+      if (data?.backgrounds) {
+        setTrackBackgroundsState(sanitizeTrackBackgroundMap(data.backgrounds));
+      }
+    },
+    [session?.user?.id],
+  );
+
   const contextValue = useMemo(
     () => ({
       playlist,
@@ -1090,6 +1192,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       clearPlaylist,
       toggleShuffle,
       toggleLoop,
+      trackBackgrounds,
+      currentBackgroundUrl,
+      getTrackBackgroundUrl,
+      getTrackBackgroundSource,
+      setTrackBackground: setTrackBackgroundAction,
+      removeTrackBackground: removeTrackBackgroundAction,
+      refreshTrackBackgrounds,
     }),
     [
       playlist,
@@ -1118,6 +1227,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       clearPlaylist,
       toggleShuffle,
       toggleLoop,
+      trackBackgrounds,
+      currentBackgroundUrl,
+      getTrackBackgroundUrl,
+      getTrackBackgroundSource,
+      setTrackBackgroundAction,
+      removeTrackBackgroundAction,
+      refreshTrackBackgrounds,
     ],
   );
 
@@ -1157,6 +1273,13 @@ const defaultFallbackMusicContext: MusicContextType = {
   clearPlaylist: async () => {},
   toggleShuffle: async () => {},
   toggleLoop: async () => {},
+  trackBackgrounds: {},
+  currentBackgroundUrl: null,
+  getTrackBackgroundUrl: () => null,
+  getTrackBackgroundSource: () => null,
+  setTrackBackground: async () => {},
+  removeTrackBackground: async () => {},
+  refreshTrackBackgrounds: async () => {},
 };
 
 export const useMusicContext = () => {
