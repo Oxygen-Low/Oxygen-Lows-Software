@@ -71,9 +71,6 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("node_modules/diff")) {
             return "vendor-diff";
           }
-          if (id.includes("node_modules/prismjs")) {
-            return "vendor-syntax";
-          }
           if (
             id.includes("node_modules/react-markdown") ||
             id.includes("node_modules/micromark") ||

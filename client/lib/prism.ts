@@ -22,11 +22,24 @@ if (typeof window !== "undefined") {
 if (typeof globalThis !== "undefined") {
   (globalThis as any).Prism = PrismCore;
 }
+if (typeof self !== "undefined") {
+  (self as any).Prism = PrismCore;
+}
 
 let grammarsLoaded = false;
 let loadPromise: Promise<void> | null = null;
 
 export async function loadGrammars(): Promise<void> {
+  if (typeof window !== "undefined") {
+    (window as any).Prism = PrismCore;
+  }
+  if (typeof globalThis !== "undefined") {
+    (globalThis as any).Prism = PrismCore;
+  }
+  if (typeof self !== "undefined") {
+    (self as any).Prism = PrismCore;
+  }
+
   if (grammarsLoaded) return;
   if (loadPromise) return loadPromise;
 
