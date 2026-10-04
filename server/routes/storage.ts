@@ -14,6 +14,7 @@ import {
 import {
   TrackBackgroundError,
   cleanupTrackBackgroundsForRemovedFiles,
+  renameTrackBackgroundForMovedFile,
   detectImageExtension,
   getTrackBackgroundUsage,
   getTrackBackgrounds,
@@ -388,6 +389,144 @@ storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
     return c.json({ data, error: null });
   } catch (err: any) {
     return c.json({ error: err.message }, 500);
+  }
+});
+
+storageRouter.post("/rename/:bucket", authMiddleware, async (c) => {
+  try {
+    const bucket = c.req.param("bucket");
+    const body = await c.req.json().catch(() => ({}));
+    const fromPathRaw = body.fromPath || body.oldPath;
+    const toPathRaw = body.toPath || body.newPath || body.newName;
+
+    if (!fromPathRaw || !toPathRaw) {
+      return c.json({ error: "Missing fromPath or toPath" }, 400);
+    }
+
+    let cleanFromPath: string;
+    let cleanToPath: string;
+    try {
+      cleanFromPath = sanitizePath(fromPathRaw);
+      cleanToPath = sanitizePath(toPathRaw);
+    } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+
+    if (!cleanToPath.includes("/") && cleanFromPath.includes("/")) {
+      const dir = cleanFromPath.substring(0, cleanFromPath.lastIndexOf("/"));
+      cleanToPath = `${dir}/${cleanToPath}`;
+    }
+
+    if (isHiddenStoragePath(cleanFromPath) || isHiddenStoragePath(cleanToPath)) {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+
+    const user = c.get("user" as any) as any;
+
+    if (
+      !cleanFromPath.startsWith(user.id + "/") &&
+      user.role !== "admin" &&
+      String(user.id) !== "1"
+    ) {
+      return c.json({ error: "Cannot modify other user's files" }, 403);
+    }
+
+    if (
+      !cleanToPath.startsWith(user.id + "/") &&
+      user.role !== "admin" &&
+      String(user.id) !== "1"
+    ) {
+      return c.json({ error: "Cannot move file to other user's directory" }, 403);
+    }
+
+    const { data, error } = await serverStorage.rename(
+      bucket,
+      cleanFromPath,
+      cleanToPath,
+    );
+
+    if (error) {
+      return c.json({ error: error.message }, 400);
+    }
+
+    if (bucket === "Storage") {
+      renameTrackBackgroundForMovedFile(cleanFromPath, cleanToPath);
+    }
+
+    return c.json({ data, error: null });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to rename file" }, 500);
+  }
+});
+
+storageRouter.post("/move/:bucket", authMiddleware, async (c) => {
+  try {
+    const fromBucket = c.req.param("bucket");
+    const body = await c.req.json().catch(() => ({}));
+    const fromPathRaw = body.fromPath || body.oldPath;
+    const toPathRaw = body.toPath || body.newPath;
+    const toBucket = body.toBucket || fromBucket;
+
+    if (!fromPathRaw || !toPathRaw) {
+      return c.json({ error: "Missing fromPath or toPath" }, 400);
+    }
+
+    let cleanFromPath: string;
+    let cleanToPath: string;
+    let cleanToBucket: string;
+    try {
+      cleanFromPath = sanitizePath(fromPathRaw);
+      cleanToPath = sanitizePath(toPathRaw);
+      cleanToBucket = sanitizePath(toBucket);
+    } catch {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+
+    if (!cleanToPath.includes("/") && cleanFromPath.includes("/")) {
+      const dir = cleanFromPath.substring(0, cleanFromPath.lastIndexOf("/"));
+      cleanToPath = `${dir}/${cleanToPath}`;
+    }
+
+    if (isHiddenStoragePath(cleanFromPath) || isHiddenStoragePath(cleanToPath)) {
+      return c.json({ error: "Invalid path" }, 400);
+    }
+
+    const user = c.get("user" as any) as any;
+
+    if (
+      !cleanFromPath.startsWith(user.id + "/") &&
+      user.role !== "admin" &&
+      String(user.id) !== "1"
+    ) {
+      return c.json({ error: "Cannot modify other user's files" }, 403);
+    }
+
+    if (
+      !cleanToPath.startsWith(user.id + "/") &&
+      user.role !== "admin" &&
+      String(user.id) !== "1"
+    ) {
+      return c.json({ error: "Cannot move file to other user's directory" }, 403);
+    }
+
+    const { data, error } = await serverStorage.move(
+      fromBucket,
+      cleanFromPath,
+      cleanToBucket,
+      cleanToPath,
+    );
+
+    if (error) {
+      return c.json({ error: error.message }, 400);
+    }
+
+    if (fromBucket === "Storage" && toBucket === "Storage") {
+      renameTrackBackgroundForMovedFile(cleanFromPath, cleanToPath);
+    }
+
+    return c.json({ data, error: null });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to move file" }, 500);
   }
 });
 

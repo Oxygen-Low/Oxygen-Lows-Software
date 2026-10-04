@@ -326,6 +326,20 @@ export const serverStorage = {
       fs.mkdirSync(destTargetDir, { recursive: true });
 
       const destFullPath = assertSafeStoragePath(STORAGE_DIR, cleanToBucket, toPath);
+      const isSamePath = cleanFromBucket === cleanToBucket && fromPath === toPath;
+      const isCaseOnlyRename =
+        process.platform === "win32" &&
+        cleanFromBucket.toLowerCase() === cleanToBucket.toLowerCase() &&
+        fromPath.toLowerCase() === toPath.toLowerCase();
+
+      if (!isSamePath && !isCaseOnlyRename && fs.existsSync(destFullPath)) {
+        return { data: null, error: new Error("Destination file already exists") };
+      }
+
+      if (isSamePath) {
+        return { data: { path: toPath }, error: null };
+      }
+
       try {
         fs.renameSync(srcFullPath, destFullPath);
       } catch {
@@ -337,6 +351,14 @@ export const serverStorage = {
     } catch (err: any) {
       return { data: null, error: err };
     }
+  },
+
+  rename: async (
+    bucket: string,
+    rawFromPath: string,
+    rawToPath: string,
+  ): Promise<{ data: { path: string } | null; error: Error | null }> => {
+    return serverStorage.move(bucket, rawFromPath, bucket, rawToPath);
   },
 
   getPublicUrl: (bucket: string, rawFilePath: string): string => {

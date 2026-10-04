@@ -295,6 +295,85 @@ export class CustomStorageClient {
     }
   }
 
+  async rename(
+    bucket: string,
+    fromPath: string,
+    toPathOrName: string,
+  ): Promise<{ data: { path: string } | null; error: Error | null }> {
+    try {
+      const token = await getAuthToken();
+      const fetchFn = getFetch();
+      const cleanFrom = fromPath.replace(/^\/+/, "");
+      let cleanTo = toPathOrName.replace(/^\/+/, "");
+      if (!cleanTo.includes("/") && cleanFrom.includes("/")) {
+        const dir = cleanFrom.substring(0, cleanFrom.lastIndexOf("/"));
+        cleanTo = `${dir}/${cleanTo}`;
+      }
+
+      const res = await fetchFn(`/api/storage/rename/${bucket}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ fromPath: cleanFrom, toPath: cleanTo }),
+      });
+
+      const parsed = await parseResponse<{ path: string }>(res);
+      if (parsed.error) {
+        return { data: null, error: parsed.error };
+      }
+      return { data: parsed.data || { path: cleanTo }, error: null };
+    } catch (e: any) {
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
+    }
+  }
+
+  async move(
+    fromBucket: string,
+    fromPath: string,
+    toBucket: string,
+    toPath: string,
+  ): Promise<{ data: { path: string } | null; error: Error | null }> {
+    try {
+      const token = await getAuthToken();
+      const fetchFn = getFetch();
+      const cleanFrom = fromPath.replace(/^\/+/, "");
+      let cleanTo = toPath.replace(/^\/+/, "");
+      if (!cleanTo.includes("/") && cleanFrom.includes("/")) {
+        const dir = cleanFrom.substring(0, cleanFrom.lastIndexOf("/"));
+        cleanTo = `${dir}/${cleanTo}`;
+      }
+
+      const res = await fetchFn(`/api/storage/move/${fromBucket}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          fromPath: cleanFrom,
+          toPath: cleanTo,
+          toBucket,
+        }),
+      });
+
+      const parsed = await parseResponse<{ path: string }>(res);
+      if (parsed.error) {
+        return { data: null, error: parsed.error };
+      }
+      return { data: parsed.data || { path: cleanTo }, error: null };
+    } catch (e: any) {
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      };
+    }
+  }
+
   async download(
     bucket: string,
     path: string,
@@ -426,6 +505,10 @@ export class CustomStorageClient {
         options?: { sortBy?: { column: string; order: string } },
       ) => this.list(bucket, path, options),
       remove: (paths: string[]) => this.remove(bucket, paths),
+      rename: (fromPath: string, toPathOrName: string) =>
+        this.rename(bucket, fromPath, toPathOrName),
+      move: (fromPath: string, toPathOrName: string, toBucket: string = bucket) =>
+        this.move(bucket, fromPath, toBucket, toPathOrName),
       download: (path: string) => this.download(bucket, path),
       createSignedUrl: (path: string, expiresIn?: number) =>
         this.createSignedUrl(bucket, path, expiresIn),

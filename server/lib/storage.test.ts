@@ -166,6 +166,34 @@ describe("Server Storage Library", () => {
       }
     });
 
+    it("renames files within the same bucket", async () => {
+      await serverStorage.upload(testBucket, "u1/original.txt", Buffer.from("orig data"));
+      const renameRes = await serverStorage.rename(testBucket, "u1/original.txt", "u1/renamed.txt");
+
+      expect(renameRes.error).toBeNull();
+      expect(renameRes.data?.path).toBe("u1/renamed.txt");
+
+      const oldFile = await serverStorage.download(testBucket, "u1/original.txt");
+      expect(oldFile.error).not.toBeNull();
+
+      const newFile = await serverStorage.download(testBucket, "u1/renamed.txt");
+      expect(newFile.error).toBeNull();
+      expect(newFile.data?.toString()).toBe("orig data");
+    });
+
+    it("returns error when renaming to an existing destination file", async () => {
+      await serverStorage.upload(testBucket, "u1/fileA.txt", Buffer.from("A"));
+      await serverStorage.upload(testBucket, "u1/fileB.txt", Buffer.from("B"));
+
+      const renameRes = await serverStorage.rename(testBucket, "u1/fileA.txt", "u1/fileB.txt");
+      expect(renameRes.error).not.toBeNull();
+      expect(renameRes.error?.message).toContain("Destination file already exists");
+
+      // Original file remains intact
+      const fileA = await serverStorage.download(testBucket, "u1/fileA.txt");
+      expect(fileA.data?.toString()).toBe("A");
+    });
+
     it("downloads file when path has nested UUID prefix fallback", async () => {
       await serverStorage.upload(
         testBucket,

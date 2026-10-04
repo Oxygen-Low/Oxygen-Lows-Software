@@ -985,6 +985,16 @@ export const ko = {
     storageLimit: "í•œë„: 500MB (íŒŒì¼ ë° ê³µê°œ ìžì‚°)",
     storageQuotaError:
       "í• ë‹¹ëŸ‰ì´ ì´ˆê³¼ë˜ì—ˆìŠµë‹ˆë‹¤. ì‚¬ìš©ìžë‹¹ ìµœëŒ€ 500MBê¹Œì§€ í—ˆìš©ë©ë‹ˆë‹¤.",
+
+    renameFile: "파일 이름 변경",
+    rename: "이름 변경",
+    renameDialogTitle: "파일 이름 변경",
+    renameDialogDesc: "이 파일의 새 이름을 입력하세요.",
+    newFileName: "새 파일 이름",
+    fileRenamed: "파일 이름이 성공적으로 변경되었습니다",
+    renameError: "파일 이름 변경에 실패했습니다",
+    invalidFileName: "유효하지 않은 파일 이름입니다",
+    destinationExists: "이 이름을 가진 파일이 이미 존재합니다",
   },
   customize: {
     title: "ì»¤ìŠ¤í„°ë§ˆì´ì¦ˆ",

@@ -22,6 +22,7 @@ import {
   Lock,
   ListOrdered,
   Layers,
+  Pencil,
 } from "lucide-react";
 import {
   Card,
@@ -141,6 +142,11 @@ export default function Storage() {
     string | null
   >(null);
   const [deletingVerifId, setDeletingVerifId] = useState<string | null>(null);
+
+  // Rename File Dialog State
+  const [fileToRename, setFileToRename] = useState<any | null>(null);
+  const [newFileName, setNewFileName] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
   const fetchCloudFiles = async () => {
     if (!session?.user?.id) return;
@@ -401,6 +407,85 @@ export default function Storage() {
       fetchCloudFiles();
     } catch (error: any) {
       toast.error(error.message);
+    }
+  };
+
+  const handleOpenRenameModal = (file: any) => {
+    setFileToRename(file);
+    setNewFileName(file.name);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!session?.user?.id || !fileToRename) return;
+    const trimmed = newFileName.trim();
+    if (!trimmed || trimmed === fileToRename.name) {
+      setFileToRename(null);
+      return;
+    }
+
+    if (
+      trimmed.includes("..") ||
+      trimmed.includes("/") ||
+      trimmed.includes("\\") ||
+      trimmed.includes("\0")
+    ) {
+      toast.error(t("storage.invalidFileName", undefined, "Invalid file name"));
+      return;
+    }
+
+    const bucket = fileToRename.bucket || "Storage";
+    const duplicate = cloudFiles.some(
+      (f) =>
+        (f.bucket || "Storage") === bucket &&
+        f.name.toLowerCase() === trimmed.toLowerCase() &&
+        f.id !== fileToRename.id,
+    );
+    if (duplicate) {
+      toast.error(
+        t(
+          "storage.destinationExists",
+          undefined,
+          "A file with this name already exists",
+        ),
+      );
+      return;
+    }
+
+    setRenaming(true);
+    try {
+      const oldPath = `${session.user.id}/${fileToRename.name}`;
+      const newPath = `${session.user.id}/${trimmed}`;
+
+      const { error } = await storage.from(bucket).rename(oldPath, newPath);
+      if (error) throw error;
+
+      // Invalidate verifications if renamed
+      if (session?.access_token) {
+        await fetch("/api/assets/verifications/invalidate", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            asset_type: "file",
+            original_file_path: oldPath,
+          }),
+        }).catch(() => {});
+      }
+
+      toast.success(
+        t("storage.fileRenamed", undefined, "File renamed successfully"),
+      );
+      setFileToRename(null);
+      fetchCloudFiles();
+    } catch (err: any) {
+      toast.error(
+        err.message ||
+          t("storage.renameError", undefined, "Failed to rename file"),
+      );
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -982,6 +1067,17 @@ export default function Storage() {
                           </Button>
                         )}
 
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white"
+                          onClick={() => handleOpenRenameModal(file)}
+                          aria-label={`Rename ${file.name}`}
+                          title={t("storage.renameFile", undefined, "Rename File")}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -1533,6 +1629,74 @@ export default function Storage() {
               {t("common.close", undefined, "Close")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Rename File Dialog */}
+      <Dialog
+        open={Boolean(fileToRename)}
+        onOpenChange={(open) => {
+          if (!open) setFileToRename(null);
+        }}
+      >
+        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Pencil className="w-5 h-5 text-cyan-400" />
+              {t("storage.renameDialogTitle", undefined, "Rename File")}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {t(
+                "storage.renameDialogDesc",
+                undefined,
+                "Enter a new name for this file.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleRenameSubmit();
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">
+                {t("storage.newFileName", undefined, "New file name")}
+              </label>
+              <Input
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                placeholder={t("storage.newFileName", undefined, "New file name")}
+                className="bg-slate-950 border-slate-700 text-white"
+                autoFocus
+              />
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFileToRename(null)}
+                disabled={renaming}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
+                {t("common.cancel", undefined, "Cancel")}
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  renaming ||
+                  !newFileName.trim() ||
+                  newFileName.trim() === fileToRename?.name
+                }
+                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              >
+                {renaming && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+                {t("storage.rename", undefined, "Rename")}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </Layout>

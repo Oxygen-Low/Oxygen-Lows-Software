@@ -272,3 +272,36 @@ export function getTrackBackgroundUsage(userId: string | number): {
   }
   return { totalSize, items };
 }
+
+/**
+ * Updates track background mappings when an audio file is renamed or moved within Storage.
+ */
+export function renameTrackBackgroundForMovedFile(
+  fromPath: string,
+  toPath: string,
+): void {
+  try {
+    const cleanFrom = String(fromPath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    const cleanTo = String(toPath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    const slashFrom = cleanFrom.indexOf("/");
+    const slashTo = cleanTo.indexOf("/");
+    if (slashFrom <= 0 || slashTo <= 0) return;
+    const ownerFrom = cleanFrom.slice(0, slashFrom);
+    const ownerTo = cleanTo.slice(0, slashTo);
+    if (ownerFrom !== ownerTo) return;
+
+    const oldKey = normalizeTrackKey(cleanFrom, ownerFrom);
+    const newKey = normalizeTrackKey(cleanTo, ownerTo);
+    if (!oldKey || !newKey || oldKey === newKey) return;
+
+    const map = getTrackBackgrounds(ownerFrom);
+    if (map[oldKey]) {
+      const entry = map[oldKey];
+      delete map[oldKey];
+      map[newKey] = entry;
+      saveTrackBackgrounds(ownerFrom, map);
+    }
+  } catch (err) {
+    console.warn("[trackBackgrounds] rename failed for file", fromPath, err);
+  }
+}

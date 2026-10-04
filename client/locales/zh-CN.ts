@@ -955,6 +955,16 @@ export const zhCN = {
     storageLimitReached: "å·²è¾¾åˆ°å­˜å‚¨ç©ºé—´ä¸Šé™ (500MB)",
     storageLimit: "ä¸Šé™ï¼š500MBï¼ˆæ–‡ä»¶ä¸Žå…¬å¼€èµ„æºï¼‰",
     storageQuotaError: "è¶…å‡ºé…é¢ã€‚æ¯ä½ç”¨æˆ·æœ€å¤šå…è®¸ä½¿ç”¨ 500MBã€‚",
+
+    renameFile: "重命名文件",
+    rename: "重命名",
+    renameDialogTitle: "重命名文件",
+    renameDialogDesc: "输入此文件的新名称。",
+    newFileName: "新文件名",
+    fileRenamed: "文件重命名成功",
+    renameError: "重命名文件失败",
+    invalidFileName: "无效的文件名",
+    destinationExists: "已存在同名文件",
   },
   customize: {
     title: "ä¸ªæ€§åŒ–",

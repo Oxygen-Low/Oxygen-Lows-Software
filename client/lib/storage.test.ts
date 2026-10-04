@@ -224,6 +224,47 @@ describe("Client Storage Library", () => {
     });
   });
 
+  describe("rename", () => {
+    it("calls post on rename endpoint with resolved relative path", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 200,
+        json: () => Promise.resolve({ data: { path: "u1/renamed.txt" }, error: null }),
+      });
+      global.fetch = mockFetch;
+
+      const client = new CustomStorageClient();
+      const res = await client.from("Storage").rename("u1/old.txt", "renamed.txt");
+
+      expect(res.error).toBeNull();
+      expect(res.data?.path).toBe("u1/renamed.txt");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/storage/rename/Storage",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+            Authorization: "Bearer test-token",
+          }),
+          body: JSON.stringify({ fromPath: "u1/old.txt", toPath: "u1/renamed.txt" }),
+        }),
+      );
+    });
+
+    it("handles rename errors from server", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 400,
+        json: () => Promise.resolve({ error: "Destination file already exists" }),
+      });
+      global.fetch = mockFetch;
+
+      const client = new CustomStorageClient();
+      const res = await client.from("Storage").rename("u1/old.txt", "u1/exists.txt");
+
+      expect(res.data).toBeNull();
+      expect(res.error?.message).toBe("Destination file already exists");
+    });
+  });
+
   describe("getPublicUrl and createSignedUrl", () => {
     it("constructs public URL correctly", () => {
       const client = new CustomStorageClient();

@@ -40,6 +40,7 @@ const mockStorage = {
   ),
   upload: vi.fn(() => Promise.resolve({ error: null })),
   remove: vi.fn(() => Promise.resolve({ error: null })),
+  rename: vi.fn(() => Promise.resolve({ data: { path: "user-123/new-audio.mp3" }, error: null })),
 };
 
 vi.mock("@/lib/storage", () => ({
@@ -53,6 +54,7 @@ vi.mock("@/lib/storage", () => ({
           ),
           upload: vi.fn(() => Promise.resolve({ error: null })),
           remove: vi.fn(() => Promise.resolve({ error: null })),
+          rename: vi.fn(() => Promise.resolve({ data: { path: "user-123/new-audio.mp3" }, error: null })),
         };
       }
       return mockStorage;
@@ -68,6 +70,7 @@ vi.mock("@/lib/storage", () => ({
           ),
           upload: vi.fn(() => Promise.resolve({ error: null })),
           remove: vi.fn(() => Promise.resolve({ error: null })),
+          rename: vi.fn(() => Promise.resolve({ data: { path: "user-123/new-audio.mp3" }, error: null })),
         };
       }
       return mockStorage;
@@ -178,5 +181,43 @@ describe("Storage Page", () => {
       name: /Verification Submissions/i,
     });
     fireEvent.click(submissionsTab);
+  });
+
+  it("opens rename dialog and renames storage file", async () => {
+    render(
+      <MemoryRouter>
+        <Storage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("test-audio.mp3")).toBeDefined();
+    });
+
+    const renameBtn = screen.getByRole("button", { name: /Rename test-audio\.mp3/i });
+    expect(renameBtn).toBeDefined();
+
+    fireEvent.click(renameBtn);
+
+    // Verify Rename dialog appears
+    await waitFor(() => {
+      expect(screen.getByText("Enter a new name for this file.")).toBeDefined();
+    });
+
+    const input = screen.getByPlaceholderText("New file name") as HTMLInputElement;
+    expect(input.value).toBe("test-audio.mp3");
+
+    fireEvent.change(input, { target: { value: "renamed-audio.mp3" } });
+    expect(input.value).toBe("renamed-audio.mp3");
+
+    const submitBtn = screen.getByRole("button", { name: /^Rename$/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockStorage.rename).toHaveBeenCalledWith(
+        "user-123/test-audio.mp3",
+        "user-123/renamed-audio.mp3",
+      );
+    });
   });
 });

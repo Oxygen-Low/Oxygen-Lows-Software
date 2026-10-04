@@ -995,6 +995,16 @@ export const ja = {
     storageLimit: "ä¸Šé™: 500MB (ãƒ•ã‚¡ã‚¤ãƒ«ãŠã‚ˆã³å…¬é–‹ã‚¢ã‚»ãƒƒãƒˆ)",
     storageQuotaError:
       "å‰²ã‚Šå½“ã¦ã‚’è¶…éŽã—ã¾ã—ãŸã€‚ãƒ¦ãƒ¼ã‚¶ãƒ¼ã‚ãŸã‚Šæœ€å¤§500MBã¾ã§è¨±å¯ã•ã‚Œã¦ã„ã¾ã™ã€‚",
+
+    renameFile: "ファイル名を変更",
+    rename: "名前を変更",
+    renameDialogTitle: "ファイル名を変更",
+    renameDialogDesc: "このファイルの新しい名前を入力してください。",
+    newFileName: "新しいファイル名",
+    fileRenamed: "ファイル名が正常に変更されました",
+    renameError: "ファイル名の変更に失敗しました",
+    invalidFileName: "無効なファイル名です",
+    destinationExists: "同名のファイルが既に存在します",
   },
   customize: {
     title: "ã‚«ã‚¹ã‚¿ãƒžã‚¤ã‚º",
