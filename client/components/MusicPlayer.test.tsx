@@ -211,6 +211,35 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
 
     expect(screen.getByTitle("No track playing")).not.toBeNull();
   });
+
+  it("toggles and interacts with the playlist in SidebarMusicPlayer", () => {
+    render(
+      <MemoryRouter>
+        <SidebarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    const togglePlaylistBtn = screen.getByTitle("Current Playlist");
+    expect(togglePlaylistBtn).not.toBeNull();
+    fireEvent.click(togglePlaylistBtn);
+
+    const trackMatches = screen.getAllByText("Test Song");
+    expect(trackMatches.length).toBeGreaterThanOrEqual(2);
+    // Click the playlist track item
+    fireEvent.click(trackMatches[1]);
+    expect(defaultContext.playTrack).toHaveBeenCalledWith(defaultContext.playlist[0]);
+  });
+
+  it("renders playlist popover trigger with track count badge in TopbarMusicPlayer", () => {
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    const playlistBtn = screen.getByTitle("Current Playlist");
+    expect(playlistBtn).not.toBeNull();
+  });
 });
 
 describe("MusicContext loop integration", () => {

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
+import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
 import { useNotifications } from "@/hooks/useNotifications";
 
 interface LayoutProps {
@@ -285,7 +286,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
             <Link to="/apps" className="flex items-center gap-2 min-w-0">
               <span
-                className={`${styles["logo"]} text-base sm:text-xl md:text-2xl font-bold truncate tracking-tight`}
+                className={`${styles["logo"]} text-sm sm:text-xl md:text-2xl font-bold truncate tracking-tight`}
               >
                 Oxygen Low's Software
               </span>
@@ -514,6 +515,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               </a>
             </div>
           </nav>
+
+          {/* Music Player embedded in sidebar for mobile and desktop drawer */}
+          <SidebarMusicPlayer />
         </aside>
       </div>
 
