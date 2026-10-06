@@ -1119,6 +1119,9 @@ export const es = {
     appearance: "Apariencia",
     personality: "Personalidad",
     backstory: "Historia",
+    situation: "Situación actual y habilidades",
+    situationPlaceholder:
+      "Qué son actualmente, sus poderes, capacidades, habilidades y situación presente...",
     racePhysiology: "Rasgos fÃ­sicos y fisiologÃ­a",
     raceCulture: "Rasgos culturales y comportamientos",
     raceHistory: "OrÃ­genes e historia",

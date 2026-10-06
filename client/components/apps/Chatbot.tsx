@@ -232,6 +232,7 @@ interface Character {
   appearance?: string | null;
   personality?: string | null;
   backstory?: string | null;
+  situation?: string | null;
   stats_enabled?: boolean;
   stats?: any;
 }
@@ -1713,6 +1714,8 @@ export function ChatbotApp() {
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
         if (char.personality) injected += `Personality: ${char.personality}\n`;
         if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
+        if (char.situation)
+          injected += `Current Situation & Abilities: ${char.situation}\n`;
         if (
           char.stats_enabled &&
           char.stats &&
@@ -1762,6 +1765,8 @@ export function ChatbotApp() {
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
         if (char.personality) injected += `Personality: ${char.personality}\n`;
         if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
+        if (char.situation)
+          injected += `Current Situation & Abilities: ${char.situation}\n`;
         if (
           char.stats_enabled &&
           char.stats &&

@@ -81,6 +81,7 @@ interface PublicCharacter {
   personality: string | null;
   hidden_description: string | null;
   backstory: string | null;
+  situation?: string | null;
   is_universe: boolean;
   downloads: number;
   created_at: string;
@@ -122,6 +123,7 @@ interface LocalCharacter {
   appearance: string | null;
   personality: string | null;
   backstory: string | null;
+  situation?: string | null;
   hidden_description: string | null;
   image_path: string | null;
   stats_enabled?: boolean;
@@ -467,6 +469,7 @@ export function PublicAssetsApp() {
         appearance: item.appearance,
         personality: item.personality,
         backstory: item.backstory,
+        situation: item.situation,
         hidden_description: item.hidden_description,
         image_path: item.image_path,
         is_universe: item.is_universe,
@@ -636,6 +639,7 @@ export function PublicAssetsApp() {
         appearance: char.appearance,
         personality: char.personality,
         backstory: char.backstory,
+        situation: char.situation,
         hidden_description: char.hidden_description,
         image_path: char.image_path,
         is_universe: publishAssetType === "universe",
@@ -1630,6 +1634,16 @@ export function PublicAssetsApp() {
                       </h4>
                       <p className="text-slate-200 whitespace-pre-wrap">
                         {selectedChar.backstory}
+                      </p>
+                    </div>
+                  )}
+                  {selectedChar.situation && (
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-400 mb-1">
+                        Current Situation & Abilities
+                      </h4>
+                      <p className="text-slate-200 whitespace-pre-wrap">
+                        {selectedChar.situation}
                       </p>
                     </div>
                   )}

@@ -36,6 +36,7 @@ export interface Character {
   appearance?: string | null;
   personality?: string | null;
   backstory?: string | null;
+  situation?: string | null;
   hidden_description?: string | null;
   is_universe?: boolean;
   is_race?: boolean;

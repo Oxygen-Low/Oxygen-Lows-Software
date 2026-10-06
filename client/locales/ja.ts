@@ -1107,6 +1107,9 @@ export const ja = {
     appearance: "å¤–è¦‹",
     personality: "æ€§æ ¼",
     backstory: "ãƒãƒƒã‚¯ã‚¹ãƒˆãƒ¼ãƒªãƒ¼",
+    situation: "現在の状況と能力",
+    situationPlaceholder:
+      "現在の姿や状態、能力、スキル、置かれている状況など...",
     racePhysiology: "èº«ä½“çš„ç‰¹å¾´ãƒ»ç”Ÿç†æ©Ÿèƒ½",
     raceCulture: "æ–‡åŒ–çš„ç‰¹å¾´ãƒ»ç¿’æ€§",
     raceHistory: "èµ·æºãƒ»æ­´å²",

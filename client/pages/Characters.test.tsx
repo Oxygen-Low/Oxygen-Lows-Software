@@ -380,4 +380,34 @@ describe("Characters Component", () => {
       expect(supabase.from).toHaveBeenCalledWith("characters");
     });
   });
+
+  it("inputs and saves Current Situation & Abilities for a character", async () => {
+    render(<Characters />);
+
+    const newCharButton = screen.getByRole("button", {
+      name: /New Character/i,
+    });
+    fireEvent.click(newCharButton);
+
+    const nameInput = screen.getByLabelText("Name");
+    fireEvent.change(nameInput, { target: { value: "Archmage Cynthia" } });
+
+    const situationInput = screen.getByLabelText(
+      /Current Situation & Abilities/i,
+    );
+    expect(situationInput).toBeDefined();
+    fireEvent.change(situationInput, {
+      target: {
+        value:
+          "Currently leading the Arcane Vanguard, capable of high-tier Chronomancy and spatial distortion spells.",
+      },
+    });
+
+    const saveBtn = screen.getByRole("button", { name: /Save Character/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(supabase.from).toHaveBeenCalledWith("characters");
+    });
+  });
 });

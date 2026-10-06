@@ -9,6 +9,7 @@ export interface ReviewCharacter {
   appearance?: string | null;
   personality?: string | null;
   backstory?: string | null;
+  situation?: string | null;
   hidden_description?: string | null;
 }
 
@@ -45,6 +46,7 @@ function writingFields(character: ReviewCharacter) {
     appearance: character.appearance,
     personality: character.personality,
     backstory: character.backstory,
+    situation: character.situation,
     hidden_description: character.hidden_description,
   };
 }

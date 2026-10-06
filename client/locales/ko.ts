@@ -1096,6 +1096,9 @@ export const ko = {
     appearance: "ì™¸ëª¨",
     personality: "ì„±ê²©",
     backstory: "ë°°ê²½ ì´ì•¼ê¸°",
+    situation: "현재 상황 및 능력",
+    situationPlaceholder:
+      "현재 상태, 능력, 기술, 역량 및 처한 상황...",
     racePhysiology: "ì‹ ì²´ì  íŠ¹ì„± ë° ìƒë¦¬í•™",
     raceCulture: "ë¬¸í™”ì  íŠ¹ì„± ë° í–‰ë™ ì–‘ì‹",
     raceHistory: "ê¸°ì› ë° ì—­ì‚¬",

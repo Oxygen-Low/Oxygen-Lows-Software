@@ -328,6 +328,7 @@ describe("Crypto Utilities (AES-256)", () => {
         appearance: "Tall with red hair",
         personality: "Courageous",
         backstory: "Born in the mountains",
+        situation: "Currently exploring the ancient ruins with fire magic",
         hidden_description: "Secret details",
         stats_enabled: true,
         stats: { str: 18, dex: 14, con: 16, int: 10, wis: 12, cha: 8 },
@@ -342,6 +343,7 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(encrypted.appearance).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.personality).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.backstory).toMatch(/^ENC:aes-256-gcm:/);
+      expect(encrypted.situation).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.hidden_description).toMatch(/^ENC:aes-256-gcm:/);
       expect(encrypted.stats_enabled).toBe(true);
       expect(encrypted.stats).toMatch(/^ENC:aes-256-gcm:/);
@@ -352,6 +354,9 @@ describe("Crypto Utilities (AES-256)", () => {
       expect(decrypted.appearance).toBe("Tall with red hair");
       expect(decrypted.personality).toBe("Courageous");
       expect(decrypted.backstory).toBe("Born in the mountains");
+      expect(decrypted.situation).toBe(
+        "Currently exploring the ancient ruins with fire magic",
+      );
       expect(decrypted.hidden_description).toBe("Secret details");
       expect(decrypted.stats_enabled).toBe(true);
       expect(decrypted.stats).toEqual({

@@ -75,6 +75,7 @@ interface Character {
   appearance: string | null;
   personality: string | null;
   backstory: string | null;
+  situation?: string | null;
   hidden_description: string | null;
   is_universe?: boolean;
   is_race?: boolean;
@@ -199,6 +200,7 @@ export default function Characters() {
       appearance: entity.appearance,
       personality: entity.personality,
       backstory: entity.backstory,
+      situation: entity.situation,
       hidden_description: entity.hidden_description,
       is_universe: entity.is_universe,
       is_race: entity.is_race,
@@ -346,6 +348,7 @@ export default function Characters() {
         appearance: currentCharacter.appearance,
         personality: currentCharacter.personality,
         backstory: currentCharacter.backstory,
+        situation: currentCharacter.situation,
         hidden_description: currentCharacter.hidden_description,
         is_universe: currentCharacter.is_universe || false,
         is_race: currentCharacter.is_race || false,
@@ -429,6 +432,7 @@ export default function Characters() {
               appearance: currentCharacter.appearance,
               personality: currentCharacter.personality,
               backstory: currentCharacter.backstory,
+              situation: currentCharacter.situation,
               hidden_description: currentCharacter.hidden_description,
               image_path: currentCharacter.image_path,
               is_universe: currentCharacter.is_universe || false,
@@ -578,6 +582,7 @@ export default function Characters() {
             appearance: char.appearance,
             personality: char.personality,
             backstory: char.backstory,
+            situation: char.situation,
             hidden_description: char.hidden_description,
             image_path: char.image_path,
             image_url: char.image_url,
@@ -1246,6 +1251,35 @@ export default function Characters() {
                           }
                           placeholder="Their history and origins..."
                           className="bg-slate-800 border-slate-700 h-32"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="char-situation"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.situation",
+                            undefined,
+                            "Current Situation & Abilities",
+                          )}
+                        </label>
+                        <Textarea
+                          id="char-situation"
+                          value={currentCharacter.situation || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              situation: e.target.value,
+                            }))
+                          }
+                          placeholder={t(
+                            "characters.situationPlaceholder",
+                            undefined,
+                            "What they currently are, their powers, capabilities, skills, and current situation...",
+                          )}
+                          className="bg-slate-800 border-slate-700 h-28"
                         />
                       </div>
 

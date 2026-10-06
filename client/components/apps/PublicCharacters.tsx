@@ -57,6 +57,7 @@ interface PublicCharacter {
   personality: string | null;
   hidden_description: string | null;
   backstory: string | null;
+  situation?: string | null;
   is_universe: boolean;
   is_race?: boolean;
   race_id?: string | null;
@@ -83,6 +84,7 @@ interface LocalCharacter {
   appearance: string | null;
   personality: string | null;
   backstory: string | null;
+  situation?: string | null;
   hidden_description: string | null;
   image_path: string | null;
   stats_enabled?: boolean;
@@ -280,6 +282,7 @@ export function PublicCharactersApp() {
         appearance: item.appearance,
         personality: item.personality,
         backstory: item.backstory,
+        situation: item.situation,
         hidden_description: item.hidden_description,
         image_path: item.image_path,
         is_universe: item.is_universe || false,
@@ -350,6 +353,7 @@ export function PublicCharactersApp() {
         appearance: charToUpload.appearance,
         personality: charToUpload.personality,
         backstory: charToUpload.backstory,
+        situation: charToUpload.situation,
         hidden_description: charToUpload.hidden_description,
         image_path: charToUpload.image_path,
         is_universe: charToUpload.is_universe || false,
@@ -762,6 +766,16 @@ export function PublicCharactersApp() {
                       </h4>
                       <p className="text-slate-200 whitespace-pre-wrap">
                         {selectedItem.backstory}
+                      </p>
+                    </div>
+                  )}
+                  {selectedItem.situation && (
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-400 mb-1">
+                        Current Situation & Abilities
+                      </h4>
+                      <p className="text-slate-200 whitespace-pre-wrap">
+                        {selectedItem.situation}
                       </p>
                     </div>
                   )}

@@ -209,6 +209,7 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
           appearance: meta.appearance || null,
           personality: meta.personality || null,
           backstory: meta.backstory || null,
+          situation: meta.situation || null,
           hidden_description: meta.hidden_description || null,
           image_path: meta.image_path || null,
           image_url: meta.image_url || null,

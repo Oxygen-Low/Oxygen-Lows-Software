@@ -23,6 +23,7 @@ export interface EntityGenerationOptions {
     appearance?: string | null;
     personality?: string | null;
     backstory?: string | null;
+    situation?: string | null;
     hidden_description?: string | null;
     is_universe?: boolean;
   } | null;
@@ -34,6 +35,7 @@ export interface EntityGenerationOptions {
     appearance?: string | null;
     personality?: string | null;
     backstory?: string | null;
+    situation?: string | null;
     hidden_description?: string | null;
     is_race?: boolean;
   } | null;
@@ -52,6 +54,7 @@ export interface GeneratedEntityResult {
   appearance: string;
   personality: string;
   backstory: string;
+  situation?: string;
   hidden_description: string;
   universe_id?: string;
   race_id?: string;
@@ -145,6 +148,7 @@ export interface CharacterSchema {
   appearance: string;
   personality: string;
   backstory: string;
+  situation: string;
   hidden_description: string;
   stats?: {
     str: number;
@@ -170,6 +174,7 @@ export function buildCharacterGenerationPrompt(params: {
     appearance: "Physical traits, clothing, distinctive markings, gear",
     personality: "Psychological profile, virtues, flaws, speech style",
     backstory: "Personal history, formative events, affiliations",
+    situation: "Current status, role, abilities, powers, and present situation",
     hidden_description: "Private GM/creator notes and secrets",
   };
 
@@ -703,6 +708,7 @@ export async function executeEntityGeneration(
       appearance: parsed.appearance || "",
       personality: parsed.personality || "",
       backstory: parsed.backstory || "",
+      situation: parsed.situation || "",
       hidden_description: parsed.hidden_description || "",
       universe_id: universe?.id,
       race_id: race?.id,
@@ -719,6 +725,7 @@ export async function executeEntityGeneration(
       appearance: parsed.appearance || "",
       personality: parsed.personality || "",
       backstory: parsed.backstory || "",
+      situation: "",
       hidden_description: parsed.hidden_description || "",
       universe_id: universe?.id,
       is_universe: false,
@@ -732,6 +739,7 @@ export async function executeEntityGeneration(
       appearance: "",
       personality: "",
       backstory: "",
+      situation: "",
       hidden_description: parsed.hidden_description || "",
       universe_id: undefined,
       is_universe: true,

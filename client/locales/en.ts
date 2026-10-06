@@ -1103,6 +1103,9 @@ export const en = {
     appearance: "Appearance",
     personality: "Personality",
     backstory: "Backstory",
+    situation: "Current Situation & Abilities",
+    situationPlaceholder:
+      "What they currently are, their powers, capabilities, skills, and current situation...",
     racePhysiology: "Physical Traits & Physiology",
     raceCulture: "Cultural Traits & Behaviors",
     raceHistory: "Origins & History",

@@ -1064,6 +1064,9 @@ export const zhCN = {
     appearance: "å¤–è²Œ",
     personality: "æ€§æ ¼",
     backstory: "èƒŒæ™¯æ•…äº‹",
+    situation: "当前状况与能力",
+    situationPlaceholder:
+      "当前状态与身份、能力、特殊技能与所处现状...",
     racePhysiology: "ç”Ÿç†ç‰¹å¾ä¸Žå¤–è²Œç”Ÿç†",
     raceCulture: "æ–‡åŒ–ç‰¹è´¨ä¸Žè¡Œä¸ºä¹ æ€§",
     raceHistory: "èµ·æºä¸ŽåŽ†å²",

@@ -75,7 +75,7 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
 
 ### 6. Custom Characters & Roleplay Studio (/characters)
 - Create rich AI character personas, custom races/species, and fictional universes.
-- Define appearance, personality, backstories, tone, and full RPG stats (STR, DEX, CON, INT, WIS, CHA) that inject seamlessly into Chatbot conversations.
+- Define appearance, personality, backstories, current situation & abilities, tone, and full RPG stats (STR, DEX, CON, INT, WIS, CHA) that inject seamlessly into Chatbot conversations.
 
 ### 7. Customization, Themes & Audio (/customize)
 - Themes, neon/glassmorphism UI styles, language switching (English, Spanish, Japanese, Korean, Russian, Simplified Chinese), and built-in sidebar Music Player.

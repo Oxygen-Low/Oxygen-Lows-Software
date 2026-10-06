@@ -974,6 +974,7 @@ export interface CharacterData {
   appearance?: string | null;
   personality?: string | null;
   backstory?: string | null;
+  situation?: string | null;
   hidden_description?: string | null;
   is_universe?: boolean;
   is_race?: boolean;
@@ -1004,6 +1005,8 @@ export async function encryptCharacterData<T extends CharacterData>(
     result.personality = await encryptField(char.personality, keyBytes);
   if (char.backstory !== undefined)
     result.backstory = await encryptField(char.backstory, keyBytes);
+  if (char.situation !== undefined)
+    result.situation = await encryptField(char.situation, keyBytes);
   if (char.hidden_description !== undefined)
     result.hidden_description = await encryptField(
       char.hidden_description,
@@ -1039,6 +1042,8 @@ export async function decryptCharacterData<T extends CharacterData>(
     result.personality = await decryptField(char.personality, keyBytes);
   if (char.backstory !== undefined)
     result.backstory = await decryptField(char.backstory, keyBytes);
+  if (char.situation !== undefined)
+    result.situation = await decryptField(char.situation, keyBytes);
   if (char.hidden_description !== undefined)
     result.hidden_description = await decryptField(
       char.hidden_description,
@@ -1282,6 +1287,7 @@ export async function migrateCategoryEncryption({
               appearance: enc.appearance,
               personality: enc.personality,
               backstory: enc.backstory,
+              situation: enc.situation,
               hidden_description: enc.hidden_description,
             })
             .eq("id", char.id);
@@ -1298,6 +1304,7 @@ export async function migrateCategoryEncryption({
               appearance: dec.appearance,
               personality: dec.personality,
               backstory: dec.backstory,
+              situation: dec.situation,
               hidden_description: dec.hidden_description,
             })
             .eq("id", char.id);
@@ -1529,6 +1536,7 @@ export async function rotateMasterKey({
               appearance: enc.appearance,
               personality: enc.personality,
               backstory: enc.backstory,
+              situation: enc.situation,
               hidden_description: enc.hidden_description,
             })
             .eq("id", char.id);
