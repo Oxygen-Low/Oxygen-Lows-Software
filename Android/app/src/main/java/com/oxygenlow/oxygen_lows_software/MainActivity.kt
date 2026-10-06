@@ -8,6 +8,8 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.webkit.WebResourceRequest
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
@@ -26,6 +28,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var webAppInterface: WebAppInterface
+    private var isForeground = false
+    private var isUpdateInProgress = false
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private val updateCheckRunnable = object : Runnable {
+        override fun run() {
+            if (!isForeground) return
+            performUpdateCheck()
+            updateHandler.postDelayed(this, 30_000L)
+        }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,8 +113,54 @@ class MainActivity : AppCompatActivity() {
         } else {
             webView.loadUrl("https://oxygenlow.com/?android=1")
         }
+    }
 
-        checkForUpdatesOnStartup()
+    override fun onResume() {
+        super.onResume()
+        isForeground = true
+        updateHandler.removeCallbacks(updateCheckRunnable)
+        updateHandler.post(updateCheckRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isForeground = false
+        updateHandler.removeCallbacks(updateCheckRunnable)
+    }
+
+    override fun onDestroy() {
+        isForeground = false
+        updateHandler.removeCallbacks(updateCheckRunnable)
+        super.onDestroy()
+    }
+
+    private fun performUpdateCheck() {
+        if (isUpdateInProgress) return
+        Thread {
+            if (!isForeground || isUpdateInProgress) return@Thread
+            isUpdateInProgress = true
+            try {
+                val updateManager = UpdateManager(this)
+                val updateInfo = updateManager.checkForUpdates()
+                if (isForeground && updateInfo.hasUpdate && !updateInfo.downloadUrl.isNullOrBlank()) {
+                    runOnUiThread {
+                        if (isForeground && !isFinishing && !isDestroyed) {
+                            val versionStr = updateInfo.version ?: ""
+                            Toast.makeText(
+                                this,
+                                getString(R.string.update_downloading, versionStr),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    updateManager.downloadAndInstall(this, updateInfo.downloadUrl)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isUpdateInProgress = false
+            }
+        }.start()
     }
 
     private fun showWebViewUpdatePrompt() {

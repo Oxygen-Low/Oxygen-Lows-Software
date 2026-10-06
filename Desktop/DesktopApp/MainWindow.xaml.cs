@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using System.Security.Principal;
 using DesktopApp.Models;
 using Microsoft.Web.WebView2.Core;
@@ -21,6 +22,9 @@ public partial class MainWindow : Window
 {
     private string? _workingDirectory = Path.GetTempPath();
     private static readonly HttpClient _localHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2.5) };
+    private readonly UpdateManager _updateManager = new();
+    private DispatcherTimer? _updateCheckTimer;
+    private bool _isCheckingUpdates = false;
 
     public MainWindow()
     {
@@ -190,6 +194,7 @@ public partial class MainWindow : Window
             });
         };
         _ = GameProcessMonitor.Instance.StartAsync();
+        InitializeUpdateTimer();
 
         await Task.Delay(1000); 
         
@@ -979,8 +984,49 @@ public partial class MainWindow : Window
         }
     }
 
+    private void InitializeUpdateTimer()
+    {
+        _updateCheckTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(30)
+        };
+        _updateCheckTimer.Tick += async (_, _) => await CheckForUpdatesPeriodicAsync();
+        _updateCheckTimer.Start();
+    }
+
+    private async Task CheckForUpdatesPeriodicAsync()
+    {
+        // Do not check for updates when the app is in the background (minimized or not visible)
+        if (WindowState == WindowState.Minimized || !IsVisible)
+        {
+            return;
+        }
+
+        if (_isCheckingUpdates) return;
+        _isCheckingUpdates = true;
+
+        try
+        {
+            var (hasUpdate, downloadUrl, _) = await _updateManager.CheckForUpdatesAsync();
+            if (hasUpdate && !string.IsNullOrWhiteSpace(downloadUrl))
+            {
+                _updateCheckTimer?.Stop();
+                await _updateManager.DownloadAndRunInstallerAsync(downloadUrl);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Periodic update check failed: {ex.Message}");
+        }
+        finally
+        {
+            _isCheckingUpdates = false;
+        }
+    }
+
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        _updateCheckTimer?.Stop();
         GameProcessMonitor.Instance.Stop();
         PythonServerManager.Instance.Stop();
     }
