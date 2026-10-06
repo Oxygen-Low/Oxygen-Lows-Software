@@ -384,6 +384,10 @@ export const ja = {
       "メインのデフォルトモデル（Pollinations Ling 3.1 Flash）は現在利用できません（レート制限）。AI Horde（{model}）にフォールバックします。品質が低下する可能性があります。",
     defaultModelFallbackNotice:
       "メインモデルの利用不可により、AI Horde（{model}）フォールバック経由で生成されました。",
+    pollinations404FallbackWarning:
+      "Pollinationsが404エラー（未検出）を返しました。AI Horde（{model}）バックアップに切り替えます。品質が低下する場合があります。",
+    pollinations404FallbackNotice:
+      "Pollinations 404エラーのため、AI Horde（{model}）バックアップ経由で生成されました。",
     agentSearchTitle: "ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆæ¤œç´¢",
     agentSearchDesc: "ã‚¦ã‚§ãƒ–ã‚’èª¿æŸ»ã—ã€å›žç­”ã‚’åˆæˆã™ã‚‹AIæ­è¼‰ã®ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆæ¤œç´¢ã€‚",
     agentSearchPlaceholder: "ä½•ã‚’èª¿ã¹ãŸã„ã§ã™ã‹ï¼Ÿ",
@@ -1137,6 +1141,9 @@ export const ja = {
       "ã¾ã ãƒ¦ãƒ‹ãƒãƒ¼ã‚¹ãŒã‚ã‚Šã¾ã›ã‚“ï¼ã€Œæ–°ã—ã„ãƒ¦ãƒ‹ãƒãƒ¼ã‚¹ã€ã‚’ã‚¯ãƒªãƒƒã‚¯ã—ã¦ã€è‡ªåˆ†ã ã‘ã®ä¸–ç•Œã‚’æ§‹ç¯‰ã—å§‹ã‚ã¾ã—ã‚‡ã†ã€‚",
     characterSaved: "ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ãŒæ­£å¸¸ã«ä¿å­˜ã•ã‚Œã¾ã—ãŸ",
     characterDeleted: "ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ãŒæ­£å¸¸ã«å‰Šé™¤ã•ã‚Œã¾ã—ãŸ",
+    copyImportableText: "インポート用テキストをコピー",
+    importableTextCopied: "インポート用テキストをクリップボードにコピーしました！",
+    copyImportableTextFailed: "クリップボードへのコピーに失敗しました",
     verifyForMultiplayer: "æ¤œè¨¼",
     verifiedBadge: "æ¤œè¨¼æ¸ˆã¿",
     reverificationRequired:

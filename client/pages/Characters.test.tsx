@@ -410,4 +410,55 @@ describe("Characters Component", () => {
       expect(supabase.from).toHaveBeenCalledWith("characters");
     });
   });
+
+  it("copies importable text of a character to clipboard", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const testChar = {
+      id: "char-export-1",
+      user_id: "test-user-id",
+      name: "Solas",
+      display_name: "Solas the Wise",
+      short_description: "An elven apostate mage.",
+      appearance: "Bald elf with glowing tattoos.",
+      personality: "Calm, intellectual, secretive.",
+      backstory: "Ancient wanderer.",
+    };
+
+    const mockClient: any = {
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [testChar], error: null }),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+    };
+    (supabase.from as any).mockImplementation(() => mockClient);
+
+    render(<Characters />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Solas the Wise")).toBeDefined();
+    });
+
+    const copyButtons = screen.getAllByRole("button", {
+      name: /Copy Importable Text/i,
+    });
+    expect(copyButtons.length).toBeGreaterThan(0);
+    fireEvent.click(copyButtons[0]);
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalled();
+    });
+
+    const copiedArg = writeTextMock.mock.calls[0][0];
+    expect(copiedArg).toContain("# Solas the Wise");
+    expect(copiedArg).toContain("## Overview\nAn elven apostate mage.");
+    expect(copiedArg).toContain("## Appearance\nBald elf with glowing tattoos.");
+    expect(copiedArg).toContain("## Personality\nCalm, intellectual, secretive.");
+    expect(copiedArg).toContain("## Backstory\nAncient wanderer.");
+  });
 });

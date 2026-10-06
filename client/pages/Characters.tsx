@@ -16,7 +16,9 @@ import {
   Send,
   Lock,
   Sparkles,
+  Copy,
 } from "lucide-react";
+import { copyEntityAsMarkdown } from "@/utils/characterExport";
 import { AiReviewDialog } from "@/components/characters/AiReviewDialog";
 import { AiGenerateDialog } from "@/components/characters/AiGenerateDialog";
 import type { GeneratedEntityResult } from "@/services/entityGenerator";
@@ -1538,6 +1540,38 @@ export default function Characters() {
                     )}
 
                   <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      copyEntityAsMarkdown(currentCharacter as any, {
+                        toast: (msg, opts) =>
+                          toast({
+                            title: msg,
+                            variant: opts?.variant,
+                          }),
+                        successMessage: t(
+                          "characters.importableTextCopied",
+                          undefined,
+                          "Importable text copied to clipboard!",
+                        ),
+                        errorMessage: t(
+                          "characters.copyImportableTextFailed",
+                          undefined,
+                          "Failed to copy text to clipboard",
+                        ),
+                      })
+                    }
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    <Copy className="w-4 h-4 mr-1.5" />
+                    {t(
+                      "characters.copyImportableText",
+                      undefined,
+                      "Copy Importable Text",
+                    )}
+                  </Button>
+
+                  <Button
                     onClick={() => handleSave(false)}
                     className="bg-cyan-600 hover:bg-cyan-700 text-white"
                   >
@@ -1740,6 +1774,38 @@ export default function Characters() {
                         >
                           <Sparkles className="w-4 h-4 mr-2" />
                           {t("characters.aiReview.action")}
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-center gap-1.5"
+                          onClick={() =>
+                            copyEntityAsMarkdown(char, {
+                              toast: (msg, opts) =>
+                                toast({
+                                  title: msg,
+                                  variant: opts?.variant,
+                                }),
+                              successMessage: t(
+                                "characters.importableTextCopied",
+                                undefined,
+                                "Importable text copied to clipboard!",
+                              ),
+                              errorMessage: t(
+                                "characters.copyImportableTextFailed",
+                                undefined,
+                                "Failed to copy text to clipboard",
+                              ),
+                            })
+                          }
+                        >
+                          <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                          {t(
+                            "characters.copyImportableText",
+                            undefined,
+                            "Copy Importable Text",
+                          )}
                         </Button>
 
                         {char.is_race && (

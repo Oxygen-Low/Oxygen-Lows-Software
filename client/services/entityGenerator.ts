@@ -3,6 +3,7 @@ import { safeParseJson } from "@shared/jsonRepair";
 import {
   fetchPollinationsClient,
   PollinationsRateLimitError,
+  PollinationsNotFoundError,
 } from "./pollinationsClient";
 
 export interface EntityGenerationOptions {
@@ -335,7 +336,15 @@ export async function callModel(
         apiKey,
       });
     } catch (err: any) {
-      if (err instanceof PollinationsRateLimitError || err?.statusCode === 429) {
+      if (
+        err instanceof PollinationsRateLimitError ||
+        err instanceof PollinationsNotFoundError ||
+        err?.statusCode === 429 ||
+        err?.statusCode === 404 ||
+        err?.statusCode === 402 ||
+        err?.message?.includes("404") ||
+        err?.message?.includes("402")
+      ) {
         // Fallback to Horde Fast, then Smart via server proxy
         try {
           let headers: Record<string, string> = { "Content-Type": "application/json" };

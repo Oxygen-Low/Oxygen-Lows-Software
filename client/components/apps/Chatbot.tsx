@@ -43,6 +43,7 @@ import {
   streamPollinationsClient,
   fetchPollinationsClient,
   PollinationsRateLimitError,
+  PollinationsNotFoundError,
 } from "@/services/pollinationsClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -210,6 +211,7 @@ interface Message {
   image_model?: string;
   usedFallback?: boolean;
   fallbackModel?: string;
+  fallbackReason?: string;
 }
 
 interface Chat {
@@ -412,15 +414,25 @@ const ChatMessage = React.memo(
               <div className="w-full max-w-full rounded-lg border border-amber-500/30 bg-amber-500/10 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-amber-300">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>
-                  {t(
-                    "apps.defaultModelFallbackNotice",
-                    {
-                      model:
-                        m.fallbackModel ||
-                        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-                    },
-                    `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to main default model unavailability.`,
-                  )}
+                  {m.fallbackReason === "not_found"
+                    ? t(
+                        "apps.pollinations404FallbackNotice",
+                        {
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to Pollinations 404 error.`,
+                      )
+                    : t(
+                        "apps.defaultModelFallbackNotice",
+                        {
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to main default model unavailability.`,
+                      )}
                 </span>
               </div>
             )}
@@ -1288,7 +1300,12 @@ export function ChatbotApp() {
       } catch (err: any) {
         if (
           err instanceof PollinationsRateLimitError ||
-          err?.statusCode === 429
+          err instanceof PollinationsNotFoundError ||
+          err?.statusCode === 429 ||
+          err?.statusCode === 404 ||
+          err?.statusCode === 402 ||
+          err?.message?.includes("404") ||
+          err?.message?.includes("402")
         ) {
           const fetchTitleViaProxy = async (hordeModel: string) => {
             return await fetch("/api/ai/proxy", {
@@ -1518,22 +1535,38 @@ export function ChatbotApp() {
 
     const runHordeFallback = async (
       fallbackModelId: string,
+      reason: "rate_limit" | "not_found" = "rate_limit",
     ): Promise<string> => {
       onFallback?.(fallbackModelId);
       setAllMessages((prevAll) =>
         prevAll.map((m) =>
           m.id === "temp-streaming"
-            ? { ...m, usedFallback: true, fallbackModel: fallbackModelId }
+            ? {
+                ...m,
+                usedFallback: true,
+                fallbackModel: fallbackModelId,
+                fallbackReason: reason,
+              }
             : m,
         ),
       );
-      toast.warning(
-        t(
-          "apps.defaultModelFallbackWarning",
-          { model: fallbackModelId },
-          `The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
-        ),
-      );
+      if (reason === "not_found") {
+        toast.warning(
+          t(
+            "apps.pollinations404FallbackWarning",
+            { model: fallbackModelId },
+            `Pollinations returned a 404 (Not Found) error. Falling back to AI Horde backup (${fallbackModelId}). Quality may be decreased.`,
+          ),
+        );
+      } else {
+        toast.warning(
+          t(
+            "apps.defaultModelFallbackWarning",
+            { model: fallbackModelId },
+            `The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
+          ),
+        );
+      }
 
       const fetchOptions: RequestInit = {
         method: "POST",
@@ -1575,18 +1608,35 @@ export function ChatbotApp() {
         });
         return directContent;
       } catch (err: any) {
-        if (
+        const is404 =
+          err instanceof PollinationsNotFoundError ||
+          err?.statusCode === 404 ||
+          err?.message?.includes("404");
+        const isRateLimit =
           err instanceof PollinationsRateLimitError ||
-          err?.statusCode === 429
-        ) {
+          err?.statusCode === 429;
+        const is402 =
+          err?.statusCode === 402 ||
+          err?.message?.includes("402");
+
+        if (is404 || isRateLimit || is402) {
+          const fallbackReason: "rate_limit" | "not_found" = is404
+            ? "not_found"
+            : "rate_limit";
           try {
-            return await runHordeFallback(HORDE_FALLBACK_FAST_MODEL);
+            return await runHordeFallback(
+              HORDE_FALLBACK_FAST_MODEL,
+              fallbackReason,
+            );
           } catch (fastErr: any) {
             console.warn(
               "Horde Fast fallback failed, attempting Smart fallback:",
               fastErr,
             );
-            return await runHordeFallback(HORDE_FALLBACK_SMART_MODEL);
+            return await runHordeFallback(
+              HORDE_FALLBACK_SMART_MODEL,
+              fallbackReason,
+            );
           }
         } else {
           throw err;

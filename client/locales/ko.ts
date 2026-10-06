@@ -379,6 +379,10 @@ export const ko = {
       "기본 모델(Pollinations Ling 3.1 Flash)을 현재 사용할 수 없습니다(요청 한도 초과). AI Horde({model}) 모델로 대체됩니다. 품질이 저하될 수 있습니다.",
     defaultModelFallbackNotice:
       "메인 기본 모델 사용 불가로 인해 AI Horde({model}) 대체 모델을 통해 생성되었습니다.",
+    pollinations404FallbackWarning:
+      "Pollinations에서 404(찾을 수 없음) 오류가 발생했습니다. AI Horde({model}) 백업 모델로 대체됩니다. 품질이 저하될 수 있습니다.",
+    pollinations404FallbackNotice:
+      "Pollinations 404 오류로 인해 AI Horde({model}) 대체 모델을 통해 생성되었습니다.",
     agentSearchTitle: "ì—ì´ì „íŠ¸ ê²€ìƒ‰",
     agentSearchDesc: "ì›¹ì„ ì¡°ì‚¬í•˜ê³  ë‹µë³€ì„ í•©ì„±í•˜ëŠ” AI ê¸°ë°˜ ì—ì´ì „íŠ¸ ê²€ìƒ‰.",
     agentSearchPlaceholder: "ë¬´ì—‡ì„ ì¡°ì‚¬í•˜ì‹œê² ìŠµë‹ˆê¹Œ?",
@@ -1125,6 +1129,9 @@ export const ko = {
       'ì•„ì§ ìœ ë‹ˆë²„ìŠ¤ê°€ ì—†ìŠµë‹ˆë‹¤! "ìƒˆ ìœ ë‹ˆë²„ìŠ¤"ë¥¼ í´ë¦­í•˜ì—¬ ë‚˜ë§Œì˜ ì„¸ê³„ êµ¬ì¶•ì„ ì‹œìž‘í•˜ì„¸ìš”.',
     characterSaved: "ìºë¦­í„°ê°€ ì„±ê³µì ìœ¼ë¡œ ì €ìž¥ë˜ì—ˆìŠµë‹ˆë‹¤",
     characterDeleted: "ìºë¦­í„°ê°€ ì„±ê³µì ìœ¼ë¡œ ì‚­ì œë˜ì—ˆìŠµë‹ˆë‹¤",
+    copyImportableText: "가져오기 가능한 텍스트 복사",
+    importableTextCopied: "가져오기 가능한 텍스트가 클립보드에 복사되었습니다!",
+    copyImportableTextFailed: "텍스트 복사에 실패했습니다",
     verifyForMultiplayer: "ê²€ì¦",
     verifiedBadge: "ê²€ì¦ ì™„ë£Œ",
     reverificationRequired:

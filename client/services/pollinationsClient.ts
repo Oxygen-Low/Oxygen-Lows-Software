@@ -7,6 +7,15 @@ export class PollinationsRateLimitError extends Error {
   }
 }
 
+export class PollinationsNotFoundError extends Error {
+  statusCode: number;
+  constructor(message = "Pollinations AI endpoint or model not found (HTTP 404)") {
+    super(message);
+    this.name = "PollinationsNotFoundError";
+    this.statusCode = 404;
+  }
+}
+
 export interface PollinationsMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -25,6 +34,7 @@ export const POLLINATIONS_TEXT_API_URL = "https://text.pollinations.ai/openai/ch
 /**
  * Sends a streaming chat completion request directly to Pollinations AI from the browser client.
  * Throws PollinationsRateLimitError if the server returns HTTP 429.
+ * Throws PollinationsNotFoundError if the server returns HTTP 404.
  */
 export async function streamPollinationsClient({
   model,
@@ -56,6 +66,10 @@ export async function streamPollinationsClient({
     throw new PollinationsRateLimitError();
   }
 
+  if (response.status === 404) {
+    throw new PollinationsNotFoundError();
+  }
+
   if (!response.ok) {
     let errorText = `Pollinations error: ${response.status} ${response.statusText}`;
     try {
@@ -68,7 +82,9 @@ export async function streamPollinationsClient({
     } catch {
       // fallback to status text
     }
-    throw new Error(errorText);
+    const err = new Error(errorText) as any;
+    err.statusCode = response.status;
+    throw err;
   }
 
   const reader = response.body?.getReader();
@@ -116,6 +132,7 @@ export async function streamPollinationsClient({
 /**
  * Sends a non-streaming chat completion request directly to Pollinations AI from the browser client.
  * Throws PollinationsRateLimitError if the server returns HTTP 429.
+ * Throws PollinationsNotFoundError if the server returns HTTP 404.
  */
 export async function fetchPollinationsClient({
   model,
@@ -151,6 +168,10 @@ export async function fetchPollinationsClient({
     throw new PollinationsRateLimitError();
   }
 
+  if (response.status === 404) {
+    throw new PollinationsNotFoundError();
+  }
+
   if (!response.ok) {
     let errorText = `Pollinations error: ${response.status} ${response.statusText}`;
     try {
@@ -161,7 +182,9 @@ export async function fetchPollinationsClient({
         errorText = typeof errJson.error === "string" ? errJson.error : JSON.stringify(errJson.error);
       }
     } catch {}
-    throw new Error(errorText);
+    const err = new Error(errorText) as any;
+    err.statusCode = response.status;
+    throw err;
   }
 
   const data = await response.json();

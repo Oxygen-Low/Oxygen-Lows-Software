@@ -20,7 +20,10 @@ import {
   Users,
   Search,
   ArrowUpDown,
+  Copy,
 } from "lucide-react";
+import { copyEntityAsMarkdown } from "@/utils/characterExport";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -96,6 +99,7 @@ type SortOption = "most_liked" | "most_recent" | "most_downloaded";
 export function PublicCharactersApp() {
   const { session } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<
     "characters" | "universes" | "races"
@@ -859,6 +863,36 @@ export function PublicCharactersApp() {
                   </span>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      copyEntityAsMarkdown(selectedItem, {
+                        toast: (msg, opts) =>
+                          toast({
+                            title: msg,
+                            variant: opts?.variant,
+                          }),
+                        successMessage: t(
+                          "characters.importableTextCopied",
+                          undefined,
+                          "Importable text copied to clipboard!",
+                        ),
+                        errorMessage: t(
+                          "characters.copyImportableTextFailed",
+                          undefined,
+                          "Failed to copy text to clipboard",
+                        ),
+                      })
+                    }
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    {t(
+                      "characters.copyImportableText",
+                      undefined,
+                      "Copy Importable Text",
+                    )}
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => setDetailsDialogOpen(false)}

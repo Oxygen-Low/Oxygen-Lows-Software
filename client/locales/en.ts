@@ -380,6 +380,10 @@ export const en = {
       "The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde ({model}). Quality may be decreased.",
     defaultModelFallbackNotice:
       "Generated via AI Horde ({model}) fallback due to main default model unavailability.",
+    pollinations404FallbackWarning:
+      "Pollinations returned a 404 (Not Found) error. Falling back to AI Horde backup ({model}). Quality may be decreased.",
+    pollinations404FallbackNotice:
+      "Generated via AI Horde ({model}) fallback due to Pollinations 404 error.",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",
@@ -1134,6 +1138,9 @@ export const en = {
       'No universes here yet! Click "New Universe" to start building your own world.',
     characterSaved: "Character saved successfully",
     characterDeleted: "Character deleted successfully",
+    copyImportableText: "Copy Importable Text",
+    importableTextCopied: "Importable text copied to clipboard!",
+    copyImportableTextFailed: "Failed to copy text to clipboard",
     verifyForMultiplayer: "Verify",
     verifiedBadge: "Verified",
     reverificationRequired:

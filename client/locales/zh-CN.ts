@@ -361,6 +361,10 @@ export const zhCN = {
       "默认主要模型（Pollinations Ling 3.1 Flash）当前不可用（超出速率限制）。正在回退至 AI Horde（{model}），质量可能会有所下降。",
     defaultModelFallbackNotice:
       "由于默认主要模型不可用，已通过 AI Horde（{model}）回退模型生成。",
+    pollinations404FallbackWarning:
+      "Pollinations 返回 404 (未找到) 错误。正在回退到 AI Horde ({model}) 备用模型，质量可能会有所下降。",
+    pollinations404FallbackNotice:
+      "由于 Pollinations 404 错误，已通过 AI Horde ({model}) 备用模型生成。",
     agentSearchTitle: "æ™ºèƒ½æœç´¢",
     agentSearchDesc: "ç”±AIé©±åŠ¨çš„æ™ºèƒ½æœç´¢ï¼Œç ”ç©¶ç½‘ç»œå¹¶ç»¼åˆç­”æ¡ˆã€‚",
     agentSearchPlaceholder: "æ‚¨æƒ³ç ”ç©¶ä»€ä¹ˆï¼Ÿ",
@@ -1089,6 +1093,9 @@ export const zhCN = {
     noUniverses: "è¿™é‡Œè¿˜æ²¡æœ‰å®‡å®™ï¼ç‚¹å‡»â€œæ–°å»ºå®‡å®™â€å¼€å§‹æž„å»ºæ‚¨è‡ªå·±çš„ä¸–ç•Œã€‚",
     characterSaved: "è§’è‰²ä¿å­˜æˆåŠŸ",
     characterDeleted: "è§’è‰²åˆ é™¤æˆåŠŸ",
+    copyImportableText: "复制可导入文本",
+    importableTextCopied: "已将可导入文本复制到剪贴板！",
+    copyImportableTextFailed: "复制文本到剪贴板失败",
     verifyForMultiplayer: "éªŒè¯",
     verifiedBadge: "å·²éªŒè¯",
     reverificationRequired:

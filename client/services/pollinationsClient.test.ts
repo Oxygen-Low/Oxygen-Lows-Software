@@ -3,6 +3,7 @@ import {
   streamPollinationsClient,
   fetchPollinationsClient,
   PollinationsRateLimitError,
+  PollinationsNotFoundError,
   POLLINATIONS_TEXT_API_URL,
 } from "./pollinationsClient";
 
@@ -33,6 +34,25 @@ describe("pollinationsClient", () => {
           onChunk,
         }),
       ).rejects.toThrow(PollinationsRateLimitError);
+
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+
+    it("throws PollinationsNotFoundError when receiving HTTP 404", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+      });
+
+      const onChunk = vi.fn();
+      await expect(
+        streamPollinationsClient({
+          model: "inclusionai/ling-3.1-flash",
+          messages: [{ role: "user", content: "Hello" }],
+          onChunk,
+        }),
+      ).rejects.toThrow(PollinationsNotFoundError);
 
       expect(onChunk).not.toHaveBeenCalled();
     });
@@ -117,6 +137,21 @@ describe("pollinationsClient", () => {
           messages: [{ role: "user", content: "Hello" }],
         }),
       ).rejects.toThrow(PollinationsRateLimitError);
+    });
+
+    it("throws PollinationsNotFoundError when receiving HTTP 404", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+      });
+
+      await expect(
+        fetchPollinationsClient({
+          model: "inclusionai/ling-3.1-flash",
+          messages: [{ role: "user", content: "Hello" }],
+        }),
+      ).rejects.toThrow(PollinationsNotFoundError);
     });
 
     it("fetches non-streaming completion content successfully", async () => {
