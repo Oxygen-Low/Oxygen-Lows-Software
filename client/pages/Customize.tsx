@@ -441,7 +441,7 @@ export default function Customize() {
         </div>
 
         {/* Music Playlist Section */}
-        <div>
+        <div className="@container/playlist min-w-0">
           <h2 className="text-xl font-semibold mb-4 text-foreground">
             {t("customize.musicSectionTitle", undefined, "Music Playlist")}
           </h2>
@@ -498,8 +498,8 @@ export default function Customize() {
 
           {/* Playlist */}
           <div className="space-y-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-lg font-semibold text-foreground">
                   {t("customize.currentPlaylist", undefined, "Current Playlist")}
                 </h3>
@@ -562,13 +562,13 @@ export default function Customize() {
                   return (
                     <div
                       key={track.fileName + index}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                      className={`flex flex-col @[32rem]/playlist:flex-row @[32rem]/playlist:items-center justify-between gap-3 p-3 rounded-lg border transition-all ${
                         isThisTrack
                           ? "bg-primary/10 border-primary"
                           : "bg-card border-border hover:bg-muted"
                       }`}
                     >
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         <span className="text-xs font-mono text-muted-foreground w-4 text-center shrink-0">
                           {index + 1}
                         </span>
@@ -576,7 +576,7 @@ export default function Customize() {
                           <Music className={`w-4 h-4 ${isThisTrack ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <p className="font-medium text-sm text-foreground truncate">
                               {track.name}
                             </p>
@@ -592,7 +592,7 @@ export default function Customize() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex flex-wrap items-center justify-end gap-1 shrink-0 [&_button]:min-h-9 [&_button]:min-w-9">
                         {/* Reorder Buttons */}
                         <button
                           disabled={index === 0}

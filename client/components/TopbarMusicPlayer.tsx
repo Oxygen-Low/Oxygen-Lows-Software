@@ -22,7 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { MusicPlayer } from "./MusicPlayer";
 
 /**
  * Text component with a fixed container that smoothly slides left and right
@@ -143,9 +143,9 @@ export const TopbarMusicPlayer: React.FC = () => {
       align="center"
       sideOffset={8}
       collisionPadding={8}
-      className="w-[calc(100vw-1.5rem)] max-w-sm sm:w-80 p-3 bg-popover/95 backdrop-blur-md border border-border shadow-xl rounded-lg z-[70]"
+      className="w-[calc(100vw-1.5rem)] max-w-sm sm:w-80 max-h-[min(36rem,var(--radix-popover-content-available-height))] overflow-y-auto overscroll-contain p-3 bg-popover/95 backdrop-blur-md border border-border shadow-xl rounded-lg z-[70]"
     >
-      <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/50">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 pb-2 mb-2 border-b border-border/50">
         <div className="flex items-center gap-2 min-w-0">
           <ListMusic className="w-4 h-4 text-primary shrink-0" />
           <span className="text-xs font-semibold text-foreground truncate">
@@ -165,6 +165,12 @@ export const TopbarMusicPlayer: React.FC = () => {
         </Link>
       </div>
 
+      {currentTrack && (
+        <div className="mb-3">
+          <MusicPlayer />
+        </div>
+      )}
+
       {playlist.length === 0 ? (
         <div className="py-6 text-center text-xs text-muted-foreground">
           <p>{t("customize.noTracks", undefined, "No tracks added yet.")}</p>
@@ -177,7 +183,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           </Link>
         </div>
       ) : (
-        <ScrollArea className="max-h-64 sm:max-h-60 overflow-y-auto pr-1">
+        <div className="pr-1">
           <div className="space-y-1">
             {playlist.map((track, idx) => {
               const isCurrent = currentTrack?.fileName === track.fileName;
@@ -189,7 +195,7 @@ export const TopbarMusicPlayer: React.FC = () => {
                     playTrack(track);
                     setIsPopoverOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 sm:py-1.5 rounded-md text-left text-xs transition-colors ${
+                  className={`w-full flex items-center justify-between px-2.5 min-h-11 py-2 rounded-md text-left text-xs transition-colors ${
                     isCurrent
                       ? "bg-primary/15 text-primary font-semibold border border-primary/30"
                       : "hover:bg-muted/60 text-foreground"
@@ -219,7 +225,7 @@ export const TopbarMusicPlayer: React.FC = () => {
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
       )}
     </PopoverContent>
   );
@@ -236,7 +242,7 @@ export const TopbarMusicPlayer: React.FC = () => {
             aria-label={t("customize.noTrackPlaying", undefined, "No track playing")}
           >
             <Music className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="hidden sm:inline font-medium truncate">
+            <span className="hidden @[14rem]/music:inline font-medium truncate">
               {t("customize.noTrackPlaying", undefined, "No track playing")}
             </span>
           </button>
@@ -249,20 +255,20 @@ export const TopbarMusicPlayer: React.FC = () => {
   // If no track is currently active, but playlist has tracks
   if (!currentTrack && playlist.length > 0) {
     return (
-      <div className="h-full flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-card/60 border border-border shadow-sm backdrop-blur-sm max-w-full">
+      <div className="h-full flex items-center gap-1 px-1.5 py-0.5 sm:py-1 rounded-lg bg-card/60 border border-border shadow-sm backdrop-blur-sm max-w-full">
         <Button
           size="sm"
           variant="ghost"
           onClick={() => playTrack(playlist[0])}
-          className="h-full px-2 sm:px-2.5 text-xs text-primary font-medium hover:bg-primary/10 flex items-center gap-1 sm:gap-1.5 rounded-md min-w-0"
+          className="h-9 w-9 shrink-0 @[14rem]/music:w-auto px-0 @[14rem]/music:px-2 text-xs text-primary font-medium hover:bg-primary/10 flex items-center gap-1 rounded-md min-w-0"
           title={t("customize.startPlaylist", undefined, "Start Playlist")}
           aria-label={t("customize.startPlaylist", undefined, "Start Playlist")}
         >
           <Play className="w-3.5 h-3.5 fill-current shrink-0" />
-          <span className="hidden xs:inline truncate">
+          <span className="hidden @[14rem]/music:inline truncate">
             {t("customize.startPlaylist", undefined, "Start Playlist")}
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/20 text-primary font-semibold shrink-0">
+          <span className="hidden @[14rem]/music:inline text-[10px] px-1.5 py-0.5 rounded-md bg-primary/20 text-primary font-semibold shrink-0">
             {playlist.length}
           </span>
         </Button>
@@ -272,7 +278,7 @@ export const TopbarMusicPlayer: React.FC = () => {
             <Button
               size="icon"
               variant="ghost"
-              className="h-full aspect-square p-0 rounded-md text-muted-foreground hover:text-primary shrink-0"
+              className="h-9 w-9 p-0 rounded-md text-muted-foreground hover:text-primary shrink-0"
               title={t("customize.currentPlaylist", undefined, "Current Playlist")}
               aria-label={t("customize.currentPlaylist", undefined, "Current Playlist")}
             >
@@ -297,12 +303,12 @@ export const TopbarMusicPlayer: React.FC = () => {
   return (
     <div
       style={pillStyle}
-      className={`h-full w-full max-w-2xl flex items-center justify-between gap-1 sm:gap-2 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-lg border border-border shadow-sm backdrop-blur-md transition-all min-w-0 ${
+      className={`h-full w-full max-w-2xl flex items-center justify-center gap-1 px-1.5 py-0.5 sm:py-1 rounded-lg border border-border shadow-sm backdrop-blur-md transition-all min-w-0 ${
         currentBackgroundUrl ? "bg-slate-950/80 text-white" : "bg-card/70"
       }`}
     >
-      {/* Fixed-width/flexible Track Info container with sliding marquee */}
-      <div className="flex items-center gap-1 sm:gap-1.5 shrink min-w-0 flex-1 sm:flex-none sm:w-36 md:w-48 lg:w-56 overflow-hidden">
+      {/* Reveal details only when the header has room for them. */}
+      <div className="hidden @[14rem]/music:flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
         <Music
           className={`w-3.5 h-3.5 shrink-0 ${
             isPlaying ? "text-primary animate-pulse" : "text-muted-foreground"
@@ -314,8 +320,8 @@ export const TopbarMusicPlayer: React.FC = () => {
         />
       </div>
 
-      {/* Scrubber (hidden on small screens, visible on md+) */}
-      <div className="hidden md:flex items-center gap-1.5 shrink-0">
+      {/* Full controls remain available in the playlist popover. */}
+      <div className="hidden @[36rem]/music:flex items-center gap-1.5 shrink-0">
         <input
           type="range"
           min={0}
@@ -339,7 +345,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           size="icon"
           variant="ghost"
           onClick={playPrev}
-          className="hidden xs:inline-flex h-full max-h-8 aspect-square p-0 rounded-md text-muted-foreground hover:text-primary"
+          className="hidden @[36rem]/music:inline-flex h-9 w-9 shrink-0 p-0 rounded-md text-muted-foreground hover:text-primary"
           title="Previous track"
           aria-label="Previous track"
         >
@@ -349,7 +355,7 @@ export const TopbarMusicPlayer: React.FC = () => {
         <Button
           size="icon"
           onClick={isPlaying ? pause : play}
-          className="h-full max-h-8 aspect-square p-0 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+          className="h-9 w-9 shrink-0 p-0 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
           title={isPlaying ? "Pause track" : "Play track"}
           aria-label={isPlaying ? "Pause track" : "Play track"}
         >
@@ -364,7 +370,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           size="icon"
           variant="ghost"
           onClick={playNext}
-          className="hidden xs:inline-flex h-full max-h-8 aspect-square p-0 rounded-md text-muted-foreground hover:text-primary"
+          className="hidden @[36rem]/music:inline-flex h-9 w-9 shrink-0 p-0 rounded-md text-muted-foreground hover:text-primary"
           title="Next track"
           aria-label="Next track"
         >
@@ -375,7 +381,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           size="icon"
           variant={shuffle ? "default" : "ghost"}
           onClick={() => toggleShuffle(!shuffle)}
-          className={`hidden sm:inline-flex h-full max-h-8 aspect-square p-0 rounded-md ${
+          className={`hidden @[36rem]/music:inline-flex h-9 w-9 shrink-0 p-0 rounded-md ${
             shuffle
               ? "bg-primary/20 text-primary hover:bg-primary/30"
               : "text-muted-foreground hover:text-primary"
@@ -391,7 +397,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           size="icon"
           variant={loop ? "default" : "ghost"}
           onClick={() => toggleLoop(!loop)}
-          className={`hidden sm:inline-flex h-full max-h-8 aspect-square p-0 rounded-md ${
+          className={`hidden @[36rem]/music:inline-flex h-9 w-9 shrink-0 p-0 rounded-md ${
             loop
               ? "bg-primary/20 text-primary hover:bg-primary/30"
               : "text-muted-foreground hover:text-primary"
@@ -407,7 +413,7 @@ export const TopbarMusicPlayer: React.FC = () => {
           size="icon"
           variant="ghost"
           onClick={toggleMute}
-          className="hidden sm:inline-flex h-full max-h-8 aspect-square p-0 rounded-md text-muted-foreground hover:text-primary"
+          className="hidden @[36rem]/music:inline-flex h-9 w-9 shrink-0 p-0 rounded-md text-muted-foreground hover:text-primary"
           title={isMuted ? "Unmute" : "Mute"}
           aria-label={isMuted ? "Unmute" : "Mute"}
         >
@@ -426,7 +432,7 @@ export const TopbarMusicPlayer: React.FC = () => {
             <Button
               size="icon"
               variant="ghost"
-              className="h-full max-h-8 aspect-square p-0 rounded-md text-muted-foreground hover:text-primary relative"
+              className="h-9 w-9 shrink-0 p-0 rounded-md text-muted-foreground hover:text-primary relative"
               title={t("customize.currentPlaylist", undefined, "Current Playlist")}
               aria-label={t("customize.currentPlaylist", undefined, "Current Playlist")}
             >

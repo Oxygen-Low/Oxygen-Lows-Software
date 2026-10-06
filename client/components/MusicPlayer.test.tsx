@@ -6,6 +6,7 @@ import {
   fireEvent,
   waitFor,
   cleanup,
+  within,
 } from "@testing-library/react";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -228,6 +229,42 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
     // Click the playlist track item
     fireEvent.click(trackMatches[1]);
     expect(defaultContext.playTrack).toHaveBeenCalledWith(defaultContext.playlist[0]);
+  });
+
+  it("provides full playback controls inside the playlist popover and selects a track", () => {
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTitle("Current Playlist"));
+    const popup = within(screen.getByRole("dialog"));
+    fireEvent.click(popup.getByRole("button", { name: "Previous track" }));
+    fireEvent.click(popup.getByRole("button", { name: "Next track" }));
+    fireEvent.click(popup.getByRole("button", { name: "Pause track" }));
+    fireEvent.click(popup.getByRole("button", { name: "Toggle shuffle" }));
+    fireEvent.click(popup.getByRole("button", { name: "Toggle loop" }));
+    fireEvent.click(popup.getByRole("button", { name: "Mute" }));
+    fireEvent.change(popup.getByRole("slider", { name: "Seek track position" }), {
+      target: { value: "45000" },
+    });
+    fireEvent.change(popup.getByRole("slider", { name: "Volume" }), {
+      target: { value: "0.5" },
+    });
+
+    expect(defaultContext.playPrev).toHaveBeenCalledOnce();
+    expect(defaultContext.playNext).toHaveBeenCalledOnce();
+    expect(defaultContext.pause).toHaveBeenCalledOnce();
+    expect(defaultContext.toggleShuffle).toHaveBeenCalledWith(true);
+    expect(defaultContext.toggleLoop).toHaveBeenCalledWith(true);
+    expect(defaultContext.toggleMute).toHaveBeenCalledOnce();
+    expect(defaultContext.seek).toHaveBeenCalledWith(45000);
+    expect(defaultContext.setVolume).toHaveBeenCalledWith(0.5);
+
+    fireEvent.click(popup.getByRole("button", { name: /Test Song/ }));
+    expect(defaultContext.playTrack).toHaveBeenCalledWith(defaultContext.playlist[0]);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("renders playlist popover trigger with track count badge in TopbarMusicPlayer", () => {
