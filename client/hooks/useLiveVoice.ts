@@ -32,6 +32,40 @@ const LANGUAGE_LOCALE_MAP: Record<string, string> = {
   zh: "zh-CN",
 };
 
+/**
+ * Splits text into speakable sentence chunks to avoid browser SpeechSynthesis
+ * 15-second / length timeouts in Chrome, Edge, and Safari.
+ */
+function splitTextIntoSentences(text: string): string[] {
+  const clean = text
+    .replace(/```[\s\S]*?```/g, "Code block omitted.")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_~#[\]()<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!clean) return [];
+
+  const sentences: string[] = [];
+  const rawParts = clean.match(/[^.!?\n]+[.!?\n]+/g) || [clean];
+
+  for (const part of rawParts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    if (trimmed.length > 180) {
+      const subParts = trimmed.match(/[^,;:]+[,;:]+|\S.{1,160}(?:\s|$)/g) || [trimmed];
+      for (const sp of subParts) {
+        if (sp.trim()) sentences.push(sp.trim());
+      }
+    } else {
+      sentences.push(trimmed);
+    }
+  }
+
+  return sentences.length > 0 ? sentences : [clean];
+}
+
 export function useLiveVoice({
   languageCode = "en",
   onSendSpeech,
@@ -72,7 +106,8 @@ export function useLiveVoice({
   const animFrameRef = useRef<number | null>(null);
   const silenceTimerRef = useRef<any>(null);
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const textQueueRef = useRef<string[]>([]);
+  const activeUtterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
+  const resumeTimerRef = useRef<any>(null);
   const isSpeakingRef = useRef(false);
   const isMutedRef = useRef(isMuted);
   const isHandsFreeRef = useRef(isHandsFree);
@@ -120,17 +155,18 @@ export function useLiveVoice({
       setAvailableVoices(mapped);
 
       // If no valid selected voice, select the best matching voice for current language
-      if (!selectedVoiceUri || !voices.some((v) => v.voiceURI === selectedVoiceUri)) {
+      setSelectedVoiceUri((prev) => {
+        if (prev && voices.some((v) => v.voiceURI === prev)) {
+          return prev;
+        }
         const langPrefix = targetLocale.split("-")[0].toLowerCase();
         const bestMatch =
           voices.find((v) => v.lang.toLowerCase() === targetLocale.toLowerCase()) ||
           voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix)) ||
           voices.find((v) => v.default) ||
           voices[0];
-        if (bestMatch) {
-          setSelectedVoiceUri(bestMatch.voiceURI);
-        }
-      }
+        return bestMatch ? bestMatch.voiceURI : prev;
+      });
     };
 
     loadVoices();
@@ -141,7 +177,7 @@ export function useLiveVoice({
         window.speechSynthesis.onvoiceschanged = null;
       }
     };
-  }, [targetLocale, selectedVoiceUri]);
+  }, [targetLocale]);
 
   // Save preferences
   const updateSelectedVoiceUri = useCallback((uri: string) => {
@@ -225,18 +261,39 @@ export function useLiveVoice({
     setAudioLevel(0);
   }, []);
 
-  // Text-To-Speech (TTS)
-  const stopSpeaking = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    textQueueRef.current = [];
-    isSpeakingRef.current = false;
-    activeUtteranceRef.current = null;
-    try {
-      window.speechSynthesis.cancel();
-    } catch {
-      // Ignore
+  const clearResumeTimer = useCallback(() => {
+    if (resumeTimerRef.current) {
+      clearInterval(resumeTimerRef.current);
+      resumeTimerRef.current = null;
     }
   }, []);
+
+  const startResumeTimer = useCallback(() => {
+    clearResumeTimer();
+    resumeTimerRef.current = setInterval(() => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }
+    }, 10000);
+  }, [clearResumeTimer]);
+
+  // Text-To-Speech (TTS)
+  const stopSpeaking = useCallback(() => {
+    clearResumeTimer();
+    activeUtterancesRef.current = [];
+    isSpeakingRef.current = false;
+    activeUtteranceRef.current = null;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // Ignore
+      }
+    }
+  }, [clearResumeTimer]);
 
   const speakText = useCallback(
     (text: string, onDone?: () => void) => {
@@ -245,67 +302,103 @@ export function useLiveVoice({
         return;
       }
 
-      const cleanText = text
-        .replace(/```[\s\S]*?```/g, "Code block omitted.")
-        .replace(/`([^`]+)`/g, "$1")
-        .replace(/[*_~#[\]()<>]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+      stopSpeaking();
 
-      if (!cleanText) {
+      const chunks = splitTextIntoSentences(text);
+      if (chunks.length === 0) {
         onDone?.();
         return;
       }
 
-      setLastAssistantText(cleanText);
-      stopSpeaking();
+      const fullCleanText = chunks.join(" ");
+      setLastAssistantText(fullCleanText);
       isSpeakingRef.current = true;
       setVoiceState("speaking");
 
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = speechRate;
-      utterance.pitch = speechPitch;
-      utterance.lang = targetLocale;
-
       const voices = window.speechSynthesis.getVoices();
+      let selectedVoice: SpeechSynthesisVoice | undefined = undefined;
       if (selectedVoiceUri) {
-        const found = voices.find((v) => v.voiceURI === selectedVoiceUri);
-        if (found) utterance.voice = found;
-      } else {
-        const bestMatch = voices.find(
-          (v) => v.lang.toLowerCase() === targetLocale.toLowerCase(),
-        );
-        if (bestMatch) utterance.voice = bestMatch;
+        selectedVoice = voices.find((v) => v.voiceURI === selectedVoiceUri);
+      }
+      if (!selectedVoice) {
+        const langPrefix = targetLocale.split("-")[0].toLowerCase();
+        selectedVoice =
+          voices.find((v) => v.lang.toLowerCase() === targetLocale.toLowerCase()) ||
+          voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix)) ||
+          voices.find((v) => v.default) ||
+          voices[0];
       }
 
-      utterance.onend = () => {
-        isSpeakingRef.current = false;
-        activeUtteranceRef.current = null;
-        if (isSessionActiveRef.current && !isMutedRef.current) {
-          setVoiceState("listening");
-        } else if (isMutedRef.current) {
-          setVoiceState("muted");
-        } else {
-          setVoiceState("idle");
+      const utterances = chunks.map((chunk, index) => {
+        const utterance = new SpeechSynthesisUtterance(chunk);
+        utterance.rate = speechRate;
+        utterance.pitch = speechPitch;
+        utterance.lang = targetLocale;
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
         }
-        onDone?.();
-      };
 
-      utterance.onerror = () => {
-        isSpeakingRef.current = false;
-        activeUtteranceRef.current = null;
-        if (isSessionActiveRef.current && !isMutedRef.current) {
-          setVoiceState("listening");
-        } else {
-          setVoiceState("idle");
+        const isLastChunk = index === chunks.length - 1;
+
+        utterance.onend = () => {
+          if (isLastChunk) {
+            clearResumeTimer();
+            isSpeakingRef.current = false;
+            activeUtteranceRef.current = null;
+            activeUtterancesRef.current = [];
+            if (isSessionActiveRef.current && !isMutedRef.current) {
+              setVoiceState("listening");
+            } else if (isMutedRef.current) {
+              setVoiceState("muted");
+            } else {
+              setVoiceState("idle");
+            }
+            onDone?.();
+          }
+        };
+
+        utterance.onerror = () => {
+          if (isLastChunk || activeUtterancesRef.current.length <= 1) {
+            clearResumeTimer();
+            isSpeakingRef.current = false;
+            activeUtteranceRef.current = null;
+            activeUtterancesRef.current = [];
+            if (isSessionActiveRef.current && !isMutedRef.current) {
+              setVoiceState("listening");
+            } else {
+              setVoiceState("idle");
+            }
+            onDone?.();
+          }
+        };
+
+        return utterance;
+      });
+
+      activeUtterancesRef.current = utterances;
+      activeUtteranceRef.current = utterances[0] || null;
+
+      startResumeTimer();
+
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
         }
-        onDone?.();
-      };
-
-      activeUtteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+        utterances.forEach((utt) => window.speechSynthesis.speak(utt));
+        window.speechSynthesis.resume();
+      } catch (err) {
+        console.error("Speech synthesis speak error:", err);
+      }
     },
-    [speechRate, speechPitch, targetLocale, selectedVoiceUri, stopSpeaking],
+    [
+      speechRate,
+      speechPitch,
+      targetLocale,
+      selectedVoiceUri,
+      stopSpeaking,
+      startResumeTimer,
+      clearResumeTimer,
+    ],
   );
 
   // Send collected speech
@@ -372,6 +465,9 @@ export function useLiveVoice({
     recognition.onresult = (event: any) => {
       if (isMutedRef.current) return;
       if (!isHandsFreeRef.current && !isPushToTalkActiveRef.current) return;
+      // Do not process speech input while the assistant is speaking out loud
+      // to avoid acoustic echo loops where the AI transcribes its own voice.
+      if (isSpeakingRef.current) return;
 
       let interim = "";
       let currentFinal = "";
@@ -383,11 +479,6 @@ export function useLiveVoice({
         } else {
           interim += item[0].transcript;
         }
-      }
-
-      // Barge-in check: If AI is speaking and user speaks a substantial interim phrase, interrupt AI
-      if (isSpeakingRef.current && (interim.trim().length > 2 || currentFinal.trim().length > 0)) {
-        interrupt();
       }
 
       const combinedText = (currentFinal + " " + interim).trim();
@@ -442,7 +533,7 @@ export function useLiveVoice({
     };
 
     return recognition;
-  }, [targetLocale, interrupt, handleFinalSpeechSend]);
+  }, [targetLocale, handleFinalSpeechSend]);
 
   // Start Live Session
   const startSession = useCallback(async () => {
@@ -451,6 +542,15 @@ export function useLiveVoice({
     setInterimTranscript("");
     setFinalTranscript("");
     setIsMuted(false);
+
+    // Warm up speech synthesis on user gesture
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.resume();
+      } catch {
+        // Ignore
+      }
+    }
 
     try {
       await initAudioAnalyser();

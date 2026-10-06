@@ -281,4 +281,56 @@ describe("useLiveVoice hook", () => {
     expect(result.current.speechRate).toBe(1.5);
     expect(result.current.speechPitch).toBe(1.2);
   });
+
+  it("chunks multi-sentence responses and speaks each chunk", async () => {
+    const onSendSpeech = vi.fn();
+    const { result } = renderHook(() =>
+      useLiveVoice({
+        languageCode: "en",
+        onSendSpeech,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startSession();
+    });
+
+    act(() => {
+      result.current.speakText("First sentence. Second sentence! Third sentence?");
+    });
+
+    expect(result.current.voiceState).toBe("speaking");
+    expect(window.speechSynthesis.speak).toHaveBeenCalled();
+  });
+
+  it("ignores microphone input while AI is speaking to prevent self-interruption and echo loop", async () => {
+    const onSendSpeech = vi.fn();
+    const { result } = renderHook(() =>
+      useLiveVoice({
+        languageCode: "en",
+        onSendSpeech,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startSession();
+    });
+
+    act(() => {
+      result.current.speakText("The assistant is speaking now.");
+    });
+    expect(result.current.voiceState).toBe("speaking");
+
+    // Microphone picks up speaker audio while speaking
+    act(() => {
+      activeRecognitionInstance.onresult({
+        resultIndex: 0,
+        results: [[{ transcript: "The assistant is speaking now." }]],
+      });
+    });
+
+    // It should stay speaking and not get interrupted or send echo
+    expect(result.current.voiceState).toBe("speaking");
+    expect(onSendSpeech).not.toHaveBeenCalled();
+  });
 });
