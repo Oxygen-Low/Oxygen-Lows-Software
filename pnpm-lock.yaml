@@ -294,7 +294,7 @@ importers:
     devDependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(@standard-schema/spec@1.1.0)(react-hook-form@7.88.0(react@19.2.8))(zod@4.6.5)
+        version: 5.9.1(@standard-schema/spec@1.1.0)(react-hook-form@7.89.0(@types/react@19.2.18)(react@19.2.8))(zod@4.6.5)
       '@radix-ui/react-accordion':
         specifier: ^1.2.20
         version: 1.2.20(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -488,8 +488,8 @@ importers:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
       react-hook-form:
-        specifier: ^7.88.0
-        version: 7.88.0(react@19.2.8)
+        specifier: ^7.89.0
+        version: 7.89.0(@types/react@19.2.18)(react@19.2.8)
       react-resizable-panels:
         specifier: ^4.13.3
         version: 4.13.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -3395,11 +3395,15 @@ packages:
       react: '>=16.4.0'
       react-dom: '>=16.4.0'
 
-  react-hook-form@7.88.0:
-    resolution: {integrity: sha512-QRaLOWhX93YCnMiRfnOFRSwWXZNt8qhm2JTZwypoDvKpSffTJHmpzMXt8U6PV5UThvL3IiiLDUWe2nHMtz6Mmw==}
+  react-hook-form@7.89.0:
+    resolution: {integrity: sha512-vKcoCfy8RKZDrhSdqsRFp0uEOdS1AhLjOL6hR7Wmfzg1akNxEhaPf5WORx8SgEQPVXakdDyDkqQp+KNxVnnPHg==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
+      '@types/react': '*'
       react: ^16.8.0 || ^17 || ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
@@ -4230,10 +4234,10 @@ snapshots:
     dependencies:
       hono: 4.13.8
 
-  '@hookform/resolvers@5.9.1(@standard-schema/spec@1.1.0)(react-hook-form@7.88.0(react@19.2.8))(zod@4.6.5)':
+  '@hookform/resolvers@5.9.1(@standard-schema/spec@1.1.0)(react-hook-form@7.89.0(@types/react@19.2.18)(react@19.2.8))(zod@4.6.5)':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.88.0(react@19.2.8)
+      react-hook-form: 7.89.0(@types/react@19.2.18)(react@19.2.8)
     optionalDependencies:
       '@standard-schema/spec': 1.1.0
       zod: 4.6.5
@@ -6729,9 +6733,11 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  react-hook-form@7.88.0(react@19.2.8):
+  react-hook-form@7.89.0(@types/react@19.2.18)(react@19.2.8):
     dependencies:
       react: 19.2.8
+    optionalDependencies:
+      '@types/react': 19.2.18
 
   react-is@17.0.2: {}
 
