@@ -159,7 +159,7 @@ export async function setUserApiKey(
   const existing = await queryTable({
     table: "user_api_keys",
     userId: cleanUserId,
-    filters: [{ column: "provider", op: "eq", value: cleanProvider }],
+    filters: [{ field: "provider", operator: "eq", value: cleanProvider }],
     single: true,
   });
 
@@ -196,7 +196,7 @@ export async function getUserApiKey(
   const result = await queryTable({
     table: "user_api_keys",
     userId: cleanUserId,
-    filters: [{ column: "provider", op: "eq", value: cleanProvider }],
+    filters: [{ field: "provider", operator: "eq", value: cleanProvider }],
     single: true,
   });
 
@@ -240,7 +240,7 @@ export async function deleteUserApiKey(
   if (!cleanUserId || !cleanProvider) return false;
 
   const filters: DataFilter[] = [
-    { column: "provider", op: "eq", value: cleanProvider },
+    { field: "provider", operator: "eq", value: cleanProvider },
   ];
 
   await deleteTable("user_api_keys", filters, cleanUserId);

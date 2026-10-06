@@ -1729,6 +1729,7 @@ export function ChatbotApp() {
     finalContent: string;
     reasoningContent: string;
     isWebSearch: boolean;
+    usedFallback?: boolean;
   }> => {
     let finalContent = "";
     let reasoningContent = "";
@@ -2152,13 +2153,6 @@ export function ChatbotApp() {
       usedFallback: hadFallback,
     };
   }
-
-  return {
-    finalContent,
-    reasoningContent,
-    isWebSearch: isWebSearchEnabled,
-    usedFallback: hadFallback,
-  };
   };
 
   const handleSendMessage = async () => {
