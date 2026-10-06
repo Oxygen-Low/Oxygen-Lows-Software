@@ -4,6 +4,7 @@ import {
   fetchPollinationsClient,
   PollinationsRateLimitError,
   PollinationsNotFoundError,
+  PollinationsAuthError,
   POLLINATIONS_TEXT_API_URL,
 } from "./pollinationsClient";
 
@@ -34,6 +35,25 @@ describe("pollinationsClient", () => {
           onChunk,
         }),
       ).rejects.toThrow(PollinationsRateLimitError);
+
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+
+    it("throws PollinationsAuthError when receiving HTTP 401", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+      });
+
+      const onChunk = vi.fn();
+      await expect(
+        streamPollinationsClient({
+          model: "inclusionai/ling-3.1-flash",
+          messages: [{ role: "user", content: "Hello" }],
+          onChunk,
+        }),
+      ).rejects.toThrow(PollinationsAuthError);
 
       expect(onChunk).not.toHaveBeenCalled();
     });
@@ -137,6 +157,21 @@ describe("pollinationsClient", () => {
           messages: [{ role: "user", content: "Hello" }],
         }),
       ).rejects.toThrow(PollinationsRateLimitError);
+    });
+
+    it("throws PollinationsAuthError when receiving HTTP 401", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+      });
+
+      await expect(
+        fetchPollinationsClient({
+          model: "inclusionai/ling-3.1-flash",
+          messages: [{ role: "user", content: "Hello" }],
+        }),
+      ).rejects.toThrow(PollinationsAuthError);
     });
 
     it("throws PollinationsNotFoundError when receiving HTTP 404", async () => {

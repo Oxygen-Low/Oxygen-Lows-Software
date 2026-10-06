@@ -16,6 +16,15 @@ export class PollinationsNotFoundError extends Error {
   }
 }
 
+export class PollinationsAuthError extends Error {
+  statusCode: number;
+  constructor(message = "Pollinations AI authentication required (HTTP 401)") {
+    super(message);
+    this.name = "PollinationsAuthError";
+    this.statusCode = 401;
+  }
+}
+
 export interface PollinationsMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -35,6 +44,7 @@ export const POLLINATIONS_TEXT_API_URL = "https://gen.pollinations.ai/v1/chat/co
  * Sends a streaming chat completion request directly to Pollinations AI from the browser client.
  * Throws PollinationsRateLimitError if the server returns HTTP 429.
  * Throws PollinationsNotFoundError if the server returns HTTP 404.
+ * Throws PollinationsAuthError if the server returns HTTP 401 or 403.
  */
 export async function streamPollinationsClient({
   model,
@@ -61,6 +71,10 @@ export async function streamPollinationsClient({
       stream: true,
     }),
   });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new PollinationsAuthError();
+  }
 
   if (response.status === 429) {
     throw new PollinationsRateLimitError();
@@ -163,6 +177,10 @@ export async function fetchPollinationsClient({
       stream: false,
     }),
   });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new PollinationsAuthError();
+  }
 
   if (response.status === 429) {
     throw new PollinationsRateLimitError();
