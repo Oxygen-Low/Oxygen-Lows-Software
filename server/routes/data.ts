@@ -9,7 +9,7 @@ import {
 } from "../lib/dataStore.ts";
 import { localAuthMiddleware, resolveUserFromToken } from "../lib/auth.ts";
 
-export const dataRouter = new Hono();
+export const dataRouter = new Hono<{ Variables: { dataBody: Record<string, any> } }>();
 
 // Internal global/auth tables must only be accessed by their dedicated routers.
 const PUBLIC_TABLES = new Set(["profiles", "profile_pictures", "public_assets", "public_characters", "follows", "public_asset_likes", "public_character_likes"]);
@@ -24,6 +24,7 @@ const USER_TABLES = new Set([
 dataRouter.use("*", async (c, next) => {
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ error: "Invalid JSON" }, 400);
+  c.set("dataBody", body);
   const token = c.req.header("Authorization")?.replace(/^Bearer /i, "");
   const user = token ? await resolveUserFromToken(token) : null;
   if (c.req.path.endsWith("/rpc")) {
@@ -45,7 +46,9 @@ dataRouter.use("*", async (c, next) => {
     for (const item of items) {
       if (!item || typeof item !== "object" || Array.isArray(item)) return c.json({ error: "Invalid JSON" }, 400);
       if (item.user_id !== undefined && String(item.user_id) !== String(user!.id)) return c.json({ error: "Unauthorized" }, 403);
-      item.user_id = String(user!.id);
+      if (c.req.path.endsWith("/insert") || c.req.path.endsWith("/upsert")) {
+        item.user_id = String(user!.id);
+      }
       if (["profiles", "profile_pictures"].includes(body.table)) {
         item.id = String(user!.id);
         for (const key of ["role", "is_admin", "verified", "is_verified", "suspended", "status"]) delete item[key];
@@ -63,7 +66,7 @@ dataRouter.use("*", async (c, next) => {
 // Optional auth for public queries, required for mutations
 dataRouter.post("/query", async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const body = c.get("dataBody");
     const {
       table,
       filters,
@@ -132,7 +135,7 @@ dataRouter.post("/query", async (c) => {
 
 dataRouter.post("/insert", localAuthMiddleware, async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const body = c.get("dataBody");
     const { table, data } = body;
     const userId = c.get("userId" as any);
 
@@ -149,7 +152,7 @@ dataRouter.post("/insert", localAuthMiddleware, async (c) => {
 
 dataRouter.post("/update", localAuthMiddleware, async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const body = c.get("dataBody");
     const { table, filters = [], orFilters = [], data } = body;
     const userId = c.get("userId" as any);
 
@@ -166,7 +169,7 @@ dataRouter.post("/update", localAuthMiddleware, async (c) => {
 
 dataRouter.post("/upsert", localAuthMiddleware, async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const body = c.get("dataBody");
     const { table, data, onConflict } = body;
     const userId = c.get("userId" as any);
 
@@ -183,7 +186,7 @@ dataRouter.post("/upsert", localAuthMiddleware, async (c) => {
 
 dataRouter.post("/delete", localAuthMiddleware, async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const body = c.get("dataBody");
     const { table, filters = [], orFilters = [] } = body;
     const userId = c.get("userId" as any);
 
@@ -200,7 +203,7 @@ dataRouter.post("/delete", localAuthMiddleware, async (c) => {
 
 dataRouter.post("/rpc", async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const body = c.get("dataBody");
     const fn = body.fn || body.functionName;
     const args = body.args || {};
 
