@@ -643,6 +643,18 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
     const { provider, apiKey } = await c.req.json();
     const cleanProvider = (provider || "").toLowerCase();
 
+    let effectiveApiKey = apiKey;
+    if (!effectiveApiKey) {
+      const authHeader = c.req.header("authorization");
+      const token = extractBearerToken(authHeader);
+      if (token) {
+        const user = await resolveUserFromToken(token);
+        if (user?.id) {
+          effectiveApiKey = (await getUserApiKey(user.id, cleanProvider)) || "";
+        }
+      }
+    }
+
     if (cleanProvider === "pollinations") {
       try {
         const fetchHeaders: Record<string, string> = {};
@@ -678,18 +690,6 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
           { id: "karma", name: "Karma (Pollinations)" },
         ],
       });
-    }
-
-    let effectiveApiKey = apiKey;
-    if (!effectiveApiKey) {
-      const authHeader = c.req.header("authorization");
-      const token = extractBearerToken(authHeader);
-      if (token) {
-        const user = await resolveUserFromToken(token);
-        if (user?.id) {
-          effectiveApiKey = (await getUserApiKey(user.id, cleanProvider)) || "";
-        }
-      }
     }
 
     if (!effectiveApiKey && cleanProvider !== "openrouter") {
