@@ -23,7 +23,7 @@
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "@hono/node-server": "^2.1.1",
+    "@hono/node-server": "^2.1.3",
     "@oxygenlow/webdefender": "workspace:*",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.2",
@@ -108,7 +108,7 @@
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
     "esbuild": "^0.28.2",
-    "framer-motion": "^13.4.4",
+    "framer-motion": "^14.0.0",
     "globals": "^17.12.0",
     "input-otp": "^1.5.0",
     "jsdom": "^30.1.1",
@@ -119,7 +119,7 @@
     "react": "^19.2.8",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.8",
-    "react-hook-form": "^7.88.0",
+    "react-hook-form": "^7.89.0",
     "react-resizable-panels": "^4.13.3",
     "react-router-dom": "^7.18.4",
     "recharts": "^3.10.1",
@@ -134,7 +134,7 @@
     "typescript": "^7.0.2",
     "vaul": "^1.1.2",
     "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.3"
   },
   "packageManager": "pnpm@12.4.2",
   "pkg": {
