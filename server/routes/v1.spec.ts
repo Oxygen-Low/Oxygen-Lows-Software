@@ -32,7 +32,7 @@ describe("OpenAI-Compatible Free AI API (/v1 & /api/v1)", () => {
         "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
       );
       expect(resolveV1TextModel("Smart")).toBe(
-        "aphrodite/DeepSeek-V4.1-Flash",
+        "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
       );
       expect(resolveV1TextModel("Writing")).toBe(
         "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",

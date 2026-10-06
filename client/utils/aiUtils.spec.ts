@@ -7,7 +7,7 @@ describe("formatModelLabel", () => {
       "Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     );
     expect(formatModelLabel("horde", "Smart")).toBe(
-      "Smart - aphrodite/DeepSeek-V4.1-Flash",
+      "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
     );
     expect(formatModelLabel("horde", "Writing")).toBe(
       "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",

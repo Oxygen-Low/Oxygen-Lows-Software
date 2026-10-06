@@ -44,7 +44,7 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
     "koboldcpp/L3-8B-Stheno-v3.2",
     "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
   ],
-  Smart: ["aphrodite/DeepSeek-V4.1-Flash"],
+  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 

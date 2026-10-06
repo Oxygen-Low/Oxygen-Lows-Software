@@ -66,7 +66,7 @@ export const V1_AVAILABLE_MODELS = [
     created: 1700000000,
     owned_by: "oxygenlow",
     type: "text",
-    description: "High-parameter intelligent reasoning open LLM (DeepSeek V4.1 Flash)",
+    description: "High-parameter intelligent reasoning open LLM (Behemoth-X 123B)",
   },
   {
     id: "Writing",

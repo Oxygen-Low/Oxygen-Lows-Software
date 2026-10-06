@@ -99,7 +99,7 @@ export const BUILTIN_MODELS: Model[] = [
   {
     provider: "horde",
     model_id: "Smart",
-    name: "Smart - aphrodite/DeepSeek-V4.1-Flash",
+    name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
   },
   {
     provider: "horde",
@@ -164,7 +164,7 @@ export const POPULAR_PRESETS: Record<
     },
     {
       model_id: "Smart",
-      name: "Smart - aphrodite/DeepSeek-V4.1-Flash",
+      name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
     },
     {
       model_id: "Writing",

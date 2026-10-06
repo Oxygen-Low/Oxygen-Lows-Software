@@ -25,7 +25,7 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
   Fast: [
     "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
   ],
-  Smart: ["aphrodite/DeepSeek-V4.1-Flash"],
+  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 

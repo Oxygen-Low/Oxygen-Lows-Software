@@ -2231,7 +2231,7 @@ export function Models() {
                       Fast - NVIDIA Nemotron 3 Nano (AI Horde)
                     </SelectItem>
                     <SelectItem value="horde:Smart" className="text-xs">
-                      Smart - DeepSeek V4.1 Flash (AI Horde)
+                      Smart - Behemoth-X 123B (AI Horde)
                     </SelectItem>
                     <SelectItem value="horde:Writing" className="text-xs">
                       Writing - Behemoth 123B (AI Horde)
