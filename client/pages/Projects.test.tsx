@@ -3,6 +3,78 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Projects from "./Projects";
+import { Hono } from "hono";
+import { projectsRouter } from "../../server/routes/projects";
+
+let apiProjects: any[] = [];
+vi.mock("../../server/lib/dataStore.ts", () => ({
+  queryTable: vi.fn(({ filters, single }) => {
+    const rows = apiProjects.filter((p) =>
+      filters.every((f: any) => p[f.field] === f.value),
+    );
+    return structuredClone(single ? (rows[0] ?? null) : rows);
+  }),
+  insertTable: vi.fn((_table, project) => {
+    apiProjects.push(project);
+    return project;
+  }),
+  updateTable: vi.fn((_table, filters, patch) => {
+    const index = apiProjects.findIndex((p) =>
+      filters.every((f: any) => p[f.field] === f.value),
+    );
+    if (index < 0) return [];
+    apiProjects[index] = { ...apiProjects[index], ...structuredClone(patch) };
+    return [apiProjects[index]];
+  }),
+  deleteTable: vi.fn((_table, filters) => {
+    apiProjects = apiProjects.filter(
+      (p) => !filters.every((f: any) => p[f.field] === f.value),
+    );
+  }),
+}));
+vi.mock("../../server/lib/auth.ts", () => ({
+  verifyToken: () => ({ userId: "user-1" }),
+  localAuthMiddleware: async (c: any, next: any) => {
+    c.set("userId", "user-1");
+    await next();
+  },
+}));
+const projectApi = new Hono().route("/api/projects", projectsRouter);
+function installProjectApi() {
+  const fallback = global.fetch;
+  global.fetch = vi.fn(async (url: any, options?: any) => {
+    if (
+      typeof url === "string" &&
+      url.startsWith("/api/projects/") &&
+      options?.method
+    ) {
+      return projectApi.request(url, options);
+    }
+    if (url === "/api/projects" && !options?.method && apiProjects.length) {
+      return new Response(JSON.stringify({ data: apiProjects, error: null }), {
+        status: 200,
+      });
+    }
+    const response = await fallback(url, options);
+    if (url === "/api/projects" && response.ok) {
+      const body = await response.json();
+      const rows = Array.isArray(body.data)
+        ? body.data
+        : body.data
+          ? [body.data]
+          : [];
+      apiProjects = rows.map((p: any) => ({
+        ...p,
+        user_id: "user-1",
+        revision: p.revision ?? 0,
+      }));
+      return { ...response, json: async () => body } as Response;
+    }
+    return response;
+  }) as typeof fetch;
+}
+
+
 
 vi.mock("@/components/Layout", () => ({
   Layout: ({ children }: any) => <div data-testid="layout">{children}</div>,
@@ -34,6 +106,7 @@ describe("Projects Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    apiProjects = [];
   });
 
   afterEach(() => {
@@ -90,6 +163,7 @@ describe("Projects Page", () => {
       }),
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -143,6 +217,7 @@ describe("Projects Page", () => {
       }),
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -197,6 +272,7 @@ describe("Projects Page", () => {
       }),
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -273,6 +349,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -333,6 +410,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -386,9 +464,9 @@ describe("Projects Page", () => {
 
     // Step 5: Agent Jade is created and orientation task added
     await waitFor(() => {
-      expect(screen.getByText(/has been successfully hired and onboarded/i)).toBeTruthy();
+      expect(apiProjects[0].history.some((e: any) => e.action.type === "hire_agent" && e.status === "applied")).toBe(true);
       expect(screen.getAllByText("Jade").length).toBeGreaterThan(0);
-      expect(screen.getByText(/Hired agent "Jade" \(Growth Specialist\)/i)).toBeTruthy();
+      expect(apiProjects[0].requests).toHaveLength(0);
     });
 
     // Ensure infinite multi-turn loop didn't flood the board with duplicate generic tasks
@@ -453,6 +531,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -526,6 +605,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -542,9 +622,9 @@ describe("Projects Page", () => {
 
     // Verify orchestrator confirms offboarding with clean name and no raw tags
     await waitFor(() => {
-      expect(screen.getByText(/I have offboarded/i)).toBeTruthy();
-      expect(screen.getByText("MarketingBot")).toBeTruthy();
-      expect(screen.getByText(/Fired agent "MarketingBot"/i)).toBeTruthy();
+      expect(screen.queryByTestId("agent-item-ag-2")).toBeNull();
+      expect(apiProjects[0].history.some((e: any) => e.action.type === "fire_agent")).toBe(true);
+      expect(apiProjects[0].requests).toHaveLength(0);
     });
 
     expect(screen.queryByText(/\[ACTION:\s*FIRE_AGENT/i)).toBeNull();
@@ -593,6 +673,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -679,6 +760,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -739,6 +821,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -826,6 +909,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -898,6 +982,7 @@ describe("Projects Page", () => {
     });
 
     // 1. Initial render with 0 projects -> shows empty state
+    installProjectApi();
     const { unmount } = render(
       <MemoryRouter>
         <Projects />
@@ -930,6 +1015,7 @@ describe("Projects Page", () => {
     unmount();
     cleanup();
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -998,6 +1084,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -1023,7 +1110,7 @@ describe("Projects Page", () => {
       expect(proxyCalled).toBe(true);
       expect(screen.getByText(/Task completed successfully/i)).toBeTruthy();
       expect(screen.getByText(/Task Deliverable: Generate API specification/i)).toBeTruthy();
-      expect(screen.getByText("openapi_spec.md")).toBeTruthy();
+      expect(screen.getAllByText("openapi_spec.md").length).toBeGreaterThan(0);
     });
   });
 
@@ -1061,6 +1148,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -1084,8 +1172,9 @@ describe("Projects Page", () => {
     const descTextarea = screen.getByPlaceholderText(/Detailed task objectives/i);
     fireEvent.change(descTextarea, { target: { value: "Build responsive navbar with mobile drawer" } });
 
-    // Verify change reflected
-    expect((descTextarea as HTMLTextAreaElement).value).toBe("Build responsive navbar with mobile drawer");
+    fireEvent.blur(descTextarea);
+    // Verify change persisted
+    await waitFor(() => expect(apiProjects[0].tasks[0].description).toBe("Build responsive navbar with mobile drawer"));
   });
 
   it("actually performs web search via /api/ai/agent-search instead of hallucinating when agent triggers web search", async () => {
@@ -1157,6 +1246,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -1241,6 +1331,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -1313,6 +1404,7 @@ describe("Projects Page", () => {
       return { ok: true, json: async () => ({}) };
     });
 
+    installProjectApi();
     render(
       <MemoryRouter>
         <Projects />
@@ -1336,6 +1428,109 @@ describe("Projects Page", () => {
     expect(capturedSystemPrompt).toContain(currentYear);
     expect(capturedSystemPrompt).toContain("You are always aware of today's real-world date");
   });
+  const requestFixture = () => ({
+    id: "request-project", name: "Requests workspace", user_id: "user-1", description: "",
+    orchestratorName: "Lead", orchestratorModelProvider: "openai", orchestratorModelId: "test",
+    agents: [{ id: "lead", name: "Lead", role: "Lead", systemPrompt: "Lead", isOrchestrator: true, createdAt: "2026-01-01" },
+      { id: "worker", name: "Worker", role: "Worker", systemPrompt: "Worker", createdAt: "2026-01-01" }],
+    memoryFiles: [{ id: "notes", filename: "notes.md", title: "Notes", content: "Original", updatedAt: "2026-01-01" }],
+    tasks: [{ id: "task", title: "Plan work", status: "todo", createdAt: "2026-01-01", updatedAt: "2026-01-01" }],
+    requests: [], history: [], revision: 0, created_at: "2026-01-01", updated_at: "2026-01-01",
+  });
+  const startRequestFixture = (response: string, configure?: (project: any) => void) => {
+    apiProjects = [requestFixture()];
+    configure?.(apiProjects[0]);
+    let calls = 0;
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ text: calls++ === 0 ? response : "Waiting for your decision." }) })) as any;
+    installProjectApi();
+    return render(<MemoryRouter><Projects /></MemoryRouter>);
+  };
+  it("queues autonomous hiring and supports denial, reopening, acceptance, undo and reload", async () => {
+    const view = startRequestFixture('[ACTION: CREATE_AGENT name="Ada" role="Engineer"]');
+    await screen.findByText("Requests workspace");
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "Suggest a specialist" } });
+    fireEvent.submit(input.closest("form")!);
+    await waitFor(() => expect(apiProjects[0].requests).toHaveLength(1));
+    expect(apiProjects[0].agents).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: /Requests \(1\)/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Deny" }));
+    await screen.findByText("Denied", { exact: true });
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await screen.findByRole("button", { name: "Accept" });
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(apiProjects[0].agents).toHaveLength(3));
+    view.unmount();
+    render(<MemoryRouter><Projects /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: /Requests \(0\)/ }));
+    const undo = screen.getAllByRole("button", { name: "Undo" }).find(button => !(button as HTMLButtonElement).disabled)!;
+    fireEvent.click(undo);
+    await waitFor(() => expect(apiProjects[0].agents).toHaveLength(2));
+    expect(localStorage.getItem("oxygenlow_projects_cache_v1")).toBeNull();
+  });
+  it("queues firing from autonomous task execution without changing the roster", async () => {
+    startRequestFixture('[ACTION: FIRE_AGENT name="Worker"]');
+    fireEvent.click(await screen.findByTestId("task-item-task"));
+    fireEvent.click(screen.getByRole("button", { name: "Start Task" }));
+    await waitFor(() => expect(apiProjects[0].requests).toHaveLength(1));
+    expect(apiProjects[0].agents.some((a: any) => a.id === "worker")).toBe(true);
+    expect(apiProjects[0].requests[0].origin.agentId).toBe("lead");
+  });
+  it("does not reuse a button authorization for additional AI actions", async () => {
+    startRequestFixture('[ACTION: FIRE_AGENT name="Worker"]\n[ACTION: CREATE_AGENT name="Unexpected" role="Extra"]');
+    await screen.findByText("Requests workspace");
+    fireEvent.click(screen.getByTitle("Prompt Orchestrator to Fire Agent"));
+    await waitFor(() => expect(apiProjects[0].requests).toHaveLength(1));
+    expect(apiProjects[0].history[0].action.type).toBe("fire_agent");
+    expect(apiProjects[0].requests[0].action.type).toBe("hire_agent");
+    expect(apiProjects[0].agents).toHaveLength(1);
+  });
+  it("binds a Fire button authorization to the selected ID when agent names match", async () => {
+    startRequestFixture('[ACTION: FIRE_AGENT name="Worker"]', project => {
+      project.agents.push({ ...project.agents[1], id: "other-worker" });
+    });
+    await screen.findByTestId("agent-item-other-worker");
+    fireEvent.click(screen.getAllByTitle("Prompt Orchestrator to Fire Agent")[1]);
+    await waitFor(() => expect(apiProjects[0].history).toHaveLength(1));
+    expect(apiProjects[0].agents.some((a: any) => a.id === "worker")).toBe(true);
+    expect(apiProjects[0].agents.some((a: any) => a.id === "other-worker")).toBe(false);
+    expect(apiProjects[0].requests).toHaveLength(0);
+  });
+  it("shows approval save failures without executing the action", async () => {
+    startRequestFixture('[ACTION: CREATE_AGENT name="Ada" role="Engineer"]');
+    await screen.findByText("Requests workspace");
+    const input = screen.getByPlaceholderText(/Message/i);
+    fireEvent.change(input, { target: { value: "Suggest help" } });
+    fireEvent.submit(input.closest("form")!);
+    await waitFor(() => expect(apiProjects[0].requests).toHaveLength(1));
+    const original = global.fetch;
+    global.fetch = vi.fn(async (url: any, options: any) => String(url).endsWith("/accept") ? new Response(JSON.stringify({ error: "saveFailed" }), { status: 500 }) : original(url, options)) as any;
+    fireEvent.click(screen.getByRole("button", { name: /Requests \(1\)/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await screen.findByRole("alert");
+    expect(apiProjects[0].agents).toHaveLength(2);
+    expect(apiProjects[0].requests).toHaveLength(1);
+  });
+  it("removes old cached projects and shows server load errors", async () => {
+    localStorage.setItem("oxygenlow_projects_cache_v1", JSON.stringify([requestFixture()]));
+    global.fetch = vi.fn().mockRejectedValue(new Error("Offline"));
+    render(<MemoryRouter><Projects /></MemoryRouter>);
+    await screen.findByRole("alert");
+    expect(screen.queryByText("Requests workspace")).toBeNull();
+    expect(localStorage.getItem("oxygenlow_projects_cache_v1")).toBeNull();
+  });
+  it("preserves unsaved memory text when its API save fails", async () => {
+    startRequestFixture("");
+    fireEvent.click(await screen.findByText("notes.md"));
+    const editor = screen.getByDisplayValue("Original");
+    fireEvent.change(editor, { target: { value: "Unsaved draft" } });
+    global.fetch = vi.fn().mockRejectedValue(new Error("Offline"));
+    fireEvent.click(screen.getByRole("button", { name: /Save/i }));
+    await screen.findByRole("alert");
+    expect(screen.getByDisplayValue("Unsaved draft")).toBeTruthy();
+    expect(apiProjects[0].memoryFiles[0].content).toBe("Original");
+  });
+
 });
 
 

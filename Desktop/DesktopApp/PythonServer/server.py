@@ -40,7 +40,23 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
     def process_request(self, request, client_address):
         if not self.request_slots.acquire(blocking=False):
-            self.shutdown_request(request)
+            try:
+                # This runs on the accept loop, so bound writes to slow clients.
+                request.settimeout(1)
+                body = b'{"error":"Server busy"}'
+                request.sendall(
+                    b"HTTP/1.1 503 Service Unavailable\r\n"
+                    b"Content-Type: application/json\r\n"
+                    b"Connection: close\r\n"
+                    b"Cache-Control: no-store\r\n"
+                    + f"Content-Length: {len(body)}\r\n\r\n".encode("ascii")
+                    + body
+                )
+            except OSError:
+                # A disconnected or stalled client must not stop the server.
+                pass
+            finally:
+                self.shutdown_request(request)
             return
         try:
             super().process_request(request, client_address)

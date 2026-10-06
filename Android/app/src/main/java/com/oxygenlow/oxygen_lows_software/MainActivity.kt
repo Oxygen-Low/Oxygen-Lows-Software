@@ -2,6 +2,7 @@ package com.oxygenlow.oxygen_lows_software
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
@@ -15,6 +16,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import org.json.JSONObject
@@ -50,6 +52,8 @@ class MainActivity : AppCompatActivity() {
                     message.data?.let { webAppInterface.postMessage(it) }
                 }
             }
+        } else {
+            showWebViewUpdatePrompt()
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -77,6 +81,34 @@ class MainActivity : AppCompatActivity() {
         }
 
         checkForUpdatesOnStartup()
+    }
+
+    private fun showWebViewUpdatePrompt() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.webview_update_title)
+            .setMessage(R.string.webview_update_message)
+            .setPositiveButton(R.string.webview_update_action) { _, _ -> openWebViewUpdate() }
+            .setNegativeButton(R.string.webview_update_later, null)
+            .show()
+    }
+
+    private fun openWebViewUpdate() {
+        // Some devices use Chrome or another package as their WebView provider.
+        val providerPackage = WebViewCompat.getCurrentWebViewPackage(this)?.packageName
+            ?: "com.google.android.webview"
+        val storeUri = Uri.parse("market://details").buildUpon()
+            .appendQueryParameter("id", providerPackage).build()
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, storeUri).setPackage("com.android.vending"))
+        } catch (_: ActivityNotFoundException) {
+            val webUri = Uri.parse("https://play.google.com/store/apps/details").buildUpon()
+                .appendQueryParameter("id", providerPackage).build()
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, webUri))
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(this, R.string.webview_update_unavailable, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {

@@ -51,8 +51,13 @@ vi.mock("../lib/dataStore.ts", () => ({
 
 vi.mock("../lib/auth.ts", () => ({
   localAuthMiddleware: async (c: any, next: any) => {
-    if (c.req.header("Authorization") !== "Bearer valid-user-token") return c.json({ error: "Unauthorized" }, 401);
-    c.set("userId", "user-abc");
+    const auth = c.req.header("Authorization");
+    if (!auth) return c.json({ error: "Unauthorized" }, 401);
+    if (auth === "Bearer valid-user-token") {
+      c.set("userId", "user-abc");
+    } else {
+      c.set("userId", "outsider-user");
+    }
     await next();
   },
 }));
@@ -307,5 +312,236 @@ describe("Projects API Routes (/api/projects)", () => {
     expect(updateRes.status).toBe(200);
     const updateJson = await updateRes.json();
     expect(updateJson.data.status).toBe("done");
+  });
+});
+
+describe("Project requests and undo history", () => {
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer valid-user-token",
+  };
+  const call = (path: string, body?: any, method = "POST") =>
+    app.request(`/api/projects${path === "/" ? "" : path}`, {
+      method,
+      headers,
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+  let id: string;
+  beforeEach(async () => {
+    mockProjectsDb = [];
+    id = (await (await call("/", { name: "Requests" })).json()).data.id;
+  });
+  const action = async (
+    id: string,
+    type: string,
+    payload: any,
+    pending = false,
+  ) => {
+    const res = await call(`/${id}/${pending ? "requests" : "actions"}`, {
+      type,
+      payload,
+      origin: pending
+        ? { kind: "agent", agentId: "orchestrator-root" }
+        : { kind: "user" },
+    });
+    expect(res.ok).toBe(true);
+    return (await res.json()).data;
+  };
+  it("queues, deduplicates, accepts once, and undoes a hire", async () => {
+    let project = await action(
+      id,
+      "hire_agent",
+      { name: "Ada", role: "Engineer" },
+      true,
+    );
+    expect(project.agents).toHaveLength(1);
+    expect(project.requests).toHaveLength(1);
+    const requestId = project.requests[0].id;
+    project = await action(
+      id,
+      "hire_agent",
+      { name: "Ada", role: "Engineer" },
+      true,
+    );
+    expect(project.requests).toHaveLength(1);
+    project = (await (await call(`/${id}/requests/${requestId}/accept`)).json())
+      .data;
+    expect(project.agents).toHaveLength(2);
+    expect(project.requests).toHaveLength(0);
+    expect((await call(`/${id}/requests/${requestId}/accept`)).status).toBe(
+      409,
+    );
+    const historyId = project.history[0].id;
+    project = (await (await call(`/${id}/history/${historyId}/undo`)).json())
+      .data;
+    expect(project.agents).toHaveLength(1);
+    expect(project.history[0].status).toBe("undone");
+    expect((await call(`/${id}/history/${historyId}/undo`)).status).toBe(409);
+  });
+  it("denies without mutation and reopens on undo", async () => {
+    let project = await action(id, "hire_agent", { name: "Ada" }, true);
+    project = (
+      await (
+        await call(`/${id}/requests/${project.requests[0].id}/deny`)
+      ).json()
+    ).data;
+    expect(project.agents).toHaveLength(1);
+    expect(project.history[0].status).toBe("denied");
+    project = (
+      await (await call(`/${id}/history/${project.history[0].id}/undo`)).json()
+    ).data;
+    expect(project.requests).toHaveLength(1);
+    expect(project.agents).toHaveLength(1);
+    expect(
+      (await call(`/${id}/requests/${project.requests[0].id}/accept`)).ok,
+    ).toBe(true);
+  });
+  it("logs direct operations and supports chained memory undo with stable IDs and full metadata", async () => {
+    let project = await action(id, "write_memory", {
+      filename: "notes.md",
+      title: "Notes",
+      content: "first",
+      always_shown: true,
+    });
+    const original = project.memoryFiles.find(
+      (f: any) => f.filename === "notes.md",
+    );
+    const createId = project.history[0].id;
+    project = await action(id, "write_memory", {
+      filename: "notes.md",
+      content: "second",
+    });
+    expect(
+      project.memoryFiles.find((f: any) => f.filename === "notes.md").id,
+    ).toBe(original.id);
+    expect((await call(`/${id}/history/${createId}/undo`)).status).toBe(409);
+    const modifyId = project.history[1].id;
+    project = await action(id, "delete_memory", { id: original.id });
+    const deleteId = project.history[2].id;
+    expect((await call(`/${id}/history/${modifyId}/undo`)).status).toBe(409);
+    project = (await (await call(`/${id}/history/${deleteId}/undo`)).json())
+      .data;
+    expect(
+      project.memoryFiles.find((f: any) => f.id === original.id).content,
+    ).toBe("second");
+    project = (await (await call(`/${id}/history/${modifyId}/undo`)).json())
+      .data;
+    expect(project.memoryFiles.find((f: any) => f.id === original.id)).toEqual(
+      original,
+    );
+    project = (await (await call(`/${id}/history/${createId}/undo`)).json())
+      .data;
+    expect(project.memoryFiles.some((f: any) => f.id === original.id)).toBe(
+      false,
+    );
+  });
+  it("restores fired agents and assignments but protects subsequent assignments and edits", async () => {
+    let project = await action(id, "hire_agent", { name: "Ada" });
+    const agent = project.agents[1];
+    const task = (
+      await (
+        await call(`/${id}/tasks`, { title: "Work", assignedAgentId: agent.id })
+      ).json()
+    ).data;
+    project = await action(id, "fire_agent", { id: agent.id });
+    const entry = project.history[1];
+    expect(project.tasks[0].assignedAgentId).toBeUndefined();
+    await call(
+      `/${id}/tasks/${task.id}`,
+      { assignedAgentId: "orchestrator-root" },
+      "PATCH",
+    );
+    expect((await call(`/${id}/history/${entry.id}/undo`)).status).toBe(409);
+    mockProjectsDb[0].tasks[0].assignedAgentId = undefined;
+    project = (await (await call(`/${id}/history/${entry.id}/undo`)).json())
+      .data;
+    expect(project.agents.find((a: any) => a.id === agent.id)).toEqual(agent);
+    expect(project.tasks[0].assignedAgentId).toBe(agent.id);
+    // A hire cannot be undone while its agent owns tasks.
+    expect(
+      (await call(`/${id}/history/${project.history[0].id}/undo`)).status,
+    ).toBe(409);
+  });
+  it("enforces ownership, protected fields, stale saves, and orchestrator protection", async () => {
+    const outsider = await app.request(`/api/projects/${id}/requests`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer outsider-token",
+      },
+      body: JSON.stringify({
+        type: "hire_agent",
+        payload: { name: "Intruder" },
+      }),
+    });
+    expect(outsider.status).toBe(404);
+    for (const field of ["agents", "memoryFiles", "requests", "history"]) {
+      expect(
+        (await call(`/${id}`, { [field]: [], revision: 0 }, "PATCH")).status,
+      ).toBe(400);
+    }
+    expect(
+      (
+        await call(`/${id}/actions`, {
+          type: "fire_agent",
+          payload: { id: "orchestrator-root" },
+        })
+      ).status,
+    ).toBe(400);
+    await action(id, "write_memory", { filename: "test.md" });
+    expect(
+      (await call(`/${id}`, { tasks: [], revision: 0 }, "PATCH")).status,
+    ).toBe(409);
+    expect(
+      (
+        await call(`/${id}/actions`, {
+          type: "write_memory",
+          payload: { filename: "test.md" },
+          revision: 0,
+        })
+      ).status,
+    ).toBe(409);
+  });
+  it("retains agent configuration edits and protects undo from later configuration changes", async () => {
+    let project = await action(id, "hire_agent", { name: "Ada" });
+    const entryId = project.history[0].id;
+    const agentId = project.agents[1].id;
+    await call(`/${id}/agents/${agentId}`, { role: "Reviewer" }, "PATCH");
+    expect((await call(`/${id}/history/${entryId}/undo`)).status).toBe(409);
+    project = (await (await call(`/${id}/agents/orchestrator-root`, { systemPrompt: "Updated lead instructions" }, "PATCH")).json()).data;
+    expect(project.orchestratorPrompt).toBe("Updated lead instructions");
+    project = (await (await call(`/${id}`, { revision: project.revision, name: "Renamed" }, "PATCH")).json()).data;
+    expect(project.agents[0].systemPrompt).toBe("Updated lead instructions");
+    expect(project.agents[1].role).toBe("Reviewer");
+  });
+  it("cannot execute agent-origin sensitive actions via the direct endpoint", async () => {
+    const project = (
+      await (
+        await call(`/${id}/actions`, {
+          type: "hire_agent",
+          payload: { name: "Ada" },
+          origin: { kind: "agent", agentId: "orchestrator-root" },
+        })
+      ).json()
+    ).data;
+    expect(project.agents).toHaveLength(1);
+    expect(project.requests).toHaveLength(1);
+  });
+  it("keeps 1000 history entries without losing pending requests and defaults legacy projects", async () => {
+    delete mockProjectsDb[0].history;
+    delete mockProjectsDb[0].requests;
+    let project = (await (await call(`/${id}`, undefined, "GET")).json()).data;
+    expect(project.history).toEqual([]);
+    expect(project.requests).toEqual([]);
+    project = await action(id, "hire_agent", { name: "Pending" }, true);
+    project = await action(id, "write_memory", { filename: "entry.md" });
+    mockProjectsDb[0].history = Array.from({ length: 1000 }, (_, n) => ({
+      ...project.history[0],
+      id: `history-${n}`,
+    }));
+    project = await action(id, "write_memory", { filename: "last.md" });
+    expect(project.history).toHaveLength(1000);
+    expect(project.history[0].id).toBe("history-1");
+    expect(project.requests).toHaveLength(1);
   });
 });
