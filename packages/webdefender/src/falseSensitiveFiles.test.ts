@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DefenderClient } from "./webdefender.js";
 import { createExpressMiddleware } from "./middleware.js";
-import { createDefender as createHonoDefender } from "./hono.js";
 import { createNextDefender } from "./next.js";
 import { createCloudflareDefender } from "./cloudflare.js";
 
