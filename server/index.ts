@@ -179,6 +179,7 @@ app.use(
         "https://generativelanguage.googleapis.com",
         "https://openrouter.ai",
         "https://api.x.ai",
+        "https://gen.pollinations.ai",
         "https://text.pollinations.ai",
         "https://image.pollinations.ai",
         "https://pollinations.ai",

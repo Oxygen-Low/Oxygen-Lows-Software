@@ -83,10 +83,10 @@ export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
   {
     id: "pollinations",
     name: "Pollinations AI",
-    description: "Free & keyless AI text models (optional priority key)",
+    description: "Free & keyless AI text models (API key from enter.pollinations.ai)",
     requiresKey: false,
-    keyPlaceholder: "Optional secret or priority key",
-    docsUrl: "https://pollinations.ai/",
+    keyPlaceholder: "Optional API Key (pk_... from enter.pollinations.ai)",
+    docsUrl: "https://enter.pollinations.ai",
   },
 ];
 
@@ -112,10 +112,14 @@ export const POPULAR_PRESETS: Record<
   ],
   pollinations: [
     {
+      model_id: "openai/gpt-4o-mini",
+      name: "OpenAI GPT-4o Mini (Pollinations)",
+    },
+    {
       model_id: "inclusionai/ling-3.1-flash",
       name: "Ling 3.1 Flash (Pollinations)",
     },
-    { model_id: "openai", name: "GPT-4o Mini (Pollinations)" },
+    { model_id: "openai", name: "GPT-4o Mini (Pollinations Alias)" },
     { model_id: "mistral", name: "Mistral Nemo (Pollinations)" },
     { model_id: "deepseek", name: "DeepSeek V3 (Pollinations)" },
     { model_id: "deepseek-r1", name: "DeepSeek R1 (Pollinations)" },

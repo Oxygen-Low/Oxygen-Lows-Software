@@ -29,7 +29,7 @@ export interface PollinationsStreamOptions {
   onChunk: (delta: string) => void;
 }
 
-export const POLLINATIONS_TEXT_API_URL = "https://text.pollinations.ai/openai/chat/completions";
+export const POLLINATIONS_TEXT_API_URL = "https://gen.pollinations.ai/v1/chat/completions";
 
 /**
  * Sends a streaming chat completion request directly to Pollinations AI from the browser client.

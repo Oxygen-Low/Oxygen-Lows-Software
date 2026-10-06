@@ -576,7 +576,7 @@ async function callModelProvider({
     headers["HTTP-Referer"] = "https://oxygenlow.com";
     headers["X-Title"] = "Oxygen Low's Software";
   } else if (provider === "pollinations") {
-    targetUrl = "https://text.pollinations.ai/openai/chat/completions";
+    targetUrl = "https://gen.pollinations.ai/v1/chat/completions";
     requestBody = { ...requestBody, model, messages };
     if (apiKey) {
       headers["Authorization"] = `Bearer ${apiKey}`;

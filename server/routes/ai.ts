@@ -479,7 +479,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "pollinations") {
-      targetUrl = "https://text.pollinations.ai/openai/chat/completions";
+      targetUrl = "https://gen.pollinations.ai/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       if (integration?.api_key) {
         fetchOptions.headers["Authorization"] = `Bearer ${integration.api_key}`;
@@ -645,12 +645,22 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
 
     if (cleanProvider === "pollinations") {
       try {
-        const res = await fetch("https://text.pollinations.ai/models");
+        const fetchHeaders: Record<string, string> = {};
+        if (effectiveApiKey) {
+          fetchHeaders["Authorization"] = `Bearer ${effectiveApiKey}`;
+        }
+        let res = await fetch("https://gen.pollinations.ai/v1/models", {
+          headers: fetchHeaders,
+        });
+        if (!res.ok) {
+          res = await fetch("https://text.pollinations.ai/models");
+        }
         if (res.ok) {
           const list = await res.json();
-          if (Array.isArray(list)) {
-            const models = list.map((m: any) => ({
-              id: typeof m === "string" ? m : (m.name || m.id),
+          const items = Array.isArray(list) ? list : list?.data;
+          if (Array.isArray(items)) {
+            const models = items.map((m: any) => ({
+              id: typeof m === "string" ? m : (m.id || m.name),
               name: typeof m === "string" ? m : (m.description || m.name || m.id),
             }));
             return c.json({ models });

@@ -5,10 +5,16 @@ export const formatModelLabel = (provider: string, modelId: string) => {
     const labels: Record<string, string> = {
       "inclusionai/ling-3.1-flash": "Ling 3.1 Flash (Pollinations)",
       openai: "GPT-4o Mini (Pollinations)",
+      "openai/gpt-4o-mini": "GPT-4o Mini (Pollinations)",
+      "openai/gpt-5.4-nano": "GPT-5.4 Nano (Pollinations)",
       mistral: "Mistral Nemo (Pollinations)",
+      "mistral/mistral-nemo": "Mistral Nemo (Pollinations)",
       deepseek: "DeepSeek V3 (Pollinations)",
+      "deepseek/deepseek-chat": "DeepSeek V3 (Pollinations)",
       "deepseek-r1": "DeepSeek R1 (Pollinations)",
+      "deepseek/deepseek-r1": "DeepSeek R1 (Pollinations)",
       qwen: "Qwen 2.5 72B (Pollinations)",
+      "qwen/qwen-2.5-72b": "Qwen 2.5 72B (Pollinations)",
       "claude-hybrid": "Claude 3.5 Sonnet Hybrid (Pollinations)",
     };
     return labels[modelId] || "Pollinations - " + modelId;
