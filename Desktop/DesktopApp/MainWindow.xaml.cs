@@ -95,6 +95,13 @@ public partial class MainWindow : Window
         };
         webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
         webView.CoreWebView2.ContainsFullScreenElementChanged += CoreWebView2_ContainsFullScreenElementChanged;
+        webView.CoreWebView2.PermissionRequested += (sender, args) =>
+        {
+            if (args.PermissionKind == CoreWebView2PermissionKind.Microphone && NativeSecurity.IsTrustedOrigin(args.Uri))
+            {
+                args.State = CoreWebView2PermissionState.Allow;
+            }
+        };
         webView.PreviewKeyDown += MainWindow_PreviewKeyDown;
         webView.KeyDown += MainWindow_KeyDown;
 

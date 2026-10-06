@@ -71,8 +71,30 @@ class MainActivity : AppCompatActivity() {
                 if (NativeSecurity.isTrustedOrigin(url)) injectPolyfill()
             }
         }
-        
-        webView.webChromeClient = WebChromeClient()
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                if (request == null) return
+                val origin = request.origin?.toString() ?: ""
+                if (NativeSecurity.isTrustedOrigin(origin)) {
+                    request.grant(request.resources)
+                } else {
+                    request.deny()
+                }
+            }
+        }
+
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.RECORD_AUDIO
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.RECORD_AUDIO),
+                1002
+            )
+        }
 
         if (intent?.data?.scheme == "oxygenlows") {
             handleIntent(intent)
